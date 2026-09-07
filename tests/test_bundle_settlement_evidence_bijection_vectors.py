@@ -970,6 +970,161 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
                 self.assertEqual(disposition, "error", reason)
 
+    def test_primary_consumer_executes_public_and_both_credential_storage_modes(self):
+        storage = self.data["executionAuthorities"]["completed-storage-delivery"]
+        storage_closure = storage["deliveryArtifactAuthorityByPhaseKey"][
+            "0:deliver-storage-program"
+        ]["deliverable"]
+        self.assertEqual(
+            storage["listing"]["offering"]["deliverable"].get(
+                "accessModel", "public"
+            ),
+            "public",
+        )
+        self.assertEqual(
+            storage_closure["storedContentHash"], storage_closure["cleartextHash"]
+        )
+        self.assertNotIn("storedHash", storage_closure)
+        disposition, reason, _ = derive_phase_disposition(storage, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+        for access_model in ("buyer-only", "encrypt-to-buyer"):
+            private_storage = copy.deepcopy(storage)
+            listing = private_storage["listing"]
+            listing["offering"]["deliverable"]["accessModel"] = access_model
+            resign_listing(listing, self.data["seeds"]["seller"])
+            private_storage["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+                listing
+            )
+            resign_ebfab(private_storage["bundle"], self.data["seeds"])
+            resolved_storage = private_storage[
+                "deliveryArtifactAuthorityByPhaseKey"
+            ]["0:deliver-storage-program"]["deliverable"]
+            if access_model == "encrypt-to-buyer":
+                resolved_storage["storedContentHash"] = hashlib.sha256(
+                    b"fixture encrypted storage payload"
+                ).hexdigest()
+            disposition, reason, _ = derive_phase_disposition(
+                private_storage, self.pubkeys
+            )
+            with self.subTest(storage_access_model=access_model):
+                self.assertEqual(disposition, "pass", reason)
+
+        buyer_only = self.data["executionAuthorities"]["repeated-pay-completed"]
+        buyer_credential = buyer_only["deliveryArtifactAuthorityByPhaseKey"][
+            "2:deliver-entitlement"
+        ]["credential"]
+        exact_result, exact_bytes = R._exact_base64url_bytes(
+            buyer_credential["cleartextBytesBase64url"], "buyer-only credential"
+        )
+        self.assertEqual(exact_result[0], "pass")
+        self.assertEqual(
+            hashlib.sha256(exact_bytes).hexdigest(),
+            buyer_credential["storedContentHash"],
+        )
+        disposition, reason, _ = derive_phase_disposition(buyer_only, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+        encrypted = copy.deepcopy(buyer_only)
+        encrypted_closure = encrypted["deliveryArtifactAuthorityByPhaseKey"][
+            "2:deliver-entitlement"
+        ]
+        entitlement = encrypted_closure["entitlementRecord"]["artifact"]
+        credential = encrypted_closure["credential"]
+        ciphertext_hash = hashlib.sha256(b"fixture encrypted credential").hexdigest()
+        credential_ref = copy.deepcopy(entitlement["credentialRef"])
+        credential_ref["accessModel"] = "encrypt-to-buyer"
+        credential_ref["ref"]["contentHash"] = ciphertext_hash
+        entitlement["credentialRef"] = credential_ref
+        resign_inner_artifact(
+            entitlement, self.data["seeds"]["seller"], R.ENTITLEMENT_DOMAIN
+        )
+        entitlement_hash = R._signed_envelope_content_hash(entitlement)
+        credential["credentialRef"] = copy.deepcopy(credential_ref)
+        credential["storedContentHash"] = ciphertext_hash
+
+        def bind_encrypted_credential(record):
+            record["deliverableContentHash"] = entitlement_hash
+            record["credentialDelivery"]["credentialRef"] = copy.deepcopy(
+                credential_ref
+            )
+
+        replace_top_record(
+            encrypted,
+            "deliver-entitlement",
+            bind_encrypted_credential,
+            self.data["seeds"],
+        )
+        self.assertNotEqual(
+            credential["storedContentHash"], credential["cleartextHash"]
+        )
+        disposition, reason, _ = derive_phase_disposition(encrypted, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+        for mutation in ("missing", None, "AA==", 1):
+            authority = copy.deepcopy(buyer_only)
+            resolved = authority["deliveryArtifactAuthorityByPhaseKey"][
+                "2:deliver-entitlement"
+            ]["credential"]
+            if mutation == "missing":
+                resolved.pop("cleartextBytesBase64url")
+                expected = "indeterminate"
+            else:
+                resolved["cleartextBytesBase64url"] = mutation
+                expected = "indeterminate" if mutation is None else "error"
+            disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+            with self.subTest(exact_bytes=mutation):
+                self.assertEqual(disposition, expected, reason)
+
+    def test_primary_dependency_availability_uses_the_shared_strict_contract(self):
+        dependencies = (
+            ("completed-storage-delivery", "0:deliver-storage-program", "deliverable"),
+            ("repeated-pay-completed", "2:deliver-entitlement", "entitlementRecord"),
+            ("repeated-pay-completed", "2:deliver-entitlement", "credential"),
+            ("standard-completed", "3:deliver-attested-payload", "deliverable"),
+            ("standard-completed", "3:deliver-attested-payload", "payloadAttestationRecord"),
+            ("standard-completed", "3:deliver-attested-payload", "methodEvidence"),
+        )
+        for authority_name, phase_key, dependency in dependencies:
+            unavailable = copy.deepcopy(self.data["executionAuthorities"][authority_name])
+            unavailable["deliveryArtifactAuthorityByPhaseKey"][phase_key][dependency][
+                "available"
+            ] = False
+            disposition, reason, _ = derive_phase_disposition(unavailable, self.pubkeys)
+            with self.subTest(dependency=dependency, availability=False):
+                self.assertEqual(disposition, "indeterminate", reason)
+
+            missing = copy.deepcopy(self.data["executionAuthorities"][authority_name])
+            missing["deliveryArtifactAuthorityByPhaseKey"][phase_key].pop(dependency)
+            disposition, reason, _ = derive_phase_disposition(missing, self.pubkeys)
+            with self.subTest(dependency=dependency, availability="missing-entry"):
+                self.assertEqual(disposition, "indeterminate", reason)
+
+            malformed_entry = copy.deepcopy(
+                self.data["executionAuthorities"][authority_name]
+            )
+            malformed_entry["deliveryArtifactAuthorityByPhaseKey"][phase_key][
+                dependency
+            ] = []
+            disposition, reason, _ = derive_phase_disposition(
+                malformed_entry, self.pubkeys
+            )
+            with self.subTest(dependency=dependency, availability="non-mapping"):
+                self.assertEqual(disposition, "error", reason)
+
+            for malformed in (None, "true", 1, 0):
+                authority = copy.deepcopy(
+                    self.data["executionAuthorities"][authority_name]
+                )
+                authority["deliveryArtifactAuthorityByPhaseKey"][phase_key][
+                    dependency
+                ]["available"] = malformed
+                disposition, reason, _ = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                with self.subTest(dependency=dependency, availability=malformed):
+                    self.assertEqual(disposition, "error", reason)
+
     def test_reference_canonical_uses_repository_jcs_without_ascii_hash_churn(self):
         from jcs import canonicalize
 

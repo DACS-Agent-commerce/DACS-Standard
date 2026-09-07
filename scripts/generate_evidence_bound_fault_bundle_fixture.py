@@ -260,6 +260,7 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
             "logicalAddress": address,
             "cleartextUtf8": cleartext,
             "cleartextHash": digest,
+            "storedContentHash": digest,
             "available": True,
             "lifecycle": artifact_lifecycle,
         }
@@ -325,6 +326,9 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
             "credentialRef": copy.deepcopy(credential_ref),
             "cleartextHash": credential_cleartext_hash,
             "storedContentHash": credential_cleartext_hash,
+            "cleartextBytesBase64url": b64u(
+                credential_cleartext.encode("utf-8")
+            ),
             "available": True,
             "lifecycle": artifact_lifecycle,
         }

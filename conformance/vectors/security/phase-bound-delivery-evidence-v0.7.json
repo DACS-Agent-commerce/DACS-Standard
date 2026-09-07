@@ -3,7 +3,7 @@
   "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
   "decisionModel": "Current delivery evidence signs exact phase identity and artifact/credential closure; attested delivery resolves the payload, method proof, and authenticated native transaction; contradictions fail, malformed/unsupported input errors, and unavailable otherwise-valid private evidence remains indeterminate.",
   "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
-  "hash": "242f80f1bf7fc4e5b14622cd534faf0eca24bb912e0acdb8d8e8d6b3b6f280c4",
+  "hash": "b6e9a2cddfb7cbd3a9334f6ae57f9e393f8d92a781c662ddc0c9f39d6d3c869e",
   "count": 63,
   "publicTestSeeds": {
     "orchestratorEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
@@ -76,7 +76,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -84,11 +84,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -247,7 +263,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -255,11 +271,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -434,7 +466,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -442,11 +474,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -605,7 +653,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -613,11 +661,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -776,7 +840,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -784,11 +848,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -947,7 +1027,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -955,11 +1035,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE9999999999999999999:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -1118,7 +1214,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -1126,11 +1222,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -1289,7 +1401,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -1297,11 +1409,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -1460,7 +1588,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -1468,11 +1596,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -1604,11 +1748,20 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
           "cleartextHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
           "cleartextUtf8": "legacy delivery",
-          "storedHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
+          "storedContentHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -1731,11 +1884,20 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
           "cleartextHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
           "cleartextUtf8": "legacy delivery",
-          "storedHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
+          "storedContentHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -2017,7 +2179,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
           "cleartextHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
           "cleartextUtf8": "legacy attested payload",
-          "storedHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "storedContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
           "available": true
         },
         {
@@ -2260,7 +2422,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
           "cleartextHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
           "cleartextUtf8": "legacy attested payload",
-          "storedHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "storedContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
           "available": true
         },
         {
@@ -2450,11 +2612,20 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
           "cleartextHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
           "cleartextUtf8": "legacy delivery",
-          "storedHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
+          "storedContentHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
           "available": false
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -2731,7 +2902,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
           "cleartextHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
           "cleartextUtf8": "legacy attested payload",
-          "storedHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "storedContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
           "available": true
         },
         {
@@ -5401,7 +5572,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -5470,7 +5641,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -5808,7 +5979,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -5877,7 +6048,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -6215,7 +6386,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -6284,7 +6455,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -6600,7 +6771,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -6669,7 +6840,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -7007,7 +7178,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -7076,7 +7247,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -7414,7 +7585,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -7483,7 +7654,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -7821,7 +7992,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:6",
           "cleartextHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "cleartextUtf8": "attested one",
-          "storedHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
+          "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6",
           "available": true
         },
         {
@@ -7890,7 +8061,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:7",
           "cleartextHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "cleartextUtf8": "attested two",
-          "storedHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
+          "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec",
           "available": true
         },
         {
@@ -8247,8 +8418,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -8442,8 +8613,8 @@
             "accessModel": "encrypt-to-buyer"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -8622,8 +8793,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -8817,8 +8988,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -9012,8 +9183,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -9207,8 +9378,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -9402,8 +9573,8 @@
             "accessModel": "encrypt-to-buyer"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -9597,8 +9768,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -9792,8 +9963,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -9992,8 +10163,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -10188,8 +10359,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -10384,8 +10555,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -10584,8 +10755,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -10779,8 +10950,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": false
         }
       ],
@@ -11488,8 +11659,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -11685,7 +11856,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -11693,11 +11864,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -11893,7 +12080,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -11901,11 +12088,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -12056,7 +12259,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -12064,11 +12267,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -12222,7 +12441,7 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:1",
           "cleartextHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "cleartextUtf8": "first delivery",
-          "storedHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
+          "storedContentHash": "01fd800465f3f70790d91a68d8a0bcbee8ced731bce8d53c37809efce1c49d05",
           "available": true
         },
         {
@@ -12230,11 +12449,27 @@
           "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000:2",
           "cleartextHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "cleartextUtf8": "second delivery",
-          "storedHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
+          "storedContentHash": "dd70a6ff1a7302f0f4a4355ed28fff702f39821d0e8e70e2c838a236ed0da3f4",
           "available": true
         }
       ],
       "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 1,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
+        }
+      ],
       "bundle": {
         "faultBundleVersion": "1",
         "jobId": "01K2PDE0000000000000000000",
@@ -12611,8 +12846,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -12806,8 +13041,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -13002,8 +13237,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],
@@ -13197,8 +13432,8 @@
             "accessModel": "buyer-only"
           },
           "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
+          "storedContentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+          "cleartextBytesBase64url": "YXBpLWtleTpjb3JyZWN0LWhvcnNlLWJhdHRlcnktc3RhcGxl",
           "available": true
         }
       ],

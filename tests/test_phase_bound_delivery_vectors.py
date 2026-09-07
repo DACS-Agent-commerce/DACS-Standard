@@ -110,7 +110,14 @@ def exact_ref_shape(value):
 
 
 def find_artifact(case, address, kind=None):
-    found = [entry for entry in case["artifactRecords"]
+    records = case.get("artifactRecords")
+    if records is None:
+        return None
+    if not isinstance(records, list):
+        return []  # Malformed collection sentinel for the shared availability gate.
+    if any(not isinstance(entry, dict) for entry in records):
+        return []
+    found = [entry for entry in records
              if entry.get("logicalAddress") == address and (kind is None or entry.get("kind") == kind)]
     if len(found) != 1:
         return None
@@ -136,16 +143,34 @@ def authenticated_delivery_roles(bundle):
     return R.authenticated_delivery_roles(bundle)
 
 
-def validate_delivered_cleartext(stored, expected_hash, subject):
-    cleartext_status, cleartext_bytes = R._utf8_bytes(
-        stored.get("cleartextUtf8"), subject
-    )
-    if cleartext_status[0] != "pass":
-        return cleartext_status[0]
-    actual_hash = hashlib.sha256(cleartext_bytes).hexdigest()
-    if expected_hash != stored.get("cleartextHash") or actual_hash != expected_hash:
-        return "fail"
-    return "pass"
+def storage_access_model(case, phase_index):
+    authorities = case.get("deliveryAuthorities")
+    if authorities is None:
+        return "indeterminate", None
+    if not isinstance(authorities, list) or any(
+        not isinstance(item, dict) for item in authorities
+    ):
+        return "error", None
+    matches = [
+        item for item in authorities if item.get("phaseIndex") == phase_index
+    ]
+    if len(matches) != 1:
+        return "indeterminate", None
+    deliverable = matches[0].get("deliverable")
+    if not isinstance(deliverable, dict):
+        return "error", None
+    if deliverable.get("kind") != "storage-program":
+        return "fail", None
+    access_model = deliverable.get("accessModel", "public")
+    if not R._string_member(access_model, {"public", "buyer-only", "encrypt-to-buyer"}):
+        return "error", None
+    return "pass", access_model
+
+
+def validate_delivered_cleartext(stored, expected_hash, access_model, subject):
+    return R._validate_resolved_storage(
+        stored, expected_hash, access_model, subject
+    )[0]
 
 
 def validate_entitlement_roles(bundle, record):
@@ -193,10 +218,16 @@ def validate_delivery_artifact(
         if address != expected_address:
             return "fail"
         stored = find_artifact(case, address, "deliverable")
-        if stored is None or stored.get("available") is False:
-            return "indeterminate"
+        availability, stored = R._resolved_availability(
+            stored, "storage deliverable"
+        )
+        if availability[0] != "pass":
+            return availability[0]
+        access_status, access_model = storage_access_model(case, index)
+        if access_status != "pass":
+            return access_status
         storage_status = validate_delivered_cleartext(
-            stored, content_hash, "storage deliverable cleartext"
+            stored, content_hash, access_model, "storage deliverable"
         )
         if storage_status != "pass":
             return storage_status
@@ -217,8 +248,11 @@ def validate_delivery_artifact(
                              if entry.get("kind") == "EntitlementRecord"
                              and str(entry.get("logicalAddress", "")).startswith(prefix)]
             return "fail" if phase_records else "indeterminate"
-        if record_entry.get("available") is False:
-            return "indeterminate"
+        availability, record_entry = R._resolved_availability(
+            record_entry, "entitlement record"
+        )
+        if availability[0] != "pass":
+            return availability[0]
         record = record_entry.get("artifact")
         if (not isinstance(record, dict)
                 or not R._delivery_inner_type_valid(record, "entitlementVersion")
@@ -298,16 +332,30 @@ def validate_delivery_artifact(
         ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
         if not exact_ref_shape(ref_value):
             return "error"
-        matches = [item for item in case.get("credentials", [])
+        credentials = case.get("credentials")
+        if credentials is None:
+            return "indeterminate"
+        if not isinstance(credentials, list) or any(
+            not isinstance(item, dict) for item in credentials
+        ):
+            return "error"
+        matches = [item for item in credentials
                    if item.get("credentialRef") == credential_ref]
+        if not matches and len(credentials) == 1:
+            # A sole supplied candidate can be classified directly. Do not guess
+            # among multiple unrelated records when the keyed lookup is unresolved.
+            matches = credentials
         if len(matches) != 1:
             return "indeterminate"
         credential = matches[0]
-        if credential.get("available") is False:
-            return "indeterminate"
-        if binding.get("credentialCleartextHash") != credential.get("cleartextHash"):
-            return "fail"
-        return "pass"
+        availability, credential = R._resolved_availability(
+            credential, "entitlement credential"
+        )
+        if availability[0] != "pass":
+            return availability[0]
+        return R._validate_resolved_credential(
+            credential, binding, credential_ref
+        )[0]
 
     if phase == "deliver-attested-payload":
         payload_address = (
@@ -317,8 +365,15 @@ def validate_delivery_artifact(
         if address != payload_address:
             return "fail"
         payload = find_artifact(case, payload_address, "deliverable")
-        payload_unavailable = payload is None or payload.get("available") is False
-        if not payload_unavailable and content_hash != payload.get("cleartextHash"):
+        payload_availability, payload = R._resolved_availability(
+            payload, "attested payload"
+        )
+        if payload_availability[0] == "error":
+            return "error"
+        payload_unavailable = payload_availability[0] == "indeterminate"
+        if payload is not None and "storedHash" in payload:
+            return "error"
+        if payload is not None and content_hash != payload.get("cleartextHash"):
             return "fail"
         supplied = evidence.get("attestationRef")
         if not exact_ref_shape(supplied):
@@ -333,8 +388,11 @@ def validate_delivery_artifact(
                 for entry in case["artifactRecords"]
             )
             return "fail" if same_record_elsewhere else "indeterminate"
-        if record_entry.get("available") is False:
-            return "indeterminate"
+        availability, record_entry = R._resolved_availability(
+            record_entry, "payload attestation record"
+        )
+        if availability[0] != "pass":
+            return availability[0]
         record = record_entry["artifact"]
         if supplied != artifact_ref(record_address, record):
             return "fail"
@@ -400,8 +458,11 @@ def validate_delivery_artifact(
         method_entry = find_artifact(
             case, method_ref["anchor"]["locator"], "methodEvidence"
         )
-        if method_entry is None or method_entry.get("available") is False:
-            return "indeterminate"
+        availability, method_entry = R._resolved_availability(
+            method_entry, "method evidence"
+        )
+        if availability[0] != "pass":
+            return availability[0]
         method_evidence = method_entry.get("artifact")
         if (
             not isinstance(method_evidence, dict)
@@ -700,8 +761,32 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
     def test_storage_delivery_hashes_exact_utf8_in_current_and_legacy_arms(self):
         for factory in (G.storage_case, G.legacy_case):
             case = G.make("storage-contract", "pass", "exact UTF-8", factory)
+            stored = case["artifactRecords"][0]
             with self.subTest(factory=factory.__name__, condition="valid"):
                 self.assertEqual(evaluate(case), "pass")
+                self.assertEqual(
+                    stored["storedContentHash"], stored["cleartextHash"]
+                )
+                self.assertNotIn("storedHash", stored)
+
+            for access_model in ("buyer-only", "encrypt-to-buyer"):
+                private = G.make(
+                    "storage-" + access_model,
+                    "pass",
+                    "legitimate private storage",
+                    factory,
+                )
+                for authority in private["deliveryAuthorities"]:
+                    authority["deliverable"]["accessModel"] = access_model
+                if access_model == "encrypt-to-buyer":
+                    for position, resolved in enumerate(private["artifactRecords"]):
+                        resolved["storedContentHash"] = hashlib.sha256(
+                            f"ciphertext:{position}".encode("ascii")
+                        ).hexdigest()
+                with self.subTest(
+                    factory=factory.__name__, access_model=access_model
+                ):
+                    self.assertEqual(evaluate(private), "pass")
 
             unavailable = G.make(
                 "storage-unavailable", "indeterminate", "unavailable", factory
@@ -716,6 +801,198 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             malformed["artifactRecords"][0]["cleartextUtf8"] = chr(0xD800)
             with self.subTest(factory=factory.__name__, condition="malformed-utf8"):
                 self.assertEqual(evaluate(malformed), "error")
+
+            obsolete = G.make(
+                "storage-obsolete-alias", "error", "obsolete resolver alias", factory
+            )
+            obsolete["artifactRecords"][0]["storedHash"] = (
+                obsolete["artifactRecords"][0]["storedContentHash"]
+            )
+            with self.subTest(factory=factory.__name__, condition="obsolete-alias"):
+                self.assertEqual(evaluate(obsolete), "error")
+
+            mismatched = G.make(
+                "storage-commitment-mismatch", "fail", "stored bytes differ", factory
+            )
+            mismatched["artifactRecords"][0]["storedContentHash"] = "00" * 32
+            with self.subTest(factory=factory.__name__, condition="stored-mismatch"):
+                self.assertEqual(evaluate(mismatched), "fail")
+
+            malformed_commitment = G.make(
+                "storage-commitment-malformed",
+                "error",
+                "stored digest malformed",
+                factory,
+            )
+            malformed_commitment["artifactRecords"][0].pop("storedContentHash")
+            with self.subTest(
+                factory=factory.__name__, condition="stored-malformed"
+            ):
+                self.assertEqual(evaluate(malformed_commitment), "error")
+
+    def test_exact_credential_bytes_and_storage_modes_execute(self):
+        for access_model in ("buyer-only", "encrypt-to-buyer"):
+            case = G.make(
+                "credential-" + access_model,
+                "pass",
+                "legitimate exact credential bytes",
+                lambda access_model=access_model: G.credential_case(access_model),
+            )
+            credential = case["credentials"][0]
+            result, exact_bytes = R._exact_base64url_bytes(
+                credential["cleartextBytesBase64url"], "credential"
+            )
+            cleartext_hash = hashlib.sha256(exact_bytes).hexdigest()
+            with self.subTest(access_model=access_model):
+                self.assertEqual(result[0], "pass")
+                self.assertEqual(evaluate(case), "pass")
+                self.assertEqual(credential["cleartextHash"], cleartext_hash)
+                self.assertEqual(
+                    credential["storedContentHash"],
+                    credential["credentialRef"]["ref"]["contentHash"],
+                )
+                self.assertNotIn("storedHash", credential)
+                if access_model == "buyer-only":
+                    self.assertEqual(credential["storedContentHash"], cleartext_hash)
+                else:
+                    self.assertNotEqual(credential["storedContentHash"], cleartext_hash)
+
+        arbitrary = b"\x00\xff\x80credential\x00"
+        encoded = base64.urlsafe_b64encode(arbitrary).rstrip(b"=").decode("ascii")
+        result, decoded = R._exact_base64url_bytes(encoded, "arbitrary bytes")
+        self.assertEqual(result[0], "pass")
+        self.assertEqual(decoded, arbitrary)
+        self.assertEqual(R._exact_base64url_bytes("", "empty bytes"), (("pass", "ok"), b""))
+
+        self.assertEqual(R._exact_base64url_bytes(None, "missing bytes")[0][0], "indeterminate")
+        for malformed in (b"AA", "AA==", "AA+", "AA/", " AA", "A", 1):
+            with self.subTest(malformed=malformed):
+                self.assertEqual(
+                    R._exact_base64url_bytes(malformed, "credential")[0][0],
+                    "error",
+                )
+
+        for mutation in ("missing", None, "AA==", 1):
+            case = G.make(
+                "credential-byte-guard", "pass", "resolver byte guard", G.credential_case
+            )
+            if mutation == "missing":
+                case["credentials"][0].pop("cleartextBytesBase64url")
+                expected = "indeterminate"
+            else:
+                case["credentials"][0]["cleartextBytesBase64url"] = mutation
+                expected = "indeterminate" if mutation is None else "error"
+            with self.subTest(actual_consumer=mutation):
+                self.assertEqual(evaluate(case), expected)
+
+        for field in ("cleartextHash", "storedContentHash"):
+            case = G.make(
+                "credential-digest-guard", "pass", "resolver digest guard", G.credential_case
+            )
+            case["credentials"][0][field] = "not-a-digest"
+            with self.subTest(resolver_digest=field):
+                self.assertEqual(evaluate(case), "error")
+
+    def test_resolver_schema_and_access_model_guards(self):
+        credential_case = G.make(
+            "credential-schema", "pass", "single byte representation", G.credential_case
+        )
+        for field in ("cleartextUtf8", "storedBytes", "ciphertextHash", "storedHash", "extraBytes"):
+            case = copy.deepcopy(credential_case)
+            case["credentials"][0][field] = None
+            with self.subTest(unsupported_field=field):
+                self.assertEqual(evaluate(case), "error")
+
+        storage_case = G.make("storage-mode", "pass", "mode shape guard", G.storage_case)
+        stored = storage_case["artifactRecords"][0]
+        for malformed in ([], {}, None, 1, "unknown"):
+            case = copy.deepcopy(storage_case)
+            case["deliveryAuthorities"][0]["deliverable"]["accessModel"] = malformed
+            with self.subTest(access_model=malformed):
+                self.assertEqual(evaluate(case), "error")
+                self.assertEqual(R._validate_resolved_storage(
+                    stored, stored["cleartextHash"], malformed, "storage"
+                )[0], "error")
+        self.assertEqual(R._validate_resolved_storage([], "", "public", "storage")[0], "error")
+        self.assertEqual(R._validate_resolved_credential([], {}, {})[0], "error")
+
+    def test_resolver_collections_and_unique_credential_candidate(self):
+        for factory, field in ((G.storage_case, "artifactRecords"), (G.credential_case, "credentials")):
+            for missing in (False, True):
+                case = G.make("missing-collection", "pass", "unavailable resolver", factory)
+                if missing:
+                    case.pop(field)
+                else:
+                    case[field] = None
+                with self.subTest(field=field, missing=missing):
+                    self.assertEqual(evaluate(case), "indeterminate")
+            for malformed in ({}, {"available": False}, {"available": True}, "records", 1, [None]):
+                case = G.make("collection-shape", "pass", "resolver shape guard", factory)
+                case[field] = malformed
+                with self.subTest(field=field, malformed=malformed):
+                    self.assertEqual(evaluate(case), "error")
+
+        for malformed_ref in (None, {}, [], "ref"):
+            case = G.make("credential-ref-shape", "pass", "resolver ref guard", G.credential_case)
+            case["credentials"][0]["credentialRef"] = malformed_ref
+            with self.subTest(credential_ref=malformed_ref):
+                self.assertEqual(evaluate(case), "error")
+
+        case = G.make("credential-ref-binding", "pass", "resolver ref binding", G.credential_case)
+        case["credentials"][0]["credentialRef"]["ref"]["contentHash"] = "11" * 32
+        self.assertEqual(evaluate(case), "fail")
+        case["credentials"].append(copy.deepcopy(case["credentials"][0]))
+        self.assertEqual(evaluate(case), "indeterminate")
+
+    def test_shared_availability_contract_reaches_every_alternate_dependency_arm(self):
+        for entry, expected in (
+            (None, "indeterminate"),
+            ([], "error"),
+            ({}, "error"),
+            ({"available": None}, "error"),
+            ({"available": "true"}, "error"),
+            ({"available": 1}, "error"),
+            ({"available": 0}, "error"),
+            ({"available": False}, "indeterminate"),
+            ({"available": True}, "pass"),
+        ):
+            with self.subTest(helper_entry=entry):
+                self.assertEqual(R._resolved_availability(entry, "dependency")[0][0], expected)
+
+        dependencies = (
+            ("storage", G.storage_case, lambda case: case["artifactRecords"][0]),
+            ("entitlement", G.entitlement_case, lambda case: next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "EntitlementRecord"
+            )),
+            ("credential", G.credential_case, lambda case: case["credentials"][0]),
+            ("payload", G.attested_case, lambda case: next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "deliverable"
+            )),
+            ("payload-attestation", G.attested_case, lambda case: next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "PayloadAttestationRecord"
+            )),
+            ("method-evidence", G.attested_case, lambda case: next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "methodEvidence"
+            )),
+        )
+        for name, factory, select in dependencies:
+            unavailable = G.make(
+                "availability-" + name, "pass", "resolver unavailable", factory
+            )
+            select(unavailable)["available"] = False
+            with self.subTest(dependency=name, availability=False):
+                self.assertEqual(evaluate(unavailable), "indeterminate")
+            for malformed in (None, "true", 1, 0):
+                case = G.make(
+                    "availability-" + name, "pass", "resolver malformed", factory
+                )
+                select(case)["available"] = malformed
+                with self.subTest(dependency=name, availability=malformed):
+                    self.assertEqual(evaluate(case), "error")
 
     def test_legacy_consumers_close_every_delivery_kind_at_frozen_addresses(self):
         cases = {

@@ -932,6 +932,7 @@
             },
             "cleartextHash": "7cc80ab8d03b16731a3d319438633cdfd0515d48592e9a5a1305b5033a26c6e8",
             "storedContentHash": "7cc80ab8d03b16731a3d319438633cdfd0515d48592e9a5a1305b5033a26c6e8",
+            "cleartextBytesBase64url": "Y3JlZGVudGlhbDpTRUItQVVUSE9SSVRZLXJlcGVhdGVkLXBheS1jb21wbGV0ZWQ6Mjow",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -5437,6 +5438,7 @@
             },
             "cleartextHash": "a4400e23d2688aed560ee79d71f8df640097fe9337fc68eb7879f2221c9be1d4",
             "storedContentHash": "a4400e23d2688aed560ee79d71f8df640097fe9337fc68eb7879f2221c9be1d4",
+            "cleartextBytesBase64url": "Y3JlZGVudGlhbDpTRUItQVVUSE9SSVRZLWludmFsaWQtZW50aXRsZW1lbnQtbG9jYXRvci1jbG9zdXJlOjI6MA",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -5781,6 +5783,7 @@
             },
             "cleartextHash": "c958fa62884e329c62d74876017a27cc798e4592ccaa33c00ffc1f177c8415d0",
             "storedContentHash": "c958fa62884e329c62d74876017a27cc798e4592ccaa33c00ffc1f177c8415d0",
+            "cleartextBytesBase64url": "Y3JlZGVudGlhbDpTRUItQVVUSE9SSVRZLWludmFsaWQtY3JlZGVudGlhbC1kZWxpdmVyeS1vbWl0dGVkOjI6MA",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -5935,6 +5938,7 @@
             "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-completed-storage-delivery:0",
             "cleartextUtf8": "storage delivery:SEB-AUTHORITY-completed-storage-delivery:0",
             "cleartextHash": "3496363592801ec2837c0d267beb2aebfe9ee501040f460953a2cabb88b9bf28",
+            "storedContentHash": "3496363592801ec2837c0d267beb2aebfe9ee501040f460953a2cabb88b9bf28",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -6294,6 +6298,7 @@
             },
             "cleartextHash": "a8e3f9ef5f69dd7dc1ff02a0e567efa378824b9c63b500815d98c25fb2f276ea",
             "storedContentHash": "a8e3f9ef5f69dd7dc1ff02a0e567efa378824b9c63b500815d98c25fb2f276ea",
+            "cleartextBytesBase64url": "Y3JlZGVudGlhbDpTRUItQVVUSE9SSVRZLWludmFsaWQtZW50aXRsZW1lbnQtZHVyYXRpb24tY2xvc3VyZToyOjA",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -6653,6 +6658,7 @@
             },
             "cleartextHash": "c87ccdaabd521d29528a8312110329d630c42f64925ea69f53e7c99759a6c1f0",
             "storedContentHash": "c87ccdaabd521d29528a8312110329d630c42f64925ea69f53e7c99759a6c1f0",
+            "cleartextBytesBase64url": "Y3JlZGVudGlhbDpTRUItQVVUSE9SSVRZLWludmFsaWQtZW50aXRsZW1lbnQtcmVuZXdhYmxlLWNsb3N1cmU6Mjow",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -8184,6 +8190,7 @@
             "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-storage-completed",
             "cleartextUtf8": "storage delivery:SEB-AUTHORITY-legacy-storage-completed:0",
             "cleartextHash": "2a218e9f3a1d2d02b9fb5966175af350266e7cbe355789bf73d07c56b12e9fb3",
+            "storedContentHash": "2a218e9f3a1d2d02b9fb5966175af350266e7cbe355789bf73d07c56b12e9fb3",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -9061,6 +9068,7 @@
             "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-repeated-storage-invalid",
             "cleartextUtf8": "storage delivery:SEB-AUTHORITY-legacy-repeated-storage-invalid:0",
             "cleartextHash": "56f649fcfcfb2d76faa7db1d57601a5d9f10a064bce5fbfafe25f6fbdcb4e2b1",
+            "storedContentHash": "56f649fcfcfb2d76faa7db1d57601a5d9f10a064bce5fbfafe25f6fbdcb4e2b1",
             "available": true,
             "lifecycle": {
               "state": "finalized",
@@ -9073,6 +9081,7 @@
             "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-repeated-storage-invalid",
             "cleartextUtf8": "storage delivery:SEB-AUTHORITY-legacy-repeated-storage-invalid:1",
             "cleartextHash": "2c34c6a3359a7063403d1d7828991b517c9715fd54811460f23379200f9c654a",
+            "storedContentHash": "2c34c6a3359a7063403d1d7828991b517c9715fd54811460f23379200f9c654a",
             "available": true,
             "lifecycle": {
               "state": "finalized",

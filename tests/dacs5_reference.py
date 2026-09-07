@@ -25,6 +25,7 @@ Signature verification is gated on `cryptography`; the stdlib checks (canonical
 hashing, the reconciliation/BB-6/pointer predicates) always run.
 """
 import base64
+import binascii
 import hashlib
 import json
 import math
@@ -1152,7 +1153,26 @@ def _utf8_bytes(value, subject):
         return (_closure_result("error", subject + " is not valid UTF-8"), None)
 
 
-def _resolved_delivery_dependency(entry, completed, subject):
+def _exact_base64url_bytes(value, subject):
+    """Decode one canonical unpadded RFC 4648 section 5 byte representation."""
+    if value is None:
+        return (_closure_result("indeterminate", subject + " is unavailable"), None)
+    if not isinstance(value, str) or re.fullmatch(r"[A-Za-z0-9_-]*", value) is None:
+        return (_closure_result("error", subject + " is malformed"), None)
+    try:
+        decoded = base64.b64decode(
+            value + "=" * (-len(value) % 4), altchars=b"-_", validate=True
+        )
+    except (binascii.Error, ValueError):
+        return (_closure_result("error", subject + " is malformed"), None)
+    canonical_value = base64.urlsafe_b64encode(decoded).rstrip(b"=").decode("ascii")
+    if canonical_value != value:
+        return (_closure_result("error", subject + " is not canonical"), None)
+    return (_closure_result("pass"), decoded)
+
+
+def _resolved_availability(entry, subject):
+    """Apply the shared strict availability contract before resolver data is read."""
     if entry is None:
         return (_closure_result("indeterminate", subject + " authority is unavailable"), None)
     if not isinstance(entry, dict):
@@ -1162,6 +1182,13 @@ def _resolved_delivery_dependency(entry, completed, subject):
         return (_closure_result("indeterminate", subject + " authority is unavailable"), None)
     if available is not True:
         return (_closure_result("error", subject + " availability is malformed"), None)
+    return (_closure_result("pass"), entry)
+
+
+def _resolved_delivery_dependency(entry, completed, subject):
+    availability_result, entry = _resolved_availability(entry, subject)
+    if availability_result[0] != "pass":
+        return availability_result, None
     lifecycle = entry.get("lifecycle")
     if not isinstance(lifecycle, dict):
         return (_closure_result("error", subject + " lifecycle is malformed"), entry)
@@ -1179,6 +1206,138 @@ def _resolved_delivery_dependency(entry, completed, subject):
     elif not _string_member(lifecycle.get("state"), {"included", "finalized"}):
         return (_closure_result("fail", subject + " is not included or finalized"), entry)
     return (_closure_result("pass"), entry)
+
+
+def _validate_resolved_storage(
+    delivered, expected_cleartext_hash, access_model, subject
+):
+    """Bind exact UTF-8 cleartext and the resolver's sole storage commitment."""
+    if not isinstance(delivered, dict):
+        return _closure_result("error", subject + " authority is malformed")
+    results = []
+    if "storedHash" in delivered:
+        results.append(_closure_result(
+            "error", subject + " uses obsolete storedHash resolver metadata"
+        ))
+    if not _string_member(
+        access_model, {"public", "buyer-only", "encrypt-to-buyer"}
+    ):
+        results.append(_closure_result("error", subject + " access model is malformed"))
+    for field in ("cleartextHash", "storedContentHash"):
+        if not _sha256_hex(delivered.get(field)):
+            results.append(_closure_result(
+                "error", subject + " " + field + " is malformed"
+            ))
+    if not _sha256_hex(expected_cleartext_hash):
+        results.append(_closure_result(
+            "error", subject + " expected cleartext hash is malformed"
+        ))
+
+    cleartext_result, cleartext_bytes = _utf8_bytes(
+        delivered.get("cleartextUtf8"), subject + " cleartext"
+    )
+    results.append(cleartext_result)
+    if cleartext_bytes is not None:
+        recomputed_hash = hashlib.sha256(cleartext_bytes).hexdigest()
+        if (
+            delivered.get("cleartextHash") != recomputed_hash
+            or expected_cleartext_hash != recomputed_hash
+        ):
+            results.append(_closure_result(
+                "fail", subject + " cleartext bytes do not match delivery evidence"
+            ))
+        if (
+            _string_member(access_model, {"public", "buyer-only"})
+            and delivered.get("storedContentHash") != recomputed_hash
+        ):
+            results.append(_closure_result(
+                "fail", subject + " storage commitment does not match plaintext bytes"
+            ))
+    return _combine_closure_results(results)
+
+
+def _validate_resolved_credential(
+    credential, binding, credential_ref, subject="entitlement credential"
+):
+    """Bind arbitrary exact credential bytes to signed and resolver commitments."""
+    if not isinstance(credential, dict):
+        return _closure_result("error", subject + " authority is malformed")
+    results = []
+    allowed_fields = {
+        "credentialRef", "cleartextBytesBase64url", "cleartextHash",
+        "storedContentHash", "available", "lifecycle",
+    }
+    if set(credential) - allowed_fields:
+        results.append(_closure_result(
+            "error", subject + " has unsupported resolver fields"
+        ))
+    resolved_ref = credential.get("credentialRef")
+    if (
+        not isinstance(resolved_ref, dict)
+        or set(resolved_ref) != {"ref", "accessModel"}
+        or not _attestation_ref_shape_valid(resolved_ref.get("ref"))
+        or not _string_member(
+            resolved_ref.get("accessModel"), {"buyer-only", "encrypt-to-buyer"}
+        )
+    ):
+        results.append(_closure_result(
+            "error", subject + " resolver credentialRef is malformed"
+        ))
+
+    ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
+    ref_content_hash = ref_value.get("contentHash") if isinstance(ref_value, dict) else None
+    access_model = (
+        credential_ref.get("accessModel") if isinstance(credential_ref, dict) else None
+    )
+    signed_cleartext_hash = (
+        binding.get("credentialCleartextHash") if isinstance(binding, dict) else None
+    )
+    for label, digest in (
+        ("signed cleartext hash", signed_cleartext_hash),
+        ("resolver cleartextHash", credential.get("cleartextHash")),
+        ("resolver storedContentHash", credential.get("storedContentHash")),
+        ("signed credential reference contentHash", ref_content_hash),
+    ):
+        if not _sha256_hex(digest):
+            results.append(_closure_result("error", subject + " " + label + " is malformed"))
+    if not _string_member(access_model, {"buyer-only", "encrypt-to-buyer"}):
+        results.append(_closure_result("error", subject + " access model is malformed"))
+
+    exact_bytes_result, exact_bytes = _exact_base64url_bytes(
+        credential.get("cleartextBytesBase64url"), subject + " exact cleartext bytes"
+    )
+    results.append(exact_bytes_result)
+    try:
+        resolver_ref_matches = canonical(credential.get("credentialRef")) == canonical(
+            credential_ref
+        )
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        resolver_ref_matches = False
+    if not resolver_ref_matches:
+        results.append(_closure_result(
+            "fail", subject + " reference does not match the signed entitlement"
+        ))
+    if credential.get("storedContentHash") != ref_content_hash:
+        results.append(_closure_result(
+            "fail", subject + " storage commitment does not match its signed reference"
+        ))
+    if exact_bytes is not None:
+        recomputed_hash = hashlib.sha256(exact_bytes).hexdigest()
+        if (
+            signed_cleartext_hash != recomputed_hash
+            or credential.get("cleartextHash") != recomputed_hash
+        ):
+            results.append(_closure_result(
+                "fail", subject + " exact bytes do not match cleartext commitments"
+            ))
+        if (
+            access_model == "buyer-only"
+            and credential.get("storedContentHash") != recomputed_hash
+        ):
+            results.append(_closure_result(
+                "fail", subject + " buyer-only storage does not contain the plaintext bytes"
+            ))
+    return _combine_closure_results(results)
 
 
 def _canonical_method_transaction_ref(transaction_ref):
@@ -1472,22 +1631,27 @@ def _validate_delivery_artifact_closure_disposition(
         results.append(dependency_result)
         if anchor != {"kind": "storage-program", "locator": deliverable_address}:
             results.append(_closure_result("fail", "storage anchor does not bind the exact job and phase"))
+        offering = listing.get("offering")
+        deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
+        if (
+            not isinstance(deliverable_spec, dict)
+            or deliverable_spec.get("kind") != "storage-program"
+        ):
+            results.append(_closure_result(
+                "fail", "signed storage DeliverableSpec is malformed"
+            ))
+            access_model = "public"
+        else:
+            access_model = deliverable_spec.get("accessModel", "public")
         if delivered is not None:
-            if (
-                delivered.get("logicalAddress") != deliverable_address
-                or delivered.get("cleartextHash") != record.get("deliverableContentHash")
-            ):
+            if delivered.get("logicalAddress") != deliverable_address:
                 results.append(_closure_result("fail", "storage deliverable does not close over the exact job and phase"))
-            cleartext_result, cleartext_bytes = _utf8_bytes(
-                delivered.get("cleartextUtf8"), "storage deliverable cleartext"
-            )
-            results.append(cleartext_result)
-            if (
-                cleartext_bytes is not None
-                and hashlib.sha256(cleartext_bytes).hexdigest()
-                != record.get("deliverableContentHash")
-            ):
-                results.append(_closure_result("fail", "storage deliverable bytes do not match delivery evidence"))
+            results.append(_validate_resolved_storage(
+                delivered,
+                record.get("deliverableContentHash"),
+                access_model,
+                "storage deliverable",
+            ))
         if "attestationRef" in record or "credentialDelivery" in record:
             results.append(_closure_result("fail", "storage delivery carries phase-only fields"))
         return _combine_closure_results(results)
@@ -1614,9 +1778,6 @@ def _validate_delivery_artifact_closure_disposition(
         )
         results.append(credential_result)
         ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
-        ref_content_hash = (
-            ref_value.get("contentHash") if isinstance(ref_value, dict) else None
-        )
         try:
             exact_credential_ref = canonical(binding.get("credentialRef")) == canonical(credential_ref)
         except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
@@ -1627,12 +1788,10 @@ def _validate_delivery_artifact_closure_disposition(
             or binding.get("renewalSeq") != renewal_seq
         ):
             results.append(_closure_result("fail", "credential delivery does not close over the signed entitlement"))
-        if credential is not None and (
-            credential.get("credentialRef") != credential_ref
-            or credential.get("storedContentHash") != ref_content_hash
-            or credential.get("cleartextHash") != binding.get("credentialCleartextHash")
-        ):
-            results.append(_closure_result("fail", "credential delivery does not close over the signed entitlement"))
+        if credential is not None:
+            results.append(_validate_resolved_credential(
+                credential, binding, credential_ref
+            ))
         return _combine_closure_results(results)
 
     if phase != "deliver-attested-payload":
@@ -1678,6 +1837,10 @@ def _validate_delivery_artifact_closure_disposition(
         or delivered.get("cleartextHash") != record.get("deliverableContentHash")
     ):
         results.append(_closure_result("fail", "attested payload does not close over the exact job and phase"))
+    if delivered is not None and "storedHash" in delivered:
+        results.append(_closure_result(
+            "error", "attested payload uses obsolete storedHash resolver metadata"
+        ))
 
     cleartext = delivered.get("cleartextUtf8") if delivered is not None else None
     cleartext_bytes = None

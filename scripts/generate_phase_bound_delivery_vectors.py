@@ -242,7 +242,13 @@ def refresh_payload_chain(case: dict, position: int = 0) -> None:
 
 
 def storage_case(pointers: bool = False) -> dict:
-    case = {"pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": []}
+    case = {
+        "pipeline": [],
+        "evidenceRecords": [],
+        "artifactRecords": [],
+        "credentials": [],
+        "deliveryAuthorities": [],
+    }
     for index, text in [(1, b"first delivery"), (2, b"second delivery")]:
         address = f"dacs4:deliverable:{JOB}:{index}"
         digest = bytes_hash(text)
@@ -250,7 +256,14 @@ def storage_case(pointers: bool = False) -> dict:
         case["artifactRecords"].append({
             "kind": "deliverable", "logicalAddress": address,
             "cleartextHash": digest, "cleartextUtf8": text.decode("utf-8"),
-            "storedHash": digest, "available": True,
+            "storedContentHash": digest, "available": True,
+        })
+        case["deliveryAuthorities"].append({
+            "phaseIndex": index,
+            "deliverable": {
+                "kind": "storage-program",
+                "accessModel": "public",
+            },
         })
         case["evidenceRecords"].append({
             "logicalAddress": f"dacs4:delivery:{JOB}:{index}",
@@ -395,7 +408,8 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
         }],
         "credentials": ([{
             "credentialRef": copy.deepcopy(credential_ref), "cleartextHash": clear_hash,
-            "storedHash": stored_hash, "ciphertextHash": ciphertext_hash,
+            "storedContentHash": stored_hash,
+            "cleartextBytesBase64url": b64url(cleartext),
             "available": True,
         }] if include_credential else []),
         "deliveryAuthorities": [{
@@ -508,7 +522,7 @@ def attested_case(
         case["artifactRecords"].extend([
             {"kind": "deliverable", "logicalAddress": payload_address,
              "cleartextHash": digest, "cleartextUtf8": payload_text,
-             "storedHash": digest, "available": True},
+             "storedContentHash": digest, "available": True},
             {"kind": "PayloadAttestationRecord", "logicalAddress": record_address,
              "artifact": record, "available": True},
             {"kind": "methodEvidence", "logicalAddress": method_address,
@@ -547,8 +561,15 @@ def legacy_case(repeated: bool = False) -> dict:
         "evidenceRecords": [{"logicalAddress": f"legacy:dacs4:evidence:{JOB}", "artifact": artifact}],
         "artifactRecords": [{"kind": "deliverable", "logicalAddress": address,
                              "cleartextHash": digest, "cleartextUtf8": "legacy delivery",
-                             "storedHash": digest, "available": True}],
+                             "storedContentHash": digest, "available": True}],
         "credentials": [],
+        "deliveryAuthorities": [{
+            "phaseIndex": 1,
+            "deliverable": {
+                "kind": "storage-program",
+                "accessModel": "public",
+            },
+        }],
     }
     bundle(case)
     return case

@@ -223,6 +223,30 @@ closure, signed evidence/phase-summary outcome agreement, legacy DV-5 refusal,
 and composition with a genuinely signed payment `SettlementEvidence` in the
 same production-shaped bundle.
 
+Resolver-only fixture metadata uses one byte/commitment convention; it does not
+add members to any signed wire artifact. Credential cleartext is carried only as
+strict canonical unpadded RFC 4648 §5 `cleartextBytesBase64url`, while
+`storedContentHash` names the bytes committed by storage. The obsolete
+`storedHash` alias is rejected. Consumers recompute the cleartext digest from
+the exact bytes, bind it to both `credentialCleartextHash` and retained
+`cleartextHash`, and bind `storedContentHash` to the complete signed
+credential reference. Buyer-only storage commits plaintext; encrypted storage
+keeps its ciphertext commitment distinct. Storage-program access mode comes
+from authenticated deliverable metadata (default `public`), never resolver
+metadata.
+
+Resolved credential objects are closed to `credentialRef`,
+`cleartextBytesBase64url`, `cleartextHash`, `storedContentHash`, `available`,
+and the primary consumer's `lifecycle` metadata. Competing byte representations
+and other resolver members are malformed. This restriction applies only to
+the resolver object, not to extension fields in signed artifacts.
+An absent resolver collection is unavailable; a supplied collection with the
+wrong shape is malformed. Credential lookup validates a sole supplied candidate
+even when its reported reference differs; it does not guess among multiple
+unrelated records when no exact reference matches. Encrypted delivery checks
+bind the resolver's commitments but do not themselves prove sealing or buyer-key
+binding under DV-3.
+
 Regenerate and execute:
 
 ```sh
@@ -306,6 +330,12 @@ derives `P` from those authenticated artifacts and tests the exact SR-2 vocabula
 completed evidence is `finalized` and independently resolvable; failed/aborted
 evidence is `included` or `finalized` without importing that stricter ST-11
 resolution requirement.
+
+The hydrated delivery closures use the same resolver-only exact-byte and
+`storedContentHash` convention described for the phase-bound set above. Their
+strict shared availability field accepts only the booleans `true` and `false`:
+`false` and an absent resolver entry are unavailable, while a missing, null, or
+non-boolean field is malformed.
 
 The deterministic signed compatibility fixture
 [`evidence-bound-fault-bundle-compatibility-v0.4.json`](../../fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json)

@@ -13,6 +13,25 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — CORE v0.3 SR-2 registry authority and receipt copies
+
+- **Registry authority provenance and rollback context repaired** (#338) — the
+  registry-bootstrap evaluator now requires a complete closed
+  `expectedRegistryTuple` supplied independently beside the release trust pin,
+  matches all four fields before root classification, validates complete
+  receipt/evidence context before nested access, and validates selection mode
+  plus every present closed stored-latest pair before choosing a chain.
+  Historical mode validates but does not apply latest ancestry. Logical/native
+  resolution now collapses only canonically identical receipt snapshots,
+  returns `indeterminate` for unequal same-tuple lifecycle snapshots without a
+  binding-native ordering primitive, and evaluates delivery after grouping from
+  the earliest finite verified delivery. This changes evaluator configuration
+  and corrected candidate verdicts only: `AnchorReceipt`,
+  `RegistryBootstrapDescriptor`, signature domains, and signed descriptor bytes
+  are unchanged. This repair adds candidate coverage without changing an
+  existing vector verdict. Independent verifier outputs bind the complete evidence reference and exact
+  canonical receipt hash; they remain modeled outputs rather than proof material.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

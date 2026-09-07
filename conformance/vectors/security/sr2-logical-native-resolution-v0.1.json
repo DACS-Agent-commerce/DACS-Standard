@@ -1,10 +1,10 @@
 {
   "set": "sr2-logical-native-resolution-v0.1",
   "spec": "CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2",
-  "decisionModel": "Only verified direct receipts or class-authenticated references establish fetch inputs; lifecycle, exact bytes, authority, timeliness, absence, and equivocation remain separate fail-closed gates.",
+  "decisionModel": "Only verified direct receipts or class-authenticated references establish fetch inputs; canonical receipt-snapshot identity precedes lifecycle and earliest-delivery evaluation, while exact bytes, authority, absence, and equivocation remain separate fail-closed gates.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "57b6d994867fd788b6dbbc6016c8215a143c54933a47931e3ab5361dc2feaa0d",
-  "count": 36,
+  "hash": "1d6400ebce0d448ae4850e8e5c521e7a6dac8e4c5f9f94858315f11486a648b9",
+  "count": 39,
   "publicTestSeeds": {
     "oldAuthorityEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "newAuthorityEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -1660,6 +1660,261 @@
       },
       "expected": "indeterminate",
       "reason": "observedAt and index visibility are not authenticated ordering inputs"
+    },
+    {
+      "name": "timely-identical-receipt-survives-late-redelivery",
+      "family": "resolution",
+      "input": {
+        "expectedLogicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+        "expectedContentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+        "minimumState": "finalized",
+        "requiredBy": 1787036405000,
+        "storage": {
+          "demos:storage:sr2-artifact-1": {
+            "recordVersion": "1",
+            "jobId": "01K2SR20000000000000000000",
+            "result": "pass"
+          }
+        },
+        "carriers": [
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-artifact-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036405001
+          },
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-artifact-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036404999
+          }
+        ]
+      },
+      "expected": "pass",
+      "reason": "delivery is assessed after exact receipt copies collapse and retains the earliest finite verified delivery"
+    },
+    {
+      "name": "all-identical-receipt-copies-arrive-late",
+      "family": "resolution",
+      "input": {
+        "expectedLogicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+        "expectedContentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+        "minimumState": "finalized",
+        "requiredBy": 1787036405000,
+        "storage": {
+          "demos:storage:sr2-artifact-1": {
+            "recordVersion": "1",
+            "jobId": "01K2SR20000000000000000000",
+            "result": "pass"
+          }
+        },
+        "carriers": [
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-artifact-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036405001
+          },
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-artifact-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036405002
+          }
+        ]
+      },
+      "expected": "fail",
+      "reason": "all finite verified deliveries of one exact receipt snapshot miss the first required gate"
+    },
+    {
+      "name": "unequal-lifecycle-snapshots-remain-unordered",
+      "family": "resolution",
+      "input": {
+        "expectedLogicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+        "expectedContentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+        "minimumState": "accepted",
+        "requiredBy": 1787036405000,
+        "storage": {
+          "demos:storage:sr2-artifact-1": {
+            "recordVersion": "1",
+            "jobId": "01K2SR20000000000000000000",
+            "result": "pass"
+          }
+        },
+        "carriers": [
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-artifact-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036405001
+          },
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-artifact-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "included",
+              "observationDisposition": "established",
+              "observedAt": 1787036400001,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036405002
+          }
+        ]
+      },
+      "expected": "indeterminate",
+      "reason": "equal SR2-5 tuples with unequal receipt snapshots remain unresolved without binding-authenticated pairwise ordering"
     }
   ]
 }

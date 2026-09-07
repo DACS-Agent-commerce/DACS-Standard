@@ -10,7 +10,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from sr2_resolution_reference import descriptor_hash, evaluate_vector, hash_hex  # noqa: E402
+from sr2_resolution_reference import (  # noqa: E402
+    _basic_descriptor,
+    _valid_index_snapshot,
+    _verify_snapshot,
+    descriptor_hash,
+    evaluate_vector,
+    hash_hex,
+)
 
 
 RESOLUTION = (
@@ -124,6 +131,27 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             with self.subTest(vector=name, order="reversed"):
                 self.assertEqual(evaluate_vector(reversed_vector), verdict)
 
+    def test_receipt_copy_identity_and_delivery_are_order_independent(self):
+        expected = {
+            "timely-identical-receipt-survives-late-redelivery": "pass",
+            "all-identical-receipt-copies-arrive-late": "fail",
+            "unequal-lifecycle-snapshots-remain-unordered": "indeterminate",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name, order="generated"):
+                self.assertEqual(evaluate_vector(self.vectors[name]), verdict)
+            reversed_vector = copy.deepcopy(self.vectors[name])
+            reversed_vector["input"]["carriers"].reverse()
+            with self.subTest(vector=name, order="reversed"):
+                self.assertEqual(evaluate_vector(reversed_vector), verdict)
+
+    def test_invalid_receipt_copy_is_discarded_before_snapshot_identity(self):
+        vector = copy.deepcopy(self.vectors["direct-finalized-receipt-resolves"])
+        invalid = copy.deepcopy(vector["input"]["carriers"][0])
+        invalid["receipt"]["state"] = []
+        vector["input"]["carriers"].insert(0, invalid)
+        self.assertEqual(evaluate_vector(vector), "pass")
+
     def test_historical_replay_uses_exact_accepted_descriptor_identity(self):
         self.assertEqual(
             evaluate_vector(self.vectors["historical-replay-uses-recorded-sequence"]),
@@ -137,6 +165,150 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             evaluate_vector(self.vectors["historical-replay-requires-descriptor-hash"]),
             "fail",
         )
+        self.assertEqual(
+            evaluate_vector(
+                self.vectors[
+                    "historical-mode-validates-but-does-not-apply-stored-latest"
+                ]
+            ),
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_vector(
+                self.vectors["historical-mode-rejects-malformed-stored-latest"]
+            ),
+            "fail",
+        )
+
+    def test_expected_registry_tuple_is_independent_closed_configuration(self):
+        valid = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        expected = valid["input"]["expectedRegistryTuple"]
+        self.assertEqual(
+            set(expected),
+            {
+                "registryKind",
+                "registryLogicalAddress",
+                "substrate",
+                "registryBootstrapVersion",
+            },
+        )
+        self.assertNotIn("expectedRegistryTuple", valid["input"]["descriptors"][0])
+        for name in (
+            "missing-expected-registry-tuple-is-rejected",
+            "expected-registry-tuple-is-closed",
+            "expected-registry-tuple-substrate-is-nonempty",
+            "expected-registry-tuple-must-match-root",
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), "fail")
+
+    def test_mode_and_context_containers_fail_closed_without_exceptions(self):
+        for name in (
+            "explicit-null-mode-is-rejected",
+            "unsupported-mode-is-rejected",
+            "malformed-verified-evidence-context-is-rejected",
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), "fail")
+
+        resolution_mutations = {
+            "carrier kind": lambda c: c["carriers"][0].update({"kind": []}),
+            "receipt state": lambda c: c["carriers"][0]["receipt"].update(
+                {"state": []}
+            ),
+            "minimum state": lambda c: c.update({"minimumState": []}),
+            "storage": lambda c: c.update({"storage": []}),
+        }
+        for label, mutate in resolution_mutations.items():
+            vector = copy.deepcopy(self.vectors["direct-finalized-receipt-resolves"])
+            mutate(vector["input"])
+            with self.subTest(context=label):
+                self.assertEqual(evaluate_vector(vector), "indeterminate")
+
+        reference = copy.deepcopy(
+            self.vectors["authenticated-registry-index-reference-dereferences"]
+        )
+        reference["input"]["carriers"][0]["surface"] = []
+        self.assertEqual(evaluate_vector(reference), "indeterminate")
+
+        bootstrap = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        bootstrap["input"]["storedLatest"] = None
+        self.assertEqual(evaluate_vector(bootstrap), "fail")
+
+        bootstrap = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        bootstrap["input"]["indexStorage"] = []
+        self.assertEqual(evaluate_vector(bootstrap), "fail")
+
+        definition = copy.deepcopy(
+            self.vectors["authenticated-index-definition-reference"]
+        )
+        definition["input"]["definitionChecks"] = []
+        self.assertEqual(evaluate_vector(definition), "fail")
+
+    def test_bootstrap_receipt_completeness_precedes_nested_access(self):
+        vector = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        case = vector["input"]
+        descriptor = case["descriptors"][0]
+        malformed = {
+            "transactionRef": 1.5,
+            "writer": [],
+            "state": [],
+            "evidence": [],
+            "blockRef": {"height": "42000"},
+            "finalityProfile": "",
+        }
+        for field, value in malformed.items():
+            candidate = copy.deepcopy(descriptor)
+            candidate["indexAnchorReceipt"][field] = value
+            with self.subTest(field=field):
+                self.assertEqual(_verify_snapshot(candidate, case), "fail")
+
+    def test_independent_receipt_verifier_results_are_exactly_bound(self):
+        vector = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        case = vector["input"]
+        receipt = case["descriptors"][0]["indexAnchorReceipt"]
+        self.assertEqual(case["verifiedReceiptEvidence"], [{
+            "evidence": receipt["evidence"], "receiptHash": hash_hex(receipt)
+        }])
+        self.assertEqual(evaluate_vector(vector), "pass")
+        for field, value in (
+            ("receiptHash", "cd" * 32),
+            ("evidence", {"kind": "other-proof", "value": receipt["evidence"]["value"]}),
+        ):
+            candidate = copy.deepcopy(vector)
+            candidate["input"]["verifiedReceiptEvidence"][0][field] = value
+            with self.subTest(field=field):
+                self.assertEqual(evaluate_vector(candidate), "indeterminate")
+        malformed = copy.deepcopy(vector)
+        malformed["input"]["verifiedReceiptEvidence"][0]["receiptHash"] = []
+        self.assertEqual(evaluate_vector(malformed), "fail")
+
+    def test_descriptor_and_index_scalar_guards_are_total(self):
+        vector = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        descriptor = vector["input"]["descriptors"][0]
+        for field, value in (
+            ("registryKind", []),
+            ("indexContentHash", []),
+            ("authorityKeyId", []),
+            ("revokedAuthorityKeyIds", [["key"]]),
+        ):
+            candidate = copy.deepcopy(descriptor)
+            candidate[field] = value
+            with self.subTest(descriptor_field=field):
+                self.assertFalse(_basic_descriptor(candidate))
+
+        snapshot = copy.deepcopy(
+            vector["input"]["indexStorage"][descriptor["nativeIndexAddress"]]
+        )
+        snapshot["entries"] = [
+            {
+                "id": "sample",
+                "version": "1",
+                "anchor": {"kind": [], "locator": "demos:storage:sample"},
+                "contentHash": "ab" * 32,
+            }
+        ]
+        self.assertFalse(_valid_index_snapshot(snapshot, descriptor))
 
     def test_candidate_classification_precedes_chain_advance(self):
         self.assertEqual(

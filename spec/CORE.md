@@ -326,6 +326,15 @@ checked against that pairing, never used as its authority source. The trust-pin
 identity is `(registryKind, registryLogicalAddress, substrate,
 registryBootstrapVersion)` and deliberately excludes `sequence`.
 
+The expected tuple is verifier release configuration:
+
+- A verifier MUST receive the complete tuple independently of descriptor bytes,
+  index data, retrieval transport, and pinned key material.
+- It MUST NOT derive any tuple field from presented registry material or shared
+  key material.
+- It MUST reject a missing or malformed tuple and compare all four fields before
+  root-candidate classification.
+
 For both signatures:
 
 ```

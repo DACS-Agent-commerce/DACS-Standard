@@ -108,6 +108,17 @@ def anchor_receipt(
     return receipt
 
 
+def expected_registry_tuple(kind: str) -> dict[str, str]:
+    return {
+        "registryKind": kind,
+        "registryLogicalAddress": (
+            "dacs2:registry:v0.1" if kind == "recipe" else "dacs4:registry:v0.1"
+        ),
+        "substrate": "demos:testnet",
+        "registryBootstrapVersion": "1",
+    }
+
+
 def base_resolution() -> dict[str, Any]:
     content_hash = hash_hex(ARTIFACT)
     receipt = anchor_receipt(
@@ -447,6 +458,50 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
         "observedAt and index visibility are not authenticated ordering inputs",
         observed_at_does_not_choose,
     ))
+
+    def redeliver_identical_receipt(
+        case: dict[str, Any], first_delivery: int, second_delivery: int
+    ) -> None:
+        first = receipt_carrier(case)
+        first["deliveredAt"] = first_delivery
+        second = copy.deepcopy(first)
+        second["deliveredAt"] = second_delivery
+        case["carriers"].append(second)
+
+    def unresolved_lifecycle_copies(case: dict[str, Any]) -> None:
+        case["minimumState"] = "accepted"
+        first = receipt_carrier(case)
+        first["deliveredAt"] = case["requiredBy"] + 1
+        second = copy.deepcopy(first)
+        second["receipt"]["state"] = "included"
+        second["receipt"]["observedAt"] += 1
+        second["deliveredAt"] += 1
+        case["carriers"].append(second)
+
+    vectors.extend([
+        resolution_vector(
+            "timely-identical-receipt-survives-late-redelivery",
+            "pass",
+            "delivery is assessed after exact receipt copies collapse and retains the earliest finite verified delivery",
+            lambda c: redeliver_identical_receipt(
+                c, c["requiredBy"] + 1, c["requiredBy"] - 1
+            ),
+        ),
+        resolution_vector(
+            "all-identical-receipt-copies-arrive-late",
+            "fail",
+            "all finite verified deliveries of one exact receipt snapshot miss the first required gate",
+            lambda c: redeliver_identical_receipt(
+                c, c["requiredBy"] + 1, c["requiredBy"] + 2
+            ),
+        ),
+        resolution_vector(
+            "unequal-lifecycle-snapshots-remain-unordered",
+            "indeterminate",
+            "equal SR2-5 tuples with unequal receipt snapshots remain unresolved without binding-authenticated pairwise ordering",
+            unresolved_lifecycle_copies,
+        ),
+    ])
     return vectors
 
 
@@ -512,6 +567,7 @@ def base_bootstrap(kind: str = "recipe", include_definition: bool = False) -> di
         evidence=f"evidence-{kind}-index-1",
     )
     case: dict[str, Any] = {
+        "expectedRegistryTuple": expected_registry_tuple(kind),
         "trustPin": {"descriptorHash": descriptor_hash(root), "authorityKeyId": OLD_KEY},
         "descriptors": [root],
         "verifiedEvidenceValues": [f"evidence-{kind}-index-1"],
@@ -582,6 +638,29 @@ def add_successor(
     return descriptor
 
 
+def bind_fixture_receipt_evidence(case: dict[str, Any]) -> None:
+    """Compile reviewed fixture proof outcomes into exact observation bindings.
+
+    This generator-only setup is not an evidence verifier. The evaluator receives
+    the serialized independent results; it never derives them from a descriptor.
+    Legacy labels select the existing fixture outcomes only during generation.
+    """
+    labels = case.pop("verifiedEvidenceValues")
+    if not isinstance(labels, list):
+        case["verifiedReceiptEvidence"] = labels
+        return
+    results = []
+    for descriptor in case["descriptors"]:
+        receipt = descriptor["indexAnchorReceipt"]
+        evidence = receipt["evidence"]
+        if evidence["value"] not in labels:
+            continue
+        result = {"evidence": copy.deepcopy(evidence), "receiptHash": hash_hex(receipt)}
+        if result not in results:
+            results.append(result)
+    case["verifiedReceiptEvidence"] = results
+
+
 def build_bootstrap_vectors() -> list[dict[str, Any]]:
     def invalid_key_pinned_root_sibling(case: dict[str, Any]) -> None:
         case["trustPin"] = {"authorityKeyId": OLD_KEY}
@@ -645,6 +724,54 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "fail",
             "HTTPS and repository retrieval are transport, not bootstrap authority",
             lambda c: c.update({"trustPin": {}, "retrievalTransport": "https"}),
+        ),
+        bootstrap_vector(
+            "omitted-mode-defaults-to-latest",
+            "pass",
+            "omitting the selection mode preserves latest-mode evaluation",
+            lambda c: c.pop("mode"),
+        ),
+        bootstrap_vector(
+            "missing-expected-registry-tuple-is-rejected",
+            "fail",
+            "the verifier cannot derive registry identity from presented descriptor or index fields",
+            lambda c: c.pop("expectedRegistryTuple"),
+        ),
+        bootstrap_vector(
+            "expected-registry-tuple-is-closed",
+            "fail",
+            "release configuration rejects unknown expected-registry-tuple fields",
+            lambda c: c["expectedRegistryTuple"].update({"sequence": 1}),
+        ),
+        bootstrap_vector(
+            "expected-registry-tuple-substrate-is-nonempty",
+            "fail",
+            "release configuration requires a nonempty independently supplied substrate",
+            lambda c: c["expectedRegistryTuple"].update({"substrate": ""}),
+        ),
+        bootstrap_vector(
+            "expected-registry-tuple-must-match-root",
+            "fail",
+            "a complete valid rail expectation cannot authorize a presented recipe root",
+            lambda c: c.update({"expectedRegistryTuple": expected_registry_tuple("rail")}),
+        ),
+        bootstrap_vector(
+            "explicit-null-mode-is-rejected",
+            "fail",
+            "an explicit null cannot disable latest-mode rollback policy",
+            lambda c: c.update({"mode": None}),
+        ),
+        bootstrap_vector(
+            "unsupported-mode-is-rejected",
+            "fail",
+            "only latest and historical selection modes are defined",
+            lambda c: c.update({"mode": "transport-order"}),
+        ),
+        bootstrap_vector(
+            "malformed-verified-evidence-context-is-rejected",
+            "fail",
+            "fixture evidence-verifier outputs must be structured exact receipt bindings",
+            lambda c: c.update({"verifiedEvidenceValues": {}}),
         ),
     ]
 
@@ -915,6 +1042,17 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "targetDescriptorHash": descriptor_hash(unrelated),
         })
 
+    def historical_with_stored_latest(
+        case: dict[str, Any], *, malformed: bool
+    ) -> None:
+        historical_root(case)
+        case["storedLatest"] = {
+            "sequence": 999,
+            "descriptorHash": "cd" * 32,
+        }
+        if malformed:
+            case["storedLatest"]["transportHint"] = "ignored"
+
     def persisted_sibling_branch(case: dict[str, Any]) -> None:
         root = case["descriptors"][0]
         persisted = add_successor(case, revision=2)
@@ -1035,6 +1173,18 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "historical-replay-refuses-unrelated-descriptor", "indeterminate",
             "an exact target hash outside the validated predecessor chain cannot be selected",
             historical_unrelated_descriptor,
+        ),
+        bootstrap_vector(
+            "historical-mode-validates-but-does-not-apply-stored-latest",
+            "pass",
+            "a closed stored-latest pair is validated in historical mode without imposing latest ancestry",
+            lambda c: historical_with_stored_latest(c, malformed=False),
+        ),
+        bootstrap_vector(
+            "historical-mode-rejects-malformed-stored-latest",
+            "fail",
+            "historical selection cannot use its mode to bypass stored-latest shape validation",
+            lambda c: historical_with_stored_latest(c, malformed=True),
         ),
     ])
 
@@ -1170,6 +1320,8 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             lambda c: (c["descriptors"][0].update({"recipeBootstrapVersion": "1"}), resign_root(c)),
         ),
     ])
+    for vector in vectors:
+        bind_fixture_receipt_evidence(vector["input"])
     return vectors
 
 
@@ -1197,13 +1349,13 @@ def rendered_documents() -> dict[Path, str]:
         RESOLUTION_OUTPUT: document(
             "sr2-logical-native-resolution-v0.1",
             "CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2",
-            "Only verified direct receipts or class-authenticated references establish fetch inputs; lifecycle, exact bytes, authority, timeliness, absence, and equivocation remain separate fail-closed gates.",
+            "Only verified direct receipts or class-authenticated references establish fetch inputs; canonical receipt-snapshot identity precedes lifecycle and earliest-delivery evaluation, while exact bytes, authority, absence, and equivocation remain separate fail-closed gates.",
             resolution,
         ),
         BOOTSTRAP_OUTPUT: document(
             "registry-bootstrap-v0.1",
             "CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3",
-            "A release-pinned sequence-one descriptor starts a non-recursive immutable registry-index chain; exact predecessor authorization, optional new-key acceptance, finality evidence, snapshot hashes, rollback, forks, and definition checks are independently enforced.",
+            "An independently configured exact registry tuple and release-pinned sequence-one descriptor start a non-recursive immutable registry-index chain; receipt shape and evidence, exact predecessor authorization, optional new-key acceptance, snapshot hashes, rollback, forks, and definition checks are independently enforced.",
             bootstrap,
         ),
     }

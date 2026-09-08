@@ -5,6 +5,7 @@ import copy
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import dacs5_reference as R
 
@@ -27,6 +28,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             claim: decode(value)
             for claim, value in cls.data["publicKeys"].items()
         }
+        cls.current_key_authority = R.trusted_verification_keys(cls.pubkeys)
 
     def test_public_keys_match_disclosed_seeds(self):
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -629,7 +631,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     case["pointer"],
                     case["bundle"],
                     binding=case.get("binding"),
-                    pubkeys=self.pubkeys,
+                    pubkeys=self.current_key_authority,
                     ebfab_authority=ebfab_authority,
                 )
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
@@ -650,7 +652,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     pointer,
                     bundle,
                     binding=binding,
-                    pubkeys=self.pubkeys,
+                    pubkeys=self.current_key_authority,
                 )
                 self.assertFalse(result["ok"])
         self.assertFalse(R.resolve_fab_pointer(None, {}, None)["ok"])
@@ -674,11 +676,116 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             result = R.resolve_absolute_fault_pointer(
                 pointer,
                 valid["bundle"],
-                pubkeys=self.pubkeys,
+                pubkeys=self.current_key_authority,
                 ebfab_authority=authority,
             )
             self.assertFalse(result["ok"])
             self.assertIn("signer key unavailable", result["reason"])
+
+    def test_current_pointer_binding_uses_role_map_not_binding_signer(self):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        source = next(
+            case for case in self.data["pointerCases"]
+            if case["name"] == "ebfab-pointer-fab-reject"
+        )
+        bundle = copy.deepcopy(source["bundle"])
+        bundle["jobId"] = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        private_by_claim = {
+            f"did:demos:{role}": Ed25519PrivateKey.from_private_bytes(
+                bytes.fromhex(seed)
+            )
+            for role, seed in self.data["seeds"].items()
+        }
+
+        def sign(private, domain, digest):
+            return base64.urlsafe_b64encode(
+                private.sign((domain + digest).encode("utf-8"))
+            ).rstrip(b"=").decode("ascii")
+
+        digest = R.bundle_hash(bundle)
+        required_claims = [
+            next(
+                party["primaryClaim"] for party in bundle["parties"]
+                if party["role"] == role
+            )
+            for role in R._required_bundle_signers(bundle)
+        ]
+        bundle["signatures"] = [
+            {
+                "party": claim,
+                "algorithm": "ed25519",
+                "value": sign(private_by_claim[claim], R.FAULT_BUNDLE_DOMAIN, digest),
+            }
+            for claim in required_claims
+        ]
+        role = bundle["anchoredByRole"]
+        signer = next(
+            party["primaryClaim"] for party in bundle["parties"]
+            if party["role"] == role
+        )
+        pointer = {
+            "faultBundleVersion": "1",
+            "pointerKind": "extended",
+            "fullBundleUrl": "fixture:current-fab",
+            "fullBundleContentHash": digest,
+        }
+        pointer["signature"] = {
+            "signer": signer,
+            "algorithm": "ed25519",
+            "value": sign(
+                private_by_claim[signer],
+                R.FAULT_POINTER_DOMAIN,
+                R.pointer_hash(pointer),
+            ),
+        }
+        logical = R._current_logical_address(bundle["jobId"], role)
+        binding = {
+            "bindingVersion": "1",
+            "jobId": bundle["jobId"],
+            "role": role,
+            "logicalAddress": logical,
+            "nativeAddress": "stor-current-pointer-fixture",
+            "bundleContentHash": digest,
+            "signer": signer,
+        }
+        binding["signature"] = {
+            "signer": signer,
+            "algorithm": "ed25519",
+            "value": sign(
+                private_by_claim[signer],
+                R.BINDING_DOMAIN,
+                R.binding_hash(binding),
+            ),
+        }
+        authority = R.trusted_current_context([
+            R.trusted_role_authority(bundle["jobId"], role, signer)
+        ])
+        result = R.resolve_absolute_fault_pointer(
+            pointer,
+            bundle,
+            binding=binding,
+            pubkeys=self.current_key_authority,
+            trusted_contexts=authority,
+            expected_jobid=bundle["jobId"],
+            expected_role=role,
+        )
+        self.assertTrue(result["ok"], result["reason"])
+
+        missing_role = R.trusted_current_context([])
+        with mock.patch.object(R, "pointer_hash", wraps=R.pointer_hash) as pointer_hash:
+            refused = R.resolve_absolute_fault_pointer(
+                pointer,
+                bundle,
+                binding=binding,
+                pubkeys=self.current_key_authority,
+                trusted_contexts=missing_role,
+                expected_jobid=bundle["jobId"],
+                expected_role=role,
+            )
+        self.assertFalse(refused["ok"])
+        self.assertIn("current-profile-admission", refused["reason"])
+        pointer_hash.assert_not_called()
 
     def test_url_shape_strengthening_is_ebfab_only(self):
         """Released FAB v1 keeps its historical string URL shape; the new EBFAB
@@ -692,7 +799,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         result = R.resolve_absolute_fault_pointer(
             pointer,
             valid["bundle"],
-            pubkeys=self.pubkeys,
+            pubkeys=self.current_key_authority,
         )
         self.assertFalse(result["ok"])
         self.assertIn("malformed extended pointer payload", result["reason"])

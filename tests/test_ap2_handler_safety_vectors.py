@@ -101,13 +101,27 @@ def trusted_context_for_ap2_case(case):
 def authoritative_binding_store_for_ap2_case(case):
     """Handler-owned store fixture; never recovered from checkout input."""
     transaction_id = "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
-    existing = {
-        "transactionId": transaction_id,
-        "jobId": CURRENT_SESSION_ID,
-        "phaseIndex": 3,
-        "state": "in-flight",
-    }
-    settled = {**existing, "state": "settled"}
+    existing = durable_binding(
+        transaction_id, CURRENT_SESSION_ID, 3, "in-flight"
+    )
+    recovery = durable_binding(
+        transaction_id, CURRENT_SESSION_ID, 3, "recovery-pending"
+    )
+    referenced = durable_binding(
+        transaction_id,
+        CURRENT_SESSION_ID,
+        3,
+        "recovery-pending",
+        provider_recovery_reference="provider-payment-123",
+    )
+    settled = durable_binding(
+        transaction_id,
+        CURRENT_SESSION_ID,
+        3,
+        "settled",
+        provider_recovery_reference="provider-payment-123",
+        settlement=fixture_settlement("provider-payment-123"),
+    )
     stores = {
         "ap2-composed-same-tuple-inflight-resumes": [existing],
         "ap2-composed-same-tuple-settled-resumes": [settled],
@@ -119,13 +133,33 @@ def authoritative_binding_store_for_ap2_case(case):
             {**existing, "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW"},
         ],
         "ap2-composed-caller-store-assertion-cannot-authorize": [existing],
+        "ap2-recovery-lost-response-resubmits-same-key": [recovery],
+        "ap2-recovery-reference-reconciles-captured": [referenced],
+        "ap2-recovery-reference-not-captured-resubmits-same-key": [referenced],
     }
     return stores.get(case["name"], [])
 
 
+def provider_status_for_ap2_case(case):
+    status = case.get("providerStatus")
+    if status == "captured":
+        return lambda ref: {
+            "status": "captured",
+            "providerRecoveryReference": ref,
+            "settlement": fixture_settlement(ref),
+        }
+    if status == "not-captured":
+        return lambda ref: {
+            "status": "not-captured",
+            "providerRecoveryReference": ref,
+        }
+    return None
+
+
 def canonical_json(value):
     return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
 
 
@@ -156,29 +190,179 @@ def derive_transaction_id(checkout_jws, sd_alg=MISSING):
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
-def evaluate_transaction_binding(transaction_id, job_id, phase_index, prior):
-    """Pure classification oracle; not itself a stateful reservation."""
+def fixture_provider_request(job_id):
+    """Deterministic local provider request; never used as a consumer fallback."""
+    return {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {"dacs_job_id": job_id},
+    }
+
+
+def operation_payload(transaction_id, job_id, phase_index, provider_request):
+    """Bind the complete effect-bearing provider request, including metadata."""
+    return {
+        "transactionId": transaction_id,
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "providerRequest": provider_request,
+    }
+
+
+def operation_fingerprint(payload):
+    return hashlib.sha256(canonical_json(payload)).hexdigest()
+
+
+def durable_binding(
+    transaction_id,
+    job_id,
+    phase_index,
+    state,
+    *,
+    provider_recovery_reference=MISSING,
+    settlement=MISSING,
+    payload=MISSING,
+    idempotency_key=MISSING,
+    fingerprint=MISSING,
+):
+    payload = (
+        operation_payload(transaction_id, job_id, phase_index, fixture_provider_request(job_id))
+        if payload is MISSING
+        else payload
+    )
+    entry = {
+        "transactionId": transaction_id,
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "state": state,
+        "idempotencyKey": (
+            derive_key(job_id, phase_index)
+            if idempotency_key is MISSING
+            else idempotency_key
+        ),
+        "operationFingerprint": (
+            operation_fingerprint(payload)
+            if fingerprint is MISSING
+            else fingerprint
+        ),
+        "operationPayload": copy.deepcopy(payload),
+    }
+    if provider_recovery_reference is not MISSING:
+        entry["providerRecoveryReference"] = provider_recovery_reference
+    if state == "settled" and settlement is MISSING:
+        settlement = {"status": "captured", "transactionId": transaction_id, "operationFingerprint": operation_fingerprint(payload)}
+    if settlement is not MISSING:
+        entry["settlement"] = copy.deepcopy(settlement)
+    return entry
+
+
+def provider_request_valid(request, job_id):
+    if not isinstance(request, dict) or not {
+        "providerEndpoint", "paymentMandate", "checkoutId", "payee", "amount",
+        "currency", "instrument", "metadata",
+    } <= set(request):
+        return False
+    if any(not isinstance(request.get(field), str) or not request[field] for field in (
+        "providerEndpoint", "paymentMandate", "checkoutId", "payee", "amount", "currency", "instrument",
+    )):
+        return False
+    metadata = request.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("dacs_job_id") != job_id:
+        return False
+    try:
+        canonical_json(request)
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    return True
+
+
+def settlement_matches(settlement, transaction_id, fingerprint, provider_ref=None):
+    return (
+        isinstance(settlement, dict)
+        and settlement.get("status") == "captured"
+        and settlement.get("transactionId") == transaction_id
+        and settlement.get("operationFingerprint") == fingerprint
+        and (provider_ref is None or settlement.get("providerRef") == provider_ref)
+    )
+
+
+def fixture_settlement(provider_ref):
+    transaction_id = "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+    payload = operation_payload(transaction_id, CURRENT_SESSION_ID, 3, fixture_provider_request(CURRENT_SESSION_ID))
+    return {
+        "status": "captured", "providerRef": provider_ref,
+        "transactionId": transaction_id,
+        "operationFingerprint": operation_fingerprint(payload),
+    }
+
+
+def _durable_binding_valid(entry):
+    required = {
+        "transactionId", "jobId", "phaseIndex", "state", "idempotencyKey",
+        "operationFingerprint", "operationPayload",
+    }
+    optional = {"providerRecoveryReference", "settlement"}
+    if not isinstance(entry, dict) or not required <= set(entry) <= required | optional:
+        return False
+    try:
+        recomputed_fingerprint = operation_fingerprint(entry.get("operationPayload"))
+        recomputed_key = derive_key(entry.get("jobId"), entry.get("phaseIndex"))
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    if (
+        not isinstance(entry.get("transactionId"), str)
+        or not entry["transactionId"]
+        or not isinstance(entry.get("jobId"), str)
+        or JOB_ID_RE.fullmatch(entry["jobId"]) is None
+        or type(entry.get("phaseIndex")) is not int
+        or entry["phaseIndex"] < 0
+        or not isinstance(entry.get("state"), str)
+        or entry.get("state") not in {"in-flight", "recovery-pending", "settled"}
+        or not isinstance(entry.get("operationPayload"), dict)
+        or not isinstance(entry.get("operationFingerprint"), str)
+        or not KEY_RE.fullmatch(entry["operationFingerprint"])
+        or entry["operationFingerprint"]
+        != recomputed_fingerprint
+        or not isinstance(entry.get("idempotencyKey"), str)
+        or entry["idempotencyKey"] != recomputed_key
+        or set(entry["operationPayload"]) != {
+            "transactionId", "jobId", "phaseIndex", "providerRequest",
+        }
+        or any(entry["operationPayload"].get(field) != entry[field]
+               for field in ("transactionId", "jobId", "phaseIndex"))
+        or not provider_request_valid(entry["operationPayload"].get("providerRequest"), entry["jobId"])
+    ):
+        return False
+    if "providerRecoveryReference" in entry and (
+        not isinstance(entry["providerRecoveryReference"], str)
+        or not entry["providerRecoveryReference"]
+    ):
+        return False
+    if entry["state"] == "in-flight" and "providerRecoveryReference" in entry:
+        return False
+    if entry["state"] == "settled":
+        return settlement_matches(entry.get("settlement"), entry["transactionId"], entry["operationFingerprint"], entry.get("providerRecoveryReference"))
+    return "settlement" not in entry
+
+
+def evaluate_transaction_binding(transaction_id, job_id, phase_index, prior, provider_request):
+    """Classify an atomic durable reservation/recovery decision."""
     if not isinstance(prior, list):
         return "error", "refuse-conflict", False
-    required = {"transactionId", "jobId", "phaseIndex", "state"}
     for entry in prior:
-        if not isinstance(entry, dict) or set(entry) != required:
-            return "error", "refuse-conflict", False
-        if (
-            not isinstance(entry.get("transactionId"), str)
-            or not entry["transactionId"]
-            or not isinstance(entry.get("jobId"), str)
-            or JOB_ID_RE.fullmatch(entry["jobId"]) is None
-            or type(entry.get("phaseIndex")) is not int
-            or entry["phaseIndex"] < 0
-            or not isinstance(entry.get("state"), str)
-            or entry["state"] not in {"in-flight", "settled"}
-        ):
+        if not _durable_binding_valid(entry):
             return "error", "refuse-conflict", False
     matches = [entry for entry in prior if entry["transactionId"] == transaction_id]
     if len(matches) > 1:
         return "error", "refuse-conflict", False
     if not matches:
+        if not provider_request_valid(provider_request, job_id):
+            return "error", "refuse-conflict", False
         return "pass", "bind-new", True
     bound = matches[0]
     same_tuple = (
@@ -187,8 +371,21 @@ def evaluate_transaction_binding(transaction_id, job_id, phase_index, prior):
     )
     if not same_tuple:
         return "fail", "reject-replay", False
+    if not provider_request_valid(provider_request, job_id):
+        return "error", "refuse-conflict", False
+    expected_payload = operation_payload(transaction_id, job_id, phase_index, provider_request)
+    if (
+        bound["idempotencyKey"] != derive_key(job_id, phase_index)
+        or bound["operationPayload"] != expected_payload
+        or bound["operationFingerprint"] != operation_fingerprint(expected_payload)
+    ):
+        return "error", "refuse-conflict", False
     if bound.get("state") == "settled":
         return "pass", "resume-settlement", False
+    if bound.get("state") == "recovery-pending":
+        if "providerRecoveryReference" in bound:
+            return "pass", "reconcile-reference", False
+        return "pass", "resubmit-same-key", False
     if bound.get("state") == "in-flight":
         return "pass", "resume-existing", False
     return "error", "refuse-conflict", False
@@ -197,18 +394,43 @@ def evaluate_transaction_binding(transaction_id, job_id, phase_index, prior):
 BINDING_STORE_LOCK = threading.Lock()
 
 
-def reserve_or_resolve_transaction_binding(transaction_id, job_id, phase_index, store):
+def reserve_or_resolve_transaction_binding(transaction_id, job_id, phase_index, store, provider_request):
     """Serialized in-process fixture CAS; production requires a durable atomic store."""
     with BINDING_STORE_LOCK:
-        result = evaluate_transaction_binding(transaction_id, job_id, phase_index, store)
+        result = evaluate_transaction_binding(transaction_id, job_id, phase_index, store, provider_request)
         if result == ("pass", "bind-new", True):
-            store.append({
-                "transactionId": transaction_id,
-                "jobId": job_id,
-                "phaseIndex": phase_index,
-                "state": "in-flight",
-            })
+            store.append(durable_binding(
+                transaction_id, job_id, phase_index, "in-flight",
+                payload=operation_payload(transaction_id, job_id, phase_index, provider_request),
+            ))
         return result
+
+
+def transition_binding(store, transaction_id, expected_fingerprint, **changes):
+    """Atomic state transition that preserves operation/key continuity."""
+    if set(changes) - {"state", "providerRecoveryReference", "settlement"}:
+        raise ValueError("binding transition malformed: immutable operation fields")
+    with BINDING_STORE_LOCK:
+        matches = [
+            entry for entry in store
+            if isinstance(entry, dict)
+            and entry.get("transactionId") == transaction_id
+        ]
+        if len(matches) != 1 or not _durable_binding_valid(matches[0]):
+            raise ValueError("binding continuity unavailable")
+        entry = matches[0]
+        if entry["operationFingerprint"] != expected_fingerprint:
+            raise ValueError("binding continuity conflict")
+        candidate = copy.deepcopy(entry)
+        for key, value in changes.items():
+            if value is MISSING:
+                candidate.pop(key, None)
+            else:
+                candidate[key] = copy.deepcopy(value)
+        if not _durable_binding_valid(candidate):
+            raise ValueError("binding transition malformed")
+        entry.clear()
+        entry.update(candidate)
 
 
 def evaluate_signature_policy(case):
@@ -226,6 +448,8 @@ def is_exact_corrective_profile(profile):
     pin = profile.get("releasePin")
     modules = profile.get("moduleVersions")
     return (
+        set(profile) == {"releasePin", "moduleVersions"}
+        and
         isinstance(pin, str)
         and pin == AUTHORITATIVE_RELEASE_PIN
         and isinstance(modules, dict)
@@ -244,7 +468,12 @@ def admits_current_profile(case, trusted_context):
     peer_identity = case.get("peerIdentity")
     if not isinstance(session_id, str) or not isinstance(peer_identity, str):
         return False
-    if not isinstance(trusted_context, dict):
+    if (
+        not isinstance(trusted_context, dict)
+        or set(trusted_context) != {
+            "sessionId", "expectedPeerIdentity", "participants"
+        }
+    ):
         return False
     if trusted_context.get("sessionId") != session_id:
         return False
@@ -255,13 +484,24 @@ def admits_current_profile(case, trusted_context):
     ):
         return False
     participants = trusted_context.get("participants")
-    if not isinstance(participants, list):
+    if not isinstance(participants, list) or not participants:
+        return False
+    for participant in participants:
+        if (
+            not isinstance(participant, dict)
+            or set(participant) != {"identity", "authenticated", "profile"}
+            or not isinstance(participant.get("identity"), str)
+            or not participant["identity"]
+            or type(participant.get("authenticated")) is not bool
+            or not is_exact_corrective_profile(participant.get("profile"))
+        ):
+            return False
+    if len({p["identity"] for p in participants}) != len(participants):
         return False
     matches = [
         participant
         for participant in participants
-        if isinstance(participant, dict)
-        and participant.get("identity") == expected_peer_identity
+        if participant["identity"] == expected_peer_identity
     ]
     return (
         len(matches) == 1
@@ -272,17 +512,22 @@ def admits_current_profile(case, trusted_context):
 
 
 def evaluate_checkout_payment_admission(
-    case, trusted_context=None, authoritative_binding_store=None, provider_submit=None
+    case, trusted_context=None, authoritative_binding_store=None,
+    provider_submit=None, provider_status=None,
 ):
     no_effects = {
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": None,
         "operationOrder": [],
         "reserveAp2Binding": False,
         "submitProviderPayment": False,
+        "submitNewPayment": False,
+        "idempotencyKeys": [],
     }
     if not admits_current_profile(case, trusted_context):
         return "fail", None, no_effects
@@ -307,7 +552,7 @@ def evaluate_checkout_payment_admission(
     effects = dict(no_effects)
     effects["resolverCalls"] += 1
     try:
-        derive_key(job_id, phase_index)
+        idempotency_key = derive_key(job_id, phase_index)
         effects["hashCalls"] += 1
         transaction_id = derive_transaction_id(
             case.get("checkoutJws"), case.get("_sd_alg", MISSING)
@@ -324,21 +569,157 @@ def evaluate_checkout_payment_admission(
         job_id,
         phase_index,
         authoritative_binding_store,
+        copy.deepcopy(case.get("providerRequest")),
     )
     effects["bindingAction"] = binding_action
     if binding_verdict != "pass":
         return binding_verdict, transaction_id, effects
-    if not submit_new:
+    # Dispatch the retained request, never a fresh caller projection.
+    retained = next(entry for entry in authoritative_binding_store if entry["transactionId"] == transaction_id)
+    payload = copy.deepcopy(retained["operationPayload"])
+    fingerprint = retained["operationFingerprint"]
+    if binding_action == "resume-existing":
         return "pass", transaction_id, effects
-    effects["reserveAp2Binding"] = True
-    effects["metadataCalls"] += 1
-    effects["operationOrder"].append("constructProviderMetadata")
+    if binding_action == "resume-settlement":
+        return "pass", transaction_id, effects
+
+    if binding_action == "reconcile-reference":
+        stored = next(
+            entry for entry in authoritative_binding_store
+            if entry.get("transactionId") == transaction_id
+        )
+        provider_ref = stored["providerRecoveryReference"]
+        effects["providerStatusCalls"] += 1
+        effects["operationOrder"].append("fetchProviderStatus")
+        status = provider_status(provider_ref) if provider_status is not None else None
+        if not isinstance(status, dict) or status.get("providerRecoveryReference") != provider_ref:
+            return "error", transaction_id, effects
+        if status.get("status") == "captured" and set(status) == {
+            "status", "providerRecoveryReference", "settlement"
+        } and settlement_matches(status.get("settlement"), transaction_id, fingerprint, provider_ref):
+            transition_binding(
+                authoritative_binding_store,
+                transaction_id,
+                fingerprint,
+                state="settled",
+                settlement=status["settlement"],
+            )
+            effects["bindingAction"] = "resume-settlement"
+            return "pass", transaction_id, effects
+        if status.get("status") == "pending" and set(status) == {
+            "status", "providerRecoveryReference"
+        }:
+            return "pass", transaction_id, effects
+        if status.get("status") == "not-captured" and set(status) == {
+            "status", "providerRecoveryReference"
+        }:
+            transition_binding(
+                authoritative_binding_store,
+                transaction_id,
+                fingerprint,
+                state="in-flight",
+                providerRecoveryReference=MISSING,
+            )
+            binding_action = "resubmit-same-key"
+            effects["bindingAction"] = binding_action
+        else:
+            return "error", transaction_id, effects
+
+    if binding_action == "bind-new":
+        effects["reserveAp2Binding"] = True
+        effects["metadataCalls"] += 1
+        effects["operationOrder"].append("constructProviderMetadata")
+    elif binding_action == "resubmit-same-key":
+        transition_binding(
+            authoritative_binding_store,
+            transaction_id,
+            fingerprint,
+            state="in-flight",
+        )
+    else:
+        return "error", transaction_id, effects
+
     effects["submitProviderPayment"] = True
+    effects["submitNewPayment"] = submit_new
+    effects["providerRequestCalls"] += 1
+    effects["idempotencyKeys"].append(idempotency_key)
     effects["operationOrder"].append("submitProviderPayment")
+    request = {
+        "transactionId": transaction_id,
+        "idempotencyKey": idempotency_key,
+        "operationFingerprint": fingerprint,
+        "operationPayload": copy.deepcopy(payload),
+        "submitNewPayment": submit_new,
+    }
     if provider_submit is not None:
-        # The reservation is deliberately retained if submission fails or is
-        # ambiguous. An exact retry resolves the existing in-flight operation.
-        provider_submit(transaction_id)
+        try:
+            response = provider_submit(request)
+        except Exception:
+            transition_binding(
+                authoritative_binding_store,
+                transaction_id,
+                fingerprint,
+                state="recovery-pending",
+            )
+            raise
+        if response is not None:
+            if (
+                not isinstance(response, dict)
+                or not isinstance(response.get("providerRecoveryReference"), str)
+                or not response["providerRecoveryReference"]
+                or response.get("status") not in {"pending", "captured"}
+            ):
+                transition_binding(
+                    authoritative_binding_store,
+                    transaction_id,
+                    fingerprint,
+                    state="recovery-pending",
+                )
+                return "error", transaction_id, effects
+            if response["status"] == "captured":
+                if (
+                    set(response) != {
+                        "status", "providerRecoveryReference", "settlement"
+                    }
+                    or not settlement_matches(response.get("settlement"), transaction_id, fingerprint, response["providerRecoveryReference"])
+                ):
+                    transition_binding(
+                        authoritative_binding_store,
+                        transaction_id,
+                        fingerprint,
+                        state="recovery-pending",
+                        providerRecoveryReference=response[
+                            "providerRecoveryReference"
+                        ],
+                    )
+                    return "error", transaction_id, effects
+                transition_binding(
+                    authoritative_binding_store,
+                    transaction_id,
+                    fingerprint,
+                    state="settled",
+                    providerRecoveryReference=response["providerRecoveryReference"],
+                    settlement=response["settlement"],
+                )
+            elif set(response) == {"status", "providerRecoveryReference"}:
+                transition_binding(
+                    authoritative_binding_store,
+                    transaction_id,
+                    fingerprint,
+                    state="recovery-pending",
+                    providerRecoveryReference=response["providerRecoveryReference"],
+                )
+            else:
+                transition_binding(
+                    authoritative_binding_store,
+                    transaction_id,
+                    fingerprint,
+                    state="recovery-pending",
+                    providerRecoveryReference=response[
+                        "providerRecoveryReference"
+                    ],
+                )
+                return "error", transaction_id, effects
     return "pass", transaction_id, effects
 
 
@@ -447,7 +828,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             case for case in self.data["vectors"]
             if case["op"] == "checkout-payment-admission"
         ]
-        self.assertEqual(len(cases), 22)
+        self.assertEqual(len(cases), 25)
         for case in cases:
             with self.subTest(case=case["name"]):
                 trusted_context = trusted_context_for_ap2_case(case)
@@ -455,6 +836,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                     case,
                     trusted_context,
                     authoritative_binding_store_for_ap2_case(case),
+                    provider_status=provider_status_for_ap2_case(case),
                 )
                 self.assertEqual(verdict, case["expected"])
                 for effect in (
@@ -462,10 +844,14 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                     "resolverCalls",
                     "metadataCalls",
                     "bindingStoreCalls",
+                    "providerStatusCalls",
+                    "providerRequestCalls",
                     "bindingAction",
                     "operationOrder",
                     "reserveAp2Binding",
                     "submitProviderPayment",
+                    "submitNewPayment",
+                    "idempotencyKeys",
                 ):
                     self.assertEqual(effects[effect], case["want"][effect], effect)
                 if "derivedTransactionId" in case["want"]:
@@ -501,10 +887,14 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                         "resolverCalls": 0,
                         "metadataCalls": 0,
                         "bindingStoreCalls": 0,
+                        "providerStatusCalls": 0,
+                        "providerRequestCalls": 0,
                         "bindingAction": None,
                         "operationOrder": [],
                         "reserveAp2Binding": False,
                         "submitProviderPayment": False,
+                        "submitNewPayment": False,
+                        "idempotencyKeys": [],
                     },
                 )
 
@@ -513,6 +903,9 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             "ap2-admission-complete-chain-match",
             "ap2-composed-same-tuple-inflight-resumes",
             "ap2-composed-same-tuple-settled-resumes",
+            "ap2-recovery-lost-response-resubmits-same-key",
+            "ap2-recovery-reference-reconciles-captured",
+            "ap2-recovery-reference-not-captured-resubmits-same-key",
             "ap2-composed-cross-job-replay-refuses",
             "ap2-composed-cross-phase-replay-refuses",
             "ap2-composed-duplicate-bindings-refuse",
@@ -525,6 +918,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                     case,
                     trusted_context_for_ap2_case(case),
                     authoritative_binding_store_for_ap2_case(case),
+                    provider_status=provider_status_for_ap2_case(case),
                 )
                 self.assertEqual(verdict, case["expected"])
                 self.assertEqual(transaction_id, case["want"]["derivedTransactionId"])
@@ -536,8 +930,28 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                 )
                 if effects["bindingAction"] != "bind-new":
                     self.assertFalse(effects["reserveAp2Binding"])
-                    self.assertFalse(effects["submitProviderPayment"])
+                    self.assertFalse(effects["submitNewPayment"])
                     self.assertEqual(effects["metadataCalls"], 0)
+
+    def test_ap2_context_validates_every_participant_before_selection(self):
+        case = self.cases["ap2-admission-complete-chain-match"]
+        for mutate in (
+            lambda context: context["participants"].append({
+                "identity": "unrelated-but-malformed"
+            }),
+            lambda context: context.__setitem__("callerReset", True),
+        ):
+            context = trusted_context_for_ap2_case(case)
+            mutate(context)
+            verdict, derived, effects = evaluate_checkout_payment_admission(
+                case, context, []
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertIsNone(derived)
+            self.assertEqual(effects["operationOrder"], [])
+            self.assertEqual(effects["hashCalls"], 0)
+            self.assertEqual(effects["bindingStoreCalls"], 0)
+            self.assertEqual(effects["providerRequestCalls"], 0)
 
     def test_copied_blessed_reference_never_authorizes_ap2_effects(self):
         mutant = dict(self.cases["ap2-admission-caller-profile-refuses"])
@@ -553,12 +967,67 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                 "resolverCalls": 0,
                 "metadataCalls": 0,
                 "bindingStoreCalls": 0,
+                "providerStatusCalls": 0,
+                "providerRequestCalls": 0,
                 "bindingAction": None,
                 "operationOrder": [],
                 "reserveAp2Binding": False,
                 "submitProviderPayment": False,
+                "submitNewPayment": False,
+                "idempotencyKeys": [],
             },
         )
+
+    def test_retry_requires_the_complete_retained_provider_request(self):
+        original = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(original)
+        changes = {
+            "payee": "different-merchant", "amount": "11.00", "instrument": "other-instrument",
+            "paymentMandate": "different-mandate", "checkoutId": "other-checkout",
+            "providerEndpoint": "https://other.example.invalid/payments",
+            "metadata": {"dacs_job_id": original["jobId"], "dacs_agreement_hash": "1" * 64},
+        }
+        for field, value in changes.items():
+            store = [durable_binding(original["paymentTransactionId"], original["jobId"], original["phaseIndex"], "recovery-pending")]
+            before = copy.deepcopy(store)
+            changed = copy.deepcopy(original)
+            changed["providerRequest"][field] = value
+            with self.subTest(field=field):
+                verdict, _, effects = evaluate_checkout_payment_admission(changed, context, store)
+                self.assertEqual(verdict, "error")
+                self.assertEqual(effects["providerRequestCalls"], 0)
+                self.assertEqual(effects["providerStatusCalls"], 0)
+                self.assertEqual(effects["metadataCalls"], 0)
+                self.assertEqual(store, before)
+
+    def test_captured_recovery_requires_matching_operation_and_reference(self):
+        case = self.cases["ap2-recovery-reference-reconciles-captured"]
+        for field, value in (("transactionId", "other"), ("operationFingerprint", "0" * 64), ("providerRef", "other")):
+            store = authoritative_binding_store_for_ap2_case(case)
+            before = copy.deepcopy(store)
+            settlement = fixture_settlement("provider-payment-123")
+            settlement[field] = value
+            with self.subTest(field=field):
+                verdict, _, effects = evaluate_checkout_payment_admission(
+                    case, trusted_context_for_ap2_case(case), store,
+                    provider_status=lambda ref: {"status": "captured", "providerRecoveryReference": ref, "settlement": settlement},
+                )
+                self.assertEqual(verdict, "error")
+                self.assertEqual(effects["providerRequestCalls"], 0)
+                self.assertEqual(store, before)
+
+    def test_entire_participant_map_requires_unique_identities(self):
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        unrelated = copy.deepcopy(context["participants"][0])
+        unrelated["identity"] = "did:example:unrelated"
+        context["participants"].append(unrelated)
+        self.assertTrue(admits_current_profile(case, context))
+        context["participants"].append(copy.deepcopy(unrelated))
+        verdict, _, effects = evaluate_checkout_payment_admission(case, context, [])
+        self.assertEqual(verdict, "fail")
+        for field in ("hashCalls", "resolverCalls", "bindingStoreCalls", "providerStatusCalls", "providerRequestCalls", "metadataCalls"):
+            self.assertEqual(effects[field], 0)
 
     def test_same_store_reserves_once_and_rejects_cross_tuple_replay(self):
         case = self.cases["ap2-admission-complete-chain-match"]
@@ -566,12 +1035,16 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         store = []
         first = evaluate_checkout_payment_admission(case, context, store)
         self.assertTrue(first[2]["submitProviderPayment"])
-        self.assertEqual(store, [{"transactionId": first[1], "jobId": case["jobId"], "phaseIndex": case["phaseIndex"], "state": "in-flight"}])
+        self.assertTrue(first[2]["submitNewPayment"])
+        self.assertEqual(store, [durable_binding(
+            first[1], case["jobId"], case["phaseIndex"], "in-flight"
+        )])
         snapshot = copy.deepcopy(store)
         for replay in (case, self.cases["ap2-composed-cross-job-replay-refuses"], self.cases["ap2-composed-cross-phase-replay-refuses"]):
             result = evaluate_checkout_payment_admission(replay, trusted_context_for_ap2_case(replay), store)
             self.assertEqual(result[2]["bindingAction"], "resume-existing" if replay is case else "reject-replay")
             self.assertFalse(result[2]["submitProviderPayment"])
+            self.assertFalse(result[2]["submitNewPayment"])
             self.assertFalse(result[2]["reserveAp2Binding"])
             self.assertEqual(result[2]["metadataCalls"], 0)
             self.assertEqual(store, snapshot)
@@ -590,19 +1063,112 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         context = trusted_context_for_ap2_case(case)
         store = []
         calls = []
-        def ambiguous_provider(transaction_id):
+        def ambiguous_provider(request):
             self.assertEqual(len(store), 1)
-            self.assertEqual(store[0]["transactionId"], transaction_id)
+            self.assertEqual(store[0]["transactionId"], request["transactionId"])
             self.assertEqual(store[0]["state"], "in-flight")
-            calls.append(transaction_id)
-            raise RuntimeError("simulated lost provider response")
+            calls.append(copy.deepcopy(request))
+            if len(calls) == 1:
+                raise RuntimeError("simulated lost provider response")
+            return {
+                "status": "pending",
+                "providerRecoveryReference": "provider-payment-123",
+            }
         with self.assertRaisesRegex(RuntimeError, "simulated lost"):
             evaluate_checkout_payment_admission(case, context, store, ambiguous_provider)
         retry = evaluate_checkout_payment_admission(case, context, store, ambiguous_provider)
-        self.assertEqual(retry[2]["bindingAction"], "resume-existing")
-        self.assertFalse(retry[2]["submitProviderPayment"])
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(retry[2]["bindingAction"], "resubmit-same-key")
+        self.assertTrue(retry[2]["submitProviderPayment"])
+        self.assertFalse(retry[2]["submitNewPayment"])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]["idempotencyKey"], calls[1]["idempotencyKey"])
+        self.assertEqual(calls[0]["operationFingerprint"], calls[1]["operationFingerprint"])
+        self.assertEqual(calls[0]["operationPayload"], calls[1]["operationPayload"])
         self.assertEqual(len(store), 1)
+        self.assertEqual(store[0]["state"], "recovery-pending")
+        self.assertEqual(store[0]["providerRecoveryReference"], "provider-payment-123")
+
+        status_calls = []
+
+        def captured_status(provider_ref):
+            status_calls.append(provider_ref)
+            return {
+                "status": "captured",
+                "providerRecoveryReference": provider_ref,
+                "settlement": fixture_settlement(provider_ref),
+            }
+
+        reconciled = evaluate_checkout_payment_admission(
+            case, context, store, provider_status=captured_status
+        )
+        self.assertEqual(reconciled[2]["bindingAction"], "resume-settlement")
+        self.assertEqual(status_calls, ["provider-payment-123"])
+        self.assertFalse(reconciled[2]["submitProviderPayment"])
+        self.assertEqual(store[0]["state"], "settled")
+
+        reused = evaluate_checkout_payment_admission(
+            case,
+            context,
+            store,
+            provider_submit=lambda _request: self.fail("settlement resubmitted"),
+            provider_status=lambda _ref: self.fail("settlement re-queried"),
+        )
+        self.assertEqual(reused[2]["bindingAction"], "resume-settlement")
+        self.assertFalse(reused[2]["submitProviderPayment"])
+
+    def test_malformed_provider_result_retains_a_usable_recovery_reference(self):
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        store = []
+        malformed = evaluate_checkout_payment_admission(
+            case,
+            context,
+            store,
+            provider_submit=lambda _request: {
+                "status": "captured",
+                "providerRecoveryReference": "provider-payment-malformed",
+            },
+        )
+        self.assertEqual(malformed[0], "error")
+        self.assertEqual(store[0]["state"], "recovery-pending")
+        self.assertEqual(
+            store[0]["providerRecoveryReference"],
+            "provider-payment-malformed",
+        )
+
+        recovered = evaluate_checkout_payment_admission(
+            case,
+            context,
+            store,
+            provider_status=lambda ref: {
+                "status": "captured",
+                "providerRecoveryReference": ref,
+                "settlement": fixture_settlement(ref),
+            },
+        )
+        self.assertEqual(recovered[0], "pass")
+        self.assertEqual(recovered[2]["bindingAction"], "resume-settlement")
+        self.assertFalse(recovered[2]["submitProviderPayment"])
+
+    def test_invalid_atomic_transition_preserves_the_prior_record(self):
+        transaction_id = self.cases[
+            "ap2-transaction-id-sha256-default"
+        ]["expectedTransactionId"]
+        store = [durable_binding(
+            transaction_id,
+            CURRENT_SESSION_ID,
+            3,
+            "recovery-pending",
+        )]
+        snapshot = copy.deepcopy(store)
+        with self.assertRaisesRegex(ValueError, "transition malformed"):
+            transition_binding(
+                store,
+                transaction_id,
+                store[0]["operationFingerprint"],
+                state="settled",
+            )
+        self.assertEqual(store, snapshot)
 
     def test_new_checkout_cases_cover_positive_negative_and_boundary(self):
         classes = {
@@ -614,7 +1180,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
 
     def test_transaction_binding_executes_retry_and_replay_rules(self):
         cases = [case for case in self.data["vectors"] if case["op"] == "transaction-binding"]
-        self.assertEqual(len(cases), 18)
+        self.assertEqual(len(cases), 22)
         for case in cases:
             with self.subTest(case=case["name"]):
                 verdict, action, submit_new = evaluate_transaction_binding(
@@ -622,6 +1188,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                     case.get("jobId"),
                     case.get("phaseIndex"),
                     case.get("priorBindings"),
+                    case.get("providerRequest"),
                 )
                 self.assertEqual(verdict, case["expected"])
                 self.assertEqual(action, case["want"]["action"])
@@ -631,6 +1198,8 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         for name in (
             "ap2-same-tuple-inflight-resumes",
             "ap2-same-tuple-settled-resumes-evidence",
+            "ap2-recovery-pending-without-reference-resubmits-same-key",
+            "ap2-recovery-pending-with-reference-reconciles",
         ):
             case = self.cases[name]
             verdict, action, submit_new = evaluate_transaction_binding(
@@ -638,9 +1207,13 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                 case["jobId"],
                 case["phaseIndex"],
                 case["priorBindings"],
+                case["providerRequest"],
             )
             self.assertEqual(verdict, "pass")
-            self.assertTrue(action.startswith("resume-"))
+            self.assertIn(action, {
+                "resume-existing", "resume-settlement", "resubmit-same-key",
+                "reconcile-reference",
+            })
             self.assertFalse(submit_new)
 
     def test_malformed_binding_store_fails_closed_in_composed_handler(self):
@@ -711,8 +1284,12 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         self.assertIn("only branch that may create provider metadata", spec)
         self.assertIn("current Demos DAHR binding", spec)
         self.assertIn("handler-owned trusted context", spec)
+        self.assertIn("validate every participant record before selecting", spec)
         self.assertIn("duplicate participant records", spec)
         self.assertIn("identity/session mismatch", spec)
+        self.assertIn("immutable operation payload", spec)
+        self.assertIn("`submitNewPayment: false`", spec)
+        self.assertIn("does not claim crash-safe production durability", spec)
         self.assertNotIn("AP2 v0.2's non-deterministic-signature requirement", spec)
         self.assertIn("ap2-handler-safety-v0.6.json", plan)
         self.assertIn("ap2-handler-safety-v0.6.json", readme)

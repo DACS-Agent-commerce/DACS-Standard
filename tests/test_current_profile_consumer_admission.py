@@ -1,12 +1,15 @@
 """CORE §11.1.2 admission at the real current DACS-5 consumer boundaries."""
 
 import copy
+import base64
 import hashlib
 import unittest
 from pathlib import Path
 from unittest import mock
 
 import dacs5_reference as R
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
@@ -14,6 +17,21 @@ OTHER_JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
 BUYER = "did:demos:buyer"
 SELLER = "did:demos:seller"
 ROOT = Path(__file__).resolve().parents[1]
+BUYER_PRIVATE = Ed25519PrivateKey.from_private_bytes(b"\x11" * 32)
+SELLER_PRIVATE = Ed25519PrivateKey.from_private_bytes(b"\x22" * 32)
+
+
+def public_bytes(private):
+    return private.public_key().public_bytes(
+        serialization.Encoding.Raw,
+        serialization.PublicFormat.Raw,
+    )
+
+
+TRUSTED_KEYS = R.trusted_verification_keys({
+    BUYER: public_bytes(BUYER_PRIVATE),
+    SELLER: public_bytes(SELLER_PRIVATE),
+})
 
 
 def expected_address(job_id, role):
@@ -21,20 +39,26 @@ def expected_address(job_id, role):
     return "stor-" + hashlib.sha256(preimage).hexdigest()
 
 
-def profile_context(identity, *, session_id=JOB_ID, profile=None,
-                    authenticated=True, duplicate=False):
-    return R.trusted_profile_context(
+def role_authority(role, identity, *, session_id=JOB_ID, profile=None,
+                   authenticated=True):
+    return R.trusted_role_authority(
         session_id,
+        role,
         identity,
         profile=profile,
         authenticated=authenticated,
-        duplicate=duplicate,
     )
 
 
-def binding(role, signer, content_hash):
+def signature_value(private, domain, content_hash):
+    return base64.urlsafe_b64encode(
+        private.sign((domain + content_hash).encode("utf-8"))
+    ).rstrip(b"=").decode("ascii")
+
+
+def binding(role, signer, private, content_hash):
     address = expected_address(JOB_ID, role)
-    return {
+    result = {
         "bindingVersion": "1",
         "jobId": JOB_ID,
         "role": role,
@@ -42,12 +66,13 @@ def binding(role, signer, content_hash):
         "logicalAddress": address,
         "nativeAddress": address,
         "bundleContentHash": content_hash,
-        "signature": {
-            "signer": signer,
-            "algorithm": "ed25519",
-            "value": "fixture-only",
-        },
     }
+    result["signature"] = {
+        "signer": signer,
+        "algorithm": "ed25519",
+        "value": signature_value(private, R.BINDING_DOMAIN, R.binding_hash(result)),
+    }
+    return result
 
 
 def current_receipt_fixture():
@@ -62,16 +87,29 @@ def current_receipt_fixture():
         ],
         "phaseSummary": [],
         "finalisedAt": 100,
-        "signatures": [
-            {"party": BUYER, "algorithm": "ed25519", "value": "fixture-only"},
-            {"party": SELLER, "algorithm": "ed25519", "value": "fixture-only"},
-        ],
+        "signatures": [],
     }
+    content_hash = R.bundle_hash(base)
+    base["signatures"] = [
+        {
+            "party": BUYER,
+            "algorithm": "ed25519",
+            "value": signature_value(
+                BUYER_PRIVATE, R.FAULT_BUNDLE_DOMAIN, content_hash
+            ),
+        },
+        {
+            "party": SELLER,
+            "algorithm": "ed25519",
+            "value": signature_value(
+                SELLER_PRIVATE, R.FAULT_BUNDLE_DOMAIN, content_hash
+            ),
+        },
+    ]
     seller_bundle = {**base, "anchoredByRole": "seller"}
     buyer_bundle = {**base, "anchoredByRole": "buyer"}
-    content_hash = R.bundle_hash(seller_bundle)
-    seller_binding = binding("seller", SELLER, content_hash)
-    buyer_binding = binding("buyer", BUYER, content_hash)
+    seller_binding = binding("seller", SELLER, SELLER_PRIVATE, content_hash)
+    buyer_binding = binding("buyer", BUYER, BUYER_PRIVATE, content_hash)
     tagged = [{
         "bundle": seller_bundle,
         "resolvedRole": "seller",
@@ -110,6 +148,25 @@ def current_receipt_fixture():
         seller_binding["nativeAddress"]: seller_bundle,
         buyer_binding["nativeAddress"]: buyer_bundle,
     }
+    authority = R.trusted_current_context(
+        [
+            role_authority("seller", SELLER),
+            role_authority("buyer", BUYER),
+        ],
+        query=R.trusted_query_authority(
+            SELLER, 0, 200, "finalisedAt"
+        ),
+        entry_authorities=[R.trusted_entry_authority(
+            content_hash,
+            JOB_ID,
+            "seller",
+            SELLER,
+            counterparty_disposition="present",
+            counterparty_role="buyer",
+            counterparty_participant_identity=BUYER,
+            counterparty_content_hash=content_hash,
+        )],
+    )
     return {
         "receipt": receipt,
         "address_receipt": address_receipt,
@@ -118,6 +175,8 @@ def current_receipt_fixture():
             seller_bundle if requested_hash == content_hash else None
         ),
         "anchor_deref": lambda address: by_address.get(address),
+        "authority": authority,
+        "keys": TRUSTED_KEYS,
     }
 
 
@@ -141,50 +200,65 @@ def invalid_authorities():
             "dacs5": "0.4",
         },
     }
+    valid = current_receipt_fixture()["authority"]
+
+    def with_roles(records):
+        candidate = copy.deepcopy(valid)
+        candidate["roleMap"] = records
+        return candidate
+
+    seller = role_authority("seller", SELLER)
+    buyer = role_authority("buyer", BUYER)
     return {
         "missing": None,
-        "partial-tuple": [
-            profile_context(SELLER, profile=partial_profile),
-            profile_context(BUYER, profile=partial_profile),
-        ],
-        "duplicate-participant": [
-            profile_context(SELLER, duplicate=True),
-            profile_context(BUYER, duplicate=True),
-        ],
-        "release-mismatch": [
-            profile_context(SELLER, profile=wrong_release),
-            profile_context(BUYER, profile=wrong_release),
-        ],
-        "module-mismatch": [
-            profile_context(SELLER, profile=wrong_modules),
-            profile_context(BUYER, profile=wrong_modules),
-        ],
-        "session-mismatch": [
-            profile_context(SELLER, session_id=OTHER_JOB_ID),
-            profile_context(BUYER, session_id=OTHER_JOB_ID),
-        ],
-        "identity-mismatch": [
-            profile_context("did:demos:not-seller"),
-            profile_context("did:demos:not-buyer"),
-        ],
-        "malformed": [
-            {
-                "sessionId": JOB_ID,
-                "expectedPeerIdentity": SELLER,
-                "participants": "not-an-array",
-            }
-        ],
-        "untrusted": [
-            profile_context(SELLER, authenticated=False),
-            profile_context(BUYER, authenticated=False),
-        ],
+        "partial-tuple": with_roles([
+            role_authority("seller", SELLER, profile=partial_profile),
+            role_authority("buyer", BUYER, profile=partial_profile),
+        ]),
+        "duplicate-role": with_roles([seller, dict(seller), buyer]),
+        "release-mismatch": with_roles([
+            role_authority("seller", SELLER, profile=wrong_release), buyer,
+        ]),
+        "module-mismatch": with_roles([
+            role_authority("seller", SELLER, profile=wrong_modules), buyer,
+        ]),
+        "session-mismatch": with_roles([
+            role_authority("seller", SELLER, session_id=OTHER_JOB_ID),
+            role_authority("buyer", BUYER, session_id=OTHER_JOB_ID),
+        ]),
+        "malformed-session": with_roles([
+            role_authority("seller", SELLER, session_id="not-a-current-job-id"),
+            buyer,
+        ]),
+        "role-missing": with_roles([buyer]),
+        "malformed-unrelated-record": with_roles([
+            seller, buyer, {"sessionId": JOB_ID, "role": "orchestrator"},
+        ]),
+        "untrusted": with_roles([
+            role_authority("seller", SELLER, authenticated=False), buyer,
+        ]),
     }
 
 
 class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
     def setUp(self):
         self.fixture = current_receipt_fixture()
-        self.authority = [profile_context(SELLER), profile_context(BUYER)]
+        self.authority = self.fixture["authority"]
+        self.keys = self.fixture["keys"]
+
+    def test_current_context_requires_scalar_roles_and_finite_query_numbers(self):
+        self.assertTrue(R._current_context_shape_valid(self.authority))
+        for value in ([], {}, None, True):
+            changed = copy.deepcopy(self.authority)
+            changed["roleMap"][0]["role"] = value
+            with self.subTest(role=value):
+                self.assertFalse(R._current_context_shape_valid(changed))
+                self.assertIsNone(R.resolve_current_profile(JOB_ID, value, self.authority))
+        for value in (True, float("inf"), float("nan"), 2**53):
+            changed = copy.deepcopy(self.authority)
+            changed["query"]["windowEnd"] = value
+            with self.subTest(window=value):
+                self.assertFalse(R._current_context_shape_valid(changed))
 
     def test_current_address_bb5_context_and_replay_positive_controls(self):
         self.assertEqual(
@@ -192,24 +266,29 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
             R.logical_address(
                 JOB_ID,
                 "seller",
-                participant_identity=SELLER,
+                participant_identity="caller-value-is-not-authority",
                 trusted_contexts=self.authority,
             ),
         )
         verified = R.verify_binding(
             self.fixture["binding"],
-            None,
+            self.keys,
             expected_jobid=JOB_ID,
             expected_role="seller",
-            participant_identity=SELLER,
+            participant_identity=BUYER,
             trusted_contexts=self.authority,
         )
         self.assertTrue(verified["ok"], verified["reason"])
         valid, reasons = R.validate_resolution_context(
             self.fixture["receipt"],
             self.fixture["deref"],
+            pubkeys=self.keys,
             anchor_deref=self.fixture["anchor_deref"],
             trusted_contexts=self.authority,
+            query_party=SELLER,
+            window_start=0,
+            window_end=200,
+            windowing_basis="finalisedAt",
         )
         self.assertTrue(valid, reasons)
         same, replayed = R.replay_receipt(
@@ -218,8 +297,10 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
             SELLER,
             0,
             200,
+            pubkeys=self.keys,
             anchor_deref=self.fixture["anchor_deref"],
             trusted_contexts=self.authority,
+            windowing_basis="finalisedAt",
         )
         self.assertTrue(same)
         self.assertIsNotNone(replayed)
@@ -234,8 +315,13 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
         valid, reasons = R.validate_resolution_context(
             self.fixture["address_receipt"],
             self.fixture["deref"],
+            pubkeys=self.keys,
             anchor_deref=self.fixture["anchor_deref"],
             pure_mapping_resolver=map_address,
+            query_party=SELLER,
+            window_start=0,
+            window_end=200,
+            windowing_basis="finalisedAt",
         )
         self.assertFalse(valid)
         self.assertTrue(any("current-profile-admission" in r for r in reasons))
@@ -244,9 +330,14 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
         valid, reasons = R.validate_resolution_context(
             self.fixture["address_receipt"],
             self.fixture["deref"],
+            pubkeys=self.keys,
             anchor_deref=self.fixture["anchor_deref"],
             pure_mapping_resolver=map_address,
             trusted_contexts=self.authority,
+            query_party=SELLER,
+            window_start=0,
+            window_end=200,
+            windowing_basis="finalisedAt",
         )
         self.assertTrue(valid, reasons)
         self.assertEqual(
@@ -268,7 +359,7 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
                     )
                 verified = R.verify_binding(
                     self.fixture["binding"],
-                    None,
+                    self.keys,
                     expected_jobid=JOB_ID,
                     expected_role="seller",
                     participant_identity=SELLER,
@@ -279,11 +370,16 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
                 valid, reasons = R.validate_resolution_context(
                     self.fixture["receipt"],
                     self.fixture["deref"],
+                    pubkeys=self.keys,
                     anchor_deref=self.fixture["anchor_deref"],
                     trusted_contexts=authority,
+                    query_party=SELLER,
+                    window_start=0,
+                    window_end=200,
+                    windowing_basis="finalisedAt",
                 )
                 self.assertFalse(valid)
-                self.assertTrue(any("current-profile-admission" in r for r in reasons))
+                self.assertTrue(any("current-" in r for r in reasons), reasons)
                 self.assertEqual(
                     R.replay_receipt(
                         self.fixture["receipt"],
@@ -291,8 +387,10 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
                         SELLER,
                         0,
                         200,
+                        pubkeys=self.keys,
                         anchor_deref=self.fixture["anchor_deref"],
                         trusted_contexts=authority,
+                        windowing_basis="finalisedAt",
                     ),
                     (False, None),
                 )
@@ -304,7 +402,7 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
         artifact["peerProfileRef"] = "fixture:current-profile"
         current = R.verify_binding(
             artifact,
-            None,
+            self.keys,
             expected_jobid=JOB_ID,
             expected_role="seller",
             participant_identity=SELLER,
@@ -328,7 +426,9 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
                 SELLER,
                 0,
                 200,
+                pubkeys=self.keys,
                 anchor_deref=self.fixture["anchor_deref"],
+                windowing_basis="finalisedAt",
             ),
             (False, None),
         )
@@ -341,10 +441,136 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
             anchor_deref=self.fixture["anchor_deref"],
         )[0])
 
+    def test_current_crypto_and_query_admission_precede_callbacks(self):
+        callbacks = {
+            "deref": mock.Mock(side_effect=self.fixture["deref"]),
+            "anchor": mock.Mock(side_effect=self.fixture["anchor_deref"]),
+            "mapping": mock.Mock(side_effect=expected_address),
+        }
+        for keys, authority, party, window_end, basis in (
+            (None, self.authority, SELLER, 200, "finalisedAt"),
+            (R.trusted_verification_keys({}, authenticated=False), self.authority,
+             SELLER, 200, "finalisedAt"),
+            (self.keys, self.authority, BUYER, 200, "finalisedAt"),
+            (self.keys, self.authority, SELLER, 201, "finalisedAt"),
+            (self.keys, self.authority, SELLER, 200, "sr2-anchor-timestamp"),
+        ):
+            with self.subTest(keys=keys is not None, party=party,
+                              windowEnd=window_end, basis=basis):
+                valid, _ = R.validate_resolution_context(
+                    self.fixture["receipt"],
+                    callbacks["deref"],
+                    pubkeys=keys,
+                    anchor_deref=callbacks["anchor"],
+                    pure_mapping_resolver=callbacks["mapping"],
+                    trusted_contexts=authority,
+                    query_party=party,
+                    window_start=0,
+                    window_end=window_end,
+                    windowing_basis=basis,
+                )
+                self.assertFalse(valid)
+                for callback in callbacks.values():
+                    callback.assert_not_called()
+
+    def test_entry_authority_is_ordered_and_precedes_dereference(self):
+        bad = copy.deepcopy(self.authority)
+        bad["entryAuthorities"][0]["participantIdentity"] = BUYER
+        anchor = mock.Mock(side_effect=self.fixture["anchor_deref"])
+        valid, reasons = R.validate_resolution_context(
+            self.fixture["receipt"],
+            self.fixture["deref"],
+            pubkeys=self.keys,
+            anchor_deref=anchor,
+            trusted_contexts=bad,
+            query_party=SELLER,
+            window_start=0,
+            window_end=200,
+            windowing_basis="finalisedAt",
+        )
+        self.assertFalse(valid)
+        self.assertTrue(any("entry-authority" in reason for reason in reasons))
+        anchor.assert_not_called()
+
+    def test_legitimate_empty_query_admits_without_entry_callbacks(self):
+        receipt = R.derive(SELLER, [], 0, 200, "finalisedAt")
+        authority = R.trusted_current_context(
+            [],
+            query=R.trusted_query_authority(SELLER, 0, 200, "finalisedAt"),
+        )
+        keys = TRUSTED_KEYS
+        anchor = mock.Mock(side_effect=AssertionError("empty result dereferenced"))
+        self.assertEqual(
+            R.validate_resolution_context(
+                receipt,
+                lambda _h: None,
+                pubkeys=keys,
+                anchor_deref=anchor,
+                trusted_contexts=authority,
+                query_party=SELLER,
+                window_start=0,
+                window_end=200,
+                windowing_basis="finalisedAt",
+            ),
+            (True, []),
+        )
+        same, replayed = R.replay_receipt(
+            receipt,
+            lambda _h: None,
+            SELLER,
+            0,
+            200,
+            pubkeys=keys,
+            anchor_deref=anchor,
+            trusted_contexts=authority,
+            windowing_basis="finalisedAt",
+        )
+        self.assertTrue(same)
+        self.assertEqual(replayed["bundleCount"], 0)
+        anchor.assert_not_called()
+
+    def test_real_ed25519_signatures_and_role_authority_are_load_bearing(self):
+        mutated = copy.deepcopy(self.fixture["binding"])
+        mutated["signature"]["value"] = (
+            "A" + mutated["signature"]["value"][1:]
+        )
+        result = R.verify_binding(
+            mutated,
+            self.keys,
+            expected_jobid=JOB_ID,
+            expected_role="seller",
+            trusted_contexts=self.authority,
+        )
+        self.assertFalse(result["ok"])
+        self.assertIn("signature does not verify", result["reason"])
+
+        different_holder = copy.deepcopy(self.authority)
+        different_holder["roleMap"][0]["participantIdentity"] = BUYER
+        result = R.verify_binding(
+            self.fixture["binding"],
+            self.keys,
+            expected_jobid=JOB_ID,
+            expected_role="seller",
+            trusted_contexts=different_holder,
+        )
+        self.assertFalse(result["ok"])
+        self.assertIn("authenticated participant", result["reason"])
+
+    def test_one_actor_may_hold_two_independently_authorized_roles(self):
+        authority = R.trusted_current_context([
+            role_authority("buyer", BUYER),
+            role_authority("seller", BUYER),
+        ])
+        self.assertTrue(R.admits_current_profile(JOB_ID, "buyer", authority))
+        self.assertTrue(R.admits_current_profile(JOB_ID, "seller", authority))
+
     def test_normative_current_and_legacy_boundaries_are_explicit(self):
         spec = (ROOT / "spec/DACS-5-VERIFY.md").read_text(encoding="utf-8")
         self.assertIn("current-profile consumer resolves", spec)
         self.assertIn("verifier- or orchestrator-owned trusted context", spec)
+        self.assertIn("(jobId, role) → participant", spec)
+        self.assertIn("independently authenticated verification-key", spec)
+        self.assertIn("even when `bundleRefs` and `resolutionContext` are legitimately empty", spec)
         self.assertIn("explicitly selected archival/legacy replay path", spec)
         self.assertIn("explicitly selected legacy replay", spec)
 

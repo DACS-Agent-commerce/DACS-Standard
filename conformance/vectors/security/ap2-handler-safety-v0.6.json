@@ -2,8 +2,8 @@
   "set": "ap2-handler-safety-v0.6",
   "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
   "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, authenticated synthetic-profile and JID/phase admission ordering, checkout/payment admission atomically composed with handler-owned AP2-7 store decisions, and retry/replay consumption are executed; the fixture release pin is not a published release or live deployment profile; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
-  "hash": "bc19f9b9613e37a7e06178673c093f450d65aaf0c83a6317b26ed53b6395bb0a",
-  "count": 59,
+  "hash": "bc96b75e1f0e04c37630ef5c604a0d05e18628371c419294291c38eae5e22f5c",
+  "count": 66,
   "vectors": [
     {
       "name": "ap2-key-base",
@@ -131,6 +131,8 @@
         "resolverCalls": 1,
         "metadataCalls": 1,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 1,
         "bindingAction": "bind-new",
         "operationOrder": [
           "atomicBindingStoreDecision",
@@ -139,9 +141,25 @@
         ],
         "reserveAp2Binding": true,
         "submitProviderPayment": true,
+        "submitNewPayment": true,
+        "idempotencyKeys": [
+          "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97"
+        ],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "separate verified CheckoutMandate and PaymentMandate artifacts with a matching digest admit side effects"
+      "note": "separate verified CheckoutMandate and PaymentMandate artifacts with a matching digest admit side effects",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -164,15 +182,31 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "resume-existing",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "the composed handler resolves an in-flight exact-tuple retry and creates no new provider payment"
+      "note": "the composed handler resolves an in-flight exact-tuple retry and creates no new provider payment",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -195,15 +229,182 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "resume-settlement",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "the composed handler resolves a settled exact-tuple retry without metadata construction or another provider payment"
+      "note": "the composed handler resolves a settled exact-tuple retry without metadata construction or another provider payment",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-recovery-lost-response-resubmits-same-key",
+      "caseClass": "positive",
+      "expected": "pass",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 1,
+        "bindingAction": "resubmit-same-key",
+        "operationOrder": [
+          "atomicBindingStoreDecision",
+          "submitProviderPayment"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": true,
+        "submitNewPayment": false,
+        "idempotencyKeys": [
+          "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97"
+        ],
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "an ambiguous lost response is retried with the retained exact operation and AP2-6 key, without a new payment authorization",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-recovery-reference-reconciles-captured",
+      "caseClass": "positive",
+      "expected": "pass",
+      "providerStatus": "captured",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "providerStatusCalls": 1,
+        "providerRequestCalls": 0,
+        "bindingAction": "resume-settlement",
+        "operationOrder": [
+          "atomicBindingStoreDecision",
+          "fetchProviderStatus"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "a retained provider reference reconciles captured status into reusable settlement",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-recovery-reference-not-captured-resubmits-same-key",
+      "caseClass": "boundary",
+      "expected": "pass",
+      "providerStatus": "not-captured",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "providerStatusCalls": 1,
+        "providerRequestCalls": 1,
+        "bindingAction": "resubmit-same-key",
+        "operationOrder": [
+          "atomicBindingStoreDecision",
+          "fetchProviderStatus",
+          "submitProviderPayment"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": true,
+        "submitNewPayment": false,
+        "idempotencyKeys": [
+          "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97"
+        ],
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "confirmed non-capture permits only a same-key same-operation provider request, never a distinct payment authorization",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -226,15 +427,31 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "reject-replay",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "a valid current-profile presentation for another session is rejected by the authoritative store before provider work"
+      "note": "a valid current-profile presentation for another session is rejected by the authoritative store before provider work",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -257,15 +474,31 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "reject-replay",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "a valid presentation at another phase is rejected by the authoritative store before provider work"
+      "note": "a valid presentation at another phase is rejected by the authoritative store before provider work",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -288,15 +521,31 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "refuse-conflict",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "duplicate authoritative entries fail closed before provider work"
+      "note": "duplicate authoritative entries fail closed before provider work",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -319,15 +568,31 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "refuse-conflict",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "conflicting authoritative entries fail closed before provider work"
+      "note": "conflicting authoritative entries fail closed before provider work",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -351,15 +616,31 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": "resume-existing",
         "operationOrder": [
           "atomicBindingStoreDecision"
         ],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "a caller-supplied empty-store assertion is ignored; the handler-owned in-flight binding prevents a new provider payment"
+      "note": "a caller-supplied empty-store assertion is ignored; the handler-owned in-flight binding prevents a new provider payment",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -382,13 +663,29 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": [],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "a PaymentMandate mismatch rejects before AP2-7 reservation or provider submission"
+      "note": "a PaymentMandate mismatch rejects before AP2-7 reservation or provider submission",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -411,12 +708,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "a standalone PaymentMandate is not a complete AP2 checkout chain"
+      "note": "a standalone PaymentMandate is not a complete AP2 checkout chain",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -439,12 +752,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "a CheckoutMandate alone cannot authorize payment"
+      "note": "a CheckoutMandate alone cannot authorize payment",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -467,12 +796,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "the DACS strict signature profile is enforced before either side effect"
+      "note": "the DACS strict signature profile is enforced before either side effect",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -496,12 +841,28 @@
         "resolverCalls": 1,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "unsupported digest selection fails before AP2-7 reservation or provider submission"
+      "note": "unsupported digest selection fails before AP2-7 reservation or provider submission",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -524,12 +885,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "a non-JID-1 session refuses before hashes, resolution, metadata, binding, or provider calls"
+      "note": "a non-JID-1 session refuses before hashes, resolution, metadata, binding, or provider calls",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "café-job"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -552,12 +929,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "an overflow-form ULID refuses before every modeled job-specific effect"
+      "note": "an overflow-form ULID refuses before every modeled job-specific effect",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "81ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -580,12 +973,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "an invalid phase index refuses before every modeled job-specific effect"
+      "note": "an invalid phase index refuses before every modeled job-specific effect",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -608,12 +1017,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "trusted context that does not authenticate the expected peer refuses before protocol action"
+      "note": "trusted context that does not authenticate the expected peer refuses before protocol action",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -647,12 +1072,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "matching caller-supplied profile bytes do not substitute for authenticated peer evidence"
+      "note": "matching caller-supplied profile bytes do not substitute for authenticated peer evidence",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -675,12 +1116,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "duplicate authenticated records for the expected peer fail closed before protocol action"
+      "note": "duplicate authenticated records for the expected peer fail closed before protocol action",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -703,12 +1160,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "a current profile authenticated for a different peer cannot authorize this participant"
+      "note": "a current profile authenticated for a different peer cannot authorize this participant",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -731,12 +1204,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "profile evidence authenticated for another session cannot authorize AP2 effects"
+      "note": "profile evidence authenticated for another session cannot authorize AP2 effects",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "op": "checkout-payment-admission",
@@ -760,12 +1249,28 @@
         "resolverCalls": 0,
         "metadataCalls": 0,
         "bindingStoreCalls": 0,
+        "providerStatusCalls": 0,
+        "providerRequestCalls": 0,
         "bindingAction": null,
         "operationOrder": [],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "submitNewPayment": false,
+        "idempotencyKeys": []
       },
-      "note": "a caller cannot copy a locally meaningful label to manufacture trusted context"
+      "note": "a caller cannot copy a locally meaningful label to manufacture trusted context",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-first-presentation-binds",
@@ -779,7 +1284,19 @@
         "action": "bind-new",
         "submitNewPayment": true
       },
-      "note": "the first valid presentation atomically reserves the transaction for this tuple"
+      "note": "the first valid presentation atomically reserves the transaction for this tuple",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-same-tuple-inflight-resumes",
@@ -792,7 +1309,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "pass",
@@ -800,7 +1336,19 @@
         "action": "resume-existing",
         "submitNewPayment": false
       },
-      "note": "an exact retry resumes with the same AP2-6 key rather than becoming replay"
+      "note": "an exact retry resumes with the same AP2-6 key rather than becoming replay",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-same-tuple-settled-resumes-evidence",
@@ -813,7 +1361,31 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "settled"
+          "state": "settled",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          },
+          "settlement": {
+            "status": "captured",
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131"
+          }
         }
       ],
       "expected": "pass",
@@ -821,7 +1393,217 @@
         "action": "resume-settlement",
         "submitNewPayment": false
       },
-      "note": "a settled retry reuses the existing provider result and never counts twice"
+      "note": "a settled retry reuses the existing provider result and never counts twice",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "name": "ap2-recovery-pending-without-reference-resubmits-same-key",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "recovery-pending",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
+        }
+      ],
+      "expected": "pass",
+      "want": {
+        "action": "resubmit-same-key",
+        "submitNewPayment": false
+      },
+      "note": "lost response recovery retains one operation and its exact AP2-6 key",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "name": "ap2-recovery-pending-with-reference-reconciles",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "recovery-pending",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          },
+          "providerRecoveryReference": "provider-payment-123"
+        }
+      ],
+      "expected": "pass",
+      "want": {
+        "action": "reconcile-reference",
+        "submitNewPayment": false
+      },
+      "note": "a retained provider reference is checked before any same-key resubmission",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "name": "ap2-operation-payload-conflict-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "recovery-pending",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "7feadc01c5bdb5c0695dc42b2ed2f020df61cd8e845d958e08080d26981f546f",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "amount": "different-operation"
+          }
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "same transaction and tuple cannot replace the immutable operation payload",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+    },
+    {
+      "name": "ap2-idempotency-key-continuity-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "recovery-pending",
+          "idempotencyKey": "0000000000000000000000000000000000000000000000000000000000000000",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a stored key inconsistent with the reserved tuple fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-cross-job-replay-rejects",
@@ -834,7 +1616,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "fail",
@@ -842,7 +1643,19 @@
         "action": "reject-replay",
         "submitNewPayment": false
       },
-      "note": "one checkout transaction cannot authorize a different DACS session"
+      "note": "one checkout transaction cannot authorize a different DACS session",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+        }
+      }
     },
     {
       "name": "ap2-cross-phase-replay-rejects",
@@ -855,7 +1668,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "fail",
@@ -863,7 +1695,19 @@
         "action": "reject-replay",
         "submitNewPayment": false
       },
-      "note": "one checkout transaction cannot settle two repeated phases in a session"
+      "note": "one checkout transaction cannot settle two repeated phases in a session",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-conflicting-stored-bindings-error",
@@ -876,13 +1720,51 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         },
         {
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "e255e8c5eacfbeadbefbeee884bad22bf2164894a890bb9a7ceb934d99062f3b",
+          "operationFingerprint": "f82c3d40b9bfa34ac7b7f21770635b8a0071c5a6b648e92c53583f070eaf90ad",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -890,7 +1772,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a corrupt or racy binding store fails closed instead of selecting a winner"
+      "note": "a corrupt or racy binding store fails closed instead of selecting a winner",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-null-binding-store-errors",
@@ -904,7 +1798,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a null authoritative store snapshot fails closed"
+      "note": "a null authoritative store snapshot fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-scalar-binding-store-errors",
@@ -918,7 +1824,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a scalar authoritative store snapshot fails closed"
+      "note": "a scalar authoritative store snapshot fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-null-binding-entry-errors",
@@ -934,7 +1852,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a null store member fails closed rather than raising"
+      "note": "a null store member fails closed rather than raising",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-scalar-binding-entry-errors",
@@ -950,7 +1880,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a scalar store member fails closed rather than raising"
+      "note": "a scalar store member fails closed rather than raising",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-partial-binding-entry-errors",
@@ -970,7 +1912,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a partial store member fails the closed decision shape"
+      "note": "a partial store member fails the closed decision shape",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-wrong-type-transaction-id-entry-errors",
@@ -983,7 +1937,26 @@
           "transactionId": 1,
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -991,7 +1964,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a non-string stored transactionId fails closed"
+      "note": "a non-string stored transactionId fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-wrong-type-job-id-entry-errors",
@@ -1004,7 +1989,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": 1,
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -1012,7 +2016,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a non-string stored jobId fails closed"
+      "note": "a non-string stored jobId fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-wrong-type-phase-index-entry-errors",
@@ -1025,7 +2041,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": "3",
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -1033,7 +2068,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a non-integer stored phaseIndex fails closed"
+      "note": "a non-integer stored phaseIndex fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-wrong-type-state-entry-errors",
@@ -1046,7 +2093,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": 1
+          "state": 1,
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -1054,7 +2120,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "a non-string stored state fails closed"
+      "note": "a non-string stored state fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-unknown-state-entry-errors",
@@ -1067,7 +2145,26 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "pending"
+          "state": "pending",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -1075,7 +2172,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "an unknown stored state fails closed"
+      "note": "an unknown stored state fails closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-extra-field-binding-entry-errors",
@@ -1089,6 +2198,25 @@
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
           "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          },
           "trusted": true
         }
       ],
@@ -1097,7 +2225,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "an open-shaped store member cannot add a caller-controlled decision field"
+      "note": "an open-shaped store member cannot add a caller-controlled decision field",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-duplicate-stored-bindings-error",
@@ -1110,13 +2250,51 @@
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         },
         {
           "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
           "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
           "phaseIndex": 3,
-          "state": "in-flight"
+          "state": "in-flight",
+          "idempotencyKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97",
+          "operationFingerprint": "66c368a16be473bb60f0c696b5168411894bc45c928099fc8b8fc0d52eb66131",
+          "operationPayload": {
+            "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "phaseIndex": 3,
+            "providerRequest": {
+              "providerEndpoint": "https://provider.example.invalid/payments",
+              "paymentMandate": "fixture-payment-mandate-v1",
+              "checkoutId": "checkout-123",
+              "payee": "merchant-fixture",
+              "amount": "10.00",
+              "currency": "USD",
+              "instrument": "fixture-instrument-1",
+              "metadata": {
+                "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+              }
+            }
+          }
         }
       ],
       "expected": "error",
@@ -1124,7 +2302,19 @@
         "action": "refuse-conflict",
         "submitNewPayment": false
       },
-      "note": "even byte-identical duplicate store entries fail closed"
+      "note": "even byte-identical duplicate store entries fail closed",
+      "providerRequest": {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {
+          "dacs_job_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
     },
     {
       "name": "ap2-checkout-randomized-signature-pass",

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
@@ -85,6 +86,11 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         out.write_text(json.dumps(data), encoding="utf-8")
         return out
 
+    def _write_text(self, data):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
+        out.write_text(data, encoding="utf-8")
+        return out
+
     def _pair(self, gen, mutate_interim=None, mutate_resolved=None,
               interim_seed=None, resolved_seed=None, mutate_interim_signed=None,
               mutate_resolved_signed=None):
@@ -149,6 +155,38 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         data["settlementEvidence"]["signature"]["value"] = alt      # same bytes, non-canonical spelling
         errors = ver.validate_pair(i, self._write(data))
         self.assertTrue(any("SIG-6" in e for e in errors), errors)
+
+    def test_htlc9_expected_orchestrator_authority_is_load_bearing(self):
+        _, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        self.assertIsNone(ver.verify_signature(interim))
+        reason = ver.verify_signature(
+            interim, "cci:" + "00" * 32
+        )
+        self.assertIn("independently expected phase orchestrator", reason)
+
+    def test_htlc9_json_parser_rejects_duplicate_members_recursively(self):
+        _, ver = self._load_pack_modules()
+        for document in (
+            '{"member":1,"member":2}',
+            '{"outer":{"member":1,"member":2}}',
+            '[{"member":1,"member":2}]',
+        ):
+            with self.subTest(document=document), self.assertRaises(
+                ver.DuplicateJsonMember
+            ):
+                ver.strict_json_loads(document)
+
+        duplicate_fixture = self._write_text(
+            '{"kind":"SettlementEvidenceCase","kind":"duplicate"}'
+        )
+        with mock.patch.object(
+            ver, "verify_signature", wraps=ver.verify_signature
+        ) as verify:
+            evidence, errors = ver.load_case(duplicate_fixture)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("duplicate JSON member" in error for error in errors))
+        verify.assert_not_called()
 
     def test_htlc9_structural_guards_are_load_bearing_under_resigned_rebound_mutation(self):
         gen, ver = self._load_pack_modules()

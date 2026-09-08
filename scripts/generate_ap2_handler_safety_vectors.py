@@ -27,7 +27,8 @@ JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 
 def canonical_json(value: object) -> bytes:
     return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
 
 
@@ -105,13 +106,63 @@ def key_case(name: str, job_id: object, phase_index: object, expected: str,
     return case
 
 
-def binding(transaction_id: str, job_id: str, phase_index: int, state: str) -> dict[str, object]:
+def fixture_provider_request(job_id):
+    """Deterministic local provider request; never used as a consumer fallback."""
+    return {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {"dacs_job_id": job_id},
+    }
+
+
+def operation_payload(transaction_id, job_id, phase_index, provider_request):
+    """Bind the complete effect-bearing provider request, including metadata."""
     return {
         "transactionId": transaction_id,
         "jobId": job_id,
         "phaseIndex": phase_index,
-        "state": state,
+        "providerRequest": provider_request,
     }
+
+
+def operation_fingerprint(payload: object) -> str:
+    return hashlib.sha256(canonical_json(payload)).hexdigest()
+
+
+def binding(
+    transaction_id: str,
+    job_id: str,
+    phase_index: int,
+    state: str,
+    *,
+    provider_recovery_reference: str | None = None,
+    settlement: dict[str, object] | None = None,
+    payload: dict[str, object] | None = None,
+    idempotency_key: str | None = None,
+    fingerprint: str | None = None,
+) -> dict[str, object]:
+    exact_payload = operation_payload(transaction_id, job_id, phase_index, fixture_provider_request(job_id)) if payload is None else payload
+    result: dict[str, object] = {
+        "transactionId": transaction_id,
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "state": state,
+        "idempotencyKey": derive_key(job_id, phase_index) if idempotency_key is None else idempotency_key,
+        "operationFingerprint": operation_fingerprint(exact_payload) if fingerprint is None else fingerprint,
+        "operationPayload": exact_payload,
+    }
+    if provider_recovery_reference is not None:
+        result["providerRecoveryReference"] = provider_recovery_reference
+    if state == "settled" and settlement is None:
+        settlement = {"status": "captured", "transactionId": transaction_id, "operationFingerprint": operation_fingerprint(exact_payload)}
+    if settlement is not None:
+        result["settlement"] = settlement
+    return result
 
 
 def admission_want(
@@ -120,14 +171,20 @@ def admission_want(
     resolver_calls: int = 0,
     metadata_calls: int = 0,
     binding_store_calls: int = 0,
+    provider_status_calls: int = 0,
+    provider_request_calls: int | None = None,
     binding_action: str | None = None,
     reserve: bool = False,
     submit: bool = False,
+    submit_new: bool | None = None,
+    idempotency_key: str | None = None,
     derived_transaction_id: object = MISSING,
 ) -> dict[str, object]:
     operation_order: list[str] = []
     if binding_store_calls:
         operation_order.append("atomicBindingStoreDecision")
+    if provider_status_calls:
+        operation_order.append("fetchProviderStatus")
     if metadata_calls:
         operation_order.append("constructProviderMetadata")
     if submit:
@@ -137,10 +194,16 @@ def admission_want(
         "resolverCalls": resolver_calls,
         "metadataCalls": metadata_calls,
         "bindingStoreCalls": binding_store_calls,
+        "providerStatusCalls": provider_status_calls,
+        "providerRequestCalls": (
+            int(submit) if provider_request_calls is None else provider_request_calls
+        ),
         "bindingAction": binding_action,
         "operationOrder": operation_order,
         "reserveAp2Binding": reserve,
         "submitProviderPayment": submit,
+        "submitNewPayment": submit if submit_new is None else submit_new,
+        "idempotencyKeys": [idempotency_key] if idempotency_key is not None else [],
     }
     if derived_transaction_id is not MISSING:
         want["derivedTransactionId"] = derived_transaction_id
@@ -254,6 +317,7 @@ def vectors() -> list[dict[str, object]]:
                 binding_action="bind-new",
                 reserve=True,
                 submit=True,
+                idempotency_key=derive_key(job_a, 3),
                 derived_transaction_id=tx,
             ),
             "note": (
@@ -293,6 +357,64 @@ def vectors() -> list[dict[str, object]]:
             "note": (
                 "the composed handler resolves a settled exact-tuple retry without "
                 "metadata construction or another provider payment"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-recovery-lost-response-resubmits-same-key",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "an ambiguous lost response is retried with the retained exact operation "
+                "and AP2-6 key, without a new payment authorization"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-recovery-reference-reconciles-captured",
+            "caseClass": "positive",
+            "expected": "pass",
+            "providerStatus": "captured",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                provider_status_calls=1,
+                binding_action="resume-settlement",
+                derived_transaction_id=tx,
+            ),
+            "note": "a retained provider reference reconciles captured status into reusable settlement",
+        },
+        {
+            **admission_common,
+            "name": "ap2-recovery-reference-not-captured-resubmits-same-key",
+            "caseClass": "boundary",
+            "expected": "pass",
+            "providerStatus": "not-captured",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                provider_status_calls=1,
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "confirmed non-capture permits only a same-key same-operation provider "
+                "request, never a distinct payment authorization"
             ),
         },
         {
@@ -553,6 +675,63 @@ def vectors() -> list[dict[str, object]]:
             "note": "a settled retry reuses the existing provider result and never counts twice",
         },
         {
+            "name": "ap2-recovery-pending-without-reference-resubmits-same-key",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "recovery-pending")],
+            "expected": "pass",
+            "want": {"action": "resubmit-same-key", "submitNewPayment": False},
+            "note": "lost response recovery retains one operation and its exact AP2-6 key",
+        },
+        {
+            "name": "ap2-recovery-pending-with-reference-reconciles",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(
+                tx, job_a, 3, "recovery-pending",
+                provider_recovery_reference="provider-payment-123",
+            )],
+            "expected": "pass",
+            "want": {"action": "reconcile-reference", "submitNewPayment": False},
+            "note": "a retained provider reference is checked before any same-key resubmission",
+        },
+        {
+            "name": "ap2-operation-payload-conflict-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(
+                tx, job_a, 3, "recovery-pending",
+                payload={
+                    "transactionId": tx,
+                    "jobId": job_a,
+                    "phaseIndex": 3,
+                    "amount": "different-operation",
+                },
+            )],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "same transaction and tuple cannot replace the immutable operation payload",
+        },
+        {
+            "name": "ap2-idempotency-key-continuity-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(
+                tx, job_a, 3, "recovery-pending", idempotency_key="0" * 64
+            )],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a stored key inconsistent with the reserved tuple fails closed",
+        },
+        {
             "name": "ap2-cross-job-replay-rejects",
             "op": "transaction-binding",
             "transactionId": tx,
@@ -792,6 +971,9 @@ def vectors() -> list[dict[str, object]]:
 
 def render() -> str:
     cases = vectors()
+    for case in cases:
+        if case["op"] in {"checkout-payment-admission", "transaction-binding"}:
+            case["providerRequest"] = fixture_provider_request(case["jobId"])
     document = {
         "set": "ap2-handler-safety-v0.6",
         "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",

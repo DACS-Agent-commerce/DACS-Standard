@@ -37,7 +37,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
-| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 59 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -122,7 +122,7 @@ python3 -m unittest tests.test_canonical_json_vectors -v
 
 ### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 
-40 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
+66 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
 in DACS-4 v0.6. They pin provider idempotency-key bytes, NFC handling,
 job/phase separation, malformed phase refusal, exact compact-JWS transaction-ID
 derivation, CheckoutMandate `_sd_alg` selection and SHA-256 fallback, signature-
@@ -131,17 +131,22 @@ composed admission cases require separate verified CheckoutMandate and
 PaymentMandate artifacts, enforce the DACS signature profile, and reject a
 transaction-ID mismatch before AP2-7 reservation or provider submission. They
 also require verifier-owned corrective-profile context bound to the exact
-session and authenticated peer identity, JID-1, and a valid phase index before
+session and authenticated peer identity, validate every member of the closed
+participant context before selection, and apply JID-1 plus a valid phase index before
 hashing, resolution, metadata construction, reservation, or provider
 submission. Missing, duplicate, identity-mismatched, session-mismatched,
 unauthenticated, and caller-copied profile authorities all fail closed.
 
-The same set executes first-use binding, exact-tuple retry/resume, cross-job and
-cross-phase replay refusal, and fail-closed conflicting-store handling. An exact
-retry never submits or counts a second payment. Provider capability, mandate
+The same set executes first-use binding, immutable operation payload/fingerprint
+and exact AP2-6 key continuity, reference-first status reconciliation,
+lost-response same-key resubmission, settlement reuse, cross-job/cross-phase
+replay refusal, and fail-closed malformed/conflicting-store handling. A recovery
+may issue a provider request, but it carries the retained key and operation with
+`submitNewPayment: false`; it never creates or counts a second payment. Provider capability, mandate
 cryptographic verification, and checkout signature generation remain modeled
 inputs: the cases do not claim to introspect a live provider credential, replace
-AP2 signature verification, or prove a signer's nonce-generation implementation.
+AP2 signature verification, prove a signer's nonce-generation implementation,
+or establish crash-safe production durability.
 Regenerate, verify, and execute with:
 
 ```sh
@@ -1152,3 +1157,6 @@ EVM row is cross-run-converged with `dacs-verify` (#159); agreement-listing and
 vp-replay await a second independent impl to cross-run against.
 `feeschedule-reconciliation` was authored on RB's request (#186) covering §8.5.3
 FS-1..FS-5 + §9.7.2 FR-1..FR-4; awaiting a second independent impl to cross-run against.
+
+
+The current AP2 candidate retains the complete effect-bearing provider request, including mandate, checkout, payee, amount/currency, instrument, destination and metadata, under its operation fingerprint. Same-key recovery dispatches that retained request and refuses changed semantics before provider interaction. Captured recovery must match the operation fingerprint, transaction and retained provider reference. These are local fake-provider controls; mandate cryptographic verification and authenticated status-fetch semantics remain modeled inputs. The entire trusted participant map requires unique identities.

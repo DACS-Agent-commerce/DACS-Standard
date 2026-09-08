@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import re
@@ -6,6 +7,9 @@ import sys
 import unicodedata
 import unittest
 from pathlib import Path
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +51,14 @@ AUTHORITATIVE_MODULE_VERSIONS = DACS5_REFERENCE.AUTHORITATIVE_MODULE_VERSIONS
 AUTHORITATIVE_LOCAL_PROFILE = DACS5_REFERENCE.AUTHORITATIVE_LOCAL_PROFILE
 CURRENT_SESSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 CURRENT_PEER_IDENTITY = "did:demos:agent:" + "22" * 32
+CURRENT_PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(b"\x23" * 32)
+CURRENT_PUBLIC_KEY = CURRENT_PRIVATE_KEY.public_key().public_bytes(
+    serialization.Encoding.Raw,
+    serialization.PublicFormat.Raw,
+)
+CURRENT_KEY_AUTHORITY = DACS5_REFERENCE.trusted_verification_keys({
+    CURRENT_PEER_IDENTITY: CURRENT_PUBLIC_KEY,
+})
 
 
 def trusted_profile_context(
@@ -57,6 +69,7 @@ def trusted_profile_context(
     profile=AUTHORITATIVE_LOCAL_PROFILE,
     authenticated=True,
     duplicate=False,
+    role="buyer",
 ):
     return DACS5_REFERENCE.trusted_profile_context(
         session_id,
@@ -65,6 +78,7 @@ def trusted_profile_context(
         profile=profile,
         authenticated=authenticated,
         duplicate=duplicate,
+        role=role,
     )
 
 
@@ -152,9 +166,10 @@ def admit_authenticated_profile(vector, trusted_context):
     peer_identity = vector.get("peerIdentity")
     if not isinstance(session_id, str) or not isinstance(peer_identity, str):
         raise ValueError("profile-admission")
-    if not DACS5_REFERENCE.admits_current_profile(
-        session_id, peer_identity, trusted_context
-    ):
+    authoritative_participant = DACS5_REFERENCE.resolve_current_profile(
+        session_id, "buyer", trusted_context
+    )
+    if authoritative_participant is None or authoritative_participant != peer_identity:
         raise ValueError("profile-admission")
 
 
@@ -276,11 +291,16 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             ),
             "nativeAddress": "stor-native-legacy",
             "bundleContentHash": "aa" * 32,
-            "signature": {
-                "signer": "did:demos:agent:" + "22" * 32,
-                "algorithm": "ed25519",
-                "value": "fixture-only",
-            },
+        }
+        binding["signature"] = {
+            "signer": CURRENT_PEER_IDENTITY,
+            "algorithm": "ed25519",
+            "value": base64.urlsafe_b64encode(CURRENT_PRIVATE_KEY.sign(
+                (
+                    DACS5_REFERENCE.BINDING_DOMAIN
+                    + DACS5_REFERENCE.binding_hash(binding)
+                ).encode("utf-8")
+            )).rstrip(b"=").decode("ascii"),
         }
         current = DACS5_REFERENCE.verify_binding(
             binding,
@@ -293,11 +313,11 @@ class JobIdGrammarVectorTests(unittest.TestCase):
 
         admitted = DACS5_REFERENCE.verify_binding(
             binding,
-            None,
+            CURRENT_KEY_AUTHORITY,
             expected_jobid=legacy_job,
             expected_role="seller",
             participant_identity=CURRENT_PEER_IDENTITY,
-            trusted_contexts=trusted_profile_context(),
+            trusted_contexts=trusted_profile_context(role="seller"),
         )
         self.assertTrue(admitted["ok"])
 
@@ -328,11 +348,11 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             "attacker-selected-address",
             "seller",
             "aa" * 32,
-            None,
+            CURRENT_KEY_AUTHORITY,
             expected_jobid="not-a-current-job",
             pure_mapping_resolver=permissive_resolver,
             trusted_contexts=trusted_profile_context(
-                session_id="not-a-current-job"
+                session_id="not-a-current-job", role="seller"
             ),
         )
         self.assertFalse(address_ok)

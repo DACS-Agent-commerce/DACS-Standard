@@ -116,6 +116,54 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("both signatures verified", result.stdout)
 
+    def test_htlc9_pair_uses_independently_expected_phase_orchestrator(self):
+        gen, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))[
+            "settlementEvidence"
+        ]
+        resolved = json.loads(RESOLVED.read_text(encoding="utf-8"))[
+            "settlementEvidence"
+        ]
+        self.assertEqual(
+            ver.EXPECTED_PHASE_ORCHESTRATOR,
+            interim["signature"]["signer"],
+        )
+        self.assertEqual(
+            ver.EXPECTED_PHASE_ORCHESTRATOR,
+            resolved["signature"]["signer"],
+        )
+        self.assertTrue(gen.ORCHESTRATOR_SIGNER.startswith("key:"))
+        errors = ver.validate_pair(
+            INTERIM,
+            RESOLVED,
+            expected_phase_orchestrator="key:" + "11" * 32,
+        )
+        self.assertEqual(2, sum("expected phase orchestrator" in e for e in errors))
+
+    def test_optional_supersedes_signer_binds_expected_interim_authority(self):
+        gen, ver = self._load_pack_modules()
+        valid_i, valid_r = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence[
+                "supersedesEvidenceRef"
+            ].__setitem__("signer", ver.EXPECTED_PHASE_ORCHESTRATOR),
+        )
+        self.assertEqual([], ver.validate_pair(valid_i, valid_r))
+
+        invalid_i, invalid_r = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence[
+                "supersedesEvidenceRef"
+            ].__setitem__("signer", "key:" + "11" * 32),
+        )
+        errors = ver.validate_pair(invalid_i, invalid_r)
+        self.assertTrue(any("expected phase orchestrator" in e for e in errors))
+
+    def test_htlc9_non_object_root_is_rejected_without_throwing(self):
+        _, ver = self._load_pack_modules()
+        errors = ver.validate_pair(self._write([]), RESOLVED)
+        self.assertTrue(any("root MUST be an object" in error for error in errors))
+
     def test_htlc9_resolved_record_binds_the_interim_content_hash(self):
         gen, ver = self._load_pack_modules()
         interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
@@ -202,7 +250,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         # the named guard fires without relying on signature, SIG-6, or content-hash
         # backstops.
         new_cases = [
-            ("cross-signer phase pair", {"resolved_seed": bytes.fromhex("42" * 32)}, "signer continuity"),
+            ("cross-signer phase pair", {"resolved_seed": bytes.fromhex("42" * 32)}, "expected phase orchestrator"),
             ("interim observedAt equals finalityObservedAt", {"mutate_interim": lambda e: e.__setitem__("observedAt", 1760000290000)}, "interim.observedAt MUST be less"),
             ("finalityObservedAt after resolved observedAt", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityObservedAt", 1760000300001)}, "less than or equal to resolved.observedAt"),
             ("claim reuses lock transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "claim.claimTxHash MUST differ"),
@@ -215,8 +263,8 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             ("htlc-reveal finality carries finalityBlocks", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityBlocks", 1)}, "SettlementFinalityRecord"),
             ("htlc-reveal finality carries finalityCommitmentLevel", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityCommitmentLevel", "final")}, "SettlementFinalityRecord"),
             ("PriceTerm has an unknown field", {"mutate_resolved": lambda e: e["paymentAmount"].__setitem__("asset", "USDC")}, "PriceTerm fields MUST be exactly"),
-            ("AttestationRef signer is empty", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "")}, "non-empty ClaimReference"),
-            ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "scheme:identifier"),
+            ("AttestationRef signer is empty", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "")}, "canonical registered ClaimReference"),
+            ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "canonical registered ClaimReference"),
             ("AttestationRef signer scheme has uppercase", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "Cci:deadbeef")}, "DACS-1 §6.3.1"),
             ("AttestationRef signer scheme has plus", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "cci+x:deadbeef")}, "DACS-1 §6.3.1"),
         ]

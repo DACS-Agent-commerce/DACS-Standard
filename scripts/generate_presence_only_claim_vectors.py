@@ -58,11 +58,13 @@ SECOND_PRESENTER = private_key("dacs-334-second-presenter")
 AUTHORITY = private_key("dacs-334-authority")
 UNAUTHORIZED_AUTHORITY = private_key("dacs-334-unauthorized-authority")
 VERIFIER = private_key("dacs-334-verifier")
+ORCHESTRATOR = private_key("dacs-362-orchestrator")
 PRESENTER_REF = f"key:{public_hex(PRESENTER)}"
 SECOND_REF = f"key:{public_hex(SECOND_PRESENTER)}"
 AUTHORITY_REF = f"key:{public_hex(AUTHORITY)}"
 UNAUTHORIZED_AUTHORITY_REF = f"key:{public_hex(UNAUTHORIZED_AUTHORITY)}"
 VERIFIER_REF = f"key:{public_hex(VERIFIER)}"
+ORCHESTRATOR_REF = f"key:{public_hex(ORCHESTRATOR)}"
 LEI_REF = "lei:5493001KJTIIGC8Y1R12"
 DID_REF = "did:example:presence-vector"
 
@@ -116,8 +118,10 @@ def verify_result(
     decision: str,
     *,
     verified_at: int = NOW - 10_000,
-    valid_until: int | None = NOW + 3_600_000,
+    valid_until: object = NOW + 3_600_000,
     recipe_version: int = 1,
+    method: str = "self-signed",
+    data: dict | None = None,
     signer_key: Ed25519PrivateKey = AUTHORITY,
     signer_ref: str = AUTHORITY_REF,
 ) -> dict:
@@ -127,7 +131,7 @@ def verify_result(
         "scheme": scheme,
         "identifier": identifier,
         "recipeVersion": recipe_version,
-        "method": "self-signed",
+        "method": method,
         "decision": decision,
         "reason": f"deterministic {decision} vector",
         "attestation": {
@@ -138,13 +142,15 @@ def verify_result(
             "contentHash": hashlib.sha256(
                 f"attestation:{ref}:{decision}:{verified_at}".encode("utf-8")
             ).hexdigest(),
-            "signer": AUTHORITY_REF,
+            "signer": signer_ref,
         },
         "fetchedAt": verified_at - 1_000,
         "verifiedAt": verified_at,
     }
     if valid_until is not None:
         unsigned["validUntil"] = valid_until
+    if data is not None:
+        unsigned["data"] = copy.deepcopy(data)
     return sign_component(unsigned, signer_key, signer_ref, VERIFY_RESULT_DOMAIN)
 
 
@@ -188,10 +194,12 @@ def verified(scheme: str, **fields: object) -> dict:
 def signed_composite(
     bundle: dict,
     req: dict,
+    freshness: list[dict],
     refs: list[dict],
     overall: str,
     *,
     job_id: str,
+    generated_at: int = NOW,
 ) -> dict:
     unsigned_bundle = {key: value for key, value in bundle.items() if key != "presentation"}
     unsigned = {
@@ -200,11 +208,11 @@ def signed_composite(
         "evaluatedParty": bundle["presentedBy"],
         "bundleHash": hash_hex(unsigned_bundle),
         "requirementHash": hash_hex(req),
-        "freshness": [],
+        "freshness": copy.deepcopy(freshness),
         "supplementary": [],
         "dealSpecific": copy.deepcopy(refs),
         "overallDecision": overall,
-        "generatedAt": NOW,
+        "generatedAt": generated_at,
     }
     return sign_component(unsigned, VERIFIER, VERIFIER_REF, COMPOSITE_DOMAIN)
 
@@ -215,24 +223,39 @@ def case(
     bundle: dict,
     req: dict,
     *,
+    freshness: list[dict] | None = None,
     refs: list[dict] | None = None,
     resolved: list[tuple[dict, dict]] | None = None,
     overall: str | None = None,
+    generated_at: int = NOW,
     note: str,
 ) -> dict:
+    bundle = copy.deepcopy(bundle)
+    nonce = hashlib.sha256(f"dacs-362:{name}:nonce".encode("utf-8")).hexdigest()[:32]
+    bundle["sessionNonce"] = nonce
+    resign_bundle(bundle)
+    freshness = freshness or []
     refs = refs or []
+    job_id = deterministic_ulid(name)
     record = signed_composite(
         bundle,
         req,
+        freshness,
         refs,
         overall or (expected if expected in {"pass", "fail", "indeterminate", "error"} else "error"),
-        job_id=f"pcr-{name}",
+        job_id=job_id,
+        generated_at=generated_at,
     )
     return {
         "name": name,
         "expected": expected,
         "note": note,
         "evaluatedAt": NOW,
+        "authority": {
+            "kind": "vet-invocation",
+            "invocation": name,
+            "nonce": nonce,
+        },
         "registryAvailable": True,
         "registryAuthenticated": True,
         "bundleAvailable": True,
@@ -244,6 +267,21 @@ def case(
             for ref, artifact in (resolved or [])
         ],
     }
+
+
+ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+
+def deterministic_ulid(label: str) -> str:
+    value = int.from_bytes(
+        hashlib.sha256(f"dacs-362:{label}:job".encode("utf-8")).digest()[:16],
+        "big",
+    )
+    chars = []
+    for _ in range(26):
+        chars.append(ULID_ALPHABET[value & 31])
+        value >>= 5
+    return "".join(reversed(chars))
 
 
 def resign_bundle(bundle: dict, key: Ed25519PrivateKey = PRESENTER,
@@ -312,7 +350,6 @@ def build_vectors() -> list[dict]:
         "pass",
         signed_bundle([claim(PRESENTER_REF, verifiedBy=failing_ref)]),
         requirement([presence("key")]),
-        resolved=[(failing_ref, failing_vr)],
         note="PCR-3 does not resolve or promote an optional failing result for presence",
     ))
 
@@ -326,7 +363,6 @@ def build_vectors() -> list[dict]:
         "pass",
         signed_bundle([claim(PRESENTER_REF, verifiedBy=stale_ref)]),
         requirement([presence("key")]),
-        resolved=[(stale_ref, stale_vr)],
         note="PCR-3 skips verification freshness for a presence-only decision",
     ))
 
@@ -455,6 +491,158 @@ def build_vectors() -> list[dict]:
         resolved=[(did_result_ref, did_vr)],
         note="PCR-6 composes direct bundle presence with ordinary VerifyResult evidence",
     ))
+
+    key_vr = verify_result(PRESENTER_REF, "pass")
+    key_result_ref = result_ref(key_vr, "key-pass-freshness")
+    vectors.append(case(
+        "complete-ordered-freshness-then-deal-specific-results",
+        "pass",
+        signed_bundle([
+            claim(PRESENTER_REF, verifiedBy=key_result_ref),
+            claim(DID_REF, verifiedBy=did_result_ref),
+        ]),
+        requirement([verified("key"), verified("did")]),
+        freshness=[key_result_ref],
+        refs=[did_result_ref],
+        resolved=[(key_result_ref, key_vr), (did_result_ref, did_vr)],
+        note=(
+            "CRQ-1 binds the complete ordered freshness plus dealSpecific "
+            "reference projection before artifact authentication"
+        ),
+    ))
+
+    parameter_vr = verify_result(
+        DID_REF,
+        "pass",
+        data={"jurisdiction": "GB", "status": "active", "extra": "retained"},
+    )
+    parameter_ref = result_ref(parameter_vr, "did-authenticated-parameters")
+    vectors.append(case(
+        "verified-parameters-use-authenticated-result-data",
+        "pass",
+        signed_bundle([
+            base_key,
+            claim(
+                DID_REF,
+                metadata={"jurisdiction": "US"},
+                verifiedBy=parameter_ref,
+            ),
+        ]),
+        requirement([
+            verified("did", parameters={"jurisdiction": "GB"})
+        ]),
+        refs=[parameter_ref],
+        resolved=[(parameter_ref, parameter_vr)],
+        note=(
+            "Verified predicates use authenticated VerifyResult.data and allow "
+            "additional data instead of trusting same-scheme bundle metadata"
+        ),
+    ))
+    vectors.append(case(
+        "verified-parameters-ignore-matching-bundle-metadata",
+        "fail",
+        signed_bundle([
+            base_key,
+            claim(
+                DID_REF,
+                metadata={"jurisdiction": "US"},
+                verifiedBy=parameter_ref,
+            ),
+        ]),
+        requirement([
+            verified("did", parameters={"jurisdiction": "US"})
+        ]),
+        refs=[parameter_ref],
+        resolved=[(parameter_ref, parameter_vr)],
+        note=(
+            "A same-scheme claim's metadata cannot satisfy a verified predicate "
+            "that the authenticated result data does not satisfy"
+        ),
+    ))
+    vectors.append(case(
+        "one-authenticated-result-may-satisfy-multiple-predicates",
+        "pass",
+        signed_bundle([
+            base_key, claim(DID_REF, verifiedBy=parameter_ref),
+        ]),
+        requirement([
+            verified("did", parameters={"jurisdiction": "GB"}),
+            verified("did", parameters={"status": "active"}),
+        ]),
+        refs=[parameter_ref],
+        resolved=[(parameter_ref, parameter_vr)],
+        note=(
+            "One authenticated result can qualify multiple requirements when "
+            "its data genuinely satisfies each predicate"
+        ),
+    ))
+
+    malformed_time_vr = verify_result(DID_REF, "pass", valid_until=[])
+    malformed_time_ref = result_ref(malformed_time_vr, "invalid-valid-until")
+    vectors.append(case(
+        "verify-result-valid-until-container-is-error",
+        "error",
+        signed_bundle([
+            base_key, claim(DID_REF, verifiedBy=malformed_time_ref),
+        ]),
+        requirement([verified("did")]),
+        refs=[malformed_time_ref],
+        resolved=[(malformed_time_ref, malformed_time_vr)],
+        overall="pass",
+        note="A non-integer validUntil is rejected without a comparison exception",
+    ))
+
+    historical_vr = verify_result(
+        DID_REF,
+        "pass",
+        verified_at=NOW - 20_000,
+        valid_until=NOW - 500,
+        data={"status": "active"},
+    )
+    historical_ref = result_ref(historical_vr, "historical-pass")
+    historical = case(
+        "signed-generated-at-reconstructs-historical-decision",
+        "pass",
+        signed_bundle([
+            base_key, claim(DID_REF, verifiedBy=historical_ref),
+        ]),
+        requirement([
+            verified("did", parameters={"status": "active"})
+        ]),
+        refs=[historical_ref],
+        resolved=[(historical_ref, historical_vr)],
+        generated_at=NOW - 1_000,
+        note=(
+            "The signed generatedAt reconstructs the original pass even though "
+            "trusted current time no longer permits VP-C1 reuse"
+        ),
+    )
+    historical["evaluatedAt"] = 0
+    vectors.append(historical)
+
+    reusable_vr = verify_result(
+        DID_REF,
+        "pass",
+        data={"status": "active", "jurisdiction": "GB"},
+    )
+    reusable_ref = result_ref(reusable_vr, "cross-session-reusable")
+    for suffix in ("first", "second"):
+        vectors.append(case(
+            f"cross-session-pass-reuse-{suffix}",
+            "pass",
+            signed_bundle([
+                base_key, claim(DID_REF, verifiedBy=reusable_ref),
+            ]),
+            requirement([
+                verified("did", parameters={"status": "active"})
+            ]),
+            refs=[reusable_ref],
+            resolved=[(reusable_ref, reusable_vr)],
+            note=(
+                "VP-C1..VP-C3 reuse keeps the VerifyResult session-agnostic while "
+                "the outer aggregate carries distinct job and nonce admission"
+            ),
+        ))
 
     unauthorized_did_vr = verify_result(
         DID_REF,
@@ -643,6 +831,7 @@ def build_vectors() -> list[dict]:
             [presence("lei"), verified("did")], selector="lei"
         ),
         refs=[unavailable_ref],
+        resolved=[(unavailable_ref, None)],
         overall="fail",
         note="Independent selector failure has global fail-first precedence over an indeterminate verified member",
     ))
@@ -651,7 +840,6 @@ def build_vectors() -> list[dict]:
         "pass",
         signed_bundle([claim(PRESENTER_REF, verifiedBy=stale_ref)]),
         requirement([presence("key")], selector="key"),
-        resolved=[(stale_ref, stale_vr)],
         note="The key presentation proves control while the stale result supplies no tier elevation",
     ))
 
@@ -685,6 +873,85 @@ def build_vectors() -> list[dict]:
     return vectors
 
 
+def trusted_context(vectors: list[dict]) -> dict:
+    invocations = {}
+    issuances = []
+    for index, vector in enumerate(vectors):
+        name = vector["name"]
+        record = vector["compositeRecord"]
+        authority = vector["authority"]
+        same_actor_roles = index == 0
+        challenge_id = f"pcr-{name}"
+        invocations[name] = {
+            "jobId": record["jobId"],
+            # Fixture setup models the orchestrator's retained phase input.
+            # The consumer never initializes this authority from an artifact.
+            "sessionContext": {"jobId": record["jobId"], "recipeRegistryVersion": 1},
+            "recipeRegistryVersion": 1,
+            "requirementHash": hash_hex(vector["requirement"]),
+            "bundleInputHash": hash_hex(vector["bundle"]),
+            "sessionState": "vet-pending",
+            "phaseKind": "vet-credentials",
+            "phaseIndex": 1,
+            "attempt": 1,
+            "actor": "buyer",
+            "evaluatedParty": record["evaluatedParty"],
+            "expectedVerifierRole": (
+                "orchestrator" if same_actor_roles else "counterparty"
+            ),
+            "expectedVerifier": VERIFIER_REF,
+            "phaseOrchestrator": (
+                VERIFIER_REF if same_actor_roles else ORCHESTRATOR_REF
+            ),
+            "challengeId": challenge_id,
+            "trustedNow": NOW,
+            "registryAvailable": vector["registryAvailable"],
+            "registryAuthenticated": vector["registryAuthenticated"],
+            "bundleAvailable": vector["bundleAvailable"],
+        }
+        issuances.append({
+            "challengeId": challenge_id,
+            "nonce": authority["nonce"],
+            "jobId": record["jobId"],
+            "actor": "buyer",
+            "evaluatedParty": record["evaluatedParty"],
+            "phaseIndex": 1,
+            "attempt": 1,
+            "expectedVerifier": VERIFIER_REF,
+            "issuedBy": VERIFIER_REF,
+            "issuedAt": NOW - 60_000,
+            "expiresAt": NOW + 60_000,
+        })
+    return {
+        "compositeSigner": VERIFIER_REF,
+        "recipeRegistryVersion": 1,
+        "authenticatedSessionStarts": {
+            record["jobId"]: {"jobId": record["jobId"], "recipeRegistryVersion": 1}
+            for record in (vector["compositeRecord"] for vector in vectors)
+        },
+        "verifyResultAuthorities": [
+            {
+                "scheme": "key",
+                "method": "self-signed",
+                "recipeVersion": 1,
+                "signer": AUTHORITY_REF,
+                "defaultMaxAgeSec": 3_600,
+                "availability": "live",
+            },
+            {
+                "scheme": "did",
+                "method": "self-signed",
+                "recipeVersion": 1,
+                "signer": AUTHORITY_REF,
+                "defaultMaxAgeSec": 3_600,
+                "availability": "live",
+            },
+        ],
+        "vetInvocations": invocations,
+        "nonceIssuances": issuances,
+    }
+
+
 def document() -> dict:
     vectors = build_vectors()
     return {
@@ -705,24 +972,9 @@ def document() -> dict:
             "authority": public_hex(AUTHORITY),
             "unauthorizedAuthority": public_hex(UNAUTHORIZED_AUTHORITY),
             "verifier": public_hex(VERIFIER),
+            "orchestrator": public_hex(ORCHESTRATOR),
         },
-        "trustedContext": {
-            "compositeSigner": VERIFIER_REF,
-            "verifyResultAuthorities": [
-                {
-                    "scheme": "key",
-                    "method": "self-signed",
-                    "recipeVersion": 1,
-                    "signer": AUTHORITY_REF,
-                },
-                {
-                    "scheme": "did",
-                    "method": "self-signed",
-                    "recipeVersion": 1,
-                    "signer": AUTHORITY_REF,
-                },
-            ],
-        },
+        "trustedContext": trusted_context(vectors),
         "count": len(vectors),
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),
         "vectors": vectors,

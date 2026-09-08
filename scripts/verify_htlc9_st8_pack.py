@@ -10,7 +10,8 @@ Two signed ``SettlementEvidence`` fixtures form one supersession pair:
 
 This verifier is executable, not a shape check: each record's Ed25519 signature
 is verified over ``"dacs-evidence:v1:" || sha256hex(JCS(record minus signature))``
-against the ``cci:<pubkey-hex>`` signer, and the supersession hash is recomputed.
+against an independently pinned ``key:<pubkey-hex>`` phase orchestrator, and
+the supersession hash is recomputed.
 No amendment of any kind is accepted — ST-8 resolution is a same-phase
 supersession, not a ``correction`` (DACS-4-SETTLE.md: "No ``correction``
 amendment is used").
@@ -34,6 +35,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jcs  # noqa: E402
+from dacs_reference import (  # noqa: E402
+    exact_safe_integer,
+    parse_claim_reference,
+)
 
 try:
     from cryptography.exceptions import InvalidSignature
@@ -46,6 +51,9 @@ DEFAULT_INTERIM = FIXTURE_DIR / "htlc9-asymmetric.json"
 DEFAULT_RESOLVED = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
 
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+EXPECTED_PHASE_ORCHESTRATOR = (
+    "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+)
 CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
 FORBIDDEN_KEYS = {"settlementAmendment", "amendmentType", "amendmentRefs", "amendsEvidenceRef", "refundAmount"}
 DELIVERY_ONLY_KEYS = {"deliverableContentHash", "deliverableAnchor", "attestationRef"}
@@ -81,11 +89,6 @@ TXREF_FIELDS = {
 }
 TX_HASH = re.compile(r"^0x[0-9a-f]{64}$")
 TXREF_HASH_FIELD = {"htlc-lock": "lockTxHash", "htlc-reveal": "revealTxHash", "htlc-claim": "claimTxHash"}
-CLAIM_REFERENCE = re.compile(
-    r"^[a-z][a-z0-9-]*:[^\s?]+(?:\?[^\s?&=]+=[^\s?&]*(?:&[^\s?&=]+=[^\s?&]*)*)?$"
-)
-
-
 def attestation_ref_errors(value: Any) -> list[str]:
     """DACS-2 §7.5.2 AttestationRef exact wire shape: {anchor:{kind,locator}, contentHash, signer?}."""
     if not isinstance(value, dict):
@@ -103,10 +106,14 @@ def attestation_ref_errors(value: Any) -> list[str]:
             errs.append("anchor.kind MUST be one of storage-program | ipfs | https (DACS-2 §7.5.2)")
         if not anchor["locator"].strip():
             errs.append("anchor.locator MUST be non-empty")
-    if "signer" in value and (not isinstance(value.get("signer"), str)
-                              or not CLAIM_REFERENCE.fullmatch(value["signer"])):
-        errs.append("signer, when present, MUST be a non-empty ClaimReference string "
-                    "(scheme:identifier with lowercase scheme and optional ?parameters; DACS-1 §6.3.1)")
+    if "signer" in value:
+        try:
+            parse_claim_reference(value.get("signer"))
+        except ValueError:
+            errs.append(
+                "signer, when present, MUST be a canonical registered "
+                "ClaimReference (DACS-1 §6.3.1 and CORE CF-2)"
+            )
     if not isinstance(value.get("contentHash"), str) or not HEX64.fullmatch(value["contentHash"]):
         errs.append("contentHash MUST be 64 lowercase hex (no prefix)")
     return errs
@@ -128,22 +135,25 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     if not isinstance(refs, list) or not refs:
         return [f"{path_label}: paymentTxRefs MUST be a non-empty list"]
     for i, ref in enumerate(refs):
-        if not isinstance(ref, dict) or ref.get("kind") not in TXREF_HASH_FIELD:
+        kind = ref.get("kind") if isinstance(ref, dict) else None
+        if not isinstance(kind, str) or kind not in TXREF_HASH_FIELD:
             errs.append(f"{path_label}: paymentTxRefs[{i}] MUST be an htlc-lock / htlc-reveal / htlc-claim txRef"); continue
-        extra = set(ref) - TXREF_FIELDS[ref["kind"]]
+        extra = set(ref) - TXREF_FIELDS[kind]
         if extra:
-            errs.append(f"{path_label}: {ref['kind']} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
-        field = TXREF_HASH_FIELD[ref["kind"]]
-        if not isinstance(ref.get("chainId"), int) or isinstance(ref.get("chainId"), bool) or ref["chainId"] <= 0:
-            errs.append(f"{path_label}: {ref['kind']} chainId MUST be a positive integer")
+            errs.append(f"{path_label}: {kind} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
+        field = TXREF_HASH_FIELD[kind]
+        if not exact_safe_integer(ref.get("chainId"), minimum=1):
+            errs.append(f"{path_label}: {kind} chainId MUST be a positive integer")
         if not isinstance(ref.get("contractAddress"), str) or not re.fullmatch(r"0x[0-9a-fA-F]{40}", ref["contractAddress"]):
-            errs.append(f"{path_label}: {ref['kind']} contractAddress MUST be a 0x-prefixed 20-byte hex address")
+            errs.append(f"{path_label}: {kind} contractAddress MUST be a 0x-prefixed 20-byte hex address")
         if not isinstance(ref.get(field), str) or not TX_HASH.fullmatch(ref[field]):
-            errs.append(f"{path_label}: {ref['kind']} MUST carry {field} as 0x-prefixed 32-byte hex")
+            errs.append(f"{path_label}: {kind} MUST carry {field} as 0x-prefixed 32-byte hex")
     return errs
 
 
-def verify_signature(record: dict) -> str | None:
+def verify_signature(
+    record: dict, expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR
+) -> str | None:
     """Return an error string, or None when the Ed25519 signature verifies."""
     sig = record.get("signature")
     if not isinstance(sig, dict):
@@ -152,18 +162,27 @@ def verify_signature(record: dict) -> str | None:
         return "ComponentSignature fields MUST be exactly algorithm, signer, value"
     if sig.get("algorithm") != "ed25519":
         return "signature.algorithm MUST be ed25519"
-    signer = sig.get("signer")
-    if not isinstance(signer, str) or not re.fullmatch(r"cci:[0-9a-f]{64}", signer):
-        return "signature.signer MUST be cci:<64 lowercase hex> (Ed25519 public key)"
+    try:
+        signer = parse_claim_reference(sig.get("signer"))
+        expected = parse_claim_reference(expected_phase_orchestrator)
+    except ValueError:
+        return (
+            "signature.signer and expected phase orchestrator MUST be "
+            "canonical registered ClaimReferences"
+        )
+    if signer.scheme != "key" or expected.scheme != "key":
+        return "signature.signer MUST be key:<64 lowercase hex> (Ed25519 public key)"
+    if signer.canonical != expected.canonical:
+        return "signature.signer MUST match the independently expected phase orchestrator"
     value = sig.get("value")
     if not isinstance(value, str) or not is_canonical_sig6(value):
         return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-        public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.removeprefix("cci:")))
+        public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.identifier))
         payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
         public.verify(raw, payload)
-    except (InvalidSignature, ValueError):
+    except (InvalidSignature, TypeError, ValueError, UnicodeError):
         return "signature does not verify over dacs-evidence:v1: || sha256(JCS(record minus signature))"
     return None
 
@@ -178,13 +197,19 @@ def _walk_keys(obj: Any):
             yield from _walk_keys(v)
 
 
-def load_case(path: Path) -> tuple[dict | None, list[str]]:
+def load_case(
+    path: Path,
+    *,
+    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+) -> tuple[dict | None, list[str]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
     except json.JSONDecodeError as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
+    if not isinstance(data, dict):
+        return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []
     if data.get("kind") != "SettlementEvidenceCase":
         errors.append(fail(path, f"kind MUST be SettlementEvidenceCase, got {data.get('kind')!r}"))
@@ -200,9 +225,9 @@ def load_case(path: Path) -> tuple[dict | None, list[str]]:
         errors.append(fail(path, "phase MUST be pay-cross-chain-htlc"))
     if not isinstance(evidence.get("jobId"), str) or not ULID.fullmatch(evidence["jobId"]):
         errors.append(fail(path, "jobId MUST be a ULID: 26 Crockford-base32 characters, first in 0-7 (CORE B.1)"))
-    if not isinstance(evidence.get("observedAt"), int) or isinstance(evidence.get("observedAt"), bool):
+    if not exact_safe_integer(evidence.get("observedAt"), minimum=0):
         errors.append(fail(path, "observedAt MUST be an integer unix-ms"))
-    sig_err = verify_signature(evidence)
+    sig_err = verify_signature(evidence, expected_phase_orchestrator)
     if sig_err:
         errors.append(fail(path, sig_err))
     return evidence, errors
@@ -215,8 +240,14 @@ def txref_kinds(evidence: dict) -> list[str]:
     return [r.get("kind") for r in refs if isinstance(r, dict)]
 
 
-def validate_interim(path: Path) -> tuple[dict | None, list[str]]:
-    evidence, errors = load_case(path)
+def validate_interim(
+    path: Path,
+    *,
+    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+) -> tuple[dict | None, list[str]]:
+    evidence, errors = load_case(
+        path, expected_phase_orchestrator=expected_phase_orchestrator
+    )
     if evidence is None:
         return None, errors
     if set(evidence) != INTERIM_EVIDENCE_KEYS:
@@ -249,8 +280,15 @@ def validate_interim(path: Path) -> tuple[dict | None, list[str]]:
     return evidence, errors
 
 
-def validate_resolved(path: Path, interim: dict | None) -> list[str]:
-    evidence, errors = load_case(path)
+def validate_resolved(
+    path: Path,
+    interim: dict | None,
+    *,
+    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+) -> list[str]:
+    evidence, errors = load_case(
+        path, expected_phase_orchestrator=expected_phase_orchestrator
+    )
     if evidence is None:
         return errors
     if set(evidence) != RESOLVED_EVIDENCE_KEYS:
@@ -279,7 +317,10 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
         errors.append(fail(path, "HTLC transaction identity: claim.claimTxHash MUST differ from lock.lockTxHash"))
     if reveal and claim and reveal.get("revealTxHash") == claim.get("claimTxHash"):
         errors.append(fail(path, "HTLC transaction identity: claim.claimTxHash MUST differ from reveal.revealTxHash"))
-    if lock and reveal and claim and all(isinstance(r.get("chainId"), int) for r in (lock, reveal, claim)):
+    if lock and reveal and claim and all(
+        exact_safe_integer(r.get("chainId"), minimum=1)
+        for r in (lock, reveal, claim)
+    ):
         # HTLC-9 topology (DACS-4 §9.5.4): the lock and the payee's claim are on the SOURCE chain
         # and contract; the payer's reveal is on the DESTINATION chain. A claim on the destination
         # chain is the payer's reveal mislabelled, which is the mix-up ST-8 exists to forbid.
@@ -307,12 +348,11 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
     else:
         if set(fin) != FINALITY_KEYS:
             errors.append(fail(path, "SettlementFinalityRecord for htlc-reveal fields MUST be exactly model, finalityObservedAt (no finalityBlocks or finalityCommitmentLevel)"))
-        if not isinstance(fin.get("finalityObservedAt"), int) or isinstance(fin.get("finalityObservedAt"), bool):
+        if not exact_safe_integer(fin.get("finalityObservedAt"), minimum=0):
             errors.append(fail(path, "settlementFinality.finalityObservedAt MUST be an integer unix-ms"))
-        elif interim is not None and isinstance(interim.get("observedAt"), int) \
-                and not isinstance(interim.get("observedAt"), bool) \
-                and isinstance(evidence.get("observedAt"), int) \
-                and not isinstance(evidence.get("observedAt"), bool):
+        elif interim is not None and exact_safe_integer(
+            interim.get("observedAt"), minimum=0
+        ) and exact_safe_integer(evidence.get("observedAt"), minimum=0):
             if interim["observedAt"] >= fin["finalityObservedAt"]:
                 errors.append(fail(path, "time order: interim.observedAt MUST be less than settlementFinality.finalityObservedAt"))
             if fin["finalityObservedAt"] > evidence["observedAt"]:
@@ -330,17 +370,48 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
     if ref_errs:
         errors += [fail(path, "supersedesEvidenceRef " + e) for e in ref_errs]
     elif interim is not None:
-        expected = content_hash_hex(interim)
+        try:
+            expected = content_hash_hex(interim)
+        except (TypeError, ValueError, UnicodeError):
+            errors.append(fail(path, "interim record is not strict JCS-canonicalizable"))
+            return errors
         if ref["contentHash"] != expected:
             errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
         if interim.get("jobId") != evidence.get("jobId"):
             errors.append(fail(path, "resolved and interim records MUST share jobId"))
+        if "signer" in ref:
+            interim_signature = interim.get("signature")
+            interim_signer = (
+                interim_signature.get("signer")
+                if isinstance(interim_signature, dict) else None
+            )
+            if (
+                ref["signer"] != expected_phase_orchestrator
+                or ref["signer"] != interim_signer
+            ):
+                errors.append(fail(
+                    path,
+                    "supersedesEvidenceRef.signer MUST equal the independently "
+                    "expected phase orchestrator and authenticated interim signer",
+                ))
     return errors
 
 
-def validate_pair(interim_path: Path, resolved_path: Path) -> list[str]:
-    interim, errors = validate_interim(interim_path)
-    errors += validate_resolved(resolved_path, interim)
+def validate_pair(
+    interim_path: Path,
+    resolved_path: Path,
+    *,
+    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+) -> list[str]:
+    interim, errors = validate_interim(
+        interim_path,
+        expected_phase_orchestrator=expected_phase_orchestrator,
+    )
+    errors += validate_resolved(
+        resolved_path,
+        interim,
+        expected_phase_orchestrator=expected_phase_orchestrator,
+    )
     return errors
 
 

@@ -127,6 +127,59 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             with self.subTest(address=bad), self.assertRaises(ValueError):
                 self.module.payment_anchor_tuple(bad)
 
+    def test_phase_indices_are_exact_integers_before_use(self):
+        for invalid in (True, False, 3.0, -1, 9_007_199_254_740_992):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(
+                ValueError, "exact non-negative safe integer"
+            ):
+                self.module.require_phase_index(invalid)
+            with self.subTest(settlement=invalid), self.assertRaises(ValueError):
+                self.module.FakeSubstrate().claim_settlement(
+                    "evm:8453:" + "11" * 32,
+                    self.module.JOB_ID,
+                    invalid,
+                )
+
+        stages, context = self.module.build_happy_path(
+            self.module.FakeSubstrate()
+        )
+        candidate = copy.deepcopy(context)
+        candidate["bundleBase"]["phaseSummary"][1]["index"] = True
+        with self.assertRaisesRegex(ValueError, "phaseSummary index"):
+            self.module.validate_happy_path(stages, candidate)
+
+        agreement_unsigned = self.module.signing_scope(
+            "PayeeBoundAgreementDocument", context["agreement"]
+        )
+        agreement_unsigned["terms"]["payoutBindings"][0]["phaseIndex"] = True
+        agreement = self.module.signed_multi(
+            "PayeeBoundAgreementDocument",
+            agreement_unsigned,
+            ["buyer", "seller"],
+        )
+        self.assertEqual(
+            "agreement payout binding phaseIndex is invalid",
+            self.module.validate_agreement_against_listing(
+                context["listing"], agreement
+            )["reason"],
+        )
+
+        bundle_unsigned = self.module.signing_scope(
+            "AttestationBundle", context["bundleCopies"]["buyer"]
+        )
+        bundle_unsigned["phaseSummary"][1]["index"] = True
+        bundle = self.module.signed_multi(
+            "AttestationBundle",
+            bundle_unsigned,
+            ["buyer", "seller", "orchestrator"],
+        )
+        bundle["anchoredByRole"] = "buyer"
+        consumption = self.module.consume_bundle_pair(
+            bundle, context["bundleCopies"]["seller"]
+        )
+        self.assertEqual("invalid", consumption["disposition"])
+        self.assertIn("phaseSummary index", consumption["reason"])
+
     def test_cross_stage_references_and_delivery_are_complete(self):
         listing = self.artifacts["listing-minimum-lifecycle"]
         agreement = self.artifacts["agreement-payee-bound-fixed-price"]

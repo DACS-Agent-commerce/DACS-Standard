@@ -52,7 +52,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
-| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 39 | `error` / `fail` / `indeterminate` / `pass` |
+| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 47 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
@@ -1081,7 +1081,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
 
-Thirty-nine candidate cases make `ClaimRequirement.verificationRequired: false`
+Forty-seven candidate cases make `ClaimRequirement.verificationRequired: false`
 executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
 bundle and composite record carries a deterministic Ed25519 signature; vectors
 that use a real verification result sign it under the independent VerifyResult
@@ -1096,11 +1096,28 @@ malformed references, invalid presence-only `maxAge`/`recipeVersion`, mixed
 presence and verified members, no-synthetic-result enforcement, exact bundle
 and requirement hash replay, missing replay input, decision recomputation, and
 the authenticated VerifyResult-authority boundary, plus the controlled-key
-versus existence-only-LEI selector boundary. Exact-boolean
-mode selection, vacuous empty member collections, and invalid empty inner
-`oneOf` groups pin the configuration edges. The set adds no
-wire member: the signed bundle and the existing CVR `bundleHash` are the
-presence evidence and binding.
+versus existence-only-LEI selector boundary. Verified parameters use only
+authenticated result method/data while presence parameters use signed claim
+metadata; one result may satisfy multiple predicates only when its data matches
+each. The complete ordered `freshness` + `dealSpecific` projection is bound
+before artifact authentication. Signed `generatedAt` reconstructs historical
+decisions, while independently retained current time governs reusable results;
+distinct session jobs and verifier-issued nonces remain outside reusable
+VerifyResult v1 artifacts. Exact-boolean mode selection, canonical DID percent
+bytes, safe-integer times, malformed time containers, vacuous empty member
+collections, and invalid empty inner `oneOf` groups pin the configuration edges.
+The signed bundle and the existing CVR `bundleHash` remain the presence evidence
+and binding; the bundle's existing `sessionNonce` conveyance is consumed against
+verifier-owned issuance state.
+
+Production acceptance uses independently retained phase-input requirement and complete bundle hashes, an authenticated session-start record, and equality of the phase/session/registry revision pins. It validates required Composite members before resolving the complete ordered reference union. The actual acceptance entrypoint requalifies a historical pass at independently trusted current time and fails closed when the production bundle is unavailable. Historical fixture reconstruction is a separate non-authorizing diagnostic; this pack does not implement signed DACS-5 bundle/recordRef replay admission. Source AttestationRef signer omission and a distinct issuer remain valid under the existing wire shape.
+
+This remains an offline conformance model: it authenticates the committed
+VerifyResult bytes, reference hash, registered recipe-family signer, and the
+signed source-attestation reference carried by that result. It does not fetch a
+live authority, prove durable nonce storage across process restarts, or promote
+the referenced source attestation to independently resolved live-provider
+evidence.
 
 Regenerate and execute it from the repository root:
 

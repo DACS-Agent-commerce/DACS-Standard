@@ -1,5 +1,6 @@
 # DACS Changelog
 
+
 All notable changes to the Demos Agent Commerce Standards.
 
 This document follows the spirit of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The format is adapted for a standards document rather than a software project: the focus is on normative changes that affect implementers, not on internal editorial revisions.
@@ -12,6 +13,28 @@ The format used per release:
 - **Governance** — changes to stewardship, working-group framing, or progressive-anchoring phase.
 
 ## [Unreleased]
+
+### Fixed — authenticated Vet replay and reference consumers
+
+- Private candidate review follow-up: retain exact production input hashes and authenticated session/registry pins; distinguish non-authorizing historical reconstruction from active current-time acceptance; require Composite members while preserving optional source-attestation signer semantics.
+- **Presence/Vet executable boundary repaired** (#362) — the candidate reader
+  now separates presenter-signed presence metadata from verified predicates,
+  which match only the authenticated `VerifyResult.method` and JCS-equal
+  `data`. It binds the complete ordered `freshness` + `dealSpecific` projection
+  before authenticating results, reconstructs the signed historical decision
+  at `generatedAt`, and applies VP-C1..VP-C3 reuse at independently trusted
+  current time. Verifier-issued nonce, job, actor, phase, attempt, and verifier
+  authority remain outer invocation state so reusable VerifyResult v1 artifacts
+  stay session-agnostic. Canonical ClaimReference parsing, safe-integer time
+  checks, and no-throw malformed-container handling are shared by the affected
+  consumers.
+- **HTLC and lifecycle authority checks aligned** — the HTLC-9/ST-8 fixture
+  pair uses the registered `key:` signer and both signatures are checked against
+  caller-independent expected phase-orchestrator authority. Optional
+  `supersedesEvidenceRef.signer` remains optional but, when present, binds that
+  authority and the authenticated interim signer. Lifecycle phase indices are
+  exact non-Boolean safe integers before addressing, lookup, or comparison, and
+  the walkthrough uses the repository JCS implementation.
 
 ### Fixed — DACS-X conformance provenance
 

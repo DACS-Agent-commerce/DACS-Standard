@@ -610,6 +610,7 @@ def verify_bundle(bundle, admission=None):
     return all(
         isinstance(item, dict)
         and set(item) == {"ref", "signature"}
+        and isinstance(item.get("ref"), str)
         and item.get("ref") in claim_refs
         and verify_signature(item["ref"], item.get("signature"), payload)
         for item in signatures
@@ -630,7 +631,15 @@ def verify_result(resolved, recipes, result_context):
     signature = artifact.get("signature")
     if not isinstance(signature, dict) or set(signature) != {
         "algorithm", "signer", "value"
-    } or signature.get("algorithm") != "ed25519":
+    } or signature.get("algorithm") != "ed25519" or not isinstance(
+        signature.get("signer"), str
+    ):
+        return False
+    if (
+        not isinstance(artifact.get("scheme"), str)
+        or not isinstance(artifact.get("method"), str)
+        or type(artifact.get("recipeVersion")) not in (int, float)
+    ):
         return False
     unsigned = {key: value for key, value in artifact.items() if key != "signature"}
     try:
@@ -823,7 +832,9 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
     ):
         return "not-applicable"
     decision = result.get("decision")
-    if decision not in {"pass", "fail", "indeterminate", "error"}:
+    if not isinstance(decision, str) or decision not in {
+        "pass", "fail", "indeterminate", "error"
+    }:
         return "error"
     verified_at = result.get("verifiedAt")
     valid_until = result.get("validUntil")
@@ -1005,6 +1016,7 @@ def valid_requirement(req):
     for item in [*required, *(member for group in one_of for member in group)]:
         if (
             not isinstance(item, dict)
+            or not isinstance(item.get("scheme"), str)
             or item.get("scheme") not in KNOWN_SCHEMES
             or type(item.get("verificationRequired")) is not bool
             or (
@@ -1340,7 +1352,9 @@ def authenticate_production_aggregate(
     session_name = authority.get("authenticatedSessionStart")
     sessions = trusted_context.get("authenticatedSessionStarts")
     authenticated_session = (
-        sessions.get(session_name) if isinstance(sessions, dict) else None
+        sessions.get(session_name)
+        if isinstance(sessions, dict) and isinstance(session_name, str)
+        else None
     )
     if (
         not isinstance(vet_input, dict)
@@ -1477,13 +1491,16 @@ def aggregate_output(value, trusted_context, recipes, result_context, runtime):
         projection = None
     if projection is None:
         return {"decision": "error", "reasons": ["aggregation authority invalid"]}
-    decision, reasons = evaluate(
-        projection,
-        recipes,
-        result_context,
-        decision_time=projection["decisionTime"],
-        admission=admission,
-    )
+    try:
+        decision, reasons = evaluate(
+            projection,
+            recipes,
+            result_context,
+            decision_time=projection["decisionTime"],
+            admission=admission,
+        )
+    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError):
+        return {"decision": "error", "reasons": ["invalid aggregation input"]}
     if value["record"].get("overallDecision") != decision:
         return {
             "decision": "error",
@@ -1551,7 +1568,7 @@ def execute(evaluation, document, runtime):
                 decision_time=admission.trusted_now,
                 admission=admission,
             )
-    except (KeyError, TypeError, ValueError, UnicodeError):
+    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError):
         decision = "error"
 
     if operation == "match":
@@ -2122,6 +2139,95 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             {"decision": "error", "reasons": ["aggregation authority invalid"]},
             execute_once(malformed_record_anchor, self.document),
         )
+
+    def test_container_fields_reject_at_shared_vet_helpers(self):
+        evaluation = next(
+            item for item in self.cases
+            if item["name"] == "vet-control-existence-only-lei-supporting-context"
+        )["evaluations"]["result"]
+        value = evaluation["input"]
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        admission = runtime.admit(value["authority"], value["bundle"])
+        self.assertIsNotNone(admission)
+        self.assertTrue(verify_bundle(value["bundle"], admission))
+        self.assertTrue(valid_requirement(value["requirement"]))
+        self.assertTrue(verify_result(
+            value["resolvedResults"][0], self.recipes, self.result_context
+        ))
+        numeric_equivalent = copy.deepcopy(value["resolvedResults"][0])
+        numeric_equivalent["artifact"]["recipeVersion"] = float(
+            numeric_equivalent["artifact"]["recipeVersion"]
+        )
+        self.assertTrue(verify_result(
+            numeric_equivalent, self.recipes, self.result_context
+        ))
+
+        for malformed in (None, [], {}):
+            with self.subTest(malformed=malformed):
+                bundle = copy.deepcopy(value["bundle"])
+                bundle["presentation"]["signatures"][0]["ref"] = malformed
+                self.assertFalse(verify_bundle(bundle, admission))
+
+                requirement = copy.deepcopy(value["requirement"])
+                requirement["required"][0]["scheme"] = malformed
+                self.assertFalse(valid_requirement(requirement))
+                self.assertEqual(
+                    ("error", ["invalid bundle requirement"]),
+                    evaluate(
+                        {**value, "requirement": requirement},
+                        self.recipes, self.result_context,
+                        decision_time=admission.trusted_now, admission=admission,
+                    ),
+                )
+                ordinary = copy.deepcopy(evaluation)
+                ordinary["input"]["requirement"] = requirement
+                self.assertEqual("error", execute_once(ordinary, self.document))
+
+                grouped = copy.deepcopy(value["requirement"])
+                grouped["oneOf"] = [[requirement["required"][0]]]
+                self.assertFalse(valid_requirement(grouped))
+
+                for field in ("scheme", "method", "recipeVersion"):
+                    with self.subTest(field=field):
+                        resolved = copy.deepcopy(value["resolvedResults"][0])
+                        resolved["artifact"][field] = malformed
+                        self.assertFalse(verify_result(
+                            resolved, self.recipes, self.result_context
+                        ))
+                resolved = copy.deepcopy(value["resolvedResults"][0])
+                resolved["artifact"]["signature"]["signer"] = malformed
+                self.assertFalse(verify_result(
+                    resolved, self.recipes, self.result_context
+                ))
+
+    def test_aggregate_session_names_reject_before_registry_lookup(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "vet-oneof-error-over-fail"
+        )
+        evaluation = case["evaluations"]["result"]
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
+        for malformed in (None, [], {}):
+            with self.subTest(malformed=malformed):
+                changed = copy.deepcopy(evaluation["input"])
+                changed["authority"]["authenticatedSessionStart"] = malformed
+                runtime = VetReferenceRuntime(self.document["trustedContext"])
+                admission = runtime.admit(
+                    changed["authority"], changed["authority"]["vetInput"]["bundleToVet"]
+                )
+                self.assertIsNotNone(admission)
+                self.assertIsNone(authenticate_production_aggregate(
+                    changed, self.document["trustedContext"], self.recipes,
+                    self.result_context, admission, runtime,
+                ))
+                self.assertEqual(
+                    {"decision": "error", "reasons": ["aggregation authority invalid"]},
+                    aggregate_output(
+                        changed, self.document["trustedContext"], self.recipes,
+                        self.result_context,
+                        VetReferenceRuntime(self.document["trustedContext"]),
+                    ),
+                )
 
     def test_max_age_must_be_a_nonnegative_safe_integer(self):
         case = next(

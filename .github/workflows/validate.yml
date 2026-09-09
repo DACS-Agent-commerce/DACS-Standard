@@ -64,6 +64,9 @@ jobs:
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check
 
+      - name: Verify IdentityBundle hash binding vectors are deterministic
+        run: python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
+
       - name: HTLC-9 ST-8 pack is deterministic and verifies
         run: python3 scripts/generate_htlc9_st8_pack.py --check && python3 scripts/verify_htlc9_st8_pack.py
 

@@ -69,6 +69,8 @@ DOMAINS = {
     "VerifyResult": "dacs-verifyresult:v1:",
     "CompositeVerificationRecord": "dacs-composite:v1:",
     "PayeeBoundAgreementDocument": "dacs-payee-bound-agreement:v1:",
+    "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
+    "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }

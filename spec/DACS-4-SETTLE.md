@@ -391,13 +391,72 @@ type PaymentPhaseInput = {
   amount: PriceTerm                    // from agreement.terms.price; rail-validated
   sessionContext: SessionContext
 }
+
+type IdentityBoundPaymentPhaseInput = PaymentPhaseInput & {
+  agreement: IdentityBoundAgreementArtifact
+  identityBindingCompanions: IdentityBoundAgreementCompanion[]
+}
 ```
 
-**Artifact gate and legacy behaviour.** Before interpreting agreement terms, a payer MUST select the DACS-3 artifact schema from its required version discriminator (§8.5). A payer that does not implement `PayeeBoundAgreementDocument` MUST reject that artifact as unsupported before invoking any pay handler; it MUST NOT discard `payeeBoundAgreementVersion` or `terms.payoutBindings` and retry it as an `AgreementDocument`. In particular, a DACS-4 v0.2 payer expects the required `agreementVersion` field, so the new artifact fails its legacy schema gate and no payment is submitted.
+`PaymentPhaseInput` and both nested party shapes retain their existing wire
+contract. When the authenticated Listing phase selects either identity-bound
+agreement, the handler MUST instead require the additional companion member of
+`IdentityBoundPaymentPhaseInput`. It reruns CORE IBH-1..IBH-5 and requires the
+recomputed digest and CVR to match the exact authenticated Identify/Vet
+admission retained for every identity-bound agreement party,
+including each `bidder-non-winning` party retained by a sealed-envelope
+agreement. For the unique buyer and seller it additionally matches the
+corresponding payment party and authenticated `SessionParty` values; the frozen
+payment/session carrier roles do not acquire losing-bidder entries. This
+conditional check does not reinterpret an old agreement or make the companion
+member required on an old payment path. Losing bidders remain non-signers under
+§8.5.1 and are never treated as payer or payee.
 
-The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 through PB-3 do not apply, and the pay handler uses `PaymentPhaseInput.payee.payeeAddress` after the other §9.5.1 checks. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
+The payer and payee roles come from the verified agreement and signed Listing,
+not caller labels. Missing or unavailable otherwise-consistent bundle/CVR/nonce
+authority returns `indeterminate` and permits no rail call. Malformed proof, an
+invalid presentation or signature, a duplicate/non-unique join, or any
+job/role/claim/hash contradiction is `rejected` before payment. When mapped to
+`PhaseHandlerResult`, `verified` is the only `ok: true` result;
+`indeterminate` is `ok: false` with `errorClass: "substrate"`; and `rejected`
+is `ok: false` with its deterministic failure reason. A producer-supplied
+boolean, digest, admission map, or fresh use of the consumed nonce cannot
+satisfy this gate.
 
-**Payee-destination binding (PB-1..PB-3).** The rules below apply only when `agreement` is a `PayeeBoundAgreementDocument`. `payingKey` already binds the payer side to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing symmetry on the destination.
+Before any authorization or irreversible payment effect, every handler MUST
+also enforce the ordinary common gate independently of IBH: the input
+`jobId`, agreement `jobId`, and authenticated `SessionContext.jobId` MUST be
+equal; the complete signed Listing, agreement, commitment, and Listing reference
+MUST join exactly; the authenticated session roster MUST identify the agreement
+buyer as payer and seller as payee with exact primary claims and bundle hashes;
+and `payer.payingKey` MUST equal a real authorized credential/key claim in the
+retained authenticated payer IdentityBundle, not merely match a string shape.
+The handler MUST validate the effective payment pipeline and selected rail,
+amount, phase index, rail-specific payee destination, payee payout coverage, and
+any APR replacement disposition before a rail call. A successful identity proof
+does not waive any of these checks.
+
+An irreversible delivery or value-release handler under an identity-bound
+Listing consumes the same verified companions from the distinct commitment
+context delta and reruns this gate before its external effect. It MUST NOT
+infer success from `identityBindingDecision`, because that output label is not
+proof and every consumer independently verifies the artifacts.
+
+**Artifact gate and legacy behaviour.** Before interpreting agreement terms, a
+payer MUST verify the signed Listing and apply the exact DACS-3 four-way
+phase/artifact/domain dispatch. An unsupported artifact or phase is refused
+before invoking a pay handler. A payer MUST NOT discard or rename a version
+discriminator, payout binding, companion, or phase and retry a weaker path.
+
+The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 through PB-3 do not apply, and the pay handler uses `PaymentPhaseInput.payee.payeeAddress` after the other §9.5.1 checks. `IdentityBoundAgreementDocument` preserves that destination meaning after its IBH proof passes. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
+
+**Payee-destination binding (PB-1..PB-3).** The rules below apply when
+`agreement` is a `PayeeBoundAgreementDocument` or
+`IdentityBoundPayeeAgreementDocument`. `payingKey` already binds the payer side
+to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing
+symmetry on the destination. `IdentityBoundAgreementDocument` remains a
+non-payee artifact and follows the same unbound-destination meaning as
+`AgreementDocument` after its separate identity proof passes.
 
 - (PB-1) **Agreement carriage.** The pinned agreement MUST carry exactly one `terms.payoutBindings` entry (§8.5) for this phase's `(railId, phaseIndex)`. `PaymentPhaseInput.payee.payeeAddress` MUST equal that entry's `payeeAddress`, and the handler MUST NOT submit payment to any other destination. A missing entry, duplicate key, wrong railId, or extra entry makes the payee-bound artifact invalid and MUST fail before payment. The lookup key is the same anchor tuple PC-2 already derives (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so the equality check is a direct anchor-tuple lookup.
 - (PB-2) **Destination-identity binding.** Before submitting, the payer MUST verify the destination is bound to `payee.primaryClaim` by the strongest **applicable** tier. Tier *applicability* is decided by the pinned payee bundle (`payee.bundleHash`) together with the pinned `RailDefinition`, not by whether pay-time linkage resolution succeeds:
@@ -437,7 +496,7 @@ The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 thr
      existing pause/error arms above and MUST NOT fall through to tier 3.
 - (PB-3) **No downgrade.** SB-3 (§9.5.8) grades what a past, recoverable record proves and, for a binding-required rail, makes an absent or unverifiable binding `indeterminate` and non-countable rather than accepting weaker unbound evidence. PB-2 separately gates an irreversible pre-pay decision, and the pinned `bundleHash` makes *absent* (tier 3 legal) and *applicable-but-unresolvable* (pause) distinct, replayable states. An implementation MUST NOT treat either gate as authority to bypass the other.
 
-Where no tier is satisfiable for a payee-bound phase, the payer MUST refuse to pay. A missing `payoutBindings` entry is an invalid `PayeeBoundAgreementDocument`, not a legacy agreement and not permission to infer a destination.
+Where no tier is satisfiable for a payee-bound phase, the payer MUST refuse to pay. A missing `payoutBindings` entry is an invalid payee agreement, not a non-payee agreement and not permission to infer a destination.
 
 **PB failure modes (all pay rails).**
 
@@ -720,7 +779,7 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
 
   A rail whose authenticated definition declares no settlement-side binding continues to use the explicitly weaker SB-1 + SB-2 + §9.5.1 posture. No historical downgrade profile is registered in this revision. Historical bytes remain cryptographically inspectable, but a consumer MUST NOT grant them current settlement or reputation authority through the old absent-binding fallback unless a future compatibility profile defines an authenticated creation-era boundary and exact semantics.
 
-  Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. For a `PayeeBoundAgreementDocument`, a rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match — where the payee side of that match is the PB-1 agreement-bound destination, not a free-standing evidence field — and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements. A legacy `AgreementDocument` provides no PB-1 destination guarantee.
+  Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. For either payee agreement type, a rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match — where the payee side of that match is the PB-1 agreement-bound destination, not a free-standing evidence field — and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements. Neither non-payee agreement type provides a PB-1 destination guarantee.
 
 > **Note (non-normative).** SB-2 still uses a single-use key shaped like the §B.8 SN-4 marker, but a collision is not a first-write-wins registry. Without authenticated settlement-side authority, every competing tuple is suspended rather than selecting the first observed claim.
 
@@ -1276,7 +1335,7 @@ not a caller-supplied identity.
   be a concrete `PaymentPhaseType`. A caller-supplied projected step, cached
   handler, challenge, receipt, or wallet default is not authority.
 - (APR-5) **Agreement, execution, and evidence binding.** A
-  `PayeeBoundAgreementDocument` MUST cover the projected concrete payment with
+  `PayeeBoundAgreementDocument` or `IdentityBoundPayeeAgreementDocument` MUST cover the projected concrete payment with
   exactly one payout binding whose `(railId, phaseIndex)` equals the selected
   reference's `railId` and the unchanged alternative-slot index. Payment input,
   PC-2 evidence addressing, and settlement reconciliation use that same tuple.
@@ -1298,7 +1357,10 @@ not a caller-supplied identity.
   A fresh-job Agreement is an APR replacement only when its signed
   `terms.priorPaymentDispositionRef` is present. Before accepting its
   commitment or making any authorization call, the orchestrator MUST resolve
-  that reference and the exact prior Agreement; verify both content hashes,
+  that reference and the exact prior Agreement; verify that both the prior and
+  replacement Agreements select distinct complete references from the same
+  exact signed `pay-alternative` Listing and preserve its original slot; verify
+  both content hashes,
   the prior Agreement signatures, the disposition signature, its finalized
   SR-2 receipt, and the authenticated prior phase-orchestrator writer; and
   require exact equality for `priorJobId`, `replacementJobId` against the new
@@ -1320,7 +1382,11 @@ not a caller-supplied identity.
   `reconciliationEvidenceRefs`, each independently resolved and verified under
   the selected prior handler's authoritative terminal-reconciliation rules,
   and those proofs MUST conclusively establish that no prior authorization can
-  settle. `authorization-pending`, `settlement-indeterminate`, a missing proof,
+  settle. Each disposition and reconciliation-evidence receipt MUST bind its
+  exact logical and native address, canonical content hash, transaction,
+  authenticated writer, applicable nonce, independently authenticated
+  inclusion/ordering, and finality; a bare unsigned state/content/writer summary
+  is not evidence. `authorization-pending`, `settlement-indeterminate`, a missing proof,
   non-observation, rejection, or an unfinalized disposition permits zero calls
   on the replacement rail. An Agreement without
   `priorPaymentDispositionRef` is an independent purchase, not a claimed
@@ -1366,7 +1432,7 @@ not a caller-supplied identity.
 | Rail author | RD-1 through RD-6 |
 | Listing publisher / reader | DACS-1 §6.3.4 LRR-1 through LRR-6 |
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
-| Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; phase-specific procedure |
+| Payment phase handler | Exact signed Listing phase/artifact/domain dispatch; CORE IBH-1..IBH-6 for either identity-bound agreement; PC-1 through PC-7; PB-1 through PB-3 for either payee-bound agreement; phase-specific procedure |
 | Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |
 | Alternative-payment producer / reader / auditor | APR-1 through APR-8 |
 | Pipeline executor | PIPE-1 through PIPE-6 |
@@ -1399,7 +1465,7 @@ the same method-native DAHR/TLSNotary/zkTLS evidence.
 
 ### 9.12 Backwards compatibility
 
-**Agreement artifacts across minor versions.** A legacy DACS-4 v0.2 payer continues to accept `AgreementDocument` and use the runtime `payeeAddress` under its existing semantics. It rejects `PayeeBoundAgreementDocument` at the required `agreementVersion` schema gate and therefore cannot ignore PB and pay anyway. A DACS-4 v0.3 payer recognises both artifacts, applies PB-1 through PB-3 only to the payee-bound type, and does not attribute a PB guarantee to the legacy type. This is additive new-type refusal under CORE §11.1.2, not a semantic change to the legacy artifact.
+**Agreement artifacts across minor versions.** A legacy DACS-4 v0.2 payer continues to accept `AgreementDocument` and use the runtime `payeeAddress` under its existing semantics. It rejects `PayeeBoundAgreementDocument` at the required `agreementVersion` schema gate and therefore cannot ignore PB and pay anyway. A DACS-4 v0.3 payer recognises both existing artifacts and preserves their meanings. Readers without the identity-bound additions reject the two new signed Listing phases and agreement discriminators before payment. Current readers apply IBH only to those new paths and PB/APR to both payee types. This is additive new-type refusal under CORE §11.1.2, not a semantic change to either existing artifact.
 
 **Payload attestations across minor versions.** `PayloadAttestationRecord` is a
 new DACS-4 v0.5 artifact with its own `payloadAttestationVersion` discriminator
@@ -1465,7 +1531,7 @@ identity or attributing counterparty fault.
 
 **Provider-credential disclosure to the attestation layer (AP2-2/AP2-3).** *Threat:* the AP2-2 attested status fetch necessarily carries a provider API credential through the SR-3 relay; a compromised relay or validator observes it. *Mitigation:* AP2-3 confines the disclosed credential to read-only payment-status scope, so observation yields the ability to read payment statuses on that account — never to charge, refund, or move funds. Operators SHOULD rotate the disclosed credential periodically and MAY scope it per-integration. The residual read exposure (payment metadata on the merchant account) is bounded by the same SR-3 trust floor as every consensus-backed-proxy fetch (§7.3.5) — and includes, specifically, the session↔fiat-payment linkage this rail's own AP2-1 binding creates: a compromised read credential exposes the `dacs_job_id` correlation for every DACS deal on that account until rotation. AP2-3 is an operational MUST that no conformance vector can exercise (it constrains the credential an operator discloses, not an artifact); this threat row is its enforcement surface. *Second residual (disclosure-completeness, not a defence gap):* the AP2-2 status body carries the settlement **amount and currency**, which the SR-3 relay and validators observe; where the agreement is otherwise confidential (an encrypted-anchored mode, roadmap), this discloses amount/currency in cleartext at the same SR-3 floor (§7.3.5), which an operator pricing a private deal should weigh.
 
-**Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes. *Mitigation:* for `PayeeBoundAgreementDocument`, PB-1 carries the destination inside the co-signed artifact (a substituted address breaks the agreement hash; an honest payee never co-signs an attacker's address), and PB-2 binds it to the vetted identity by the strongest applicable tier — intrinsic, control-proven `cci-xm:` linkage (§6.3.2 step (6)), or the payee's own agreement signature; applicable-but-unresolvable pauses rather than paying (§9.5.1). The distinct artifact and phase make older readers reject before settlement rather than ignore PB. *Residual:* a legacy `AgreementDocument` has no PB guarantee; a payee asserting a tier-3 address it does not control bears the payee-side risk, visible via the recorded binding tier.
+**Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes. *Mitigation:* for either payee agreement type, PB-1 carries the destination inside the co-signed artifact (a substituted address breaks the agreement hash; an honest payee never co-signs an attacker's address), and PB-2 binds it to the vetted identity by the strongest applicable tier — intrinsic, control-proven `cci-xm:` linkage (§6.3.2 step (6)), or the payee's own agreement signature; applicable-but-unresolvable pauses rather than paying (§9.5.1). The distinct artifacts and phases make unsupported readers reject before settlement rather than ignore PB or IBH. *Residual:* either non-payee agreement type has no PB guarantee; a payee asserting a tier-3 address it does not control bears the payee-side risk, visible via the recorded binding tier.
 
 **x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* current x402 success evidence signs an `x402-event` and independently verifies the selected transfer against the settlement chain — like the `evm-event` rail, not server- or facilitator-forgeable (§9.5.7). A facilitator receipt remains supplementary and must bind the same transaction/network under X402-1..X402-4. Historical receipt-only evidence remains replayable under its signed bytes but cannot establish an event-level SB-1 identity without a uniquely matching authenticated chain event. Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
 

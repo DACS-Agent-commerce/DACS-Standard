@@ -10,7 +10,7 @@ A single alphabetical glossary across all five per-stage standards and the front
 
 A single alphabetical glossary across all five per-stage standards, the front matter, and the back matter. Terms defined in multiple chapters are cross-referenced. This glossary is informative; per-chapter definitions are normative.
 
-- **AgreementArtifact.** Either DACS-3 signed agreement type: the legacy AgreementDocument or the PayeeBoundAgreementDocument. Defined in §8.5.
+- **AgreementArtifact.** One of four DACS-3 signed agreement types: the frozen-meaning `AgreementDocument` and `PayeeBoundAgreementDocument`, or the additive `IdentityBoundAgreementDocument` and `IdentityBoundPayeeAgreementDocument`. The identity-bound types are selected only by `commit-identity-bound-agreement` and `commit-identity-bound-payee-agreement`, respectively. Defined in §8.5.
 - **AgreementDocument.** The legacy DACS-3 signed agreement artifact. It preserves pre-payee-binding semantics and does not carry payout bindings. Defined in §8.5.
 - **Anchor / Anchored.** Stored on the substrate such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve canonical content and verify integrity. Realised by SR-2.
 - **AttestationBundle.** The frozen end-of-session artifact, signed by all parties, anchored via SR-2. The DACS-5 audit unit. Defined in §10.4. Legacy fault semantics: fault is read role-relatively from `outcome`. See FaultAttestationBundle.
@@ -26,6 +26,8 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Claim reference / ClaimReference.** A typed identifier referring to the external system that holds a claim. Grammar in §6.3.1; type definition in §7.1.
 - **ClaimRequirement.** A listing-side declaration of which claims a buyer or seller bundle must include. Defined in §6.3.3.
 - **Commit-agreement.** The DACS-3 phase that anchors a legacy AgreementDocument hash on the public chain. Defined in §8.6.
+- **Commit-identity-bound-agreement.** The DACS-3 phase that commits an `IdentityBoundAgreementDocument`; it does not change the frozen non-payee destination meaning of `AgreementDocument`. Defined in §8.6.
+- **Commit-identity-bound-payee-agreement.** The DACS-3 phase that commits an `IdentityBoundPayeeAgreementDocument`, retaining all payee payout and replacement obligations. Defined in §8.6.
 - **Commit-payee-bound-agreement.** The DACS-3 phase that anchors a PayeeBoundAgreementDocument hash on the public chain. Defined in §8.6.
 - **CommitmentRecord.** The on-chain record produced by either DACS-3 agreement commitment phase. Defined in §8.6.
 - **CompositeVerificationRecord.** The document the DACS-2 vet-credentials phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.

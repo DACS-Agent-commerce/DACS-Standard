@@ -3,8 +3,8 @@
   "spec": "CORE §B.2 CF-5 raw JSON admission",
   "tier": "candidate",
   "description": "Raw UTF-8 JSON texts that preserve duplicate names and numeric tokens; two independent parsers must agree before JCS canonicalization.",
-  "count": 47,
-  "hash": "a0d54253fffda2850281f3492f4dbe3ec2de213f977aa912a2440ba6258e2981",
+  "count": 51,
+  "hash": "b1e70e55f954bd6dc35fe2fb0ebe8c6c9b6c66e32a492d11bc706c6dca52b4ad",
   "vectors": [
     {
       "name": "empty-object",
@@ -169,6 +169,25 @@
       "note": "The host-independent 128-container depth boundary is inclusive for objects."
     },
     {
+      "name": "maximum-container-depth-mixed",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[0]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b7b2261223a5b305d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d5d7d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Alternating arrays and objects share one inclusive container-depth budget."
+    },
+    {
+      "name": "over-maximum-container-depth-mixed",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "JSON-NESTING-TOO-DEEP",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Alternating container kinds do not reset the depth budget.",
+      "rawUtf8Text": "[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[{\"a\":[0]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]"
+    },
+    {
       "name": "over-maximum-container-depth-array",
       "operation": "admit-raw-json-then-canonicalize",
       "expected": "reject",
@@ -237,6 +256,26 @@
       "rule": "CORE §B.2 CF-5",
       "note": "Exponent notation cannot bypass the mathematical magnitude check.",
       "rawUtf8Text": "{\"n\":9.007199254740992e15}"
+    },
+    {
+      "name": "positive-fraction-above-safe-magnitude",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The exact fractional token exceeds the bound before binary64 conversion.",
+      "rawUtf8Text": "{\"n\":9007199254740991.1}"
+    },
+    {
+      "name": "negative-fraction-above-safe-magnitude",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The exact negative fractional magnitude exceeds the same bound.",
+      "rawUtf8Text": "{\"n\":-9007199254740991.1}"
     },
     {
       "name": "binary64-overflow",

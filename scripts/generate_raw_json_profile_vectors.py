@@ -29,6 +29,13 @@ def nested_object(depth: int) -> str:
     return '{"a":' * depth + "0" + "}" * depth
 
 
+def nested_mixed(depth: int) -> str:
+    value = "0"
+    for index in range(depth):
+        value = "[" + value + "]" if index % 2 == 0 else '{"a":' + value + "}"
+    return value
+
+
 def accepted(name: str, raw: str, canonical: str, note: str) -> dict[str, Any]:
     return {
         "name": name,
@@ -172,6 +179,19 @@ def build_vectors() -> list[dict[str, Any]]:
             nested_object(MAX_NESTING_DEPTH),
             "The host-independent 128-container depth boundary is inclusive for objects.",
         ),
+        accepted(
+            "maximum-container-depth-mixed",
+            nested_mixed(MAX_NESTING_DEPTH),
+            nested_mixed(MAX_NESTING_DEPTH),
+            "Alternating arrays and objects share one inclusive container-depth budget.",
+        ),
+        rejected(
+            "over-maximum-container-depth-mixed",
+            nested_mixed(MAX_NESTING_DEPTH + 1),
+            "profile",
+            "JSON-NESTING-TOO-DEEP",
+            "Alternating container kinds do not reset the depth budget.",
+        ),
         rejected(
             "over-maximum-container-depth-array",
             nested_array(MAX_NESTING_DEPTH + 1),
@@ -220,6 +240,20 @@ def build_vectors() -> list[dict[str, Any]]:
             "profile",
             "NUMBER-OUTSIDE-DACS-MAGNITUDE",
             "Exponent notation cannot bypass the mathematical magnitude check.",
+        ),
+        rejected(
+            "positive-fraction-above-safe-magnitude",
+            '{"n":9007199254740991.1}',
+            "profile",
+            "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+            "The exact fractional token exceeds the bound before binary64 conversion.",
+        ),
+        rejected(
+            "negative-fraction-above-safe-magnitude",
+            '{"n":-9007199254740991.1}',
+            "profile",
+            "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+            "The exact negative fractional magnitude exceeds the same bound.",
         ),
         rejected(
             "binary64-overflow",

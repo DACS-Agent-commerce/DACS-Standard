@@ -1,6 +1,16 @@
 {
   "set": "settlement-event-identity-v0.6",
-  "spec": "DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay",
+  "spec": "DACS-4 §9.5.8 SB-1 signed event identity and legacy replay",
+  "tier": "candidate",
+  "conformanceProfile": {
+    "status": "partially-superseded",
+    "currentCollisionAuthority": false,
+    "normativeScope": "sb1-event-identity-projection-and-same-tuple-idempotency-only",
+    "historicalCollisionVectors": [
+      "same-event-second-job-rejected"
+    ],
+    "currentCollisionAuthoritySet": "sb2-collision-authority-v0.8"
+  },
   "hash": "99de3b013d391b4f3a8b23a05101333dea5d5ae61d3a09c741fde2e86fa3b45a",
   "count": 28,
   "publicKey": "2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",

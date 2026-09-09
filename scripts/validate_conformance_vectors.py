@@ -38,6 +38,11 @@ REGISTRY_CASE_ID = "sig-registry-closed"
 HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
 AP2_GOLDEN_FIXTURE = "conformance/fixtures/settlement/settlement-ap2-reference.json"
+# Complete raw-byte authority for the authenticated AP2 reference fixture. An
+# intentional fixture revision updates this pin only after its oracle review.
+AP2_GOLDEN_FIXTURE_SHA256 = (
+    "93d43891b151347111184b2afda2cdc8d3990637f79b3cedd40a90e1ad32621b"
+)
 REQUIRED_TOP_LEVEL = {
     "vectorId",
     "title",
@@ -361,6 +366,29 @@ def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
     return resolve_fixture_path(manifest_dir, fixture) is not None
 
 
+class DuplicateJsonMemberError(ValueError):
+    """Raised when a JSON object repeats an exact decoded member name."""
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise DuplicateJsonMemberError(f"duplicate object member {name!r}")
+        result[name] = value
+    return result
+
+
+def parse_json_bytes_without_duplicates(raw: bytes) -> Any:
+    """Strictly decode UTF-8 JSON and reject duplicate members recursively.
+
+    Member names are compared exactly as decoded. They are deliberately not
+    normalised because signed JSON member names must remain byte-faithful.
+    """
+
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_json_object)
+
+
 def validate_vector(path: Path) -> list[str]:
     errors: list[str] = []
     try:
@@ -679,7 +707,7 @@ def validate_manifest(path: Path) -> list[str]:
 def validate_ap2_golden_output(
     path: Path, manifest_dir: Path, settlement: dict[str, Any]
 ) -> list[str]:
-    """Bind the AP2 golden pins to the fixture's unsigned RFC 8785 evidence."""
+    """Bind AP2 golden pins to the independently pinned reference fixture."""
     errors: list[str] = []
     decisions = settlement.get("decisions")
     has_ap2_decision = (
@@ -712,9 +740,21 @@ def validate_ap2_golden_output(
     if fixture_path is None:
         return errors  # The structural fixture-existence check reports this.
     try:
-        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        fixture_bytes = fixture_path.read_bytes()
+        fixture = parse_json_bytes_without_duplicates(fixture_bytes)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMemberError) as exc:
         return [fail(path, f"settlement.ap2Fixture is not valid JSON: {exc}")]
+
+    fixture_digest = hashlib.sha256(fixture_bytes).hexdigest()
+    if fixture_digest != AP2_GOLDEN_FIXTURE_SHA256:
+        return [
+            fail(
+                path,
+                "settlement.ap2Fixture is not the independently pinned canonical "
+                "AP2 reference fixture; complete raw-byte SHA-256 mismatch "
+                f"(expected {AP2_GOLDEN_FIXTURE_SHA256}, got {fixture_digest})",
+            )
+        ]
 
     try:
         evidence = fixture["evidence"]

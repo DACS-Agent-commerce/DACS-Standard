@@ -324,6 +324,53 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             errors = validator.validate_golden_outputs(golden, manifest)
         self.assertEqual(errors, [])
 
+    def test_ap2_golden_accepts_exact_fixture_copy_under_custom_manifest_root(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            self.assertNotEqual(fixture.resolve(), AP2_FIXTURE.resolve())
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(errors, [])
+
+    def test_ap2_golden_rejects_semantically_identical_raw_byte_drift(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            fixture.write_bytes(fixture.read_bytes() + b"\n")
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn(
+            "is not the independently pinned canonical AP2 reference fixture",
+            errors[0],
+        )
+        self.assertNotIn("evidenceHash", errors[0])
+
+    def test_ap2_golden_rejects_recursive_duplicate_members_before_pin_check(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            fixture.write_bytes(b'{"outer":{"member":1,"member":2}}')
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("duplicate object member 'member'", errors[0])
+        self.assertNotIn("SHA-256 mismatch", errors[0])
+
+    def test_ap2_golden_duplicate_check_uses_exact_decoded_member_names(self):
+        validator = load_vector_validator()
+        parsed = validator.parse_json_bytes_without_duplicates(
+            '{"é":1,"e\\u0301":2}'.encode("utf-8")
+        )
+        self.assertEqual(parsed, {"é": 1, "e\u0301": 2})
+
+    def test_ap2_golden_rejects_non_utf8_fixture_with_controlled_error(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            fixture.write_bytes(b'{"text":"\xff"}')
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("settlement.ap2Fixture is not valid JSON", errors[0])
+
     def test_complete_ap2_golden_group_rejects_unusable_fixture_paths(self):
         validator = load_vector_validator()
         for value in (None, "", "   ", 42, {}, []):
@@ -470,7 +517,11 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             fixture.write_text(json.dumps(data), encoding="utf-8")
             errors = validator.validate_golden_outputs(golden, manifest)
         self.assertTrue(
-            any("ap2Fixture evidenceHash MUST equal" in error for error in errors),
+            any(
+                "is not the independently pinned canonical AP2 reference fixture"
+                in error
+                for error in errors
+            ),
             errors,
         )
 

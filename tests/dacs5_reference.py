@@ -652,7 +652,7 @@ def _price_term_shape_valid(value):
     currency = value.get("currency")
     if not isinstance(amount, str) or not _nonempty_jcs_string(currency):
         return False
-    if "unit" in value and not _nonempty_jcs_string(value["unit"]):
+    if "unit" in value and not isinstance(value["unit"], str):
         return False
     # CORE CD-1 plus PriceTerm's positive-amount requirement, ASCII digits only.
     return amount != "0" and _CANONICAL_POSITIVE_DECIMAL.fullmatch(amount) is not None

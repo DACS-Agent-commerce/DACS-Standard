@@ -58,10 +58,25 @@ PRICE_TERM_REQUIRED_KEYS = {"amount", "currency"}
 PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
 
 
+class DuplicateMemberNameError(ValueError):
+    """Raised when a JSON object repeats an exact decoded member name."""
+
+
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise DuplicateMemberNameError(
+                f"duplicate JSON object member name {name!r}"
+            )
+        result[name] = value
+    return result
+
+
 def fail(path: Path, message: str) -> str:
     try:
         label = path.resolve().relative_to(ROOT)
-    except ValueError:
+    except (ValueError, OSError, RuntimeError):
         label = path
     return f"{label}: {message}"
 
@@ -128,7 +143,7 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     if not isinstance(refs, list) or not refs:
         return [f"{path_label}: paymentTxRefs MUST be a non-empty list"]
     for i, ref in enumerate(refs):
-        if not isinstance(ref, dict) or ref.get("kind") not in TXREF_HASH_FIELD:
+        if not isinstance(ref, dict) or not isinstance(ref.get("kind"), str) or ref["kind"] not in TXREF_HASH_FIELD:
             errs.append(f"{path_label}: paymentTxRefs[{i}] MUST be an htlc-lock / htlc-reveal / htlc-claim txRef"); continue
         extra = set(ref) - TXREF_FIELDS[ref["kind"]]
         if extra:
@@ -145,6 +160,8 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
 
 def verify_signature(record: dict) -> str | None:
     """Return an error string, or None when the Ed25519 signature verifies."""
+    if not isinstance(record, dict):
+        return "SettlementEvidence MUST be an object"
     sig = record.get("signature")
     if not isinstance(sig, dict):
         return "signature MUST be an object"
@@ -159,9 +176,12 @@ def verify_signature(record: dict) -> str | None:
     if not isinstance(value, str) or not is_canonical_sig6(value):
         return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
+        payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
+    except (RecursionError, TypeError, UnicodeError, ValueError) as exc:
+        return f"signed evidence cannot be canonicalized: {exc}"
+    try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
         public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.removeprefix("cci:")))
-        payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
         public.verify(raw, payload)
     except (InvalidSignature, ValueError):
         return "signature does not verify over dacs-evidence:v1: || sha256(JCS(record minus signature))"
@@ -180,18 +200,36 @@ def _walk_keys(obj: Any):
 
 def load_case(path: Path) -> tuple[dict | None, list[str]]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_unique_object,
+        )
+    except DuplicateMemberNameError as exc:
+        return None, [fail(path, f"invalid JSON: {exc}")]
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
+    except OSError as exc:
+        return None, [fail(path, f"fixture could not be read: {exc}")]
+    except UnicodeDecodeError as exc:
+        return None, [fail(path, f"fixture is not valid UTF-8: {exc}")]
     except json.JSONDecodeError as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
+    except RecursionError as exc:
+        return None, [fail(path, f"invalid JSON nesting: {exc}")]
+    except ValueError as exc:
+        return None, [fail(path, f"invalid JSON value: {exc}")]
+    if not isinstance(data, dict):
+        return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []
     if data.get("kind") != "SettlementEvidenceCase":
         errors.append(fail(path, f"kind MUST be SettlementEvidenceCase, got {data.get('kind')!r}"))
     evidence = data.get("settlementEvidence")
     if not isinstance(evidence, dict):
         return None, errors + [fail(path, "settlementEvidence MUST be an object")]
-    forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
+    try:
+        forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
+    except RecursionError:
+        return None, errors + [fail(path, "settlementEvidence nesting exceeds supported limit")]
     if forbidden:
         errors.append(fail(path, "ST-8 supersession MUST NOT carry amendment fields: " + ", ".join(sorted(forbidden))))
     if evidence.get("evidenceVersion") != "1":
@@ -239,7 +277,8 @@ def validate_interim(path: Path) -> tuple[dict | None, list[str]]:
     for kind in ("htlc-lock", "htlc-reveal"):
         if kinds.count(kind) > 1:
             errors.append(fail(path, f"interim evidence MUST carry exactly one {kind} txRef"))
-    refs = [r for r in evidence.get("paymentTxRefs", []) if isinstance(r, dict)]
+    raw_refs = evidence.get("paymentTxRefs")
+    refs = [r for r in raw_refs if isinstance(r, dict)] if isinstance(raw_refs, list) else []
     lock = next((r for r in refs if r.get("kind") == "htlc-lock"), None)
     reveal = next((r for r in refs if r.get("kind") == "htlc-reveal"), None)
     if lock and reveal and lock.get("lockTxHash") == reveal.get("revealTxHash"):
@@ -253,6 +292,9 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
     evidence, errors = load_case(path)
     if evidence is None:
         return errors
+    if interim is not None and not isinstance(interim, dict):
+        errors.append(fail(path, "interim SettlementEvidence MUST be an object"))
+        interim = None
     if set(evidence) != RESOLVED_EVIDENCE_KEYS:
         errors.append(fail(path, "resolved SettlementEvidence fields MUST be exactly evidenceVersion, jobId, observedAt, outcome, phase, paymentAmount, paymentTxRefs, settlementFinality, signature, supersedesEvidenceRef"))
     if "reason" in evidence:
@@ -269,7 +311,8 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
             errors.append(fail(path, f"resolved evidence MUST carry the {needed} txRef"))
         elif kinds.count(needed) > 1:
             errors.append(fail(path, f"resolved evidence MUST carry exactly one {needed} txRef"))
-    refs = [r for r in evidence.get("paymentTxRefs", []) if isinstance(r, dict)]
+    raw_refs = evidence.get("paymentTxRefs")
+    refs = [r for r in raw_refs if isinstance(r, dict)] if isinstance(raw_refs, list) else []
     lock = next((r for r in refs if r.get("kind") == "htlc-lock"), None)
     reveal = next((r for r in refs if r.get("kind") == "htlc-reveal"), None)
     claim = next((r for r in refs if r.get("kind") == "htlc-claim"), None)
@@ -291,7 +334,8 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
             errors.append(fail(path, "HTLC topology: htlc-reveal MUST be on the destination chain (reveal.chainId != lock.chainId) for pay-cross-chain-htlc"))
     if interim is not None:
         def by_kind(ev, kind):
-            return next((r for r in ev.get("paymentTxRefs", []) if isinstance(r, dict) and r.get("kind") == kind), None)
+            refs = ev.get("paymentTxRefs")
+            return next((r for r in refs if isinstance(r, dict) and r.get("kind") == kind), None) if isinstance(refs, list) else None
         for kind in ("htlc-lock", "htlc-reveal"):
             a, b = by_kind(interim, kind), by_kind(evidence, kind)
             if a is not None and b is not None and a != b:
@@ -318,21 +362,29 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
             if fin["finalityObservedAt"] > evidence["observedAt"]:
                 errors.append(fail(path, "time order: settlementFinality.finalityObservedAt MUST be less than or equal to resolved.observedAt"))
     amount = evidence.get("paymentAmount")
-    if not isinstance(amount, dict) or not isinstance(amount.get("currency"), str) or not amount["currency"].strip():
+    if not isinstance(amount, dict):
         errors.append(fail(path, "resolved evidence MUST carry paymentAmount with a non-empty currency (REQUIRED on success-outcome records)"))
     else:
         if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
             errors.append(fail(path, "PriceTerm fields MUST be exactly amount, currency, with optional unit"))
+        if not isinstance(amount.get("currency"), str) or not amount["currency"].strip():
+            errors.append(fail(path, "resolved evidence MUST carry paymentAmount with a non-empty currency (REQUIRED on success-outcome records)"))
         if not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
             errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
+        if "unit" in amount and not isinstance(amount["unit"], str):
+            errors.append(fail(path, "paymentAmount.unit MUST be a string when present"))
     ref = evidence.get("supersedesEvidenceRef")
     ref_errs = attestation_ref_errors(ref)
     if ref_errs:
         errors += [fail(path, "supersedesEvidenceRef " + e) for e in ref_errs]
     elif interim is not None:
-        expected = content_hash_hex(interim)
-        if ref["contentHash"] != expected:
-            errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
+        try:
+            expected = content_hash_hex(interim)
+        except (TypeError, ValueError, UnicodeError, RecursionError):
+            errors.append(fail(path, "interim cannot be canonicalized for pair validation"))
+        else:
+            if ref["contentHash"] != expected:
+                errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
         if interim.get("jobId") != evidence.get("jobId"):
             errors.append(fail(path, "resolved and interim records MUST share jobId"))
     return errors
@@ -340,7 +392,10 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
 
 def validate_pair(interim_path: Path, resolved_path: Path) -> list[str]:
     interim, errors = validate_interim(interim_path)
-    errors += validate_resolved(resolved_path, interim)
+    # A rejected interim is not an admissible identity for cross-record checks.
+    # Continue validating the resolved record on its own, but do not derive a
+    # supersession hash or pairwise equality result from rejected content.
+    errors += validate_resolved(resolved_path, interim if not errors else None)
     return errors
 
 
@@ -349,7 +404,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("interim", nargs="?", type=Path, default=DEFAULT_INTERIM)
     parser.add_argument("resolved", nargs="?", type=Path, default=DEFAULT_RESOLVED)
     args = parser.parse_args(argv)
-    errors = validate_pair(args.interim, args.resolved)
+    try:
+        errors = validate_pair(args.interim, args.resolved)
+    except (AttributeError, OSError, OverflowError, RecursionError, TypeError, UnicodeError, ValueError) as exc:
+        print(f"HTLC-9 ST-8 verifier failed: {exc}", file=sys.stderr)
+        return 1
     if errors:
         for e in errors:
             print(e, file=sys.stderr)

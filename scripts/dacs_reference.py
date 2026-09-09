@@ -7,6 +7,7 @@ conformance checks.  It is not a durable production nonce store.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import re
 import threading
 import unicodedata
@@ -54,12 +55,41 @@ REGISTERED_SCHEMES = frozenset(
 )
 
 
+class DuplicateJSONMember(ValueError):
+    """A JSON object repeated an exact member name."""
+
+
+def loads_unique_json(source: str) -> Any:
+    """Decode JSON while rejecting exact duplicate names at every object depth."""
+
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for name, value in pairs:
+            if name in result:
+                raise DuplicateJSONMember(f"duplicate JSON member {name!r}")
+            result[name] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"non-JSON numeric constant {value}")
+
+    return json.loads(source, object_pairs_hook=unique_object, parse_constant=reject_constant)
+
+
 def exact_safe_integer(value: Any, *, minimum: int | None = None) -> bool:
     """Return whether ``value`` is a non-Boolean JSON safe integer."""
 
     if type(value) is not int or not -SAFE_INTEGER <= value <= SAFE_INTEGER:
         return False
     return minimum is None or value >= minimum
+
+
+def price_term_unit_is_valid(value: Any) -> bool:
+    """Validate PriceTerm's optional unit without imposing content semantics."""
+
+    return isinstance(value, dict) and (
+        "unit" not in value or isinstance(value["unit"], str)
+    )
 
 
 @dataclass(frozen=True)

@@ -36,8 +36,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jcs  # noqa: E402
 from dacs_reference import (  # noqa: E402
+    DuplicateJSONMember,
     exact_safe_integer,
+    loads_unique_json,
     parse_claim_reference,
+    price_term_unit_is_valid,
 )
 
 try:
@@ -69,7 +72,7 @@ PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
 def fail(path: Path, message: str) -> str:
     try:
         label = path.resolve().relative_to(ROOT)
-    except ValueError:
+    except (ValueError, OSError, RuntimeError):
         label = path
     return f"{label}: {message}"
 
@@ -203,11 +206,19 @@ def load_case(
     expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
 ) -> tuple[dict | None, list[str]]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = loads_unique_json(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
+    except DuplicateJSONMember as exc:
+        return None, [fail(path, str(exc))]
     except json.JSONDecodeError as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
+    except UnicodeError as exc:
+        return None, [fail(path, f"invalid UTF-8: {exc}")]
+    except ValueError as exc:
+        return None, [fail(path, f"invalid JSON: {exc}")]
+    except OSError as exc:
+        return None, [fail(path, f"fixture file could not be read: {exc}")]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []
@@ -365,6 +376,8 @@ def validate_resolved(
             errors.append(fail(path, "PriceTerm fields MUST be exactly amount, currency, with optional unit"))
         if not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
             errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
+        if not price_term_unit_is_valid(amount):
+            errors.append(fail(path, "paymentAmount.unit, when present, MUST be a string"))
     ref = evidence.get("supersedesEvidenceRef")
     ref_errs = attestation_ref_errors(ref)
     if ref_errs:

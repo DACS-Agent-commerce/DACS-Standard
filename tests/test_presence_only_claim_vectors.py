@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -327,11 +330,6 @@ def expected_result_signer(context, result):
 
 def verify_bundle(bundle, admission=None):
     if not isinstance(bundle, dict):
-        return False
-    if set(bundle) - {
-        "bundleVersion", "presentedBy", "presentedAt", "sessionNonce",
-        "claims", "presentation",
-    }:
         return False
     if not {"bundleVersion", "presentedBy", "presentedAt", "claims", "presentation"} <= set(bundle):
         return False
@@ -1163,6 +1161,29 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                     ),
                     name,
                 )
+
+    def test_identity_bundle_accepts_signed_additive_top_level_members(self):
+        private = Ed25519PrivateKey.from_private_bytes(bytes.fromhex("24" * 32))
+        claim = "key:" + private.public_key().public_bytes_raw().hex()
+        unsigned = {
+            "bundleVersion": "1",
+            "presentedBy": claim,
+            "presentedAt": 0,
+            "claims": [{"ref": claim}],
+            "futureMinorContext": {"advisory": ["retained", "inert"]},
+        }
+        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+        signature = base64.urlsafe_b64encode(private.sign(payload)).rstrip(b"=")
+        bundle = {
+            **unsigned,
+            "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                    {"ref": claim, "signature": signature.decode("ascii")}
+                ],
+            },
+        }
+        self.assertTrue(verify_bundle(bundle))
 
     def test_every_result_reference_uses_the_core_b2_signed_scope(self):
         resolved = [

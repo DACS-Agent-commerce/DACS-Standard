@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
@@ -85,6 +86,11 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         out.write_text(json.dumps(data), encoding="utf-8")
         return out
 
+    def _write_raw(self, data):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
+        out.write_bytes(data)
+        return out
+
     def _pair(self, gen, mutate_interim=None, mutate_resolved=None,
               interim_seed=None, resolved_seed=None, mutate_interim_signed=None,
               mutate_resolved_signed=None):
@@ -109,12 +115,105 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         wrap = lambda r: {"kind": "SettlementEvidenceCase", "settlementEvidence": r, "specRefs": ["§9.5.4"]}
         return self._write(wrap(interim)), self._write(wrap(resolved))
 
+    def test_file_error_diagnostics_survive_path_resolution_failures(self):
+        _, ver = self._load_pack_modules()
+        missing = Path(self._tempdir.name) / "missing.json"
+        for error in (OSError("resolution unavailable"), RuntimeError("resolution unavailable")):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(Path, "resolve", side_effect=error):
+                    evidence, errors = ver.load_case(missing)
+                self.assertIsNone(evidence)
+                self.assertIn("fixture file not found", errors[0])
+
+    def test_valid_optional_units_agree_with_dacs5_consumer(self):
+        import importlib.util
+        gen, ver = self._load_pack_modules()
+        spec = importlib.util.spec_from_file_location("unit_dacs5_reference", ROOT / "tests/dacs5_reference.py")
+        consumer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(consumer)
+        for unit in ("", "request"):
+            with self.subTest(unit=unit):
+                case = json.loads(RESOLVED.read_text(encoding="utf-8"))
+                record = case["settlementEvidence"]
+                record["paymentAmount"]["unit"] = unit
+                gen.sign(record, gen.ORCHESTRATOR_SEED)
+                self.assertEqual(ver.validate_pair(INTERIM, self._write(case)), [])
+                self.assertTrue(consumer._price_term_shape_valid(record["paymentAmount"]))
+        self.assertTrue(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC"}))
+        for unit in (None, 1, [], {}):
+            self.assertFalse(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC", "unit": unit}))
+
+    def test_non_json_numeric_constants_have_controlled_raw_admission_errors(self):
+        _, ver = self._load_pack_modules()
+        for token in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(token=token):
+                path = self._write_raw(("{\"x\":" + token + "}").encode("utf-8"))
+                evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertIn("invalid JSON", errors[0])
+                self.assertIn("non-JSON numeric constant", errors[0])
+
     def test_htlc9_pack_is_deterministic_and_verifies(self):
         check = subprocess.run(["python3", str(GENERATE_HTLC9), "--check"], cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
         result = subprocess.run(["python3", str(VERIFY_HTLC9)], cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("both signatures verified", result.stdout)
+
+    def test_htlc9_json_file_admission_is_duplicate_aware_and_controlled(self):
+        _, ver = self._load_pack_modules()
+        with self.assertRaisesRegex(ver.DuplicateJSONMember, "duplicate JSON member"):
+            ver.loads_unique_json('{"outer":{"same":1,"same":2}}')
+        self.assertEqual(
+            len(ver.loads_unique_json(r'{"e\u0301":1,"\u00e9":2}')),
+            2,
+        )
+
+        cases = [
+            (
+                self._write_raw(
+                    b'{"kind":"SettlementEvidenceCase",'
+                    b'"settlementEvidence":{"jobId":"first","jobId":"second"}}'
+                ),
+                "duplicate JSON member 'jobId'",
+            ),
+            (self._write_raw(b'{"kind":'), "invalid JSON"),
+            (self._write_raw(b"\xff"), "invalid UTF-8"),
+        ]
+        unreadable = Path(self._tempdir.name) / "directory.json"
+        unreadable.mkdir()
+        cases.append((unreadable, "fixture file could not be read"))
+        for path, message in cases:
+            with self.subTest(message=message):
+                evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_price_term_optional_unit_is_string_only_and_may_be_empty(self):
+        gen, ver = self._load_pack_modules()
+        for value in ({}, {"unit": ""}, {"unit": "per-call"}):
+            with self.subTest(value=value):
+                self.assertTrue(ver.price_term_unit_is_valid(value))
+        for unit in (None, True, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertFalse(ver.price_term_unit_is_valid({"unit": unit}))
+
+        interim, resolved = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence["paymentAmount"].__setitem__(
+                "unit", ""
+            ),
+        )
+        self.assertEqual(ver.validate_pair(interim, resolved), [])
+
+        invalid = json.loads(RESOLVED.read_text(encoding="utf-8"))
+        invalid["settlementEvidence"]["paymentAmount"]["unit"] = 7
+        errors = ver.validate_pair(INTERIM, self._write(invalid))
+        self.assertTrue(
+            any("paymentAmount.unit, when present, MUST be a string" in error
+                for error in errors),
+            errors,
+        )
 
     def test_htlc9_pair_uses_independently_expected_phase_orchestrator(self):
         gen, ver = self._load_pack_modules()

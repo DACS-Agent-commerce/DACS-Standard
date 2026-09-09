@@ -1,11 +1,15 @@
 import hashlib
 import json
 import re
+import sys
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from dacs_reference import exact_safe_integer  # noqa: E402
+
 VECTORS = (
     ROOT
     / "conformance"
@@ -55,11 +59,14 @@ def rail_eip155_chain(rail):
         return None
 
     chain_id = network.get("chainId")
-    if type(chain_id) is not int or chain_id <= 0:
+    if not exact_safe_integer(chain_id, minimum=1):
         raise ValueError("invalid network chainId")
     if asset.get("kind") in {"erc20", "native-evm"}:
         asset_chain_id = asset.get("chainId")
-        if type(asset_chain_id) is not int or asset_chain_id != chain_id:
+        if (
+            not exact_safe_integer(asset_chain_id, minimum=1)
+            or asset_chain_id != chain_id
+        ):
             raise ValueError("RD-5 asset/network chainId mismatch")
     return f"eip155:{chain_id}"
 
@@ -254,6 +261,40 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual(result["expected"], "error")
                 self.assertEqual(result["failedAt"], "RD-5")
                 self.assertFalse(result["maySubmitPayment"])
+
+    def test_eip155_chain_ids_stop_at_the_safe_integer_boundary(self):
+        maximum = 2**53 - 1
+        claim = f"cci-xm:evm:{maximum}:opaque-address"
+        self.assertEqual(claim_eip155_chain(claim), f"eip155:{maximum}")
+        rail = {
+            "network": {"kind": "evm", "chainId": maximum},
+            "asset": {"kind": "erc20", "chainId": maximum},
+        }
+        self.assertEqual(rail_eip155_chain(rail), f"eip155:{maximum}")
+
+        self.assertEqual(
+            claim_eip155_chain(f"cci-xm:evm:{maximum + 1}:opaque-address"),
+            f"eip155:{maximum + 1}",
+        )
+        with self.assertRaisesRegex(ValueError, "invalid network chainId"):
+            rail_eip155_chain(
+                {
+                    "network": {"kind": "evm", "chainId": maximum + 1},
+                    "asset": {"kind": "erc20", "chainId": maximum + 1},
+                }
+            )
+
+        result = evaluate(
+            {
+                "claim": f"cci-xm:evm:{maximum + 1}:opaque-address",
+                "railDefinition": rail,
+                "tier3AgreementAssertionPresent": True,
+            }
+        )
+        self.assertEqual(result["expected"], "pass")
+        self.assertFalse(result["tier2Applicable"])
+        self.assertEqual(result["bindingTier"], 3)
+        self.assertTrue(result["maySubmitPayment"])
 
     def test_manifest_no_longer_promotes_the_contradictory_golden(self):
         cases = {

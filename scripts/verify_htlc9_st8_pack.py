@@ -84,7 +84,7 @@ def strict_json_loads(text: str):
 def fail(path: Path, message: str) -> str:
     try:
         label = path.resolve().relative_to(ROOT)
-    except ValueError:
+    except (ValueError, OSError, RuntimeError):
         label = path
     return f"{label}: {message}"
 
@@ -151,19 +151,45 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     if not isinstance(refs, list) or not refs:
         return [f"{path_label}: paymentTxRefs MUST be a non-empty list"]
     for i, ref in enumerate(refs):
-        if not isinstance(ref, dict) or ref.get("kind") not in TXREF_HASH_FIELD:
+        kind = ref.get("kind") if isinstance(ref, dict) else None
+        if not isinstance(kind, str) or kind not in TXREF_HASH_FIELD:
             errs.append(f"{path_label}: paymentTxRefs[{i}] MUST be an htlc-lock / htlc-reveal / htlc-claim txRef"); continue
-        extra = set(ref) - TXREF_FIELDS[ref["kind"]]
+        extra = set(ref) - TXREF_FIELDS[kind]
         if extra:
-            errs.append(f"{path_label}: {ref['kind']} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
-        field = TXREF_HASH_FIELD[ref["kind"]]
+            errs.append(f"{path_label}: {kind} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
+        field = TXREF_HASH_FIELD[kind]
         if not isinstance(ref.get("chainId"), int) or isinstance(ref.get("chainId"), bool) or ref["chainId"] <= 0:
-            errs.append(f"{path_label}: {ref['kind']} chainId MUST be a positive integer")
+            errs.append(f"{path_label}: {kind} chainId MUST be a positive integer")
         if not isinstance(ref.get("contractAddress"), str) or not re.fullmatch(r"0x[0-9a-fA-F]{40}", ref["contractAddress"]):
-            errs.append(f"{path_label}: {ref['kind']} contractAddress MUST be a 0x-prefixed 20-byte hex address")
+            errs.append(f"{path_label}: {kind} contractAddress MUST be a 0x-prefixed 20-byte hex address")
         if not isinstance(ref.get(field), str) or not TX_HASH.fullmatch(ref[field]):
-            errs.append(f"{path_label}: {ref['kind']} MUST carry {field} as 0x-prefixed 32-byte hex")
+            errs.append(f"{path_label}: {kind} MUST carry {field} as 0x-prefixed 32-byte hex")
     return errs
+
+
+def price_term_errors(amount: Any) -> list[str]:
+    """Validate the normative PriceTerm shape used by resolved HTLC evidence."""
+    if (
+        not isinstance(amount, dict)
+        or not isinstance(amount.get("currency"), str)
+        or not amount["currency"].strip()
+    ):
+        return [
+            "resolved evidence MUST carry paymentAmount with a non-empty currency "
+            "(REQUIRED on success-outcome records)"
+        ]
+    errors: list[str] = []
+    if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
+        errors.append("PriceTerm fields MUST be exactly amount, currency, with optional unit")
+    if (
+        not isinstance(amount.get("amount"), str)
+        or not CD1_AMOUNT.fullmatch(amount["amount"])
+        or amount["amount"] == "0"
+    ):
+        errors.append("paymentAmount.amount MUST be a positive canonical decimal string (CD-1)")
+    if "unit" in amount and not isinstance(amount["unit"], str):
+        errors.append("paymentAmount.unit MUST be a string when present")
+    return errors
 
 
 def verify_signature(
@@ -190,9 +216,13 @@ def verify_signature(
     if not isinstance(value, str) or not is_canonical_sig6(value):
         return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
+        digest = content_hash_hex(record)
+    except (TypeError, ValueError, OverflowError, RecursionError) as exc:
+        return f"SettlementEvidence cannot be canonicalized: {exc}"
+    try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
         public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.removeprefix("cci:")))
-        payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
+        payload = EVIDENCE_DOMAIN.encode("ascii") + digest.encode("ascii")
         public.verify(raw, payload)
     except (InvalidSignature, ValueError):
         return "signature does not verify over dacs-evidence:v1: || sha256(JCS(record minus signature))"
@@ -218,10 +248,16 @@ def load_case(
         data = strict_json_loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
+    except UnicodeError as exc:
+        return None, [fail(path, f"fixture is not valid UTF-8: {exc}")]
+    except OSError as exc:
+        return None, [fail(path, f"fixture could not be read: {exc}")]
     except DuplicateJsonMember as exc:
         return None, [fail(path, str(exc))]
     except json.JSONDecodeError as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
+    except RecursionError as exc:
+        return None, [fail(path, f"invalid JSON nesting: {exc}")]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []
@@ -230,7 +266,10 @@ def load_case(
     evidence = data.get("settlementEvidence")
     if not isinstance(evidence, dict):
         return None, errors + [fail(path, "settlementEvidence MUST be an object")]
-    forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
+    try:
+        forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
+    except RecursionError as exc:
+        return None, errors + [fail(path, f"SettlementEvidence nesting is too deep: {exc}")]
     if forbidden:
         errors.append(fail(path, "ST-8 supersession MUST NOT carry amendment fields: " + ", ".join(sorted(forbidden))))
     if evidence.get("evidenceVersion") != "1":
@@ -369,14 +408,10 @@ def validate_resolved(
                 errors.append(fail(path, "time order: interim.observedAt MUST be less than settlementFinality.finalityObservedAt"))
             if fin["finalityObservedAt"] > evidence["observedAt"]:
                 errors.append(fail(path, "time order: settlementFinality.finalityObservedAt MUST be less than or equal to resolved.observedAt"))
-    amount = evidence.get("paymentAmount")
-    if not isinstance(amount, dict) or not isinstance(amount.get("currency"), str) or not amount["currency"].strip():
-        errors.append(fail(path, "resolved evidence MUST carry paymentAmount with a non-empty currency (REQUIRED on success-outcome records)"))
-    else:
-        if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
-            errors.append(fail(path, "PriceTerm fields MUST be exactly amount, currency, with optional unit"))
-        if not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
-            errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
+    errors += [
+        fail(path, error)
+        for error in price_term_errors(evidence.get("paymentAmount"))
+    ]
     ref = evidence.get("supersedesEvidenceRef")
     ref_errs = attestation_ref_errors(ref)
     if ref_errs:
@@ -415,9 +450,10 @@ def validate_pair(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,
     )
+    admitted_interim = interim if not errors else None
     errors += validate_resolved(
         resolved_path,
-        interim,
+        admitted_interim,
         expected_phase_orchestrator=expected_phase_orchestrator,
     )
     return errors

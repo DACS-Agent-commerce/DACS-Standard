@@ -2,7 +2,7 @@
   "set": "ap2-handler-safety-v0.6",
   "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
   "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, authenticated synthetic-profile and JID/phase admission ordering, checkout/payment admission atomically composed with handler-owned AP2-7 store decisions, and retry/replay consumption are executed; the fixture release pin is not a published release or live deployment profile; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
-  "hash": "bc96b75e1f0e04c37630ef5c604a0d05e18628371c419294291c38eae5e22f5c",
+  "hash": "f5566a4d096b0bf77382725f292aac2f828ffc59e4c8c0265a353d2723b5ff2e",
   "count": 66,
   "vectors": [
     {
@@ -183,18 +183,21 @@
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
         "providerStatusCalls": 0,
-        "providerRequestCalls": 0,
-        "bindingAction": "resume-existing",
+        "providerRequestCalls": 1,
+        "bindingAction": "resubmit-same-key",
         "operationOrder": [
-          "atomicBindingStoreDecision"
+          "atomicBindingStoreDecision",
+          "submitProviderPayment"
         ],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false,
+        "submitProviderPayment": true,
         "submitNewPayment": false,
-        "idempotencyKeys": [],
+        "idempotencyKeys": [
+          "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97"
+        ],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "the composed handler resolves an in-flight exact-tuple retry and creates no new provider payment",
+      "note": "the composed handler re-dispatches the retained in-flight operation with its exact AP2-6 key and no new-payment authority",
       "providerRequest": {
         "providerEndpoint": "https://provider.example.invalid/payments",
         "paymentMandate": "fixture-payment-mandate-v1",
@@ -617,18 +620,21 @@
         "metadataCalls": 0,
         "bindingStoreCalls": 1,
         "providerStatusCalls": 0,
-        "providerRequestCalls": 0,
-        "bindingAction": "resume-existing",
+        "providerRequestCalls": 1,
+        "bindingAction": "resubmit-same-key",
         "operationOrder": [
-          "atomicBindingStoreDecision"
+          "atomicBindingStoreDecision",
+          "submitProviderPayment"
         ],
         "reserveAp2Binding": false,
-        "submitProviderPayment": false,
+        "submitProviderPayment": true,
         "submitNewPayment": false,
-        "idempotencyKeys": [],
+        "idempotencyKeys": [
+          "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97"
+        ],
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
-      "note": "a caller-supplied empty-store assertion is ignored; the handler-owned in-flight binding prevents a new provider payment",
+      "note": "a caller-supplied empty-store assertion is ignored; the handler-owned in-flight binding permits only exact retained-operation same-key recovery",
       "providerRequest": {
         "providerEndpoint": "https://provider.example.invalid/payments",
         "paymentMandate": "fixture-payment-mandate-v1",
@@ -1333,10 +1339,10 @@
       ],
       "expected": "pass",
       "want": {
-        "action": "resume-existing",
+        "action": "resubmit-same-key",
         "submitNewPayment": false
       },
-      "note": "an exact retry resumes with the same AP2-6 key rather than becoming replay",
+      "note": "an exact retry re-dispatches the retained operation with the same AP2-6 key and no new-payment authority",
       "providerRequest": {
         "providerEndpoint": "https://provider.example.invalid/payments",
         "paymentMandate": "fixture-payment-mandate-v1",

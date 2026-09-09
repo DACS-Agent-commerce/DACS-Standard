@@ -16,6 +16,11 @@ OUTPUT = (
 JOB = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 OTHER_JOB = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
 TEST_RELEASE_PIN = "0000000000000000000000000000000000000001"
+PEER_IDENTITIES = {
+    "buyer": "did:demos:agent:" + "22" * 32,
+    "seller": "did:demos:agent:" + "33" * 32,
+    "orchestrator": "did:demos:agent:" + "44" * 32,
+}
 CORRECTIVE_TUPLE = {
     "core": "0.3",
     "dacs1": "0.7",
@@ -46,6 +51,8 @@ def vector(
     *,
     other_job_id: object | None = None,
     role: str | None = None,
+    session_id: str | None = None,
+    peer_identity: str | None = None,
     template: str | None = None,
     want: dict | None = None,
 ) -> dict:
@@ -60,6 +67,10 @@ def vector(
         item["otherJobId"] = other_job_id
     if role is not None:
         item["role"] = role
+    if session_id is not None:
+        item["sessionId"] = session_id
+    if peer_identity is not None:
+        item["peerIdentity"] = peer_identity
     if template is not None:
         item["template"] = template
     if want is not None:
@@ -72,7 +83,7 @@ def build() -> dict:
                           "lookupCalls": 0}
     profile_subject = {
         "sessionId": JOB,
-        "peerIdentity": "did:demos:agent:" + "22" * 32,
+        "peerIdentity": PEER_IDENTITIES["buyer"],
     }
     vectors = [
         vector(
@@ -277,6 +288,8 @@ def build() -> dict:
             JOB,
             "Bundle addressing hashes the exact validated ASCII jobId and buyer role.",
             role="buyer",
+            session_id=JOB,
+            peer_identity=PEER_IDENTITIES["buyer"],
             want={"logicalAddress": bundle_address(JOB, "buyer"), "hashCalls": 1,
                   "lookupCalls": 0},
         ),
@@ -287,6 +300,8 @@ def build() -> dict:
             JOB,
             "The seller role has a distinct deterministic logical address.",
             role="seller",
+            session_id=JOB,
+            peer_identity=PEER_IDENTITIES["seller"],
             want={"logicalAddress": bundle_address(JOB, "seller"), "hashCalls": 1,
                   "lookupCalls": 0},
         ),
@@ -297,6 +312,8 @@ def build() -> dict:
             JOB,
             "The orchestrator role uses the same byte-exact derivation.",
             role="orchestrator",
+            session_id=JOB,
+            peer_identity=PEER_IDENTITIES["orchestrator"],
             want={"logicalAddress": bundle_address(JOB, "orchestrator"), "hashCalls": 1,
                   "lookupCalls": 0},
         ),
@@ -307,6 +324,8 @@ def build() -> dict:
             JOB,
             "A resolver may run only after canonical grammar validation and derivation.",
             role="buyer",
+            session_id=JOB,
+            peer_identity=PEER_IDENTITIES["buyer"],
             want={"logicalAddress": bundle_address(JOB, "buyer"), "hashCalls": 1,
                   "lookupCalls": 1},
         ),

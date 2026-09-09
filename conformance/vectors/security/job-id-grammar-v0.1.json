@@ -17,7 +17,7 @@
   },
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
   "count": 47,
-  "hash": "7677dfc92aa33edd4de4b4e4c4fe9f3aacf899a5380d8a8c9226bc5e8bb19722",
+  "hash": "e2bf8ba131c6a41d5dc75b107f0346f1fae1a098c5a9d1d07d4dca1aa4d14f1e",
   "vectors": [
     {
       "name": "canonical-ulid",
@@ -303,6 +303,8 @@
       "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "note": "Bundle addressing hashes the exact validated ASCII jobId and buyer role.",
       "role": "buyer",
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "want": {
         "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
         "hashCalls": 1,
@@ -316,6 +318,8 @@
       "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "note": "The seller role has a distinct deterministic logical address.",
       "role": "seller",
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
       "want": {
         "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
         "hashCalls": 1,
@@ -329,6 +333,8 @@
       "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "note": "The orchestrator role uses the same byte-exact derivation.",
       "role": "orchestrator",
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
       "want": {
         "logicalAddress": "stor-4cadaaae064cc2257f3e101842e4ae24fd4a481fdb7dea35082f30e7ad2311d0",
         "hashCalls": 1,
@@ -342,6 +348,8 @@
       "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "note": "A resolver may run only after canonical grammar validation and derivation.",
       "role": "buyer",
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "want": {
         "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
         "hashCalls": 1,

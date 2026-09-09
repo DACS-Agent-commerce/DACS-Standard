@@ -334,12 +334,15 @@ def vectors() -> list[dict[str, object]]:
                 hash_calls=2,
                 resolver_calls=1,
                 binding_store_calls=1,
-                binding_action="resume-existing",
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
                 derived_transaction_id=tx,
             ),
             "note": (
-                "the composed handler resolves an in-flight exact-tuple retry and "
-                "creates no new provider payment"
+                "the composed handler re-dispatches the retained in-flight operation "
+                "with its exact AP2-6 key and no new-payment authority"
             ),
         },
         {
@@ -491,12 +494,15 @@ def vectors() -> list[dict[str, object]]:
                 hash_calls=2,
                 resolver_calls=1,
                 binding_store_calls=1,
-                binding_action="resume-existing",
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
                 derived_transaction_id=tx,
             ),
             "note": (
                 "a caller-supplied empty-store assertion is ignored; the handler-owned "
-                "in-flight binding prevents a new provider payment"
+                "in-flight binding permits only exact retained-operation same-key recovery"
             ),
         },
         {
@@ -660,8 +666,8 @@ def vectors() -> list[dict[str, object]]:
             "phaseIndex": 3,
             "priorBindings": [binding(tx, job_a, 3, "in-flight")],
             "expected": "pass",
-            "want": {"action": "resume-existing", "submitNewPayment": False},
-            "note": "an exact retry resumes with the same AP2-6 key rather than becoming replay",
+            "want": {"action": "resubmit-same-key", "submitNewPayment": False},
+            "note": "an exact retry re-dispatches the retained operation with the same AP2-6 key and no new-payment authority",
         },
         {
             "name": "ap2-same-tuple-settled-resumes-evidence",

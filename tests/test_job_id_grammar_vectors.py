@@ -50,7 +50,12 @@ AUTHORITATIVE_RELEASE_PIN = DACS5_REFERENCE.AUTHORITATIVE_RELEASE_PIN
 AUTHORITATIVE_MODULE_VERSIONS = DACS5_REFERENCE.AUTHORITATIVE_MODULE_VERSIONS
 AUTHORITATIVE_LOCAL_PROFILE = DACS5_REFERENCE.AUTHORITATIVE_LOCAL_PROFILE
 CURRENT_SESSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
-CURRENT_PEER_IDENTITY = "did:demos:agent:" + "22" * 32
+CURRENT_PEER_IDENTITIES = {
+    "buyer": "did:demos:agent:" + "22" * 32,
+    "seller": "did:demos:agent:" + "33" * 32,
+    "orchestrator": "did:demos:agent:" + "44" * 32,
+}
+CURRENT_PEER_IDENTITY = CURRENT_PEER_IDENTITIES["buyer"]
 CURRENT_PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(b"\x23" * 32)
 CURRENT_PUBLIC_KEY = CURRENT_PRIVATE_KEY.public_key().public_bytes(
     serialization.Encoding.Raw,
@@ -83,6 +88,19 @@ def trusted_profile_context(
 
 
 TRUSTED_PROFILE_CONTEXTS = {
+    "buyer-bundle-known-answer": trusted_profile_context(
+        expected_peer_identity=CURRENT_PEER_IDENTITIES["buyer"], role="buyer"
+    ),
+    "seller-bundle-known-answer": trusted_profile_context(
+        expected_peer_identity=CURRENT_PEER_IDENTITIES["seller"], role="seller"
+    ),
+    "orchestrator-bundle-known-answer": trusted_profile_context(
+        expected_peer_identity=CURRENT_PEER_IDENTITIES["orchestrator"],
+        role="orchestrator",
+    ),
+    "lookup-after-validation": trusted_profile_context(
+        expected_peer_identity=CURRENT_PEER_IDENTITIES["buyer"], role="buyer"
+    ),
     "authenticated-corrective-profile-admitted": trusted_profile_context(),
     "unauthenticated-peer-profile-refuses": trusted_profile_context(
         authenticated=False
@@ -137,17 +155,18 @@ def canonical_bytes(value):
 
 
 def validate_job_id(value):
+    """Pure JID-1 grammar check; this alone never authorizes an action."""
     if not isinstance(value, str) or JOB_ID_RE.fullmatch(value) is None:
         raise ValueError("job-id-validation")
     return value
 
 
-def derive_bundle(job_id, role, metrics):
-    validated = validate_job_id(job_id)
+def _derive_admitted_bundle(validated_job_id, role, metrics):
+    """Private address primitive reached only after current profile admission."""
     if role not in ROLES:
         raise ValueError("role-validation")
     metrics["hashCalls"] += 1
-    preimage = validated.encode("ascii") + b"-bundle-" + role.encode("ascii")
+    preimage = validated_job_id.encode("ascii") + b"-bundle-" + role.encode("ascii")
     return "stor-" + hashlib.sha256(preimage).hexdigest()
 
 
@@ -155,7 +174,9 @@ def is_exact_corrective_profile(profile):
     return DACS5_REFERENCE.is_exact_corrective_profile(profile)
 
 
-def admit_authenticated_profile(vector, trusted_context):
+def admit_authenticated_profile(
+    vector, trusted_context, *, requested_role="buyer", validated_job_id=None
+):
     # Profile objects and reference labels inside protocol input are attacker-
     # controlled, even if their bytes copy trusted configuration exactly.
     if any(
@@ -164,10 +185,15 @@ def admit_authenticated_profile(vector, trusted_context):
         raise ValueError("profile-admission")
     session_id = vector.get("sessionId")
     peer_identity = vector.get("peerIdentity")
-    if not isinstance(session_id, str) or not isinstance(peer_identity, str):
+    if (
+        not isinstance(session_id, str)
+        or not isinstance(peer_identity, str)
+        or requested_role not in ROLES
+        or (validated_job_id is not None and session_id != validated_job_id)
+    ):
         raise ValueError("profile-admission")
     authoritative_participant = DACS5_REFERENCE.resolve_current_profile(
-        session_id, "buyer", trusted_context
+        session_id, requested_role, trusted_context
     )
     if authoritative_participant is None or authoritative_participant != peer_identity:
         raise ValueError("profile-admission")
@@ -181,13 +207,30 @@ def evaluate(vector, trusted_context=None):
             canonical = validate_job_id(vector.get("jobId"))
             return "pass", {**metrics, "canonicalJobId": canonical}
         if operation == "derive-bundle":
-            address = derive_bundle(vector.get("jobId"), vector.get("role"), metrics)
+            validated = validate_job_id(vector.get("jobId"))
+            role = vector.get("role")
+            admit_authenticated_profile(
+                vector,
+                trusted_context,
+                requested_role=role,
+                validated_job_id=validated,
+            )
+            address = _derive_admitted_bundle(validated, role, metrics)
             return "pass", {**metrics, "logicalAddress": address}
         if operation == "lookup-bundle":
-            address = derive_bundle(vector.get("jobId"), vector.get("role"), metrics)
+            validated = validate_job_id(vector.get("jobId"))
+            role = vector.get("role")
+            admit_authenticated_profile(
+                vector,
+                trusted_context,
+                requested_role=role,
+                validated_job_id=validated,
+            )
+            address = _derive_admitted_bundle(validated, role, metrics)
             metrics["lookupCalls"] += 1
             return "pass", {**metrics, "logicalAddress": address}
         if operation == "derive-logical":
+            # Grammar/template behavior is intentionally pure and non-authorizing.
             canonical = validate_job_id(vector.get("jobId"))
             template = vector.get("template")
             if not isinstance(template, str) or template.count("{jobId}") != 1:
@@ -239,12 +282,35 @@ class JobIdGrammarVectorTests(unittest.TestCase):
                     self.assertEqual(value, observed.get(key), key)
 
     def test_bundle_known_answers_do_not_share_generator_state(self):
-        job_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        names = {
+            "buyer": "buyer-bundle-known-answer",
+            "seller": "seller-bundle-known-answer",
+            "orchestrator": "orchestrator-bundle-known-answer",
+        }
         for role, expected in KNOWN_ADDRESSES.items():
             with self.subTest(role=role):
-                metrics = {"hashCalls": 0, "lookupCalls": 0}
-                self.assertEqual(expected, derive_bundle(job_id, role, metrics))
-                self.assertEqual({"hashCalls": 1, "lookupCalls": 0}, metrics)
+                name = names[role]
+                verdict, observed = evaluate(
+                    self.by_name[name], TRUSTED_PROFILE_CONTEXTS[name]
+                )
+                self.assertEqual("pass", verdict)
+                self.assertEqual(expected, observed["logicalAddress"])
+                self.assertEqual(1, observed["hashCalls"])
+                self.assertEqual(0, observed["lookupCalls"])
+
+    def test_current_bundle_operations_require_authenticated_role_profile(self):
+        for name in (
+            "buyer-bundle-known-answer",
+            "seller-bundle-known-answer",
+            "orchestrator-bundle-known-answer",
+            "lookup-after-validation",
+        ):
+            with self.subTest(vector=name):
+                verdict, observed = evaluate(self.by_name[name])
+                self.assertEqual("error", verdict)
+                self.assertEqual("profile-admission", observed["failureStage"])
+                self.assertEqual(0, observed["hashCalls"])
+                self.assertEqual(0, observed["lookupCalls"])
 
     def test_shared_dacs5_helper_gates_current_derivation_and_marks_legacy(self):
         job_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"

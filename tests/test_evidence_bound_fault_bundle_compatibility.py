@@ -627,16 +627,25 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                         "bundleLifecycle": self.data["bundleLifecycleByHash"][
                             R.bundle_hash(case["bundle"])],
                     }
-                result = R.resolve_absolute_fault_pointer(
+                result = R.resolve_legacy_absolute_fault_pointer(
                     case["pointer"],
                     case["bundle"],
                     binding=case.get("binding"),
-                    pubkeys=self.current_key_authority,
+                    pubkeys=self.pubkeys,
                     ebfab_authority=ebfab_authority,
                 )
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
                 if "reasonContains" in case["want"]:
                     self.assertIn(case["want"]["reasonContains"], result["reason"])
+
+        historical = self.data["pointerCases"][0]
+        current = R.resolve_absolute_fault_pointer(
+            historical["pointer"],
+            historical["bundle"],
+            pubkeys=self.current_key_authority,
+        )
+        self.assertFalse(current["ok"])
+        self.assertIn("job-id-validation", current["reason"])
 
     def test_malformed_pointer_inputs_fail_closed_without_exceptions(self):
         valid = self.data["pointerCases"][0]
@@ -648,11 +657,11 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             (valid["pointer"], valid["bundle"], []),
         ):
             with self.subTest(pointer=type(pointer).__name__, bundle=type(bundle).__name__):
-                result = R.resolve_absolute_fault_pointer(
+                result = R.resolve_legacy_absolute_fault_pointer(
                     pointer,
                     bundle,
                     binding=binding,
-                    pubkeys=self.current_key_authority,
+                    pubkeys=self.pubkeys,
                 )
                 self.assertFalse(result["ok"])
         self.assertFalse(R.resolve_fab_pointer(None, {}, None)["ok"])
@@ -673,16 +682,16 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         for malformed_signer in ([], {}):
             pointer = copy.deepcopy(valid["pointer"])
             pointer["signature"]["signer"] = malformed_signer
-            result = R.resolve_absolute_fault_pointer(
+            result = R.resolve_legacy_absolute_fault_pointer(
                 pointer,
                 valid["bundle"],
-                pubkeys=self.current_key_authority,
+                pubkeys=self.pubkeys,
                 ebfab_authority=authority,
             )
             self.assertFalse(result["ok"])
             self.assertIn("signer key unavailable", result["reason"])
 
-    def test_current_pointer_binding_uses_role_map_not_binding_signer(self):
+    def test_current_pointer_uses_role_map_with_or_without_binding(self):
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
         source = next(
@@ -772,20 +781,43 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         )
         self.assertTrue(result["ok"], result["reason"])
 
+        unbound = R.resolve_absolute_fault_pointer(
+            pointer,
+            bundle,
+            pubkeys=self.current_key_authority,
+            trusted_contexts=authority,
+            expected_jobid=bundle["jobId"],
+            expected_role=role,
+        )
+        self.assertTrue(unbound["ok"], unbound["reason"])
+
         missing_role = R.trusted_current_context([])
-        with mock.patch.object(R, "pointer_hash", wraps=R.pointer_hash) as pointer_hash:
-            refused = R.resolve_absolute_fault_pointer(
-                pointer,
-                bundle,
-                binding=binding,
-                pubkeys=self.current_key_authority,
-                trusted_contexts=missing_role,
-                expected_jobid=bundle["jobId"],
-                expected_role=role,
-            )
+        refused = R.resolve_absolute_fault_pointer(
+            pointer,
+            bundle,
+            pubkeys=self.current_key_authority,
+            trusted_contexts=missing_role,
+            expected_jobid=bundle["jobId"],
+            expected_role=role,
+        )
         self.assertFalse(refused["ok"])
         self.assertIn("current-profile-admission", refused["reason"])
-        pointer_hash.assert_not_called()
+
+    def test_price_term_optional_unit_accepts_strings_only(self):
+        self.assertTrue(R._price_term_shape_valid({
+            "amount": "25", "currency": "USDC"
+        }))
+        self.assertTrue(R._price_term_shape_valid({
+            "amount": "25", "currency": "USDC", "unit": ""
+        }))
+        self.assertTrue(R._price_term_shape_valid({
+            "amount": "25", "currency": "USDC", "unit": "token"
+        }))
+        for unit in (None, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertFalse(R._price_term_shape_valid({
+                    "amount": "25", "currency": "USDC", "unit": unit
+                }))
 
     def test_url_shape_strengthening_is_ebfab_only(self):
         """Released FAB v1 keeps its historical string URL shape; the new EBFAB
@@ -796,10 +828,10 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         valid = self.data["pointerCases"][0]
         pointer = copy.deepcopy(valid["pointer"])
         pointer["fullBundleUrl"] = "ipfs://candidate-cid"
-        result = R.resolve_absolute_fault_pointer(
+        result = R.resolve_legacy_absolute_fault_pointer(
             pointer,
             valid["bundle"],
-            pubkeys=self.current_key_authority,
+            pubkeys=self.pubkeys,
         )
         self.assertFalse(result["ok"])
         self.assertIn("malformed extended pointer payload", result["reason"])

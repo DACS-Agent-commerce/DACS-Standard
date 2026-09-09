@@ -387,7 +387,7 @@ def evaluate_transaction_binding(transaction_id, job_id, phase_index, prior, pro
             return "pass", "reconcile-reference", False
         return "pass", "resubmit-same-key", False
     if bound.get("state") == "in-flight":
-        return "pass", "resume-existing", False
+        return "pass", "resubmit-same-key", False
     return "error", "refuse-conflict", False
 
 
@@ -578,8 +578,7 @@ def evaluate_checkout_payment_admission(
     retained = next(entry for entry in authoritative_binding_store if entry["transactionId"] == transaction_id)
     payload = copy.deepcopy(retained["operationPayload"])
     fingerprint = retained["operationFingerprint"]
-    if binding_action == "resume-existing":
-        return "pass", transaction_id, effects
+    idempotency_key = retained["idempotencyKey"]
     if binding_action == "resume-settlement":
         return "pass", transaction_id, effects
 
@@ -933,6 +932,40 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                     self.assertFalse(effects["submitNewPayment"])
                     self.assertEqual(effects["metadataCalls"], 0)
 
+    def test_inflight_candidate_vectors_dispatch_retained_request(self):
+        for name in (
+            "ap2-composed-same-tuple-inflight-resumes",
+            "ap2-composed-caller-store-assertion-cannot-authorize",
+        ):
+            case = self.cases[name]
+            calls = []
+
+            def provider_submit(request):
+                calls.append(copy.deepcopy(request))
+                return None
+
+            with self.subTest(case=name):
+                store = authoritative_binding_store_for_ap2_case(case)
+                verdict, transaction_id, effects = evaluate_checkout_payment_admission(
+                    case,
+                    trusted_context_for_ap2_case(case),
+                    store,
+                    provider_submit=provider_submit,
+                )
+                self.assertEqual(verdict, "pass")
+                self.assertEqual(transaction_id, case["want"]["derivedTransactionId"])
+                self.assertEqual(effects["bindingAction"], "resubmit-same-key")
+                self.assertTrue(effects["submitProviderPayment"])
+                self.assertFalse(effects["submitNewPayment"])
+                self.assertEqual(effects["idempotencyKeys"], [derive_key(
+                    case["jobId"], case["phaseIndex"]
+                )])
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(
+                    calls[0]["operationPayload"],
+                    store[0]["operationPayload"],
+                )
+
     def test_ap2_context_validates_every_participant_before_selection(self):
         case = self.cases["ap2-admission-complete-chain-match"]
         for mutate in (
@@ -1029,25 +1062,52 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         for field in ("hashCalls", "resolverCalls", "bindingStoreCalls", "providerStatusCalls", "providerRequestCalls", "metadataCalls"):
             self.assertEqual(effects[field], 0)
 
-    def test_same_store_reserves_once_and_rejects_cross_tuple_replay(self):
+    def test_inflight_no_response_retry_reuses_retained_operation(self):
         case = self.cases["ap2-admission-complete-chain-match"]
         context = trusted_context_for_ap2_case(case)
         store = []
-        first = evaluate_checkout_payment_admission(case, context, store)
+        calls = []
+
+        def no_response_then_captured(request):
+            calls.append(copy.deepcopy(request))
+            if len(calls) == 1:
+                return None
+            provider_ref = "provider-payment-123"
+            return {
+                "status": "captured",
+                "providerRecoveryReference": provider_ref,
+                "settlement": fixture_settlement(provider_ref),
+            }
+
+        first = evaluate_checkout_payment_admission(
+            case, context, store, provider_submit=no_response_then_captured
+        )
         self.assertTrue(first[2]["submitProviderPayment"])
         self.assertTrue(first[2]["submitNewPayment"])
         self.assertEqual(store, [durable_binding(
             first[1], case["jobId"], case["phaseIndex"], "in-flight"
         )])
-        snapshot = copy.deepcopy(store)
-        for replay in (case, self.cases["ap2-composed-cross-job-replay-refuses"], self.cases["ap2-composed-cross-phase-replay-refuses"]):
-            result = evaluate_checkout_payment_admission(replay, trusted_context_for_ap2_case(replay), store)
-            self.assertEqual(result[2]["bindingAction"], "resume-existing" if replay is case else "reject-replay")
-            self.assertFalse(result[2]["submitProviderPayment"])
-            self.assertFalse(result[2]["submitNewPayment"])
-            self.assertFalse(result[2]["reserveAp2Binding"])
-            self.assertEqual(result[2]["metadataCalls"], 0)
-            self.assertEqual(store, snapshot)
+        retry = evaluate_checkout_payment_admission(
+            case, context, store, provider_submit=no_response_then_captured
+        )
+        self.assertEqual(retry[2]["bindingAction"], "resubmit-same-key")
+        self.assertTrue(retry[2]["submitProviderPayment"])
+        self.assertFalse(retry[2]["submitNewPayment"])
+        self.assertFalse(retry[2]["reserveAp2Binding"])
+        self.assertEqual(retry[2]["metadataCalls"], 0)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]["idempotencyKey"], calls[1]["idempotencyKey"])
+        self.assertEqual(calls[0]["operationFingerprint"], calls[1]["operationFingerprint"])
+        self.assertEqual(calls[0]["operationPayload"], calls[1]["operationPayload"])
+        self.assertTrue(calls[0]["submitNewPayment"])
+        self.assertFalse(calls[1]["submitNewPayment"])
+        self.assertEqual(store[0]["state"], "settled")
+        self.assertEqual(
+            store[0]["providerRecoveryReference"], "provider-payment-123"
+        )
+        self.assertEqual(
+            store[0]["settlement"], fixture_settlement("provider-payment-123")
+        )
 
     def test_concurrent_calls_share_one_atomic_reservation(self):
         case = self.cases["ap2-admission-complete-chain-match"]
@@ -1055,7 +1115,12 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         store = []
         with ThreadPoolExecutor(max_workers=4) as pool:
             results = list(pool.map(lambda _: evaluate_checkout_payment_admission(case, context, store), range(4)))
-        self.assertEqual(sum(r[2]["submitProviderPayment"] for r in results), 1)
+        self.assertEqual(sum(r[2]["submitNewPayment"] for r in results), 1)
+        self.assertEqual(sum(r[2]["submitProviderPayment"] for r in results), 4)
+        self.assertEqual(
+            {tuple(r[2]["idempotencyKeys"]) for r in results},
+            {(derive_key(case["jobId"], case["phaseIndex"]),)},
+        )
         self.assertEqual(len(store), 1)
 
     def test_provider_failure_keeps_reservation_for_recovery(self):
@@ -1211,7 +1276,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             )
             self.assertEqual(verdict, "pass")
             self.assertIn(action, {
-                "resume-existing", "resume-settlement", "resubmit-same-key",
+                "resume-settlement", "resubmit-same-key",
                 "reconcile-reference",
             })
             self.assertFalse(submit_new)

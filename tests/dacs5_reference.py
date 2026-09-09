@@ -976,7 +976,7 @@ def _price_term_shape_valid(value):
     currency = value.get("currency")
     if not isinstance(amount, str) or not _nonempty_jcs_string(currency):
         return False
-    if "unit" in value and not _nonempty_jcs_string(value["unit"]):
+    if "unit" in value and not isinstance(value["unit"], str):
         return False
     # CORE CD-1 plus PriceTerm's positive-amount requirement, ASCII digits only.
     return amount != "0" and _CANONICAL_POSITIVE_DECIMAL.fullmatch(amount) is not None
@@ -2270,37 +2270,20 @@ def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
         return False
 
 
-def resolve_absolute_fault_pointer(
-    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
-    trusted_contexts=None, *, expected_jobid=None, expected_role=None
+def _resolve_absolute_fault_pointer_payload(
+    pointer, dereferenced_bundle, binding, keys, ebfab_authority, *,
+    expected_jobid, expected_role, expected_signer, address_deriver,
 ):
-    """Validate FAB/EBFAB pointer type, domain, signature, and triple identity.
+    """Shared FAB/EBFAB type, signature, SEB, fault, and identity checks.
 
-    The caller supplies already-dereferenced content; this function performs no network I/O.
+    This is the historical verification core. Public current callers perform
+    authenticated session/role/profile/JID admission before entering it; the
+    explicitly named legacy wrapper uses it only for frozen archival fixtures.
     """
     if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
         return {"ok": False, "reason": "pointer and dereferenced bundle must be objects"}
     if binding is not None and not isinstance(binding, dict):
         return {"ok": False, "reason": "binding must be an object"}
-    keys = _authenticated_current_key_map(pubkeys)
-    if keys is None:
-        return {"ok": False, "reason": "current-crypto-admission"}
-    expected_signer = None
-    if binding is not None:
-        expected_signer = resolve_current_profile(
-            expected_jobid, expected_role, trusted_contexts
-        )
-        if expected_signer is None:
-            return {"ok": False, "reason": "binding invalid: current-profile-admission"}
-        try:
-            validate_current_job_id(expected_jobid)
-        except ValueError:
-            return {"ok": False, "reason": "job-id-validation"}
-        if (
-            dereferenced_bundle.get("jobId") != expected_jobid
-            or dereferenced_bundle.get("anchoredByRole") != expected_role
-        ):
-            return {"ok": False, "reason": "dereferenced bundle differs from trusted role authority"}
     known_pointer_discriminators = {
         "bundleVersion",
         "faultBundleVersion",
@@ -2406,11 +2389,108 @@ def resolve_absolute_fault_pointer(
             expected_role=expected_role,
             expected_content_hash=recomputed,
             expected_signer=expected_signer,
-            address_deriver=_current_logical_address,
+            address_deriver=address_deriver,
         )
         if not binding_result["ok"]:
             return {"ok": False, "reason": "binding invalid: " + binding_result["reason"]}
     return {"ok": True, "reason": "pointer type, signature, and triple identity hold"}
+
+
+def resolve_absolute_fault_pointer(
+    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
+    trusted_contexts=None, *, expected_jobid=None, expected_role=None
+):
+    """Resolve a current FAB/EBFAB pointer after verifier-owned admission.
+
+    The caller supplies already-dereferenced content; this function performs no
+    network I/O. Authenticated keys, canonical session identity, role/profile
+    authority, the bundle role holder, and the pointer signer are admitted before
+    any bundle or pointer hashing/signature work, whether or not a binding exists.
+    """
+    if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
+        return {"ok": False, "reason": "pointer and dereferenced bundle must be objects"}
+    if binding is not None and not isinstance(binding, dict):
+        return {"ok": False, "reason": "binding must be an object"}
+    keys = _authenticated_current_key_map(pubkeys)
+    if keys is None:
+        return {"ok": False, "reason": "current-crypto-admission"}
+    try:
+        validate_current_job_id(expected_jobid)
+    except ValueError:
+        return {"ok": False, "reason": "job-id-validation"}
+    expected_signer = resolve_current_profile(
+        expected_jobid, expected_role, trusted_contexts
+    )
+    if expected_signer is None:
+        return {"ok": False, "reason": "current-profile-admission"}
+    if expected_signer not in keys:
+        return {"ok": False, "reason": "current role authority key unavailable"}
+    if (
+        dereferenced_bundle.get("jobId") != expected_jobid
+        or dereferenced_bundle.get("anchoredByRole") != expected_role
+    ):
+        return {"ok": False, "reason": "dereferenced bundle differs from trusted role authority"}
+    parties = dereferenced_bundle.get("parties")
+    role_claims = [
+        party.get("primaryClaim")
+        for party in parties if isinstance(party, dict)
+        and party.get("role") == expected_role
+    ] if isinstance(parties, list) else []
+    if role_claims != [expected_signer]:
+        return {"ok": False, "reason": "dereferenced bundle role holder differs from trusted role authority"}
+    pointer_signature = pointer.get("signature")
+    if (
+        not isinstance(pointer_signature, dict)
+        or pointer_signature.get("signer") != expected_signer
+    ):
+        return {"ok": False, "reason": "pointer signer differs from trusted role authority"}
+    return _resolve_absolute_fault_pointer_payload(
+        pointer,
+        dereferenced_bundle,
+        binding,
+        keys,
+        ebfab_authority,
+        expected_jobid=expected_jobid,
+        expected_role=expected_role,
+        expected_signer=expected_signer,
+        address_deriver=_current_logical_address,
+    )
+
+
+def resolve_legacy_absolute_fault_pointer(
+    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
+    *, expected_jobid=None, expected_role=None,
+):
+    """Verify frozen pre-current pointer fixtures; never current action authority."""
+    if (
+        not HAVE_CRYPTO
+        or not isinstance(pubkeys, dict)
+        or not pubkeys
+        or any(
+            not isinstance(identity, str)
+            or not identity
+            or not isinstance(key, bytes)
+            or len(key) != 32
+            for identity, key in pubkeys.items()
+        )
+    ):
+        return {"ok": False, "reason": "legacy-crypto-admission"}
+    if binding is not None and isinstance(binding, dict):
+        if expected_jobid is None:
+            expected_jobid = binding.get("jobId")
+        if expected_role is None:
+            expected_role = binding.get("role")
+    return _resolve_absolute_fault_pointer_payload(
+        pointer,
+        dereferenced_bundle,
+        binding,
+        pubkeys,
+        ebfab_authority,
+        expected_jobid=expected_jobid,
+        expected_role=expected_role,
+        expected_signer=None,
+        address_deriver=legacy_logical_address,
+    )
 
 
 # --------------------------------------------------------------------------- #

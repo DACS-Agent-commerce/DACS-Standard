@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
@@ -115,6 +116,50 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         result = subprocess.run(["python3", str(VERIFY_HTLC9)], cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("both signatures verified", result.stdout)
+
+    def test_htlc9_raw_loader_rejects_invalid_json_before_verification(self):
+        _, ver = self._load_pack_modules()
+        cases = [
+            (
+                '{"kind":"SettlementEvidenceCase","kind":"Other","settlementEvidence":{}}',
+                "duplicate JSON member",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":{"phase":"one","phase":"two"}}',
+                "duplicate JSON member",
+            ),
+            ('{"kind":', "invalid JSON"),
+        ]
+        for raw_json, expected_error in cases:
+            with self.subTest(raw_json=raw_json):
+                path = Path(self._tempdir.name) / "duplicate.json"
+                path.write_text(raw_json, encoding="utf-8")
+                with mock.patch.object(
+                    ver, "verify_signature", side_effect=AssertionError("verification reached")
+                ) as verify_signature:
+                    evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(expected_error in error for error in errors), errors)
+                verify_signature.assert_not_called()
+
+        path = Path(self._tempdir.name) / "invalid-utf8.json"
+        path.write_bytes(b"\xff")
+        with mock.patch.object(
+            ver, "verify_signature", side_effect=AssertionError("verification reached")
+        ) as verify_signature:
+            evidence, errors = ver.load_case(path)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("not valid UTF-8" in error for error in errors), errors)
+        verify_signature.assert_not_called()
+
+    def test_unique_json_loader_preserves_unique_nested_data_and_controls_parse_errors(self):
+        self._load_pack_modules()
+        from dacs_reference import loads_unique_json  # noqa: WPS433
+
+        raw_json = '{"outer":{"name":"value"},"items":[{"id":1},{"id":2}]}'
+        self.assertEqual(loads_unique_json(raw_json), json.loads(raw_json))
+        with self.assertRaisesRegex(ValueError, "invalid JSON"):
+            loads_unique_json('{"outer":')
 
     def test_htlc9_resolved_record_binds_the_interim_content_hash(self):
         gen, ver = self._load_pack_modules()

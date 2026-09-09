@@ -19,12 +19,13 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import jcs  # noqa: E402
+from dacs_reference import cf4_decode  # noqa: E402
 
 PROFILE = ROOT / "spec" / "PROFILE.md"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
@@ -125,9 +126,7 @@ def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
     job_id, encoded_rail, phase_text = parts[2:5]
     if JOB_ID_RE.fullmatch(job_id) is None:
         raise ValueError("payment evidence logical address carries a non-ULID jobId")
-    rail_id = unquote(encoded_rail)
-    if quote(rail_id, safe="") != encoded_rail:
-        raise ValueError("payment evidence railId is not canonically CF-4 encoded")
+    rail_id = cf4_decode(encoded_rail)
     if PHASE_INDEX_RE.fullmatch(phase_text) is None:
         raise ValueError("payment evidence phaseIndex is not a bare integer")
     phase_index = require_phase_index(

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import json
 import re
 import threading
 import unicodedata
@@ -59,6 +60,25 @@ REGISTERED_SCHEMES = frozenset(
         "cmmc",
     }
 )
+
+
+def loads_unique_json(value: str | bytes | bytearray) -> Any:
+    """Parse JSON while rejecting exact duplicate member names recursively."""
+
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError(f"invalid JSON: duplicate JSON member {key!r}")
+            result[key] = item
+        return result
+
+    try:
+        return json.loads(value, object_pairs_hook=unique_object)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"invalid JSON: {error.msg}") from error
+    except UnicodeDecodeError as error:
+        raise ValueError("invalid JSON: input is not valid UTF-8") from error
 
 
 def canonical_bytes(value: Any) -> bytes:

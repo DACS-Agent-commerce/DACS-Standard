@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
-import json
 import re
 import sys
 from pathlib import Path
@@ -39,6 +38,7 @@ import jcs  # noqa: E402
 from dacs_reference import (  # noqa: E402
     cf4_encode,
     exact_safe_integer,
+    loads_unique_json,
     parse_claim_reference,
 )
 
@@ -280,11 +280,15 @@ def load_case(
     resolved: bool = False,
 ) -> tuple[dict | None, list[str]]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        raw_json = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
-    except json.JSONDecodeError as exc:
-        return None, [fail(path, f"invalid JSON: {exc}")]
+    except UnicodeDecodeError:
+        return None, [fail(path, "invalid JSON: input is not valid UTF-8")]
+    try:
+        data = loads_unique_json(raw_json)
+    except ValueError as error:
+        return None, [fail(path, str(error))]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []

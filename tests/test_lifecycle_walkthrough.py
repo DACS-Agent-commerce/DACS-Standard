@@ -127,6 +127,20 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             with self.subTest(address=bad), self.assertRaises(ValueError):
                 self.module.payment_anchor_tuple(bad)
 
+    def test_payment_anchor_tuple_uses_strict_cf4_decoder(self):
+        canonical = f"dacs4:payment:{self.module.JOB_ID}:pay-dem:3"
+        self.assertEqual(
+            self.module.payment_anchor_tuple(canonical),
+            (self.module.JOB_ID, "pay-dem", 3, False),
+        )
+        # Unicode is valid for generic CF-4, not the RailDefinition railId profile.
+        self.assertEqual(self.module.cf4_decode("r%C3%A9seau"), "réseau")
+        for encoded_rail in ("re%CC%81seau%3AUSDC", "%FF"):
+            with self.subTest(encoded_rail=encoded_rail), self.assertRaises(ValueError):
+                self.module.payment_anchor_tuple(
+                    f"dacs4:payment:{self.module.JOB_ID}:{encoded_rail}:3"
+                )
+
     def test_phase_indices_are_exact_integers_before_keying_or_comparison(self):
         for invalid in (True, False, 3.0, -1, 9_007_199_254_740_992):
             with self.subTest(invalid=invalid), self.assertRaisesRegex(

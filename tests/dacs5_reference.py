@@ -91,6 +91,11 @@ SUPPORTED_PHASES = frozenset({
     "commit-agreement",
     "rate",
 }) | EVIDENCE_PHASES
+ADDITIVE_COMMIT_PHASES = frozenset({
+    "commit-payee-bound-agreement",
+    "commit-identity-bound-agreement",
+    "commit-identity-bound-payee-agreement",
+})
 SUPPORTED_ATTESTATION_ANCHOR_KINDS = frozenset({"storage-program", "ipfs", "https"})
 SUPPORTED_SETTLEMENT_FINALITY_MODELS = frozenset({
     "block-depth",
@@ -934,6 +939,7 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
             return (False, "delivery execution authority lacks evidenceLogicalAddress")
     anchor = ref.get("anchor") if isinstance(ref, dict) else None
     nonce = receipt.get("nonce")
+    expected_nonce = execution.get("anchorNonce")
     if (
         receipt.get("logicalAddress") != expected_logical
         or not isinstance(anchor, dict)
@@ -942,9 +948,15 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
         or not isinstance(receipt.get("transaction"), str)
         or not receipt["transaction"]
         or receipt.get("writer") != signer
-        or isinstance(nonce, bool)
-        or not isinstance(nonce, int)
-        or nonce < 0
+        or not (
+            (isinstance(nonce, str) and bool(nonce))
+            or (
+                isinstance(nonce, int)
+                and not isinstance(nonce, bool)
+                and nonce >= 0
+            )
+        )
+        or (expected_nonce is not None and nonce != expected_nonce)
     ):
         return (False, "anchor receipt does not bind address, content, transaction, writer, or nonce")
     return (True, expected_logical)
@@ -1385,6 +1397,9 @@ def validate_ebfab(
     bundle_lifecycle,
     session_execution_authority_by_phase_key,
     verified_receipt_by_canonical_ref,
+    *,
+    effective_pipeline=None,
+    additional_commit_phase=None,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -1420,10 +1435,17 @@ def validate_ebfab(
     if not isinstance(signature, dict):
         return (False, "listing signature missing", None)
     signer = signature.get("signer")
+    seller_primary_claim = listing.get("sellerPrimaryClaim")
+    if not isinstance(seller_primary_claim, str):
+        seller_primary_claim = (
+            listing.get("seller", {}).get("identity", {}).get("presentedBy")
+            if isinstance(listing.get("seller"), dict)
+            else None
+        )
     if (
         signature.get("algorithm") != "ed25519"
         or not isinstance(signer, str)
-        or signer != listing.get("sellerPrimaryClaim")
+        or signer != seller_primary_claim
         or signer not in pubkeys
     ):
         return (False, "listing signer or algorithm unsupported", None)
@@ -1442,13 +1464,53 @@ def validate_ebfab(
     ):
         return (False, "listingRef does not bind the signed listing", None)
 
-    pipeline = listing.get("pipeline")
+    signed_pipeline = listing.get("pipeline")
+    pipeline = signed_pipeline
+    if effective_pipeline is not None:
+        if (
+            not isinstance(signed_pipeline, list)
+            or not isinstance(effective_pipeline, list)
+            or len(signed_pipeline) != len(effective_pipeline)
+        ):
+            return (False, "APR effective pipeline is malformed", None)
+        alternative_indexes = [
+            index for index, step in enumerate(signed_pipeline)
+            if isinstance(step, dict) and step.get("kind") == "pay-alternative"
+        ]
+        if len(alternative_indexes) != 1:
+            return (False, "APR effective pipeline lacks one signed projection slot", None)
+        alternative_index = alternative_indexes[0]
+        for index, (signed_step, projected_step) in enumerate(
+            zip(signed_pipeline, effective_pipeline)
+        ):
+            if index == alternative_index:
+                projected_parameters = (
+                    projected_step.get("parameters")
+                    if isinstance(projected_step, dict)
+                    else None
+                )
+                if (
+                    not isinstance(projected_step, dict)
+                    or projected_step.get("kind") not in PAYMENT_PHASES
+                    or not isinstance(projected_parameters, dict)
+                    or set(projected_parameters) != {"rail"}
+                    or not isinstance(projected_parameters.get("rail"), str)
+                ):
+                    return (False, "APR projected payment step is malformed", None)
+            elif canonical(signed_step) != canonical(projected_step):
+                return (False, "APR projection changed a non-payment step", None)
+        pipeline = effective_pipeline
+    phase_set = SUPPORTED_PHASES
+    if additional_commit_phase is not None:
+        if not _string_member(additional_commit_phase, ADDITIVE_COMMIT_PHASES):
+            return (False, "additional commitment phase is unsupported", None)
+        phase_set = phase_set | {additional_commit_phase}
     summary = bundle.get("phaseSummary")
     if not isinstance(pipeline, list) or not isinstance(summary, list):
         return (False, "pipeline or phaseSummary is not an array", None)
     if any(
         not isinstance(step, dict)
-        or not _string_member(step.get("kind"), SUPPORTED_PHASES)
+        or not _string_member(step.get("kind"), phase_set)
         for step in pipeline
     ):
         return (False, "signed listing pipeline contains an unsupported phase", None)
@@ -1796,6 +1858,8 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("bundleLifecycle"),
         authority.get("sessionExecutionAuthorityByPhaseKey"),
         authority.get("verifiedReceiptByCanonicalRef"),
+        effective_pipeline=authority.get("effectivePipeline"),
+        additional_commit_phase=authority.get("additionalCommitPhase"),
     )
     return ok
 

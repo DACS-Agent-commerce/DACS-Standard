@@ -53,6 +53,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
+
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 366 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -71,11 +73,13 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
-| [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 32 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
-| [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -530,7 +534,33 @@ binding comparisons, and retry reuse:
 
 Candidate set; independent implementation cross-run pending.
 
-### `settlement-event-identity-v0.6.json` — §9.5.8 SB-1/SB-2 signed projection
+### `sb3-binding-required-v0.8.json` — §9.5.8 SB-3 required-binding gate
+
+22 candidate vectors pin the DACS-4 v0.8 four-value result after a rail's
+authenticated definition declares settlement-side binding. A verified match
+continues to the ordinary transfer checks; a verified mismatch fails; missing,
+RPC-unavailable, pruned, signature-unavailable, or reorged binding evidence is
+non-countable `indeterminate`; malformed, structurally invalid, or unknown-state
+evidence is `error` without raising. None of those
+non-match paths uses the unbound posture or creates party fault.
+
+The corpus makes an otherwise exact unrelated transfer inert, ignores caller
+and unproven-legacy downgrade hints, and makes unavailable authenticated rail
+policy itself indeterminate. Controls retain the explicitly weaker SB-1/SB-2
+posture only when the signed pinned RailDefinition declares no binding, and
+prove that even a satisfied binding does not bypass the remaining transfer
+checks. Every outcome also pins DACS-5 final-verification and reputation
+eligibility.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_sb3_binding_required_vectors.py --write
+python3 scripts/generate_sb3_binding_required_vectors.py --check
+python3 -m unittest tests.test_sb3_binding_required_vectors -v
+```
+
+### `settlement-event-identity-v0.6.json` — §9.5.8 SB-1 signed projection
 
 Twenty-eight genuinely signed `SettlementEvidence` vectors exercise the DACS-4 v0.6
 event-identity boundary before SB-2 consumes a key. Current EVM, Solana, and
@@ -543,11 +573,14 @@ only when exactly one ledger event matches. Multiple matches or unavailable
 ledger data remain `indeterminate`, and an unsigned caller/indexer coordinate is
 ignored.
 
-The set includes batched transfers with distinct keys, cross-job reuse, missing
-and malformed coordinates, a signed-index/ledger mismatch, legacy unambiguous
+The set includes batched transfers with distinct keys, missing and malformed
+coordinates, a signed-index/ledger mismatch, legacy unambiguous
 and ambiguous replay, discriminator stripping, cross-type signature replay,
 three independently signed full-address mismatch negatives, and a CF-4 rail
-segment positive.
+segment positive. Its retained `same-event-second-job-rejected` result records
+the historical first-claim behavior only: the top-level `conformanceProfile`
+machine-limits current applicability to SB-1 identity projection and same-tuple
+idempotency and points collision authority to `sb2-collision-authority-v0.8`.
 Regenerate and execute it with:
 
 ```bash
@@ -555,12 +588,15 @@ python3 scripts/generate_settlement_event_identity_vectors.py --check
 python3 -m unittest tests.test_settlement_event_identity_vectors -v
 ```
 
-### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
+### `sb2-settlement-uniqueness-v0.1.json` — historical SB-2 key canonicalisation
 
-20 vectors for the cross-session / cross-phase double-count defence: a single
-on-chain settlement MUST be counted **at most once** per `(jobId, phaseIndex)`,
-keyed on the canonical `settlement-tx-id` pinned in **SB-1** (#161, commit
-`072dc33`):
+These 20 retained candidate vectors established canonical `settlement-tx-id`
+formation, malformed-key refusal, and idempotent same-tuple behavior under the
+original SB-2 consumer-ledger model (#161, commit `072dc33`). Their historical
+`decision`/`effect` values for a cross-tuple collision used first-observed state
+and are superseded by DACS-4 v0.8 and `sb2-collision-authority-v0.8.json`; they
+MUST NOT be cited as the current collision-authority rule. The reusable key
+forms are:
 
 - **evm / x402:** `evm:{chainId}:{txHash}:{logIndex}`
 - **solana:** `solana:{cluster}:{signature}:{instructionIndex}`
@@ -572,11 +608,10 @@ set); `signature` base58 decoding to **exactly 64 bytes**; and a malformed ref
 (wrong-length / odd hex / non-64-byte base58 sig / missing coordinates) →
 `error`, **never minting a distinct key**.
 
-This set is built off the SN-4 single-use template, scope-inverted to settlement
-(cX3po, #159 / #161). It is the `pathos-dacs-ref` independent implementation of
-the §9.5.8 row; `mj-deving/dacs-verify` carries the second. On EVM the two impls
-were cross-run case-for-case and agreed on **6/6** decisions (#159,
-`issuecomment-4797534308`).
+This set was built off the SN-4 single-use template, scope-inverted to
+settlement (cX3po, #159 / #161). The historical `pathos-dacs-ref` and
+`mj-deving/dacs-verify` implementations agreed on 6/6 sampled EVM decisions;
+that result is provenance for the frozen v0.1 model, not v0.8 conformance.
 
 #### Vector schema
 
@@ -615,13 +650,44 @@ has been cross-run to date — see Status).
 
 #### Running
 
-The vectors are language-neutral data: feed each `record` + `consumed` to your
-SB-2 verifier and assert `(decision, effect)`. The reference run lives in
-`pathos-dacs-ref`:
+The frozen vectors remain runnable as historical data by feeding each `record`
++ `consumed` to the old adapter and asserting `(decision, effect)`. The
+reference run lives in `pathos-dacs-ref`:
 
 ```
 npx tsx conformance/security-vectors/sb2-settlement-uniqueness/run.mts
 # → 20/20 vectors pass
+```
+
+### `sb2-collision-authority-v0.8.json` — §9.5.8 SB-2 collision authority
+
+32 candidate group vectors execute the current rule over a complete presented
+evidence set. A finalized per-settlement relation must match the canonical
+settlement ID, authenticated pinned rail/profile, job, and phase before it can
+select that tuple and reject competitors. Authority for one group cannot select
+the same tuple in another. Missing/mismatched dimensions, unavailable or pruned
+evidence, non-final/reorganised authority, or conflicting purported finality
+leave every competitor `indeterminate`. EIP-3009 supplies the exact-phase
+positive; current Permit2 and AP2 job-only bindings leave same-job cross-phase
+groups unresolved even when a caller appends a phase field. Malformed authority
+is `error`; an exact binding to no presented claim rejects all claims.
+
+Producer `observedAt`, evidence-hash order, arrival order, and SR-2 anchor order
+are inert. The set proves that a stolen claim anchored first cannot win, later
+collision discovery removes a provisional count, outer replacement hints
+cannot override finalized settlement authority, and an unregistered atomic
+first-claim hint grants nothing. Same-tuple repetition remains idempotent and
+different event indices in a batched transaction remain separate settlements.
+An independent executable DACS-5 consumer regression also proves that late
+unresolved collision discovery removes prior bundle count, fault denominators,
+volume, and per-currency transaction count without creating party fault.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_sb2_collision_authority_vectors.py --write
+python3 scripts/generate_sb2_collision_authority_vectors.py --check
+python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 ```
 
 ### `commitment-anchor-authority-v0.3.json` — §8.6 CA-6/CA-7
@@ -666,9 +732,10 @@ Coverage:
   2; `pay-dem` intrinsic addressing binds at tier 1; an applicable-but-unresolvable
   tier-2 binding pauses instead of falling through to tier 3; a resolver `error`
   remains `error`.
-- **PB-3 fallback separation** — SB-3 post-field fallback is not imported as a
-  payee-destination fallback, including the x402 absent-or-unverifiable jobId
-  binding posture.
+- **PB-3 gate separation** — an SB-3 binding result cannot bypass PB-2 and a
+  PB-2 destination result cannot bypass SB-3. Under DACS-4 v0.8, an absent or
+  unverifiable required x402 job binding is independently `indeterminate` and
+  non-countable rather than an unbound fallback.
 - **Repeated pay phases** — repeated phases are bound independently by
   `(railId, phaseIndex)`.
 
@@ -680,6 +747,12 @@ DACS-3 §8.5 defines the `PayeeBoundAgreementDocument` signature input as
 `"dacs-payee-bound-agreement:v1:" || agreement_hash`; the cross-domain vectors
 also exercise §B.7/SIG-2 by replaying legacy agreement signatures under the
 payee-bound domain and vice versa.
+
+The signed fixtures in this corpus carry the released
+`AgreementParty.bundleHash` string spelling, including `sha256:`-prefixed
+values. Those bytes and the corpus remain valid. Identity-bound agreement
+conformance is additive and lives in `identity-bundle-hash-binding-v0.1.json`;
+it does not supersede or reinterpret this corpus.
 
 This candidate set does not assign a failure class for the separate
 no-satisfiable-tier refusal case; that classification remains outside this
@@ -1145,6 +1218,76 @@ Regenerate and run with:
 ```sh
 python3 scripts/generate_job_id_grammar_vectors.py --check
 python3 -m unittest tests.test_job_id_grammar_vectors -v
+
+```
+
+### `identity-bundle-hash-binding-v0.1.json` — CORE §B.2 IBH-1..IBH-6
+
+These candidate vectors execute the distinct identity-bound agreement paths
+without changing any released carrier. Deterministic Ed25519 fixtures include
+complete signed Listings, all four signed agreement artifact types, both
+commitment-record forms, distinct one-use session-bound IdentityBundle
+presentations, signed CVRs with signed VerifyResult material, payment inputs,
+terminal EBFABs, and signed prior-payment dispositions. A generalized
+fixture-only receipt adapter independently observes commitment, agreement, CVR,
+disposition, settlement-evidence, and terminal-bundle dependencies and verifies
+native transaction, exact logical/native location, content, writer, nonce,
+block ordering, and fixture-finality bindings. Its deterministic cryptography
+is not a production-native codec and does not claim Demos or any other
+live-substrate consensus verification.
+The evaluator verifies cryptography, authenticated production/replay context,
+and DACS-2 §7.7.1 aggregation directly; no producer success boolean, asserted
+digest, signed `overallDecision` label, or caller role label is proof.
+
+Coverage includes the 4×4 signed phase/artifact matrix, 4×4 cross-domain replay
+matrix, closed-PhaseType refusal at all three stage entrypoints, exclusive
+discriminator failures, explicit stronger-path downgrade,
+presentation signer and distinct verifier-challenge checks (including
+consumed-on-failure, bounded lifetime, changed/re-signed reuse, exact retained
+admission, and missing-authority refusal), exact CVR reference/job/claim/digest/
+requirement/result joins and replayed aggregation, every cross-stage hash
+position, payment job/role/key joins, separate-orchestrator binding, mandatory
+negotiate→commit ordering, precommit payout coverage, genuine APR projection at
+the exact slot, signed/finalized replacement disposition including
+closed-cannot-settle evidence, complete EBFAB payment/delivery evidence, and
+finalized agreement/CVR/commitment/bundle dependency joins. It also preserves
+old and identity-bound sealed-envelope losing-bidder controls, independently
+authorized fixture-receipt tamper cases, and malformed nested values that must
+never escape as language exceptions.
+
+Additional executable regressions preserve non-session Listing publication
+without a session nonce across all four agreement types; action-bearing
+IdentityBundle companions still require the verifier-issued challenge and exact
+authenticated retained admission. Signed wire artifacts alone do not establish
+off-chain issuance or one-use retention when that authority is unavailable.
+The identity-bound reputation adapter runs these admission checks before
+calling the existing DACS-5 metric derivation: a valid control counts one
+bundle, while missing or invalid identity proof never invokes the metric
+consumer. This is IBH propagation evidence over already verified role-resolution
+tags, not a replacement for SR-2/BB-6 resolution or proof of a complete deployed
+reputation reader. Historical metric algorithms and derivation types are unchanged.
+
+Historical signed `AgreementDocument` and `PayeeBoundAgreementDocument`
+fixtures deliberately retain `sha256:`-prefixed party hashes and verify with
+both `CommitmentRecord` and `FinalityCommitmentRecord` without byte rewriting.
+The old agreement-reader cases execute a frozen dispatcher modeled from base
+`3426faaebc09948d57a3a6d30fd6795df579b68f` because this repository has no
+pinned agreement-reader executable. The base DACS-5 reference path is also
+executed to prove that unsupported new signed phases are refused before phase
+derivation or counting. The focused evaluator executes supported historical
+commitment/signature controls; where it lacks a complete historical payment or
+terminal stage adapter it returns an explicit non-authorizing `indeterminate`
+rather than an unconditional pass or a protocol-invalid judgment. These are
+labeled modeled/reference compatibility results, never proof about a deployed
+reader. The existing payee-destination corpus remains independently valid and
+is not superseded.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_identity_bundle_hash_binding_vectors.py --write
+python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
+python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 ```
 
 ## Status

@@ -30,12 +30,6 @@ python3 scripts/run_lifecycle_walkthrough.py --check
 python3 scripts/validate_implementation_manifests.py
 ```
 
-> **Integration candidate status.** `conformance/walkthrough/PINS.json`
-> intentionally has `traceSha256: null`: the combined #366/next trace has not
-> been executed or reviewed. Therefore `run_lifecycle_walkthrough.py --check`
-> is expected to fail and the walkthrough gate is not green. Replace the null
-> only with the reviewed digest from an allowed execution.
-
 Implementation support claims use the optional normative
 [`ImplementationManifest`](implementation-manifest.schema.json) reporting shape.
 Four validated examples live in [`implementation-manifests/`](implementation-manifests/).

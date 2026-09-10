@@ -72,6 +72,8 @@ DOMAINS = {
     "VerifyResult": "dacs-verifyresult:v1:",
     "CompositeVerificationRecord": "dacs-composite:v1:",
     "PayeeBoundAgreementDocument": "dacs-payee-bound-agreement:v1:",
+    "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
+    "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
@@ -1444,6 +1446,8 @@ def build_trace() -> dict[str, Any]:
             "kind": "deterministic-generated-chain",
             "publicTestKeyRoles": list(SEEDS),
             "settlementUniquenessVector": "conformance/vectors/security/sb2-settlement-uniqueness-v0.1.json",
+            "settlementUniquenessVectorStatus": "historical-superseded",
+            "currentCollisionAuthorityVector": "conformance/vectors/security/sb2-collision-authority-v0.8.json",
             "settlementUniquenessVectorSha256": file_sha256(SB2_VECTORS),
         },
         "substrate": {

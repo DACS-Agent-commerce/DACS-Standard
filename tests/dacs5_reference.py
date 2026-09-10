@@ -210,7 +210,7 @@ AUTHORITATIVE_MODULE_VERSIONS = {
     "dacs1": "0.7",
     "dacs2": "0.6",
     "dacs3": "0.5",
-    "dacs4": "0.7",
+    "dacs4": "0.8",
     "dacs5": "0.5",
 }
 AUTHORITATIVE_LOCAL_PROFILE = {

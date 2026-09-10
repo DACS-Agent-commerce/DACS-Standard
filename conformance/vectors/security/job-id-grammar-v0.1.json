@@ -10,14 +10,14 @@
       "dacs1": "0.7",
       "dacs2": "0.6",
       "dacs3": "0.5",
-      "dacs4": "0.7",
+      "dacs4": "0.8",
       "dacs5": "0.5"
     },
     "peerEvidence": "verifier-owned context, separate from vector input, binds the exact session and expected peer identity"
   },
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
   "count": 47,
-  "hash": "e2bf8ba131c6a41d5dc75b107f0346f1fae1a098c5a9d1d07d4dca1aa4d14f1e",
+  "hash": "59aa84253caf029ff38e18df3529f8a078fa721afa33c2c08f969589b3b1e598",
   "vectors": [
     {
       "name": "canonical-ulid",
@@ -473,7 +473,7 @@
           "dacs1": "0.7",
           "dacs2": "0.6",
           "dacs3": "0.5",
-          "dacs4": "0.7",
+          "dacs4": "0.8",
           "dacs5": "0.5"
         }
       },

@@ -33,6 +33,51 @@ The format used per release:
   syntax, and trailing data, reproduced by both the standard-library adapter and
   an independent recursive-descent parser.
 
+### Added — distinct identity-bound agreement paths
+
+- **Cross-stage admission and terminal correction** (CORE SN-1..SN-4 /
+  IBH-4..IBH-6; DACS-3 through DACS-5; #390) — makes verifier challenges
+  distinct per presentation and consumed on first attempt, then binds later
+  stages to the exact authenticated retained admission instead of re-accepting
+  the nonce. The shared action gate now preserves ordinary Listing ordering,
+  session, payment/payout, and APR obligations; APR replacement uses the genuine
+  signed `pay-alternative` projection and independently attested disposition;
+  completed EBFAB validation requires complete payment/delivery evidence and
+  finalized agreement/CVR/commitment/bundle dependency joins. Historical signed
+  carriers remain unchanged, while unimplemented historical evaluator stages
+  refuse non-authoritatively as explicit `indeterminate` rather than passing or
+  declaring valid historical bytes invalid.
+
+- **Identity-bound agreement artifacts and dispatch** (CORE §B.2
+  IBH-1..IBH-6; DACS-1 through DACS-5; #390) — proposes the additive
+  `IdentityBoundAgreementDocument` and
+  `IdentityBoundPayeeAgreementDocument`, each with an exclusive version
+  discriminator, registered signature domain, and signed Listing commitment
+  phase. Exact four-way phase/artifact dispatch is enforced before commitment,
+  payment, terminal admission, or reputation counting.
+- **Authenticated cross-stage identity proof** — the new nested
+  `IdentityBoundAgreementParty` carries a bare recomputed IdentityBundleHash.
+  New phase-specific companions transport complete signed IdentityBundles and
+  CVRs, which consumers verify and uniquely join by agreement-derived role,
+  primary claim, `vetRecordRef`, job, presentation nonce, and digest. Identify/
+  Vet retains the exact accepted bundle/result; later consumers reverify that
+  authenticated admission without accepting the consumed nonce again. Missing
+  authority remains indeterminate; authenticated contradictions reject.
+- **Historical compatibility remains byte-stable** — `AgreementDocument`,
+  `PayeeBoundAgreementDocument`, `AgreementParty`, CVR, payment/session/bundle
+  carriers, and both commitment-record forms keep their released meanings.
+  Commitment kind does not select agreement era, historical prefixed party
+  hashes remain valid, and the existing payee corpus is not superseded. The
+  two new contracts are proposed without allocating competing per-stage minor
+  release numbers.
+- **Candidate conformance repairs** — closes PhaseType admission before every
+  stage action, uses signature-omitted artifact-reference hashes, replays the
+  exact signed-Listing requirement and CVR aggregate against authenticated
+  DACS-2 inputs, preserves sealed-envelope losing-bidder parties without adding
+  signer requirements, and replaces producer-authored finality assertions with
+  an independently pinned fixture-only native-observation adapter. The adapter
+  exercises receipt binding and ordering but is not live-substrate proof.
+
 ### Fixed — DACS-4 v0.8 settlement collision authority
 
 - **SB-2 no longer trusts producer time** (§9.5.8; #380) — a canonical
@@ -64,6 +109,7 @@ The format used per release:
   create party fault during an outage. No historical downgrade profile is
   registered. Adds 22 deterministic disposition vectors covering all required
   issue cases and the explicitly weaker authenticated no-binding rail posture.
+
 
 ### Fixed — DACS-X conformance provenance
 

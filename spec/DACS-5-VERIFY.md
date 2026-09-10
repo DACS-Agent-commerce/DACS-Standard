@@ -353,6 +353,8 @@ For this type only, every successful payment member in the exact `settlementEvid
 
 **Authenticated-copy reconciliation for the new type.** Before precedence, verify each copy's authorized role, exact requested `jobId`, binding/content hash, matching signature domain, and complete type-specific validity. Compatible valid copies rank `FinalityBoundEvidenceFaultAttestationBundle` > `EvidenceBoundFaultAttestationBundle` > `FaultAttestationBundle` > `AttestationBundle`; new/new pairs use the same signed outcome/fault/phase checks and exact settlement-reference multiset comparison. A present new copy whose required FV or authority is `error`, `fail`, or `indeterminate` MUST NOT fall back to an older copy. Divergence rejects the pair. These rules apply only when this new consumer contract is explicitly selected and do not change any old-only pair.
 
+**Bounded reference implementation (informative).** The reference consumer does not implement finality-bound bundles combined with identity-bound agreement phases or APR projection. These combinations remain unsupported and cannot establish terminal or reputation authority through this reference. A reference refusal is not a normative determination that an otherwise valid combined artifact is invalid. Implementations supporting a combination must enforce all applicable finality, identity, and payment-projection obligations; this limitation does not waive them. The separately reserved #391/#392 combined reputation derivation remains unavailable.
+
 **Identity-bound terminal verification input.** The existing terminal bundle
 types and `agreementRef` remain unchanged. A consumer combines them with
 resolved artifacts only when the signed Listing selects the stronger path:

@@ -3,9 +3,85 @@
   "spec": "CORE §B.2 CF-5 raw JSON admission",
   "tier": "candidate",
   "description": "Raw UTF-8 JSON texts that preserve duplicate names and numeric tokens; two independent parsers must agree before JCS canonicalization.",
-  "count": 51,
-  "hash": "b1e70e55f954bd6dc35fe2fb0ebe8c6c9b6c66e32a492d11bc706c6dca52b4ad",
+  "count": 59,
+  "hash": "a0cb44a3e2bd604086f3b15b731dd3fd912bdbc927019fb80c9b2b33b43fdbb1",
   "vectors": [
+    {
+      "name": "zero-extreme-exponent-0",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":0e9999999999999999999}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a307d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Exact zero is independent of the decimal exponent limit."
+    },
+    {
+      "name": "zero-extreme-exponent-1",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":-0e9999999999999999999}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a307d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Exact zero is independent of the decimal exponent limit."
+    },
+    {
+      "name": "zero-extreme-exponent-2",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":0e-9999999999999999999}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a307d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Exact zero is independent of the decimal exponent limit."
+    },
+    {
+      "name": "zero-extreme-exponent-3",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":-0.0e-9999999999999999999}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a307d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Exact zero is independent of the decimal exponent limit."
+    },
+    {
+      "name": "nonzero-extreme-exponent-0",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-NOT-BINARY64",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Valid JSON outside binary64 is a profile refusal, not a syntax error.",
+      "rawUtf8Text": "{\"n\":1e9999999999999999999}"
+    },
+    {
+      "name": "nonzero-extreme-exponent-1",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-NOT-BINARY64",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Valid JSON outside binary64 is a profile refusal, not a syntax error.",
+      "rawUtf8Text": "{\"n\":-1e9999999999999999999}"
+    },
+    {
+      "name": "nonzero-extreme-exponent-2",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-NOT-BINARY64",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Valid JSON outside binary64 is a profile refusal, not a syntax error.",
+      "rawUtf8Text": "{\"n\":1e-9999999999999999999}"
+    },
+    {
+      "name": "nonzero-extreme-exponent-3",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-NOT-BINARY64",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Valid JSON outside binary64 is a profile refusal, not a syntax error.",
+      "rawUtf8Text": "{\"n\":-1e-9999999999999999999}"
+    },
     {
       "name": "empty-object",
       "operation": "admit-raw-json-then-canonicalize",

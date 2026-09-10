@@ -76,6 +76,27 @@ def rejected(
 
 def build_vectors() -> list[dict[str, Any]]:
     return [
+        *[
+            accepted(
+                f"zero-extreme-exponent-{index}", '{"n":' + token + '}',
+                '{"n":0}', "Exact zero is independent of the decimal exponent limit.",
+            )
+            for index, token in enumerate((
+                "0e9999999999999999999", "-0e9999999999999999999",
+                "0e-9999999999999999999", "-0.0e-9999999999999999999",
+            ))
+        ],
+        *[
+            rejected(
+                f"nonzero-extreme-exponent-{index}", '{"n":' + token + '}',
+                "profile", "NUMBER-NOT-BINARY64",
+                "Valid JSON outside binary64 is a profile refusal, not a syntax error.",
+            )
+            for index, token in enumerate((
+                "1e9999999999999999999", "-1e9999999999999999999",
+                "1e-9999999999999999999", "-1e-9999999999999999999",
+            ))
+        ],
         accepted("empty-object", "{}", "{}", "A well-formed JSON object is admitted."),
         accepted(
             "maximum-safe-positive-integer",

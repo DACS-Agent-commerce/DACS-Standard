@@ -122,11 +122,26 @@ def _check_nesting(text: str) -> None:
 
 
 def _admit_number(token: str) -> int | float:
+    # JSON grammar has already been checked. Classify binary64 conversion
+    # before Decimal construction: Decimal has a host exponent limit that is
+    # not part of the JSON grammar or the DACS numeric profile.
+    fractional = "." in token or "e" in token.lower()
+    if fractional:
+        value = float(token)
+        coefficient = token.lower().split("e", 1)[0]
+        nonzero = any(char in "123456789" for char in coefficient)
+        if not nonzero:
+            return value
+        if not math.isfinite(value) or value == 0:
+            raise _error(
+                "profile", "NUMBER-NOT-BINARY64",
+                f"number {token!r} {'underflows' if value == 0 else 'overflows'} binary64",
+            )
     try:
         exact = Decimal(token)
     except InvalidOperation as exc:  # defensive; the JSON grammar checked first
         raise _error("parse", "INVALID-NUMBER", f"invalid JSON number {token!r}") from exc
-    if "." not in token and "e" not in token.lower():
+    if not fractional:
         if exact.copy_abs() > SAFE_MAGNITUDE:
             raise _error(
                 "profile",
@@ -134,15 +149,6 @@ def _admit_number(token: str) -> int | float:
                 f"number {token!r} exceeds +/-{SAFE_MAGNITUDE}",
             )
         return int(token)
-    value = float(token)
-    if not math.isfinite(value):
-        raise _error(
-            "profile", "NUMBER-NOT-BINARY64", f"number {token!r} overflows binary64"
-        )
-    if exact != 0 and value == 0:
-        raise _error(
-            "profile", "NUMBER-NOT-BINARY64", f"number {token!r} underflows binary64"
-        )
     if exact.copy_abs() > SAFE_MAGNITUDE:
         raise _error(
             "profile",

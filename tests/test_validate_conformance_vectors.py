@@ -110,7 +110,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         self.assertEqual(175, sum(
             case["status"] == "golden" for case in data["cases"]
         ))
-        self.assertEqual(60, sum(
+        self.assertEqual(64, sum(
             case["status"] == "candidate" for case in data["cases"]
         ))
         for area in ("dispute", "disclosure"):

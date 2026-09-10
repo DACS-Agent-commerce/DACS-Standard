@@ -215,7 +215,7 @@ def load_case(
         return None, [fail(path, f"invalid JSON: {exc}")]
     except UnicodeError as exc:
         return None, [fail(path, f"invalid UTF-8: {exc}")]
-    except ValueError as exc:
+    except (ValueError, RecursionError) as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
     except OSError as exc:
         return None, [fail(path, f"fixture file could not be read: {exc}")]

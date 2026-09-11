@@ -322,7 +322,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         invalid_discriminator = next(
             case["bundle"]
             for case in self.data["cases"]
-            if case["name"] == "known-plus-unknown-discriminator-reject"
+            if case["name"] == "dual-discriminator-reject"
         )
         invalid_discriminator_tag = {
             "bundle": invalid_discriminator,

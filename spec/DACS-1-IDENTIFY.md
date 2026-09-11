@@ -84,7 +84,11 @@ coordinates. When a claim is intended to establish the DACS-4 PB-2
 chain-specific payee binding for an EVM rail, producers MUST emit
 `cci-xm:evm:<chainId>:<address>`, where `<chainId>` is the EIP-155 chain ID as
 a bare positive decimal integer with no leading zeros and `<address>` is
-non-empty. The family component is the lowercase ASCII literal `evm`; any
+non-empty. For PB-2 applicability, `<chainId>` MUST be no greater than
+`9007199254740991`, matching the largest conforming numeric chain ID in a
+signed `RailDefinition`; larger textual identifiers remain readable generic
+`cci-xm` claims but do not conform to this PB-2 profile. The family component
+is the lowercase ASCII literal `evm`; any
 other spelling does not conform to this profile.
 
 For PB-2 chain applicability, a reader treats the bytes after

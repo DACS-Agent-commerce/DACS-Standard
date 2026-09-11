@@ -16,6 +16,10 @@ The format used per release:
 
 ### Fixed — authenticated Vet replay and reference consumers
 
+- **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
+  IDs are explicitly positive safe integers; the textual `cci-xm` PB profile
+  shares that applicability ceiling while retaining larger values as generic,
+  non-applicable claims. Unsafe numeric rails fail before tier selection.
 - Private candidate review follow-up: retain exact production input hashes and authenticated session/registry pins; distinguish non-authorizing historical reconstruction from active current-time acceptance; require Composite members while preserving optional source-attestation signer semantics.
 - **Presence/Vet executable boundary repaired** (#362) — the candidate reader
   now separates presenter-signed presence metadata from verified predicates,

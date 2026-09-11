@@ -482,7 +482,13 @@ def signed_receipt(
     selection_rule: str = "lowest-price",
     reserve: str | None = None,
     state: dict = CURRENT_STATE,
+    phase_kind: str = "negotiate-sealed-envelope-procurement-complete",
 ) -> dict:
+    if phase_kind not in {
+        "negotiate-sealed-envelope-complete",
+        "negotiate-sealed-envelope-procurement-complete",
+    }:
+        raise ValueError("unsupported complete auction phase")
     collection_prefix = "dacs3:auction:" + JOB_ID
     record_decisions, bid_decisions, winner = derive(
         entries, records, selection_rule=selection_rule, reserve=reserve
@@ -492,7 +498,7 @@ def signed_receipt(
         "jobId": JOB_ID,
         "listingRef": LISTING_REF,
         "phaseIndex": PHASE_INDEX,
-        "phaseKind": "negotiate-sealed-envelope-procurement-complete",
+        "phaseKind": phase_kind,
         "candidateSetBinding": {
             "bindingId": "test-complete-log",
             "bindingVersion": "1",
@@ -547,6 +553,9 @@ def signed_agreement(receipt: dict) -> dict:
         "generatedAt": REVEAL_DEADLINE + 7_000,
         "signatures": [],
     }
+    if receipt["phaseKind"] == "negotiate-sealed-envelope-complete":
+        agreement["parties"][0]["role"] = "seller"
+        agreement["parties"][1]["role"] = "buyer"
     agreement = sign_artifact(agreement, "publisher", AGREEMENT_DOMAIN, plural=True)
     winner_name = next(name for name, claim in CLAIMS.items() if claim == winner["bidderClaim"])
     return sign_artifact(agreement, winner_name, AGREEMENT_DOMAIN, plural=True)
@@ -561,9 +570,12 @@ def resign_agreement(agreement: dict) -> dict:
     agreement = unsigned(agreement)
     agreement["signatures"] = []
     agreement = sign_artifact(agreement, "publisher", AGREEMENT_DOMAIN, plural=True)
-    seller_claim = next(p["primaryClaim"] for p in agreement["parties"] if p["role"] == "seller")
-    seller_name = next(name for name, claim in CLAIMS.items() if claim == seller_claim)
-    return sign_artifact(agreement, seller_name, AGREEMENT_DOMAIN, plural=True)
+    bidder_claim = next(
+        p["primaryClaim"] for p in agreement["parties"]
+        if p["role"] in {"buyer", "seller"} and p["primaryClaim"] != CLAIMS["publisher"]
+    )
+    bidder_name = next(name for name in BIDDER_NAMES if CLAIMS[name] == bidder_claim)
+    return sign_artifact(agreement, bidder_name, AGREEMENT_DOMAIN, plural=True)
 
 
 def selection_receipt_anchor(receipt: dict) -> dict:
@@ -619,13 +631,13 @@ def make_vector(
         "listingRef": LISTING_REF,
         "publisherClaim": CLAIMS["publisher"],
         "phaseIndex": PHASE_INDEX,
-        "phaseKind": "negotiate-sealed-envelope-procurement-complete",
+        "phaseKind": receipt["phaseKind"],
         "parameters": {
             "commitDeadline": COMMIT_DEADLINE,
             "revealWindow": 120,
             "selectionRule": receipt["selectionRule"],
             "candidateSetBinding": receipt["candidateSetBinding"],
-            "auctionMode": "procurement",
+            "auctionMode": ("demand" if receipt["phaseKind"] == "negotiate-sealed-envelope-complete" else "procurement"),
         },
     }
     if reserve is not None:

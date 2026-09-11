@@ -9,6 +9,7 @@ import unittest
 from functools import cmp_to_key
 from itertools import zip_longest
 from pathlib import Path
+from urllib.parse import quote
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -127,6 +128,44 @@ def compare_amounts(left, right):
     return 0
 
 
+def fixture_record_receipt_matches(receipt, ref, bidder):
+    """Interpret a receipt already authenticated by the complete-set proof.
+
+    This test-bft binding is a fixture codec, not a native SR-2 verifier.
+    """
+    required = {
+        "receiptVersion", "substrate", "finalityProfile", "logicalAddress",
+        "nativeAddress", "contentHash", "transactionRef", "writer", "nonce",
+        "state", "observationDisposition", "observedAt", "blockRef", "evidence",
+    }
+    if not isinstance(receipt, dict) or set(receipt) != required:
+        return False
+    transaction = receipt["transactionRef"]
+    block = receipt["blockRef"]
+    evidence = receipt["evidence"]
+    return (
+        receipt["receiptVersion"] == "1"
+        and receipt["substrate"] == "test-bft"
+        and receipt["finalityProfile"] == "test-bft-final"
+        and receipt["writer"] == bidder
+        and ("signer" not in ref or ref["signer"] == bidder)
+        and isinstance(transaction, dict) and set(transaction) == {"kind", "value"}
+        and transaction["kind"] == "test-tx"
+        and isinstance(transaction["value"], str) and bool(transaction["value"])
+        and isinstance(receipt["nonce"], str)
+        and re.fullmatch(r"0|[1-9][0-9]*", receipt["nonce"]) is not None
+        and isinstance(block, dict) and set(block) == {"id", "height", "timestamp"}
+        and isinstance(block["id"], str) and bool(block["id"])
+        and isinstance(block["height"], str)
+        and re.fullmatch(r"0|[1-9][0-9]*", block["height"]) is not None
+        and type(block["timestamp"]) is int and block["timestamp"] >= 0
+        and type(receipt["observedAt"]) is int and receipt["observedAt"] >= 0
+        and isinstance(evidence, dict) and set(evidence) == {"kind", "value"}
+        and evidence["kind"] == "test-finality"
+        and isinstance(evidence["value"], str) and bool(evidence["value"])
+    )
+
+
 class Evaluator:
     def __init__(self, vector):
         self.vector = vector
@@ -168,6 +207,11 @@ class Evaluator:
         if not self.ctx.get("bindingDefinitionResolved"):
             return "indeterminate"
         if self.receipt.get("sealedSelectionReceiptVersion") != "1":
+            return "fail"
+        job_id = self.agreement.get("jobId")
+        if not isinstance(job_id, str) or self.receipt.get("collectionPrefix") != (
+            "dacs3:auction:" + quote(job_id, safe="")
+        ):
             return "fail"
         pricing = self.listing.get("pricing")
         if "pricing" in self.listing:
@@ -285,6 +329,8 @@ class Evaluator:
                         receipt = entry.get("anchorReceipt", {})
                         expected_address = logical_address(record["jobId"], kind, record["bidderClaim"], record["bidHash"])
                         if receipt.get("logicalAddress") != expected_address or receipt.get("contentHash") != record_hash or receipt.get("nativeAddress") != ref.get("anchor", {}).get("locator"):
+                            reason = "wrong-address"
+                        elif not fixture_record_receipt_matches(receipt, ref, record["bidderClaim"]):
                             reason = "wrong-address"
                         elif receipt.get("state") != "finalized" or receipt.get("observationDisposition") != "established" or not isinstance(receipt.get("blockRef", {}).get("timestamp"), int):
                             reason = "unfinalized"
@@ -465,7 +511,10 @@ class Evaluator:
         if winner is None:
             return "fail"
         if agreement.get("sealedSelectionAgreementVersion") != "1" or any(
-            key in agreement for key in ("agreementVersion", "payeeBoundAgreementVersion")
+            key in agreement for key in (
+                "agreementVersion", "payeeBoundAgreementVersion",
+                "identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion",
+            )
         ):
             return "fail"
         receipt_hash = digest(unsigned(self.receipt))
@@ -485,7 +534,16 @@ class Evaluator:
         sellers = [p for p in agreement.get("parties", []) if p.get("role") == "seller"]
         if len(buyers) != 1 or len(sellers) != 1:
             return "fail"
-        if buyers[0].get("primaryClaim") != self.listing.get("publisherClaim") or sellers[0].get("primaryClaim") != winner.get("bidderClaim"):
+        publisher = self.listing.get("publisherClaim")
+        selected_bidder = winner.get("bidderClaim")
+        if self.listing.get("phaseKind") == "negotiate-sealed-envelope-complete":
+            expected_buyer, expected_seller = selected_bidder, publisher
+        else:
+            expected_buyer, expected_seller = publisher, selected_bidder
+        if (
+            buyers[0].get("primaryClaim") != expected_buyer
+            or sellers[0].get("primaryClaim") != expected_seller
+        ):
             return "fail"
         agreement_hash = digest(unsigned(agreement))
         signatures = agreement.get("signatures", [])

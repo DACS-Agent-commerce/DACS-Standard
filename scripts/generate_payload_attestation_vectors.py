@@ -198,6 +198,15 @@ def base_case() -> dict:
         },
         "payloadUtf8": PAYLOAD_TEXT,
         "methodEvidence": method_evidence,
+        # Independently admitted resolver result in this fixture model. Never
+        # derive this map from an untrusted reference in a production consumer.
+        "trustedMethodEvidenceByCanonicalRef": {
+            canonical_bytes(method_ref).decode("utf-8"): {
+                "available": True,
+                "reference": copy.deepcopy(method_ref),
+                "artifact": copy.deepcopy(method_evidence),
+            },
+        },
         "trustedNativeTransactionObservationsByCanonicalRef": {
             canonical_bytes(transaction_ref).decode("utf-8"): trusted_native_observation(
                 method, method_evidence

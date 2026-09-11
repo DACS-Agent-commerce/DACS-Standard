@@ -184,7 +184,7 @@ cross-session replay. An otherwise well-formed but unavailable method proof
 stays `indeterminate`.
 
 Every vector carries the signed listing context, committed agreement tuple,
-exact UTF-8 payload, method-native evidence, `PayloadAttestationRecord`,
+exact payload bytes, method-native evidence, `PayloadAttestationRecord`,
 record reference, and signed `SettlementEvidence`. Public test seeds are
 included for independent reproduction. Regenerate or verify byte determinism:
 
@@ -223,29 +223,44 @@ closure, signed evidence/phase-summary outcome agreement, legacy DV-5 refusal,
 and composition with a genuinely signed payment `SettlementEvidence` in the
 same production-shaped bundle.
 
-Resolver-only fixture metadata uses one byte/commitment convention; it does not
-add members to any signed wire artifact. Credential cleartext is carried only as
-strict canonical unpadded RFC 4648 §5 `cleartextBytesBase64url`, while
-`storedContentHash` names the bytes committed by storage. The obsolete
-`storedHash` alias is rejected. Consumers recompute the cleartext digest from
-the exact bytes, bind it to both `credentialCleartextHash` and retained
-`cleartextHash`, and bind `storedContentHash` to the complete signed
-credential reference. Buyer-only storage commits plaintext; encrypted storage
-keeps its ciphertext commitment distinct. Storage-program access mode comes
-from authenticated deliverable metadata (default `public`), never resolver
-metadata.
+Resolver-only fixture metadata carries exact bytes and authenticated storage
+authority without adding members to any signed wire artifact. Arbitrary payload
+and credential bytes use strict canonical unpadded RFC 4648 §5
+`cleartextBytesBase64url`; compatible text cases may additionally expose
+`cleartextUtf8`, and both views must agree exactly. `storedBytesBase64url` hashes
+to `storedContentHash`; the obsolete `storedHash` alias is rejected. Consumers
+bind the cleartext digest to `DeliveryEvidence` (and, for credentials, both
+`credentialCleartextHash` and retained `cleartextHash`) while binding exact
+stored bytes to the complete signed credential reference.
 
-Resolved credential objects are closed to `credentialRef`,
-`cleartextBytesBase64url`, `cleartextHash`, `storedContentHash`, `available`,
-and the primary consumer's `lifecycle` metadata. Competing byte representations
-and other resolver members are malformed. This restriction applies only to
-the resolver object, not to extension fields in signed artifacts.
-An absent resolver collection is unavailable; a supplied collection with the
-wrong shape is malformed. Credential lookup validates a sole supplied candidate
-even when its reported reference differs; it does not guess among multiple
-unrelated records when no exact reference matches. Encrypted delivery checks
-bind the resolver's commitments but do not themselves prove sealing or buyer-key
-binding under DV-3.
+Every required inner reference has a `verifiedReceiptByCanonicalRef` entry
+keyed by its complete canonical `AttestationRef`. The adapter envelope's
+`receipt` is an unchanged portable `AnchorReceipt` carrying the authenticated
+logical/native/content/writer tuple and applicable lifecycle/finality evidence;
+the already-authenticated execution path supplies the job/phase context. The
+adjacent resolver-only `storageBinding` records the effective mode and exact
+stored-byte commitment; buyer-only entries bind a restricted ACL to the
+authenticated buyer, and encrypted entries bind that buyer as recipient plus
+the ciphertext digest. The envelope models output from a binding-defined proof
+adapter; its name is not production proof and it adds no `AnchorReceipt` field.
+
+Resolved credential objects are closed to `credentialRef`, exact cleartext and
+stored byte representations and hashes, `nativeAddress`,
+`independentlyResolvable`, and `available`. Other resolver members are
+malformed. An absent resolver/receipt authority is unavailable; a supplied
+collection or member with the wrong shape is malformed. Credential lookup
+validates a sole supplied candidate even when its reported reference differs;
+it does not guess among multiple unrelated records when no exact reference
+matches.
+
+The #333 generator-source changes are not reflected in the checked-in signed
+JSON while signed adversarial fixture regeneration is held. Benign unsigned
+boundary coverage for selector admission, exact bytes, storage authority,
+receipt lifecycle, locator binding, and malformed collections is executable as:
+
+```sh
+python3 -m unittest tests.test_bundle_pointer_admission_delivery_authority -v
+```
 
 Regenerate and execute:
 

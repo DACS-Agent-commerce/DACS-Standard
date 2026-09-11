@@ -82,14 +82,46 @@ def verify_signature(artifact, domain):
     return True
 
 
+def authenticated_evidence_type(artifact):
+    """Authenticate the evidence family from its domain before selector parsing."""
+    signature = artifact.get("signature") if isinstance(artifact, dict) else None
+    signer = signature.get("signer") if isinstance(signature, dict) else None
+    if not isinstance(signer, str) or not signer.startswith("cci:"):
+        return None
+    try:
+        pubkeys = {signer: bytes.fromhex(signer.removeprefix("cci:"))}
+    except ValueError:
+        return None
+    return R._authenticated_evidence_wire_type(artifact, pubkeys)
+
+
 def verify_bundle_signatures(bundle):
+    if not isinstance(bundle, dict):
+        return False
     if bundle.get("faultBundleVersion") != "1" or "bundleVersion" in bundle:
         return False
+    parties = bundle.get("parties")
+    signatures = bundle.get("signatures")
+    if (
+        not isinstance(parties, list)
+        or any(
+            not isinstance(party, dict)
+            or not isinstance(party.get("role"), str)
+            or not isinstance(party.get("primaryClaim"), str)
+            for party in parties
+        )
+        or not isinstance(signatures, list)
+        or any(not isinstance(signature, dict) for signature in signatures)
+    ):
+        return False
     unsigned = {k: v for k, v in bundle.items() if k not in {"signatures", "anchoredByRole"}}
-    payload = BUNDLE_DOMAIN.encode("ascii") + hash_hex(unsigned).encode("ascii")
-    required = {party.get("primaryClaim") for party in bundle.get("parties", [])}
+    try:
+        payload = BUNDLE_DOMAIN.encode("ascii") + hash_hex(unsigned).encode("ascii")
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return False
+    required = {party.get("primaryClaim") for party in parties}
     observed = set()
-    for signature in bundle.get("signatures", []):
+    for signature in signatures:
         party = signature.get("party")
         value = signature.get("value")
         if signature.get("algorithm") != "ed25519" or not isinstance(party, str) or not party.startswith("cci:"):
@@ -133,7 +165,10 @@ def resolve_evidence(case, supplied_ref):
     if len(candidates) != 1:
         return "indeterminate", None, None
     position, entry = candidates[0]
-    if supplied_ref != artifact_ref(address, entry["artifact"]):
+    artifact = entry.get("artifact")
+    if not isinstance(artifact, dict):
+        return "error", None, None
+    if supplied_ref != artifact_ref(address, artifact):
         return "fail", None, None
     return "pass", position, entry
 
@@ -143,7 +178,7 @@ def authenticated_delivery_roles(bundle):
     return R.authenticated_delivery_roles(bundle)
 
 
-def storage_access_model(case, phase_index):
+def delivery_authority(case, phase_index):
     authorities = case.get("deliveryAuthorities")
     if authorities is None:
         return "indeterminate", None
@@ -156,7 +191,14 @@ def storage_access_model(case, phase_index):
     ]
     if len(matches) != 1:
         return "indeterminate", None
-    deliverable = matches[0].get("deliverable")
+    return "pass", matches[0]
+
+
+def storage_access_model(case, phase_index):
+    status, authority = delivery_authority(case, phase_index)
+    if status != "pass":
+        return status, None
+    deliverable = authority.get("deliverable")
     if not isinstance(deliverable, dict):
         return "error", None
     if deliverable.get("kind") != "storage-program":
@@ -167,9 +209,16 @@ def storage_access_model(case, phase_index):
     return "pass", access_model
 
 
-def validate_delivered_cleartext(stored, expected_hash, access_model, subject):
+def validate_delivered_cleartext(
+    stored, expected_hash, access_model, subject, storage_binding, buyer
+):
     return R._validate_resolved_storage(
-        stored, expected_hash, access_model, subject
+        stored,
+        expected_hash,
+        access_model,
+        subject,
+        authenticated_storage_binding=storage_binding,
+        buyer=buyer,
     )[0]
 
 
@@ -199,6 +248,11 @@ def validate_delivery_artifact(
     content_hash = evidence.get("deliverableContentHash")
     anchor = evidence.get("deliverableAnchor")
     outcome = evidence.get("outcome")
+    role_status, parties = authenticated_delivery_roles(case.get("bundle"))
+    if role_status != "pass":
+        return role_status
+    completed = case.get("bundle", {}).get("outcome") == "completed"
+    receipts = case.get("verifiedReceiptByCanonicalRef")
     if outcome not in {"success", "failure"}:
         return "error"
     if outcome == "success":
@@ -218,16 +272,29 @@ def validate_delivery_artifact(
         if address != expected_address:
             return "fail"
         stored = find_artifact(case, address, "deliverable")
-        availability, stored = R._resolved_availability(
-            stored, "storage deliverable"
+        dependency, stored, receipt = R._resolved_delivery_dependency(
+            stored,
+            {"anchor": anchor, "contentHash": content_hash},
+            receipts,
+            completed,
+            "storage deliverable",
+            job_id=job,
+            phase_index=index,
+            phase_kind=phase,
+            expected_writer=parties["seller"],
         )
-        if availability[0] != "pass":
-            return availability[0]
+        if dependency[0] != "pass":
+            return dependency[0]
         access_status, access_model = storage_access_model(case, index)
         if access_status != "pass":
             return access_status
         storage_status = validate_delivered_cleartext(
-            stored, content_hash, access_model, "storage deliverable"
+            stored,
+            content_hash,
+            access_model,
+            "storage deliverable",
+            receipt.get("storageBinding"),
+            parties["buyer"],
         )
         if storage_status != "pass":
             return storage_status
@@ -244,15 +311,26 @@ def validate_delivery_artifact(
             return "fail"
         record_entry = find_artifact(case, address, "EntitlementRecord")
         if record_entry is None:
-            phase_records = [entry for entry in case["artifactRecords"]
+            artifact_records = case.get("artifactRecords")
+            if artifact_records is None:
+                return "indeterminate"
+            phase_records = [entry for entry in artifact_records
                              if entry.get("kind") == "EntitlementRecord"
                              and str(entry.get("logicalAddress", "")).startswith(prefix)]
             return "fail" if phase_records else "indeterminate"
-        availability, record_entry = R._resolved_availability(
-            record_entry, "entitlement record"
+        dependency, record_entry, _ = R._resolved_delivery_dependency(
+            record_entry,
+            {"anchor": anchor, "contentHash": content_hash},
+            receipts,
+            completed,
+            "entitlement record",
+            job_id=job,
+            phase_index=index,
+            phase_kind=phase,
+            expected_writer=parties["seller"],
         )
-        if availability[0] != "pass":
-            return availability[0]
+        if dependency[0] != "pass":
+            return dependency[0]
         record = record_entry.get("artifact")
         if (not isinstance(record, dict)
                 or not R._delivery_inner_type_valid(record, "entitlementVersion")
@@ -274,13 +352,10 @@ def validate_delivery_artifact(
             return "fail"
         if "attestationRef" in evidence:
             return "fail"
-        authorities = [
-            item for item in case.get("deliveryAuthorities", [])
-            if item.get("phaseIndex") == index
-        ]
-        if len(authorities) != 1:
-            return "indeterminate"
-        deliverable_spec = authorities[0].get("deliverable")
+        authority_status, authority = delivery_authority(case, index)
+        if authority_status != "pass":
+            return authority_status
+        deliverable_spec = authority.get("deliverable")
         duration = (
             deliverable_spec.get("durationSec")
             if isinstance(deliverable_spec, dict) else None
@@ -348,13 +423,25 @@ def validate_delivery_artifact(
         if len(matches) != 1:
             return "indeterminate"
         credential = matches[0]
-        availability, credential = R._resolved_availability(
-            credential, "entitlement credential"
+        availability, credential, credential_receipt = R._resolved_delivery_dependency(
+            credential,
+            ref_value,
+            receipts,
+            completed,
+            "entitlement credential",
+            job_id=job,
+            phase_index=index,
+            phase_kind=phase,
+            expected_writer=ref_value.get("signer", parties["seller"]),
         )
         if availability[0] != "pass":
             return availability[0]
         return R._validate_resolved_credential(
-            credential, binding, credential_ref
+            credential,
+            binding,
+            credential_ref,
+            authenticated_storage_binding=credential_receipt.get("storageBinding"),
+            buyer=parties["buyer"],
         )[0]
 
     if phase == "deliver-attested-payload":
@@ -365,8 +452,16 @@ def validate_delivery_artifact(
         if address != payload_address:
             return "fail"
         payload = find_artifact(case, payload_address, "deliverable")
-        payload_availability, payload = R._resolved_availability(
-            payload, "attested payload"
+        payload_availability, payload, _ = R._resolved_delivery_dependency(
+            payload,
+            {"anchor": anchor, "contentHash": content_hash},
+            receipts,
+            completed,
+            "attested payload",
+            job_id=job,
+            phase_index=index,
+            phase_kind=phase,
+            expected_writer=parties["seller"],
         )
         if payload_availability[0] == "error":
             return "error"
@@ -381,15 +476,26 @@ def validate_delivery_artifact(
         record_address = supplied["anchor"]["locator"]
         record_entry = find_artifact(case, record_address, "PayloadAttestationRecord")
         if record_entry is None:
+            artifact_records = case.get("artifactRecords")
+            if artifact_records is None:
+                return "indeterminate"
             same_record_elsewhere = any(
                 entry.get("kind") == "PayloadAttestationRecord"
                 and isinstance(entry.get("artifact"), dict)
                 and artifact_hash(entry["artifact"]) == supplied.get("contentHash")
-                for entry in case["artifactRecords"]
+                for entry in artifact_records
             )
             return "fail" if same_record_elsewhere else "indeterminate"
-        availability, record_entry = R._resolved_availability(
-            record_entry, "payload attestation record"
+        availability, record_entry, _ = R._resolved_delivery_dependency(
+            record_entry,
+            supplied,
+            receipts,
+            completed,
+            "payload attestation record",
+            job_id=job,
+            phase_index=index,
+            phase_kind=phase,
+            expected_writer=supplied.get("signer"),
         )
         if availability[0] != "pass":
             return availability[0]
@@ -416,13 +522,9 @@ def validate_delivery_artifact(
         if (record.get("jobId") != job or record.get("payloadContentHash") != content_hash
                 or record.get("decision") != "pass"):
             return "fail"
-        authorities = [
-            item for item in case.get("deliveryAuthorities", [])
-            if item.get("phaseIndex") == index
-        ]
-        if len(authorities) != 1:
-            return "indeterminate"
-        authority = authorities[0]
+        authority_status, authority = delivery_authority(case, index)
+        if authority_status != "pass":
+            return authority_status
         deliverable = authority.get("deliverable")
         agreement = authority.get("agreement")
         method = deliverable.get("verificationMethod") if isinstance(deliverable, dict) else None
@@ -442,11 +544,20 @@ def validate_delivery_artifact(
             or record.get("verificationMethodHash") != hash_hex(method)
         ):
             return "fail"
+        locator_disposition, _ = R.validate_payload_attestation_locator_context(
+            record,
+            supplied,
+            {"jobId": job, "phaseIndex": index, "phaseKind": phase},
+            method,
+            legacy=legacy,
+        )
+        if locator_disposition != "pass":
+            return locator_disposition
         if payload_unavailable:
             return "indeterminate"
         cleartext = payload.get("cleartextUtf8")
-        cleartext_disposition, cleartext_bytes = R._utf8_bytes(
-            cleartext, "attested payload cleartext"
+        cleartext_disposition, cleartext_bytes = R._resolved_exact_bytes(
+            payload, "attested payload cleartext"
         )
         if cleartext_disposition[0] != "pass":
             return cleartext_disposition[0]
@@ -458,8 +569,16 @@ def validate_delivery_artifact(
         method_entry = find_artifact(
             case, method_ref["anchor"]["locator"], "methodEvidence"
         )
-        availability, method_entry = R._resolved_availability(
-            method_entry, "method evidence"
+        availability, method_entry, _ = R._resolved_delivery_dependency(
+            method_entry,
+            method_ref,
+            receipts,
+            completed,
+            "method evidence",
+            job_id=job,
+            phase_index=index,
+            phase_kind=phase,
+            expected_writer=method_ref.get("signer"),
         )
         if availability[0] != "pass":
             return availability[0]
@@ -514,12 +633,55 @@ def exact_delivery_evidence_shape(evidence):
 
 
 def evaluate(case):
-    if case.get("consumerVersion") == "pre-0.7":
-        return "error" if any("deliveryEvidenceVersion" in e.get("artifact", {}) for e in case["evidenceRecords"]) else "pass"
+    if not isinstance(case, dict):
+        return "error"
     pipeline = case.get("pipeline")
     bundle = case.get("bundle")
-    if not isinstance(pipeline, list) or not isinstance(bundle, dict):
+    evidence_records = case.get("evidenceRecords")
+    if (
+        not isinstance(pipeline, list)
+        or any(not isinstance(step, dict) for step in pipeline)
+        or not isinstance(bundle, dict)
+        or not isinstance(evidence_records, list)
+        or any(not isinstance(entry, dict) for entry in evidence_records)
+    ):
         return "error"
+    if any(
+        not isinstance(step.get("kind"), str)
+        or isinstance(step.get("index"), bool)
+        or not isinstance(step.get("index"), int)
+        or step.get("index") < 0
+        for step in pipeline
+    ):
+        return "error"
+    parties = bundle.get("parties")
+    signatures = bundle.get("signatures")
+    if (
+        not isinstance(parties, list)
+        or any(
+            not isinstance(party, dict)
+            or not isinstance(party.get("role"), str)
+            or not isinstance(party.get("primaryClaim"), str)
+            for party in parties
+        )
+        or not isinstance(signatures, list)
+        or any(not isinstance(signature, dict) for signature in signatures)
+        or any(not isinstance(entry.get("artifact"), dict) for entry in evidence_records)
+    ):
+        return "error"
+    if case.get("consumerVersion") == "pre-0.7":
+        return "error" if any(
+            "deliveryEvidenceVersion" in entry.get("artifact", {})
+            for entry in evidence_records
+            if isinstance(entry.get("artifact"), dict)
+        ) else "pass"
+    for optional_collection in ("artifactRecords", "credentials", "deliveryAuthorities"):
+        value = case.get(optional_collection)
+        if value is not None and (
+            not isinstance(value, list)
+            or any(not isinstance(entry, dict) for entry in value)
+        ):
+            return "error"
     if not verify_bundle_signatures(bundle):
         return "fail"
     delivery_steps = [step for step in pipeline if step.get("kind") in DELIVERY_KINDS]
@@ -529,7 +691,17 @@ def evaluate(case):
     if len(pipeline_delivery_pairs) != len(delivery_steps):
         return "error"
     summaries = bundle.get("phaseSummary")
-    if not isinstance(summaries, list):
+    if not isinstance(summaries, list) or any(
+        not isinstance(summary, dict) for summary in summaries
+    ):
+        return "error"
+    if any(
+        not isinstance(summary.get("kind"), str)
+        or isinstance(summary.get("index"), bool)
+        or not isinstance(summary.get("index"), int)
+        or summary.get("index") < 0
+        for summary in summaries
+    ):
         return "error"
     delivery_summaries = [s for s in summaries if s.get("kind") in DELIVERY_KINDS]
     summary_pairs = {(s.get("index"), s.get("kind")) for s in delivery_summaries}
@@ -562,7 +734,7 @@ def evaluate(case):
             return "fail"
         used_entries.add(position)
         artifact = entry["artifact"]
-        evidence_type = R._delivery_artifact_type(artifact)
+        evidence_type = authenticated_evidence_type(artifact)
         if evidence_type == "delivery":
             if not exact_delivery_evidence_shape(artifact):
                 return "error"
@@ -571,7 +743,16 @@ def evaluate(case):
                 return "error"
             if artifact.get("jobId") != bundle.get("jobId"):
                 return "fail"
-            authority = case.get("executionAuthority", {}).get("phaseOrchestrator")
+            execution_authority = case.get("executionAuthority")
+            if execution_authority is None:
+                return "indeterminate"
+            if not isinstance(execution_authority, dict):
+                return "error"
+            authority = execution_authority.get("phaseOrchestrator")
+            if authority is None:
+                return "indeterminate"
+            if not isinstance(authority, str):
+                return "error"
             if (artifact.get("signature", {}).get("signer") != authority
                     or entry.get("receiptWriter") != authority):
                 return "fail"
@@ -596,7 +777,16 @@ def evaluate(case):
                 return "fail"
             if not R._settlement_evidence_shape_valid(artifact):
                 return "error"
-            authority = case.get("executionAuthority", {}).get("phaseOrchestrator")
+            execution_authority = case.get("executionAuthority")
+            if execution_authority is None:
+                return "indeterminate"
+            if not isinstance(execution_authority, dict):
+                return "error"
+            authority = execution_authority.get("phaseOrchestrator")
+            if authority is None:
+                return "indeterminate"
+            if not isinstance(authority, str):
+                return "error"
             if (
                 artifact.get("jobId") != bundle.get("jobId")
                 or artifact.get("signature", {}).get("signer") != authority
@@ -726,7 +916,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 G.sign_bundle(case["bundle"])
                 self.assertNotEqual(evaluate(case), "pass")
 
-    def test_shared_delivery_classifier_uses_registered_type_signals_only(self):
+    def test_shared_delivery_classifier_is_syntactic_after_family_context(self):
         contextual_versions = {
             "recipeVersion": 3,
             "railVersion": 4,
@@ -754,9 +944,12 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         self.assertIsNone(R._delivery_artifact_type({
             "entitlementVersion": "1", "agreementVersion": "1"
         }))
-        self.assertIsNone(R._delivery_artifact_type({
-            "entitlementVersion": "1", "futureEntitlementVersion": "1"
-        }))
+        self.assertEqual(
+            R._delivery_artifact_type({
+                "entitlementVersion": "1", "futureEntitlementVersion": "1"
+            }),
+            "entitlement",
+        )
 
     def test_storage_delivery_hashes_exact_utf8_in_current_and_legacy_arms(self):
         for factory in (G.storage_case, G.legacy_case):
@@ -778,11 +971,41 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 )
                 for authority in private["deliveryAuthorities"]:
                     authority["deliverable"]["accessModel"] = access_model
-                if access_model == "encrypt-to-buyer":
-                    for position, resolved in enumerate(private["artifactRecords"]):
+                for position, resolved in enumerate(private["artifactRecords"]):
+                    phase_index = private["deliveryAuthorities"][position]["phaseIndex"]
+                    evidence = private["evidenceRecords"][position]["artifact"]
+                    if access_model == "encrypt-to-buyer":
+                        stored_bytes = f"ciphertext:{position}".encode("ascii")
                         resolved["storedContentHash"] = hashlib.sha256(
-                            f"ciphertext:{position}".encode("ascii")
+                            stored_bytes
                         ).hexdigest()
+                        resolved["storedBytesBase64url"] = G.b64url(stored_bytes)
+                        storage_binding = {
+                            "effectiveAccessMode": access_model,
+                            "storedContentHash": resolved["storedContentHash"],
+                            "encryption": {
+                                "recipient": G.BUYER,
+                                "ciphertextContentHash": resolved["storedContentHash"],
+                            },
+                        }
+                    else:
+                        storage_binding = {
+                            "effectiveAccessMode": access_model,
+                            "storedContentHash": resolved["storedContentHash"],
+                            "acl": {"mode": "restricted", "allowed": [G.BUYER]},
+                        }
+                    G.replace_dependency_receipt(
+                        private,
+                        resolved,
+                        {
+                            "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+                            "contentHash": evidence["deliverableContentHash"],
+                        },
+                        phase_index,
+                        "deliver-storage-program",
+                        G.SELLER,
+                        storage_binding=storage_binding,
+                    )
                 with self.subTest(
                     factory=factory.__name__, access_model=access_model
                 ):
@@ -911,7 +1134,15 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             with self.subTest(access_model=malformed):
                 self.assertEqual(evaluate(case), "error")
                 self.assertEqual(R._validate_resolved_storage(
-                    stored, stored["cleartextHash"], malformed, "storage"
+                    stored,
+                    stored["cleartextHash"],
+                    malformed,
+                    "storage",
+                    authenticated_storage_binding={
+                        "effectiveAccessMode": "public",
+                        "storedContentHash": stored["storedContentHash"],
+                    },
+                    buyer=G.BUYER,
                 )[0], "error")
         self.assertEqual(R._validate_resolved_storage([], "", "public", "storage")[0], "error")
         self.assertEqual(R._validate_resolved_credential([], {}, {})[0], "error")
@@ -1222,10 +1453,14 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             )
             empty_hash = hashlib.sha256(b"").hexdigest()
             payload_entry["cleartextUtf8"] = ""
+            payload_entry["cleartextBytesBase64url"] = ""
+            payload_entry["storedBytesBase64url"] = ""
             payload_entry["cleartextHash"] = empty_hash
+            payload_entry["storedContentHash"] = empty_hash
             evidence["deliverableContentHash"] = empty_hash
             payload_record["payloadContentHash"] = empty_hash
             method_evidence["response"]["data"] = ""
+            method_evidence["response"]["dataBytesBase64url"] = ""
             method_evidence["response"]["responseHash"] = empty_hash
             key = canonical_bytes(payload_record["methodTransactionRef"]).decode("utf-8")
             case["trustedNativeTransactionObservationsByCanonicalRef"][key]["response"][

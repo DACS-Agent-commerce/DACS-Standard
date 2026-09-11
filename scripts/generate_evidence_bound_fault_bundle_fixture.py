@@ -245,7 +245,6 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
         )
         return record, ref, None, {}
 
-    artifact_lifecycle = {"state": "finalized", "independentlyResolvable": True}
     closure = {}
     fields = {}
     if phase == "deliver-storage-program":
@@ -259,10 +258,16 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
         closure["deliverable"] = {
             "logicalAddress": address,
             "cleartextUtf8": cleartext,
+            "cleartextBytesBase64url": b64u(cleartext.encode("utf-8")),
             "cleartextHash": digest,
+            "storedBytesBase64url": b64u(cleartext.encode("utf-8")),
             "storedContentHash": digest,
             "available": True,
-            "lifecycle": artifact_lifecycle,
+            "independentlyResolvable": True,
+            "_storageBinding": {
+                "effectiveAccessMode": "public",
+                "storedContentHash": digest,
+            },
         }
     elif phase == "deliver-entitlement":
         renewal_seq = 0
@@ -320,7 +325,7 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
             "logicalAddress": address,
             "artifact": entitlement,
             "available": True,
-            "lifecycle": artifact_lifecycle,
+            "independentlyResolvable": True,
         }
         closure["credential"] = {
             "credentialRef": copy.deepcopy(credential_ref),
@@ -329,8 +334,19 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
             "cleartextBytesBase64url": b64u(
                 credential_cleartext.encode("utf-8")
             ),
+            "storedBytesBase64url": b64u(
+                credential_cleartext.encode("utf-8")
+            ),
             "available": True,
-            "lifecycle": artifact_lifecycle,
+            "independentlyResolvable": True,
+            "_storageBinding": {
+                "effectiveAccessMode": "buyer-only",
+                "storedContentHash": credential_cleartext_hash,
+                "acl": {
+                    "mode": "restricted",
+                    "allowed": [CLAIMS["buyer"]],
+                },
+            },
         }
     elif phase == "deliver-attested-payload":
         cleartext = f"attested payload:{job_id}:{phase_index}"
@@ -421,21 +437,24 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
             "deliverable": {
                 "logicalAddress": payload_address,
                 "cleartextUtf8": cleartext,
+                "cleartextBytesBase64url": b64u(cleartext.encode("utf-8")),
                 "cleartextHash": digest,
+                "storedBytesBase64url": b64u(cleartext.encode("utf-8")),
+                "storedContentHash": digest,
                 "available": True,
-                "lifecycle": artifact_lifecycle,
+                "independentlyResolvable": True,
             },
             "payloadAttestationRecord": {
                 "logicalAddress": attestation_address,
                 "artifact": payload_attestation,
                 "available": True,
-                "lifecycle": artifact_lifecycle,
+                "independentlyResolvable": True,
             },
             "methodEvidence": {
                 "logicalAddress": method_address,
                 "artifact": method_evidence,
                 "available": True,
-                "lifecycle": artifact_lifecycle,
+                "independentlyResolvable": True,
             },
         })
         transaction_ref = payload_attestation["methodTransactionRef"]
@@ -714,10 +733,20 @@ def make_session_execution_authority(job_id, phase, phase_index, *, signer_role=
     }
 
 
-def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role="seller",
-                                 resolved=False, rail_id="test-rail"):
+def make_verified_anchor_receipt(
+    ref,
+    job_id,
+    phase,
+    phase_index,
+    *,
+    signer_role="seller",
+    resolved=False,
+    rail_id="test-rail",
+    logical_address=None,
+    state="finalized",
+):
     signer = CLAIMS[signer_role]
-    logical_address = (
+    derived_logical_address = (
         "dacs4:payment:%s:%s:%d%s" % (
             job_id,
             quote(rail_id, safe="-._~"),
@@ -727,17 +756,97 @@ def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role
         if phase.startswith("pay-")
         else f"dacs4:delivery:{job_id}:{phase_index}"
     )
-    transaction = "demos-testnet:tx-" + hashlib.sha256(
+    logical_address = logical_address or derived_logical_address
+    transaction = "tx-" + hashlib.sha256(
         f"{job_id}:{phase_index}:{phase}:{'resolved' if resolved else 'ordinary'}".encode()
     ).hexdigest()[:32]
-    return {
+    receipt = {
+        "receiptVersion": "1",
+        "substrate": "demos-testnet",
+        "finalityProfile": "demos-bft-final",
         "logicalAddress": logical_address,
         "nativeAddress": ref["anchor"]["locator"],
         "contentHash": ref["contentHash"],
-        "transaction": transaction,
+        "transactionRef": {"kind": "demos-transaction", "value": transaction},
         "writer": signer,
-        "nonce": phase_index,
+        "nonce": str(phase_index),
+        "state": state,
+        "observationDisposition": "established",
+        "observedAt": 1785772800000 + phase_index,
+        "blockRef": {
+            "id": "block-" + hashlib.sha256(transaction.encode()).hexdigest()[:32],
+            "height": str(1000 + phase_index),
+            "timestamp": 1785772800000 + phase_index,
+        },
+        "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": hashlib.sha256(("proof:" + transaction).encode()).hexdigest(),
+        },
     }
+    return receipt
+
+
+def make_delivery_closure_receipts(record, closure, job_id, phase, phase_index):
+    """Bind every inner dependency to a full canonical ref and SR-2 receipt map."""
+    if not isinstance(closure, dict):
+        return {}
+    dependencies = []
+    anchor = record.get("deliverableAnchor")
+    content_hash = record.get("deliverableContentHash")
+    if phase in {"deliver-storage-program", "deliver-attested-payload"}:
+        dependencies.append((
+            "deliverable",
+            {"anchor": copy.deepcopy(anchor), "contentHash": content_hash},
+            "seller",
+        ))
+    elif phase == "deliver-entitlement":
+        dependencies.append((
+            "entitlementRecord",
+            {"anchor": copy.deepcopy(anchor), "contentHash": content_hash},
+            "seller",
+        ))
+        entitlement = closure.get("entitlementRecord", {}).get("artifact")
+        credential_ref = (
+            entitlement.get("credentialRef", {}).get("ref")
+            if isinstance(entitlement, dict) else None
+        )
+        if credential_ref is not None and "credential" in closure:
+            dependencies.append(("credential", credential_ref, "seller"))
+    if phase == "deliver-attested-payload":
+        dependencies.append((
+            "payloadAttestationRecord",
+            record.get("attestationRef"),
+            "orchestrator",
+        ))
+        payload_record = closure.get("payloadAttestationRecord", {}).get("artifact")
+        method_ref = (
+            payload_record.get("methodEvidenceRef")
+            if isinstance(payload_record, dict) else None
+        )
+        dependencies.append(("methodEvidence", method_ref, "orchestrator"))
+
+    receipts = {}
+    for dependency_name, ref, signer_role in dependencies:
+        entry = closure.get(dependency_name)
+        if not isinstance(entry, dict) or not isinstance(ref, dict):
+            continue
+        entry["nativeAddress"] = ref["anchor"]["locator"]
+        entry["independentlyResolvable"] = True
+        entry.pop("lifecycle", None)
+        storage_binding = entry.pop("_storageBinding", None)
+        receipt = make_verified_anchor_receipt(
+            ref,
+            job_id,
+            phase,
+            phase_index,
+            signer_role=signer_role,
+            logical_address=ref["anchor"]["locator"],
+        )
+        authority = {"receipt": receipt}
+        if storage_binding is not None:
+            authority["storageBinding"] = storage_binding
+        receipts[canonical(ref).decode("utf-8")] = authority
+    return receipts
 
 
 def delivery_spec(job_id, phase, phase_index):
@@ -978,7 +1087,7 @@ def generate():
             {"name": "stripped-to-fab-cross-type-replay", "bundle": stripped_to_fab, "want": {"type": "fault", "signaturesValid": False, "sebValid": False}},
             {"name": "dual-discriminator-reject", "bundle": dual_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
             {"name": "unknown-discriminator-reject", "bundle": unknown_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
-            {"name": "known-plus-unknown-discriminator-reject", "bundle": known_plus_unknown, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
+            {"name": "known-selector-plus-inert-unknown-member-pass", "bundle": known_plus_unknown, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": True}},
             {"name": "completed-bundle-accepted-lifecycle-reject", "bundle": ebfab_buyer, "bundleLifecycle": {"state": "accepted", "independentlyResolvable": False}, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": False}},
         ],
         "pairCases": [

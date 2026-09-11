@@ -112,7 +112,15 @@ def make_authority(name, definition, signing_keys):
                 }
                 verified_receipt_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = (
                     F.make_verified_anchor_receipt(
-                        interim_ref, job_id, entry["kind"], entry["index"], resolved=False)
+                        interim_ref,
+                        job_id,
+                        entry["kind"],
+                        entry["index"],
+                        resolved=False,
+                        state=definition.get(
+                            "st8InterimLifecycle", default_lifecycle
+                        )["state"],
+                    )
                 )
                 supersedes = interim_ref
             evidence_reason = entry.get("errorClass")
@@ -183,9 +191,23 @@ def make_authority(name, definition, signing_keys):
                 trusted_native_transaction_observations_by_canonical_ref.update(
                     native_observations
                 )
+                verified_receipt_by_canonical_ref.update(
+                    F.make_delivery_closure_receipts(
+                        record,
+                        delivery_closure,
+                        job_id,
+                        entry["kind"],
+                        entry["index"],
+                    )
+                )
             session_execution_authority_by_phase_key[phase_key] = execution_authority
             receipt = F.make_verified_anchor_receipt(
-                ref, job_id, entry["kind"], entry["index"], resolved=st8_resolved
+                ref,
+                job_id,
+                entry["kind"],
+                entry["index"],
+                resolved=st8_resolved,
+                state=default_lifecycle["state"],
             )
             if legacy_evidence_address is not None:
                 receipt["logicalAddress"] = legacy_evidence_address
@@ -276,13 +298,16 @@ def generate(source):
         "requires an ordered, outcome-consistent execution prefix and derives phase keys "
         "locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are "
         "independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. "
-        "authenticatedRecordByRef represents independently resolved, job-bound evidence content: "
-        "payment members are SettlementEvidence, current delivery members are DeliveryEvidence, "
+        "authenticatedRecordByRef represents independently resolved, job-bound evidence content; "
+        "the authenticated phase and uniquely verified signature domain fix its family before the "
+        "selector is checked. Payment members are SettlementEvidence, current delivery members are DeliveryEvidence, "
         "and PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. "
-        "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved, lifecycle-gated "
-        "deliverable, entitlement/credential, or payload-attestation/method-proof closure required "
+        "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, "
+        "entitlement/credential, or payload-attestation/method-proof closure required "
         "before successful current or legacy delivery evidence can authorize its phase; legacy "
         "closure retains its original unindexed addresses and cannot synthesize credential binding. "
+        "Each inner dependency is keyed by its complete canonical reference in the authenticated "
+        "receipt map, with exact lifecycle, storage-byte, ACL, or encryption-recipient authority. "
         "trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the "
         "complete canonical methodTransactionRef; it is not a portable consensus-proof format. "
         "The record outcome and hashed supersedesEvidenceRef, not "

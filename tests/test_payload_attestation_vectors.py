@@ -71,7 +71,39 @@ def verify_signature(artifact, seed_hex, domain):
     return True
 
 
+def _complete_method_ref(ref):
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    return (
+        isinstance(ref, dict)
+        and {"anchor", "contentHash"} <= set(ref) <= {"anchor", "contentHash", "signer"}
+        and isinstance(anchor, dict) and set(anchor) == {"kind", "locator"}
+        and anchor.get("kind") in {"storage-program", "ipfs", "https"}
+        and isinstance(anchor.get("locator"), str) and bool(anchor["locator"])
+        and R._sha256_hex(ref.get("contentHash"))
+        and ("signer" not in ref or isinstance(ref["signer"], str) and bool(ref["signer"]))
+    )
+
+
 def evaluate(vector, seeds):
+    """Evaluate the legacy unindexed projection under authenticated caller context.
+
+    Listing/agreement projections and trusted resolver maps must be produced by
+    the caller's independent admission, not copied from presented records. This
+    fixture consumer does not implement those native proof codecs.
+    """
+    if not isinstance(vector, dict) or not isinstance(seeds, dict):
+        return "error"
+    required = ("listing", "agreement", "payloadAttestationRecord", "payloadAttestationRef",
+                "settlementEvidence", "methodEvidence")
+    if any(not isinstance(vector.get(key), dict) for key in required):
+        return "error"
+    try:
+        return _evaluate_admitted_projection(vector, seeds)
+    except (KeyError, TypeError, ValueError, UnicodeError):
+        return "error"
+
+
+def _evaluate_admitted_projection(vector, seeds):
     listing = vector["listing"]
     agreement = vector["agreement"]
     record = vector["payloadAttestationRecord"]
@@ -79,10 +111,9 @@ def evaluate(vector, seeds):
     evidence = vector["settlementEvidence"]
 
     pipeline = listing.get("pipeline")
-    if not isinstance(pipeline, list) or not any(
-        isinstance(step, dict) and step.get("kind") == "deliver-attested-payload"
-        for step in pipeline
-    ):
+    if (not isinstance(pipeline, list)
+            or any(not isinstance(step, dict) for step in pipeline)
+            or sum(step.get("kind") == "deliver-attested-payload" for step in pipeline) != 1):
         return "fail"
     deliverable = listing.get("offering", {}).get("deliverable")
     if not isinstance(deliverable, dict) or deliverable.get("kind") != "attested-payload":
@@ -102,6 +133,12 @@ def evaluate(vector, seeds):
     if not verify_signature(record, seeds["verifierEd25519"], PAYLOAD_DOMAIN):
         return "fail"
 
+    if not R._attestation_ref_shape_valid(record_ref):
+        return "error"
+    # This retained standalone projection is legacy/unindexed. Current indexed
+    # evidence is admitted by the phase-bound consumer, never downgraded here.
+    if "phaseIndex" in evidence or "phaseIndex" in record:
+        return "error"
     record_unsigned = {k: v for k, v in record.items() if k != "signature"}
     record_hash = hash_hex(record_unsigned)
     if record_ref.get("contentHash") != record_hash:
@@ -109,9 +146,18 @@ def evaluate(vector, seeds):
     if record_ref.get("signer") != record.get("signature", {}).get("signer"):
         return "fail"
 
-    payload_disposition, payload = R._utf8_bytes(
-        vector.get("payloadUtf8"), "delivered payload"
-    )
+    if "payloadBytesBase64url" in vector:
+        payload_disposition, payload = R._exact_base64url_bytes(
+            vector["payloadBytesBase64url"], "delivered payload"
+        )
+        if "payloadUtf8" in vector:
+            text_result, text_bytes = R._utf8_bytes(vector["payloadUtf8"], "delivered payload")
+            if text_result[0] != "pass":
+                return text_result[0]
+            if payload is not None and text_bytes != payload:
+                return "fail"
+    else:
+        payload_disposition, payload = R._utf8_bytes(vector.get("payloadUtf8"), "delivered payload")
     if payload_disposition[0] != "pass":
         return payload_disposition[0]
     payload_hash = hashlib.sha256(payload).hexdigest()
@@ -132,13 +178,33 @@ def evaluate(vector, seeds):
     attempt = record.get("attempt")
     if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 0:
         return "fail"
+    expected_locator = f"dacs4:payload-attestation:{agreement['jobId']}:{hash_hex(method)}:{attempt}"
+    if record_ref["anchor"] != {"kind": "storage-program", "locator": expected_locator}:
+        return "fail"
     if record.get("decision") != "pass":
         return "fail"
 
     method_ref = record.get("methodEvidenceRef")
-    if not isinstance(method_ref, dict):
-        return "fail"
+    if not _complete_method_ref(method_ref):
+        return "error"
     method_evidence = vector["methodEvidence"]
+    resolution_map = vector.get("trustedMethodEvidenceByCanonicalRef")
+    if resolution_map is None:
+        return "indeterminate"
+    if not isinstance(resolution_map, dict):
+        return "error"
+    resolved = resolution_map.get(canonical_bytes(method_ref).decode("utf-8"))
+    if resolved is None:
+        return "indeterminate"
+    if not isinstance(resolved, dict):
+        return "error"
+    if resolved.get("available") is False:
+        return "indeterminate"
+    if resolved.get("available") is not True:
+        return "error"
+    if (resolved.get("reference") != method_ref
+            or canonical_bytes(resolved.get("artifact")) != canonical_bytes(method_evidence)):
+        return "fail"
     if method_evidence.get("disposition") == "unavailable":
         return "indeterminate"
     if method_ref.get("contentHash") != hash_hex(method_evidence):
@@ -148,7 +214,7 @@ def evaluate(vector, seeds):
         method_evidence,
         record.get("methodTransactionRef"),
         vector.get("trustedNativeTransactionObservationsByCanonicalRef"),
-        delivered_cleartext=vector["payloadUtf8"],
+        delivered_cleartext=vector.get("payloadUtf8"),
         delivered_bytes=payload,
         payload_content_hash=record["payloadContentHash"],
         require_finalized=False,
@@ -164,7 +230,9 @@ def evaluate(vector, seeds):
         return "fail"
     if evidence.get("deliverableContentHash") != record["payloadContentHash"]:
         return "fail"
-    if not isinstance(evidence.get("deliverableAnchor"), dict):
+    if evidence.get("deliverableAnchor") != {
+        "kind": "storage-program", "locator": "dacs4:deliverable:" + agreement["jobId"]
+    }:
         return "fail"
     if evidence.get("attestationRef") != record_ref:
         return "fail"

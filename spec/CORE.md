@@ -573,6 +573,32 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 
+**DACS-5 bundle-family admission (normative).** Bundle-or-pointer admission MUST
+enter through protocol-owned context established independently of the untrusted
+record before family-specific parsing or action: for example, a fixed operation,
+an authenticated address contract, or a uniquely verified registered signature
+domain. A member of the record, an unauthenticated caller label, or a field merely
+renamed to “trusted context” MUST NOT select the family, schema, or signature
+domain. The consumer MUST identify and verify the protocol-owned source it uses.
+
+For a reader pinned to this Standard revision, a full bundle then MUST carry
+exactly one of the three recognized selectors `bundleVersion`,
+`faultBundleVersion`, and `evidenceBoundFaultBundleVersion`; that selector MUST be
+the one prescribed by the authenticated family and MUST carry the supported major
+literal `"1"`. Two recognized selectors, no supported selector, or an unsupported
+major is nonauthorizing before type-specific action. A pointer is admitted only
+under its distinct pointer operation and shape; `pointerKind` prevents an object
+that shares `bundleVersion` from being admitted as a full bundle.
+
+This is a pinned bundle-family rule, not a global discriminator-name registry.
+Unknown inert members remain preserved and hash-bound under SIG-5, and a suffix
+such as `*Version` or `*BundleVersion` confers no selector authority. Thus one
+current supported selector plus an unknown inert member remains a current record.
+A future registered bundle family instead replaces every predecessor selector
+with its own newly registered selector, so an older reader refuses a future-only
+record. No reader claims universal recognition of names that a future revision has
+not registered.
+
 **Registry freezing and growth.** v0.1 freezes the registries (claim schemes in DACS-1, methods/recipes in DACS-2, patterns in DACS-3, rails in DACS-4) as an immutable baseline. Later additions happen via minor-version registry updates released by the current steward, **appended to the same registry-index document** (`dacs2:registry:v0.1` / `dacs4:registry:v0.1`). That index address is the registry's **major-version line**: the `:v0.1` suffix denotes the v0.x line, not a content snapshot. The index document grows additively across minor versions and is re-addressed only on a major (v1 → v2) bump. A consumer therefore always resolves the same address and sees every v0.x entry; "frozen at v0.1" means the original baseline entries are immutable (never mutated in place), not that the index stops growing. Each entry carries its own `recipeVersion` / `railVersion` for per-session pinning (§7.4.3 / §9.4.3).
 
 #### 11.1.3 Conformance philosophy

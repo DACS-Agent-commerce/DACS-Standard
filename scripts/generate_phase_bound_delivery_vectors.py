@@ -65,6 +65,100 @@ def b64url(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
+def dependency_receipt(
+    ref_value: dict,
+    phase_index: int,
+    phase_kind: str,
+    writer: str,
+) -> dict:
+    locator = ref_value["anchor"]["locator"]
+    transaction = hashlib.sha256(
+        f"receipt:{JOB}:{phase_index}:{phase_kind}:{locator}".encode()
+    ).hexdigest()
+    receipt = {
+        "receiptVersion": "1",
+        "substrate": "demos-testnet",
+        "finalityProfile": "demos-bft-final",
+        "logicalAddress": locator,
+        "nativeAddress": locator,
+        "contentHash": ref_value["contentHash"],
+        "transactionRef": {"kind": "demos-transaction", "value": transaction},
+        "writer": writer,
+        "nonce": str(phase_index),
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": 1786000005000 + phase_index,
+        "blockRef": {
+            "id": "block-" + transaction,
+            "height": str(5000 + phase_index),
+            "timestamp": 1786000005000 + phase_index,
+        },
+        "evidence": {"kind": "fixture-demos-bft-proof", "value": transaction},
+    }
+    return receipt
+
+
+def attach_dependency_receipt(
+    case: dict,
+    entry: dict,
+    ref_value: dict,
+    phase_index: int,
+    phase_kind: str,
+    writer: str,
+    *,
+    storage_binding: dict | None = None,
+) -> None:
+    entry["nativeAddress"] = ref_value["anchor"]["locator"]
+    entry["independentlyResolvable"] = True
+    receipt = dependency_receipt(
+        ref_value,
+        phase_index,
+        phase_kind,
+        writer,
+    )
+    authority = {"receipt": receipt}
+    if storage_binding is not None:
+        authority["storageBinding"] = copy.deepcopy(storage_binding)
+    case.setdefault("verifiedReceiptByCanonicalRef", {})[
+        canonical_bytes(ref_value).decode("utf-8")
+    ] = authority
+
+
+def replace_dependency_receipt(
+    case: dict,
+    entry: dict,
+    ref_value: dict,
+    phase_index: int,
+    phase_kind: str,
+    writer: str,
+    *,
+    storage_binding: dict | None = None,
+) -> None:
+    receipts = case.setdefault("verifiedReceiptByCanonicalRef", {})
+    stale_keys = []
+    for key, authority in receipts.items():
+        receipt = (
+            authority.get("receipt", authority)
+            if isinstance(authority, dict) else None
+        )
+        if (
+            isinstance(receipt, dict)
+            and receipt.get("logicalAddress") == entry.get("logicalAddress")
+        ):
+            stale_keys.append(key)
+    for key in stale_keys:
+        receipts.pop(key)
+    attach_dependency_receipt(
+        case,
+        entry,
+        ref_value,
+        phase_index,
+        phase_kind,
+        writer,
+        storage_binding=storage_binding,
+    )
+
+
 def sign(artifact: dict, seed: bytes, domain: str) -> None:
     unsigned = {k: v for k, v in artifact.items() if k != "signature"}
     payload = domain.encode("ascii") + hash_hex(unsigned).encode("ascii")
@@ -213,11 +307,28 @@ def refresh_entitlement_chain(case: dict, position: int = 0) -> None:
         key: value for key, value in entitlement_entry["artifact"].items()
         if key != "signature"
     })
+    replace_dependency_receipt(
+        case,
+        entitlement_entry,
+        {
+            "anchor": copy.deepcopy(evidence_artifact["deliverableAnchor"]),
+            "contentHash": evidence_artifact["deliverableContentHash"],
+        },
+        evidence_artifact.get("phaseIndex", case["pipeline"][position]["index"]),
+        "deliver-entitlement",
+        SELLER,
+    )
     refresh_evidence(case, position)
 
 
 def refresh_payload_chain(case: dict, position: int = 0) -> None:
     evidence_artifact = case["evidenceRecords"][position]["artifact"]
+    deliverable_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "deliverable"
+        and entry.get("logicalAddress")
+        == evidence_artifact["deliverableAnchor"]["locator"]
+    )
     old_record_ref = evidence_artifact["attestationRef"]
     payload_entry = next(
         entry for entry in case["artifactRecords"]
@@ -234,9 +345,39 @@ def refresh_payload_chain(case: dict, position: int = 0) -> None:
     payload_record["methodEvidenceRef"]["contentHash"] = hash_hex(
         method_entry["artifact"]
     )
+    phase_index = evidence_artifact.get(
+        "phaseIndex", case["pipeline"][position]["index"]
+    )
+    replace_dependency_receipt(
+        case,
+        deliverable_entry,
+        {
+            "anchor": copy.deepcopy(evidence_artifact["deliverableAnchor"]),
+            "contentHash": evidence_artifact["deliverableContentHash"],
+        },
+        phase_index,
+        "deliver-attested-payload",
+        SELLER,
+    )
+    replace_dependency_receipt(
+        case,
+        method_entry,
+        payload_record["methodEvidenceRef"],
+        phase_index,
+        "deliver-attested-payload",
+        VERIFIER,
+    )
     sign(payload_record, VERIFIER_SEED, PAYLOAD_DOMAIN)
     evidence_artifact["attestationRef"] = ref(
         payload_entry["logicalAddress"], payload_record
+    )
+    replace_dependency_receipt(
+        case,
+        payload_entry,
+        evidence_artifact["attestationRef"],
+        phase_index,
+        "deliver-attested-payload",
+        VERIFIER,
     )
     refresh_evidence(case, position)
 
@@ -256,6 +397,8 @@ def storage_case(pointers: bool = False) -> dict:
         case["artifactRecords"].append({
             "kind": "deliverable", "logicalAddress": address,
             "cleartextHash": digest, "cleartextUtf8": text.decode("utf-8"),
+            "cleartextBytesBase64url": b64url(text),
+            "storedBytesBase64url": b64url(text),
             "storedContentHash": digest, "available": True,
         })
         case["deliveryAuthorities"].append({
@@ -273,6 +416,21 @@ def storage_case(pointers: bool = False) -> dict:
                 deliverableAnchor={"kind": "storage-program", "locator": address},
             ),
         })
+        attach_dependency_receipt(
+            case,
+            case["artifactRecords"][-1],
+            {
+                "anchor": {"kind": "storage-program", "locator": address},
+                "contentHash": digest,
+            },
+            index,
+            "deliver-storage-program",
+            SELLER,
+            storage_binding={
+                "effectiveAccessMode": "public",
+                "storedContentHash": digest,
+            },
+        )
     bundle(case, pointers)
     return case
 
@@ -366,6 +524,19 @@ def entitlement_case(renewals: tuple[int, int] = (0, 0)) -> dict:
                 deliverableAnchor={"kind": "storage-program", "locator": address},
             ),
         })
+        attach_dependency_receipt(
+            case,
+            case["artifactRecords"][-1],
+            {
+                "anchor": {"kind": "storage-program", "locator": address},
+                "contentHash": hash_hex({
+                    key: value for key, value in record.items() if key != "signature"
+                }),
+            },
+            index,
+            "deliver-entitlement",
+            SELLER,
+        )
     bundle(case)
     return case
 
@@ -375,6 +546,9 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
     cleartext = b"api-key:correct-horse-battery-staple"
     clear_hash = bytes_hash(cleartext)
     ciphertext_hash = bytes_hash(b"ml-kem-aes:ciphertext")
+    stored_bytes = (
+        cleartext if access_model == "buyer-only" else b"ml-kem-aes:ciphertext"
+    )
     stored_hash = clear_hash if access_model == "buyer-only" else ciphertext_hash
     credential_ref = {
         "ref": {
@@ -410,6 +584,7 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
             "credentialRef": copy.deepcopy(credential_ref), "cleartextHash": clear_hash,
             "storedContentHash": stored_hash,
             "cleartextBytesBase64url": b64url(cleartext),
+            "storedBytesBase64url": b64url(stored_bytes),
             "available": True,
         }] if include_credential else []),
         "deliveryAuthorities": [{
@@ -421,6 +596,42 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
             },
         }],
     }
+    entitlement_ref = {
+        "anchor": {"kind": "storage-program", "locator": address},
+        "contentHash": fields["deliverableContentHash"],
+    }
+    attach_dependency_receipt(
+        case,
+        case["artifactRecords"][0],
+        entitlement_ref,
+        index,
+        "deliver-entitlement",
+        SELLER,
+    )
+    if include_credential:
+        storage_binding = {
+            "effectiveAccessMode": access_model,
+            "storedContentHash": stored_hash,
+        }
+        if access_model == "buyer-only":
+            storage_binding["acl"] = {
+                "mode": "restricted",
+                "allowed": [BUYER],
+            }
+        else:
+            storage_binding["encryption"] = {
+                "recipient": BUYER,
+                "ciphertextContentHash": stored_hash,
+            }
+        attach_dependency_receipt(
+            case,
+            case["credentials"][0],
+            credential_ref["ref"],
+            index,
+            "deliver-entitlement",
+            SELLER,
+            storage_binding=storage_binding,
+        )
     bundle(case)
     return case
 
@@ -522,6 +733,8 @@ def attested_case(
         case["artifactRecords"].extend([
             {"kind": "deliverable", "logicalAddress": payload_address,
              "cleartextHash": digest, "cleartextUtf8": payload_text,
+             "cleartextBytesBase64url": b64url(payload),
+             "storedBytesBase64url": b64url(payload),
              "storedContentHash": digest, "available": True},
             {"kind": "PayloadAttestationRecord", "logicalAddress": record_address,
              "artifact": record, "available": True},
@@ -542,6 +755,35 @@ def attested_case(
                 attestationRef=ref(record_address, record),
             ),
         })
+        payload_ref = {
+            "anchor": {"kind": "storage-program", "locator": payload_address},
+            "contentHash": digest,
+        }
+        record_ref = ref(record_address, record)
+        attach_dependency_receipt(
+            case,
+            case["artifactRecords"][-3],
+            payload_ref,
+            index,
+            "deliver-attested-payload",
+            SELLER,
+        )
+        attach_dependency_receipt(
+            case,
+            case["artifactRecords"][-2],
+            record_ref,
+            index,
+            "deliver-attested-payload",
+            VERIFIER,
+        )
+        attach_dependency_receipt(
+            case,
+            case["artifactRecords"][-1],
+            record["methodEvidenceRef"],
+            index,
+            "deliver-attested-payload",
+            VERIFIER,
+        )
     bundle(case)
     return case
 
@@ -561,6 +803,8 @@ def legacy_case(repeated: bool = False) -> dict:
         "evidenceRecords": [{"logicalAddress": f"legacy:dacs4:evidence:{JOB}", "artifact": artifact}],
         "artifactRecords": [{"kind": "deliverable", "logicalAddress": address,
                              "cleartextHash": digest, "cleartextUtf8": "legacy delivery",
+                             "cleartextBytesBase64url": b64url(b"legacy delivery"),
+                             "storedBytesBase64url": b64url(b"legacy delivery"),
                              "storedContentHash": digest, "available": True}],
         "credentials": [],
         "deliveryAuthorities": [{
@@ -571,6 +815,18 @@ def legacy_case(repeated: bool = False) -> dict:
             },
         }],
     }
+    attach_dependency_receipt(
+        case,
+        case["artifactRecords"][0],
+        {"anchor": artifact["deliverableAnchor"], "contentHash": digest},
+        1,
+        "deliver-storage-program",
+        SELLER,
+        storage_binding={
+            "effectiveAccessMode": "public",
+            "storedContentHash": digest,
+        },
+    )
     bundle(case)
     return case
 
@@ -604,6 +860,17 @@ def legacy_credential_case(include_credential: bool = True) -> dict:
         "credentials": [],
         "deliveryAuthorities": current["deliveryAuthorities"],
     }
+    attach_dependency_receipt(
+        case,
+        case["artifactRecords"][0],
+        {
+            "anchor": artifact["deliverableAnchor"],
+            "contentHash": artifact["deliverableContentHash"],
+        },
+        5,
+        "deliver-entitlement",
+        SELLER,
+    )
     bundle(case)
     return case
 
@@ -679,6 +946,24 @@ def legacy_attested_case(self_signed: bool = False) -> dict:
         "logicalAddress": f"legacy:dacs4:evidence:{JOB}:attested-payload",
         "artifact": artifact,
     }]
+    case["verifiedReceiptByCanonicalRef"] = {}
+    for entry, ref_value, writer in (
+        (
+            payload_entry,
+            {"anchor": artifact["deliverableAnchor"], "contentHash": artifact["deliverableContentHash"]},
+            SELLER,
+        ),
+        (record_entry, artifact["attestationRef"], VERIFIER),
+        (method_entry, payload_record["methodEvidenceRef"], VERIFIER),
+    ):
+        attach_dependency_receipt(
+            case,
+            entry,
+            ref_value,
+            index,
+            "deliver-attested-payload",
+            writer,
+        )
     bundle(case)
     return case
 
@@ -1062,7 +1347,7 @@ def build_document() -> dict:
     return {
         "set": "phase-bound-delivery-evidence-v0.7",
         "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
-        "decisionModel": "Current delivery evidence signs exact phase identity and artifact/credential closure; attested delivery resolves the payload, method proof, and authenticated native transaction; contradictions fail, malformed/unsupported input errors, and unavailable otherwise-valid private evidence remains indeterminate.",
+        "decisionModel": "Authenticated phase/domain context fixes the evidence family before its selector is read. Current delivery evidence signs exact phase identity; every inner dependency has a full-reference lifecycle receipt; arbitrary exact payload/stored bytes and authenticated ACL or encryption-recipient commitments close storage and credential delivery; standalone payload attestations bind the complete job/phase/method/attempt locator. Contradictions fail, malformed collections or members error without exceptions, and missing otherwise-valid authority remains indeterminate.",
         "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
         "hash": hash_hex(vectors),
         "count": len(vectors),

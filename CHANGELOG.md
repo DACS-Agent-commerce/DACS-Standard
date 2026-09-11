@@ -13,6 +13,24 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — authenticated bundle/pointer and delivery authority
+
+- **Protocol-owned family admission** (#333) — requires fixed operation,
+  authenticated address, or uniquely verified registered-domain context before
+  a bundle, pointer, or delivery-evidence selector can choose a schema. Full
+  bundles require one supported recognized selector; pointers cannot be
+  promoted through shared `bundleVersion`; inert unknown signed members remain
+  SIG-5 hash-bound. FAB/EBFAB pointer domains and all legacy signed bytes remain
+  unchanged. The unresolved generic `BundleExtendedPointer` domain is recorded
+  without inventing a fallback, and unsupported shared-address dispatch refuses.
+- **Delivery authority closure** (#333) — binds every inner dependency to its
+  complete canonical reference and authenticated lifecycle receipt, verifies
+  effective ACL/encryption recipient and exact stored/ciphertext commitments,
+  supports arbitrary exact bytes, makes malformed alternate-dependency inputs
+  total, and derives standalone payload-attestation locators from authenticated
+  job/phase/method/attempt context. Missing authority remains indeterminate;
+  malformed input errors and authenticated contradictions fail.
+
 ### Fixed — delivery closure reference validation
 
 - **Signed-format and legacy closure parity** (#333) — the executable DACS-4/DACS-5

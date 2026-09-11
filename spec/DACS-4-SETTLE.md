@@ -749,9 +749,9 @@ pipeline `phaseIndex`.
 **Procedure.**
 
 1. Validate `agreement.terms.deliverable.deliverableType == "storage-program"`.
-2. Seller constructs the deliverable payload conforming to `deliverable.schemaUrl` (if specified).
-3. Write a Storage Program at address `dacs4:deliverable:{jobId}:{phaseIndex}` with the payload as value.
-4. Compute `contentHash = sha256(canonical_payload)`.
+2. Seller constructs the deliverable payload conforming to `deliverable.schemaUrl` (if specified). The contracted payload is an arbitrary byte string; a textual media type does not authorize a consumer to re-encode it.
+3. Write a Storage Program at address `dacs4:deliverable:{jobId}:{phaseIndex}` with those exact bytes as value (or, for an encrypted mode, the exact ciphertext bytes prescribed below).
+4. Compute `contentHash = sha256(exact_cleartext_payload_bytes)`.
 5. Construct `DeliveryEvidence` with the exact `phaseIndex`,
    `deliverableContentHash = contentHash`, and `deliverableAnchor = {kind:
    "storage-program", locator: "dacs4:deliverable:{jobId}:{phaseIndex}"}`;
@@ -764,10 +764,10 @@ pipeline `phaseIndex`.
 - `buyer-only` — the Storage Program is written with a `restricted` ACL listing the buyer's address in `allowed`; reads are node-enforced.
 - `encrypt-to-buyer` — the payload is sealed to the buyer's encryption key and the ciphertext anchored (which MAY itself be public, since only the holder can open it).
 
-- (DV-1) **Content-hash invariant.** `deliverableContentHash` MUST be the sha256 of the **cleartext** canonical payload — byte-identical across all `accessModel` values, never the ciphertext — so settlement evidence (§9.7) binds the same digest regardless of access mode.
-- (DV-2) **Access-mode fidelity.** The delivered access mode MUST match the agreement's declared `accessModel`. A consumer resolving a declared non-`public` deliverable as delivered `public` MUST emit `indeterminate` (a provenanced confidentiality-downgrade flag), never `pass`; over-provision (declared `public`, delivered private) is NOT a violation.
-- (DV-3) **Buyer binding.** Under `buyer-only`, the ACL `allowed` entry MUST be the buyer address resolved from the agreement-bound buyer `AgreementParty` (§8.5), not a separately-presented address. Under `encrypt-to-buyer`, the payload MUST be sealed to that party's `AgreementParty.encryptionKey`.
-- (DV-4) **ACL-mutation auditability.** Under `buyer-only` the owner CAN later mutate the ACL (add/remove readers). Each mutation SHOULD be recorded as an anchored, signed record so the buyer can detect a post-delivery reader addition — and MUST be recorded for a `credentialRef`-backed entitlement (§9.6.2).
+- (DV-1) **Exact-byte content invariant.** `deliverableContentHash` MUST be the sha256 of the **exact cleartext bytes delivered to the buyer** — byte-identical across all `accessModel` values, never a text re-encoding, parsed value, ciphertext, or storage envelope. Arbitrary binary and text payloads are both valid. If an adapter exposes both a UTF-8 text view and an exact Base64URL byte view, the Base64URL spelling MUST be canonical unpadded RFC 4648 §5 and both views MUST decode to identical bytes; a contradiction is `fail`, a malformed representation is `error`, and unavailable exact bytes are `indeterminate`. These adapter representations are resolver metadata and do not add fields to a signed DACS artifact.
+- (DV-2) **Authenticated access-mode fidelity.** A consumer MUST obtain the effective access mode from the authenticated storage receipt/binding produced by its protocol-owned SR-2 adapter, not from resolver content, a caller label, or the agreement value echoed back as proof. A declared non-`public` mode MUST be realized exactly; a proven contradiction is `fail` and missing authority is `indeterminate`. Over-provision (declared `public`, authenticated effective private storage) remains valid.
+- (DV-3) **Authenticated buyer binding.** Under `buyer-only`, the authenticated effective ACL MUST be `restricted` to the buyer resolved from the authenticated bundle/agreement party authority; a separately presented buyer address is not authority. Under `encrypt-to-buyer`, authenticated encryption evidence MUST bind that same buyer as recipient and bind the exact ciphertext commitment. Missing authority is `indeterminate`; malformed evidence is `error`; a different recipient, ACL, or commitment is `fail`.
+- (DV-4) **Stored-byte binding and ACL-mutation auditability.** The authenticated storage receipt/binding MUST commit to the exact stored bytes. For `public` and `buyer-only` the stored-byte digest MUST equal the DV-1 cleartext digest; for `encrypt-to-buyer` it MUST equal the authenticated ciphertext digest while `deliverableContentHash` remains the cleartext digest. The resolved exact stored bytes MUST reproduce that commitment. Under `buyer-only` the owner CAN later mutate the ACL (add/remove readers). Each mutation SHOULD be recorded as an anchored, signed record so the buyer can detect a post-delivery reader addition — and MUST be recorded for a `credentialRef`-backed entitlement (§9.6.2). The receipt/binding input MUST come from successful binding-defined proof verification under CORE SR2-4; the name of an adapter map or an untrusted Boolean does not authenticate it, and this rule does not invent a substrate proof codec.
 
 > **Note (non-normative — confidentiality tiers).** `buyer-only` is node-enforced: confidential against the public and other users, but the owner can re-open the ACL and node operators can see the bytes ("private until the owner changes the ACL"). `encrypt-to-buyer` is a cryptographic one-shot seal (operator-blind, non-revocable). The normative envelope is the native post-quantum `UnifiedCrypto` (`ml-kem-aes`); an external envelope (HPKE/age) MAY be used only as a cross-substrate profile and is classical-not-PQC.
 
@@ -964,6 +964,14 @@ through PDE-7.
   directly to a raw DAHR/TLSNotary/zkTLS response. A PDE-7 legacy
   `SettlementEvidence` follows its frozen unindexed closure rules only when the
   pipeline has one unambiguous matching delivery invocation.
+  Standalone resolution MUST validate the complete canonical
+  `AttestationRef` and derive the exact locator from authenticated session
+  `jobId`, executed phase index/kind, the complete signed-listing verification
+  method hash, and the record's non-negative `attempt`. Equality between two
+  caller-supplied copies of those values is not authority. The reference content
+  hash and optional signer MUST bind the resolved signed record. Missing locator
+  authority is `indeterminate`, malformed context is `error`, and a complete but
+  contradictory binding is `fail`.
 - (DPA-7) **Resolution outcomes.** A resolved contradiction (bad signature,
   wrong hash, wrong job/agreement/spec/method, missing required proof or
   transaction, or a conclusive non-pass decision) is `fail`. Inability to
@@ -979,9 +987,13 @@ through PDE-7.
   payload-bound record. Binding `jobId`, `agreementHash`, and
   `deliverableSpecHash` makes a valid record for one session invalid in every
   other session.
-- (DPA-9) **Minor-safe type distinction.** A consumer MUST classify a payload
-  attestation by `payloadAttestationVersion` before interpreting any other
-  field. A `PayloadAttestationRecord` MUST NOT carry `resultVersion` or
+- (DPA-9) **Minor-safe type distinction.** The authenticated
+  `deliver-attested-payload` operation and signed-listing method establish that
+  a payload-attestation dependency is expected; the consumer MUST verify its
+  registered signature domain and then require exactly
+  `payloadAttestationVersion: "1"` before interpreting type-specific fields. A
+  record member or caller label cannot select that family or domain. A
+  `PayloadAttestationRecord` MUST NOT carry `resultVersion` or
   `evidenceVersion`, and a DACS-2 `VerifyResult` or `SettlementEvidence` MUST
   NOT be coerced into this type. Unsupported payload-attestation versions are
   rejected as unsupported under CORE §11.1.2. The legacy optional spelling of
@@ -1185,11 +1197,14 @@ signed_bytes := "dacs-delivery-evidence:v1:" || delivery_evidence_hash
   every payment invocation. A `DeliveryEvidence` carries
   `deliveryEvidenceVersion: "1"` and MUST NOT carry `evidenceVersion`; a
   `SettlementEvidence` carries `evidenceVersion: "1"` and MUST NOT carry
-  `deliveryEvidenceVersion`. A consumer MUST classify on that discriminator
-  before interpreting any other member and MUST reject an unsupported or
-  cross-coerced type. Existing `SettlementEvidence` signed bytes, hashes, and
-  meanings remain frozen; its historical delivery arm is read-only under
-  PDE-7.
+  `deliveryEvidenceVersion`. Before interpreting either selector or any
+  type-specific member, a consumer MUST establish the expected evidence family
+  from the authenticated phase operation and uniquely verified registered
+  signature domain; a record member or unauthenticated caller label cannot
+  select the family or domain. It then requires exactly the matching supported
+  selector and MUST reject an unsupported, multiply selected, or cross-coerced
+  type. Existing `SettlementEvidence` signed bytes, hashes, and meanings remain
+  frozen; its historical delivery arm is read-only under PDE-7.
 - (PDE-2) **Authenticated invocation identity.** `DeliveryEvidence.jobId`,
   `phaseIndex`, and `phase` MUST equal the authenticated session job, the exact
   signed-listing pipeline index, and the delivery phase kind at that index.
@@ -1223,6 +1238,14 @@ signed_bytes := "dacs-delivery-evidence:v1:" || delivery_evidence_hash
   and `attestationRef` is REQUIRED and MUST resolve at the exact
   phase-indexed payload-attestation address through DPA-3..DPA-9. Other phase
   kinds MUST omit `attestationRef`.
+  Every referenced inner deliverable, entitlement, credential, payload
+  attestation, and method-evidence dependency MUST have a verified SR-2 receipt
+  keyed by its complete canonical `AttestationRef`. The unchanged CORE
+  `AnchorReceipt` MUST bind the exact logical and native addresses, content
+  hash, transaction, and writer, and MUST be evaluated only within the
+  independently authenticated job/phase execution context. A completed bundle additionally requires
+  `finalized` and independently resolvable dependencies; a failed or aborted
+  terminal requires `included` or `finalized` for each dependency it relies on.
 - (PDE-5) **Exact credential-delivery binding; delivered only.** A successful
   `deliver-entitlement` evidence record MUST carry `credentialDelivery` if and
   only if the resolved, valid signed `EntitlementRecord` carries
@@ -1246,7 +1269,13 @@ signed_bytes := "dacs-delivery-evidence:v1:" || delivery_evidence_hash
   renewal, signature, or attempted reuse of one evidence/reference for two
   invocations is `fail`. A malformed candidate is `error`. An otherwise
   well-formed candidate whose required private credential, artifact, anchor,
-  or authenticated receipt cannot currently be resolved is `indeterminate`.
+  exact bytes, authenticated storage authority, or authenticated receipt cannot
+  currently be resolved is `indeterminate`. A receipt embedded beside resolver
+  content or supplied under an authority-sounding caller field is not
+  authenticated lifecycle evidence; the consumer's protocol-owned SR-2 adapter
+  MUST first verify the binding-defined proof. Malformed dependency collections
+  or members are `error`, authenticated contradictions are `fail`, and an
+  evaluator MUST produce a disposition without an uncaught exception.
   None of these outcomes supplies a `valid` or `readable` verdict.
 - (PDE-7) **Legacy read arm.** A historical delivery-shaped
   `SettlementEvidence` and its unindexed artifact addresses MAY remain

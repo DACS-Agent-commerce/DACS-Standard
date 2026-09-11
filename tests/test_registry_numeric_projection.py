@@ -3,6 +3,7 @@
 These projections do not establish native receipt or signature authority.
 """
 
+import copy
 import unittest
 
 import test_claim_requirement_qualification_vectors as recipes
@@ -66,6 +67,12 @@ class RegistryNumericProjectionTests(unittest.TestCase):
         self.assertEqual(rails.evaluate(data)[0], "fail")
         data["acceptedRails"][0].pop("railVersion")
         self.assertEqual(rails.evaluate(data), ("pass", "verified-pa1"))
+        original = copy.deepcopy(data["inCodeDefinitions"][0])
+        for version in (None, True, "1", 1.0, 0, -1, 9007199254740992):
+            with self.subTest(version=version):
+                candidate = dict(original, railVersion=version)
+                data["inCodeDefinitions"] = [original, candidate]
+                self.assertEqual(rails.evaluate(data)[0], "fail")
 
     def test_selected_alternative_resolves_owning_family(self):
         document = fixtures.definition("recipe", "domain", 2, family="tlsnotary")
@@ -84,6 +91,25 @@ class RegistryNumericProjectionTests(unittest.TestCase):
             {"scheme": "domain", "parameters": {"verificationMethod": "zktls"}}, registry,
         )
         self.assertEqual(selected, {"zktls": 2})
+
+    def test_alternative_requires_unique_complete_ownership(self):
+        first = fixtures.definition("recipe", "domain", 1, family="tlsnotary")
+        self.assertEqual(sr2._recipe_for_selected_method([first], "zktls")[0], "indeterminate")
+        first["alternatives"] = [{"kind": "zktls"}]
+        second = fixtures.definition("recipe", "domain", 2, family="self-signed")
+        second["alternatives"] = [{"kind": "zktls"}]
+        self.assertEqual(
+            sr2._recipe_for_selected_method([first, second], "zktls")[0], "indeterminate",
+        )
+        registry = {
+            "versionsByFamily": {"domain": {"tlsnotary": {"1": "live", "3": "live"}}},
+            "recipeDefinitions": [first],
+        }
+        with self.assertRaisesRegex(recipes.QualificationError, "family cannot be resolved"):
+            recipes.qualification_context(
+                {"resolvedResults": []},
+                {"scheme": "domain", "parameters": {"verificationMethod": "zktls"}}, registry,
+            )
 
 
 if __name__ == "__main__":

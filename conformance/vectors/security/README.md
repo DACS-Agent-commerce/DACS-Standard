@@ -180,7 +180,7 @@ its pre-ratification signed bytes. Its descriptor signatures, successor links,
 snapshot hashes, and document hash require one explicit dependency-ordered
 renewal before generator determinism can be claimed for this revision.
 In the reference harness, `definitionQuery` is the non-wire lookup input:
-recipe queries are `{id, family, version?}` where `family` is
+recipe queries are `{id, family, version?}` or `{id, method, version?}` where `family` is
 `Recipe.defaultMethod.kind`, while rail queries are `{id, version?}`. Omitting
 `version` requests latest; a present version is a positive safe integer.
 `definitionChecks` remains modeled output from the definition signature and
@@ -932,8 +932,9 @@ governing dispositions and are not reclassified by this set. A declared
 `resolvedResults` is therefore a neutral projection of already-authenticated
 DACS `VerifyResult` fields, not a new wire artifact. The set-level
 `recipeRegistries` project the exact snapshots selected by each authenticated
-production or replay authority; `latestByFamily` supplies the implicit pin and
-`versionsByFamily` proves exact version existence plus availability. Parameter
+production or replay authority; `versionsByFamily` supplies the complete numeric
+version inventory plus availability. Its greatest numeric member determines the
+implicit pin before eligibility; `latestByFamily` is an inert legacy hint. Parameter
 matching requires every requested own key to be present and canonically equal;
 additional extracted-data keys remain valid. `resultReuse` is neutral
 pre-aggregation cache provenance and optional rerun output; it is not a field
@@ -1204,3 +1205,8 @@ EVM row is cross-run-converged with `dacs-verify` (#159); agreement-listing and
 vp-replay await a second independent impl to cross-run against.
 `feeschedule-reconciliation` was authored on RB's request (#186) covering §8.5.3
 FS-1..FS-5 + §9.7.2 FR-1..FR-4; awaiting a second independent impl to cross-run against.
+
+The SR2 `method` query and CRQ `recipeDefinitions` projection derive alternative-method
+ownership from admitted definition bodies under RA-6. The latter must cover the full
+scheme/version inventory; it is not a wire artifact or an unauthenticated alias map.
+Legacy CRQ snapshots with no alternatives retain their direct default-method projection.

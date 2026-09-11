@@ -652,14 +652,19 @@ def _validate_successor(
 def _valid_definition_query(query: Any, kind: str) -> bool:
     if not isinstance(query, dict):
         return False
-    required = {"id", "family"} if kind == "recipe" else {"id"}
     fields = set(query)
-    if fields != required and fields != required | {"version"}:
+    if kind == "recipe":
+        contexts = [{"id", "family"}, {"id", "method"}]
+    else:
+        contexts = [{"id"}]
+    if not any(fields == required or fields == required | {"version"} for required in contexts):
         return False
     if not _nonempty_string(query.get("id")) or _nfc_key(query.get("id")) is None:
         return False
-    if kind == "recipe" and query.get("family") not in RECIPE_FAMILIES:
-        return False
+    if kind == "recipe":
+        requested_kind = query.get("family", query.get("method"))
+        if not isinstance(requested_kind, str) or requested_kind not in RECIPE_FAMILIES:
+            return False
     return "version" not in query or _positive_safe_integer(query.get("version"))
 
 
@@ -696,9 +701,54 @@ def _load_indexed_definition(
     if kind == "recipe":
         default_method = definition.get("defaultMethod")
         family = default_method.get("kind") if isinstance(default_method, dict) else None
-        if family not in RECIPE_FAMILIES:
+        if not isinstance(family, str) or family not in RECIPE_FAMILIES:
             return "fail", None, None
     return "pass", definition, family
+
+
+
+def _recipe_method_kinds(definition: dict[str, Any]) -> set[str] | None:
+    default = definition.get("defaultMethod")
+    alternatives = definition.get("alternatives", [])
+    if not isinstance(default, dict) or not isinstance(alternatives, list):
+        return None
+    methods = [default, *alternatives]
+    kinds = []
+    for method in methods:
+        if (not isinstance(method, dict) or not isinstance(method.get("kind"), str)
+                or method["kind"] not in RECIPE_FAMILIES):
+            return None
+        kinds.append(method["kind"])
+    return set(kinds) if len(kinds) == len(set(kinds)) else None
+
+
+def _recipe_for_selected_method(indexed, method, pinned_version=None):
+    """RA-6 bridge over authenticated definition projections, not method labels.
+
+    With no pin use each family's greatest version first. Ambiguous ownership
+    remains nonauthorizing; availability is never used to fall back to another
+    family or version. Native active-family/proof admission remains upstream.
+    """
+    candidates = indexed
+    if pinned_version is not None:
+        candidates = [item for item in indexed if item["recipeVersion"] == pinned_version]
+    else:
+        heads = {}
+        for item in indexed:
+            family = item["defaultMethod"]["kind"]
+            if family not in heads or item["recipeVersion"] > heads[family]["recipeVersion"]:
+                heads[family] = item
+        candidates = list(heads.values())
+    owners = []
+    for item in candidates:
+        methods = _recipe_method_kinds(item)
+        if methods is None:
+            return "indeterminate", None
+        if method in methods:
+            owners.append(item)
+    if len(owners) != 1:
+        return "indeterminate", None
+    return "pass", owners[0]
 
 
 def _select_definition(
@@ -721,6 +771,17 @@ def _select_definition(
     definition_storage = case.get("definitionStorage", {})
     if not isinstance(definition_storage, dict):
         return "fail", None
+
+    if kind == "recipe" and "method" in query:
+        loaded = []
+        for entry in matches:
+            if "version" in query and entry["version"] != query["version"]:
+                continue
+            status, definition, _ = _load_indexed_definition(entry, kind, definition_storage)
+            if status != "pass":
+                return status, None
+            loaded.append(definition)
+        return _recipe_for_selected_method(loaded, query["method"], query.get("version"))
 
     if "version" in query:
         matches = [entry for entry in matches if entry.get("version") == query["version"]]

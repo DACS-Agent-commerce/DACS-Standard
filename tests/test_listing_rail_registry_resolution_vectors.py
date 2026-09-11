@@ -125,6 +125,8 @@ def evaluate(data):
         resolved_handlers = {}
         for ref in accepted:
             version = ref.get("railVersion")
+            if "railVersion" in ref and not _positive_version(version):
+                return "fail", "ambiguous-pa1-rail-version"
             rail_candidates = [
                 definition for definition in definitions
                 if definition.get("railId") == ref["railId"]
@@ -138,14 +140,10 @@ def evaluate(data):
                 return "indeterminate", "pa1-definition-unverifiable"
             if len(set(candidate_handlers)) != 1:
                 return "fail", "pa1-handler-version-drift"
-            if version is None:
-                versions = [
-                    definition.get("railVersion")
-                    for definition in rail_candidates
-                    if isinstance(definition.get("railVersion"), int)
-                ]
-                if not versions:
-                    return "fail", "ambiguous-pa1-rail-version"
+            versions = [definition.get("railVersion") for definition in rail_candidates]
+            if any(not _positive_version(value) for value in versions):
+                return "fail", "ambiguous-pa1-rail-version"
+            if "railVersion" not in ref:
                 version = max(versions)
             candidates = [
                 definition

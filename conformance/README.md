@@ -21,6 +21,11 @@ profile identifier would incorrectly create a new full-profile version.
 
 ## Validate
 
+The `registry-bootstrap-v0.1` security corpus currently preserves its
+pre-#338-D1 signed bytes. The ratified numeric-version generator source is newer
+than that checked-in corpus, so its hashes, signatures, and successor links
+remain a separately gated regeneration task.
+
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json
 python3 scripts/validate_artifact_shapes.py

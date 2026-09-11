@@ -172,6 +172,20 @@ authenticated definition references, closed registry-index shape/kind/version/
 revision checks, and SIG-5 preservation plus NFC and fractional-number
 canonicalisation of unknown members.
 
+The ratified #338-D1 source contract corrects unreleased
+`RegistryIndexSnapshot` v1 entries to numeric versions and adds family-aware
+latest selection, derived-NFC identity comparison, fetched-definition equality,
+and target-bounded historical traversal. The checked-in 76-vector file retains
+its pre-ratification signed bytes. Its descriptor signatures, successor links,
+snapshot hashes, and document hash require one explicit dependency-ordered
+renewal before generator determinism can be claimed for this revision.
+In the reference harness, `definitionQuery` is the non-wire lookup input:
+recipe queries are `{id, family, version?}` where `family` is
+`Recipe.defaultMethod.kind`, while rail queries are `{id, version?}`. Omitting
+`version` requests latest; a present version is a positive safe integer.
+`definitionChecks` remains modeled output from the definition signature and
+semantic verifiers rather than native proof verification.
+
 Every case supplies a closed `expectedRegistryTuple` as independent release
 configuration beside `trustPin`; it is not a signed descriptor member or wire
 field. The evaluator validates the exact recipe/rail pairing and all four tuple
@@ -200,7 +214,8 @@ modes fail. Bootstrap snapshot admission runs the complete receipt predicate
 before nested access and then requires an established finalized receipt, exact
 descriptor bindings, block metadata, and independently verified non-recursive
 evidence.
-Public test seeds are included. Regenerate and execute both sets with:
+Public test seeds are included. After an authorized signed-corpus renewal,
+regenerate and execute both sets with:
 
 ```sh
 python3 scripts/generate_sr2_resolution_vectors.py --write

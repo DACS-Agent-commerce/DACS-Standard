@@ -288,7 +288,7 @@ type RegistryBootstrapSignature = {
 
 type RegistryIndexEntry = {
   id: string                            // non-empty identity within this registry kind
-  version: string                       // non-empty exact definition version
+  version: number                       // positive JSON safe integer; exact definition version
   anchor: {
     kind: "storage-program" | "ipfs" | "https"
     locator: string                     // non-empty native locator
@@ -300,7 +300,7 @@ type RegistryIndexSnapshot = {
   registryIndexVersion: "1"
   registryKind: "recipe" | "rail"
   revision: number                      // positive JSON safe integer; equals descriptor.sequence
-  entries: RegistryIndexEntry[]         // no duplicate (id, version) pair
+  entries: RegistryIndexEntry[]         // no duplicate (NFC(id), version) pair
 }
 
 type RegistryBootstrapDescriptor = {
@@ -378,6 +378,32 @@ boolean or additional unnamed substrate proof may substitute for it. The
 embedded `observedAt` is the original observer's time and is not reproduced;
 consensus time remains `blockRef.timestamp` under SR2-6.
 
+Registry-index identity and version selection use derived comparison values:
+
+- A consumer MUST derive `NFC(id)` for entry lookup, equality, and duplicate
+  detection. It MUST NOT rewrite the authenticated entry, snapshot, definition,
+  hash preimage, or signed bytes.
+- A recipe entry's `id` is its `Recipe.scheme`. Its family is the exact
+  `(Recipe.scheme, Recipe.defaultMethod.kind)` pair.
+- A rail entry's `id` is its `RailDefinition.railId`.
+- `RegistryIndexEntry.version` MUST be a positive JSON safe integer. It MUST
+  equal `Recipe.recipeVersion` or `RailDefinition.railVersion` as the same JSON
+  number type and value.
+- An explicit pin MUST match one exact numeric entry version without coercion.
+  A string, boolean, fraction, or other representation is not that pin.
+- For an omitted pin, the consumer MUST select the unique greatest numeric
+  version within the exact authenticated recipe family or rail ID. It MUST make
+  that selection before applying availability, governance, or other eligibility
+  checks to the selected definition.
+- An unavailable or unclassifiable candidate that could be the greatest member
+  of the requested recipe family cannot authorize an older candidate. An
+  unknown, invalid, or ineligible selected definition likewise cannot authorize
+  fallback to an older version.
+
+The fetched definition MUST repeat the entry identity under the derived NFC
+comparison and repeat its exact numeric version. Index and definition values
+remain byte-preserved for hash and signature verification.
+
 Registry-bootstrap v1 uses an immutable index snapshot per descriptor sequence.
 Every content append or other index-byte change advances `sequence` by one,
 anchors new snapshot bytes at a new native address, and retains the prior
@@ -414,10 +440,14 @@ Latest-mode rollback to a lower accepted sequence is rejected. When a consumer
 has persisted a latest `(sequence, descriptorHash)` pair, that exact descriptor
 MUST occur in the newly predecessor-validated chain and the selected head MUST
 descend from it; a longer sibling branch is `indeterminate`, never a valid
-upgrade. Historical replay uses the session's recorded
-`(sequence, descriptorHash)` pair, selects
-only that exact descriptor from the predecessor-validated accepted chain, then
-uses its retained immutable index snapshot and exact recipe/rail entry version.
+upgrade. Historical replay uses the session's recorded `(sequence,
+descriptorHash)` pair. Starting at the accepted root, the consumer MUST classify
+every competing candidate through that exact target. A fork or unresolved
+competitor at or before the target leaves replay `indeterminate`. Once the exact
+target is uniquely authenticated, traversal MUST stop; a later fork does not
+invalidate that retained historical authority. The consumer then uses the
+target's retained immutable index snapshot and exact recipe or rail entry
+version.
 A sequence alone, a same-sequence descriptor with another hash, or a descriptor
 outside that chain is not replay authority. Unavailable required bootstrap
 material yields `indeterminate` after invalid candidates are discarded and

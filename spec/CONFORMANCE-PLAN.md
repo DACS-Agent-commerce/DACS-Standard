@@ -285,11 +285,17 @@ root classification,
 hash-only and key-only first contact, first-contact and successor forks,
 same-key content successors, dual-authorized rotation, cumulative revocation,
 candidate classification before chain advance, latest rollback, exact
-sequence/hash historical replay from the accepted chain, persisted-branch
+sequence/hash historical replay that classifies competitors through the target
+but ignores later forks, persisted-branch
 ancestry for latest upgrades, transport-copy classification before descriptor-
 hash collapse and fork counting, invalid-root filtering before fork counting,
-registry-index v1 shape/kind/revision validation, JCS/NFC/fractional known
-answers and unsafe-number disposition, immutable snapshot enforcement,
+registry-index v1 shape/kind/revision validation, positive-safe-integer entry
+versions, exact numeric pins without coercion, fetched definition
+identity/version equality, derived-NFC lookup/equality/duplicate detection
+without signed-byte rewriting, unique numeric latest selection within the exact
+recipe family or rail ID before eligibility, no older fallback, and
+unknown/unclassifiable latest refusal, JCS/NFC/fractional known answers and
+unsafe-number disposition, immutable snapshot enforcement,
 signature-domain and discriminator refusal, recursive-evidence refusal,
 complete receipt-shape and descriptor binding before nested access, independent
 non-recursive evidence-verifier output, descriptor-to-receipt tuple binding,

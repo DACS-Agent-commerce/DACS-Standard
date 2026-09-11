@@ -17,6 +17,7 @@ import binascii
 import hashlib
 import math
 import re
+import unicodedata
 from copy import deepcopy
 from typing import Any, Callable
 
@@ -32,6 +33,17 @@ STATE_RANK = {"submitted": 0, "accepted": 1, "included": 2, "finalized": 3}
 PAIRING = {
     "recipe": "dacs2:registry:v0.1",
     "rail": "dacs4:registry:v0.1",
+}
+RECIPE_FAMILIES = {
+    "verifiable-credential",
+    "tlsnotary",
+    "zktls",
+    "consensus-backed-proxy",
+    "oauth-attested",
+    "evm-rpc",
+    "domain-tls-control",
+    "self-signed",
+    "demos-gcr-domain",
 }
 REGISTRY_TUPLE_FIELDS = (
     "registryKind",
@@ -117,6 +129,16 @@ def _positive_safe_integer(value: Any) -> bool:
         and isinstance(value, int)
         and 1 <= value <= 9007199254740991
     )
+
+
+def _nfc_key(value: Any) -> str | None:
+    """Return a derived comparison key without changing authenticated input."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return unicodedata.normalize("NFC", value)
+    except UnicodeError:
+        return None
 
 
 def _valid_hash(value: Any) -> bool:
@@ -535,7 +557,7 @@ def _valid_index_snapshot(snapshot: Any, descriptor: dict[str, Any]) -> bool:
     entries = snapshot.get("entries")
     if not isinstance(entries, list):
         return False
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, int]] = set()
     for entry in entries:
         if not isinstance(entry, dict):
             return False
@@ -543,11 +565,12 @@ def _valid_index_snapshot(snapshot: Any, descriptor: dict[str, Any]) -> bool:
             return False
         identifier = entry.get("id")
         version = entry.get("version")
-        if not isinstance(identifier, str) or not identifier:
+        identifier_key = _nfc_key(identifier)
+        if identifier_key is None or not identifier:
             return False
-        if not isinstance(version, str) or not version:
+        if not _positive_safe_integer(version):
             return False
-        identity = (identifier, version)
+        identity = (identifier_key, version)
         if identity in seen:
             return False
         seen.add(identity)
@@ -626,42 +649,113 @@ def _validate_successor(
     return _verify_snapshot(descriptor, case)
 
 
-def _definition_result(head: dict[str, Any], case: dict[str, Any]) -> str:
-    if "definitionQuery" not in case:
-        return "pass"
-    query = case["definitionQuery"]
-    if (
-        not isinstance(query, dict)
-        or set(query) != {"id", "version"}
-        or not _nonempty_string(query.get("id"))
-        or not _nonempty_string(query.get("version"))
-    ):
-        return "fail"
-    index_storage = case.get("indexStorage")
-    if not isinstance(index_storage, dict):
-        return "fail"
-    index = index_storage.get(head["nativeIndexAddress"])
-    entries = index.get("entries", []) if isinstance(index, dict) else []
-    matches = [
-        entry for entry in entries
-        if entry.get("id") == query.get("id") and entry.get("version") == query.get("version")
-    ]
-    if len(matches) != 1:
-        return "fail"
-    entry = matches[0]
-    locator = entry.get("anchor", {}).get("locator") if isinstance(entry.get("anchor"), dict) else None
-    definition_storage = case.get("definitionStorage", {})
-    if not isinstance(definition_storage, dict):
-        return "fail"
+def _valid_definition_query(query: Any, kind: str) -> bool:
+    if not isinstance(query, dict):
+        return False
+    required = {"id", "family"} if kind == "recipe" else {"id"}
+    fields = set(query)
+    if fields != required and fields != required | {"version"}:
+        return False
+    if not _nonempty_string(query.get("id")) or _nfc_key(query.get("id")) is None:
+        return False
+    if kind == "recipe" and query.get("family") not in RECIPE_FAMILIES:
+        return False
+    return "version" not in query or _positive_safe_integer(query.get("version"))
+
+
+def _load_indexed_definition(
+    entry: dict[str, Any], kind: str, definition_storage: dict[str, Any]
+) -> tuple[str, dict[str, Any] | None, str | None]:
+    anchor = entry.get("anchor")
+    locator = anchor.get("locator") if isinstance(anchor, dict) else None
     definition = definition_storage.get(locator)
     if definition is None:
-        return "indeterminate"
+        return "indeterminate", None, None
     try:
         definition_hash = hash_hex(definition)
     except (TypeError, ValueError, UnicodeError):
-        return "fail"
+        return "fail", None, None
     if definition_hash != entry.get("contentHash"):
-        return "fail"
+        return "fail", None, None
+    if not isinstance(definition, dict):
+        return "fail", None, None
+
+    id_field = "scheme" if kind == "recipe" else "railId"
+    version_field = "recipeVersion" if kind == "recipe" else "railVersion"
+    definition_id = definition.get(id_field)
+    definition_version = definition.get(version_field)
+    if (
+        not _nonempty_string(definition_id)
+        or _nfc_key(definition_id) != _nfc_key(entry.get("id"))
+        or not _positive_safe_integer(definition_version)
+        or definition_version != entry.get("version")
+    ):
+        return "fail", None, None
+
+    family = None
+    if kind == "recipe":
+        default_method = definition.get("defaultMethod")
+        family = default_method.get("kind") if isinstance(default_method, dict) else None
+        if family not in RECIPE_FAMILIES:
+            return "fail", None, None
+    return "pass", definition, family
+
+
+def _select_definition(
+    head: dict[str, Any], case: dict[str, Any]
+) -> tuple[str, dict[str, Any] | None]:
+    query = case.get("definitionQuery")
+    kind = head.get("registryKind")
+    if kind not in PAIRING or not _valid_definition_query(query, kind):
+        return "fail", None
+    index_storage = case.get("indexStorage")
+    if not isinstance(index_storage, dict):
+        return "fail", None
+    index = index_storage.get(head["nativeIndexAddress"])
+    entries = index.get("entries", []) if isinstance(index, dict) else []
+    query_id = _nfc_key(query.get("id"))
+    matches = [
+        entry for entry in entries
+        if isinstance(entry, dict) and _nfc_key(entry.get("id")) == query_id
+    ]
+    definition_storage = case.get("definitionStorage", {})
+    if not isinstance(definition_storage, dict):
+        return "fail", None
+
+    if "version" in query:
+        matches = [entry for entry in matches if entry.get("version") == query["version"]]
+        if len(matches) != 1:
+            return "fail", None
+        status, definition, family = _load_indexed_definition(
+            matches[0], kind, definition_storage
+        )
+        if status != "pass":
+            return status, None
+        if kind == "recipe" and family != query["family"]:
+            return "fail", None
+        return "pass", definition
+
+    # Resolve latest by descending numeric version before any selected-definition
+    # eligibility checks. An unavailable or unclassifiable higher recipe entry
+    # cannot be bypassed because it might belong to the requested family.
+    matches.sort(key=lambda entry: entry["version"], reverse=True)
+    for entry in matches:
+        status, definition, family = _load_indexed_definition(
+            entry, kind, definition_storage
+        )
+        if status != "pass":
+            return status, None
+        if kind == "rail" or family == query["family"]:
+            return "pass", definition
+    return "fail", None
+
+
+def _definition_result(head: dict[str, Any], case: dict[str, Any]) -> str:
+    if "definitionQuery" not in case:
+        return "pass"
+    status, definition = _select_definition(head, case)
+    if status != "pass" or definition is None:
+        return status
     checks = case.get("definitionChecks", {})
     if not isinstance(checks, dict):
         return "fail"
@@ -741,6 +835,14 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
         head_hash = _try_descriptor_hash(head)
         if head_hash is None:
             return "fail"
+        if mode == "historical":
+            target_sequence = case["targetSequence"]
+            if head.get("sequence") == target_sequence:
+                if head_hash != case["targetDescriptorHash"]:
+                    return "indeterminate"
+                return _definition_result(head, case)
+            if head.get("sequence") > target_sequence:
+                return "indeterminate"
         candidates = [
             d for d in descriptors
             if isinstance(d, dict)
@@ -776,16 +878,7 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
         if len(persisted) != 1:
             return "indeterminate"
     if mode == "historical":
-        target_sequence = case.get("targetSequence")
-        target_hash = case.get("targetDescriptorHash")
-        matches = [
-            d for d in accepted_chain
-            if d.get("sequence") == target_sequence
-            and _try_descriptor_hash(d) == target_hash
-        ]
-        if len(matches) != 1:
-            return "indeterminate"
-        head = matches[0]
+        return "indeterminate"
     return _definition_result(head, case)
 
 

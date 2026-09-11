@@ -303,7 +303,7 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         snapshot["entries"] = [
             {
                 "id": "sample",
-                "version": "1",
+                "version": 1,
                 "anchor": {"kind": [], "locator": "demos:storage:sample"},
                 "contentHash": "ab" * 32,
             }

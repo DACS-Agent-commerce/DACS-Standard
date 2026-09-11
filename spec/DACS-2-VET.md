@@ -241,7 +241,7 @@ A recipe binds a DACS-1 claim scheme to one verification-method family plus meth
 ```
 type Recipe = {
 
-  recipeVersion: number                       // unique and monotonic per scheme; starts at 1
+  recipeVersion: number                       // positive JSON safe integer; unique and monotonic per scheme; starts at 1
 
   scheme: string
 
@@ -480,7 +480,8 @@ A conforming recipe author MUST:
 
 - (RA-1) sign the recipe with the registry steward’s signing key over the domain-separated payload "dacs-recipe:v1:" || recipe_hash per §B.7;
 - (RA-2) anchor the recipe via SR-2 at the canonical address;
-- (RA-3) specify recipeVersion as unique and monotonically increasing per scheme, including across distinct recipe families for that scheme;
+- (RA-3) specify `recipeVersion` as a positive JSON safe integer that is unique
+  and monotonically increasing per scheme, including across distinct families;
 - (RA-4) specify supersedes when replacing a prior recipe in the same family;
 - (RA-5) provide at least one alternative method only if the scheme’s underlying authority supports multiple equivalent attestation paths; when more than one declared path is parser-consuming, all of them MUST satisfy PRA-2's single shared-ParserSpec contract.
 - (RA-6) ensure that no two active families for one scheme claim the same method kind as either default or alternative. Materially different proof properties (including persistent versus fresh domain control) MUST be separate families, never alternatives.
@@ -492,24 +493,27 @@ A verifier MUST resolve a recipe by:
    `(recipe, dacs2:registry:v0.1, substrate, "1")` tuple, verify its finalized
    embedded receipt, and fetch the exact immutable index snapshot at its
    `nativeIndexAddress` with the declared `indexContentHash`;
-2. look up the entries for the claim’s scheme, then select the exact recipe
-   family required by the listing or supplied evidence; a listing selects a
-   method with `ClaimRequirement.parameters.verificationMethod`, and Demos GCR
-   metadata selects `demos-gcr-domain` only when no method was required;
-3. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3),
-   resolve that exact version within the selected family; otherwise select that
-   family's exact latest version in the authenticated recipe-registry snapshot.
-   The selected family and version MUST resolve before verification or
-   aggregation; a missing family, an absent explicit version, or an implicit
-   latest entry that cannot be resolved returns `error`, not a counterparty
-   `fail`. For an implicit pin, the selected latest entry MUST be `live`; any
-   other availability returns `error`, and the verifier MUST NOT scan backward
-   to an older live version. An explicit pin remains subject to RAV-1 through
-   RAV-4, including the required `error` for `mocked`, `disabled`, or `failed`;
-4. treat the entry's locator plus content hash as an authenticated SR2-10
-   content reference, fetch the recipe, and independently verify its content
-   hash, `dacs-recipe:v1:` signature, version, availability, governance, and
-   RA-1..RA-6; and
+2. derive the exact recipe family required by the listing or authenticated
+   evidence. Its identity is `(scheme, defaultMethod.kind)`. A listing selects
+   the method with `ClaimRequirement.parameters.verificationMethod`, while Demos
+   GCR metadata selects `demos-gcr-domain` only when no method was required;
+3. derive NFC comparison keys without changing index or definition bytes, then
+   match entries whose `id` is the claim scheme. If the requirement carries a
+   `recipeVersion`, select the one entry with that exact numeric version without
+   coercion. Otherwise classify hash-matching definitions by their exact family
+   and select its unique greatest numeric version. An unavailable or
+   unclassifiable candidate that could be that greatest family member returns
+   `error` and cannot authorize fallback;
+4. treat the selected entry's locator plus content hash as an authenticated
+   SR2-10 content reference. Fetch the recipe and independently verify its
+   content hash, `dacs-recipe:v1:` signature, availability, governance, and
+   RA-1..RA-6. Its NFC-derived `scheme`, exact `defaultMethod.kind`, and numeric
+   `recipeVersion` MUST equal the selected entry and family. Apply availability
+   only after this unique selection. For an implicit pin the selected recipe
+   MUST be `live`; any other availability returns `error`, and the verifier MUST
+   NOT scan backward to an older live version. An explicit pin remains subject
+   to RAV-1 through RAV-4, including the required `error` for `mocked`,
+   `disabled`, or `failed`; and
 5. retain the accepted descriptor sequence as the registry snapshot pin in both
    `VetCredentialsInput.recipeRegistryVersion` and
    `VetCredentialsInput.sessionContext.recipeRegistryVersion`, require
@@ -1197,7 +1201,7 @@ Single-field references below describe the PA-1 form only.
 
 (CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the composite record and registry pin to authenticated authority for the same `jobId`. During production the authority is the orchestrator-owned active `SessionContext` supplied at the CORE §B.5 phase-handler boundary, not a caller-deserialised assertion. The required `VetCredentialsInput.sessionContext` MUST be that context; `VetCredentialsInput.jobId` and `sessionContext.jobId` MUST equal `record.jobId`; and its separate `recipeRegistryVersion` MUST exactly equal `sessionContext.recipeRegistryVersion` before registry resolution. Production aggregation MUST use the exact `VetCredentialsInput.requirement` carried at that phase boundary; a separately supplied aggregation projection is not an input and cannot substitute for it. This execution binding fixes the bytes evaluated and later covered by `requirementHash`; it does not by itself authenticate who authored or accepted a complementary non-Listing requirement. A producer or ST-11 auditor MUST NOT treat the phase input, Composite signature, or `requirementHash` as proof of that requirement's cross-party provenance. During replay or later consumption the authority is a cryptographically verified, signed `AttestationBundle` or `FaultAttestationBundle`: its `jobId` MUST equal `record.jobId`, its `vetRecords` MUST contain the exact `AttestationRef` being aggregated, and that reference MUST dereference to the same hash- and signature-verified §7.7.2 record. The CORE-canonical hash of the `BundleRequirement` being aggregated MUST equal that signed record's `requirementHash`. Every projected result participating in aggregation MUST be obtained by dereferencing a `VerifyResultRef` committed by that record and validating its content hash and signature. The resolved set MUST correspond one-to-one with the complete ordered union of the record's `freshness` and `dealSpecific` references: no committed reference may be omitted, duplicated, or replaced, and no uncommitted result may be introduced. (`supplementary` contains `SupplementarySignal` values, not `VerifyResultRef` values, and remains outside this result-resolution set.) Caller-supplied requirements or result projections cannot substitute for authenticated bytes. Under PA-2, replay derives the registry pin only from the verified bundle's exact `(recipeRegistryVersion, recipeRegistryDescriptorHash)` pair; the numeric version alone is the PA-1 form and is not PA-2 replay authority. An unsigned `SessionRecord` MUST NOT supply replay authority. A standalone record, a missing or mismatched production input, a production pin mismatch, a missing/invalid/substituted replay bundle, record reference, requirement, or result projection, or a missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version or descriptor hash from the record, an unsigned session record, or current registry state. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
 
-(CRQ-2) A verifier MUST derive one effective recipe family and expected version for every candidate result under a `ClaimRequirement`. The family is `(cr.scheme, cr.parameters.verificationMethod)` when the listing selects a method, otherwise `(cr.scheme, r.method)` from the authenticated evidence. If the listing selects a method, `r.method` MUST equal it. The expected version is the explicit `cr.recipeVersion` when present, otherwise the exact latest version for that family in the authenticated registry snapshot selected by CRQ-1's production or replay authority. Every selected family and explicit or implicit version MUST resolve before any requirement is classified. Missing family metadata, an absent explicit version, or an absent implicit latest version returns `error`; it MUST NOT become an empty applicable set or a counterparty `fail`. If the implicit latest entry is not `live`, aggregation returns `error` and MUST NOT fall back to an older live version. An explicit version is checked under RAV-1 through RAV-4. Once this preflight succeeds, the verifier applies method and exact-version equality plus age qualification before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable family-aware version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; `verificationMethod` is matched against `r.method`, while every other required parameter is matched against authenticated `r.data`. A missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable current-session `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced; VP-C1 separately prevents an unbound cross-session non-pass from carrying a predicate-sensitive decision into this set. A result outside the selected method family, resolved effective recipe version, or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
+(CRQ-2) A verifier MUST derive one effective recipe family and expected version for every candidate result under a `ClaimRequirement`. The family is `(cr.scheme, cr.parameters.verificationMethod)` when the listing selects a method, otherwise `(cr.scheme, r.method)` from the authenticated evidence. If the listing selects a method, `r.method` MUST equal it. The expected version is the explicit numeric `cr.recipeVersion` when present, otherwise the unique greatest numeric version for that exact family in the authenticated registry snapshot selected by CRQ-1's production or replay authority. Entry lookup and scheme equality use derived NFC keys without changing authenticated bytes, and versions are never coerced. Every selected family and explicit or implicit version MUST resolve before any requirement is classified. Missing family metadata, an absent explicit version, an unavailable or unclassifiable possibly-latest family candidate, or an absent implicit latest version returns `error`; it MUST NOT become an empty applicable set or a counterparty `fail`. Eligibility is applied only after unique version selection. If the implicit latest entry is not `live`, aggregation returns `error` and MUST NOT fall back to an older live version. An explicit version is checked under RAV-1 through RAV-4. Once this preflight succeeds, the verifier applies method and exact-version equality plus age qualification before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable family-aware version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; `verificationMethod` is matched against `r.method`, while every other required parameter is matched against authenticated `r.data`. A missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable current-session `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced; VP-C1 separately prevents an unbound cross-session non-pass from carrying a predicate-sensitive decision into this set. A result outside the selected method family, resolved effective recipe version, or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
 
 (CRQ-3) Multiple requirements using the same scheme are evaluated independently. A passing result qualified for one requirement MUST NOT satisfy another requirement whose recipe-version, age, or parameter constraints it does not satisfy.
 

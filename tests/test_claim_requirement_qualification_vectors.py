@@ -233,8 +233,6 @@ def resolve_authenticated_registry(
         return None
     if registry.get("recipeRegistryVersion") != registry_version:
         return None
-    if not isinstance(registry.get("latestByFamily"), dict):
-        return None
     if not isinstance(registry.get("versionsByFamily"), dict):
         return None
     return registry
@@ -293,7 +291,6 @@ def results_for_requirement(input_data, claim_requirement):
 def qualification_context(input_data, claim_requirement, registry):
     explicit_version = claim_requirement.get("recipeVersion")
     required_method = claim_requirement.get("parameters", {}).get("verificationMethod")
-    latest_by_family = registry.get("latestByFamily", {})
     versions_by_family = registry.get("versionsByFamily", {})
     candidates = results_for_requirement(input_data, claim_requirement)
     same_scheme = [
@@ -318,9 +315,24 @@ def qualification_context(input_data, claim_requirement, registry):
         if not isinstance(family_versions, dict):
             raise QualificationError("selected recipe family cannot be resolved")
         expected_version = explicit_version
+        # versionsByFamily is an authenticated fixture projection, not the
+        # signed RegistryIndexEntry wire format. JSON object keys encode its
+        # numeric inventory canonically; latestByFamily is an inert hint.
+        numeric_versions = []
+        for key in family_versions:
+            if (not isinstance(key, str) or not key.isascii() or not key.isdecimal()
+                    or key.startswith("0") or len(key) > 16):
+                raise QualificationError("recipe version inventory is invalid")
+            version = int(key)
+            if not 0 < version <= 9007199254740991:
+                raise QualificationError("recipe version inventory is invalid")
+            numeric_versions.append(version)
+        if not numeric_versions:
+            raise QualificationError("selected recipe family cannot be resolved")
         if expected_version is None:
-            expected_version = latest_by_family.get(claim_requirement["scheme"], {}).get(method)
-        if not isinstance(expected_version, int) or isinstance(expected_version, bool):
+            expected_version = max(numeric_versions)
+        if (not isinstance(expected_version, int) or isinstance(expected_version, bool)
+                or not 0 < expected_version <= 9007199254740991):
             raise QualificationError("effective recipe version cannot be resolved")
         availability = family_versions.get(str(expected_version))
         if availability not in RECIPE_AVAILABILITY_VALUES:

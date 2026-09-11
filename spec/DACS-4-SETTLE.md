@@ -151,7 +151,7 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 
 ```
 type RailDefinition = {
-  railVersion: number
+  railVersion: number                  // positive JSON safe integer
   railId: string                       // canonical id; lowercase ASCII; max 64 chars
   railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
@@ -246,7 +246,8 @@ A conforming rail author MUST:
 
 - (RD-1) sign the rail with the registry steward’s signing key over the domain-separated payload "dacs-rail:v1:" || rail_hash per §B.7;
 - (RD-2) anchor the rail via SR-2 at the canonical address;
-- (RD-3) specify railVersion as monotonically increasing per railId;
+- (RD-3) specify `railVersion` as a positive JSON safe integer that is unique
+  and monotonically increasing per `railId`;
 - (RD-4) specify supersedes when replacing a prior rail with the same railId;
 - (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive integer; a mismatch MUST be rejected before the rail can participate in PB-2.
 - (RD-6) keep `phaseHandler` invariant across every version sharing a `railId`.
@@ -261,14 +262,20 @@ A consumer MUST resolve a rail by:
    `(rail, dacs4:registry:v0.1, substrate, "1")` tuple, verify its finalized
    embedded receipt, and fetch the exact immutable index snapshot at its
    `nativeIndexAddress` with the declared `indexContentHash`;
-2. look up the entry for the agreement’s `terms.rail.railId`;
-3. treat the authenticated entry's locator plus content hash as an SR2-10
-   content reference, fetch the rail, and independently verify its content hash,
-   `dacs-rail:v1:` signature, exact version, availability, governance, and
-   RD-1..RD-6; and
-4. if the agreement pins a specific `railVersion`, MUST use that version;
-   otherwise MUST use the latest at session start, pinned into the session
-   together with the accepted descriptor sequence and hash.
+2. derive NFC comparison keys without changing index or definition bytes, then
+   match entries whose `id` is the agreement's `terms.rail.railId`. If the
+   agreement pins `railVersion`, select the one entry with that exact numeric
+   version without coercion. Otherwise select the unique greatest numeric
+   version for that rail ID;
+3. treat the selected entry's locator plus content hash as an SR2-10 content
+   reference. Fetch the rail and independently verify its content hash,
+   `dacs-rail:v1:` signature, availability, governance, and RD-1..RD-6. Its
+   NFC-derived `railId` and exact numeric `railVersion` MUST equal the selected
+   entry. An unavailable, invalid, or unclassifiable selected definition cannot
+   authorize an older fallback; and
+4. apply RAV-R1..RAV-R5 only after unique version selection, then pin that exact
+   definition at session start together with the accepted descriptor sequence
+   and hash.
 
 For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not

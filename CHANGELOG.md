@@ -31,6 +31,21 @@ The format used per release:
   are unchanged. This repair adds candidate coverage without changing an
   existing vector verdict. Independent verifier outputs bind the complete evidence reference and exact
   canonical receipt hash; they remain modeled outputs rather than proof material.
+- **Numeric registry selection and historical fork semantics repaired** (#338,
+  ratified 11 September 2026) — corrects the unreleased
+  `RegistryIndexSnapshot` v1 entry version in place to a positive JSON safe
+  integer equal to `Recipe.recipeVersion` or `RailDefinition.railVersion`.
+  Explicit pins are exact and uncoerced; omitted pins select the unique greatest
+  numeric version in the authenticated recipe family or rail ID before
+  eligibility, with no older fallback. Registry identity comparisons use
+  derived NFC keys without changing authenticated bytes, and fetched definitions
+  must repeat the indexed identity and version. Historical traversal now
+  classifies every competitor through the exact sequence/hash target and stops
+  there, so a fork at or before the target remains `indeterminate` while a later
+  fork does not erase retained historical authority. The generator records the
+  definition→entry→snapshot→receipt→descriptor→evidence dependency order. The
+  checked-in signed registry-bootstrap corpus remains byte-preserved pending a
+  separately authorized hash/signature/successor-link renewal.
 
 ### Fixed — DACS-X conformance provenance
 

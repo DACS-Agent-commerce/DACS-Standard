@@ -505,13 +505,24 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
     return vectors
 
 
+def sample_definition(kind: str, version: int = 1) -> dict[str, Any]:
+    if kind == "recipe":
+        return {
+            "recipeVersion": version,
+            "scheme": "sample",
+            "defaultMethod": {"kind": "self-signed"},
+            "availability": "live",
+        }
+    return {"railVersion": version, "railId": "sample", "availability": "live"}
+
+
 def index_snapshot(kind: str, revision: int = 1, include_definition: bool = False) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     if include_definition:
-        definition = {"definitionVersion": "1", "kind": kind, "id": "sample", "version": "1"}
+        definition = sample_definition(kind)
         entries.append({
             "id": "sample",
-            "version": "1",
+            "version": 1,
             "anchor": {"kind": "storage-program", "locator": f"demos:storage:{kind}-definition-1"},
             "contentHash": hash_hex(definition),
         })
@@ -575,8 +586,10 @@ def base_bootstrap(kind: str = "recipe", include_definition: bool = False) -> di
         "mode": "latest",
     }
     if include_definition:
-        definition = {"definitionVersion": "1", "kind": kind, "id": "sample", "version": "1"}
-        case["definitionQuery"] = {"id": "sample", "version": "1"}
+        definition = sample_definition(kind)
+        case["definitionQuery"] = {"id": "sample", "version": 1}
+        if kind == "recipe":
+            case["definitionQuery"]["family"] = "self-signed"
         case["definitionStorage"] = {f"demos:storage:{kind}-definition-1": definition}
         case["definitionChecks"] = {"signatureVerified": True, "semanticRulesVerified": True}
     return case
@@ -1195,6 +1208,12 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         sign_descriptor(successor, OLD_SEED)
 
     def replace_definition(case: dict[str, Any], definition: dict[str, Any]) -> None:
+        """Migrate signed dependencies from definition bytes toward outer bindings.
+
+        The required order is definition identity/version and bytes, entry hash,
+        snapshot hash, receipt binding, descriptor signature/release pin, then the
+        fixture receipt-verifier sidecar compiled after all vector mutations.
+        """
         root = case["descriptors"][0]
         snapshot = case["indexStorage"][root["nativeIndexAddress"]]
         entry = snapshot["entries"][0]
@@ -1242,8 +1261,7 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "fractional-unknown-in-definition-is-canonical", "pass",
             "bounded fractional unknown members participate in definition content hashing",
             lambda c: replace_definition(c, {
-                "definitionVersion": "1", "kind": "recipe", "id": "sample",
-                "version": "1", "futureMetric": 1.5,
+                **sample_definition("recipe"), "futureMetric": 1.5,
             }),
             definition=True,
         ),

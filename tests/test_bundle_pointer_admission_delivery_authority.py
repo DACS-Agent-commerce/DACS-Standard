@@ -58,6 +58,44 @@ def dependency_authority(raw=b"\x00\xffbenign payload"):
 
 
 class BundlePointerAdmissionDeliveryAuthorityTests(unittest.TestCase):
+    def test_storage_authority_shape_and_value_dispositions(self):
+        digest = "a" * 64
+        valid = {"effectiveAccessMode": "buyer-only", "storedContentHash": digest,
+                 "acl": {"mode": "restricted", "allowed": [BUYER]}}
+        def result(value):
+            return R._validate_authenticated_storage_binding(
+                value, "buyer-only", BUYER, digest, digest, "unsigned storage model")[0]
+        self.assertEqual(result(valid), "pass")
+        self.assertEqual(result(None), "indeterminate")
+        for changes in ({"storedContentHash": None}, {"storedContentHash": "bad"},
+                        {"acl": []}, {"acl": {"mode": "restricted", "allowed": None}},
+                        {"acl": {"mode": "restricted", "allowed": [None]}}):
+            with self.subTest(changes=changes):
+                self.assertEqual(result({**valid, **changes}), "error")
+        self.assertEqual(result({**valid, "storedContentHash": "b" * 64}), "fail")
+        self.assertEqual(result({**valid, "acl": {"mode": "restricted", "allowed": [SELLER]}}), "fail")
+        encrypted = {"effectiveAccessMode": "encrypt-to-buyer", "storedContentHash": digest,
+                     "encryption": {"recipient": BUYER, "ciphertextContentHash": digest}}
+        for value in (None, [], {"recipient": BUYER, "ciphertextContentHash": "bad"}):
+            self.assertEqual(R._validate_authenticated_storage_binding(
+                {**encrypted, "encryption": value}, "encrypt-to-buyer", BUYER,
+                digest, digest, "unsigned encryption model")[0], "error")
+
+    def test_optional_reference_signer_preserves_receipt_writer_authority(self):
+        reference, entry, receipt, _ = dependency_authority()
+        reference.pop("signer")
+        def result(writer, expected=SELLER):
+            receipts = {R.canonical(reference).decode(): {**receipt, "writer": writer}}
+            return R._resolved_delivery_dependency(
+                entry, reference, receipts, True, "unsigned optional signer model",
+                job_id=JOB, phase_index=PHASE_INDEX, phase_kind=PHASE_KIND,
+                expected_writer=expected)[0][0]
+        self.assertEqual(result(SELLER), "pass")
+        self.assertEqual(result(BUYER), "fail")
+        self.assertEqual(result(SELLER, None), "pass")
+        reference["signer"] = SELLER
+        self.assertEqual(result(BUYER, None), "fail")
+
     def test_supported_selectors_are_exact_and_unknown_members_remain_inert(self):
         current = {
             "bundleVersion": "1",

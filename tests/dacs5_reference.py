@@ -1345,6 +1345,8 @@ def _validated_dependency_receipt(
     reference predicate validates the portable receipt and exact tuple; it does not
     invent a substrate proof codec.  A map name or Boolean inside untrusted JSON is not
     proof and MUST NOT be used to populate this input in a production consumer.
+    ``expected_writer`` constrains a protocol-required writer role when one exists;
+    an optional reference signer, when present, is always checked independently.
     """
     if (
         not _nonempty_jcs_string(job_id)
@@ -1442,7 +1444,8 @@ def _validated_dependency_receipt(
         receipt.get("logicalAddress") != anchor.get("locator")
         or receipt.get("nativeAddress") != native_address
         or receipt.get("contentHash") != reference.get("contentHash")
-        or receipt.get("writer") != expected_writer
+        or (expected_writer is not None and receipt.get("writer") != expected_writer)
+        or ("signer" in reference and receipt.get("writer") != reference["signer"])
     ):
         return (_closure_result("fail", subject + " receipt contradicts its full reference or authority"), receipt_authority)
     if completed:
@@ -1494,41 +1497,48 @@ def _validate_authenticated_storage_binding(
         effective_access_model, {"public", "buyer-only", "encrypt-to-buyer"}
     ):
         return _closure_result("error", subject + " effective access mode is malformed")
-    # DV-2 preserves legitimate over-provision: a declared public deliverable may
-    # be stored privately.  A declared private mode must be realized exactly.
+    # Validate the complete authority shape before interpreting value conflicts.
+    fields = {"effectiveAccessMode", "storedContentHash"}
+    if effective_access_model == "buyer-only":
+        fields.add("acl")
+    elif effective_access_model == "encrypt-to-buyer":
+        fields.add("encryption")
+    if set(binding) != fields or not _sha256_hex(binding.get("storedContentHash")):
+        return _closure_result("error", subject + " storage authority or digest is malformed")
+    acl = binding.get("acl")
+    encryption = binding.get("encryption")
+    if effective_access_model == "buyer-only" and (
+        not isinstance(acl, dict)
+        or set(acl) != {"mode", "allowed"}
+        or not _nonempty_jcs_string(acl.get("mode"))
+        or not isinstance(acl.get("allowed"), list)
+        or any(not _nonempty_jcs_string(value) for value in acl["allowed"])
+    ):
+        return _closure_result("error", subject + " authenticated ACL is malformed")
+    if effective_access_model == "encrypt-to-buyer" and (
+        not isinstance(encryption, dict)
+        or set(encryption) != {"recipient", "ciphertextContentHash"}
+        or not _nonempty_jcs_string(encryption.get("recipient"))
+        or not _sha256_hex(encryption.get("ciphertextContentHash"))
+    ):
+        return _closure_result("error", subject + " authenticated encryption evidence is malformed")
+    # DV-2 preserves public-to-private over-provision; private modes are exact.
     if access_model != "public" and effective_access_model != access_model:
         return _closure_result("fail", subject + " effective access mode contradicts the agreement")
-    if binding.get("storedContentHash") != stored_hash:
+    if binding["storedContentHash"] != stored_hash:
         return _closure_result("fail", subject + " authenticated stored-byte commitment differs")
     if effective_access_model != "public" and not _nonempty_jcs_string(buyer):
         return _closure_result("indeterminate", subject + " authenticated buyer is unavailable")
-    if effective_access_model == "public":
-        if set(binding) != {"effectiveAccessMode", "storedContentHash"}:
-            return _closure_result("error", subject + " public storage authority is malformed")
-        if stored_hash != cleartext_hash:
-            return _closure_result("fail", subject + " public storage does not contain the plaintext bytes")
-    elif effective_access_model == "buyer-only":
-        acl = binding.get("acl")
-        if (
-            set(binding) != {"effectiveAccessMode", "storedContentHash", "acl"}
-            or not isinstance(acl, dict)
-            or set(acl) != {"mode", "allowed"}
-            or acl.get("mode") != "restricted"
-            or acl.get("allowed") != [buyer]
-        ):
-            return _closure_result("fail", subject + " authenticated ACL is not restricted to the buyer")
-        if stored_hash != cleartext_hash:
-            return _closure_result("fail", subject + " buyer-only storage does not contain the plaintext bytes")
-    elif effective_access_model == "encrypt-to-buyer":
-        encryption = binding.get("encryption")
-        if (
-            set(binding) != {"effectiveAccessMode", "storedContentHash", "encryption"}
-            or not isinstance(encryption, dict)
-            or set(encryption) != {"recipient", "ciphertextContentHash"}
-            or encryption.get("recipient") != buyer
-            or encryption.get("ciphertextContentHash") != stored_hash
-        ):
-            return _closure_result("fail", subject + " authenticated encryption evidence does not bind the buyer and ciphertext")
+    if effective_access_model in {"public", "buyer-only"} and stored_hash != cleartext_hash:
+        return _closure_result("fail", subject + " storage does not contain the plaintext bytes")
+    if effective_access_model == "buyer-only" and (
+        acl["mode"] != "restricted" or acl["allowed"] != [buyer]
+    ):
+        return _closure_result("fail", subject + " authenticated ACL is not restricted to the buyer")
+    if effective_access_model == "encrypt-to-buyer" and (
+        encryption["recipient"] != buyer or encryption["ciphertextContentHash"] != stored_hash
+    ):
+        return _closure_result("fail", subject + " authenticated encryption evidence does not bind the buyer and ciphertext")
     return _closure_result("pass")
 
 
@@ -2305,7 +2315,7 @@ def _validate_delivery_artifact_closure_disposition(
             phase_index=authenticated_phase_index,
             phase_kind=phase,
             expected_writer=(
-                ref_value.get("signer") if isinstance(ref_value, dict) else seller
+                ref_value.get("signer", seller) if isinstance(ref_value, dict) else seller
             ),
         )
         results.append(credential_result)
@@ -2359,9 +2369,15 @@ def _validate_delivery_artifact_closure_disposition(
     )
     results.append(dependency_result)
     attestation_ref = record.get("attestationRef")
-    attestation_writer = (
-        attestation_ref.get("signer") if isinstance(attestation_ref, dict) else None
-    )
+    attestation_projection = closure.get("payloadAttestationRecord")
+    attestation_artifact = (attestation_projection.get("artifact")
+                            if isinstance(attestation_projection, dict) else None)
+    attestation_signature = (attestation_artifact.get("signature")
+                             if isinstance(attestation_artifact, dict) else None)
+    # The signature is verified below; its writer binding is required even when
+    # the optional reference signer is omitted.
+    attestation_writer = (attestation_signature.get("signer")
+                          if isinstance(attestation_signature, dict) else None)
     dependency_result, attestation_entry, _ = _resolved_delivery_dependency(
         closure.get("payloadAttestationRecord"),
         attestation_ref,

@@ -495,12 +495,18 @@ def validate_delivery_artifact(
             job_id=job,
             phase_index=index,
             phase_kind=phase,
-            expected_writer=supplied.get("signer"),
+            expected_writer=(record_entry.get("artifact", {}).get("signature", {}).get("signer")
+                             if isinstance(record_entry.get("artifact"), dict)
+                             and isinstance(record_entry["artifact"].get("signature"), dict)
+                             else None),
         )
         if availability[0] != "pass":
             return availability[0]
         record = record_entry["artifact"]
-        if supplied != artifact_ref(record_address, record):
+        expected_ref = artifact_ref(record_address, record)
+        if "signer" not in supplied:
+            expected_ref.pop("signer", None)
+        if supplied != expected_ref:
             return "fail"
         present = set(record)
         if (

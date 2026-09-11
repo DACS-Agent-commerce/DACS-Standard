@@ -73,8 +73,15 @@ def loads_unique_json(value: str | bytes | bytearray) -> Any:
             result[key] = item
         return result
 
+    def reject_constant(constant: str) -> None:
+        raise ValueError(f"invalid JSON: non-JSON numeric constant {constant}")
+
     try:
-        return json.loads(value, object_pairs_hook=unique_object)
+        return json.loads(
+            value,
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
     except json.JSONDecodeError as error:
         raise ValueError(f"invalid JSON: {error.msg}") from error
     except UnicodeDecodeError as error:

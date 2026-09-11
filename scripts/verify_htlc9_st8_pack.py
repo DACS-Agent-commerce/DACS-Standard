@@ -73,7 +73,7 @@ PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
 def fail(path: Path, message: str) -> str:
     try:
         label = path.resolve().relative_to(ROOT)
-    except ValueError:
+    except (ValueError, OSError, RuntimeError):
         label = path
     return f"{label}: {message}"
 
@@ -285,9 +285,11 @@ def load_case(
         return None, [fail(path, "fixture file not found")]
     except UnicodeDecodeError:
         return None, [fail(path, "invalid JSON: input is not valid UTF-8")]
+    except (OSError, RecursionError) as error:
+        return None, [fail(path, f"fixture file could not be read: {error}")]
     try:
         data = loads_unique_json(raw_json)
-    except ValueError as error:
+    except (ValueError, RecursionError) as error:
         return None, [fail(path, str(error))]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]

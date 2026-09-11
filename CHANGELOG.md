@@ -15,6 +15,10 @@ The format used per release:
 
 ### Fixed — Vet admission, provenance, time, and receipt authority
 
+- **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
+  IDs are explicitly positive safe integers; the textual `cci-xm` PB profile
+  shares that applicability ceiling while retaining larger values as generic,
+  non-applicable claims. Unsafe numeric rails fail before tier selection.
 - The executable DACS-1/Vet reference now admits each presentation through a
   verifier-owned active-phase context and an issuer-owned mutable SN-4 ledger.
   Exact issued nonces are consumed on presentation attempt and retained by the

@@ -129,6 +129,18 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 "duplicate JSON member",
             ),
             ('{"kind":', "invalid JSON"),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":NaN}',
+                "non-JSON numeric constant",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":Infinity}',
+                "non-JSON numeric constant",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":-Infinity}',
+                "non-JSON numeric constant",
+            ),
         ]
         for raw_json, expected_error in cases:
             with self.subTest(raw_json=raw_json):
@@ -160,6 +172,23 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertEqual(loads_unique_json(raw_json), json.loads(raw_json))
         with self.assertRaisesRegex(ValueError, "invalid JSON"):
             loads_unique_json('{"outer":')
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                with self.assertRaisesRegex(ValueError, "non-JSON numeric constant"):
+                    loads_unique_json(f'{{"value":{constant}}}')
+
+    def test_htlc9_loader_controls_recursion_and_read_errors(self):
+        _, ver = self._load_pack_modules()
+        path = Path(self._tempdir.name) / "case.json"
+        for error, expected in (
+            (RecursionError("maximum recursion depth exceeded"), "maximum recursion depth"),
+            (OSError("unreadable fixture"), "fixture file could not be read"),
+        ):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(Path, "read_text", side_effect=error):
+                    evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(expected in item for item in errors), errors)
 
     def test_htlc9_resolved_record_binds_the_interim_content_hash(self):
         gen, ver = self._load_pack_modules()

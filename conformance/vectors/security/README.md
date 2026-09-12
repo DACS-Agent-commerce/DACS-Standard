@@ -175,10 +175,14 @@ canonicalisation of unknown members.
 The ratified #338-D1 source contract corrects unreleased
 `RegistryIndexSnapshot` v1 entries to numeric versions and adds family-aware
 latest selection, derived-NFC identity comparison, fetched-definition equality,
-and target-bounded historical traversal. The checked-in 76-vector file retains
-its pre-ratification signed bytes. Its descriptor signatures, successor links,
-snapshot hashes, and document hash require one explicit dependency-ordered
-renewal before generator determinism can be claimed for this revision.
+and target-bounded historical traversal. The checked-in 76-vector file has been
+regenerated in dependency order: definition bytes and entry hashes, snapshot
+hashes, receipt bindings, descriptor signatures and pins, successor references,
+and fixture-verifier sidecars. All existing case names and expected outcomes
+are preserved, including intentional invalid-input controls. The combined
+generator's SR-2 resolution output is unchanged. Local generator determinism
+and reference-model outcomes do not establish native proof verification or
+integrated full-suite acceptance.
 In the reference harness, `definitionQuery` is the non-wire lookup input:
 recipe queries are `{id, family, version?}` or `{id, method, version?}` where `family` is
 `Recipe.defaultMethod.kind`, while rail queries are `{id, version?}`. Omitting
@@ -214,8 +218,7 @@ modes fail. Bootstrap snapshot admission runs the complete receipt predicate
 before nested access and then requires an established finalized receipt, exact
 descriptor bindings, block metadata, and independently verified non-recursive
 evidence.
-Public test seeds are included. After an authorized signed-corpus renewal,
-regenerate and execute both sets with:
+Public test seeds are included. Regenerate and execute both sets with:
 
 ```sh
 python3 scripts/generate_sr2_resolution_vectors.py --write

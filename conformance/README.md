@@ -21,10 +21,12 @@ profile identifier would incorrectly create a new full-profile version.
 
 ## Validate
 
-The `registry-bootstrap-v0.1` security corpus currently preserves its
-pre-#338-D1 signed bytes. The ratified numeric-version generator source is newer
-than that checked-in corpus, so its hashes, signatures, and successor links
-remain a separately gated regeneration task.
+The `registry-bootstrap-v0.1` security corpus has been regenerated for the
+ratified numeric-version contract, including dependent hashes, signatures, and
+successor links. The existing 76 expected outcomes are preserved. Check local
+byte determinism with `python3 scripts/generate_sr2_resolution_vectors.py --check`;
+this bounded fixture check does not establish native proof verification or
+integrated full-suite acceptance.
 
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json

@@ -21,7 +21,7 @@ from dacs5_reference import (  # noqa: E402
     derive,
     derive_job_bound,
     reconcile_authenticated_finality_copies,
-    resolve_absolute_fault_pointer,
+    resolve_legacy_absolute_fault_pointer,
     validate_ebfab,
     validate_finality_bound_ebfab,
 )
@@ -339,20 +339,20 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         case = self.strong["block-depth"]
         pointer = self.data["dacs5"]["pointer"]
         authority = {**case["authority"], "finalityTrust": self.trust}
-        result = resolve_absolute_fault_pointer(
+        result = resolve_legacy_absolute_fault_pointer(
             pointer, case["bundle"], pubkeys=self.pubkeys,
             finality_bound_authority=authority,
         )
         self.assertTrue(result["ok"], result["reason"])
         wrong_hash = copy.deepcopy(pointer)
         wrong_hash["fullBundleContentHash"] = "00" * 32
-        self.assertFalse(resolve_absolute_fault_pointer(
+        self.assertFalse(resolve_legacy_absolute_fault_pointer(
             wrong_hash, case["bundle"], pubkeys=self.pubkeys,
             finality_bound_authority=authority,
         )["ok"])
         wrong_domain = copy.deepcopy(pointer)
         wrong_domain["signature"]["value"] = "A" * 86
-        self.assertFalse(resolve_absolute_fault_pointer(
+        self.assertFalse(resolve_legacy_absolute_fault_pointer(
             wrong_domain, case["bundle"], pubkeys=self.pubkeys,
             finality_bound_authority=authority,
         )["ok"])
@@ -513,7 +513,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
 
         pointer = copy.deepcopy(self.data["dacs5"]["pointer"])
         pointer["producerVerified"] = True
-        result = resolve_absolute_fault_pointer(
+        result = resolve_legacy_absolute_fault_pointer(
             pointer,
             case["bundle"],
             pubkeys=self.pubkeys,

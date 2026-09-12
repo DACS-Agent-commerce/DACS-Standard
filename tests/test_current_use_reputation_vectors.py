@@ -29,6 +29,8 @@ from dacs5_reference import (  # noqa: E402
     derive_current_use_replayable,
     derive_job_bound,
     legacy_checkpoint_binding_hash,
+    legacy_logical_address,
+    logical_address,
     replay_current_use_derivation,
     replay_receipt,
     require_current_use_replayable_derivation,
@@ -49,17 +51,23 @@ class _Bomb(dict):
 class CurrentUseReputationVectorTests(unittest.TestCase):
     def setUp(self):
         self.factory = generator.CurrentUseFixtureFactory()
-        self.fixture = self.factory.build()
         self.party = generator.CLAIMS["buyer"]
+        self.window = generator.FIXTURE_QUERY_WINDOW
+        self.current_keys = self.factory.current_keys
+        self.current_context = self.factory.current_authority(
+            self.party, self.window
+        )
+        self.fixture = self.factory.build()
 
     def derive(self, requests):
         return derive_current_use_replayable(
             self.party,
             requests,
-            0,
-            2_000_000_000_000,
+            *self.window,
             self.fixture["dependencies"],
             self.fixture["verifierConfig"],
+            pubkeys=self.current_keys,
+            trusted_contexts=self.current_context,
         )
 
     def _resign_anchor(self, proof, *, repin=True):
@@ -109,8 +117,15 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
         return role_request, native, role_request["legacyEraEvidenceByNativeAddress"][native]
 
-    def _make_legacy_era(self, job_id, role, bundle, binding):
+    def _make_legacy_era(self, job_id, role, bundle):
         checkpoint = self.factory.checkpoints[generator.WRITE_SUBSTRATE]
+        digest = bundle_hash(bundle)
+        binding = self.factory.legacy_bundle_binding(
+            bundle, role, "alternate-historical:" + job_id + ":" + role + ":" + digest
+        )
+        self.fixture["dependencies"]["bundlesByNativeAddress"][
+            binding["nativeAddress"]
+        ] = bundle
         historical = self.factory.anchor_proof(
             purpose="historical-bundle",
             substrate=generator.WRITE_SUBSTRATE,
@@ -118,15 +133,15 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             subject_role=role,
             logical=binding["logicalAddress"],
             native=binding["nativeAddress"],
-            content_hash=binding["bundleContentHash"],
-            transaction="fixture-alt-history-" + binding["bundleContentHash"],
+            content_hash=digest,
+            transaction="fixture-alt-history-" + digest,
             writer=generator.CLAIMS[role],
             nonce=77,
             height=89,
             index=1,
         )
         return {
-            "bundleContentHash": bundle_hash(bundle),
+            "bundleContentHash": digest,
             "resolvedJobId": job_id,
             "resolvedRole": role,
             "substrate": generator.WRITE_SUBSTRATE,
@@ -165,7 +180,10 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
                 if signature["party"] == generator.CLAIMS["buyer"]
             ]
         binding = self.factory.bundle_binding(
-            alternate, "buyer", "alternate:" + ("full" if full_standing else "lesser")
+            alternate,
+            "buyer",
+            "alternate:" + ("full" if full_standing else "lesser"),
+            trusted_contexts=self.current_context,
         )
         native = binding["nativeAddress"]
         self.fixture["dependencies"]["bundlesByNativeAddress"][native] = alternate
@@ -187,7 +205,7 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         role_request["anchorReceiptsByNativeAddress"][native] = receipt
         if include_era:
             role_request["legacyEraEvidenceByNativeAddress"][native] = self._make_legacy_era(
-                request["jobId"], "buyer", alternate, binding
+                request["jobId"], "buyer", alternate
             )
         return request, base_binding, binding
 
@@ -206,7 +224,12 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             self.fixture["dependencies"]["bundleAuthorityByContentHash"][digest] = (
                 compatibility["evidenceBoundAuthority"]
             )
-        binding = self.factory.bundle_binding(older, "seller", "older:" + kind)
+        binding = self.factory.bundle_binding(
+            older,
+            "seller",
+            "older:" + kind,
+            trusted_contexts=self.current_context,
+        )
         native = binding["nativeAddress"]
         self.fixture["dependencies"]["bundlesByNativeAddress"][native] = older
         receipt = self.factory.anchor_proof(
@@ -226,7 +249,7 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         era_by_address = {}
         if kind == "legacy":
             era_by_address[native] = self._make_legacy_era(
-                request["jobId"], "seller", older, binding
+                request["jobId"], "seller", older
             )
         request["roles"]["seller"] = {
             "disposition": "present",
@@ -297,6 +320,26 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             for request in receipt["requestContext"]
         }
         self.assertEqual({"binding", "pure"}, kinds)
+
+        binding_request = self.fixture["historicalRequests"][0]
+        role_request, current_native, era = self._binding_era(binding_request)
+        current_binding = role_request["selectionContext"]["candidateBindings"][0]
+        historical_binding = era["originalMapping"]["binding"]
+        self.assertNotEqual(
+            historical_binding["nativeAddress"], current_native
+        )
+        self.assertEqual(
+            legacy_logical_address(binding_request["jobId"], "buyer"),
+            historical_binding["logicalAddress"],
+        )
+        self.assertEqual(
+            logical_address(
+                binding_request["jobId"],
+                "buyer",
+                trusted_contexts=self.current_context,
+            ),
+            current_binding["logicalAddress"],
+        )
 
     def test_anchor_receipt_purposes_are_bound_to_each_call_site(self):
         cases = (
@@ -431,7 +474,12 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         )
         current["parties"].append(copy.deepcopy(current["parties"][0]))
         self.factory.finality.sign_bundle(current, generator.FINALITY_BUNDLE_DOMAIN)
-        binding = self.factory.bundle_binding(current, "buyer", "current-roster-mismatch")
+        binding = self.factory.bundle_binding(
+            current,
+            "buyer",
+            "current-roster-mismatch",
+            trusted_contexts=self.current_context,
+        )
         native = binding["nativeAddress"]
         self.fixture["dependencies"]["bundlesByNativeAddress"][native] = current
         receipt = self.factory.anchor_proof(
@@ -781,7 +829,12 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             self.fixture["dependencies"]["bundlesByNativeAddress"][buyer_binding["nativeAddress"]]
         )
         buyer_bundle["anchoredByRole"] = "buyer"
-        buyer_binding = self.factory.bundle_binding(buyer_bundle, "buyer", "older:evidence-bound:buyer")
+        buyer_binding = self.factory.bundle_binding(
+            buyer_bundle,
+            "buyer",
+            "older:evidence-bound:buyer",
+            trusted_contexts=self.current_context,
+        )
         native = buyer_binding["nativeAddress"]
         self.fixture["dependencies"]["bundlesByNativeAddress"][native] = buyer_bundle
         receipt = self.factory.anchor_proof(
@@ -848,7 +901,11 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         self.assertEqual("pass", result["decision"], result["reason"])
         receipt = result["derivation"]
         replay = replay_current_use_derivation(
-            receipt, self.fixture["dependencies"], self.fixture["verifierConfig"]
+            receipt,
+            self.fixture["dependencies"],
+            self.fixture["verifierConfig"],
+            pubkeys=self.current_keys,
+            trusted_contexts=self.current_context,
         )
         self.assertTrue(replay["ok"], replay["reason"])
         self.assertEqual(receipt, replay["replayed"])
@@ -856,14 +913,22 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         changed = copy.deepcopy(receipt)
         changed["metrics"]["completionRate"] = 0
         self.assertFalse(replay_current_use_derivation(
-            changed, self.fixture["dependencies"], self.fixture["verifierConfig"]
+            changed,
+            self.fixture["dependencies"],
+            self.fixture["verifierConfig"],
+            pubkeys=self.current_keys,
+            trusted_contexts=self.current_context,
         )["ok"])
 
         provider = self.fixture["currentRequestsByModel"]["provider-receipt"]
         key = next(iter(self.fixture["dependencies"]["settlementBindingProofByCanonicalRef"]))
         self.fixture["dependencies"]["settlementBindingProofByCanonicalRef"].pop(key)
         replay = replay_current_use_derivation(
-            receipt, self.fixture["dependencies"], self.fixture["verifierConfig"]
+            receipt,
+            self.fixture["dependencies"],
+            self.fixture["verifierConfig"],
+            pubkeys=self.current_keys,
+            trusted_contexts=self.current_context,
         )
         self.assertFalse(replay["ok"])
         self.assertIsNone(replay["replayed"])

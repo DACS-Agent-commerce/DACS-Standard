@@ -595,11 +595,12 @@ class FixtureFactory:
             "responseAttestation": attestation_ref,
         }, attestation
 
-    def model_input(self, model: str) -> dict:
-        if model in self.controls:
-            return copy.deepcopy(self.controls[model])
+    def model_input(self, model: str, *, job_id: str | None = None) -> dict:
+        job_id = "FV-392-" + model if job_id is None else job_id
+        control_key = (model, job_id)
+        if control_key in self.controls:
+            return copy.deepcopy(self.controls[control_key])
         phase = MODEL_PHASE[model]
-        job_id = "FV-392-" + model
         rail_id = "fixture:" + model
         rail_version = 1
         currency = {"bft-final": "DEM", "provider-receipt": "USD"}.get(model, "USDC")
@@ -741,7 +742,7 @@ class FixtureFactory:
         }
         self.resign_evidence(evidence)
         value = {"evidence": evidence, "rail": rail, "agreement": agreement, "context": context}
-        self.controls[model] = copy.deepcopy(value)
+        self.controls[control_key] = copy.deepcopy(value)
         return value
 
     def rebuild_observation_event(self, value: dict, path: tuple[str, ...], mutate) -> None:
@@ -817,8 +818,8 @@ class FixtureFactory:
             for role in ("buyer", "seller")
         ]
 
-    def strong_bundle_case(self, model: str) -> dict:
-        value = self.model_input(model)
+    def strong_bundle_case(self, model: str, *, job_id: str | None = None) -> dict:
+        value = self.model_input(model, job_id=job_id)
         evidence = value["evidence"]
         phase = evidence["phase"]
         listing = self.listing(phase)

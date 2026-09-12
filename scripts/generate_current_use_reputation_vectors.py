@@ -45,8 +45,13 @@ try:
         legacy_checkpoint_binding_hash,
         legacy_checkpoint_hash,
         legacy_checkpoint_logical_address,
+        legacy_logical_address,
         listing_hash,
         logical_address,
+        trusted_current_context,
+        trusted_query_authority,
+        trusted_role_authority,
+        trusted_verification_keys,
     )
 except ImportError:
     from generate_settlement_finality_verification_vectors import (  # type: ignore
@@ -69,8 +74,13 @@ except ImportError:
         legacy_checkpoint_binding_hash,
         legacy_checkpoint_hash,
         legacy_checkpoint_logical_address,
+        legacy_logical_address,
         listing_hash,
         logical_address,
+        trusted_current_context,
+        trusted_query_authority,
+        trusted_role_authority,
+        trusted_verification_keys,
     )
 
 
@@ -89,6 +99,22 @@ PURE_PROFILE = "dacs-current-use-synthetic-pure-mapping-v1"
 NATIVE_AUTHORITY = "fixture:current-use-native-authority"
 OBSERVED_AT = 1_900_000_000_000
 COMPUTED_AT = 1_900_000_010_000
+HISTORICAL_BINDING_JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+HISTORICAL_PURE_JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+CURRENT_FINALITY_JOB_IDS = {
+    "block-depth": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+    "commitment-level": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+    "bft-final": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+    "provider-receipt": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+    "htlc-reveal": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+    "liquidity-tank": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+}
+CURRENT_USE_JOB_IDS = (
+    HISTORICAL_BINDING_JOB_ID,
+    HISTORICAL_PURE_JOB_ID,
+    *(CURRENT_FINALITY_JOB_IDS[model] for model in MODELS),
+)
+FIXTURE_QUERY_WINDOW = (0, 2_000_000_000_000)
 
 
 def b64u(value: bytes) -> str:
@@ -131,10 +157,10 @@ class CurrentUseFixtureFactory:
             "absenceEvidenceByCanonicalRef": {},
         }
         public_keys = {
-            signer: base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-            for signer, value in self.finality.trusted["partyKeys"].items()
+            CLAIMS[role]: self.finality.keys[role].public_key().public_bytes_raw()
+            for role in ("buyer", "seller", "orchestrator", "steward")
         }
-        public_keys[CLAIMS["steward"]] = self.finality.keys["steward"].public_key().public_bytes_raw()
+        self.current_keys = trusted_verification_keys(public_keys)
         self.config: dict[str, Any] = {
             "verificationTimeMs": COMPUTED_AT,
             "publicKeys": public_keys,
@@ -165,6 +191,22 @@ class CurrentUseFixtureFactory:
         }
         self.checkpoints: dict[str, dict] = {}
 
+    def current_authority(
+        self, query_party: str, window: tuple[int | float, int | float]
+    ) -> dict:
+        window_start, window_end = window
+        role_map = [
+            trusted_role_authority(job_id, role, CLAIMS[role])
+            for job_id in CURRENT_USE_JOB_IDS
+            for role in ("buyer", "seller")
+        ]
+        return trusted_current_context(
+            role_map,
+            query=trusted_query_authority(
+                query_party, window_start, window_end, "finalisedAt"
+            ),
+        )
+
     def _sign(self, key: Ed25519PrivateKey, domain: str, digest: str) -> str:
         return b64u(key.sign((domain + digest).encode("ascii")))
 
@@ -177,13 +219,15 @@ class CurrentUseFixtureFactory:
             ),
         }
 
-    def bundle_binding(self, bundle: dict, role: str, label: str) -> dict:
+    def _bundle_binding(
+        self, bundle: dict, role: str, label: str, logical: str
+    ) -> dict:
         job_id = bundle["jobId"]
         binding = {
             "bindingVersion": "1",
             "jobId": job_id,
             "role": role,
-            "logicalAddress": logical_address(job_id, role),
+            "logicalAddress": logical,
             "nativeAddress": "native-" + hashlib.sha256(label.encode("utf-8")).hexdigest(),
             "bundleContentHash": bundle_hash(bundle),
             "signer": CLAIMS[role],
@@ -191,6 +235,26 @@ class CurrentUseFixtureFactory:
         }
         self.sign_bundle_binding(binding, role)
         return binding
+
+    def bundle_binding(
+        self, bundle: dict, role: str, label: str, *, trusted_contexts: dict
+    ) -> dict:
+        return self._bundle_binding(
+            bundle,
+            role,
+            label,
+            logical_address(
+                bundle["jobId"], role, trusted_contexts=trusted_contexts
+            ),
+        )
+
+    def legacy_bundle_binding(self, bundle: dict, role: str, label: str) -> dict:
+        return self._bundle_binding(
+            bundle,
+            role,
+            label,
+            legacy_logical_address(bundle["jobId"], role),
+        )
 
     def anchor_proof(
         self,
@@ -360,6 +424,9 @@ class CurrentUseFixtureFactory:
             "buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"],
         }
         listing = self._historical_listing()
+        current_context = self.current_authority(
+            CLAIMS["buyer"], FIXTURE_QUERY_WINDOW
+        )
         roles = {}
         for role_index, role in enumerate(("buyer", "seller")):
             bundle = self._legacy_bundle(job_id, role, listing)
@@ -367,13 +434,19 @@ class CurrentUseFixtureFactory:
             self.dependencies["bundleAuthorityByContentHash"][digest] = {
                 "listing": copy.deepcopy(listing),
             }
-            logical = logical_address(job_id, role)
+            historical_logical = legacy_logical_address(job_id, role)
             if pure:
-                native = pure_native(logical)
-                original_mapping = {"kind": "pure", "logicalAddress": logical, "nativeAddress": native}
+                historical_native = pure_native(historical_logical)
+                original_mapping = {
+                    "kind": "pure",
+                    "logicalAddress": historical_logical,
+                    "nativeAddress": historical_native,
+                }
             else:
-                original = self.bundle_binding(bundle, role, job_id + ":historical:" + role)
-                native = original["nativeAddress"]
+                original = self.legacy_bundle_binding(
+                    bundle, role, job_id + ":historical:" + role
+                )
+                historical_native = original["nativeAddress"]
                 original_mapping = {
                     "kind": "binding",
                     "binding": copy.deepcopy(original),
@@ -383,14 +456,14 @@ class CurrentUseFixtureFactory:
                         "budget": 8,
                     },
                 }
-            self.dependencies["bundlesByNativeAddress"][native] = bundle
+            self.dependencies["bundlesByNativeAddress"][historical_native] = bundle
             historical_receipt = self.anchor_proof(
                 purpose="historical-bundle",
                 substrate=substrate,
                 subject_id=job_id,
                 subject_role=role,
-                logical=logical,
-                native=native,
+                logical=historical_logical,
+                native=historical_native,
                 content_hash=digest,
                 transaction="fixture-tx-historical-" + hashlib.sha256((job_id + role).encode()).hexdigest(),
                 writer=CLAIMS[role],
@@ -413,13 +486,27 @@ class CurrentUseFixtureFactory:
                 "historicalAnchorReceipt": historical_receipt,
                 "originalMapping": original_mapping,
             }
+            current_logical = logical_address(
+                job_id, role, trusted_contexts=current_context
+            )
+            if pure:
+                current_native = pure_native(current_logical)
+            else:
+                current_binding = self.bundle_binding(
+                    bundle,
+                    role,
+                    job_id + ":current:" + role,
+                    trusted_contexts=current_context,
+                )
+                current_native = current_binding["nativeAddress"]
+            self.dependencies["bundlesByNativeAddress"][current_native] = bundle
             current_receipt = self.anchor_proof(
                 purpose="current-bundle",
                 substrate=substrate,
                 subject_id=job_id,
                 subject_role=role,
-                logical=logical,
-                native=native,
+                logical=current_logical,
+                native=current_native,
                 content_hash=digest,
                 transaction="fixture-tx-current-read-" + hashlib.sha256((job_id + role).encode()).hexdigest(),
                 writer=CLAIMS[role],
@@ -431,12 +518,11 @@ class CurrentUseFixtureFactory:
                 roles[role] = {
                     "disposition": "present",
                     "mappingKind": "pure",
-                    "resolvedAddress": native,
+                    "resolvedAddress": current_native,
                     "anchorReceipt": current_receipt,
                     "legacyEraEvidence": era,
                 }
             else:
-                current_binding = copy.deepcopy(original_mapping["binding"])
                 roles[role] = {
                     "disposition": "present",
                     "mappingKind": "binding",
@@ -445,8 +531,8 @@ class CurrentUseFixtureFactory:
                         "partyMap": {CLAIMS["buyer"]: "buyer", CLAIMS["seller"]: "seller"},
                         "budget": 8,
                     },
-                    "anchorReceiptsByNativeAddress": {native: current_receipt},
-                    "legacyEraEvidenceByNativeAddress": {native: era},
+                    "anchorReceiptsByNativeAddress": {current_native: current_receipt},
+                    "legacyEraEvidenceByNativeAddress": {current_native: era},
                 }
         return {"jobId": job_id, "substrate": substrate, "roles": roles}
 
@@ -492,7 +578,9 @@ class CurrentUseFixtureFactory:
         self.dependencies["settlementBindingProofByCanonicalRef"][ref_key] = proof
 
     def current_finality_job(self, model: str, index: int) -> tuple[dict, dict]:
-        case = self.finality.strong_bundle_case(model)
+        case = self.finality.strong_bundle_case(
+            model, job_id=CURRENT_FINALITY_JOB_IDS[model]
+        )
         bundle = case["bundle"]
         authority = case["authority"]
         candidate = next(iter(authority["finalityVerificationByCanonicalRef"].values()))
@@ -511,11 +599,19 @@ class CurrentUseFixtureFactory:
         self.config["partyRolesByJob"][bundle["jobId"]] = {
             "buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"],
         }
+        current_context = self.current_authority(
+            CLAIMS["buyer"], FIXTURE_QUERY_WINDOW
+        )
         roles = {}
         for role_index, role in enumerate(("buyer", "seller")):
             anchored = copy.deepcopy(bundle)
             anchored["anchoredByRole"] = role
-            binding = self.bundle_binding(anchored, role, "current:" + model + ":" + role)
+            binding = self.bundle_binding(
+                anchored,
+                role,
+                "current:" + model + ":" + role,
+                trusted_contexts=current_context,
+            )
             native = binding["nativeAddress"]
             self.dependencies["bundlesByNativeAddress"][native] = anchored
             receipt = self.anchor_proof(
@@ -557,8 +653,8 @@ class CurrentUseFixtureFactory:
 
     def build(self) -> dict:
         historical = [
-            self.historical_job("CUR-HIST-BINDING", pure=False),
-            self.historical_job("CUR-HIST-PURE", pure=True),
+            self.historical_job(HISTORICAL_BINDING_JOB_ID, pure=False),
+            self.historical_job(HISTORICAL_PURE_JOB_ID, pure=True),
         ]
         current = []
         expectations = []

@@ -1233,6 +1233,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             "pay-future",
             "negotiate-sealed-envelope-procurement",
             "commit-payee-bound-agreement",
+            "commit-identity-bound-agreement",
+            "commit-identity-bound-payee-agreement",
         ):
             authority = copy.deepcopy(self.data["executionAuthorities"]["aborted-before-result"])
             authority["listing"]["pipeline"][0]["kind"] = phase

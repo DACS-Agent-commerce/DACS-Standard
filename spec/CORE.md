@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -13,7 +13,7 @@ This document specifies DACS — the Demos Agent Commerce Standards — across f
 
 **Section numbering.** The front matter is numbered §1–§5 (prose introduction) followed by three lettered cross-cutting reference sections — **§A Demos production mapping**, **§B Global terminology** (claim references, anchoring/signing, shared phase-handler types, the closed registries, and the universal signature scheme §B.7), and **§C Composed open standards**. The five per-stage standards are then **Chapters 6–10** (DACS-1..5), with back matter in **Chapters 11–14**. The lettering of §A–§C deliberately keeps the foundational reference sections out of the chapters' §6/§7/§8 numbering namespace, so a citation such as §B.7 (the universal signature scheme) versus §7.7 (the DACS-2 composite verification record) is unambiguous.
 
-**Versioning.** This document is **DACS v0.1**, the first publicly released version. v0.1 is a common baseline: all five per-stage standards plus the front-matter substrate-binding, the threat model, the glossary, and the conformance plan are published together at v0.1. From this baseline onward, each per-stage standard versions independently — a standard that gains capabilities bumps its own minor version (v0.2, v0.3, …) without forcing the others, through to v1.0 — the version at which a standard is considered ready for unsupervised production use.
+**Versioning.** This document is **DACS v0.1**, the first publicly released version. v0.1 is a common baseline: all five per-stage standards plus the front-matter substrate-binding, the threat model, the glossary, and the conformance plan are published together at v0.1. From this baseline onward, each per-stage standard versions independently — an ordinary additive capability bumps the affected minor version without forcing the others. A breaking correction before v1.0 is permitted only through the declared, exact-pinned corrective-profile boundary in §11.1.2. v1.0 is the version at which a standard is considered ready for unsupervised production use.
 
 > **Note (non-normative).** Earlier drafts circulated internally under per-stage version numbers (DACS-1..5 v0.1, paper v0.7) and a brief v0.8 cut that consolidated review-pass revisions; those numbers are retired and reset to the common v0.1 baseline.
 
@@ -269,7 +269,60 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs5:rating:{jobId}:{rater}` (§10.6.1) | `rater` (a ClaimReference) | `jobId` |
 | `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
 
-In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a reserved-delimiter-free token (§6.3.1 grammar), and `phaseIndex`/`resolved`/`v{recipeVersion}` are fixed structural segments — none need encoding.
+In every case `{jobId}` is a JID-1 canonical ULID (no reserved delimiters), `{scheme}` is a reserved-delimiter-free token (§6.3.1 grammar), and `phaseIndex`/`resolved`/`v{recipeVersion}` are fixed structural segments — none need encoding.
+
+**Canonical job identifier (rules JID-1..JID-4).** One `jobId` grammar
+applies to every DACS document, signature scope, logical address, registry or
+resolver key, settlement binding, and API path. The grammar is the canonical
+text form of a 128-bit ULID:
+
+```text
+jobId        = first-crockford 25crockford
+first-crockford = %x30-37                         ; 0-7
+crockford    = %x30-39 / %x41-48 / %x4A-4B       ; 0-9 / A-H / J-K
+             / %x4D-4E / %x50-54 / %x56-5A       ; M-N / P-T / V-Z
+```
+
+Equivalently, the complete ASCII string matches
+`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`. The match is over the entire value and does
+not admit a trailing line terminator.
+
+- **(JID-1) Canonical wire form.** `jobId` MUST be a JSON string containing
+  exactly 26 ASCII characters in that grammar. Lowercase input, Crockford
+  decode aliases (`I` or `L` for `1`, `O` for `0`), the excluded `U`,
+  whitespace, separators, percent encoding, Unicode, and a first character
+  `8` or `9` are malformed. A producer MUST NOT emit them and a consumer MUST
+  NOT repair them.
+- **(JID-2) Production and uniqueness.** A current producer MUST generate the
+  canonical uppercase ULID form directly and MUST keep each `jobId` unique
+  within its retained session history. A substrate-native session or
+  transaction identifier is carried in its defined native-reference field; it
+  MUST NOT replace, prefix, suffix, or otherwise extend `jobId`.
+- **(JID-3) Validate before derivation or action.** An implementation MUST
+  validate JID-1 before it assembles a logical address, hashes a
+  `jobId`-specific preimage, queries a resolver or discovery surface, signs a
+  new artifact, or invokes a protocol side effect. Malformed input is `error`
+  and MUST reach none of those operations. Every derivation uses the exact
+  validated ASCII bytes; there is no Unicode normalization, case folding,
+  alias decoding, trimming, or percent decoding step.
+- **(JID-4) Equality and cross-artifact binding.** Implementations compare two
+  `jobId` values by byte-exact equality only after both pass JID-1. Two
+  different well-formed values are a binding mismatch (`fail` where the
+  consuming rule uses the DACS four-way disposition); a missing or malformed
+  operand is `error`. A caller, transport, indexer, or substrate library MUST
+  NOT supply a decoded or normalized substitute.
+
+CF-1 normalization remains part of a signed document's canonicalization, but
+it is an identity operation on a JID-1 value and does not create an alternate
+`jobId` spelling. The former allowance for a “substrate-equivalent” `jobId` is
+removed at the exact-pinned JID-1 corrective-profile boundary. A deployment
+MUST pass the §11.1.2 corrective-profile admission gate before producing or
+acting on this grammar; it MUST NOT mix a pre-JID-1 artifact or participant
+into a current session. Archival tooling MAY still report whether an older
+object with a non-conforming value has a cryptographically valid signature over
+its original scope through an explicitly selected legacy-replay path; it MUST
+NOT report current DACS semantic conformance, derive a current address, perform
+a current lookup, or authorize an action from that value.
 
 The pre-DACS-4-v0.7 unindexed delivery addresses are historical read forms,
 not alternate current spellings. Their admissibility and inability to satisfy a
@@ -281,6 +334,69 @@ repeated delivery invocation are defined exclusively by §9.7 PDE-7.
 - **Signed.** Carrying an Ed25519 (or equivalent) signature over the RFC 8785 canonical-JSON serialisation of the document’s signed scope, where the signed scope is all fields except the signature field itself.
 - **Canonical form.** RFC 8785 JSON Canonicalization Scheme (JCS) serialisation of the document with the signature(s) field omitted.
 - **Content hash.** sha256 hex of the canonical form.
+
+**Identity-bound agreement digest profile (IBH-1..IBH-6).**
+`IdentityBundleHash` is the hash type used by DACS-3
+`IdentityBoundAgreementParty`. It is not an artifact `contentHash` envelope and
+does not carry a `sha256:` tag. Existing fields on `AgreementParty`,
+`CompositeVerificationRecord`, `PaymentPhaseInput`, `SessionParty`, and
+`BundleParty` remain `string` with their previously specified validity rules.
+As a wire alias, `type IdentityBundleHash = string`; IBH-1 and IBH-2 supply its
+complete lexical and derivation constraints wherever that alias is used.
+
+- **(IBH-1) Digest derivation.** Compute `bundle_digest =
+  SHA-256(UTF8(JCS(identity_bundle_without_presentation)))` after applying the
+  DACS canonical-form rules. `IdentityBundleHash` encodes those 32 bytes as
+  exactly 64 lowercase hexadecimal characters.
+- **(IBH-2) Strong wire form.** An `IdentityBoundAgreementParty.bundleHash`
+  MUST be the exact bare `IdentityBundleHash`. The `sha256:` prefix, uppercase
+  hexadecimal, whitespace, Base64, multibase, and every other spelling are
+  invalid. A reader MUST validate the string before comparing it and MUST NOT
+  insert, remove, lowercase, or otherwise normalise supplied bytes.
+- **(IBH-3) Artifact-scoped application.** IBH-1 and IBH-2 apply only after the
+  signed Listing phase selects an identity-bound agreement artifact. They MUST
+  NOT be applied retroactively to an `AgreementDocument` or
+  `PayeeBoundAgreementDocument`, regardless of whether a `CommitmentRecord` or
+  `FinalityCommitmentRecord` authenticates that historical agreement.
+- **(IBH-4) Authenticated bundle proof.** Identify/Vet admission MUST validate
+  each complete IdentityBundle presentation against a distinct verifier-issued
+  challenge and consume that challenge on its first presentation attempt under
+  SN-4, including a failed attempt. On acceptance, the verifier MUST retain in
+  authenticated state the exact `jobId`, presenter, nonce, complete bundle
+  bytes, recomputed IBH-1 digest, and original accepted result. At
+  identity-bound commitment, payment, and terminal verification, a consumer
+  MUST reverify the exact already-admitted evidence and CVR against that
+  retained record; it MUST NOT issue or newly accept the consumed challenge.
+  A changed or re-signed presentation carrying that nonce is a new attempt and
+  MUST be rejected. Missing or unavailable retained authenticated authority is
+  `indeterminate` and non-authorizing. A producer boolean, asserted digest,
+  caller role, mutable session label, or untrusted copy of the retained map is
+  not proof.
+- **(IBH-5) Exact CVR and party join.** The consumer MUST resolve the
+  `CompositeVerificationRecord` through each identity-bound party's exact
+  `vetRecordRef`. It MUST verify the record hash and signature, then require one
+  unique join on job, authenticated agreement role, canonical primary claim,
+  and recomputed digest. Missing or unavailable consistent authority is
+  `indeterminate`; malformed data, a bad signature, or any resolved
+  contradiction is `rejected`.
+- **(IBH-6) Cross-stage enforcement.** The identity-bound commit handler, every
+  irreversible DACS-4 handler, and every DACS-5 terminal or counting consumer
+  MUST rerun IBH-4 and IBH-5 before action. The signed Listing phase and fetched
+  agreement discriminator/domain select the path. A stronger request MUST NOT
+  accept an older artifact. `verified` permits action, `rejected` forbids it,
+  and `indeterminate` permits no action while preserving that third result when
+  mapped to a boolean `PhaseHandlerResult`. Identity verification is one member
+  of the applicable stage gate: success MUST NOT skip Listing, phase ordering,
+  agreement/commitment, authenticated session, payment/payout, APR, evidence,
+  or lifecycle obligations imposed by that stage.
+
+> **Retained-authority limitation (normative).** The signed wire artifacts prove
+> their own bytes, but do not by themselves prove that an off-chain verifier
+> issued a nonce only once or retained the admission state above. When that
+> required authenticated authority is unavailable, an identity-bound action is
+> `indeterminate`; implementations MUST NOT invent nonce reuse or treat a
+> portable producer-issued receipt as equivalent authority.
+
 - **Per-artifact canonical-form template.** Every signed DACS artifact follows the same discipline: canonical form = the JCS serialisation with the artifact's hash-excluded field(s) omitted (normally the signature field); artifact hash = the content hash of that form; signature = over the domain-separated payload per §B.7 — `signed_bytes := <separator> || <artifact hash>` for single-hash separators, composite-payload separators per the §B.7 note — with verifiers reconstructing everything independently (SIG-2). Each artifact's defining section states only the artifact-specific facts: the omitted field(s), the exact domain separator, and any exceptions to this template.
 - **Numeric safe-magnitude constraint.** Every JSON number in a signed or content-hashed DACS document MUST be finite, representable as an IEEE-754 binary64 value, and have magnitude no greater than 2^53−1 (9,007,199,254,740,991). Both integral and fractional numbers are permitted within that bound and MUST be serialised exactly as RFC 8785 §3.2.2.3 specifies; in particular, negative zero serialises as `0`, fixed notation is used for magnitudes from 10^−6 (inclusive) to 10^21 (exclusive), and scientific notation is used outside that interval. NaN and positive or negative Infinity are not JSON numbers and MUST be rejected. Any quantity that may exceed the DACS bound (token IDs, uint256 values, large on-chain counters or block numbers) MUST be carried as a decimal string — or, where ABI conventions apply, a `0x`-prefixed hex string — rather than a bare JSON number. Producers MUST NOT emit, and readers SHOULD reject, a signed or content-hashed document containing a JSON number outside this profile.
 
@@ -321,7 +437,7 @@ Every phase handler in the stack consumes a SessionContext and returns a PhaseHa
 
 ```
 type SessionContext = {
-  jobId: string
+  jobId: string                            // canonical JID-1 ULID
   listingRef: { listingId: string; version: number; contentHash: string }
   recipeRegistryVersion: number             // DACS-2 registry pinned at session start
   railRegistryVersion: number               // DACS-4 registry pinned at session start
@@ -378,6 +494,8 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
+| DACS-3 identity-bound agreement | "dacs-identity-bound-agreement:v1:" | §8.5 |
+| DACS-3 identity-bound payee agreement | "dacs-identity-bound-payee-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
@@ -410,8 +528,8 @@ For composite-payload separators each appended value MUST be a fixed-length hex 
 **Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Three further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
 
 - `dacs-sealed-bid:v1:` — the sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3);
-- `dacs-sb3:v1:` — the EIP-3009 session-binding nonce preimage `sha256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))` (§9.5.8);
-- `dacs-ap2-idem:v1:` — the AP2 provider idempotency-key preimage `sha256(UTF8("dacs-ap2-idem:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))` (§9.5.6 AP2-6).
+- `dacs-sb3:v1:` — after JID-1 validation, the EIP-3009 session-binding nonce preimage `sha256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is therefore an identity operation for current input and remains written only to freeze the already-published recipe (§9.5.8);
+- `dacs-ap2-idem:v1:` — after JID-1 validation, the AP2 provider idempotency-key preimage `sha256(UTF8("dacs-ap2-idem:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is likewise an identity operation for current input (§9.5.6 AP2-6).
 
 All three follow the same domain-separation discipline, preventing cross-use of the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
 
@@ -488,9 +606,9 @@ A session nonce is **a challenge the verifier issues**, not a value the presente
 **Conformance — session nonce (SN-1..SN-4).**
 
 - (SN-1) **Generator.** The verifier MUST generate the session nonce; a presenter-supplied nonce MUST NOT be trusted as the session binding. (A bundle MAY carry a `sessionNonce` the presenter copied from the verifier's challenge — what SN-1 forbids is the verifier accepting a nonce it did not itself issue for this session.)
-- (SN-2) **Entropy and form (issuance-side).** The nonce MUST carry at least 128 bits of entropy from a cryptographically secure RNG and MUST be fresh per session. The native `sessionNonce` field (§6.3.2) MUST be a lowercase-hex string of at least 32 hex characters; for the `siwd` kind the EIP-4361 `Nonce` carries the verifier-issued session nonce (validated by the §6.3.2 match check). These are obligations on the **issuer** — the verifier, per SN-1 — *at generation time*. A verifier validating a *presented* nonce relies on the §6.3.2 match against the nonce it issued, which already guarantees a conformant presented value (the issued nonce is well-formed by construction); it is **not** required to re-check entropy or hex-length on the presented value. A unilateral format re-check on the presented nonce is redundant and MUST NOT be treated as a conformance divergence.
+- (SN-2) **Entropy and form (issuance-side).** The nonce MUST carry at least 128 bits of entropy from a cryptographically secure RNG and MUST be fresh and globally distinct for each new presentation challenge, including presentations by different parties or at different admission points in one session. The native `sessionNonce` field (§6.3.2) MUST be a lowercase-hex string of at least 32 hex characters; for the `siwd` kind the EIP-4361 `Nonce` carries the verifier-issued session nonce (validated by the §6.3.2 match check). These are obligations on the **issuer** — the verifier, per SN-1 — *at generation time*. A verifier validating a *presented* nonce relies on the §6.3.2 match against the nonce it issued, which already guarantees a conformant presented value (the issued nonce is well-formed by construction); it is **not** required to re-check entropy or hex-length on the presented value. A unilateral format re-check on the presented nonce is redundant and MUST NOT be treated as a conformance divergence.
 - (SN-3) **Issuance and binding.** The verifier MUST issue the nonce to the presenter before the presentation is produced, bound to the session's `jobId`. The transport of the challenge is substrate- and protocol-specific and is out of scope; the value the verifier matches against MUST be the one it generated for this session. The verifier MUST compare the presented nonce against the nonce it issued for this `jobId` and reject any mismatch.
-- (SN-4) **Single-use and retention.** A verifier MUST accept a session nonce at most once for the `jobId` it was issued for. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed and reject any later presentation carrying it for that `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/consumed record at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`.
+- (SN-4) **Single-use and retention.** A verifier MUST accept a nonce for at most one presentation. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed before validating the attempt and reject every later presentation carrying it, including a fresh, changed, or re-signed presentation for the same `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/attempted/consumed record and, for an accepted attempt, the authenticated admission record required by IBH-4 at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`, and one nonce MUST NOT be issued to more than one presenter or presentation.
 
 > **Note (non-normative).** This is the standard SIWD/EIP-4361 challenge-response shape, lifted to a shared primitive because both DACS-1 (presentation) and DACS-2 (holder-/attestation-binding) depend on the same nonce having these properties. Constraining provenance — not just the match check — is what stops two conforming implementations from disagreeing on the very value the replay defence rests on.
 
@@ -567,9 +685,19 @@ Multi-party governance — a constituted working group, formal multi-signature s
 
 #### 11.1.2 Versioning
 
-DACS v0.1 is a common baseline: all five per-stage standards, the front-matter substrate-binding, the threat model, the glossary, and the conformance plan are published together at v0.1, the first publicly released version. From this baseline onward each per-stage standard versions independently — a standard that gains capabilities bumps its own version without forcing the others, and a pipeline composes a coherent set of per-stage versions. Within a standard, major versions (v1, v2, …) break compatibility; minor versions (v0.2, v0.3, …) add capabilities while preserving forward-readable shapes. v1.0 is the version at which a standard is considered ready for unsupervised production use.
+DACS v0.1 is a common baseline: all five per-stage standards, the front-matter substrate-binding, the threat model, the glossary, and the conformance plan are published together at v0.1, the first publicly released version. From this baseline onward each per-stage standard versions independently — a standard that gains capabilities bumps its own version without forcing the others, and a pipeline composes a coherent set of per-stage versions. Ordinary minor versions add capabilities while preserving forward-readable shapes; major versions (v1, v2, …) break compatibility. The sole pre-v1 exception is the declared corrective boundary below. v1.0 is the version at which a standard is considered ready for unsupervised production use.
 
-**Additivity contract (normative).** A minor version MUST be **additive and forward-readable**: it adds only *optional* fields, new registry entries, and new artifact/phase *types*, leaving every field an existing reader already reads unchanged in meaning. Anything an older reader must **act on** to remain correct — a new *required* field, a new value of an existing enum the reader branches on, or a change to the semantics of an existing field — is a **breaking change and MUST be a major bump**, never a minor. This contract is load-bearing for cross-minor compatibility (§11.2.5): because a minor never introduces something an older reader is obligated to act on, an older reader safely consumes a newer-minor artifact by preserving unknown fields (SIG-5) and interpreting only what it knows — and a major-version gate alone (no per-artifact minor field) suffices to catch the only skew that can break a reader.
+**Additivity contract (normative).** Except for an explicitly declared pre-v1 corrective boundary under the next paragraph, a minor version MUST be **additive and forward-readable**: it adds only *optional* fields, new registry entries, and new artifact/phase *types*, leaving every field an existing reader already reads unchanged in meaning. Anything an older reader must **act on** to remain correct — a new *required* field, a new value of an existing enum the reader branches on, or a change to the semantics of an existing field — is a **breaking change and MUST be a major bump**, never an ordinary minor. This contract is load-bearing for cross-minor compatibility (§11.2.5): because an ordinary minor never introduces something an older reader is obligated to act on, an older reader safely consumes a newer-minor artifact by preserving unknown fields (SIG-5) and interpreting only what it knows — and a major-version gate alone (no per-artifact minor field) suffices for ordinary minor skew.
+
+**Pre-v1 corrective boundary (normative).** While an affected document remains both `Draft` and below v1.0, the steward MAY publish a breaking correction on the v0.x line only when every condition below is met. This is an exceptional repair mechanism, not a route for new capabilities to evade the additivity contract.
+
+1. The affected document header, `CHANGELOG.md`, and `PROFILE.md` MUST label the change a **breaking pre-v1 correction**, identify the existing field or behaviour whose meaning changes, and enumerate every affected document version.
+2. A conforming implementation claim MUST pin the exact coordinated release tag or immutable specification commit and the complete per-document version tuple. An unqualified `v0.x` or major-only artifact discriminator is insufficient.
+3. Before producing, signing, resolving, comparing, or acting on an artifact under the corrective profile, a deployment MUST authenticate that every participating implementation is configured for that same exact profile. The admission authority MUST come from verifier- or orchestrator-owned trusted context outside caller-controlled artifact and phase input, and MUST bind the exact session plus authenticated participant identity to the profile. Missing authority, duplicate records for one expected participant, session mismatch, identity mismatch, or unauthenticated evidence MUST fail closed before protocol action. A caller-supplied profile object or opaque reference label has no authority even when it copies locally meaningful bytes. If the deployment has no such authenticated profile-admission mechanism, or observes a missing or different pin, it MUST refuse the session before protocol action. It MUST NOT infer compatibility from a `*Version: "1"` field, registry availability, or successful signature verification.
+4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
+5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
+
+CORE v0.3 together with DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.7, and DACS-5 v0.5 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; these versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 
@@ -642,15 +770,17 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (including `dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `deliveryEvidenceVersion`, `payloadAttestationVersion`, `ratingVersion`, and `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (including `dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `evidenceVersion`, `deliveryEvidenceVersion`, `payloadAttestationVersion`, `ratingVersion`, and `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
-The **§11.1.2 additivity contract** makes the major-only signal sufficient for *minor* skew, in both directions, with **no per-artifact minor-version field**:
+For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 
 - **later-reads-earlier** — a later-minor reader knows a superset of the shapes and reads any earlier-minor artifact of a type it supports directly; no signal needed.
 - **older-reads-newer, same type** — a newer minor adds only optional, forward-readable fields to an existing artifact type. An older reader preserves them via SIG-5 and is **never obligated to act on them** (anything act-requiring is, by the additivity contract, a major bump), so it consumes that artifact correctly.
 - **older-reads-newer, new type** — an older reader rejects a newly registered artifact or phase type at its structural type gate, before type-specific action. A newer minor MAY require behaviour for that new type precisely because an older implementation cannot mistake it for a type it already acts on.
 
-The only version difference that can require a reader to reinterpret a type it already supports is a **major** break, which the type's major-version gate rejects. A new minor-version type is instead safely unsupported and rejected at its structural gate. A per-artifact **producing-minor-version field is therefore unnecessary**, not merely deferred. What remains genuinely deferred is **cross-major** compatibility — a different-major standard pipelined against an earlier one — per the paragraph above.
+Outside a declared pre-v1 corrective boundary, the only version difference that can require a reader to reinterpret a type it already supports is a **major** break, which the type's major-version gate rejects. A new ordinary-minor type is instead safely unsupported and rejected at its structural gate. A per-artifact producing-minor-version field remains unnecessary for ordinary additive changes.
+
+For a declared **pre-v1 corrective profile**, the major-only artifact signal is expressly insufficient. The exact release/commit plus complete module tuple in `PROFILE.md` is the compatibility boundary, and the authenticated deployment/profile-admission gate in §11.1.2 occurs before artifact interpretation or protocol action. A deployment unable to establish that equality MUST refuse the session. Cross-corrective-profile compatibility is not inferred and is not deferred to an artifact parser.
 
 #### 11.2.6 Multi-party governance and registry stewardship
 

@@ -58,6 +58,25 @@ def dependency_authority(raw=b"\x00\xffbenign payload"):
 
 
 class BundlePointerAdmissionDeliveryAuthorityTests(unittest.TestCase):
+    def test_current_and_historical_receipts_use_explicit_contracts(self):
+        _, _, current, _ = dependency_authority()
+        self.assertEqual(
+            R._validate_current_evidence_receipt(current, "2"), (True, "ok")
+        )
+        self.assertFalse(R._validate_current_evidence_receipt(current, "3")[0])
+        integer_nonce = {**current, "nonce": 2}
+        self.assertFalse(R._validate_current_evidence_receipt(integer_nonce, None)[0])
+        self.assertFalse(R._validate_legacy_evidence_receipt(current, None)[0])
+
+        historical = {
+            "transaction": "historical-benign-transaction",
+            "nonce": 0,
+        }
+        self.assertEqual(
+            R._validate_legacy_evidence_receipt(historical, None), (True, "ok")
+        )
+        self.assertFalse(R._validate_current_evidence_receipt(historical, None)[0])
+
     def test_storage_authority_shape_and_value_dispositions(self):
         digest = "a" * 64
         valid = {"effectiveAccessMode": "buyer-only", "storedContentHash": digest,

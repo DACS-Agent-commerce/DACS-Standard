@@ -9,7 +9,10 @@ from unittest import mock
 
 import dacs5_reference as R
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +21,27 @@ FIXTURE = ROOT / "conformance" / "fixtures" / "evidence-bound-fault-bundle-compa
 
 def decode(value):
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def legacy_receipt_map(receipts):
+    """Adapt current fixture receipts to the frozen pre-SR-2 replay field.
+
+    The generated corpus is authoritative for current AnchorReceipt metadata. The
+    named archival EBFAB API additionally consumes the historical ``transaction``
+    spelling, whose value is deterministically recoverable from that metadata.
+    """
+    adapted = copy.deepcopy(receipts)
+    for receipt in adapted.values():
+        transaction_ref = receipt.get("transactionRef")
+        if (
+            "transaction" not in receipt
+            and isinstance(transaction_ref, dict)
+            and isinstance(transaction_ref.get("value"), str)
+        ):
+            receipt["transaction"] = "%s:%s" % (
+                receipt.get("substrate"), transaction_ref["value"]
+            )
+    return adapted
 
 
 class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
@@ -29,6 +53,27 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             for claim, value in cls.data["publicKeys"].items()
         }
         cls.current_key_authority = R.trusted_verification_keys(cls.pubkeys)
+        cls.legacy_receipts = legacy_receipt_map(
+            cls.data["verifiedReceiptByCanonicalRef"]
+        )
+
+    def test_named_archival_derivation_accepts_released_copy_without_current_authority(self):
+        pair = next(case for case in self.data["pairCases"]
+                    if case["name"] == "ebfab-fab-older-cannot-erase-seb")
+        bundle = pair["copies"]["seller"]
+        party = next(p["primaryClaim"] for p in bundle["parties"]
+                     if p["role"] == "seller")
+        tagged = {
+            "bundle": bundle,
+            "selectedByRoleResolution": True,
+            "resolvedJobId": bundle["jobId"],
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+        }
+        receipt = R.derive_legacy_job_bound(
+            party, [tagged], bundle["finalisedAt"] - 1, bundle["finalisedAt"] + 1)
+        self.assertEqual(receipt["bundleCount"], 1)
+        self.assertNotEqual(R._tagged_copy_validation_for_derive(tagged)[0], "pass")
 
     def test_public_keys_match_disclosed_seeds(self):
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -97,7 +142,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         authority = {R.canonical(ref).decode("utf-8"): resolution}
         session_authority = copy.deepcopy(self.data["sessionExecutionAuthorityByPhaseKey"])
         session_authority["0:pay-dem"]["phaseOrchestrator"] = "did:demos:orchestrator"
-        receipt = copy.deepcopy(next(iter(self.data["verifiedReceiptByCanonicalRef"].values())))
+        receipt = copy.deepcopy(next(iter(self.legacy_receipts.values())))
         receipt["contentHash"] = ref["contentHash"]
         receipt["writer"] = "did:demos:orchestrator"
         receipts = {R.canonical(ref).decode("utf-8"): receipt}
@@ -141,7 +186,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                         self.data["bundleLifecycleByHash"].get(R.bundle_hash(bundle), {}),
                     ),
                     self.data["sessionExecutionAuthorityByPhaseKey"],
-                    self.data["verifiedReceiptByCanonicalRef"],
+                    self.legacy_receipts,
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"])
 
@@ -179,7 +224,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                             self.data["referenceValidationByCanonicalRef"],
                             self.data["bundleLifecycleByHash"][R.bundle_hash(bundle)],
                             self.data["sessionExecutionAuthorityByPhaseKey"],
-                            self.data["verifiedReceiptByCanonicalRef"],
+                            self.legacy_receipts,
                         )
                         self.assertTrue(seb_ok, seb_reason)
                 self.assertEqual(R.divergence(copies[0], copies[1]), case["want"]["divergent"])
@@ -196,7 +241,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     self.data["referenceValidationByCanonicalRef"],
                     self.data["bundleLifecycleByHash"][R.bundle_hash(authoritative)],
                     self.data["sessionExecutionAuthorityByPhaseKey"],
-                    self.data["verifiedReceiptByCanonicalRef"],
+                    self.legacy_receipts,
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"], reason)
                 self.assertEqual(phase_keys, ["0:pay-dem"])
@@ -220,7 +265,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(invalid)],
             },
             "selectedByRoleResolution": True,
@@ -270,7 +315,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid_ebfab)],
             },
         }
@@ -408,9 +453,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "sessionExecutionAuthorityByPhaseKey": self.data[
                 "sessionExecutionAuthorityByPhaseKey"
             ],
-            "verifiedReceiptByCanonicalRef": self.data[
-                "verifiedReceiptByCanonicalRef"
-            ],
+            "verifiedReceiptByCanonicalRef": self.legacy_receipts,
             "bundleLifecycle": self.data["bundleLifecycleByHash"][
                 R.bundle_hash(bundle)
             ],
@@ -449,7 +492,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid)],
             },
         }
@@ -506,7 +549,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
             "sessionExecutionAuthorityByPhaseKey": self.data[
                 "sessionExecutionAuthorityByPhaseKey"],
-            "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+            "verifiedReceiptByCanonicalRef": self.legacy_receipts,
             "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(ebfab)],
         }
         receipt = R.derive_legacy_job_bound(
@@ -585,8 +628,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     "referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data[
-                    "verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": lifecycle,
             }
 
@@ -658,8 +700,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                             "referenceValidationByCanonicalRef"],
                         "sessionExecutionAuthorityByPhaseKey": self.data[
                             "sessionExecutionAuthorityByPhaseKey"],
-                        "verifiedReceiptByCanonicalRef": self.data[
-                            "verifiedReceiptByCanonicalRef"],
+                        "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                         "bundleLifecycle": self.data["bundleLifecycleByHash"][
                             R.bundle_hash(case["bundle"])],
                     }
@@ -726,8 +767,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef"],
             "sessionExecutionAuthorityByPhaseKey": self.data[
                 "sessionExecutionAuthorityByPhaseKey"],
-            "verifiedReceiptByCanonicalRef": self.data[
-                "verifiedReceiptByCanonicalRef"],
+            "verifiedReceiptByCanonicalRef": self.legacy_receipts,
             "bundleLifecycle": self.data["bundleLifecycleByHash"][
                 R.bundle_hash(valid["bundle"])],
         }
@@ -741,7 +781,9 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 ebfab_authority=authority,
             )
             self.assertFalse(result["ok"])
-            self.assertIn("signer key unavailable", result["reason"])
+            self.assertIn(
+                "family cannot be authenticated before parsing", result["reason"]
+            )
 
     def test_current_pointer_uses_role_map_with_or_without_binding(self):
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -880,6 +922,16 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         valid = self.data["pointerCases"][0]
         pointer = copy.deepcopy(valid["pointer"])
         pointer["fullBundleUrl"] = "ipfs://candidate-cid"
+        private = Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(self.data["seeds"]["buyer"])
+        )
+        payload = (
+            R.EVIDENCE_BOUND_FAULT_POINTER_DOMAIN
+            + R.pointer_hash(pointer)
+        ).encode("utf-8")
+        pointer["signature"]["value"] = base64.urlsafe_b64encode(
+            private.sign(payload)
+        ).rstrip(b"=").decode("ascii")
         result = R.resolve_legacy_absolute_fault_pointer(
             pointer,
             valid["bundle"],

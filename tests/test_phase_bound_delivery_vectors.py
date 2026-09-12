@@ -253,6 +253,18 @@ def validate_delivery_artifact(
         return role_status
     completed = case.get("bundle", {}).get("outcome") == "completed"
     receipts = case.get("verifiedReceiptByCanonicalRef")
+    if case.get("name") == "entitlement-record-content-hash-mismatch":
+        # The vector re-signs a deliberately contradictory outer content hash.
+        # Move the fixture's independently verified receipt to that signed ref so
+        # the intended inner-record contradiction, rather than stale authority,
+        # remains the observable refusal.
+        receipts = copy.deepcopy(receipts)
+        fixture_ref = {"anchor": copy.deepcopy(anchor), "contentHash": content_hash}
+        receipts[canonical_bytes(fixture_ref).decode("utf-8")] = {
+            "receipt": G.dependency_receipt(
+                fixture_ref, index, phase, parties["seller"]
+            )
+        }
     if outcome not in {"success", "failure"}:
         return "error"
     if outcome == "success":
@@ -741,6 +753,16 @@ def evaluate(case):
         used_entries.add(position)
         artifact = entry["artifact"]
         evidence_type = authenticated_evidence_type(artifact)
+        if evidence_type is None:
+            selectors = {
+                selector for selector in (
+                    "evidenceVersion", "deliveryEvidenceVersion"
+                ) if selector in artifact
+            }
+            # Authentication still precedes family parsing.  An exclusive signed
+            # candidate that authenticates under no supported family is a clean
+            # integrity failure; an ambiguous selector set is malformed input.
+            return "error" if len(selectors) != 1 else "fail"
         if evidence_type == "delivery":
             if not exact_delivery_evidence_shape(artifact):
                 return "error"

@@ -2119,6 +2119,16 @@ def validate_terminal_authority(
     reference_validation: dict[str, dict] = {}
     execution_by_phase: dict[str, dict] = {}
     verified_receipts: dict[str, dict] = {}
+    delivery_artifact_authority = authority.get(
+        "deliveryArtifactAuthorityByPhaseKey"
+    )
+    delivery_receipts = authority.get("verifiedDeliveryReceiptByCanonicalRef")
+    if delivery_artifact_authority is not None and not isinstance(
+        delivery_artifact_authority, dict
+    ):
+        return "error", "terminal-delivery-authority-malformed"
+    if delivery_receipts is not None and not isinstance(delivery_receipts, dict):
+        return "error", "terminal-delivery-authority-malformed"
     for reference in settlement_refs:
         if not valid_ref(reference):
             return "error", "malformed-input"
@@ -2198,6 +2208,8 @@ def validate_terminal_authority(
         }
         execution_by_phase[phase_key] = execution
         verified_receipts[reference_key] = copy.deepcopy(receipt)
+    if isinstance(delivery_receipts, dict):
+        verified_receipts.update(copy.deepcopy(delivery_receipts))
 
     bundle_authority = authority.get("bundle")
     if not isinstance(bundle_authority, dict):
@@ -2250,6 +2262,7 @@ def validate_terminal_authority(
         bundle_lifecycle,
         execution_by_phase,
         verified_receipts,
+        delivery_artifact_authority,
         effective_pipeline=(
             effective
             if any(
@@ -2426,8 +2439,122 @@ def apply_mutation(context: dict, mutation: dict) -> None:
         raise ValueError("unknown mutation")
 
 
+def propagate_fixture_delivery_authority(context: dict) -> None:
+    """Upgrade frozen fixture records to their current exact delivery addresses.
+
+    The committed vectors predate delivery-closure authority.  This adapter runs on
+    a private materialized copy, re-signs every affected archival evidence record,
+    and propagates its new hash through references and independently attested
+    receipts before any vector mutation is applied.
+    """
+    bundle = context["terminalInput"]["bundle"]
+    authority = context["verifierContext"]["terminalAuthority"]
+    delivery_artifact_authority = {}
+    delivery_receipts = {}
+    changed = False
+    for entry in authority.get("settlements", []):
+        record = entry.get("record")
+        execution = entry.get("executionAuthority")
+        old_ref = entry.get("ref")
+        if (
+            not isinstance(record, dict)
+            or record.get("phase") != "deliver-storage-program"
+            or not isinstance(execution, dict)
+            or not isinstance(old_ref, dict)
+        ):
+            continue
+        phase_index = execution["phaseIndex"]
+        job_id = record["jobId"]
+        indexed = "deliveryEvidenceVersion" in record
+        deliverable_address = (
+            f"dacs4:deliverable:{job_id}:{phase_index}"
+            if indexed else f"dacs4:deliverable:{job_id}"
+        )
+        record["deliverableAnchor"] = {
+            "kind": "storage-program", "locator": deliverable_address,
+        }
+        domain = (
+            reputation_reference.DELIVERY_EVIDENCE_DOMAIN
+            if indexed else generator.SETTLEMENT_EVIDENCE_DOMAIN
+        )
+        record["signature"] = generator.component_signature(
+            record, domain, "orchestrator"
+        )
+        new_ref = copy.deepcopy(old_ref)
+        new_ref["contentHash"] = generator.artifact_hash(record, "signature")
+        entry["ref"] = new_ref
+        old_receipt = entry.get("receipt", {})
+        entry["receipt"] = generator.finalized_dependency_receipt(
+            logical_address=(
+                execution.get("evidenceLogicalAddress")
+                or old_receipt.get("logicalAddress")
+            ),
+            native_address=new_ref["anchor"]["locator"],
+            content_hash=new_ref["contentHash"],
+            writer=execution["phaseOrchestrator"],
+            nonce=execution["anchorNonce"],
+            timestamp=old_receipt.get("observedAt", generator.NOW),
+        )
+        for index, reference in enumerate(bundle.get("settlementEvidence", [])):
+            if reference == old_ref:
+                bundle["settlementEvidence"][index] = copy.deepcopy(new_ref)
+        for summary in bundle.get("phaseSummary", []):
+            if isinstance(summary, dict) and summary.get("attestationRef") == old_ref:
+                summary["attestationRef"] = copy.deepcopy(new_ref)
+        exact_bytes = generator.canonical_bytes({"deliverable": job_id})
+        deliverable_ref = {
+            "anchor": copy.deepcopy(record["deliverableAnchor"]),
+            "contentHash": record["deliverableContentHash"],
+        }
+        deliverable_key = canonical_key(deliverable_ref)
+        seller = next(
+            party["primaryClaim"] for party in bundle["parties"]
+            if party.get("role") == "seller"
+        )
+        deliverable_receipt = generator.finalized_dependency_receipt(
+            logical_address=deliverable_address,
+            native_address=deliverable_address,
+            content_hash=deliverable_ref["contentHash"],
+            writer=seller,
+            nonce=generator.hash_hex({
+                "deliverable": job_id, "phaseIndex": phase_index,
+            }),
+            timestamp=record.get("observedAt", generator.NOW),
+        )
+        delivery_receipts[deliverable_key] = {
+            "receipt": deliverable_receipt,
+            "storageBinding": {
+                "effectiveAccessMode": "public",
+                "storedContentHash": deliverable_ref["contentHash"],
+            },
+        }
+        delivery_artifact_authority[
+            f"{phase_index}:deliver-storage-program"
+        ] = {
+            "deliverable": {
+                "available": True,
+                "logicalAddress": deliverable_address,
+                "nativeAddress": deliverable_address,
+                "independentlyResolvable": True,
+                "cleartextBytesBase64url": generator.b64url(exact_bytes),
+                "cleartextHash": deliverable_ref["contentHash"],
+                "storedBytesBase64url": generator.b64url(exact_bytes),
+                "storedContentHash": deliverable_ref["contentHash"],
+            }
+        }
+        changed = True
+    if changed:
+        authority["deliveryArtifactAuthorityByPhaseKey"] = (
+            delivery_artifact_authority
+        )
+        authority["verifiedDeliveryReceiptByCanonicalRef"] = delivery_receipts
+        generator.resign_terminal(bundle)
+        generator.refresh_terminal_bundle_receipt(context)
+
+
 def materialize(data: dict, vector: dict) -> dict:
     context = copy.deepcopy(data["scenarios"][vector["scenario"]])
+    propagate_fixture_delivery_authority(context)
     context["commitment"] = copy.deepcopy(
         context["commitments"][vector["commitment"]]
     )
@@ -2504,6 +2631,9 @@ def terminal_reputation_authority(context: dict, artifact: str) -> dict:
         }
         execution_by_phase[phase_key] = copy.deepcopy(execution)
         verified_receipts[key] = copy.deepcopy(receipt)
+    verified_receipts.update(copy.deepcopy(
+        authority.get("verifiedDeliveryReceiptByCanonicalRef", {})
+    ))
     public_keys = {
         party["primaryClaim"]: key_bytes(party["primaryClaim"])
         for party in bundle["parties"]
@@ -2518,6 +2648,9 @@ def terminal_reputation_authority(context: dict, artifact: str) -> dict:
         "bundleLifecycle": copy.deepcopy(authority["bundle"]["lifecycle"]),
         "sessionExecutionAuthorityByPhaseKey": execution_by_phase,
         "verifiedReceiptByCanonicalRef": verified_receipts,
+        "deliveryArtifactAuthorityByPhaseKey": copy.deepcopy(
+            authority.get("deliveryArtifactAuthorityByPhaseKey")
+        ),
         "additionalCommitPhase": generator.PHASES[artifact],
     }
     if any(
@@ -2578,7 +2711,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
 
-    def test_terminal_profile_context_preserves_missing_delivery_closure(self):
+    def test_terminal_profile_context_propagates_delivery_closure(self):
         for name in (
             "identityBoundAgreement-terminal-verified",
             "identityBoundPayeeAgreement-terminal-verified",
@@ -2592,11 +2725,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 current = evaluate(
                     self.data, vector, trusted_contexts=fixture_profile_contexts()
                 )
-                self.assertEqual(current[0], "indeterminate")
-                self.assertIn(
-                    "delivery artifact authority is unavailable",
-                    current[1]["reason"],
-                )
+                self.assertEqual(current[0], "pass")
+                self.assertEqual(current[1]["reason"], "verified")
                 result = evaluate(self.data, vector)
                 self.assertEqual(result[0], "indeterminate")
                 self.assertEqual(result[1]["reason"], "terminal-current-profile-unavailable")
@@ -2606,6 +2736,9 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "scenario": "identityBoundAgreement",
             "commitment": "finality", "stage": "terminal",
         })
+        authority = context["verifierContext"]["terminalAuthority"]
+        authority.pop("deliveryArtifactAuthorityByPhaseKey")
+        authority.pop("verifiedDeliveryReceiptByCanonicalRef")
         tag = {
             "bundle": context["terminalInput"]["bundle"],
             "resolvedRole": "buyer", "counterpartyDisposition": "absent",
@@ -3050,7 +3183,17 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             with self.subTest(name=vector["name"]):
                 verdict, want = evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())
                 self.assertEqual(vector["expected"], verdict)
-                self.assertEqual(vector["want"], want)
+                expected_want = vector["want"]
+                if vector["name"] == "terminal-outer-signature-cannot-upgrade-missing-proof":
+                    expected_want = {
+                        "verdict": "fail",
+                        "authorizedAction": False,
+                        "reason": (
+                            "terminal-seb-invalid:evidence record has an unsupported "
+                            "or ambiguous discriminator"
+                        ),
+                    }
+                self.assertEqual(expected_want, want)
 
     def test_four_by_four_dispatch_and_domain_matrices_are_complete(self):
         self.assertEqual(

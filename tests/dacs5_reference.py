@@ -1005,6 +1005,31 @@ def _authenticated_bundle_signature_family(bundle, pubkeys):
     return candidates[0] if len(candidates) == 1 else None
 
 
+def _syntactic_bundle_family(bundle, _pubkeys):
+    """Resolve an archival family from the released structural selector only."""
+    return bundle_type(bundle)
+
+
+def _current_bundle_validation(bundle, pubkeys, family):
+    """Validate a bundle after its family was authenticated from signature use."""
+    if _authenticated_bundle_signature_family(bundle, pubkeys) != family:
+        return (False, "full-bundle family cannot be authenticated before parsing")
+    return _bundle_signatures_valid_for_family(bundle, pubkeys, family)
+
+
+def _legacy_bundle_validation(bundle, pubkeys, family):
+    """Frozen structural validation, with cryptography when legacy keys are supplied."""
+    return _bundle_signatures_valid_for_family(bundle, pubkeys, family)
+
+
+def _current_family_refusal(subject):
+    return "%s family cannot be authenticated before parsing" % subject
+
+
+def _legacy_family_refusal(subject):
+    return "%s has an unsupported bundle type" % subject
+
+
 def _bundle_signatures_valid(bundle, pubkeys):
     """Admit a generic full-bundle read only with authenticated family context."""
     family = _authenticated_bundle_signature_family(bundle, pubkeys)
@@ -1698,6 +1723,7 @@ def _validated_dependency_receipt(
     phase_index,
     phase_kind,
     expected_writer,
+    reference_validator=None,
 ):
     """Validate one already-proof-checked SR-2 receipt against its complete ref.
 
@@ -1717,7 +1743,9 @@ def _validated_dependency_receipt(
         or not _nonempty_jcs_string(phase_kind)
     ):
         return (_closure_result("error", subject + " authenticated job/phase context is malformed"), None)
-    if not _attestation_ref_shape_valid(reference):
+    if reference_validator is None:
+        reference_validator = _attestation_ref_shape_valid
+    if not reference_validator(reference):
         return (_closure_result("error", subject + " reference is malformed"), None)
     if receipt_by_canonical_ref is None:
         return (_closure_result("indeterminate", subject + " receipt authority is unavailable"), None)
@@ -1827,6 +1855,7 @@ def _resolved_delivery_dependency(
     phase_index,
     phase_kind,
     expected_writer,
+    reference_validator=None,
 ):
     availability_result, entry = _resolved_availability(entry, subject)
     if availability_result[0] != "pass":
@@ -1841,6 +1870,7 @@ def _resolved_delivery_dependency(
         phase_index=phase_index,
         phase_kind=phase_kind,
         expected_writer=expected_writer,
+        reference_validator=reference_validator,
     )
     return receipt_result, entry, receipt
 
@@ -2503,6 +2533,7 @@ def _validate_delivery_artifact_closure_disposition(
             phase_index=authenticated_phase_index,
             phase_kind=phase,
             expected_writer=seller,
+            reference_validator=_deliverable_ref_shape_valid,
         )
         results.append(dependency_result)
         if anchor != {"kind": "storage-program", "locator": deliverable_address}:
@@ -2577,6 +2608,7 @@ def _validate_delivery_artifact_closure_disposition(
             phase_index=authenticated_phase_index,
             phase_kind=phase,
             expected_writer=seller,
+            reference_validator=_deliverable_ref_shape_valid,
         )
         results.append(dependency_result)
         entitlement = entitlement_entry.get("artifact") if entitlement_entry is not None else None
@@ -2726,6 +2758,7 @@ def _validate_delivery_artifact_closure_disposition(
         phase_index=authenticated_phase_index,
         phase_kind=phase,
         expected_writer=seller,
+        reference_validator=_deliverable_ref_shape_valid,
     )
     results.append(dependency_result)
     attestation_ref = record.get("attestationRef")
@@ -3678,15 +3711,48 @@ def _tagged_copy_valid_for_derive(tagged):
     return disposition == "pass"
 
 
+def _tagged_legacy_copy_validation_for_derive(tagged):
+    """Apply the frozen selector-based derive admission contract.
+
+    Legacy/FAB copies retain their released syntactic admission. EBFAB is the
+    sole family that additionally requires its named archival SEB authority.
+    """
+    if not isinstance(tagged, dict):
+        return ("error", "tagged copy is not an object")
+    bundle = tagged.get("bundle")
+    kind = bundle_type(bundle)
+    if kind is None:
+        return ("error", "tagged copy has an unsupported bundle type")
+    if kind != "evidence-bound":
+        return ("pass", "non-EBFAB copy uses its existing admission path")
+    authority = tagged.get("ebfabAuthority")
+    if not isinstance(authority, dict):
+        return ("indeterminate", "EBFAB validation authority is unavailable")
+    disposition, reason, _ = validate_legacy_ebfab_disposition(
+        bundle,
+        authority.get("listing"),
+        authority.get("publicKeys"),
+        authority.get("referenceValidationByCanonicalRef"),
+        authority.get("bundleLifecycle"),
+        authority.get("sessionExecutionAuthorityByPhaseKey"),
+        authority.get("verifiedReceiptByCanonicalRef"),
+        authority.get("deliveryArtifactAuthorityByPhaseKey"),
+        authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        effective_pipeline=authority.get("effectivePipeline"),
+        additional_commit_phase=authority.get("additionalCommitPhase"),
+    )
+    return (disposition, reason)
+
+
 def _tagged_legacy_copy_valid_for_derive(tagged):
     """Boolean archival-receipt admission wrapper."""
-    disposition, _ = _tagged_copy_validation_for_derive(
-        tagged, ebfab_validator=validate_legacy_ebfab_disposition
-    )
+    disposition, _ = _tagged_legacy_copy_validation_for_derive(tagged)
     return disposition == "pass"
 
 
-def _post_fetch_valid(fetched, binding, pubkeys):
+def _post_fetch_binding_valid_with_profile(
+        fetched, binding, pubkeys, *, family_resolver, bundle_validator,
+        family_refusal):
     """FULL BB-5 post-fetch validation of one fetched copy against the binding that resolved it
     (round-9). Any failure => the copy is INERT (the caller DROPS it; it never reaches the BB-6
     ladder at any standing). Checks, in order:
@@ -3703,10 +3769,10 @@ def _post_fetch_valid(fetched, binding, pubkeys):
         return (False, "fetched copy is not an object")
     if not isinstance(binding, dict):
         return (False, "binding is not an object")
-    family = _authenticated_bundle_signature_family(fetched, pubkeys)
+    family = family_resolver(fetched, pubkeys)
     if family is None:
-        return (False, "full-bundle family cannot be authenticated before parsing")
-    ok_sig, reason = _bundle_signatures_valid_for_family(fetched, pubkeys, family)
+        return (False, family_refusal("full-bundle"))
+    ok_sig, reason = bundle_validator(fetched, pubkeys, family)
     if not ok_sig:
         return (False, reason)
     if fetched.get("jobId") != binding.get("jobId"):
@@ -3731,10 +3797,34 @@ def _post_fetch_valid(fetched, binding, pubkeys):
     return (True, "ok")
 
 
+def _post_fetch_valid(fetched, binding, pubkeys):
+    """Current BB-5 post-fetch validation with authenticated family selection."""
+    return _post_fetch_binding_valid_with_profile(
+        fetched,
+        binding,
+        pubkeys,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
+    )
+
+
+def _post_fetch_legacy_valid(fetched, binding, pubkeys):
+    """Archival BB-5 post-fetch validation under the released selector contract."""
+    return _post_fetch_binding_valid_with_profile(
+        fetched,
+        binding,
+        pubkeys,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
+    )
+
+
 def _post_fetch_address_valid_with_profile(
         fetched, resolved_address, expected_role, expected_content_hash, pubkeys,
         expected_jobid=None, expected_participant=None, *, pure_mapping_resolver,
-        job_id_validator):
+        job_id_validator, family_resolver, bundle_validator, family_refusal):
     """Pure-mapping equivalent of BB-5 post-fetch validation.
 
     The role is authenticated by recomputing its deterministic logical/native address from the
@@ -3743,10 +3833,10 @@ def _post_fetch_address_valid_with_profile(
     """
     if not isinstance(fetched, dict):
         return (False, "fetched copy is not an object")
-    family = _authenticated_bundle_signature_family(fetched, pubkeys)
+    family = family_resolver(fetched, pubkeys)
     if family is None:
-        return (False, "full-bundle family cannot be authenticated before parsing")
-    ok_sig, reason = _bundle_signatures_valid_for_family(fetched, pubkeys, family)
+        return (False, family_refusal("full-bundle"))
+    ok_sig, reason = bundle_validator(fetched, pubkeys, family)
     if not ok_sig:
         return (False, reason)
     job_id = fetched.get("jobId")
@@ -3826,6 +3916,9 @@ def _post_fetch_address_valid(fetched, resolved_address, expected_role,
         expected_participant=expected_participant,
         pure_mapping_resolver=resolver,
         job_id_validator=validate_current_job_id,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
     )
 
 
@@ -3848,6 +3941,9 @@ def _post_fetch_legacy_address_valid(fetched, resolved_address, expected_role,
         expected_jobid=expected_jobid,
         pure_mapping_resolver=resolver,
         job_id_validator=lambda job_id: job_id,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
     )
 
 
@@ -4038,6 +4134,25 @@ def _attestation_ref_shape_valid(ref):
         and isinstance(anchor, dict)
         and set(anchor) == {"kind", "locator"}
         and _string_member(anchor.get("kind"), SUPPORTED_ATTESTATION_ANCHOR_KINDS)
+        and _nonempty_jcs_string(anchor.get("locator"))
+        and _sha256_hex(ref.get("contentHash"))
+        and (
+            "signer" not in ref
+            or _claim_reference_shape_valid(ref["signer"])
+        )
+    )
+
+
+def _deliverable_ref_shape_valid(ref):
+    """DACS-4 deliverable reference shape with its deliberately open anchor kind."""
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    return (
+        isinstance(ref, dict)
+        and set(ref) <= {"anchor", "contentHash", "signer"}
+        and {"anchor", "contentHash"} <= set(ref)
+        and isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and _nonempty_jcs_string(anchor.get("kind"))
         and _nonempty_jcs_string(anchor.get("locator"))
         and _sha256_hex(ref.get("contentHash"))
         and (
@@ -4480,7 +4595,7 @@ def _derive(
     *,
     job_bound=False,
     excluded_dispositions=None,
-    ebfab_validator=validate_ebfab_disposition,
+    tagged_copy_validation=_tagged_copy_validation_for_derive,
 ):
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
@@ -4516,30 +4631,16 @@ def _derive(
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
     if not job_bound:
         # Historical replayableDerivationVersion "1" semantics: no trusted requested jobId
-        # member and no EBFAB admission. Input admission is strengthened without changing
-        # the emitted v1 bytes or metric semantics.
-        scoped = []
-        for tagged in tagged_bundles:
-            disposition, _ = _tagged_copy_validation_for_derive(
-                tagged, ebfab_validator=ebfab_validator
-            )
-            if disposition != "pass":
-                continue
-            bundle = tagged["bundle"]
-            authority = tagged.get("bundleAdmissionAuthority") or tagged.get(
-                "ebfabAuthority"
-            )
-            kind = _authenticated_bundle_signature_family(
-                bundle, authority.get("publicKeys")
-            )
-            timestamp = bundle.get(clock)
-            if (
-                kind in {"legacy", "fault"}
-                and party in _primary_claims(bundle)
-                and _non_boolean_number(timestamp)
-                and window_start <= timestamp <= window_end
-            ):
-                scoped.append(tagged)
+        # member and no EBFAB admission. Keep this path byte- and meaning-compatible
+        # with the released selector-based v1 contract; it is not current action admission.
+        scoped = [
+            tagged for tagged in tagged_bundles
+            if isinstance(tagged, dict)
+            and bundle_type(tagged.get("bundle")) in {"legacy", "fault"}
+            and party in _primary_claims(tagged["bundle"])
+            and _non_boolean_number(tagged["bundle"].get(clock))
+            and window_start <= tagged["bundle"][clock] <= window_end
+        ]
     else:
         candidates = []
         rejected_selected_jobs = set()
@@ -4553,9 +4654,7 @@ def _derive(
             resolved_job = tagged.get("resolvedJobId")
             if not isinstance(resolved_job, str) or not resolved_job:
                 raise ValueError("admitted role resolution lacks trusted resolvedJobId")
-            disposition, reason = _tagged_copy_validation_for_derive(
-                tagged, ebfab_validator=ebfab_validator
-            )
+            disposition, reason = tagged_copy_validation(tagged)
             if disposition != "pass":
                 rejected_selected_jobs.add(resolved_job)
                 if isinstance(excluded_dispositions, list):
@@ -4565,12 +4664,6 @@ def _derive(
                         "reason": reason,
                     })
                 continue
-            authority = tagged.get("bundleAdmissionAuthority") or tagged.get(
-                "ebfabAuthority"
-            )
-            kind = _authenticated_bundle_signature_family(
-                bundle, authority.get("publicKeys")
-            )
             if bundle.get("jobId") != resolved_job:
                 rejected_selected_jobs.add(resolved_job)
                 continue
@@ -4765,7 +4858,7 @@ def derive_legacy_job_bound(
         basis,
         job_bound=True,
         excluded_dispositions=excluded_dispositions,
-        ebfab_validator=validate_legacy_ebfab_disposition,
+        tagged_copy_validation=_tagged_legacy_copy_validation_for_derive,
     )
 
 
@@ -5203,6 +5296,7 @@ def _current_operation_admission(
 def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None,
                                  anchor_deref=None, pure_mapping_resolver=None,
                                  *, binding_verifier, address_validator,
+                                 family_resolver, bundle_validator, family_refusal,
                                  entry_authorities=None):
     """Executable replay validation of every authenticated copy in a ReplayableReputationDerivation
     (round-6 blocker #2). For each entry: re-verify roleEvidence (BB-4/BB-5 via verify_binding);
@@ -5270,9 +5364,9 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
             continue
         # (1c) WINNER shape validator — AFTER the content-hash check (hash-mismatch reason stays first),
         # BEFORE any structural read of the winner (roster, signatures, faultedParty, divergence).
-        auth_family = _authenticated_bundle_signature_family(auth, pubkeys)
+        auth_family = family_resolver(auth, pubkeys)
         if auth_family is None:
-            reasons.append("%s: winner copy family cannot be authenticated before parsing" % ch)
+            reasons.append("%s: %s" % (ch, family_refusal("winner copy")))
             continue
         ok_w, reason_w = _bundle_shape_ok(auth, auth_family)
         if not ok_w:
@@ -5417,9 +5511,7 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
                     # :NNN and counterparty :NNN copies are already _bundle_shape_ok'd). A shape-malformed
                     # fetched copy is fetched-then-invalid => DROPPED (R1/R3a/R3b), NEVER a refusal — an
                     # extra candidate must not refuse an honest receipt (BB-6/BB-7 inertness).
-                    fetched_family = _authenticated_bundle_signature_family(
-                        fetched, pubkeys
-                    )
+                    fetched_family = family_resolver(fetched, pubkeys)
                     if fetched_family is None:
                         continue
                     ok_shape, _shape_reason = _bundle_shape_ok(
@@ -5427,7 +5519,14 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
                     )
                     if not ok_shape:
                         continue   # fetched-then-shape-invalid => DROPPED inert (same R1/R3 semantics)
-                    pf_ok, _pf_reason = _post_fetch_valid(fetched, cand, pubkeys)
+                    pf_ok, _pf_reason = _post_fetch_binding_valid_with_profile(
+                        fetched,
+                        cand,
+                        pubkeys,
+                        family_resolver=family_resolver,
+                        bundle_validator=bundle_validator,
+                        family_refusal=family_refusal,
+                    )
                     if not pf_ok:
                         continue   # fetched-then-invalid => DROPPED, truly inert (never reaches the ladder)
                     anchored[nat] = fetched
@@ -5472,9 +5571,9 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
             # (1c) COUNTERPARTY shape validator — AFTER the isinstance-dict guard, BEFORE divergence()
             # (which subscripts outcome/faultedParty/anchoredByRole/phaseSummary on an otherwise-
             # unvalidated copy). divergence() itself stays untouched.
-            cp_family = _authenticated_bundle_signature_family(cp, pubkeys)
+            cp_family = family_resolver(cp, pubkeys)
             if cp_family is None:
-                reasons.append("%s: counterparty copy family cannot be authenticated before parsing" % ch)
+                reasons.append("%s: %s" % (ch, family_refusal("counterparty copy")))
                 continue
             ok_cp, reason_cp = _bundle_shape_ok(cp, cp_family)
             if not ok_cp:
@@ -5493,7 +5592,14 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
                     continue
-                pf_cp_ok, pf_cp_reason = _post_fetch_valid(cp, cp_binding, pubkeys)
+                pf_cp_ok, pf_cp_reason = _post_fetch_binding_valid_with_profile(
+                    cp,
+                    cp_binding,
+                    pubkeys,
+                    family_resolver=family_resolver,
+                    bundle_validator=bundle_validator,
+                    family_refusal=family_refusal,
+                )
             else:
                 pf_cp_ok, pf_cp_reason = address_validator(
                     cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
@@ -5569,6 +5675,9 @@ def validate_resolution_context(derivation, deref, evidence_deref=None,
         return _post_fetch_address_valid_with_profile(
             *args,
             job_id_validator=validate_current_job_id,
+            family_resolver=_authenticated_bundle_signature_family,
+            bundle_validator=_current_bundle_validation,
+            family_refusal=_current_family_refusal,
             **kwargs,
         )
 
@@ -5581,6 +5690,9 @@ def validate_resolution_context(derivation, deref, evidence_deref=None,
         pure_mapping_resolver=pure_mapping_resolver,
         binding_verifier=current_binding_verifier,
         address_validator=current_address_validator,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
         entry_authorities=entry_authorities,
     )
 
@@ -5611,6 +5723,9 @@ def validate_legacy_resolution_context(derivation, deref, evidence_deref=None,
         pure_mapping_resolver=resolver,
         binding_verifier=legacy_binding_verifier,
         address_validator=legacy_address_validator,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
     )
 
 
@@ -5618,6 +5733,7 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
                     evidence_deref=None, pubkeys=None, anchor_deref=None,
                     pure_mapping_resolver=None, ebfab_authority_resolver=None,
                     *, binding_verifier, address_validator,
+                    family_resolver, bundle_validator, family_refusal,
                     tagged_copy_validator, job_bound_deriver,
                     entry_authorities=None):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
@@ -5644,6 +5760,9 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
         pure_mapping_resolver=pure_mapping_resolver,
         binding_verifier=binding_verifier,
         address_validator=address_validator,
+        family_resolver=family_resolver,
+        bundle_validator=bundle_validator,
+        family_refusal=family_refusal,
         entry_authorities=entry_authorities)
     if not ok:
         return (False, None)
@@ -5664,7 +5783,7 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
         if job_bound:
             tag["resolvedJobId"] = entry["resolvedJobId"]
             tag["selectedByRoleResolution"] = True
-            family = _authenticated_bundle_signature_family(b, pubkeys)
+            family = family_resolver(b, pubkeys)
             if family is None:
                 return (False, None)
             if family == "evidence-bound":
@@ -5683,9 +5802,7 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
             counterparty = _deref_role_copy(
                 anchor_deref, entry.get("counterpartyRoleEvidence")
             )
-            counterparty_family = _authenticated_bundle_signature_family(
-                counterparty, pubkeys
-            )
+            counterparty_family = family_resolver(counterparty, pubkeys)
             if counterparty_family is None:
                 return (False, None)
             if counterparty_family == "evidence-bound":
@@ -5761,6 +5878,9 @@ def replay_receipt(derivation, deref, party, window_start, window_end,
         return _post_fetch_address_valid_with_profile(
             *args,
             job_id_validator=validate_current_job_id,
+            family_resolver=_authenticated_bundle_signature_family,
+            bundle_validator=_current_bundle_validation,
+            family_refusal=_current_family_refusal,
             **kwargs,
         )
 
@@ -5777,6 +5897,9 @@ def replay_receipt(derivation, deref, party, window_start, window_end,
         ebfab_authority_resolver,
         binding_verifier=current_binding_verifier,
         address_validator=current_address_validator,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
         tagged_copy_validator=_tagged_copy_valid_for_derive,
         job_bound_deriver=derive_job_bound,
         entry_authorities=entry_authorities,
@@ -5814,6 +5937,9 @@ def replay_legacy_receipt(derivation, deref, party, window_start, window_end,
         ebfab_authority_resolver,
         binding_verifier=legacy_binding_verifier,
         address_validator=legacy_address_validator,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
         tagged_copy_validator=_tagged_legacy_copy_valid_for_derive,
         job_bound_deriver=derive_legacy_job_bound,
     )

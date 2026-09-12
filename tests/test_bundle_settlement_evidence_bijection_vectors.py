@@ -88,6 +88,36 @@ def resign_inner_artifact(artifact, seed, domain):
     )
 
 
+def move_verified_receipt(authority, old_ref, new_ref):
+    """Move current receipt authority with a legitimately replaced inner ref."""
+    if old_ref == new_ref:
+        return
+    receipts = authority["verifiedReceiptByCanonicalRef"]
+    old_key = R.canonical(old_ref).decode("utf-8")
+    new_key = R.canonical(new_ref).decode("utf-8")
+    receipt_authority = receipts.pop(old_key)
+    receipt = receipt_authority["receipt"]
+    receipt["logicalAddress"] = new_ref["anchor"]["locator"]
+    receipt["nativeAddress"] = new_ref["anchor"]["locator"]
+    receipt["contentHash"] = new_ref["contentHash"]
+    receipts[new_key] = receipt_authority
+
+
+def delivery_record_refs(record):
+    """Return hash-bound inner references carried by one delivery evidence record."""
+    refs = {}
+    anchor = record.get("deliverableAnchor")
+    content_hash = record.get("deliverableContentHash")
+    if isinstance(anchor, dict) and isinstance(content_hash, str):
+        refs["deliverable"] = {
+            "anchor": copy.deepcopy(anchor),
+            "contentHash": content_hash,
+        }
+    if isinstance(record.get("attestationRef"), dict):
+        refs["attestation"] = copy.deepcopy(record["attestationRef"])
+    return refs
+
+
 def replace_top_record(authority, phase, mutate, seeds):
     """Replace one authenticated top-level record and every hash-bound reference."""
     bundle = authority["bundle"]
@@ -98,6 +128,7 @@ def replace_top_record(authority, phase, mutate, seeds):
             receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_key)
             authority["referenceValidationByCanonicalRef"].pop(old_key)
             record = resolution["record"]
+            old_inner_refs = delivery_record_refs(record)
             mutate(record)
             try:
                 resign_evidence(record, seeds["seller"])
@@ -113,6 +144,13 @@ def replace_top_record(authority, phase, mutate, seeds):
             new_ref["contentHash"] = replacement_hash
             new_key = R.canonical(new_ref).decode("utf-8")
             receipt["contentHash"] = new_ref["contentHash"]
+            new_inner_refs = delivery_record_refs(record)
+            for name, old_inner_ref in old_inner_refs.items():
+                new_inner_ref = new_inner_refs.get(name)
+                if isinstance(new_inner_ref, dict):
+                    move_verified_receipt(
+                        authority, old_inner_ref, new_inner_ref
+                    )
             authority["referenceValidationByCanonicalRef"][new_key] = resolution
             authority["verifiedReceiptByCanonicalRef"][new_key] = receipt
             bundle["settlementEvidence"][index] = new_ref
@@ -140,6 +178,7 @@ def relink_payload_attestation(authority, seeds):
         f"{record['jobId']}:3:{record['verificationMethodHash']}:{record['attempt']}"
     )
     record_entry["logicalAddress"] = record_address
+    record_entry["nativeAddress"] = record_address
 
     def relink(evidence):
         evidence["attestationRef"] = {
@@ -742,7 +781,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 ({discriminator: "99"}, "non-pass"),
                 ({"evidenceVersion": "1"}, "non-pass"),
                 ({"agreementVersion": "1"}, "non-pass"),
-                ({"future" + discriminator[0].upper() + discriminator[1:]: "1"}, "non-pass"),
+                ({"future" + discriminator[0].upper() + discriminator[1:]: "1"}, "pass"),
             ):
                 authority = copy.deepcopy(self.data["executionAuthorities"][name])
                 artifact = authority["deliveryArtifactAuthorityByPhaseKey"][
@@ -824,6 +863,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         closure = authority["deliveryArtifactAuthorityByPhaseKey"][
             "3:deliver-attested-payload"
         ]
+        record = closure["payloadAttestationRecord"]["artifact"]
+        old_method_ref = copy.deepcopy(record["methodEvidenceRef"])
         deliverable = authority["listing"]["offering"]["deliverable"]
         method = {"kind": "self-signed"}
         deliverable["verificationMethod"] = method
@@ -842,11 +883,13 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         }
         closure["methodEvidence"]["artifact"] = proof
 
-        record = closure["payloadAttestationRecord"]["artifact"]
         record["deliverableSpecHash"] = R._complete_object_hash(deliverable)
         record["verificationMethod"] = "self-signed"
         record["verificationMethodHash"] = R._complete_object_hash(method)
         record["methodEvidenceRef"]["contentHash"] = R._complete_object_hash(proof)
+        move_verified_receipt(
+            authority, old_method_ref, record["methodEvidenceRef"]
+        )
         record.pop("methodTransactionRef")
         authority["trustedNativeTransactionObservationsByCanonicalRef"] = {}
 
@@ -1000,10 +1043,43 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             resolved_storage = private_storage[
                 "deliveryArtifactAuthorityByPhaseKey"
             ]["0:deliver-storage-program"]["deliverable"]
+            record = next(
+                resolution["record"]
+                for resolution in private_storage[
+                    "referenceValidationByCanonicalRef"
+                ].values()
+                if resolution.get("record", {}).get("phase")
+                == "deliver-storage-program"
+            )
+            storage_ref = {
+                "anchor": copy.deepcopy(record["deliverableAnchor"]),
+                "contentHash": record["deliverableContentHash"],
+            }
+            storage_authority = private_storage[
+                "verifiedReceiptByCanonicalRef"
+            ][R.canonical(storage_ref).decode("utf-8")]
             if access_model == "encrypt-to-buyer":
-                resolved_storage["storedContentHash"] = hashlib.sha256(
-                    b"fixture encrypted storage payload"
-                ).hexdigest()
+                stored_bytes = b"fixture encrypted storage payload"
+                stored_hash = hashlib.sha256(stored_bytes).hexdigest()
+                resolved_storage["storedBytesBase64url"] = encode(stored_bytes)
+                resolved_storage["storedContentHash"] = stored_hash
+                storage_authority["storageBinding"] = {
+                    "effectiveAccessMode": "encrypt-to-buyer",
+                    "storedContentHash": stored_hash,
+                    "encryption": {
+                        "recipient": "did:demos:buyer",
+                        "ciphertextContentHash": stored_hash,
+                    },
+                }
+            else:
+                storage_authority["storageBinding"] = {
+                    "effectiveAccessMode": "buyer-only",
+                    "storedContentHash": resolved_storage["storedContentHash"],
+                    "acl": {
+                        "mode": "restricted",
+                        "allowed": ["did:demos:buyer"],
+                    },
+                }
             disposition, reason, _ = derive_phase_disposition(
                 private_storage, self.pubkeys
             )
@@ -1031,8 +1107,10 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         ]
         entitlement = encrypted_closure["entitlementRecord"]["artifact"]
         credential = encrypted_closure["credential"]
-        ciphertext_hash = hashlib.sha256(b"fixture encrypted credential").hexdigest()
+        ciphertext = b"fixture encrypted credential"
+        ciphertext_hash = hashlib.sha256(ciphertext).hexdigest()
         credential_ref = copy.deepcopy(entitlement["credentialRef"])
+        old_credential_ref = copy.deepcopy(credential_ref["ref"])
         credential_ref["accessModel"] = "encrypt-to-buyer"
         credential_ref["ref"]["contentHash"] = ciphertext_hash
         entitlement["credentialRef"] = credential_ref
@@ -1041,7 +1119,22 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         entitlement_hash = R._signed_envelope_content_hash(entitlement)
         credential["credentialRef"] = copy.deepcopy(credential_ref)
+        credential["storedBytesBase64url"] = encode(ciphertext)
         credential["storedContentHash"] = ciphertext_hash
+        move_verified_receipt(
+            encrypted, old_credential_ref, credential_ref["ref"]
+        )
+        credential_receipt = encrypted["verifiedReceiptByCanonicalRef"][
+            R.canonical(credential_ref["ref"]).decode("utf-8")
+        ]
+        credential_receipt["storageBinding"] = {
+            "effectiveAccessMode": "encrypt-to-buyer",
+            "storedContentHash": ciphertext_hash,
+            "encryption": {
+                "recipient": "did:demos:buyer",
+                "ciphertextContentHash": ciphertext_hash,
+            },
+        }
 
         def bind_encrypted_credential(record):
             record["deliverableContentHash"] = entitlement_hash
@@ -1153,7 +1246,11 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 "verifiedReceiptByCanonicalRef", "logicalAddress", "dacs4:payment:forged"),
             "receipt-native": ("verifiedReceiptByCanonicalRef", "nativeAddress", "stor-forged"),
             "receipt-content": ("verifiedReceiptByCanonicalRef", "contentHash", "00" * 32),
-            "receipt-transaction": ("verifiedReceiptByCanonicalRef", "transaction", ""),
+            "receipt-transaction": (
+                "verifiedReceiptByCanonicalRef",
+                "transactionRef",
+                {"kind": "demos-transaction", "value": ""},
+            ),
             "receipt-writer": (
                 "verifiedReceiptByCanonicalRef", "writer", "did:demos:buyer"),
             "receipt-nonce": ("verifiedReceiptByCanonicalRef", "nonce", -1),
@@ -1288,14 +1385,16 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             "record": record,
             "lifecycle": {"state": "finalized", "independentlyResolvable": True},
         }
-        authority["verifiedReceiptByCanonicalRef"][successor_key] = {
-            "logicalAddress": "dacs4:payment:%s:test-rail:2:resolved" % authority["bundle"]["jobId"],
+        successor_receipt = copy.deepcopy(
+            authority["verifiedReceiptByCanonicalRef"][interim_key]
+        )
+        successor_receipt.update({
+            "logicalAddress": "dacs4:payment:%s:test-rail:2:resolved"
+            % authority["bundle"]["jobId"],
             "nativeAddress": "stor-known-successor",
             "contentHash": successor_ref["contentHash"],
-            "transaction": "tx-known-successor",
-            "writer": "did:demos:seller",
-            "nonce": 9,
-        }
+        })
+        authority["verifiedReceiptByCanonicalRef"][successor_key] = successor_receipt
 
         self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 
@@ -1615,14 +1714,16 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             "record": record,
             "lifecycle": {"state": "finalized", "independentlyResolvable": True},
         }
-        authority["verifiedReceiptByCanonicalRef"][successor_key] = {
-            "logicalAddress": "dacs4:payment:%s:test-rail:2:resolved" % authority["bundle"]["jobId"],
+        successor_receipt = copy.deepcopy(
+            authority["verifiedReceiptByCanonicalRef"][interim_key]
+        )
+        successor_receipt.update({
+            "logicalAddress": "dacs4:payment:%s:test-rail:2:resolved"
+            % authority["bundle"]["jobId"],
             "nativeAddress": locator,
             "contentHash": successor_ref["contentHash"],
-            "transaction": "tx-long-successor",
-            "writer": "did:demos:seller",
-            "nonce": 10,
-        }
+        })
+        authority["verifiedReceiptByCanonicalRef"][successor_key] = successor_receipt
 
         self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 

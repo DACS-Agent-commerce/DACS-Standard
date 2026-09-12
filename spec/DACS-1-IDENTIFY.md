@@ -4,13 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.7** on the common DACS v0.1 baseline. v0.7 routes authoritative listing-time rail resolution through the CORE §5.1 registry bootstrap and authenticated-index-reference rules; v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
-
-The same v0.7 profile defines presence-only `ClaimRequirement` matching under
-PCR-1..PCR-6 without manufacturing verification evidence or weakening the
-identity-control boundary. It also adds the signed, listing-only `pay-alternative`
-phase, whose complete-reference validation routes through
-DACS-4 APR-1/APR-2 without making it an executable handler.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.7** on the common DACS v0.1 baseline. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, routes authoritative listing-time rail resolution through the CORE §5.1 registry bootstrap and authenticated-index-reference rules, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -268,7 +262,7 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 **Session nonce binding.** `presentedAt` is always present (a required schema field). A bundle presented in the context of a specific session SHOULD additionally carry a session-binding nonce:
 
 - The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim and session-key presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
-- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the session’s expected nonce, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, per-`jobId`, single-use — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it.
+- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the distinct challenge it issued for this exact `jobId` and presenter, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, distinct per presentation, bounded-lifetime, and consumed on the first attempt including failure — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it. A later stage reverifies the retained accepted presentation and does not re-accept the consumed nonce.
 - For SIWD the nonce lives in the omitted `presentation` field and so is not in `bundle_hash`; the verifier's nonce-match check above is the binding for that kind and is therefore a MUST, not advisory.
 - Bundles presented without session-nonce binding are usable only outside session contexts (e.g., listing publication where the bundle is the seller’s own self-binding to the listing).
 
@@ -642,6 +636,7 @@ type PhaseType =
   // DACS-3
   | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
   | "commit-agreement" | "commit-payee-bound-agreement"
+  | "commit-identity-bound-agreement" | "commit-identity-bound-payee-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
@@ -662,6 +657,8 @@ Per-kind parameter shapes are normative in the owning chapter:
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
 | commit-agreement | none | 8 |
 | commit-payee-bound-agreement | none | 8 |
+| commit-identity-bound-agreement | none | 8 |
+| commit-identity-bound-payee-agreement | none | 8 |
 | pay-alternative | {alternatives: PaymentRailRef[]} (DACS-4 APR-1; listing projection only, never executable) | 9 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
@@ -675,6 +672,13 @@ Verifiers MUST:
 - recompute the canonical form, listing hash, and domain-separated signed bytes;
 - resolve signature.signer to the corresponding key (via seller.identity.claims, then via DACS-2 verification if a verifiable identifier);
 - verify the signature against signed_bytes.
+
+A transacting reader MUST validate every pipeline phase against its supported
+closed `PhaseType` set before negotiation, commitment, payment, or irreversible
+delivery. In particular, the two identity-bound commitment phases are distinct
+signed Listing values. A reader that does not implement them MUST refuse the
+Listing as unsupported and MUST NOT rename either phase to an older commitment
+phase or discard it and continue.
 
 If signature.algorithm is sr1-aggregate, the signer’s IdentityBundle.presentation MUST be of kind sr1-root and the signature is the SR-1 root signature over signed_bytes — the SR-1 aggregate signature scheme applies to the same domain-separated payload, not directly to the listing hash.
 
@@ -821,7 +825,7 @@ type ListingValidationDisposition =
 ```
 
 1. schema conformance;
-2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
+2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Ordinary additive-minor skew is not checked here because §11.1.2 + SIG-5 make it forward-readable. A declared pre-v1 corrective profile is different: its exact release/commit and per-document tuple MUST already have passed CORE §11.1.2 profile admission before this listing-validation sequence begins; a missing or different pin refuses the session rather than falling through this major-only field;
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
 4. canonical form well-formed and signature verifies;
 5. revocation check per RB-4..RB-6 returns `absent`;
@@ -1123,7 +1127,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Forged listings.** *Threat:* an attacker publishes a listing impersonating a known seller. *Mitigation:* listings are signed; the signer MUST be a key referenced in seller.identity.claims, and the bundle itself MUST verify. A reader following the validation order detects the impersonation at the signature step or the bundle-conformance step.
 
-**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one session and replays it in another. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates fresh per session and which is bound to the session-binding nonce when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). Verifiers in a session context MUST validate the nonce; bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
+**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings or omits real ones. *Mitigation:* ListingSummary includes the anchor and contentHash; clients dereference and verify. A poisoned catalog causes UX confusion (a listing that does not exist on chain, or a missing listing) but cannot produce a verifiable false transaction.
 

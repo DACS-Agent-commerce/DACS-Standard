@@ -73,7 +73,8 @@ def binding_hash(binding):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
-def logical_address(job_id, role):
+def legacy_logical_address(job_id, role):
+    """Frozen DACS-5 v0.3 address recipe for historical vector regeneration."""
     return "stor-" + hashlib.sha256((job_id + "-bundle-" + role).encode("utf-8")).hexdigest()
 
 
@@ -156,7 +157,7 @@ def make_binding(keys, job_id, role, signer_role, native, content_hash, idx=0):
         "bindingVersion": "1",
         "jobId": job_id,
         "role": role,
-        "logicalAddress": logical_address(job_id, role),
+        "logicalAddress": legacy_logical_address(job_id, role),
         "nativeAddress": native,
         "bundleContentHash": content_hash,
         "anchorTx": f"demos-testnet:tx-{native[5:21]}",
@@ -630,7 +631,7 @@ def build_outsider_flooding(keys):
     sybil_bindings = []
     for k, name in enumerate(sybil_seeds):
         bd = {"bindingVersion": "1", "jobId": v6j, "role": "seller",
-              "logicalAddress": logical_address(v6j, "seller"),
+              "logicalAddress": legacy_logical_address(v6j, "seller"),
               "nativeAddress": native_address(v6j, "seller", 600 + k),
               "bundleContentHash": sha("sybil", v6j, str(k)),
               "anchorTx": "demos-testnet:tx-sybil-%d" % k, "signer": sybil_claim[name]}
@@ -1015,7 +1016,7 @@ def build_receipt_rederivation(keys):
             "bundleRefs": [ha_s],
             "resolutionContext": [
                 {"contentHash": ha_s, "resolvedRole": "seller", "counterpartyDisposition": "present",
-                 "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
+                 "roleEvidence": {"kind": "address", "resolvedAddress": legacy_logical_address(ja, "seller")}},
             ],
             "windowingBasis": "finalisedAt",
         },
@@ -1034,7 +1035,7 @@ def build_receipt_rederivation(keys):
             "bundleRefs": [hb_s],
             "resolutionContext": [
                 {"contentHash": hb_s, "resolvedRole": "seller", "counterpartyDisposition": "absent",
-                 "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(jb, "seller")}},
+                 "roleEvidence": {"kind": "address", "resolvedAddress": legacy_logical_address(jb, "seller")}},
             ],
             "windowingBasis": "finalisedAt",
         },
@@ -1054,7 +1055,7 @@ def build_receipt_rederivation(keys):
             "resolutionContext": [
                 {"contentHash": sorted([ha_s, hb_s])[0], "resolvedRole": "seller", "counterpartyDisposition": "present",
                  "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
-                 "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
+                 "roleEvidence": {"kind": "address", "resolvedAddress": legacy_logical_address(ja, "seller")}},
             ],
             "windowingBasis": "finalisedAt",
         },

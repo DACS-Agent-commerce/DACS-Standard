@@ -10,7 +10,7 @@ A single alphabetical glossary across all five per-stage standards and the front
 
 A single alphabetical glossary across all five per-stage standards, the front matter, and the back matter. Terms defined in multiple chapters are cross-referenced. This glossary is informative; per-chapter definitions are normative.
 
-- **AgreementArtifact.** Either DACS-3 signed agreement type: the legacy AgreementDocument or the PayeeBoundAgreementDocument. Defined in §8.5.
+- **AgreementArtifact.** One of four DACS-3 signed agreement types: the frozen-meaning `AgreementDocument` and `PayeeBoundAgreementDocument`, or the additive `IdentityBoundAgreementDocument` and `IdentityBoundPayeeAgreementDocument`. The identity-bound types are selected only by `commit-identity-bound-agreement` and `commit-identity-bound-payee-agreement`, respectively. Defined in §8.5.
 - **AgreementDocument.** The legacy DACS-3 signed agreement artifact. It preserves pre-payee-binding semantics and does not carry payout bindings. Defined in §8.5.
 - **Anchor / Anchored.** Stored on the substrate such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve canonical content and verify integrity. Realised by SR-2.
 - **AttestationBundle.** The frozen end-of-session artifact, signed by all parties, anchored via SR-2. The DACS-5 audit unit. Defined in §10.4. Legacy fault semantics: fault is read role-relatively from `outcome`. See FaultAttestationBundle.
@@ -26,6 +26,8 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Claim reference / ClaimReference.** A typed identifier referring to the external system that holds a claim. Grammar in §6.3.1; type definition in §7.1.
 - **ClaimRequirement.** A listing-side declaration of which claims a buyer or seller bundle must include. Defined in §6.3.3.
 - **Commit-agreement.** The DACS-3 phase that anchors a legacy AgreementDocument hash on the public chain. Defined in §8.6.
+- **Commit-identity-bound-agreement.** The DACS-3 phase that commits an `IdentityBoundAgreementDocument`; it does not change the frozen non-payee destination meaning of `AgreementDocument`. Defined in §8.6.
+- **Commit-identity-bound-payee-agreement.** The DACS-3 phase that commits an `IdentityBoundPayeeAgreementDocument`, retaining all payee payout and replacement obligations. Defined in §8.6.
 - **Commit-payee-bound-agreement.** The DACS-3 phase that anchors a PayeeBoundAgreementDocument hash on the public chain. Defined in §8.6.
 - **CommitmentRecord.** The on-chain record produced by either DACS-3 agreement commitment phase. Defined in §8.6.
 - **CompositeVerificationRecord.** The document the DACS-2 vet-credentials phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.
@@ -47,7 +49,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Indeterminate.** A DACS-2 VerifyResult.decision value indicating the authority returned a parseable response that conclusively neither confirmed nor denied the claim. Distinct from "error" (verifier could not reach a decision at all). §7.5.1.
 - **Error (decision value).** A DACS-2 VerifyResult.decision value indicating verification could not complete due to transport failure, parser exception, or other verifier-side failure. Distinct from "indeterminate" (authority answered, but ambiguously). §7.5.1.
 - **JCS.** JSON Canonicalization Scheme; RFC 8785; used for canonical-form serialisation throughout.
-- **jobId.** Per-session unique identifier; ULID or substrate-equivalent. Defined in §10.3.
+- **jobId.** Per-session unique identifier in the byte-exact canonical uppercase ULID grammar defined by CORE JID-1..JID-4 and used by §10.3; substrate-native identifiers use their own reference fields.
 - **L2PS (Layer-2 Privacy Subnets).** The Demos implementation of SR-4 — identity-keyed private coordination channels.
 - **Liquidity Tank.** The Demos implementation of SR-5 — pre-funded cross-chain settlement primitive.
 - **Listing.** A signed, anchored JSON document declaring an agent’s offering. The canonical contract for a transaction. Defined in §6.3.4.
@@ -86,7 +88,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **supersedesEvidenceRef.** SettlementEvidence field on an ST-8 `:resolved` success record pointing to the interim failure record it supersedes; a same-phase supersession, not a refund amendment. §9.7 / ST-8.
 - **TxRef / ChainTxRef.** Discriminated union of on-chain transaction references. §9.3.
 - **Universal signature scheme.** The cross-stack domain-separation scheme requiring every DACS signature to bind to a per-artifact-kind separator. §B.7.
-- **ULID.** Universally Unique Lexicographically Sortable Identifier; recommended jobId format.
+- **ULID.** Universally Unique Lexicographically Sortable Identifier; its 26-character uppercase Crockford form is the required DACS `jobId` format (CORE JID-1).
 - **validator-set claim.** See "Substrate-validator-set claim".
 - **VerifyResult / VerifyResultRef.** The uniform record every DACS-2 method produces; reference to an anchored VerifyResult. §7.5.
 - **Vet-credentials phase.** The DACS-2 phase that runs verification across the counterparty’s bundle. §7.8.

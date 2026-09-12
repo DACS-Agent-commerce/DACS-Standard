@@ -120,3 +120,18 @@ Vectors that double as executable evidence of implementation friction. Stated as
 - **DACS-VERIFY-0004** — `conformance/fixtures/attestation-bundle-0004.json` is a full completed §10.4 `AttestationBundle`, signed by buyer + seller with deterministic issuer-kit keys. `conformance/fixtures/attestation-bundle-0004-seller.json` is a same-`jobId` divergent seller-side bundle with outcome `failed-counterparty`; it also verifies and has a distinct bundle hash. Divergent-bundle dispute/disclosure vectors pin both refs. The bundle verifier accepts valid bundles, rejects a completed bundle missing a required signer, and surfaces malformed resolved keys as `error`.
 
 The published golden vectors assert the remaining observed behaviour, so the evidence is runnable.
+
+### Complete Recipe fixture follow-up
+
+The generator now constructs a registered `key` / `self-signed` Recipe with
+required age, retry and governance fields and a deterministic steward
+signature. The signature uses the test harness's `keyId` / `algorithm` / `value`
+codec under `dacs-recipe:v1:`; this does not allocate a production signature
+wire format or establish live registry-steward authorization. The selector-only
+unit projections are not complete wire artifacts.
+
+The stored 76-vector bootstrap corpus still represents the preceding numeric
+migration. Renewal and review of its dependent hashes, signatures, references
+and sidecars for this additional schema correction remain outstanding. Current
+source/ordinary-fixture checks do not establish corpus determinism or full
+integrated acceptance for this follow-up.

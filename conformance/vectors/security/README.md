@@ -1400,3 +1400,18 @@ Legacy CRQ snapshots with no alternatives retain their direct default-method pro
 
 
 The current AP2 candidate retains the complete effect-bearing provider request, including mandate, checkout, payee, amount/currency, instrument, destination and metadata, under its operation fingerprint. Same-key recovery dispatches that retained request and refuses changed semantics before provider interaction. Captured recovery must match the operation fingerprint, transaction and retained provider reference. These are local fake-provider controls; mandate cryptographic verification and authenticated status-fetch semantics remain modeled inputs. The entire trusted participant map requires unique identities.
+
+### Complete Recipe fixture follow-up
+
+The generator now constructs a registered `key` / `self-signed` Recipe with
+required age, retry and governance fields and a deterministic steward
+signature. The signature uses the test harness's `keyId` / `algorithm` / `value`
+codec under `dacs-recipe:v1:`; this does not allocate a production signature
+wire format or establish live registry-steward authorization. The selector-only
+unit projections are not complete wire artifacts.
+
+The stored 76-vector bootstrap corpus still represents the preceding numeric
+migration. Renewal and review of its dependent hashes, signatures, references
+and sidecars for this additional schema correction remain outstanding. Current
+source/ordinary-fixture checks do not establish corpus determinism or full
+integrated acceptance for this follow-up.

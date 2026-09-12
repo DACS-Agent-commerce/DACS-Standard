@@ -12,6 +12,7 @@ import sr2_resolution_reference as sr2  # noqa: E402
 
 
 def definition(kind, identifier, version, family="self-signed"):
+    """Unsigned selector-unit projection; not an admitted Recipe/RailDefinition."""
     if kind == "recipe":
         return {
             "recipeVersion": version,

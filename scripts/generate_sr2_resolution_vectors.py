@@ -505,14 +505,31 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
     return vectors
 
 
+def sign_recipe_definition(definition: dict[str, Any]) -> dict[str, Any]:
+    """Sign an ordinary Recipe fixture using the pinned test steward codec."""
+    unsigned = {key: value for key, value in definition.items() if key != "signature"}
+    return {
+        **unsigned,
+        "signature": signature(OLD_SEED, hash_hex(unsigned), b"dacs-recipe:v1:"),
+    }
+
+
 def sample_definition(kind: str, version: int = 1) -> dict[str, Any]:
     if kind == "recipe":
-        return {
+        return sign_recipe_definition({
             "recipeVersion": version,
-            "scheme": "sample",
+            "scheme": "key",
             "defaultMethod": {"kind": "self-signed"},
+            "defaultMaxAgeSec": 3600,
+            "retryClass": "permanent",
             "availability": "live",
-        }
+            "governance": {
+                "proposedBy": OLD_KEY,
+                "acceptedAt": 1787036400000,
+                "anchoring": "single-signer",
+                **({"supersedes": version - 1} if version > 1 else {}),
+            },
+        })
     return {"railVersion": version, "railId": "sample", "availability": "live"}
 
 
@@ -521,7 +538,7 @@ def index_snapshot(kind: str, revision: int = 1, include_definition: bool = Fals
     if include_definition:
         definition = sample_definition(kind)
         entries.append({
-            "id": "sample",
+            "id": definition["scheme"] if kind == "recipe" else definition["railId"],
             "version": 1,
             "anchor": {"kind": "storage-program", "locator": f"demos:storage:{kind}-definition-1"},
             "contentHash": hash_hex(definition),
@@ -587,7 +604,10 @@ def base_bootstrap(kind: str = "recipe", include_definition: bool = False) -> di
     }
     if include_definition:
         definition = sample_definition(kind)
-        case["definitionQuery"] = {"id": "sample", "version": 1}
+        case["definitionQuery"] = {
+            "id": definition["scheme"] if kind == "recipe" else definition["railId"],
+            "version": 1,
+        }
         if kind == "recipe":
             case["definitionQuery"]["family"] = "self-signed"
         case["definitionStorage"] = {f"demos:storage:{kind}-definition-1": definition}
@@ -1218,6 +1238,8 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         snapshot = case["indexStorage"][root["nativeIndexAddress"]]
         entry = snapshot["entries"][0]
         locator = entry["anchor"]["locator"]
+        if "recipeVersion" in definition:
+            definition = sign_recipe_definition(definition)
         case["definitionStorage"][locator] = definition
         entry["contentHash"] = hash_hex(definition)
         root["indexContentHash"] = hash_hex(snapshot)

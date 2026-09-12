@@ -15,7 +15,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CA-* | Agreement commitment phase validation | §8.6 | §14.3 |
 | CD-* | Canonical decimal handling | §8.5.1 | §14.6 |
 | CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
-| CH-* | Private-channel message handling | §8.3.1 | §14.3 |
+| CH-* | Private-channel membership, replay handling, canonical message/signature wire, and strict historical-import dispatch | §8.3.1 / §8.3.3 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |

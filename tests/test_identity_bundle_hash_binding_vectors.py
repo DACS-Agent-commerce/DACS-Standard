@@ -3183,17 +3183,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             with self.subTest(name=vector["name"]):
                 verdict, want = evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())
                 self.assertEqual(vector["expected"], verdict)
-                expected_want = vector["want"]
-                if vector["name"] == "terminal-outer-signature-cannot-upgrade-missing-proof":
-                    expected_want = {
-                        "verdict": "fail",
-                        "authorizedAction": False,
-                        "reason": (
-                            "terminal-seb-invalid:evidence record has an unsupported "
-                            "or ambiguous discriminator"
-                        ),
-                    }
-                self.assertEqual(expected_want, want)
+                self.assertEqual(vector["want"], want)
 
     def test_four_by_four_dispatch_and_domain_matrices_are_complete(self):
         self.assertEqual(

@@ -84,26 +84,6 @@ def _complete_method_ref(ref):
     )
 
 
-def fixture_method_evidence_authority(vector, method_ref, method_evidence):
-    """Propagate the generated fixture's trusted method authority after re-signing.
-
-    Several negative builders replace the method artifact and its signed reference,
-    while the committed compatibility fixture retains the base-case map key.  This is
-    a test-only adapter over producer-owned fixture inputs; production callers must
-    still obtain this map from independent resolver/proof verification.
-    """
-    authority = vector.get("trustedMethodEvidenceByCanonicalRef")
-    if not isinstance(authority, dict) or len(authority) != 1:
-        return authority
-    resolved = next(iter(authority.values()))
-    if not isinstance(resolved, dict) or resolved.get("available") is not True:
-        return authority
-    propagated = copy.deepcopy(resolved)
-    propagated["reference"] = copy.deepcopy(method_ref)
-    propagated["artifact"] = copy.deepcopy(method_evidence)
-    return {canonical_bytes(method_ref).decode("utf-8"): propagated}
-
-
 def evaluate(vector, seeds):
     """Evaluate the legacy unindexed projection under authenticated caller context.
 
@@ -208,9 +188,7 @@ def _evaluate_admitted_projection(vector, seeds):
     if not _complete_method_ref(method_ref):
         return "error"
     method_evidence = vector["methodEvidence"]
-    resolution_map = fixture_method_evidence_authority(
-        vector, method_ref, method_evidence
-    )
+    resolution_map = vector.get("trustedMethodEvidenceByCanonicalRef")
     if resolution_map is None:
         return "indeterminate"
     if not isinstance(resolution_map, dict):

@@ -1091,6 +1091,15 @@ def build_vectors() -> list[dict]:
     def wrong_entitlement_hash(case: dict) -> None:
         case["evidenceRecords"][0]["artifact"]["deliverableContentHash"] = "e2" * 32
         refresh_evidence(case, 0)
+        # Model the contradictory resolved dependency in the committed fixture,
+        # before evaluation; consumers must not manufacture its receipt.
+        evidence = case["evidenceRecords"][0]["artifact"]
+        ref = {"anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+               "contentHash": evidence["deliverableContentHash"]}
+        case["verifiedReceiptByCanonicalRef"][canonical_bytes(ref).decode("utf-8")] = {
+            "receipt": dependency_receipt(
+                ref, evidence["phaseIndex"], evidence["phase"], SELLER),
+        }
     vectors.append(make("entitlement-record-content-hash-mismatch", "fail", "delivery evidence must bind the exact signed EntitlementRecord content hash", entitlement_case, wrong_entitlement_hash))
 
     def invalid_entitlement_signature(case: dict) -> None:

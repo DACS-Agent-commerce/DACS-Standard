@@ -231,6 +231,19 @@ def vector(name: str, expected: str, reason: str, mutate=None) -> dict:
     case = base_case()
     if mutate is not None:
         mutate(case)
+    # Establish the synthetic resolver input at the producer boundary. Consumers
+    # must use this committed authority unchanged, never infer it from a record.
+    authority = case.get("trustedMethodEvidenceByCanonicalRef")
+    if isinstance(authority, dict) and len(authority) == 1:
+        resolved = next(iter(authority.values()))
+        if isinstance(resolved, dict) and resolved.get("available") is True:
+            method_ref = case["payloadAttestationRecord"]["methodEvidenceRef"]
+            resolved = copy.deepcopy(resolved)
+            resolved["reference"] = copy.deepcopy(method_ref)
+            resolved["artifact"] = copy.deepcopy(case["methodEvidence"])
+            case["trustedMethodEvidenceByCanonicalRef"] = {
+                canonical_bytes(method_ref).decode("utf-8"): resolved,
+            }
     return {"name": name, **case, "expected": expected, "reason": reason}
 
 

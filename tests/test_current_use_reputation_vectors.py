@@ -464,7 +464,12 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         self.fixture["dependencies"]["bundlesByNativeAddress"][native] = changed
         result = self.derive([request])
         self.assertEqual("fail", result["decision"])
-        self.assertIn("roster differs", result["reason"])
+        # Pure-mapping admission authenticates the requested role holder before
+        # the whole-roster check. The current-copy case below reaches that gate.
+        self.assertEqual(
+            f'{request["jobId"]}: pure-mapping check: role holder != authenticated participant',
+            result["reason"],
+        )
 
         self.setUp()
         request = self.fixture["currentRequestsByModel"]["block-depth"]

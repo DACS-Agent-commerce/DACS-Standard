@@ -3,7 +3,7 @@
   "spec": "CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3",
   "decisionModel": "An independently configured exact registry tuple and release-pinned sequence-one descriptor start a non-recursive immutable registry-index chain; receipt shape and evidence, exact predecessor authorization, optional new-key acceptance, snapshot hashes, rollback, forks, and definition checks are independently enforced.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "579777075c791ac0c0d855bb2b366b4cd0442be24b208b0ba1d57b39e32e4323",
+  "hash": "9cd81aea49d511ef84a1d2c64f736352f5cf9fe47fcd32114384f4ba6dd51b96",
   "count": 76,
   "publicTestSeeds": {
     "oldAuthorityEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
@@ -2400,7 +2400,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "73c15a932e356da248e8685d1388ffd889fbc451223c5e4b8baea697d382b26a",
+          "descriptorHash": "e04a07628cc2e8fe88b8066e93e789925fbec56491293188cbce64ed20de03b8",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -2411,14 +2411,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "7ac779ebe0146d6af3bb3a82b5d773f505f89666436d00886a63af9251908656",
+            "indexContentHash": "663653f0e4e79f0ec2121df846df29dab13dfc80e6010bf48b71f6456318d675",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "7ac779ebe0146d6af3bb3a82b5d773f505f89666436d00886a63af9251908656",
+              "contentHash": "663653f0e4e79f0ec2121df846df29dab13dfc80e6010bf48b71f6456318d675",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -2442,7 +2442,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "d3_yQqt9-V2F44ZUtsZJ_nKNbLYAPUBuF48LRxn28OZJsGQudjCEEQBlsa4IQEOWEkHiyp20nkiFvX2Y5KvzBw"
+              "value": "5x1MLQkv6b3DEgPXDEWgyHF06Fvwk9ghcIMu48UONoLx5Shi53BCAKl7-FbgbgCBJRtD0zbmnZlWLsanCd3OBA"
             }
           }
         ],
@@ -2453,13 +2453,13 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081",
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82",
                 "unexpectedAuthority": true
               }
             ]
@@ -2472,7 +2472,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "8b84bdc3a256a25be37510cc54e134c1c6ea8ed666ceafcfa7d7fed2cbf0eb4c"
+            "receiptHash": "252065b750aad841b424af044cacfc8dbc0d547ae7aa380b4a8e765da4cc8038"
           }
         ]
       },
@@ -2490,7 +2490,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "5f71262ab7df23382846a27cccafd172ce3c0fbde7f5226b08cf366ce5dc27a1",
+          "descriptorHash": "00150df5057284276642ef73904e9e6d59c613ec7ad86861e08eef4bfcfe1cae",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -2501,14 +2501,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "41d70c4adba1bd09a8d46fd4091104901f17e9fd69ccfbe140be73f0234113b6",
+            "indexContentHash": "9c0cd1bb79e8e835ea1f688f463a7681a3a15d2a2c99b3ffe3e54bf9aefa2c74",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "41d70c4adba1bd09a8d46fd4091104901f17e9fd69ccfbe140be73f0234113b6",
+              "contentHash": "9c0cd1bb79e8e835ea1f688f463a7681a3a15d2a2c99b3ffe3e54bf9aefa2c74",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -2532,7 +2532,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "8R6N7FTC-5_IEfrSpi1dsWRTpvaYtaUkTLMGlVLMlG92Ex9HFhGmXZNJ8PqX621nUf4BsEXTXruUVU48ilyeCQ"
+              "value": "KBC0LBLb9qxmfQAwP5WgCMaEk2an3k7QdxNws8vh7JaWM0wKiCaRENIgk3LkFGZWn2T31JqfqCd3snUP8Ed8Cg"
             }
           }
         ],
@@ -2543,14 +2543,14 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1",
                   "unexpectedAuthority": true
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
@@ -2562,7 +2562,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "658a0e126dea4616a829231e9c776ac1617189ef202d9d68d8e79cf22c2cad3d"
+            "receiptHash": "79ec7cd6b68ce6a9abcce7c67b0998b23539a58c761de5c211177ea1995f1cf3"
           }
         ]
       },
@@ -4475,14 +4475,14 @@
             "substrate": "demos:testnet",
             "sequence": 2,
             "nativeIndexAddress": "demos:storage:recipe-index-22",
-            "indexContentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+            "indexContentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-22",
-              "contentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+              "contentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-22"
@@ -4507,7 +4507,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "0IXUPSoWqJt0yKc-Fh2V0vuDN_E00-eL31nYK1aBW2-iBVwoWc52Uk3gPXn-FFOuxVYLJ7cLNrfTiTY3XeVfDA"
+              "value": "n3LikqsOUBvlz7_EwuHm2vlFTRcXSw1Y9VZ4V_ZfYeWYkoKJ3BdS0NDIIE6SeulRrEhtapTda_8dWGJFIX4LDg"
             }
           }
         ],
@@ -4530,13 +4530,13 @@
             "revision": 2,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
@@ -4562,7 +4562,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-22"
             },
-            "receiptHash": "c4987c6cc912a41a2555fcd050ab6dc329f146097ead407cd3f82b9aba73eaf3"
+            "receiptHash": "690ffd4420f797c30d6e6fc039852a2cd5fd0e141a14d32204f910b5f41f866e"
           }
         ]
       },
@@ -5195,14 +5195,14 @@
             "substrate": "demos:testnet",
             "sequence": 2,
             "nativeIndexAddress": "demos:storage:recipe-index-22",
-            "indexContentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+            "indexContentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-22",
-              "contentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+              "contentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-22"
@@ -5227,7 +5227,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "0IXUPSoWqJt0yKc-Fh2V0vuDN_E00-eL31nYK1aBW2-iBVwoWc52Uk3gPXn-FFOuxVYLJ7cLNrfTiTY3XeVfDA"
+              "value": "n3LikqsOUBvlz7_EwuHm2vlFTRcXSw1Y9VZ4V_ZfYeWYkoKJ3BdS0NDIIE6SeulRrEhtapTda_8dWGJFIX4LDg"
             }
           }
         ],
@@ -5250,13 +5250,13 @@
             "revision": 2,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
@@ -5387,14 +5387,14 @@
             "substrate": "demos:testnet",
             "sequence": 2,
             "nativeIndexAddress": "demos:storage:recipe-index-22",
-            "indexContentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+            "indexContentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-22",
-              "contentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+              "contentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-22"
@@ -5442,13 +5442,13 @@
             "revision": 2,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
@@ -5474,7 +5474,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-22"
             },
-            "receiptHash": "c4987c6cc912a41a2555fcd050ab6dc329f146097ead407cd3f82b9aba73eaf3"
+            "receiptHash": "690ffd4420f797c30d6e6fc039852a2cd5fd0e141a14d32204f910b5f41f866e"
           }
         ]
       },
@@ -5543,14 +5543,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-99",
-            "indexContentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+            "indexContentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-99",
-              "contentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+              "contentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-99"
@@ -5574,7 +5574,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "z36ddMP4WqjmfikU6DQgsH9Mrc2d_VpCCdGwQu6zQ3DIOedP_iitI1E0rgPalyWH5MuDp8vh567y4HaA_iZQAg"
+              "value": "qSRT3Sf0wKbT97uxhPvIIelW25hozu3cptIjP58MNq_-KouaEJWodUNvgPT_nRRafuCXrWfAROpMKvbx_V5UCw"
             }
           }
         ],
@@ -5591,13 +5591,13 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
@@ -5616,7 +5616,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-99"
             },
-            "receiptHash": "e2e070b2df2a55b3677b6667675146106b373887cdb2ba7971ff666b25110fe2"
+            "receiptHash": "07aa6cb10b4be7a2df107ce2a19c6dfee40993138769a8016718cbccf41650f3"
           }
         ]
       },
@@ -6020,14 +6020,14 @@
             "substrate": "demos:testnet",
             "sequence": 2,
             "nativeIndexAddress": "demos:storage:recipe-index-sibling-2",
-            "indexContentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+            "indexContentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-sibling-2",
-              "contentHash": "84852e968ab0087edfcbee0586cc1cb606ca4e4f4ebbfe8b740ae3c6492353f6",
+              "contentHash": "f424f2da38bfd83e8de0e22519da7cd540087cf44e9fb8f8da2382631e80aa29",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-sibling-2"
@@ -6052,7 +6052,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "65I3GmmQ_A8pDIbN9XdpvoIW66jhAjdFf0s8k_pdHhQAESHddBDmOGgcVx4aUmTcecZyAunKpLOZwwZZCp1NCg"
+              "value": "5Wsj3YwEdQeBodKhq_t-cq2sNa0lhhRAyBDNiyan77mNNDXBuzz4wQDoW7aOX6G2WYzzrlGNVVJ7mzVe6HLgAA"
             }
           },
           {
@@ -6062,14 +6062,14 @@
             "substrate": "demos:testnet",
             "sequence": 3,
             "nativeIndexAddress": "demos:storage:recipe-index-sibling-3",
-            "indexContentHash": "90a8dd3714af7e5be4421e6055e44e5c6218162dd221c2e9501dc0e5fd4d3fee",
+            "indexContentHash": "7e6e1b9cfc26f334a23302daa80d0c2acd35a795fbc6ca3d7a22137ed1238cb2",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-sibling-3",
-              "contentHash": "90a8dd3714af7e5be4421e6055e44e5c6218162dd221c2e9501dc0e5fd4d3fee",
+              "contentHash": "7e6e1b9cfc26f334a23302daa80d0c2acd35a795fbc6ca3d7a22137ed1238cb2",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-sibling-3"
@@ -6090,11 +6090,11 @@
               }
             },
             "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
-            "supersedesDescriptorHash": "8da14de1533fb14e3e975df8bbd065f87d66f347fb8dd29f046d2585791d9142",
+            "supersedesDescriptorHash": "e75cf4ef84b27f8fce02ada1730c9d14e3f79030f1ed6f985ea0e3a78c385565",
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "paQuPC0YZ6MkoDOBeMCwAZ1nWvp3zueB10C-Ug_i8_cbHzvRULvY5KRc15A3vg5QU5leIrwhrm5JIWouaMXPDQ"
+              "value": "UAvIfSbojwQsdwM4cKLVkfy6xBPd1pxPSU1PDLUliM8gTD4mHGivBo3lP5N9LuNgdwh4bn9TjX-00GIammCsCA"
             }
           }
         ],
@@ -6117,13 +6117,13 @@
             "revision": 2,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           },
@@ -6133,13 +6133,13 @@
             "revision": 3,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
@@ -6162,14 +6162,14 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-sibling-2"
             },
-            "receiptHash": "53fe9f809798c04c99b6bc7a8547f08efec8b9fe8fbe238165eded45074e2355"
+            "receiptHash": "44267d2c1162e25f0ade2fbe84781e36ce94ce5b9b8efd05123307a30b46b3bc"
           },
           {
             "evidence": {
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-sibling-3"
             },
-            "receiptHash": "df82c8e74591cd13d5d8f8b8dcd8d2f7d64a770a6142a2a0199d7a2612199303"
+            "receiptHash": "9d9f59f62ed3046c88ce624d4f3bde04a3d4684219b5a9a3ead9129a30f8b62f"
           }
         ]
       },
@@ -7215,7 +7215,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "8ac93d5d06311432f4b762cbe4c02c8a7064f8f356303a5c246959024006677c",
+          "descriptorHash": "a4ae61aa16329a8b1ef50a14df36af9b1fefe60b45b0d280d5332be3b8498844",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -7226,14 +7226,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+            "indexContentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+              "contentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -7257,7 +7257,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "66DqVmHQo5NDBfS-EbRPVMcJ94Bl2Wa8Qq3aqsdvMw8uuGOBujA7tRnbI2TgilbTUbg1l0T8qNklO6Xf23uNBQ"
+              "value": "dPfNX4gNF8ARfOrGWOPDHM2-IHvV5bzPMqr5UdU1pQZYKLAlcbWa99C_BtSKmlikMirlH-KlDWsPah6c7MW3BQ"
             }
           }
         ],
@@ -7268,31 +7268,43 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
         },
         "mode": "latest",
         "definitionQuery": {
-          "id": "sample",
+          "id": "key",
           "version": 1,
           "family": "self-signed"
         },
         "definitionStorage": {
           "demos:storage:recipe-definition-1": {
             "recipeVersion": 1,
-            "scheme": "sample",
+            "scheme": "key",
             "defaultMethod": {
               "kind": "self-signed"
             },
-            "availability": "live"
+            "defaultMaxAgeSec": 3600,
+            "retryClass": "permanent",
+            "availability": "live",
+            "governance": {
+              "proposedBy": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "acceptedAt": 1787036400000,
+              "anchoring": "single-signer"
+            },
+            "signature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "6UzbtY7rmoMMIBEIMVk-JKPONkJWSDJVHfWhqHwP0ZQOl2E6-RJNZeLrHndy05-IJ_6z89ftkif42zzX1tHNAg"
+            }
           }
         },
         "definitionChecks": {
@@ -7305,7 +7317,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "f0c1935e75a624259bf7abe1c6aaeedde7efb3de7b9fe24f2866e83f5693f060"
+            "receiptHash": "322acf8960ad6f1a9d15cfe09671a05c98754a48ea5bccbd4a3b4fe24035a81f"
           }
         ]
       },
@@ -7323,7 +7335,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "8ac93d5d06311432f4b762cbe4c02c8a7064f8f356303a5c246959024006677c",
+          "descriptorHash": "a4ae61aa16329a8b1ef50a14df36af9b1fefe60b45b0d280d5332be3b8498844",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -7334,14 +7346,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+            "indexContentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+              "contentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -7365,7 +7377,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "66DqVmHQo5NDBfS-EbRPVMcJ94Bl2Wa8Qq3aqsdvMw8uuGOBujA7tRnbI2TgilbTUbg1l0T8qNklO6Xf23uNBQ"
+              "value": "dPfNX4gNF8ARfOrGWOPDHM2-IHvV5bzPMqr5UdU1pQZYKLAlcbWa99C_BtSKmlikMirlH-KlDWsPah6c7MW3BQ"
             }
           }
         ],
@@ -7376,20 +7388,20 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
         },
         "mode": "latest",
         "definitionQuery": {
-          "id": "sample",
+          "id": "key",
           "version": 1,
           "family": "self-signed"
         },
@@ -7408,7 +7420,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "f0c1935e75a624259bf7abe1c6aaeedde7efb3de7b9fe24f2866e83f5693f060"
+            "receiptHash": "322acf8960ad6f1a9d15cfe09671a05c98754a48ea5bccbd4a3b4fe24035a81f"
           }
         ]
       },
@@ -7426,7 +7438,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "8ac93d5d06311432f4b762cbe4c02c8a7064f8f356303a5c246959024006677c",
+          "descriptorHash": "a4ae61aa16329a8b1ef50a14df36af9b1fefe60b45b0d280d5332be3b8498844",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -7437,14 +7449,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+            "indexContentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+              "contentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -7468,7 +7480,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "66DqVmHQo5NDBfS-EbRPVMcJ94Bl2Wa8Qq3aqsdvMw8uuGOBujA7tRnbI2TgilbTUbg1l0T8qNklO6Xf23uNBQ"
+              "value": "dPfNX4gNF8ARfOrGWOPDHM2-IHvV5bzPMqr5UdU1pQZYKLAlcbWa99C_BtSKmlikMirlH-KlDWsPah6c7MW3BQ"
             }
           }
         ],
@@ -7479,31 +7491,43 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
         },
         "mode": "latest",
         "definitionQuery": {
-          "id": "sample",
+          "id": "key",
           "version": 1,
           "family": "self-signed"
         },
         "definitionStorage": {
           "demos:storage:recipe-definition-1": {
             "recipeVersion": 1,
-            "scheme": "sample",
+            "scheme": "key",
             "defaultMethod": {
               "kind": "self-signed"
             },
+            "defaultMaxAgeSec": 3600,
+            "retryClass": "permanent",
             "availability": "live",
+            "governance": {
+              "proposedBy": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "acceptedAt": 1787036400000,
+              "anchoring": "single-signer"
+            },
+            "signature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "6UzbtY7rmoMMIBEIMVk-JKPONkJWSDJVHfWhqHwP0ZQOl2E6-RJNZeLrHndy05-IJ_6z89ftkif42zzX1tHNAg"
+            },
             "futureUnsafe": 9007199254740992
           }
         },
@@ -7517,7 +7541,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "f0c1935e75a624259bf7abe1c6aaeedde7efb3de7b9fe24f2866e83f5693f060"
+            "receiptHash": "322acf8960ad6f1a9d15cfe09671a05c98754a48ea5bccbd4a3b4fe24035a81f"
           }
         ]
       },
@@ -7535,7 +7559,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "1342b5845fea5120c2ae75e9b407b07188c0b6ef3c9e9758c96796859d1d7ef9",
+          "descriptorHash": "2f72a9a2323bf47948aea20700ab584fd72544048f3c96439bb9dd11da685353",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -7546,14 +7570,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "e79100d1cc854d0898009b06e57715951cd73b76da8206ba7c16e1cfa71804ec",
+            "indexContentHash": "fb04a392513de66a4410530d47954523eea33ed8620226068e195356e64c6ea8",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "e79100d1cc854d0898009b06e57715951cd73b76da8206ba7c16e1cfa71804ec",
+              "contentHash": "fb04a392513de66a4410530d47954523eea33ed8620226068e195356e64c6ea8",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -7577,7 +7601,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "vlS9eyoCxAhjQwoCEOcuq9pPvUuTtbEiXB4nVJ6bml0Y_PYflDM40Dr5DsXjtac-2X-yjH5PIJY_v60V-QyDCQ"
+              "value": "4DsVfqPNSCW1o0vylxc9kjyjof_hBkj5Ejg_QOIcGhn2YdTkgxK6Nwfau5UoDsnkuDf_hvg7Ru-iFzdK-elLDA"
             }
           }
         ],
@@ -7588,32 +7612,44 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "81e20a6c62d3f6115f5a736000ca8a1ef1fb6f72d836a5579ad971a538af5aba"
+                "contentHash": "70245169df49b22ee846f2d8a4bc391afcf2556df38cd81514c93cd47a249e45"
               }
             ]
           }
         },
         "mode": "latest",
         "definitionQuery": {
-          "id": "sample",
+          "id": "key",
           "version": 1,
           "family": "self-signed"
         },
         "definitionStorage": {
           "demos:storage:recipe-definition-1": {
             "recipeVersion": 1,
-            "scheme": "sample",
+            "scheme": "key",
             "defaultMethod": {
               "kind": "self-signed"
             },
+            "defaultMaxAgeSec": 3600,
+            "retryClass": "permanent",
             "availability": "live",
-            "futureMetric": 1.5
+            "governance": {
+              "proposedBy": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "acceptedAt": 1787036400000,
+              "anchoring": "single-signer"
+            },
+            "futureMetric": 1.5,
+            "signature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "2iXi3bSB-V7aCIXMeWQ0EOYeDokegDCr2dKfOy5C3PamG5dxRrdmTqN9LTxpw4APOhdiJo71M32MF4udIio7Aw"
+            }
           }
         },
         "definitionChecks": {
@@ -7626,7 +7662,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "7aa239440298a9502c5aac57f0ddccb0a40188222d052cd51fad009d8ac69020"
+            "receiptHash": "b67bbf51331d278e9c8545745804c12749b126baacd8a2fbfb4c55255e0ca253"
           }
         ]
       },
@@ -7644,7 +7680,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "8ac93d5d06311432f4b762cbe4c02c8a7064f8f356303a5c246959024006677c",
+          "descriptorHash": "a4ae61aa16329a8b1ef50a14df36af9b1fefe60b45b0d280d5332be3b8498844",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -7655,14 +7691,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+            "indexContentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+              "contentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -7686,7 +7722,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "66DqVmHQo5NDBfS-EbRPVMcJ94Bl2Wa8Qq3aqsdvMw8uuGOBujA7tRnbI2TgilbTUbg1l0T8qNklO6Xf23uNBQ"
+              "value": "dPfNX4gNF8ARfOrGWOPDHM2-IHvV5bzPMqr5UdU1pQZYKLAlcbWa99C_BtSKmlikMirlH-KlDWsPah6c7MW3BQ"
             }
           }
         ],
@@ -7697,20 +7733,20 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
         },
         "mode": "latest",
         "definitionQuery": {
-          "id": "sample",
+          "id": "key",
           "version": 1,
           "family": "self-signed"
         },
@@ -7725,7 +7761,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "f0c1935e75a624259bf7abe1c6aaeedde7efb3de7b9fe24f2866e83f5693f060"
+            "receiptHash": "322acf8960ad6f1a9d15cfe09671a05c98754a48ea5bccbd4a3b4fe24035a81f"
           }
         ]
       },
@@ -7743,7 +7779,7 @@
           "registryBootstrapVersion": "1"
         },
         "trustPin": {
-          "descriptorHash": "8ac93d5d06311432f4b762cbe4c02c8a7064f8f356303a5c246959024006677c",
+          "descriptorHash": "a4ae61aa16329a8b1ef50a14df36af9b1fefe60b45b0d280d5332be3b8498844",
           "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
         },
         "descriptors": [
@@ -7754,14 +7790,14 @@
             "substrate": "demos:testnet",
             "sequence": 1,
             "nativeIndexAddress": "demos:storage:recipe-index-1",
-            "indexContentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+            "indexContentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
             "indexAnchorReceipt": {
               "receiptVersion": "1",
               "substrate": "demos:testnet",
               "finalityProfile": "demos-bft-final:v1",
               "logicalAddress": "dacs2:registry:v0.1",
               "nativeAddress": "demos:storage:recipe-index-1",
-              "contentHash": "0f7b2053fcc49b485d6aba1e4bc3e48590b4db60ec6d78dd3006fe80811abb14",
+              "contentHash": "7fb3896a099d68cf3a1e962315a79b40ea1cd1b7a56926b01021a93514bfc2d6",
               "transactionRef": {
                 "kind": "demos-transaction",
                 "value": "tx:evidence-recipe-index-1"
@@ -7785,7 +7821,7 @@
             "authorizationSignature": {
               "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
               "algorithm": "ed25519",
-              "value": "66DqVmHQo5NDBfS-EbRPVMcJ94Bl2Wa8Qq3aqsdvMw8uuGOBujA7tRnbI2TgilbTUbg1l0T8qNklO6Xf23uNBQ"
+              "value": "dPfNX4gNF8ARfOrGWOPDHM2-IHvV5bzPMqr5UdU1pQZYKLAlcbWa99C_BtSKmlikMirlH-KlDWsPah6c7MW3BQ"
             }
           }
         ],
@@ -7796,31 +7832,43 @@
             "revision": 1,
             "entries": [
               {
-                "id": "sample",
+                "id": "key",
                 "version": 1,
                 "anchor": {
                   "kind": "storage-program",
                   "locator": "demos:storage:recipe-definition-1"
                 },
-                "contentHash": "c1fd71071ee795759f706c7efd5f6069aa098bc271811fbce1cd365fd14a1081"
+                "contentHash": "489d9b57628bec621eae530edb6f2d8f75832d4b0e3a01bdc868945084f9ee82"
               }
             ]
           }
         },
         "mode": "latest",
         "definitionQuery": {
-          "id": "sample",
+          "id": "key",
           "version": 1,
           "family": "self-signed"
         },
         "definitionStorage": {
           "demos:storage:recipe-definition-1": {
             "recipeVersion": 1,
-            "scheme": "sample",
+            "scheme": "key",
             "defaultMethod": {
               "kind": "self-signed"
             },
-            "availability": "live"
+            "defaultMaxAgeSec": 3600,
+            "retryClass": "permanent",
+            "availability": "live",
+            "governance": {
+              "proposedBy": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "acceptedAt": 1787036400000,
+              "anchoring": "single-signer"
+            },
+            "signature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "6UzbtY7rmoMMIBEIMVk-JKPONkJWSDJVHfWhqHwP0ZQOl2E6-RJNZeLrHndy05-IJ_6z89ftkif42zzX1tHNAg"
+            }
           }
         },
         "definitionChecks": {
@@ -7833,7 +7881,7 @@
               "kind": "demos-finality-proof",
               "value": "evidence-recipe-index-1"
             },
-            "receiptHash": "f0c1935e75a624259bf7abe1c6aaeedde7efb3de7b9fe24f2866e83f5693f060"
+            "receiptHash": "322acf8960ad6f1a9d15cfe09671a05c98754a48ea5bccbd4a3b4fe24035a81f"
           }
         ]
       },

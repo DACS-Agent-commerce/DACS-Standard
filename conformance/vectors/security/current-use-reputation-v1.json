@@ -4,7 +4,7 @@
   "status": "candidate-unallocated-stage-minor",
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "count": 8,
-  "hash": "1338e3d24327db6e4dc391e35a4df2a51f5c301ce88d12d7e42d35410f51b3f5",
+  "hash": "91c51494bd2df6ce0f86124920603ff07009ab52cce69afa56aad027dcb27e74",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -59,7 +59,7 @@
       "mappingKind": "binding",
       "expected": "pass",
       "request": {
-        "jobId": "CUR-HIST-BINDING",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         "substrate": "dacs-current-use-synthetic-write-input-v1",
         "roles": {
           "buyer": {
@@ -69,16 +69,16 @@
               "candidateBindings": [
                 {
                   "bindingVersion": "1",
-                  "jobId": "CUR-HIST-BINDING",
+                  "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                   "role": "buyer",
-                  "logicalAddress": "stor-5a4d70b58302f65ca2c31505b5ced90fefbf2f4e77067320ae847f3ff438fdf9",
-                  "nativeAddress": "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd",
-                  "bundleContentHash": "3d08fe8d04f15bd3bf5456275c35d223a2e0ae943a01cdd09361d64844eab044",
+                  "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+                  "nativeAddress": "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0",
+                  "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
                   "signer": "did:demos:buyer",
                   "signature": {
                     "signer": "did:demos:buyer",
                     "algorithm": "ed25519",
-                    "value": "5eUrsNDv3JtbZF7Ltid26It-JF2f-GVd7wBglAZJIN4Yq-8xypqU6j3IAc7_0CjfJ7geQfOkSGvuecL2auiVAw"
+                    "value": "rsvnbbnLpw1uIG_GgAotpFqDAchZeqTuhQxQie-hkJTjc50-tCROjcyB4P70E71rIBB-EyMhQKLMv6A6ft17Aw"
                   }
                 }
               ],
@@ -89,16 +89,16 @@
               "budget": 8
             },
             "anchorReceiptsByNativeAddress": {
-              "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd": {
+              "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0": {
                 "syntheticAnchorProofVersion": "1",
                 "purpose": "current-bundle",
                 "substrate": "dacs-current-use-synthetic-write-input-v1",
-                "subjectId": "CUR-HIST-BINDING",
+                "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                 "subjectRole": "buyer",
-                "logicalAddress": "stor-5a4d70b58302f65ca2c31505b5ced90fefbf2f4e77067320ae847f3ff438fdf9",
-                "nativeAddress": "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd",
-                "contentHash": "3d08fe8d04f15bd3bf5456275c35d223a2e0ae943a01cdd09361d64844eab044",
-                "transactionRef": "fixture-tx-current-read-a6d8a2562d77caf6e6f972942d89e9f90ba5f219b09f1e3e011ba383d3e170c1",
+                "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+                "nativeAddress": "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0",
+                "contentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                "transactionRef": "fixture-tx-current-read-ece8d37b5a50eca771afbcb3b46a40bf475655c23694d9dbce13a45c1382d737",
                 "writer": "did:demos:buyer",
                 "nonce": 30,
                 "position": {
@@ -111,14 +111,14 @@
                 "signature": {
                   "signer": "fixture:current-use-native-authority",
                   "algorithm": "ed25519",
-                  "value": "43OYcAQn_DRBOK3N7aNrsVJyATC-Hlt4QZcgO-Jz0vu-oN-afsnGEQAxOHsnJ_Ar6FT54sDxp8UgA36NDkpkCg"
+                  "value": "U0YAi1Gx6ZqvuKzdOHmnJS1CLX7brdjdBw7X4WL6vdL-C7xezSGSYtQS6gBM2GXKowxp3eXlVoCHaqVnWgMUDg"
                 }
               }
             },
             "legacyEraEvidenceByNativeAddress": {
-              "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd": {
-                "bundleContentHash": "3d08fe8d04f15bd3bf5456275c35d223a2e0ae943a01cdd09361d64844eab044",
-                "resolvedJobId": "CUR-HIST-BINDING",
+              "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0": {
+                "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                 "resolvedRole": "buyer",
                 "substrate": "dacs-current-use-synthetic-write-input-v1",
                 "checkpointCandidates": [
@@ -166,12 +166,12 @@
                   "syntheticAnchorProofVersion": "1",
                   "purpose": "historical-bundle",
                   "substrate": "dacs-current-use-synthetic-write-input-v1",
-                  "subjectId": "CUR-HIST-BINDING",
+                  "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                   "subjectRole": "buyer",
-                  "logicalAddress": "stor-5a4d70b58302f65ca2c31505b5ced90fefbf2f4e77067320ae847f3ff438fdf9",
-                  "nativeAddress": "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd",
-                  "contentHash": "3d08fe8d04f15bd3bf5456275c35d223a2e0ae943a01cdd09361d64844eab044",
-                  "transactionRef": "fixture-tx-historical-a6d8a2562d77caf6e6f972942d89e9f90ba5f219b09f1e3e011ba383d3e170c1",
+                  "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+                  "nativeAddress": "native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151",
+                  "contentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                  "transactionRef": "fixture-tx-historical-ece8d37b5a50eca771afbcb3b46a40bf475655c23694d9dbce13a45c1382d737",
                   "writer": "did:demos:buyer",
                   "nonce": 10,
                   "position": {
@@ -184,39 +184,39 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "ibbgx0ewA9HC_9C5yP2J3gyCyGOE86txGZ4hsIZiRkW6pcy7xlAY0xr7g6Z73xcsqT5fHdiaM67heVz9BjpxDQ"
+                    "value": "fnzfQA6EN922e74sSYalU5h0ZWhOmZo3k1VtaM_a6-wTmzVy-Oj1rlXwuYXO7_UdAjn2gwkm0e9vkicXlEqHAw"
                   }
                 },
                 "originalMapping": {
                   "kind": "binding",
                   "binding": {
                     "bindingVersion": "1",
-                    "jobId": "CUR-HIST-BINDING",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                     "role": "buyer",
-                    "logicalAddress": "stor-5a4d70b58302f65ca2c31505b5ced90fefbf2f4e77067320ae847f3ff438fdf9",
-                    "nativeAddress": "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd",
-                    "bundleContentHash": "3d08fe8d04f15bd3bf5456275c35d223a2e0ae943a01cdd09361d64844eab044",
+                    "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+                    "nativeAddress": "native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151",
+                    "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "5eUrsNDv3JtbZF7Ltid26It-JF2f-GVd7wBglAZJIN4Yq-8xypqU6j3IAc7_0CjfJ7geQfOkSGvuecL2auiVAw"
+                      "value": "vCwb3OgpjMhbJpz3zMvoZlRxps46FgU9xSkpqroqHrc6hcGg8r1j9_zNafDWOn9N8Q3Hbf6xLK__ziSIH4u2CQ"
                     }
                   },
                   "selectionContext": {
                     "candidateBindings": [
                       {
                         "bindingVersion": "1",
-                        "jobId": "CUR-HIST-BINDING",
+                        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                         "role": "buyer",
-                        "logicalAddress": "stor-5a4d70b58302f65ca2c31505b5ced90fefbf2f4e77067320ae847f3ff438fdf9",
-                        "nativeAddress": "native-1fd3d633629f8fa196fc1eea57d317ebeda9a2530e90d92fe99e54c81e8c9cfd",
-                        "bundleContentHash": "3d08fe8d04f15bd3bf5456275c35d223a2e0ae943a01cdd09361d64844eab044",
+                        "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+                        "nativeAddress": "native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151",
+                        "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
                         "signer": "did:demos:buyer",
                         "signature": {
                           "signer": "did:demos:buyer",
                           "algorithm": "ed25519",
-                          "value": "5eUrsNDv3JtbZF7Ltid26It-JF2f-GVd7wBglAZJIN4Yq-8xypqU6j3IAc7_0CjfJ7geQfOkSGvuecL2auiVAw"
+                          "value": "vCwb3OgpjMhbJpz3zMvoZlRxps46FgU9xSkpqroqHrc6hcGg8r1j9_zNafDWOn9N8Q3Hbf6xLK__ziSIH4u2CQ"
                         }
                       }
                     ],
@@ -226,7 +226,7 @@
                     },
                     "budget": 8
                   },
-                  "anchorTransaction": "fixture-tx-historical-a6d8a2562d77caf6e6f972942d89e9f90ba5f219b09f1e3e011ba383d3e170c1",
+                  "anchorTransaction": "fixture-tx-historical-ece8d37b5a50eca771afbcb3b46a40bf475655c23694d9dbce13a45c1382d737",
                   "writer": "did:demos:buyer",
                   "nonce": 10
                 }
@@ -240,16 +240,16 @@
               "candidateBindings": [
                 {
                   "bindingVersion": "1",
-                  "jobId": "CUR-HIST-BINDING",
+                  "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                   "role": "seller",
-                  "logicalAddress": "stor-d3a36a425caf50b2411ab744392ff7ee0b76d46fbbe976541fb9183de1bf7c3e",
-                  "nativeAddress": "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2",
-                  "bundleContentHash": "69265e1795f4c8a776e73926f35f064e2e20723afb50fb03da640180e89ac0da",
+                  "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
+                  "nativeAddress": "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe",
+                  "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
                   "signer": "did:demos:seller",
                   "signature": {
                     "signer": "did:demos:seller",
                     "algorithm": "ed25519",
-                    "value": "6bPBY1787X71rRu4DaK3739i52I0u1owXgUkCt_ouAKnS7ynAN_9Rm3jIAtJPILH_8DxFKx7oIYQg4nVArSdDg"
+                    "value": "G6HHIua-Nte3lqm0vwjfCv_W2-vB7ti1A_xwSulh2zYE101O9nsyzHlxpxHLUG5QjDIojCAdJxGkJDWguPeuBQ"
                   }
                 }
               ],
@@ -260,16 +260,16 @@
               "budget": 8
             },
             "anchorReceiptsByNativeAddress": {
-              "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2": {
+              "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe": {
                 "syntheticAnchorProofVersion": "1",
                 "purpose": "current-bundle",
                 "substrate": "dacs-current-use-synthetic-write-input-v1",
-                "subjectId": "CUR-HIST-BINDING",
+                "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                 "subjectRole": "seller",
-                "logicalAddress": "stor-d3a36a425caf50b2411ab744392ff7ee0b76d46fbbe976541fb9183de1bf7c3e",
-                "nativeAddress": "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2",
-                "contentHash": "69265e1795f4c8a776e73926f35f064e2e20723afb50fb03da640180e89ac0da",
-                "transactionRef": "fixture-tx-current-read-4d9e07df3f176eaddf799b8a22bbfad18406d80a526e5f31a8c3adbde41c1544",
+                "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
+                "nativeAddress": "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe",
+                "contentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                "transactionRef": "fixture-tx-current-read-8008433571eeb675b69dd23bca87c89f2944a0fb032dbb2e165ad9077092d8a5",
                 "writer": "did:demos:seller",
                 "nonce": 31,
                 "position": {
@@ -282,14 +282,14 @@
                 "signature": {
                   "signer": "fixture:current-use-native-authority",
                   "algorithm": "ed25519",
-                  "value": "h4u4T5MPK64viqPEx3-CDEgPC8InpBR5AboZSleK-2-guAwI8BU634XXhZv_FQo2hVdGud8ZbCorpF2aTT08Cg"
+                  "value": "kmJPqS0L9vUD5q0EU3_YSGhh9e4cRB_fJcz49ZrGfkWDLybXiHyIi2k49skcNBFuAGjXxbKGO0g_qa_A1tRkAA"
                 }
               }
             },
             "legacyEraEvidenceByNativeAddress": {
-              "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2": {
-                "bundleContentHash": "69265e1795f4c8a776e73926f35f064e2e20723afb50fb03da640180e89ac0da",
-                "resolvedJobId": "CUR-HIST-BINDING",
+              "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe": {
+                "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                 "resolvedRole": "seller",
                 "substrate": "dacs-current-use-synthetic-write-input-v1",
                 "checkpointCandidates": [
@@ -337,12 +337,12 @@
                   "syntheticAnchorProofVersion": "1",
                   "purpose": "historical-bundle",
                   "substrate": "dacs-current-use-synthetic-write-input-v1",
-                  "subjectId": "CUR-HIST-BINDING",
+                  "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                   "subjectRole": "seller",
-                  "logicalAddress": "stor-d3a36a425caf50b2411ab744392ff7ee0b76d46fbbe976541fb9183de1bf7c3e",
-                  "nativeAddress": "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2",
-                  "contentHash": "69265e1795f4c8a776e73926f35f064e2e20723afb50fb03da640180e89ac0da",
-                  "transactionRef": "fixture-tx-historical-4d9e07df3f176eaddf799b8a22bbfad18406d80a526e5f31a8c3adbde41c1544",
+                  "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
+                  "nativeAddress": "native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2",
+                  "contentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                  "transactionRef": "fixture-tx-historical-8008433571eeb675b69dd23bca87c89f2944a0fb032dbb2e165ad9077092d8a5",
                   "writer": "did:demos:seller",
                   "nonce": 11,
                   "position": {
@@ -355,39 +355,39 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "hAo5w2HPeyE-uX1py7IluMzCtItfpm_b_-UTnwd9OehljgnxOxeWcLADS4QUyoe1f7bl5TjU6gRCZfKlpgssBA"
+                    "value": "dQYdJ-TA1yKUhsvlpYMRmQrCwJlMrc7AhHsQWkjweJhoFc2fm1_yOWUoGJqr_ctw8OREcl1w-N_3GzFdTYY2Cw"
                   }
                 },
                 "originalMapping": {
                   "kind": "binding",
                   "binding": {
                     "bindingVersion": "1",
-                    "jobId": "CUR-HIST-BINDING",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                     "role": "seller",
-                    "logicalAddress": "stor-d3a36a425caf50b2411ab744392ff7ee0b76d46fbbe976541fb9183de1bf7c3e",
-                    "nativeAddress": "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2",
-                    "bundleContentHash": "69265e1795f4c8a776e73926f35f064e2e20723afb50fb03da640180e89ac0da",
+                    "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
+                    "nativeAddress": "native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2",
+                    "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "6bPBY1787X71rRu4DaK3739i52I0u1owXgUkCt_ouAKnS7ynAN_9Rm3jIAtJPILH_8DxFKx7oIYQg4nVArSdDg"
+                      "value": "51Q746pBAnpwQ-3wm-PzTHZCscmX1mO_bRsifzN5zDYxK743i0nS7sE8b8d70e0bMy_kpqL-4ZlW1svzwlalCg"
                     }
                   },
                   "selectionContext": {
                     "candidateBindings": [
                       {
                         "bindingVersion": "1",
-                        "jobId": "CUR-HIST-BINDING",
+                        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                         "role": "seller",
-                        "logicalAddress": "stor-d3a36a425caf50b2411ab744392ff7ee0b76d46fbbe976541fb9183de1bf7c3e",
-                        "nativeAddress": "native-e06e8a1a8fd34504d02750e28c2db7fe81d9458b3a87526a11cbc7102aff5fa2",
-                        "bundleContentHash": "69265e1795f4c8a776e73926f35f064e2e20723afb50fb03da640180e89ac0da",
+                        "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
+                        "nativeAddress": "native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2",
+                        "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
                         "signer": "did:demos:seller",
                         "signature": {
                           "signer": "did:demos:seller",
                           "algorithm": "ed25519",
-                          "value": "6bPBY1787X71rRu4DaK3739i52I0u1owXgUkCt_ouAKnS7ynAN_9Rm3jIAtJPILH_8DxFKx7oIYQg4nVArSdDg"
+                          "value": "51Q746pBAnpwQ-3wm-PzTHZCscmX1mO_bRsifzN5zDYxK743i0nS7sE8b8d70e0bMy_kpqL-4ZlW1svzwlalCg"
                         }
                       }
                     ],
@@ -397,7 +397,7 @@
                     },
                     "budget": 8
                   },
-                  "anchorTransaction": "fixture-tx-historical-4d9e07df3f176eaddf799b8a22bbfad18406d80a526e5f31a8c3adbde41c1544",
+                  "anchorTransaction": "fixture-tx-historical-8008433571eeb675b69dd23bca87c89f2944a0fb032dbb2e165ad9077092d8a5",
                   "writer": "did:demos:seller",
                   "nonce": 11
                 }
@@ -412,23 +412,23 @@
       "mappingKind": "pure",
       "expected": "pass",
       "request": {
-        "jobId": "CUR-HIST-PURE",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
         "substrate": "dacs-current-use-synthetic-pure-v1",
         "roles": {
           "buyer": {
             "disposition": "present",
             "mappingKind": "pure",
-            "resolvedAddress": "pure-277bb43cd7a486d8088db4a65cf7d49229e56d482b5cd34b0d68c505378cc161",
+            "resolvedAddress": "pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda",
             "anchorReceipt": {
               "syntheticAnchorProofVersion": "1",
               "purpose": "current-bundle",
               "substrate": "dacs-current-use-synthetic-pure-v1",
-              "subjectId": "CUR-HIST-PURE",
+              "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
               "subjectRole": "buyer",
-              "logicalAddress": "stor-1bec1eb8cfe44607ced33e8a10840176512f7eb18f3691873fd969e87052d1d1",
-              "nativeAddress": "pure-277bb43cd7a486d8088db4a65cf7d49229e56d482b5cd34b0d68c505378cc161",
-              "contentHash": "9a0b0491f046fe884b8a9ba5a81ba4dad6f31859b02c0d2432821a0f224c2ef8",
-              "transactionRef": "fixture-tx-current-read-de14233a5233556bab6009a9c331da8ba037edfb296523f3f086c6895e78c94e",
+              "logicalAddress": "stor-ee1faebea06990aa74d9e4ae3d210a487e20e9c9dc5ba6db570baa30f48ca960",
+              "nativeAddress": "pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda",
+              "contentHash": "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f",
+              "transactionRef": "fixture-tx-current-read-6d10bbbf9dc9bff32e96db209d41a1c0be8b632eb04d40e92e552cacaa195585",
               "writer": "did:demos:buyer",
               "nonce": 30,
               "position": {
@@ -441,12 +441,12 @@
               "signature": {
                 "signer": "fixture:current-use-native-authority",
                 "algorithm": "ed25519",
-                "value": "yRLrwQ3YXNMGI4yzwK7Vm1PxsJjyiM6-AnU3v1TEAXVJoY3SJduvyYZ06PWKkSnxEU3G0tueIINyF6PZ1PZ2BA"
+                "value": "CqYRTyYyBrP8dKKQCfXE-vxokJl_fLIDWtJ6xLdG-rUWoYI4xh5U7NaV1rtOXc0NQ_B8Gfql9ofitY8bU0WmCA"
               }
             },
             "legacyEraEvidence": {
-              "bundleContentHash": "9a0b0491f046fe884b8a9ba5a81ba4dad6f31859b02c0d2432821a0f224c2ef8",
-              "resolvedJobId": "CUR-HIST-PURE",
+              "bundleContentHash": "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f",
+              "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
               "resolvedRole": "buyer",
               "substrate": "dacs-current-use-synthetic-pure-v1",
               "checkpointCandidates": [],
@@ -479,12 +479,12 @@
                 "syntheticAnchorProofVersion": "1",
                 "purpose": "historical-bundle",
                 "substrate": "dacs-current-use-synthetic-pure-v1",
-                "subjectId": "CUR-HIST-PURE",
+                "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
                 "subjectRole": "buyer",
-                "logicalAddress": "stor-1bec1eb8cfe44607ced33e8a10840176512f7eb18f3691873fd969e87052d1d1",
-                "nativeAddress": "pure-277bb43cd7a486d8088db4a65cf7d49229e56d482b5cd34b0d68c505378cc161",
-                "contentHash": "9a0b0491f046fe884b8a9ba5a81ba4dad6f31859b02c0d2432821a0f224c2ef8",
-                "transactionRef": "fixture-tx-historical-de14233a5233556bab6009a9c331da8ba037edfb296523f3f086c6895e78c94e",
+                "logicalAddress": "stor-ee1faebea06990aa74d9e4ae3d210a487e20e9c9dc5ba6db570baa30f48ca960",
+                "nativeAddress": "pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda",
+                "contentHash": "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f",
+                "transactionRef": "fixture-tx-historical-6d10bbbf9dc9bff32e96db209d41a1c0be8b632eb04d40e92e552cacaa195585",
                 "writer": "did:demos:buyer",
                 "nonce": 10,
                 "position": {
@@ -497,14 +497,14 @@
                 "signature": {
                   "signer": "fixture:current-use-native-authority",
                   "algorithm": "ed25519",
-                  "value": "rTiCwEQVy6-JsVJa6juf0Qvmu2PGO2O9XqF7Z5ctBNbTP4vDDU3BK3bUpj-sd0ZTQBmrEstYVjKpd6BVZ340Dw"
+                  "value": "mrN_x5D1bSNCa461gVt3nN-zxL_JAYm4ZVeov-5xO8RAkbuho96aP4gemgKigK-YAMv_F9YcMSmWvLUMuuZdAw"
                 }
               },
               "originalMapping": {
                 "kind": "pure",
-                "logicalAddress": "stor-1bec1eb8cfe44607ced33e8a10840176512f7eb18f3691873fd969e87052d1d1",
-                "nativeAddress": "pure-277bb43cd7a486d8088db4a65cf7d49229e56d482b5cd34b0d68c505378cc161",
-                "anchorTransaction": "fixture-tx-historical-de14233a5233556bab6009a9c331da8ba037edfb296523f3f086c6895e78c94e",
+                "logicalAddress": "stor-ee1faebea06990aa74d9e4ae3d210a487e20e9c9dc5ba6db570baa30f48ca960",
+                "nativeAddress": "pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda",
+                "anchorTransaction": "fixture-tx-historical-6d10bbbf9dc9bff32e96db209d41a1c0be8b632eb04d40e92e552cacaa195585",
                 "writer": "did:demos:buyer",
                 "nonce": 10
               }
@@ -513,17 +513,17 @@
           "seller": {
             "disposition": "present",
             "mappingKind": "pure",
-            "resolvedAddress": "pure-2b4eba0a1d801e87f4a05e9c1292fb8774363d84b101c2cbd1c2f8fb000ca9c0",
+            "resolvedAddress": "pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd",
             "anchorReceipt": {
               "syntheticAnchorProofVersion": "1",
               "purpose": "current-bundle",
               "substrate": "dacs-current-use-synthetic-pure-v1",
-              "subjectId": "CUR-HIST-PURE",
+              "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
               "subjectRole": "seller",
-              "logicalAddress": "stor-10516cb785eb5f993222bd3b70f48eefa1c4655042f1fc91533449a9b3f56a9a",
-              "nativeAddress": "pure-2b4eba0a1d801e87f4a05e9c1292fb8774363d84b101c2cbd1c2f8fb000ca9c0",
-              "contentHash": "06dbb31c3896b5e3df22651945823c940b93209710caad15206d22ff8c97653e",
-              "transactionRef": "fixture-tx-current-read-384f2748fe49ca5167fc281a130d5b51663e82c4149b9d34a6d3acbf19a4c5b1",
+              "logicalAddress": "stor-d15eae1735ce8a8e1eaf634351a245cf5a70992aec46fc5dae498d4cd2ec6bec",
+              "nativeAddress": "pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd",
+              "contentHash": "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4",
+              "transactionRef": "fixture-tx-current-read-6fc078bba45269f7fb3b14e7476dce6e99a9f6b8acc245d949a3e6df7ccd1c5e",
               "writer": "did:demos:seller",
               "nonce": 31,
               "position": {
@@ -536,12 +536,12 @@
               "signature": {
                 "signer": "fixture:current-use-native-authority",
                 "algorithm": "ed25519",
-                "value": "MeoAu-6yPkQ1rgqgfHECHnyRMdqTTygpoXQ9gzeiYKbFTirPuozGK0IahE2p5Vl0HQa4lJ4sQJ94NnG7XAizBQ"
+                "value": "DcuXEU42nXFgxysbuI6hYsh0Pl_A1YUDFXXL4DR1qrB_pHnGcr48kqiSvgq1y4POz2gI6MA8zSTy32zewwM2Cg"
               }
             },
             "legacyEraEvidence": {
-              "bundleContentHash": "06dbb31c3896b5e3df22651945823c940b93209710caad15206d22ff8c97653e",
-              "resolvedJobId": "CUR-HIST-PURE",
+              "bundleContentHash": "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4",
+              "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
               "resolvedRole": "seller",
               "substrate": "dacs-current-use-synthetic-pure-v1",
               "checkpointCandidates": [],
@@ -574,12 +574,12 @@
                 "syntheticAnchorProofVersion": "1",
                 "purpose": "historical-bundle",
                 "substrate": "dacs-current-use-synthetic-pure-v1",
-                "subjectId": "CUR-HIST-PURE",
+                "subjectId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
                 "subjectRole": "seller",
-                "logicalAddress": "stor-10516cb785eb5f993222bd3b70f48eefa1c4655042f1fc91533449a9b3f56a9a",
-                "nativeAddress": "pure-2b4eba0a1d801e87f4a05e9c1292fb8774363d84b101c2cbd1c2f8fb000ca9c0",
-                "contentHash": "06dbb31c3896b5e3df22651945823c940b93209710caad15206d22ff8c97653e",
-                "transactionRef": "fixture-tx-historical-384f2748fe49ca5167fc281a130d5b51663e82c4149b9d34a6d3acbf19a4c5b1",
+                "logicalAddress": "stor-d15eae1735ce8a8e1eaf634351a245cf5a70992aec46fc5dae498d4cd2ec6bec",
+                "nativeAddress": "pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd",
+                "contentHash": "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4",
+                "transactionRef": "fixture-tx-historical-6fc078bba45269f7fb3b14e7476dce6e99a9f6b8acc245d949a3e6df7ccd1c5e",
                 "writer": "did:demos:seller",
                 "nonce": 11,
                 "position": {
@@ -592,14 +592,14 @@
                 "signature": {
                   "signer": "fixture:current-use-native-authority",
                   "algorithm": "ed25519",
-                  "value": "j80-arBHlaxk_N9rj6Lt4CyT0sSE3e-17nrjmnFjzLne5LK3AP74AKf9AFyhUBaapgZPZQrnmCN8xk08f_46DQ"
+                  "value": "j5cBPir_pbprOtd8GzJ3irtFTTHbfsZWZxzIiQqlSf2SbejS4tI5g1waENZhBUt2uSBQW_PRR0UUqctZjn_qBg"
                 }
               },
               "originalMapping": {
                 "kind": "pure",
-                "logicalAddress": "stor-10516cb785eb5f993222bd3b70f48eefa1c4655042f1fc91533449a9b3f56a9a",
-                "nativeAddress": "pure-2b4eba0a1d801e87f4a05e9c1292fb8774363d84b101c2cbd1c2f8fb000ca9c0",
-                "anchorTransaction": "fixture-tx-historical-384f2748fe49ca5167fc281a130d5b51663e82c4149b9d34a6d3acbf19a4c5b1",
+                "logicalAddress": "stor-d15eae1735ce8a8e1eaf634351a245cf5a70992aec46fc5dae498d4cd2ec6bec",
+                "nativeAddress": "pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd",
+                "anchorTransaction": "fixture-tx-historical-6fc078bba45269f7fb3b14e7476dce6e99a9f6b8acc245d949a3e6df7ccd1c5e",
                 "writer": "did:demos:seller",
                 "nonce": 11
               }

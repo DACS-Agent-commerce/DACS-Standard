@@ -77,7 +77,7 @@ def binding_hash(binding):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
-def logical_address(job_id, role):
+def legacy_logical_address(job_id, role):
     return "stor-" + hashlib.sha256((job_id + "-bundle-" + role).encode("utf-8")).hexdigest()
 
 
@@ -131,7 +131,7 @@ def make_fab(job_id, outcome, faulted_party, anchored_by_role, sign_roles, final
 def make_binding(job_id, role, signer_role, native, content_hash):
     bd = {
         "bindingVersion": "1", "jobId": job_id, "role": role,
-        "logicalAddress": logical_address(job_id, role), "nativeAddress": native,
+        "logicalAddress": legacy_logical_address(job_id, role), "nativeAddress": native,
         "bundleContentHash": content_hash, "anchorTx": "demos-testnet:tx-" + native[5:21],
         "signer": CLAIM[signer_role],
     }
@@ -207,7 +207,7 @@ class Round9OrderingContractTests(unittest.TestCase):
         # honest single-signed winner resolves present. RED at f11adda: it refuses with a BB-6
         # re-selection that returns indeterminate (the inert poison re-enters as a lesser-standing form).
         content_deref = lambda h: deref.get(h)
-        vok, reasons = R.validate_resolution_context(
+        vok, reasons = R.validate_legacy_resolution_context(
             deriv, content_deref, lambda h: ev_map.get(h), PUBKEYS,
             anchor_deref=_anchor_resolver(deriv, content_deref))
         self.assertEqual((vok, reasons), (True, []),
@@ -251,7 +251,7 @@ class Round9OrderingContractTests(unittest.TestCase):
             return deref_map.get(h)
 
         # CONTRACT (i): zero fetch attempts for the pruned outsider. RED: it IS fetched today.
-        vok, reasons = R.validate_resolution_context(
+        vok, reasons = R.validate_legacy_resolution_context(
             deriv, deref, lambda h: ev_map.get(h), PUBKEYS,
             anchor_deref=_anchor_resolver(deriv, deref))
         self.assertNotIn(out_hash, fetched,
@@ -311,7 +311,7 @@ class Round9OrderingContractTests(unittest.TestCase):
         ):
             with self.subTest(vector=label):
                 content_deref = lambda h: deref.get(h)
-                vok, reasons = R.validate_resolution_context(
+                vok, reasons = R.validate_legacy_resolution_context(
                     deriv, content_deref, lambda h: ev_map.get(h), PUBKEYS,
                     anchor_deref=_anchor_resolver(deriv, content_deref))
                 # CONTRACT: the winner copy is rejected/void. RED at f11adda: accepted as (True, []).
@@ -357,7 +357,7 @@ class Round9OrderingContractTests(unittest.TestCase):
         # CONTRACT: the full replay entry point must reproduce the same BB-7 exhaustion and REFUSE. RED at
         # 35fd3a7: it accepts (True, []) because the reconstruction pre-caps the bucket before resolve_bb6.
         content_deref = lambda x: deref.get(x)
-        vok, reasons = R.validate_resolution_context(
+        vok, reasons = R.validate_legacy_resolution_context(
             deriv, content_deref, lambda x: ev_map.get(x), PUBKEYS,
             anchor_deref=_anchor_resolver(deriv, content_deref))
         self.assertFalse(vok, "F1: over-budget exhaustion must refuse the receipt; current wrong behaviour = %r"
@@ -406,7 +406,7 @@ class Round9OrderingContractTests(unittest.TestCase):
             fetched.append(x)
             return deref_map.get(x)
 
-        vok, reasons = R.validate_resolution_context(
+        vok, reasons = R.validate_legacy_resolution_context(
             deriv, deref, lambda x: ev_map.get(x), PUBKEYS,
             anchor_deref=_anchor_resolver(deriv, deref))
         # CONTRACT: an unauthorized outsider is pruned before re-verification, so the honest receipt ACCEPTS.
@@ -464,7 +464,7 @@ class Round9OrderingContractTests(unittest.TestCase):
                     fetched.append(x)
                     return deref_map.get(x)
 
-                vok, reasons = R.validate_resolution_context(
+                vok, reasons = R.validate_legacy_resolution_context(
                     deriv, deref, lambda x: ev_map.get(x), PUBKEYS,
                     anchor_deref=_anchor_resolver(deriv, deref))
                 # CONTRACT: a mapped counterparty's cross-role candidate is pruned by role pre-fetch — the honest
@@ -514,7 +514,7 @@ class Round9OrderingContractTests(unittest.TestCase):
                 fetched.append(x)
                 return deref_map.get(x)
 
-            vok, reasons = R.validate_resolution_context(
+            vok, reasons = R.validate_legacy_resolution_context(
                 deriv, deref, lambda x: ev_map.get(x), PUBKEYS,
                 anchor_deref=_anchor_resolver(deriv, deref))
             return vok, reasons, fetched

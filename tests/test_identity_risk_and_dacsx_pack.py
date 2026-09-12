@@ -182,14 +182,14 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         evidence, errors = ver.load_case(duplicate)
         self.assertIsNone(evidence)
         self.assertEqual(len(errors), 1)
-        self.assertIn("invalid JSON: duplicate object member 'algorithm'", errors[0])
+        self.assertIn("invalid JSON: duplicate JSON member 'algorithm'", errors[0])
 
         nfd, nfc = "e" + chr(0x0301), chr(0x00E9)
         distinct_keys = self._write({"kind": "SettlementEvidenceCase", "settlementEvidence": {nfd: 1, nfc: 2}})
         evidence, errors = ver.load_case(distinct_keys)
         self.assertIsNotNone(evidence)
         self.assertEqual(len(evidence), 2)
-        self.assertFalse(any("duplicate object member" in e for e in errors), errors)
+        self.assertFalse(any("duplicate JSON member" in e for e in errors), errors)
 
         invalid_utf8 = self._write_bytes(b"\xff")
         root_array = self._write([])
@@ -244,6 +244,42 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertEqual(ver.validate_pair(*paths, expected), [])
         self.assertEqual(ver.main([str(paths[0]), str(paths[1]),
                                   "--expected-phase-orchestrator", expected]), 0)
+
+    def test_htlc9_json_parser_rejects_duplicate_members_recursively(self):
+        _, ver = self._load_pack_modules()
+        for document in (
+            '{"member":1,"member":2}',
+            '{"outer":{"member":1,"member":2}}',
+            '[{"member":1,"member":2}]',
+        ):
+            with self.subTest(document=document), self.assertRaises(ver.DuplicateJsonMember):
+                ver.strict_json_loads(document)
+
+    def test_htlc9_price_term_helper_preserves_optional_string_contract(self):
+        _, ver = self._load_pack_modules()
+        for amount in (
+            {"amount": "25", "currency": "USDC"},
+            {"amount": "25", "currency": "USDC", "unit": ""},
+            {"amount": "25", "currency": "USDC", "unit": "token"},
+        ):
+            with self.subTest(amount=amount):
+                self.assertEqual(ver.price_term_errors(amount), [])
+        for unit in (None, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertIn(
+                    "paymentAmount.unit MUST be a string when present",
+                    ver.price_term_errors(
+                        {"amount": "25", "currency": "USDC", "unit": unit}
+                    ),
+                )
+
+    def test_htlc9_rejected_interim_is_not_used_for_pair_checks(self):
+        _, ver = self._load_pack_modules()
+        missing_interim = Path(self._tempdir.name) / "missing-interim.json"
+        errors = ver.validate_pair(missing_interim, RESOLVED)
+        self.assertTrue(any("fixture file not found" in error for error in errors))
+        self.assertFalse(any("interim record's" in error for error in errors))
+        self.assertTrue(any("pair binding not evaluated" in error for error in errors))
 
     def test_file_error_diagnostics_survive_path_resolution_failures(self):
         _, ver = self._load_pack_modules()

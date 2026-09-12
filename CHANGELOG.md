@@ -13,6 +13,35 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — corrective-profile consumer and AP2 composition boundaries
+
+- Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.
+- **Atomic AP2-7 admission composition** (DACS-4 §9.5.6 AP2-7; #343) —
+  composes verified CheckoutMandate/PaymentMandate admission with one
+  handler-owned atomic binding-store decision before provider metadata or
+  submission. The closed trusted context validates every participant before
+  selection. Durable modeled state retains the exact AP2-6 key plus immutable
+  operation payload/fingerprint and optional provider reference, allowing
+  reference-first reconciliation, lost-response same-key resubmission, and
+  settlement reuse. Only `bind-new` authorizes a new payment; a recovery request
+  remains `submitNewPayment: false`, and malformed continuity, cross-job/phase
+  replay, caller reset assertions, duplicates, and conflicts fail closed.
+- **Current DACS-5 consumers require trusted profile authority** (DACS-5
+  §10.4.2 BB-5 / §10.5 Replay; CORE §11.1.2; #343) — current logical-address,
+  BB-5 binding, resolution-context, and reputation-replay paths now require
+  verifier-owned `(session, role) → participant` authority for the exact release
+  pin and complete module tuple, plus independently authenticated Ed25519 keys.
+  Public reputation operations authenticate expected party/window/basis and
+  ordered content-reference authorities before every callback, including empty
+  results; signed/caller identities cannot initialize the role map. Explicitly
+  named legacy replay paths preserve frozen historical bytes and structural-only
+  behavior without current authority or effects.
+- **HTLC-9 verifier authority and parser boundary** (#343) — the fixture verifier
+  now checks each unchanged signed record against an independently pinned phase
+  orchestrator and rejects duplicate JSON members recursively before JCS,
+  hashing, or signature verification. Fixture payloads and signatures are
+  byte-preserved.
+
 ### Fixed — DACS-3 v0.6 channel-message wire split
 
 - **Canonical current message** (DACS-3 §8.3.3 CH-7..CH-10; #349) — replaces

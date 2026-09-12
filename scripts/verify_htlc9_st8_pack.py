@@ -11,9 +11,11 @@ Two signed ``SettlementEvidence`` fixtures form one supersession pair:
 This verifier is executable, not a shape check: each record's Ed25519 signature
 is verified over ``"dacs-evidence:v1:" || sha256hex(JCS(record minus signature))``
 against the independently trusted phase-orchestrator ``cci:<pubkey-hex>`` key,
-and the supersession hash is recomputed.  The committed pack pins that authority;
+and the supersession hash is recomputed. JSON is parsed with recursive
+duplicate-member and non-JSON numeric-constant rejection before canonicalization,
+hashing, or signature verification. The committed pack pins that authority;
 custom callers must supply their trusted phase context rather than deriving
-authority from either record.  No amendment of any kind is accepted — ST-8
+authority from either record. No amendment of any kind is accepted — ST-8
 resolution is a same-phase supersession, not a ``correction``
 (DACS-4-SETTLE.md: "No ``correction`` amendment is used").
 
@@ -47,6 +49,8 @@ FIXTURE_DIR = ROOT / "conformance" / "fixtures" / "settlement"
 DEFAULT_INTERIM = FIXTURE_DIR / "htlc9-asymmetric.json"
 DEFAULT_RESOLVED = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
 DEFAULT_PHASE_ORCHESTRATOR = "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+# Compatibility name retained for callers introduced by #343.
+EXPECTED_PHASE_ORCHESTRATOR = DEFAULT_PHASE_ORCHESTRATOR
 
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
@@ -147,6 +151,31 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     return errs
 
 
+def price_term_errors(amount: Any) -> list[str]:
+    """Validate the normative PriceTerm shape used by resolved HTLC evidence."""
+    if (
+        not isinstance(amount, dict)
+        or not isinstance(amount.get("currency"), str)
+        or not amount["currency"].strip()
+    ):
+        return [
+            "resolved evidence MUST carry paymentAmount with a non-empty currency "
+            "(REQUIRED on success-outcome records)"
+        ]
+    errors: list[str] = []
+    if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
+        errors.append("PriceTerm fields MUST be exactly amount, currency, with optional unit")
+    if (
+        not isinstance(amount.get("amount"), str)
+        or not CD1_AMOUNT.fullmatch(amount["amount"])
+        or amount["amount"] == "0"
+    ):
+        errors.append("paymentAmount.amount MUST be a positive canonical decimal string (CD-1)")
+    if "unit" in amount and not isinstance(amount["unit"], str):
+        errors.append("paymentAmount.unit MUST be a string when present")
+    return errors
+
+
 def verify_signature(
     record: Any,
     expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
@@ -175,7 +204,7 @@ def verify_signature(
         return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
         digest = content_hash_hex(record)
-    except (TypeError, ValueError, UnicodeError, RecursionError):
+    except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError):
         return "record cannot be canonicalized as DACS JCS"
     try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
@@ -197,15 +226,19 @@ def _walk_keys(obj: Any):
             yield from _walk_keys(v)
 
 
-class DuplicateMemberError(ValueError):
-    """Raised before semantic validation when a JSON object repeats a member."""
+class DuplicateJsonMember(ValueError):
+    """Raised before object construction when any JSON object repeats a member."""
 
 
-def _object_without_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+# Compatibility name retained for the #367 candidate API.
+DuplicateMemberError = DuplicateJsonMember
+
+
+def _reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise DuplicateMemberError(f"duplicate object member {key!r}")
+            raise DuplicateJsonMember(f"duplicate JSON member {key!r}")
         result[key] = value
     return result
 
@@ -213,6 +246,14 @@ def _object_without_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _reject_non_json_constant(value: str) -> None:
     raise ValueError(f"non-JSON numeric constant {value}")
 
+
+def strict_json_loads(text: str):
+    """Parse JSON while rejecting duplicate members and non-JSON constants."""
+    return json.loads(
+        text,
+        object_pairs_hook=_reject_duplicate_members,
+        parse_constant=_reject_non_json_constant,
+    )
 
 def load_case(
     path: Path,
@@ -228,12 +269,8 @@ def load_case(
         detail = exc.strerror or type(exc).__name__
         return None, [fail(path, f"fixture file could not be read: {detail}")]
     try:
-        data = json.loads(
-            raw,
-            object_pairs_hook=_object_without_duplicates,
-            parse_constant=_reject_non_json_constant,
-        )
-    except (json.JSONDecodeError, DuplicateMemberError, ValueError, RecursionError) as exc:
+        data = strict_json_loads(raw)
+    except (json.JSONDecodeError, DuplicateJsonMember, ValueError, RecursionError) as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
@@ -387,16 +424,10 @@ def validate_resolved(
                 errors.append(fail(path, "time order: interim.observedAt MUST be less than settlementFinality.finalityObservedAt"))
             if fin["finalityObservedAt"] > evidence["observedAt"]:
                 errors.append(fail(path, "time order: settlementFinality.finalityObservedAt MUST be less than or equal to resolved.observedAt"))
-    amount = evidence.get("paymentAmount")
-    if not isinstance(amount, dict) or not isinstance(amount.get("currency"), str) or not amount["currency"].strip():
-        errors.append(fail(path, "resolved evidence MUST carry paymentAmount with a non-empty currency (REQUIRED on success-outcome records)"))
-    else:
-        if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
-            errors.append(fail(path, "PriceTerm fields MUST be exactly amount, currency, with optional unit"))
-        if not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
-            errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
-        if "unit" in amount and not isinstance(amount["unit"], str):
-            errors.append(fail(path, "paymentAmount.unit MUST be a string when present"))
+    errors += [
+        fail(path, error)
+        for error in price_term_errors(evidence.get("paymentAmount"))
+    ]
     ref = evidence.get("supersedesEvidenceRef")
     ref_errs = attestation_ref_errors(ref)
     if ref_errs:
@@ -404,13 +435,28 @@ def validate_resolved(
     elif interim is not None:
         try:
             expected = content_hash_hex(interim)
-        except (TypeError, ValueError, UnicodeError, RecursionError):
+        except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError):
             errors.append(fail(path, "interim record cannot be canonicalized as DACS JCS for pair validation"))
         else:
             if ref["contentHash"] != expected:
                 errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
         if interim.get("jobId") != evidence.get("jobId"):
             errors.append(fail(path, "resolved and interim records MUST share jobId"))
+        if "signer" in ref:
+            interim_signature = interim.get("signature")
+            interim_signer = (
+                interim_signature.get("signer")
+                if isinstance(interim_signature, dict) else None
+            )
+            if (
+                ref["signer"] != expected_phase_orchestrator
+                or ref["signer"] != interim_signer
+            ):
+                errors.append(fail(
+                    path,
+                    "supersedesEvidenceRef.signer MUST equal the independently "
+                    "trusted expected phase orchestrator and authenticated interim signer",
+                ))
     return errors
 
 

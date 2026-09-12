@@ -241,17 +241,10 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertNotIn("Traceback", result.stderr)
 
-        canonicalization_case = {
-            "kind": "SettlementEvidenceCase",
-            "settlementEvidence": {
-                "oversizedNumber": 2 ** 53,
-                "signature": {
-                    "algorithm": "ed25519",
-                    "signer": "cci:" + "0" * 64,
-                    "value": "AA",
-                },
-            },
-        }
+        # Preserve valid envelope/signature shape so this case reaches the
+        # canonical-number boundary rather than the earlier signer check.
+        canonicalization_case = json.loads(INTERIM.read_text(encoding="utf-8"))
+        canonicalization_case["settlementEvidence"]["oversizedNumber"] = 2 ** 53
         canonicalization_path = self._write(canonicalization_case)
         _, errors = ver.load_case(canonicalization_path)
         self.assertTrue(any("cannot be canonicalized" in error for error in errors), errors)

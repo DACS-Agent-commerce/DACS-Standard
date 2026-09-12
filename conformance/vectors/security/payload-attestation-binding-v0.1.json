@@ -3,7 +3,7 @@
   "spec": "DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3",
   "decisionModel": "A successful attested-payload delivery requires a distinct signed PayloadAttestationRecord, a passing exact-byte method proof, and matching listing/agreement/settlement bindings. Resolved contradictions fail; unavailable otherwise-valid evidence remains indeterminate.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "4c6284591c75fa31a24a97f16472c88c5084bde5f786cae71e89952896fec64a",
+  "hash": "8104d4463c5fbdf410f20a995fd875e55d45770ad62fd55fdd28b348caa54ae0",
   "count": 27,
   "publicTestSeeds": {
     "verifierEd25519": "3131313131313131313131313131313131313131313131313131313131313131",
@@ -60,6 +60,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -191,6 +224,39 @@
           "signature": "1_oVBlfM5Ga03yDiFZGGLoOVZ1I1dTzbzJtJJgxjQU6T-xa3_Oy7wQ_ZxuInWq6EfZ9iSkCvN04Bn4jb_K1pCA"
         }
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {},
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -289,6 +355,39 @@
           "identifier": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
           "assertion": "{\"classification\":\"approved\",\"score\":0.98}",
           "signature": "A_oVBlfM5Ga03yDiFZGGLoOVZ1I1dTzbzJtJJgxjQU6T-xa3_Oy7wQ_ZxuInWq6EfZ9iSkCvN04Bn4jb_K1pCA"
+        }
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
         }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {},
@@ -398,6 +497,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -544,6 +676,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -680,6 +845,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -826,6 +1024,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -970,6 +1201,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -1116,6 +1380,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -1260,6 +1557,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -1406,6 +1736,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -1550,6 +1913,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -1696,6 +2092,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -1840,6 +2269,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -1986,6 +2448,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -2113,6 +2608,39 @@
       "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
       "methodEvidence": {
         "disposition": "unavailable"
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -2259,6 +2787,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -2399,6 +2960,39 @@
           "authenticated": false
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -2545,6 +3139,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -2689,6 +3316,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -2835,6 +3495,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": false
@@ -2957,6 +3650,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -3103,6 +3829,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -3247,6 +4006,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
@@ -3393,6 +4185,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -3538,6 +4363,39 @@
         },
         "proofValid": true
       },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
+      },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
           "available": true,
@@ -3682,6 +4540,39 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": true,
+          "reference": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+            },
+            "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+            "signer": "substrate-validator-set:demos-mainnet:42"
+          },
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/classification/42"
+            },
+            "response": {
+              "status": 200,
+              "data": "{\"classification\":\"approved\",\"score\":0.98}",
+              "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          }
+        }
       },
       "trustedNativeTransactionObservationsByCanonicalRef": {
         "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {

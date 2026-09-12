@@ -1,5 +1,6 @@
 # DACS Changelog
 
+
 All notable changes to the Demos Agent Commerce Standards.
 
 This document follows the spirit of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The format is adapted for a standards document rather than a software project: the focus is on normative changes that affect implementers, not on internal editorial revisions.
@@ -12,6 +13,35 @@ The format used per release:
 - **Governance** — changes to stewardship, working-group framing, or progressive-anchoring phase.
 
 ## [Unreleased]
+
+### Fixed — corrective-profile consumer and AP2 composition boundaries
+
+- Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.
+- **Atomic AP2-7 admission composition** (DACS-4 §9.5.6 AP2-7; #343) —
+  composes verified CheckoutMandate/PaymentMandate admission with one
+  handler-owned atomic binding-store decision before provider metadata or
+  submission. The closed trusted context validates every participant before
+  selection. Durable modeled state retains the exact AP2-6 key plus immutable
+  operation payload/fingerprint and optional provider reference, allowing
+  reference-first reconciliation, lost-response same-key resubmission, and
+  settlement reuse. Only `bind-new` authorizes a new payment; a recovery request
+  remains `submitNewPayment: false`, and malformed continuity, cross-job/phase
+  replay, caller reset assertions, duplicates, and conflicts fail closed.
+- **Current DACS-5 consumers require trusted profile authority** (DACS-5
+  §10.4.2 BB-5 / §10.5 Replay; CORE §11.1.2; #343) — current logical-address,
+  BB-5 binding, resolution-context, and reputation-replay paths now require
+  verifier-owned `(session, role) → participant` authority for the exact release
+  pin and complete module tuple, plus independently authenticated Ed25519 keys.
+  Public reputation operations authenticate expected party/window/basis and
+  ordered content-reference authorities before every callback, including empty
+  results; signed/caller identities cannot initialize the role map. Explicitly
+  named legacy replay paths preserve frozen historical bytes and structural-only
+  behavior without current authority or effects.
+- **HTLC-9 verifier authority and parser boundary** (#343) — the fixture verifier
+  now checks each unchanged signed record against an independently pinned phase
+  orchestrator and rejects duplicate JSON members recursively before JCS,
+  hashing, or signature verification. Fixture payloads and signatures are
+  byte-preserved.
 
 ### Added — distinct identity-bound agreement paths
 
@@ -156,8 +186,10 @@ The format used per release:
   An exact-tuple retry resumes with the same AP2-6 key and can never create or
   count a second payment; cross-job/cross-phase reuse rejects, and conflicting
   stored bindings fail closed.
-- **Executable AP2 handler-safety candidates** cover idempotency-key bytes and
-  NFC; exact compact-JWS `transaction_id` derivation with `_sd_alg` selection;
+- **Executable AP2 handler-safety candidates** cover idempotency-key bytes,
+  JID-1 refusal before hashing, and the frozen NFC-tagged recipe as an identity
+  operation for valid current IDs; exact compact-JWS `transaction_id`
+  derivation with `_sd_alg` selection;
   separate CheckoutMandate + PaymentMandate admission before AP2-7/provider
   side effects; exact-tuple retry/resume; cross-session/cross-phase replay;
   the DACS checkout-signature profile; and split-credential registration.
@@ -222,6 +254,35 @@ The format used per release:
   or proves the prior authorization cannot settle. Legacy readers reject the
   unknown phase; ordinary and repeated payment pipelines retain their prior
   meaning.
+
+### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.7 / DACS-2 v0.6 / DACS-3 v0.5 / DACS-4 v0.7 / DACS-5 v0.5
+
+- **Canonical byte-exact `jobId` grammar** (CORE §B.1 JID-1..JID-4;
+  DACS-4 §9.5.8; DACS-5 §10.3/§10.4.2; #339) — replaces the ambiguous
+  “ULID or substrate-equivalent” form with one 26-character uppercase
+  Crockford ULID grammar (`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`). Current producers
+  emit that form directly; consumers validate before logical-address
+  assembly, job-specific hashing, discovery, lookup, comparison, signing, or
+  side effects and never trim, case-fold, alias-decode, percent-decode, or
+  Unicode-normalize it. Cross-artifact equality is byte-exact. The DACS-5
+  bundle address is now explicitly
+  `stor-` plus the lowercase SHA-256 hex of
+  `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 47 deterministic
+  vectors with three independent literal address known answers, Unicode/case/
+  alias/overflow negatives, comparison cases, and executed zero-hash/
+  zero-lookup assertions for malformed input. Exact-profile cases refuse
+  caller-supplied matching objects—including empty, partial, and
+  unsupported-version tuples and copied reference labels—because only
+  verifier-owned trusted context bound to the exact session and authenticated
+  peer identity can establish admission. Missing, duplicate, unauthenticated,
+  identity-mismatched, and session-mismatched authority all fail closed.
+- **Compatibility boundary** (CORE §11.1.2; PROFILE) — this change is not
+  minor-additive. Live use requires the exact coordinated release/commit and
+  complete module tuple to be authenticated before protocol action; mixed
+  pre-JID-1/current operation refuses. Historical artifacts remain available
+  only through an explicitly selected legacy-replay path that cannot derive a
+  current address, perform a current lookup, create a current signature, or
+  authorize an effect.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

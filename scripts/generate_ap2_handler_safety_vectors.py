@@ -22,17 +22,19 @@ COMPACT_JWS_RE = re.compile(
 HASH_ALGORITHMS = {
     "sha-256": hashlib.sha256,
 }
+JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 
 
 def canonical_json(value: object) -> bytes:
     return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
 
 
 def derive_key(job_id: str, phase_index: int) -> str:
-    if not isinstance(job_id, str) or not job_id:
-        raise ValueError("jobId must be a non-empty string")
+    if not isinstance(job_id, str) or JOB_ID_RE.fullmatch(job_id) is None:
+        raise ValueError("jobId must satisfy JID-1")
     if type(phase_index) is not int or phase_index < 0:
         raise ValueError("phaseIndex must be a non-negative integer")
     preimage = (
@@ -89,8 +91,8 @@ def transaction_id_case(
     return case
 
 
-def key_case(name: str, job_id: object, phase_index: object, expected: str, note: str,
-             *, normalized_job_id: str | None = None) -> dict[str, object]:
+def key_case(name: str, job_id: object, phase_index: object, expected: str,
+             note: str) -> dict[str, object]:
     case: dict[str, object] = {
         "name": name,
         "op": "derive-idempotency-key",
@@ -101,18 +103,111 @@ def key_case(name: str, job_id: object, phase_index: object, expected: str, note
     }
     if expected == "pass":
         case["expectedKey"] = derive_key(job_id, phase_index)  # type: ignore[arg-type]
-    if normalized_job_id is not None:
-        case["normalizedJobId"] = normalized_job_id
     return case
 
 
-def binding(transaction_id: str, job_id: str, phase_index: int, state: str) -> dict[str, object]:
+def fixture_provider_request(job_id):
+    """Deterministic local provider request; never used as a consumer fallback."""
+    return {
+        "providerEndpoint": "https://provider.example.invalid/payments",
+        "paymentMandate": "fixture-payment-mandate-v1",
+        "checkoutId": "checkout-123",
+        "payee": "merchant-fixture",
+        "amount": "10.00",
+        "currency": "USD",
+        "instrument": "fixture-instrument-1",
+        "metadata": {"dacs_job_id": job_id},
+    }
+
+
+def operation_payload(transaction_id, job_id, phase_index, provider_request):
+    """Bind the complete effect-bearing provider request, including metadata."""
     return {
         "transactionId": transaction_id,
         "jobId": job_id,
         "phaseIndex": phase_index,
-        "state": state,
+        "providerRequest": provider_request,
     }
+
+
+def operation_fingerprint(payload: object) -> str:
+    return hashlib.sha256(canonical_json(payload)).hexdigest()
+
+
+def binding(
+    transaction_id: str,
+    job_id: str,
+    phase_index: int,
+    state: str,
+    *,
+    provider_recovery_reference: str | None = None,
+    settlement: dict[str, object] | None = None,
+    payload: dict[str, object] | None = None,
+    idempotency_key: str | None = None,
+    fingerprint: str | None = None,
+) -> dict[str, object]:
+    exact_payload = operation_payload(transaction_id, job_id, phase_index, fixture_provider_request(job_id)) if payload is None else payload
+    result: dict[str, object] = {
+        "transactionId": transaction_id,
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "state": state,
+        "idempotencyKey": derive_key(job_id, phase_index) if idempotency_key is None else idempotency_key,
+        "operationFingerprint": operation_fingerprint(exact_payload) if fingerprint is None else fingerprint,
+        "operationPayload": exact_payload,
+    }
+    if provider_recovery_reference is not None:
+        result["providerRecoveryReference"] = provider_recovery_reference
+    if state == "settled" and settlement is None:
+        settlement = {"status": "captured", "transactionId": transaction_id, "operationFingerprint": operation_fingerprint(exact_payload)}
+    if settlement is not None:
+        result["settlement"] = settlement
+    return result
+
+
+def admission_want(
+    *,
+    hash_calls: int = 0,
+    resolver_calls: int = 0,
+    metadata_calls: int = 0,
+    binding_store_calls: int = 0,
+    provider_status_calls: int = 0,
+    provider_request_calls: int | None = None,
+    binding_action: str | None = None,
+    reserve: bool = False,
+    submit: bool = False,
+    submit_new: bool | None = None,
+    idempotency_key: str | None = None,
+    derived_transaction_id: object = MISSING,
+) -> dict[str, object]:
+    operation_order: list[str] = []
+    if binding_store_calls:
+        operation_order.append("atomicBindingStoreDecision")
+    if provider_status_calls:
+        operation_order.append("fetchProviderStatus")
+    if metadata_calls:
+        operation_order.append("constructProviderMetadata")
+    if submit:
+        operation_order.append("submitProviderPayment")
+    want: dict[str, object] = {
+        "hashCalls": hash_calls,
+        "resolverCalls": resolver_calls,
+        "metadataCalls": metadata_calls,
+        "bindingStoreCalls": binding_store_calls,
+        "providerStatusCalls": provider_status_calls,
+        "providerRequestCalls": (
+            int(submit) if provider_request_calls is None else provider_request_calls
+        ),
+        "bindingAction": binding_action,
+        "operationOrder": operation_order,
+        "reserveAp2Binding": reserve,
+        "submitProviderPayment": submit,
+        "submitNewPayment": submit if submit_new is None else submit_new,
+        "idempotencyKeys": [idempotency_key] if idempotency_key is not None else [],
+    }
+    if derived_transaction_id is not MISSING:
+        want["derivedTransactionId"] = derived_transaction_id
+    return want
 
 
 def vectors() -> list[dict[str, object]]:
@@ -130,6 +225,9 @@ def vectors() -> list[dict[str, object]]:
     changed_signature_tx = derive_transaction_id(changed_signature_jws)
     admission_common: dict[str, object] = {
         "op": "checkout-payment-admission",
+        "jobId": job_a,
+        "phaseIndex": 3,
+        "peerIdentity": "did:demos:agent:" + "22" * 32,
         "checkoutMandatePresent": True,
         "checkoutMandateVerified": True,
         "paymentMandatePresent": True,
@@ -153,9 +251,12 @@ def vectors() -> list[dict[str, object]]:
             "a different job receives a distinct provider key at the same phase index",
         ),
         key_case(
-            "ap2-key-nfc-normalization", "cafe\u0301-job", 0, "pass",
-            "decomposed and composed job identifiers derive identical bytes",
-            normalized_job_id="caf\u00e9-job",
+            "ap2-key-noncanonical-unicode-error", "cafe\u0301-job", 0, "error",
+            "a decomposed non-JID-1 identifier refuses before hashing",
+        ),
+        key_case(
+            "ap2-key-overflow-job-error", "8" + job_a[1:], 0, "error",
+            "a 130-bit overflow-form ULID refuses before hashing",
         ),
         key_case(
             "ap2-key-negative-phase-error", job_a, -1, "error",
@@ -208,14 +309,200 @@ def vectors() -> list[dict[str, object]]:
             "name": "ap2-admission-complete-chain-match",
             "caseClass": "positive",
             "expected": "pass",
-            "want": {
-                "derivedTransactionId": tx,
-                "reserveAp2Binding": True,
-                "submitProviderPayment": True,
-            },
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                metadata_calls=1,
+                binding_store_calls=1,
+                binding_action="bind-new",
+                reserve=True,
+                submit=True,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
             "note": (
                 "separate verified CheckoutMandate and PaymentMandate artifacts with a "
                 "matching digest admit side effects"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-same-tuple-inflight-resumes",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "the composed handler re-dispatches the retained in-flight operation "
+                "with its exact AP2-6 key and no new-payment authority"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-same-tuple-settled-resumes",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resume-settlement",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "the composed handler resolves a settled exact-tuple retry without "
+                "metadata construction or another provider payment"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-recovery-lost-response-resubmits-same-key",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "an ambiguous lost response is retried with the retained exact operation "
+                "and AP2-6 key, without a new payment authorization"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-recovery-reference-reconciles-captured",
+            "caseClass": "positive",
+            "expected": "pass",
+            "providerStatus": "captured",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                provider_status_calls=1,
+                binding_action="resume-settlement",
+                derived_transaction_id=tx,
+            ),
+            "note": "a retained provider reference reconciles captured status into reusable settlement",
+        },
+        {
+            **admission_common,
+            "name": "ap2-recovery-reference-not-captured-resubmits-same-key",
+            "caseClass": "boundary",
+            "expected": "pass",
+            "providerStatus": "not-captured",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                provider_status_calls=1,
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "confirmed non-capture permits only a same-key same-operation provider "
+                "request, never a distinct payment authorization"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-cross-job-replay-refuses",
+            "caseClass": "negative",
+            "jobId": job_b,
+            "expected": "fail",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="reject-replay",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "a valid current-profile presentation for another session is rejected "
+                "by the authoritative store before provider work"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-cross-phase-replay-refuses",
+            "caseClass": "negative",
+            "phaseIndex": 4,
+            "expected": "fail",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="reject-replay",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "a valid presentation at another phase is rejected by the authoritative "
+                "store before provider work"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-duplicate-bindings-refuse",
+            "caseClass": "negative",
+            "expected": "error",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="refuse-conflict",
+                derived_transaction_id=tx,
+            ),
+            "note": "duplicate authoritative entries fail closed before provider work",
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-conflicting-bindings-refuse",
+            "caseClass": "negative",
+            "expected": "error",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="refuse-conflict",
+                derived_transaction_id=tx,
+            ),
+            "note": "conflicting authoritative entries fail closed before provider work",
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-caller-store-assertion-cannot-authorize",
+            "caseClass": "negative",
+            "priorBindings": [],
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resubmit-same-key",
+                submit=True,
+                submit_new=False,
+                idempotency_key=derive_key(job_a, 3),
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "a caller-supplied empty-store assertion is ignored; the handler-owned "
+                "in-flight binding permits only exact retained-operation same-key recovery"
             ),
         },
         {
@@ -224,11 +511,11 @@ def vectors() -> list[dict[str, object]]:
             "caseClass": "negative",
             "paymentTransactionId": changed_signature_tx,
             "expected": "fail",
-            "want": {
-                "derivedTransactionId": tx,
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                derived_transaction_id=tx,
+            ),
             "note": (
                 "a PaymentMandate mismatch rejects before AP2-7 reservation or provider "
                 "submission"
@@ -241,10 +528,7 @@ def vectors() -> list[dict[str, object]]:
             "checkoutMandatePresent": False,
             "checkoutMandateVerified": False,
             "expected": "fail",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(),
             "note": "a standalone PaymentMandate is not a complete AP2 checkout chain",
         },
         {
@@ -254,10 +538,7 @@ def vectors() -> list[dict[str, object]]:
             "paymentMandatePresent": False,
             "paymentMandateVerified": False,
             "expected": "fail",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(),
             "note": "a CheckoutMandate alone cannot authorize payment",
         },
         {
@@ -267,10 +548,7 @@ def vectors() -> list[dict[str, object]]:
             "algorithm": "Ed25519",
             "signatureGeneration": "deterministic",
             "expected": "fail",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(),
             "note": "the DACS strict signature profile is enforced before either side effect",
         },
         {
@@ -279,11 +557,95 @@ def vectors() -> list[dict[str, object]]:
             "caseClass": "boundary",
             "_sd_alg": "dacs-unknown-hash",
             "expected": "error",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(hash_calls=1, resolver_calls=1),
             "note": "unsupported digest selection fails before AP2-7 reservation or provider submission",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-noncanonical-job-errors",
+            "caseClass": "negative",
+            "jobId": "cafe\u0301-job",
+            "expected": "error",
+            "want": admission_want(),
+            "note": "a non-JID-1 session refuses before hashes, resolution, metadata, binding, or provider calls",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-overflow-job-errors",
+            "caseClass": "boundary",
+            "jobId": "8" + job_a[1:],
+            "expected": "error",
+            "want": admission_want(),
+            "note": "an overflow-form ULID refuses before every modeled job-specific effect",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-negative-phase-errors",
+            "caseClass": "boundary",
+            "phaseIndex": -1,
+            "expected": "error",
+            "want": admission_want(),
+            "note": "an invalid phase index refuses before every modeled job-specific effect",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-unauthenticated-profile-refuses",
+            "caseClass": "negative",
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "trusted context that does not authenticate the expected peer refuses before protocol action",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-caller-profile-refuses",
+            "caseClass": "negative",
+            "peerProfile": {
+                "releasePin": "0000000000000000000000000000000000000001",
+                "moduleVersions": {
+                    "core": "0.3",
+                    "dacs1": "0.7",
+                    "dacs2": "0.6",
+                    "dacs3": "0.5",
+                    "dacs4": "0.7",
+                    "dacs5": "0.5",
+                },
+            },
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "matching caller-supplied profile bytes do not substitute for authenticated peer evidence",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-duplicate-profile-refuses",
+            "caseClass": "negative",
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "duplicate authenticated records for the expected peer fail closed before protocol action",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-peer-identity-mismatch-refuses",
+            "caseClass": "negative",
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "a current profile authenticated for a different peer cannot authorize this participant",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-session-mismatch-refuses",
+            "caseClass": "negative",
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "profile evidence authenticated for another session cannot authorize AP2 effects",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-copied-profile-reference-refuses",
+            "caseClass": "negative",
+            "peerProfileRef": "fixture:peer-current",
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "a caller cannot copy a locally meaningful label to manufacture trusted context",
         },
         {
             "name": "ap2-first-presentation-binds",
@@ -304,8 +666,8 @@ def vectors() -> list[dict[str, object]]:
             "phaseIndex": 3,
             "priorBindings": [binding(tx, job_a, 3, "in-flight")],
             "expected": "pass",
-            "want": {"action": "resume-existing", "submitNewPayment": False},
-            "note": "an exact retry resumes with the same AP2-6 key rather than becoming replay",
+            "want": {"action": "resubmit-same-key", "submitNewPayment": False},
+            "note": "an exact retry re-dispatches the retained operation with the same AP2-6 key and no new-payment authority",
         },
         {
             "name": "ap2-same-tuple-settled-resumes-evidence",
@@ -317,6 +679,63 @@ def vectors() -> list[dict[str, object]]:
             "expected": "pass",
             "want": {"action": "resume-settlement", "submitNewPayment": False},
             "note": "a settled retry reuses the existing provider result and never counts twice",
+        },
+        {
+            "name": "ap2-recovery-pending-without-reference-resubmits-same-key",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "recovery-pending")],
+            "expected": "pass",
+            "want": {"action": "resubmit-same-key", "submitNewPayment": False},
+            "note": "lost response recovery retains one operation and its exact AP2-6 key",
+        },
+        {
+            "name": "ap2-recovery-pending-with-reference-reconciles",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(
+                tx, job_a, 3, "recovery-pending",
+                provider_recovery_reference="provider-payment-123",
+            )],
+            "expected": "pass",
+            "want": {"action": "reconcile-reference", "submitNewPayment": False},
+            "note": "a retained provider reference is checked before any same-key resubmission",
+        },
+        {
+            "name": "ap2-operation-payload-conflict-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(
+                tx, job_a, 3, "recovery-pending",
+                payload={
+                    "transactionId": tx,
+                    "jobId": job_a,
+                    "phaseIndex": 3,
+                    "amount": "different-operation",
+                },
+            )],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "same transaction and tuple cannot replace the immutable operation payload",
+        },
+        {
+            "name": "ap2-idempotency-key-continuity-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(
+                tx, job_a, 3, "recovery-pending", idempotency_key="0" * 64
+            )],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a stored key inconsistent with the reserved tuple fails closed",
         },
         {
             "name": "ap2-cross-job-replay-rejects",
@@ -353,6 +772,141 @@ def vectors() -> list[dict[str, object]]:
             "expected": "error",
             "want": {"action": "refuse-conflict", "submitNewPayment": False},
             "note": "a corrupt or racy binding store fails closed instead of selecting a winner",
+        },
+        {
+            "name": "ap2-null-binding-store-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": None,
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a null authoritative store snapshot fails closed",
+        },
+        {
+            "name": "ap2-scalar-binding-store-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": "empty",
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a scalar authoritative store snapshot fails closed",
+        },
+        {
+            "name": "ap2-null-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [None],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a null store member fails closed rather than raising",
+        },
+        {
+            "name": "ap2-scalar-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [7],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a scalar store member fails closed rather than raising",
+        },
+        {
+            "name": "ap2-partial-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [{"transactionId": tx, "jobId": job_a, "phaseIndex": 3}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a partial store member fails the closed decision shape",
+        },
+        {
+            "name": "ap2-wrong-type-transaction-id-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"transactionId": 1}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-string stored transactionId fails closed",
+        },
+        {
+            "name": "ap2-wrong-type-job-id-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"jobId": 1}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-string stored jobId fails closed",
+        },
+        {
+            "name": "ap2-wrong-type-phase-index-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"phaseIndex": "3"}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-integer stored phaseIndex fails closed",
+        },
+        {
+            "name": "ap2-wrong-type-state-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"state": 1}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-string stored state fails closed",
+        },
+        {
+            "name": "ap2-unknown-state-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "pending")],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "an unknown stored state fails closed",
+        },
+        {
+            "name": "ap2-extra-field-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"trusted": True}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "an open-shaped store member cannot add a caller-controlled decision field",
+        },
+        {
+            "name": "ap2-duplicate-stored-bindings-error",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [
+                binding(tx, job_a, 3, "in-flight"),
+                binding(tx, job_a, 3, "in-flight"),
+            ],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "even byte-identical duplicate store entries fail closed",
         },
         {
             "name": "ap2-checkout-randomized-signature-pass",
@@ -423,12 +977,18 @@ def vectors() -> list[dict[str, object]]:
 
 def render() -> str:
     cases = vectors()
+    for case in cases:
+        if case["op"] in {"checkout-payment-admission", "transaction-binding"}:
+            case["providerRequest"] = fixture_provider_request(case["jobId"])
     document = {
         "set": "ap2-handler-safety-v0.6",
-        "spec": "DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7",
+        "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
         "scope": (
             "candidate handler predicates: idempotency-key and transaction-id derivation, "
-            "checkout/payment admission ordering, and retry/replay consumption are executed; "
+            "authenticated synthetic-profile and JID/phase admission ordering, checkout/payment "
+            "admission atomically composed with handler-owned AP2-7 store decisions, and "
+            "retry/replay consumption are executed; the fixture release pin is "
+            "not a published release or live deployment profile; "
             "provider capability, mandate cryptographic verification, and signature generation "
             "are modeled inputs"
         ),

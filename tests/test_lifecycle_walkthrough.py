@@ -160,6 +160,109 @@ class LifecycleWalkthroughTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "phaseSummary index"):
             self.module.validate_happy_path(stages, candidate)
 
+        agreement_unsigned = self.module.signing_scope(
+            "PayeeBoundAgreementDocument", context["agreement"]
+        )
+        agreement_unsigned["terms"]["payoutBindings"][0]["phaseIndex"] = True
+        agreement = self.module.signed_multi(
+            "PayeeBoundAgreementDocument",
+            agreement_unsigned,
+            ["buyer", "seller"],
+        )
+        self.assertEqual(
+            "agreement payout binding phaseIndex is invalid",
+            self.module.validate_agreement_against_listing(
+                context["listing"],
+                agreement,
+                trusted_role_claims=context["trustedAgreementRoleClaims"],
+            )["reason"],
+        )
+
+        bundle_unsigned = self.module.signing_scope(
+            "AttestationBundle", context["bundleCopies"]["buyer"]
+        )
+        bundle_unsigned["phaseSummary"][1]["index"] = True
+        bundle = self.module.signed_multi(
+            "AttestationBundle",
+            bundle_unsigned,
+            ["buyer", "seller", "orchestrator"],
+        )
+        bundle["anchoredByRole"] = "buyer"
+        consumption = self.module.consume_bundle_pair(
+            bundle,
+            context["bundleCopies"]["seller"],
+            trusted_role_claims=context["trustedSessionRoleClaims"],
+        )
+        self.assertEqual("invalid", consumption["disposition"])
+        self.assertIn("phaseSummary index", consumption["reason"])
+
+    def test_identity_bundle_accepts_authenticated_additive_members(self):
+        unsigned = {
+            "bundleVersion": "1",
+            "presentedBy": self.module.CLAIMS["buyer"],
+            "presentedAt": self.module.NOW,
+            "claims": [{"ref": self.module.CLAIMS["buyer"]}],
+            "futureMinorContext": {"advisory": ["retained", "inert"]},
+        }
+        bundle = self.module.sign_identity_presentation(unsigned, "buyer")
+        validation = self.module.validate_identity(bundle)
+        self.assertTrue(validation["accepted"], validation["errors"])
+        retained = json.loads(validation["verification"]["canonicalBytes"])
+        self.assertEqual(
+            retained["futureMinorContext"],
+            {"advisory": ["retained", "inert"]},
+        )
+
+    def test_signature_algorithm_must_select_the_executed_suite(self):
+        for envelope in (
+            "not-an-object",
+            {},
+            {"algorithm": "rsa", "signer": self.module.CLAIMS["seller"], "value": "x"},
+            {"algorithm": [], "signer": self.module.CLAIMS["seller"], "value": "x"},
+            {"algorithm": {}, "signer": self.module.CLAIMS["seller"], "value": "x"},
+        ):
+            with self.subTest(envelope=envelope):
+                results = self.module.verify_signatures(
+                    "Listing", {"signature": envelope}
+                )
+                self.assertEqual(len(results), 1)
+                self.assertFalse(results[0]["verified"])
+                self.assertFalse(results[0]["canonicalBase64Url"])
+
+    def test_consumers_require_independently_authenticated_role_maps(self):
+        _, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        with self.assertRaises(TypeError):
+            self.module.validate_agreement_against_listing(
+                context["listing"], context["agreement"]
+            )
+        with self.assertRaises(TypeError):
+            self.module.consume_bundle_pair(
+                context["bundleCopies"]["buyer"],
+                context["bundleCopies"]["seller"],
+            )
+
+        swapped = dict(context["trustedAgreementRoleClaims"])
+        swapped["buyer"], swapped["seller"] = swapped["seller"], swapped["buyer"]
+        agreement = self.module.validate_agreement_against_listing(
+            context["listing"],
+            context["agreement"],
+            trusted_role_claims=swapped,
+        )
+        self.assertFalse(agreement["accepted"])
+        self.assertEqual(
+            agreement["reason"],
+            "agreement parties do not match independently authenticated roles",
+        )
+
+        incomplete_session_roles = dict(context["trustedAgreementRoleClaims"])
+        consumption = self.module.consume_bundle_pair(
+            context["bundleCopies"]["buyer"],
+            context["bundleCopies"]["seller"],
+            trusted_role_claims=incomplete_session_roles,
+        )
+        self.assertEqual(consumption["disposition"], "invalid")
+        self.assertIn("independently authenticated session roles", consumption["reason"])
+
     def test_cross_stage_references_and_delivery_are_complete(self):
         listing = self.artifacts["listing-minimum-lifecycle"]
         agreement = self.artifacts["agreement-payee-bound-fixed-price"]

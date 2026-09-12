@@ -62,6 +62,10 @@ REGISTERED_SCHEMES = frozenset(
 )
 
 
+class DuplicateJSONMember(ValueError):
+    """A JSON object repeated an exact member name."""
+
+
 def loads_unique_json(value: str | bytes | bytearray) -> Any:
     """Parse JSON while rejecting exact duplicate member names recursively."""
 
@@ -69,7 +73,7 @@ def loads_unique_json(value: str | bytes | bytearray) -> Any:
         result: dict[str, Any] = {}
         for key, item in pairs:
             if key in result:
-                raise ValueError(f"invalid JSON: duplicate JSON member {key!r}")
+                raise DuplicateJSONMember(f"invalid JSON: duplicate JSON member {key!r}")
             result[key] = item
         return result
 
@@ -106,6 +110,14 @@ def exact_safe_integer(value: Any, *, minimum: int | None = None) -> bool:
     if type(value) is not int or not -SAFE_INTEGER <= value <= SAFE_INTEGER:
         return False
     return minimum is None or value >= minimum
+
+
+def price_term_unit_is_valid(value: Any) -> bool:
+    """Validate PriceTerm's optional unit without imposing content semantics."""
+
+    return isinstance(value, dict) and (
+        "unit" not in value or isinstance(value["unit"], str)
+    )
 
 
 @dataclass(frozen=True)

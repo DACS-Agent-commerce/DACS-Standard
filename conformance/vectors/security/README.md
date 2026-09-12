@@ -21,13 +21,23 @@ converged; the others await a second impl). Derived from the §12.4 threat-to-te
 Cross-running a set against another implementation — and the candidate → golden
 promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 
+> **JID-1 profile boundary.** Vector sets created before the declared JID-1
+> corrective profile commonly use short, descriptive `jobId` labels. Those
+> cases are frozen rule-local or derivation-only legacy fixtures: they may
+> reproduce the historical rule named by their set, but they are not current
+> full-input sessions and cannot authorize a current address, lookup, signature,
+> payment, or other effect. A current-profile runner applies
+> `job-id-grammar-v0.1.json` and the exact-profile admission gate before running
+> any job-specific surface. Tests that intentionally replay old labels must call
+> an explicitly named legacy helper.
+
 <!-- BEGIN GENERATED: security-vector-index (scripts/generate_security_vector_index.py) -->
 
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
-| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -43,6 +53,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 366 | `error` / `fail` / `indeterminate` / `pass` |
+| [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -53,7 +64,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
-| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 38 | `error` / `fail` / `indeterminate` / `pass` |
+| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 47 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
@@ -114,21 +125,31 @@ python3 -m unittest tests.test_canonical_json_vectors -v
 
 ### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 
-30 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
+66 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
 in DACS-4 v0.6. They pin provider idempotency-key bytes, NFC handling,
 job/phase separation, malformed phase refusal, exact compact-JWS transaction-ID
 derivation, CheckoutMandate `_sd_alg` selection and SHA-256 fallback, signature-
 byte sensitivity, and refusal of malformed or unsupported algorithms. The
 composed admission cases require separate verified CheckoutMandate and
 PaymentMandate artifacts, enforce the DACS signature profile, and reject a
-transaction-ID mismatch before AP2-7 reservation or provider submission.
+transaction-ID mismatch before AP2-7 reservation or provider submission. They
+also require verifier-owned corrective-profile context bound to the exact
+session and authenticated peer identity, validate every member of the closed
+participant context before selection, and apply JID-1 plus a valid phase index before
+hashing, resolution, metadata construction, reservation, or provider
+submission. Missing, duplicate, identity-mismatched, session-mismatched,
+unauthenticated, and caller-copied profile authorities all fail closed.
 
-The same set executes first-use binding, exact-tuple retry/resume, cross-job and
-cross-phase replay refusal, and fail-closed conflicting-store handling. An exact
-retry never submits or counts a second payment. Provider capability, mandate
+The same set executes first-use binding, immutable operation payload/fingerprint
+and exact AP2-6 key continuity, reference-first status reconciliation,
+lost-response same-key resubmission, settlement reuse, cross-job/cross-phase
+replay refusal, and fail-closed malformed/conflicting-store handling. A recovery
+may issue a provider request, but it carries the retained key and operation with
+`submitNewPayment: false`; it never creates or counts a second payment. Provider capability, mandate
 cryptographic verification, and checkout signature generation remain modeled
 inputs: the cases do not claim to introspect a live provider credential, replace
-AP2 signature verification, or prove a signer's nonce-generation implementation.
+AP2 signature verification, prove a signer's nonce-generation implementation,
+or establish crash-safe production durability.
 Regenerate, verify, and execute with:
 
 ```sh
@@ -1157,28 +1178,71 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
 
-Thirty-eight candidate cases make `ClaimRequirement.verificationRequired: false`
+Forty-seven candidate cases make `ClaimRequirement.verificationRequired: false`
 executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
 bundle and composite record carries a deterministic Ed25519 signature; vectors
 that use a real verification result sign it under the independent VerifyResult
-domain. The two signature-negative cases mutate one otherwise-valid signature.
+domain and supply the independently authenticated signer for each recipe family
+through trusted evaluator context. The signature-negative cases cover both a
+mutated signature and a valid signature made by an unauthorized replacement
+signer while preserving the referenced content hash.
 
 Coverage includes required and `oneOf` presence, expiry and parameter checks,
 informational `issuedAt`, optional failing/stale/unavailable `verifiedBy`,
 malformed references, invalid presence-only `maxAge`/`recipeVersion`, mixed
 presence and verified members, no-synthetic-result enforcement, exact bundle
 and requirement hash replay, missing replay input, decision recomputation, and
-the controlled-key versus existence-only-LEI selector boundary. Exact-boolean
-mode selection, vacuous empty member collections, and invalid empty inner
-`oneOf` groups pin the configuration edges. The set adds no
-wire member: the signed bundle and the existing CVR `bundleHash` are the
-presence evidence and binding.
+the authenticated VerifyResult-authority boundary, plus the controlled-key
+versus existence-only-LEI selector boundary. Verified parameters use only
+authenticated result method/data while presence parameters use signed claim
+metadata; one result may satisfy multiple predicates only when its data matches
+each. The complete ordered `freshness` + `dealSpecific` projection is bound
+before artifact authentication. Signed `generatedAt` reconstructs historical
+decisions, while independently retained current time governs reusable results;
+distinct session jobs and verifier-issued nonces remain outside reusable
+VerifyResult v1 artifacts. Exact-boolean mode selection, canonical DID percent
+bytes, safe-integer times, malformed time containers, vacuous empty member
+collections, and invalid empty inner `oneOf` groups pin the configuration edges.
+The signed bundle and the existing CVR `bundleHash` remain the presence evidence
+and binding; the bundle's existing `sessionNonce` conveyance is consumed against
+verifier-owned issuance state.
+
+Production acceptance uses independently retained phase-input requirement and complete bundle hashes, an authenticated session-start record, and equality of the phase/session/registry revision pins. It validates required Composite members before resolving the complete ordered reference union. The actual acceptance entrypoint requalifies a historical pass at independently trusted current time and fails closed when the production bundle is unavailable. Historical fixture reconstruction is a separate non-authorizing diagnostic; this pack does not implement signed DACS-5 bundle/recordRef replay admission. Source AttestationRef signer omission and a distinct issuer remain valid under the existing wire shape.
+
+This remains an offline conformance model: it authenticates the committed
+VerifyResult bytes, reference hash, registered recipe-family signer, and the
+signed source-attestation reference carried by that result. It does not fetch a
+live authority, prove durable nonce storage across process restarts, or promote
+the referenced source attestation to independently resolved live-provider
+evidence.
 
 Regenerate and execute it from the repository root:
 
 ```sh
 python3 scripts/generate_presence_only_claim_vectors.py --check
 python3 -m unittest tests.test_presence_only_claim_vectors -v
+```
+
+### `job-id-grammar-v0.1.json` — CORE §B.1 JID-1..JID-4
+
+Forty-seven deterministic cases pin the complete canonical DACS `jobId`
+grammar, byte-exact comparison, logical-address insertion, and the DACS-5
+bundle-address preimage. Invalid case, alias, overflow, whitespace, Unicode,
+type, and length inputs execute through an instrumented gate that must make
+zero hash and resolver calls. The buyer, seller, and orchestrator bundle cases
+also carry literal address known answers independent of the generator.
+Profile-admission cases receive separate verifier-owned context and require it
+to bind the exact session and authenticated peer identity to the configured
+release pin plus complete module tuple. Missing, duplicate, identity-mismatched,
+session-mismatched, or unauthenticated records refuse; caller-supplied matching
+objects or copied reference labels do not establish admission.
+
+Regenerate and run with:
+
+```sh
+python3 scripts/generate_job_id_grammar_vectors.py --check
+python3 -m unittest tests.test_job_id_grammar_vectors -v
+
 ```
 
 ### `identity-bundle-hash-binding-v0.1.json` — CORE §B.2 IBH-1..IBH-6
@@ -1260,3 +1324,6 @@ EVM row is cross-run-converged with `dacs-verify` (#159); agreement-listing and
 vp-replay await a second independent impl to cross-run against.
 `feeschedule-reconciliation` was authored on RB's request (#186) covering §8.5.3
 FS-1..FS-5 + §9.7.2 FR-1..FR-4; awaiting a second independent impl to cross-run against.
+
+
+The current AP2 candidate retains the complete effect-bearing provider request, including mandate, checkout, payee, amount/currency, instrument, destination and metadata, under its operation fingerprint. Same-key recovery dispatches that retained request and refuses changed semantics before provider interaction. Captured recovery must match the operation fingerprint, transaction and retained provider reference. These are local fake-provider controls; mandate cryptographic verification and authenticated status-fetch semantics remain modeled inputs. The entire trusted participant map requires unique identities.

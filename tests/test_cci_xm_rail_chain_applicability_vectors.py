@@ -43,8 +43,10 @@ def claim_eip155_chain(claim):
     subchain = parts[2]
     if CHAIN_ID_RE.fullmatch(subchain) is None:
         return None
-    # This textual PB-2 profile can only match a conforming RailDefinition
-    # chainId, whose signed JSON number is bounded by CORE's safe-integer rule.
+    # PB-2 compares this textual profile with RailDefinition.chainId, which is
+    # a signed JSON number and therefore cannot exceed CORE's safe-integer
+    # range. Larger cci-xm identifiers remain readable generic claims, but do
+    # not establish EVM rail applicability.
     if (len(subchain), subchain) > (
         len(MAX_SAFE_CHAIN_ID_TEXT),
         MAX_SAFE_CHAIN_ID_TEXT,
@@ -269,6 +271,64 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual(result["expected"], "error")
                 self.assertEqual(result["failedAt"], "RD-5")
                 self.assertFalse(result["maySubmitPayment"])
+
+    def test_eip155_chain_ids_stop_at_the_safe_integer_boundary(self):
+        maximum = 2**53 - 1
+        claim = f"cci-xm:evm:{maximum}:opaque-address"
+        self.assertEqual(claim_eip155_chain(claim), f"eip155:{maximum}")
+        rail = {
+            "network": {"kind": "evm", "chainId": maximum},
+            "asset": {"kind": "erc20", "chainId": maximum},
+        }
+        self.assertEqual(rail_eip155_chain(rail), f"eip155:{maximum}")
+
+        self.assertIsNone(
+            claim_eip155_chain(f"cci-xm:evm:{maximum + 1}:opaque-address")
+        )
+        oversized_claim = f"cci-xm:evm:{maximum + 1}:opaque-address"
+        self.assertEqual(
+            parse_claim_reference(oversized_claim).canonical,
+            oversized_claim,
+        )
+        very_long_claim = f"cci-xm:evm:{'9' * 5000}:opaque-address"
+        self.assertEqual(
+            parse_claim_reference(very_long_claim).canonical,
+            very_long_claim,
+        )
+        self.assertIsNone(claim_eip155_chain(very_long_claim))
+        with self.assertRaisesRegex(ValueError, "invalid network chainId"):
+            rail_eip155_chain(
+                {
+                    "network": {"kind": "evm", "chainId": maximum + 1},
+                    "asset": {"kind": "erc20", "chainId": maximum + 1},
+                }
+            )
+
+        rejected = evaluate(
+            {
+                "claim": oversized_claim,
+                "railDefinition": {
+                    "network": {"kind": "evm", "chainId": maximum + 1},
+                    "asset": {"kind": "erc20", "chainId": maximum + 1},
+                },
+                "tier3AgreementAssertionPresent": True,
+                "linkageDecision": "pass",
+            }
+        )
+        self.assertEqual(rejected["expected"], "error")
+        self.assertFalse(rejected["maySubmitPayment"])
+
+        result = evaluate(
+            {
+                "claim": f"cci-xm:evm:{maximum + 1}:opaque-address",
+                "railDefinition": rail,
+                "tier3AgreementAssertionPresent": True,
+            }
+        )
+        self.assertEqual(result["expected"], "pass")
+        self.assertFalse(result["tier2Applicable"])
+        self.assertEqual(result["bindingTier"], 3)
+        self.assertTrue(result["maySubmitPayment"])
 
     def test_manifest_no_longer_promotes_the_contradictory_golden(self):
         cases = {

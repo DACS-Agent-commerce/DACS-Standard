@@ -36,13 +36,13 @@ def _replayable_empty():
 
 
 def _validate(p):
-    return R.validate_resolution_context(
+    return R.validate_legacy_resolution_context(
         p["deriv"], lambda h: p["deref"].get(h), lambda _h: None, PUBKEYS,
         anchor_deref=lambda address: _anchor_deref(p, address))
 
 
 def _replay(p):
-    return R.replay_receipt(
+    return R.replay_legacy_receipt(
         p["deriv"], lambda h: p["deref"].get(h), CLAIM["seller"],
         FINALISED_AT - 1, FINALISED_AT + 1, pubkeys=PUBKEYS,
         anchor_deref=lambda address: _anchor_deref(p, address))
@@ -102,12 +102,12 @@ class Round14ReviewClosureTests(unittest.TestCase):
 
     def test_replay_without_exact_anchor_resolver_fails_closed(self):
         p = _replayable_present("R14-ANCHOR-REQUIRED")
-        ok, reasons = R.validate_resolution_context(
+        ok, reasons = R.validate_legacy_resolution_context(
             p["deriv"], lambda h: p["deref"].get(h), lambda _h: None, PUBKEYS)
         self.assertFalse(ok)
         self.assertTrue(any("authoritative copy not dereferenceable" in reason for reason in reasons))
         self.assertEqual(
-            R.replay_receipt(
+            R.replay_legacy_receipt(
                 p["deriv"], lambda h: p["deref"].get(h), CLAIM["seller"],
                 FINALISED_AT - 1, FINALISED_AT + 1, pubkeys=PUBKEYS),
             (False, None))
@@ -183,8 +183,8 @@ class Round14ReviewClosureTests(unittest.TestCase):
     def test_pure_mapping_evidence_binds_address_and_anchor_role(self):
         p = _replayable_present("R14-ADDRESS-ROLE")
         entry = p["deriv"]["resolutionContext"][0]
-        seller_address = R.logical_address(p["W"]["jobId"], "seller")
-        buyer_address = R.logical_address(p["W"]["jobId"], "buyer")
+        seller_address = R.legacy_logical_address(p["W"]["jobId"], "seller")
+        buyer_address = R.legacy_logical_address(p["W"]["jobId"], "buyer")
         entry["roleEvidence"] = {"kind": "address", "resolvedAddress": seller_address}
         entry["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": buyer_address}
         entry.pop("bb6Context")
@@ -204,7 +204,7 @@ class Round14ReviewClosureTests(unittest.TestCase):
         p = _replayable_present("R14-ADDRESS-MAP")
         entry = p["deriv"]["resolutionContext"][0]
         cp = entry["counterpartyRoleEvidence"]
-        wrong = R.logical_address(p["W"]["jobId"], "seller")
+        wrong = R.legacy_logical_address(p["W"]["jobId"], "seller")
         cp["kind"] = "address"
         cp.pop("binding")
         cp["resolvedAddress"] = wrong
@@ -218,7 +218,7 @@ class Round14ReviewClosureTests(unittest.TestCase):
         entry = p["deriv"]["resolutionContext"][0]
 
         def mapper(job_id, role):
-            return "substrate-native:" + R.logical_address(job_id, role)
+            return "substrate-native:" + R.legacy_logical_address(job_id, role)
 
         seller_address = mapper(p["W"]["jobId"], "seller")
         buyer_address = mapper(p["W"]["jobId"], "buyer")
@@ -228,7 +228,7 @@ class Round14ReviewClosureTests(unittest.TestCase):
         p["anchors"][seller_address] = p["W"]
         p["anchors"][buyer_address] = p["cp"]
 
-        result = R.validate_resolution_context(
+        result = R.validate_legacy_resolution_context(
             p["deriv"], lambda h: p["deref"].get(h), lambda _h: None, PUBKEYS,
             anchor_deref=lambda address: _anchor_deref(p, address),
             pure_mapping_resolver=mapper)

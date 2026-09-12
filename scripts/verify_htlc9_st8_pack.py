@@ -11,7 +11,9 @@ Two signed ``SettlementEvidence`` fixtures form one supersession pair:
 This verifier is executable, not a shape check: each record's Ed25519 signature
 is verified over ``"dacs-evidence:v1:" || sha256hex(JCS(record minus signature))``
 against an independently pinned ``key:<pubkey-hex>`` phase orchestrator, and
-the supersession hash is recomputed.
+the supersession hash is recomputed. JSON is parsed with recursive
+duplicate-member and non-JSON numeric-constant rejection before
+canonicalization, hashing, or signature verification.
 No amendment of any kind is accepted — ST-8 resolution is a same-phase
 supersession, not a ``correction`` (DACS-4-SETTLE.md: "No ``correction``
 amendment is used").
@@ -67,6 +69,16 @@ SIGNATURE_KEYS = {"algorithm", "signer", "value"}
 FINALITY_KEYS = {"model", "finalityObservedAt"}
 PRICE_TERM_REQUIRED_KEYS = {"amount", "currency"}
 PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
+
+
+# Compatibility API retained from #343; parsing is delegated to the shared
+# strict parser used by the other current-profile consumers.
+DuplicateJsonMember = DuplicateJSONMember
+
+
+def strict_json_loads(text: str):
+    """Parse JSON with the shared duplicate/non-finite admission rules."""
+    return loads_unique_json(text)
 
 
 def fail(path: Path, message: str) -> str:
@@ -154,6 +166,31 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     return errs
 
 
+def price_term_errors(amount: Any) -> list[str]:
+    """Validate the normative PriceTerm shape used by resolved HTLC evidence."""
+    if (
+        not isinstance(amount, dict)
+        or not isinstance(amount.get("currency"), str)
+        or not amount["currency"].strip()
+    ):
+        return [
+            "resolved evidence MUST carry paymentAmount with a non-empty currency "
+            "(REQUIRED on success-outcome records)"
+        ]
+    errors: list[str] = []
+    if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
+        errors.append("PriceTerm fields MUST be exactly amount, currency, with optional unit")
+    if (
+        not isinstance(amount.get("amount"), str)
+        or not CD1_AMOUNT.fullmatch(amount["amount"])
+        or amount["amount"] == "0"
+    ):
+        errors.append("paymentAmount.amount MUST be a positive canonical decimal string (CD-1)")
+    if not price_term_unit_is_valid(amount):
+        errors.append("paymentAmount.unit MUST be a string when present")
+    return errors
+
+
 def verify_signature(
     record: dict, expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR
 ) -> str | None:
@@ -181,9 +218,13 @@ def verify_signature(
     if not isinstance(value, str) or not is_canonical_sig6(value):
         return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
+        digest = content_hash_hex(record)
+    except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError) as exc:
+        return f"SettlementEvidence cannot be canonicalized: {exc}"
+    try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
         public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.identifier))
-        payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
+        payload = EVIDENCE_DOMAIN.encode("ascii") + digest.encode("ascii")
         public.verify(raw, payload)
     except (InvalidSignature, TypeError, ValueError, UnicodeError):
         return "signature does not verify over dacs-evidence:v1: || sha256(JCS(record minus signature))"
@@ -227,7 +268,10 @@ def load_case(
     evidence = data.get("settlementEvidence")
     if not isinstance(evidence, dict):
         return None, errors + [fail(path, "settlementEvidence MUST be an object")]
-    forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
+    try:
+        forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
+    except RecursionError as exc:
+        return None, errors + [fail(path, f"SettlementEvidence nesting is too deep: {exc}")]
     if forbidden:
         errors.append(fail(path, "ST-8 supersession MUST NOT carry amendment fields: " + ", ".join(sorted(forbidden))))
     if evidence.get("evidenceVersion") != "1":
@@ -368,16 +412,10 @@ def validate_resolved(
                 errors.append(fail(path, "time order: interim.observedAt MUST be less than settlementFinality.finalityObservedAt"))
             if fin["finalityObservedAt"] > evidence["observedAt"]:
                 errors.append(fail(path, "time order: settlementFinality.finalityObservedAt MUST be less than or equal to resolved.observedAt"))
-    amount = evidence.get("paymentAmount")
-    if not isinstance(amount, dict) or not isinstance(amount.get("currency"), str) or not amount["currency"].strip():
-        errors.append(fail(path, "resolved evidence MUST carry paymentAmount with a non-empty currency (REQUIRED on success-outcome records)"))
-    else:
-        if not PRICE_TERM_REQUIRED_KEYS <= set(amount) or not set(amount) <= PRICE_TERM_ALLOWED_KEYS:
-            errors.append(fail(path, "PriceTerm fields MUST be exactly amount, currency, with optional unit"))
-        if not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
-            errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
-        if not price_term_unit_is_valid(amount):
-            errors.append(fail(path, "paymentAmount.unit, when present, MUST be a string"))
+    errors += [
+        fail(path, error)
+        for error in price_term_errors(evidence.get("paymentAmount"))
+    ]
     ref = evidence.get("supersedesEvidenceRef")
     ref_errs = attestation_ref_errors(ref)
     if ref_errs:
@@ -385,7 +423,7 @@ def validate_resolved(
     elif interim is not None:
         try:
             expected = content_hash_hex(interim)
-        except (TypeError, ValueError, UnicodeError):
+        except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError):
             errors.append(fail(path, "interim record is not strict JCS-canonicalizable"))
             return errors
         if ref["contentHash"] != expected:
@@ -420,9 +458,12 @@ def validate_pair(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,
     )
+    admitted_interim = interim if interim is not None and not errors else None
+    if errors:
+        errors.append(fail(resolved_path, "pair binding not evaluated because interim evidence was rejected"))
     errors += validate_resolved(
         resolved_path,
-        interim,
+        admitted_interim,
         expected_phase_orchestrator=expected_phase_orchestrator,
     )
     return errors

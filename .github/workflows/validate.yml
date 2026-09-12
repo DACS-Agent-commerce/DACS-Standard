@@ -73,6 +73,9 @@ jobs:
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
 
+      - name: Verify canonical jobId vectors are deterministic
+        run: python3 scripts/generate_job_id_grammar_vectors.py --check
+
       - name: Verify SB-3 required-binding vectors are deterministic
         run: python3 scripts/generate_sb3_binding_required_vectors.py --check
 

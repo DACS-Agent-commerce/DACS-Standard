@@ -358,6 +358,10 @@ def refresh_payload_chain(case: dict, position: int = 0) -> None:
         phase_index,
         "deliver-attested-payload",
         SELLER,
+        storage_binding={
+            "effectiveAccessMode": "public",
+            "storedContentHash": deliverable_entry["storedContentHash"],
+        },
     )
     replace_dependency_receipt(
         case,
@@ -767,6 +771,10 @@ def attested_case(
             index,
             "deliver-attested-payload",
             SELLER,
+            storage_binding={
+                "effectiveAccessMode": "public",
+                "storedContentHash": digest,
+            },
         )
         attach_dependency_receipt(
             case,
@@ -947,14 +955,18 @@ def legacy_attested_case(self_signed: bool = False) -> dict:
         "artifact": artifact,
     }]
     case["verifiedReceiptByCanonicalRef"] = {}
-    for entry, ref_value, writer in (
+    for entry, ref_value, writer, storage_binding in (
         (
             payload_entry,
             {"anchor": artifact["deliverableAnchor"], "contentHash": artifact["deliverableContentHash"]},
             SELLER,
+            {
+                "effectiveAccessMode": "public",
+                "storedContentHash": payload_entry["storedContentHash"],
+            },
         ),
-        (record_entry, artifact["attestationRef"], VERIFIER),
-        (method_entry, payload_record["methodEvidenceRef"], VERIFIER),
+        (record_entry, artifact["attestationRef"], VERIFIER, None),
+        (method_entry, payload_record["methodEvidenceRef"], VERIFIER, None),
     ):
         attach_dependency_receipt(
             case,
@@ -963,6 +975,7 @@ def legacy_attested_case(self_signed: bool = False) -> dict:
             index,
             "deliver-attested-payload",
             writer,
+            storage_binding=storage_binding,
         )
     bundle(case)
     return case

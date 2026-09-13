@@ -456,7 +456,7 @@ def validate_delivery_artifact(
         if address != payload_address:
             return "fail"
         payload = find_artifact(case, payload_address, "deliverable")
-        payload_availability, payload, _ = R._resolved_delivery_dependency(
+        payload_availability, payload, payload_receipt = R._resolved_delivery_dependency(
             payload,
             {"anchor": anchor, "contentHash": content_hash},
             receipts,
@@ -554,6 +554,19 @@ def validate_delivery_artifact(
             or record.get("verificationMethodHash") != hash_hex(method)
         ):
             return "fail"
+        storage_disposition = validate_delivered_cleartext(
+            payload,
+            content_hash,
+            deliverable.get("accessModel", "public"),
+            "attested payload",
+            (
+                payload_receipt.get("storageBinding")
+                if isinstance(payload_receipt, dict) else None
+            ),
+            parties["buyer"],
+        )
+        if storage_disposition != "pass":
+            return storage_disposition
         locator_disposition, _ = R.validate_payload_attestation_locator_context(
             record,
             supplied,
@@ -1282,6 +1295,75 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             canonical_bytes(ref_value).decode("utf-8")
         )
         self.assertEqual(evaluate(unavailable), "indeterminate")
+
+    def test_attested_payload_storage_closure_uses_authenticated_receipt(self):
+        def fresh_case():
+            return G.make(
+                "payload-storage",
+                "pass",
+                "authenticated storage closure",
+                lambda: G.attested_case(((6, b"attested one"),)),
+            )
+
+        def payload_authority(case):
+            evidence = case["evidenceRecords"][0]["artifact"]
+            ref_value = {
+                "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+                "contentHash": evidence["deliverableContentHash"],
+            }
+            return case["verifiedReceiptByCanonicalRef"][
+                canonical_bytes(ref_value).decode("utf-8")
+            ]
+
+        canonical_case = fresh_case()
+        authority = payload_authority(canonical_case)
+        payload = next(
+            entry for entry in canonical_case["artifactRecords"]
+            if entry.get("kind") == "deliverable"
+        )
+        expected_binding = {
+            "effectiveAccessMode": "public",
+            "storedContentHash": payload["storedContentHash"],
+        }
+        self.assertEqual(authority["storageBinding"], expected_binding)
+        self.assertEqual(evaluate(canonical_case), "pass")
+
+        missing = fresh_case()
+        payload_authority(missing).pop("storageBinding")
+        self.assertEqual(evaluate(missing), "indeterminate")
+
+        malformed = fresh_case()
+        payload_authority(malformed)["storageBinding"] = []
+        self.assertEqual(evaluate(malformed), "error")
+
+        self.assertEqual(validate_delivered_cleartext(
+            payload,
+            payload["cleartextHash"],
+            "public",
+            "attested payload",
+            expected_binding,
+            G.BUYER,
+        ), "pass")
+        stored_bytes_mismatch = copy.deepcopy(payload)
+        stored_bytes_mismatch["storedBytesBase64url"] = G.b64url(b"other stored bytes")
+        self.assertEqual(validate_delivered_cleartext(
+            stored_bytes_mismatch,
+            payload["cleartextHash"],
+            "public",
+            "attested payload",
+            expected_binding,
+            G.BUYER,
+        ), "fail")
+        binding_mismatch = copy.deepcopy(expected_binding)
+        binding_mismatch["storedContentHash"] = "00" * 32
+        self.assertEqual(validate_delivered_cleartext(
+            payload,
+            payload["cleartextHash"],
+            "public",
+            "attested payload",
+            binding_mismatch,
+            G.BUYER,
+        ), "fail")
 
     def test_failure_phase_fields_are_checked_before_empty_closure(self):
         attestation_ref = G.attested_case(((6, b"attested one"),))[

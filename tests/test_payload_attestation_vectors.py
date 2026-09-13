@@ -51,7 +51,10 @@ def hash_hex(value):
 
 def verify_signature(artifact, seed_hex, domain):
     signature = artifact.get("signature")
-    if not isinstance(signature, dict):
+    if (
+        not isinstance(signature, dict)
+        or signature.get("algorithm") != "ed25519"
+    ):
         return False
     encoded = signature.get("value")
     if not isinstance(encoded, str) or "=" in encoded:
@@ -311,6 +314,35 @@ class PayloadAttestationVectorTests(unittest.TestCase):
                     case["payloadAttestationRecord"]
                 ))
                 self.assertEqual(evaluate(case, seeds), "error")
+
+        for name, mutate in (
+            (
+                "unregistered-algorithm",
+                lambda signature: signature.__setitem__("algorithm", "unknown"),
+            ),
+            (
+                "padded-value",
+                lambda signature: signature.__setitem__(
+                    "value", signature["value"] + "="
+                ),
+            ),
+            (
+                "noncanonical-value",
+                lambda signature: signature.__setitem__("value", "A"),
+            ),
+        ):
+            case = G.base_case()
+            record = case["payloadAttestationRecord"]
+            mutate(record["signature"])
+            with self.subTest(signature=name):
+                self.assertFalse(R._payload_attestation_record_shape_valid(record))
+                self.assertEqual(evaluate(case, seeds), "error")
+
+        locally_unsupported = G.base_case()
+        record = locally_unsupported["payloadAttestationRecord"]
+        record["signature"]["algorithm"] = "ecdsa-secp256k1"
+        self.assertTrue(R._payload_attestation_record_shape_valid(record))
+        self.assertEqual(evaluate(locally_unsupported, seeds), "fail")
 
     def test_happy_path_is_dpa1_coherent_and_transitively_resigned(self):
         data = json.loads(HAPPY_PATH.read_text(encoding="utf-8"))

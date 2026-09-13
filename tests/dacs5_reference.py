@@ -81,8 +81,14 @@ SUPPORTED_BINDING_VERSIONS = frozenset({"1"})
 _ABORT = {"aborted-by-self", "aborted-by-other"}
 _FAILURE = {"failed-perm", "failed-counterparty"}
 
-# CORE §B.7 "Algorithm" (spec line 369) registers Ed25519, ECDSA-secp256k1, and sr1-aggregate as the
-# signing algorithms; the `algorithm` identifier the DACS-5 builders + conformance vectors write for a
+# CORE §B.7 "Algorithm" (spec line 369) registers these exact ComponentSignature
+# algorithms. Shape validation accepts the complete protocol vocabulary; cryptographic
+# verification separately dispatches only algorithms this reference implements.
+COMPONENT_SIGNATURE_ALGORITHMS = frozenset({
+    "ed25519", "ecdsa-secp256k1", "sr1-aggregate",
+})
+
+# The `algorithm` identifier the DACS-5 builders + conformance vectors write for a
 # BundleSignature / binding signature is the lowercase string "ed25519". This reference verifier only
 # implements ed25519 (verify_sig uses Ed25519PublicKey), so that is the supported set: an entry whose
 # algorithm is unsupported-by-this-verifier or absent has a payload this verifier cannot reproduce and
@@ -1614,12 +1620,17 @@ def _payload_attestation_record_shape_valid(record):
         ):
             return False
     signature = record.get("signature")
+    canonical_signature, _ = sig6_canonical(
+        signature.get("value") if isinstance(signature, dict) else None
+    )
     return (
         isinstance(signature, dict)
         and set(signature) == {"algorithm", "signer", "value"}
-        and _nonempty_jcs_string(signature.get("algorithm"))
+        and _string_member(
+            signature.get("algorithm"), COMPONENT_SIGNATURE_ALGORITHMS
+        )
         and _claim_reference_shape_valid(signature.get("signer"))
-        and _nonempty_jcs_string(signature.get("value"))
+        and canonical_signature
     )
 
 

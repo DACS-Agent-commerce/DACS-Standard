@@ -3,7 +3,7 @@
   "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
   "decisionModel": "Authenticated phase/domain context fixes the evidence family before its selector is read. Current delivery evidence signs exact phase identity; every inner dependency has a full-reference lifecycle receipt; arbitrary exact payload/stored bytes and authenticated ACL or encryption-recipient commitments close storage and credential delivery; standalone payload attestations bind the complete job/phase/method/attempt locator. Contradictions fail, malformed collections or members error without exceptions, and missing otherwise-valid authority remains indeterminate.",
   "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
-  "hash": "79eab42545d2e4c118372a0755fbc254d5267c6582b8c633e9e1d0a32f4e9406",
+  "hash": "3d2918a135fb89e2191530de3017bddb51d98064691e9d9e10bc3c4f67831e89",
   "count": 63,
   "publicTestSeeds": {
     "orchestratorEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
@@ -3105,6 +3105,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f1ebf6920fb303a8eb734c6d80289946a485810329f753536d3d8f1cd13e8987"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"7d0201fc3b06d05a8191cbbcff18ab26102951c331f1a57eaafaf4a7a4dd740a\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -3397,6 +3401,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f1ebf6920fb303a8eb734c6d80289946a485810329f753536d3d8f1cd13e8987"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0\"},\"contentHash\":\"e7d8e397c1664ab1b16d986cdef0ffb7fd1cda6c470beb69ed2496c6a6cc361a\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -4086,6 +4094,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f1ebf6920fb303a8eb734c6d80289946a485810329f753536d3d8f1cd13e8987"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"7d0201fc3b06d05a8191cbbcff18ab26102951c331f1a57eaafaf4a7a4dd740a\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -7654,6 +7666,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:6:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"4161ed4327c3b2f2c4e2c2422944777064564ede4c87c1020861fb53a52622e6\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -7738,6 +7754,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -8247,6 +8267,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -8331,6 +8355,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:01K2PDE0000000000000000000:6\"},\"contentHash\":\"b80de4b28d85f264fbc8b30768fd78b93c201e71a7be9883b86debb220e19407\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -8818,6 +8846,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:6:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"4161ed4327c3b2f2c4e2c2422944777064564ede4c87c1020861fb53a52622e6\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -8902,6 +8934,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -9411,6 +9447,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:6:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"4161ed4327c3b2f2c4e2c2422944777064564ede4c87c1020861fb53a52622e6\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -9495,6 +9535,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -10004,6 +10048,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -10088,6 +10136,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:01K2PDE0000000000000000000:6\"},\"contentHash\":\"a4fe8338d0dfe5ec705916e7b0fa597c70967d43172642b3b892d41a336f1821\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -10597,6 +10649,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:6:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"4161ed4327c3b2f2c4e2c2422944777064564ede4c87c1020861fb53a52622e6\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -10681,6 +10737,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -11190,6 +11250,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f78b87d668679961504ee6623a34cff0d813ab1fc26c14aa6036468a23fb6a5e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "fef1dc93dc6ebe546a077c74b23ac297b4a034dead6c5f7da9211766d7eb5eb6"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:6:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0\"},\"contentHash\":\"4161ed4327c3b2f2c4e2c2422944777064564ede4c87c1020861fb53a52622e6\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {
@@ -11274,6 +11338,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "6ba7e80e1d8f0dea12b5d23ce5ef0b4a206f458e1eab67925bf4d0747858771b"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "89ff8579f0f78ef6b810f6ffa5be07ea23f97bfb6c278bf1382bcb7b6decf2ec"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:01K2PDE0000000000000000000:7:984931b2a6e383d37f31b3e76cf9b17533e1a22983c3b7d56bb70f999c85cf71:0\"},\"contentHash\":\"5a72803cf95cc5c6ccfe126d6cb84ef206b0cfe074dc376608d7662d645d0a0e\",\"signer\":\"cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6\"}": {

@@ -40,6 +40,26 @@ The format used per release:
   handling. Historical sealed phases remain audit-readable under their
   released, explicitly non-complete semantics.
 
+### Fixed — CORE v0.3 raw JSON admission
+
+- **Lossless pre-canonicalisation gate** (CORE §B.2 CF-5; #385) — makes
+  reader rejection of out-of-profile numbers mandatory and requires exact
+  received UTF-8 JSON text to pass duplicate-member, raw-number, Unicode,
+  single-value, and strict-JSON checks before JCS, hashing, signature
+  verification, or schema decisions. Parse, DACS-profile, and canonicalisation
+  failures remain distinct; rejected bytes acquire no content hash or signature
+  authority. The in-repository external admission APIs now require the exact
+  received bytes and refuse decoded strings whose source bytes may have been
+  transformed. The profile caps JSON container nesting at an inclusive 128
+  so parser, admission, and canonicalizer recursion limits cannot disagree or
+  escape as host exceptions. Adds 51 raw-text vectors covering depth
+  boundaries, nested/escape-equivalent duplicate keys, safe-magnitude
+  boundaries and exponent spellings, negative
+  zero/fractions, overflow/underflow, parser extensions, lone surrogates,
+  invalid UTF-8, a valid literal replacement character, BOM, comments, malformed
+  syntax, and trailing data, reproduced by both the standard-library adapter and
+  an independent recursive-descent parser.
+
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
 - Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.

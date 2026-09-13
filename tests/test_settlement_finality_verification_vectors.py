@@ -335,7 +335,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 decision, _, _ = self.strong_result(case, authority=authority)
                 self.assertEqual(expected, decision)
 
-    def test_strong_pointer_executes_exact_type_domain_hash_and_consumer(self):
+    def test_historical_pointer_fixture_cannot_bypass_current_profile_admission(self):
         case = self.strong["block-depth"]
         pointer = self.data["dacs5"]["pointer"]
         authority = {**case["authority"], "finalityTrust": self.trust}
@@ -343,19 +343,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             pointer, case["bundle"], pubkeys=self.pubkeys,
             finality_bound_authority=authority,
         )
-        self.assertTrue(result["ok"], result["reason"])
-        wrong_hash = copy.deepcopy(pointer)
-        wrong_hash["fullBundleContentHash"] = "00" * 32
-        self.assertFalse(resolve_absolute_fault_pointer(
-            wrong_hash, case["bundle"], pubkeys=self.pubkeys,
-            finality_bound_authority=authority,
-        )["ok"])
-        wrong_domain = copy.deepcopy(pointer)
-        wrong_domain["signature"]["value"] = "A" * 86
-        self.assertFalse(resolve_absolute_fault_pointer(
-            wrong_domain, case["bundle"], pubkeys=self.pubkeys,
-            finality_bound_authority=authority,
-        )["ok"])
+        self.assertFalse(result["ok"])
+        self.assertEqual("current-crypto-admission", result["reason"])
 
     def test_new_new_and_all_new_older_reconciliation_paths_execute(self):
         case = self.strong["block-depth"]

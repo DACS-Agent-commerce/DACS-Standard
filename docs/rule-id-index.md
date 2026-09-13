@@ -25,12 +25,14 @@ This non-normative index helps implementers locate labelled conformance rules in
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
+| FRC-* | Verifier-issued multi-authority finality resolution, retained conflict union, replay, and composite gating | §9.7.0 | §14.4 |
 | FV-* | Consumer-verifiable canonical settlement finality | §9.7.0 | §14.4 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IBH-* | Identity-bound agreement digest derivation, authenticated companion joins, and cross-stage enforcement | §B.2 | §14.3 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
+| JID-* | Canonical byte-exact job identifier grammar, derivation gate, and equality | §B.1 | §14.6 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
 | LRR-* | Listing-time canonical payment-rail resolution and pay-phase binding | §6.3.4 | §14.1 |

@@ -27,6 +27,7 @@ except ImportError:  # executed as a script dependency
 
 
 FIXTURE_POLICY = "dacs-finality-synthetic-fixture-v1"
+RESOLUTION_CONTEXT_CAPABILITY = "finality-resolution-context-v1"
 EVIDENCE_DOMAIN = "dacs-finality-bound-evidence:v1:"
 LEGACY_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 RAIL_DOMAIN = "dacs-rail:v1:"
@@ -346,8 +347,12 @@ def _finality_profile_shape(profile: Any) -> bool:
     if not isinstance(profile, dict) or profile.get("finalityProfileVersion") != "1":
         return False
     model = profile.get("model")
+    capability = profile.get("finalityResolutionCapability")
+    if capability not in {None, RESOLUTION_CONTEXT_CAPABILITY}:
+        return False
+    optional = {"finalityResolutionCapability"} if capability is not None else set()
     if model in {"block-depth", "commitment-level", "bft-final"}:
-        return set(profile) == {"finalityProfileVersion", "model", "settlement"} and _chain_profile_shape(
+        return set(profile) == {"finalityProfileVersion", "model", "settlement"} | optional and _chain_profile_shape(
             profile.get("settlement"), model
         )
     if model == "provider-receipt":
@@ -355,7 +360,7 @@ def _finality_profile_shape(profile: Any) -> bool:
             set(profile) == {
                 "finalityProfileVersion", "model", "providerId", "statusEndpointOrigin",
                 "captureStatuses", "sr3Binding", "maxObservationAgeSec", "reversibility",
-            }
+            } | optional
             and _nonempty_string(profile.get("providerId"))
             and _https_origin(profile.get("statusEndpointOrigin"))
             and isinstance(profile.get("captureStatuses"), list)
@@ -368,7 +373,7 @@ def _finality_profile_shape(profile: Any) -> bool:
         )
     if model == "htlc-reveal":
         return (
-            set(profile) == {"finalityProfileVersion", "model", "source", "destination"}
+            set(profile) == {"finalityProfileVersion", "model", "source", "destination"} | optional
             and _chain_profile_shape(profile.get("source"))
             and _chain_profile_shape(profile.get("destination"))
         )
@@ -376,7 +381,7 @@ def _finality_profile_shape(profile: Any) -> bool:
         return (
             set(profile) == {
                 "finalityProfileVersion", "model", "bridgeId", "coordinator", "source", "destination",
-            }
+            } | optional
             and _nonempty_string(profile.get("bridgeId"))
             and all(_chain_profile_shape(profile.get(name)) for name in ("coordinator", "source", "destination"))
         )
@@ -1356,9 +1361,51 @@ def _verify(value: Any, trusted: Any) -> dict:
     return _result("error", "unsupported finality model")
 
 
-def verify_finality(value: Any, trusted: Any) -> dict:
-    """Return a deterministic four-value FV result; malformed input never raises."""
+def _verify_single_view_finality(value: Any, trusted: Any) -> dict:
+    """Execute the historical single-view fixture contract byte-for-byte."""
     try:
         return _verify(value, trusted)
     except (ValueError, TypeError, KeyError, IndexError, UnicodeError, json.JSONDecodeError, binascii.Error, RecursionError):
         return _result("error", "malformed nested FV input")
+
+
+def verify_finality(value: Any, trusted: Any) -> dict:
+    """Dispatch an explicit context capability without legacy fallback."""
+    context = value.get("context") if isinstance(value, dict) else None
+    if isinstance(context, dict) and (
+        "finalityResolutionContextVersion" in context
+        or context.get("capability") == "finality-resolution-context-v1"
+    ):
+        try:
+            from finality_resolution_context_reference import (
+                verify_finality_resolution_context,
+            )
+        except ImportError:
+            from scripts.finality_resolution_context_reference import (
+                verify_finality_resolution_context,
+            )
+        authority = (
+            trusted.get("finalityResolutionAuthority")
+            if isinstance(trusted, dict)
+            else None
+        )
+        return verify_finality_resolution_context(
+            value,
+            authority,
+            legacy_verifier=_verify_single_view_finality,
+        )
+    profile = (
+        value.get("rail", {}).get("consumerFinalityProfile")
+        if isinstance(value, dict) and isinstance(value.get("rail"), dict)
+        else None
+    )
+    if (
+        isinstance(profile, dict)
+        and profile.get("finalityResolutionCapability")
+            == RESOLUTION_CONTEXT_CAPABILITY
+    ):
+        return _result(
+            "error",
+            "finality-resolution-context-v1 cannot fall back to a single-view context",
+        )
+    return _verify_single_view_finality(value, trusted)

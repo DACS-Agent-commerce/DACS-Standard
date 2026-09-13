@@ -27,6 +27,24 @@ PAYEE_VECTORS = ROOT / "conformance/vectors/security/payee-destination-binding-v
 HEX = re.compile(r"[0-9a-f]{64}\Z")
 
 
+
+# Fixture setup authority is fixed independently of loaded or mutated artifacts.
+# This models prior authenticated profile negotiation only for this conformance
+# harness; it is not a production authenticator or authority derived from a bundle.
+_FIXTURE_PROFILE_ROLES = tuple(
+    (job_id, role, generator.CLAIMS[role])
+    for job_id in tuple(generator.JOB_IDS.values())
+    for role in ("buyer", "seller", "orchestrator")
+)
+
+
+def fixture_profile_contexts():
+    return reputation_reference.trusted_current_context([
+        reputation_reference.trusted_role_authority(job_id, role, identity)
+        for job_id, role, identity in _FIXTURE_PROFILE_ROLES
+    ])
+
+
 def outcome(verdict: str, reason: str) -> tuple[str, dict]:
     return verdict, {
         "verdict": verdict,
@@ -2003,6 +2021,7 @@ def validate_terminal_authority(
     bundle: dict,
     phase: str,
     effective: list[dict] | None = None,
+    *, trusted_contexts=None
 ) -> tuple[str, str]:
     verifier_context = context.get("verifierContext")
     authority = (
@@ -2195,8 +2214,22 @@ def validate_terminal_authority(
         "state": "finalized", "independentlyResolvable": True
     }:
         return "fail", "terminal-bundle-lifecycle-invalid"
+    role = bundle.get("anchoredByRole")
+    admitted_identity = reputation_reference.resolve_current_profile(
+        job_id, role, trusted_contexts
+    )
+    if admitted_identity is None:
+        return "indeterminate", "terminal-current-profile-unavailable"
+    claims_status, role_claims = agreement_role_claims(context.get("agreement"))
+    if claims_status != "pass":
+        return "error", "malformed-input"
+    expected_identity = (
+        orchestrator if role == "orchestrator" else role_claims.get(role)
+    )
+    if admitted_identity != expected_identity:
+        return "fail", "terminal-current-profile-role-mismatch"
     bundle_address = reputation_reference.logical_address(
-        job_id, bundle.get("anchoredByRole")
+        job_id, bundle.get("anchoredByRole"), trusted_contexts=trusted_contexts
     )
     status, reason, _ = verify_dependency_receipt(
         bundle_authority.get("receipt"),
@@ -2242,7 +2275,7 @@ def validate_terminal_authority(
 
 
 def validate_terminal(
-    context: dict, artifact: str, phase: str, unavailable: set[str]
+    context: dict, artifact: str, phase: str, unavailable: set[str], *, trusted_contexts=None
 ) -> tuple[str, str]:
     terminal_input = context.get("terminalInput")
     if not isinstance(terminal_input, dict):
@@ -2317,7 +2350,7 @@ def validate_terminal(
             or parties[role].get("bundleHash") != digests[expected_claims[role]]
         ):
             return "fail", "terminal-party-mismatch"
-    return validate_terminal_authority(context, bundle, phase, effective)
+    return validate_terminal_authority(context, bundle, phase, effective, trusted_contexts=trusted_contexts)
 
 
 def modeled_old_reader(context: dict) -> tuple[str, str]:
@@ -2340,7 +2373,7 @@ def modeled_old_reader(context: dict) -> tuple[str, str]:
 
 
 def validate_historical_stage(
-    context: dict, artifact: str, stage: str, unavailable: set[str]
+    context: dict, artifact: str, stage: str, unavailable: set[str], *, trusted_contexts=None
 ) -> tuple[str, str]:
     status, reason, _, _ = pre_action_gate(
         context, artifact, stage, unavailable
@@ -2368,7 +2401,8 @@ def validate_historical_stage(
         if status != "pass":
             return status, reason
         status, reason = validate_terminal_authority(
-            context, bundle, generator.PHASES[artifact]
+            context, bundle, generator.PHASES[artifact],
+            trusted_contexts=trusted_contexts,
         )
         if status != "pass":
             return status, reason
@@ -2419,7 +2453,7 @@ def materialize(data: dict, vector: dict) -> dict:
     return context
 
 
-def evaluate(data: dict, vector: dict) -> tuple[str, dict]:
+def evaluate(data: dict, vector: dict, *, trusted_contexts=None) -> tuple[str, dict]:
     try:
         context = materialize(data, vector)
         if vector.get("stage") == "old-reader":
@@ -2432,7 +2466,8 @@ def evaluate(data: dict, vector: dict) -> tuple[str, dict]:
         stage = vector.get("stage")
         if artifact not in generator.STRONG_ARTIFACTS:
             verdict, reason = validate_historical_stage(
-                context, artifact, stage, unavailable
+                context, artifact, stage, unavailable,
+                trusted_contexts=trusted_contexts,
             )
             return outcome(verdict, reason)
         if stage == "commit":
@@ -2442,7 +2477,7 @@ def evaluate(data: dict, vector: dict) -> tuple[str, dict]:
         elif stage == "payment":
             verdict, reason = validate_payment(context, artifact, unavailable)
         elif stage == "terminal":
-            verdict, reason = validate_terminal(context, artifact, phase, unavailable)
+            verdict, reason = validate_terminal(context, artifact, phase, unavailable, trusted_contexts=trusted_contexts)
         else:
             return outcome("error", "malformed-input")
         return outcome(verdict, reason)
@@ -2514,6 +2549,7 @@ def derive_identity_bound_reputation(
     role_tag: dict,
     window_start: int,
     window_end: int,
+    *, trusted_contexts=None
 ) -> tuple[str, str, dict | None]:
     """Execute IBH admission before the existing DACS-5 metric consumer.
 
@@ -2528,7 +2564,7 @@ def derive_identity_bound_reputation(
             return verdict, reason, None
         if artifact not in generator.STRONG_ARTIFACTS or phase is None:
             return "fail", "stronger-agreement-required", None
-        verdict, reason = validate_terminal(context, artifact, phase, unavailable)
+        verdict, reason = validate_terminal(context, artifact, phase, unavailable, trusted_contexts=trusted_contexts)
         if verdict != "pass":
             return verdict, reason, None
         bundle = context["terminalInput"]["bundle"]
@@ -2556,6 +2592,42 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
 
+    def test_terminal_profile_context_is_explicit_and_preserves_valid_paths(self):
+        for name in (
+            "identityBoundAgreement-terminal-verified",
+            "identityBoundPayeeAgreement-terminal-verified",
+            "replacement-projection-preserves-signed-slot",
+            "identity-bound-sealed-envelope-losing-bidder-terminal",
+        ):
+            vector = self.cases[name]
+            self.assertFalse(vector.get("mutations"))
+            self.assertFalse(vector.get("resign"))
+            with self.subTest(name=name):
+                self.assertEqual(
+                    evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())[0],
+                    "pass",
+                )
+                result = evaluate(self.data, vector)
+                self.assertEqual(result[0], "indeterminate")
+                self.assertEqual(result[1]["reason"], "terminal-current-profile-unavailable")
+
+    def test_valid_terminal_profile_context_reaches_reputation_consumer(self):
+        context = materialize(self.data, {
+            "scenario": "identityBoundAgreement",
+            "commitment": "finality", "stage": "terminal",
+        })
+        tag = {
+            "bundle": context["terminalInput"]["bundle"],
+            "resolvedRole": "buyer", "counterpartyDisposition": "absent",
+        }
+        verdict, _, receipt = derive_identity_bound_reputation(
+            context, set(), generator.CLAIMS["buyer"], tag,
+            generator.NOW - 100_000, generator.NOW + 100_000,
+            trusted_contexts=fixture_profile_contexts(),
+        )
+        self.assertEqual(verdict, "pass")
+        self.assertEqual(receipt["bundleCount"], 1)
+
     def test_listing_publication_does_not_require_a_session_nonce(self):
         for artifact in generator.ARTIFACTS:
             context = copy.deepcopy(self.data["scenarios"][artifact])
@@ -2574,7 +2646,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         if artifact in generator.STRONG_ARTIFACTS or stage == "commit"
                         else "indeterminate"
                     )
-                    self.assertEqual(evaluate(data, vector)[0], expected)
+                    self.assertEqual(evaluate(data, vector, trusted_contexts=fixture_profile_contexts())[0], expected)
             if artifact in generator.STRONG_ARTIFACTS:
                 fresh = context["commitInput"]["identityBindingCompanions"][0]["identityBundle"]
                 self.assertEqual(validate_identity_bundle(fresh, "wrong-nonce")[0], "fail")
@@ -2659,10 +2731,11 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         for stage in ("commit", "payment", "terminal"):
             with self.subTest(stage=stage):
                 case = self.cases[f"identityBoundAgreement-{stage}-verified"]
-                self.assertEqual(evaluate(self.data, case)[0], "pass")
+                self.assertEqual(evaluate(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "pass")
         self.assertEqual(
             evaluate(
-                self.data, self.cases["retained-admission-authority-unavailable"]
+                self.data, self.cases["retained-admission-authority-unavailable"],
+                trusted_contexts=fixture_profile_contexts(),
             )[0],
             "indeterminate",
         )
@@ -2672,7 +2745,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 self.cases[
                     "changed-resigned-presentation-cannot-reuse-admitted-nonce"
                 ],
-            )[0],
+             trusted_contexts=fixture_profile_contexts())[0],
             "fail",
         )
 
@@ -2689,7 +2762,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "historical-payment-destination-substitution-non-authorizing",
         ):
             with self.subTest(name=name):
-                verdict, result = evaluate(self.data, self.cases[name])
+                verdict, result = evaluate(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())
                 self.assertNotEqual(verdict, "pass")
                 self.assertIs(result["authorizedAction"], False)
 
@@ -2715,7 +2788,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     "scenario": "identityBoundPayeeReplacement",
                     "commitment": "finality",
                     "stage": stage,
-                })
+                }, trusted_contexts=fixture_profile_contexts())
                 self.assertEqual(verdict, "pass")
         self.assertEqual(
             evaluate(
@@ -2723,7 +2796,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 self.cases[
                     "replacement-prior-selection-cannot-use-synthetic-slot"
                 ],
-            )[0],
+             trusted_contexts=fixture_profile_contexts())[0],
             "fail",
         )
 
@@ -2751,7 +2824,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "terminal-outer-signature-cannot-upgrade-missing-proof",
         ):
             with self.subTest(name=name):
-                self.assertEqual(evaluate(self.data, self.cases[name])[0], "fail")
+                self.assertEqual(evaluate(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], "fail")
 
     def test_new_authority_helpers_are_total_on_malformed_shapes(self):
         probes = [
@@ -2780,7 +2853,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         )
                     else:
                         verdict, _ = validate_terminal(
-                            context, artifact, phase, set()
+                            context, artifact, phase, set(),
+                            trusted_contexts=fixture_profile_contexts(),
                         )
                     self.assertNotEqual(verdict, "pass")
 
@@ -2820,7 +2894,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                                 party["bundleHash"] = "0" * 64
                     self.assertEqual(
                         validate_historical_stage(
-                            changed, artifact, "commit", set()
+                            changed, artifact, "commit", set(),
+                            trusted_contexts=fixture_profile_contexts(),
                         )[0],
                         "fail",
                     )
@@ -2834,7 +2909,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         verdict, _, artifact, phase = dispatch(context)
         self.assertEqual(verdict, "pass")
         self.assertEqual(
-            validate_terminal(context, artifact, phase, set())[0], "pass"
+            validate_terminal(context, artifact, phase, set(), trusted_contexts=fixture_profile_contexts())[0], "pass"
         )
         for field, value in (
             ("payer", "key:" + "12" * 32),
@@ -2852,7 +2927,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     generator.fixture_settlement_observation(event)
                 )
                 self.assertEqual(
-                    validate_terminal(changed, artifact, phase, set())[0],
+                    validate_terminal(changed, artifact, phase, set(), trusted_contexts=fixture_profile_contexts())[0],
                     "fail",
                 )
 
@@ -2895,7 +2970,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         self.assertEqual(
             validate_terminal(
                 changed, "identityBoundAgreement",
-                generator.PHASES["identityBoundAgreement"], set()
+                generator.PHASES["identityBoundAgreement"], set(),
+                trusted_contexts=fixture_profile_contexts(),
             )[0],
             "pass",
         )
@@ -2922,7 +2998,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     generator.fixture_settlement_observation(event)
                 )
                 self.assertEqual(
-                    validate_terminal(changed, artifact, phase, set())[0],
+                    validate_terminal(changed, artifact, phase, set(), trusted_contexts=fixture_profile_contexts())[0],
                     "fail",
                 )
 
@@ -2945,7 +3021,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 wraps=reputation_reference.derive_job_bound,
             ) as derive:
                 verdict, _, receipt = derive_identity_bound_reputation(
-                    context, set(), *arguments
+                    context, set(), *arguments,
+                    trusted_contexts=fixture_profile_contexts(),
                 )
                 self.assertEqual(verdict, "pass")
                 self.assertEqual(receipt["bundleCount"], 1)
@@ -2955,7 +3032,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 reputation_reference, "derive_job_bound"
             ) as derive:
                 verdict, _, receipt = derive_identity_bound_reputation(
-                    context, missing, *arguments
+                    context, missing, *arguments,
+                    trusted_contexts=fixture_profile_contexts(),
                 )
                 self.assertEqual(verdict, "indeterminate")
                 self.assertIsNone(receipt)
@@ -2966,7 +3044,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 reputation_reference, "derive_job_bound"
             ) as derive:
                 verdict, _, receipt = derive_identity_bound_reputation(
-                    invalid, set(), *arguments
+                    invalid, set(), *arguments,
+                    trusted_contexts=fixture_profile_contexts(),
                 )
                 self.assertNotEqual(verdict, "pass")
                 self.assertIsNone(receipt)
@@ -2978,7 +3057,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def test_every_vector_executes_to_pinned_result_without_exception(self):
         for vector in self.data["vectors"]:
             with self.subTest(name=vector["name"]):
-                verdict, want = evaluate(self.data, vector)
+                verdict, want = evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())
                 self.assertEqual(vector["expected"], verdict)
                 self.assertEqual(vector["want"], want)
 
@@ -3000,7 +3079,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         )
         for stage in ("commit", "payment", "terminal"):
             case = self.cases[f"signed-listing-unknown-phase-refused-at-{stage}"]
-            self.assertEqual(evaluate(self.data, case)[0], "fail")
+            self.assertEqual(evaluate(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "fail")
 
     def test_references_use_signature_omitted_artifact_hashes(self):
         scenario = self.data["scenarios"]["identityBoundAgreement"]
@@ -3051,7 +3130,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             ("signed-cvr-overall-decision-disagrees-with-replay", "fail"),
         ):
             with self.subTest(name=name):
-                self.assertEqual(evaluate(self.data, self.cases[name])[0], expected)
+                self.assertEqual(evaluate(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], expected)
 
     def test_sealed_envelope_losing_bidder_compatibility(self):
         historical = self.data["scenarios"]["historicalSealed"]["agreement"]
@@ -3065,7 +3144,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 evaluate(
                     self.data,
                     self.cases[f"historical-sealed-envelope-losing-bidder-{commitment}"],
-                )[0],
+                 trusted_contexts=fixture_profile_contexts())[0],
                 "pass",
             )
         self.assertEqual(
@@ -3074,7 +3153,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 self.cases[
                     "modeled-old-reader-historical-sealed-envelope-losing-bidder"
                 ],
-            )[0],
+             trusted_contexts=fixture_profile_contexts())[0],
             "pass",
         )
         for stage in ("commit", "payment", "terminal"):
@@ -3082,7 +3161,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 evaluate(
                     self.data,
                     self.cases[f"identity-bound-sealed-envelope-losing-bidder-{stage}"],
-                )[0],
+                 trusted_contexts=fixture_profile_contexts())[0],
                 "pass",
             )
 
@@ -3104,7 +3183,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         }
         for name in names:
             with self.subTest(name=name):
-                self.assertEqual(evaluate(self.data, self.cases[name])[0], "fail")
+                self.assertEqual(evaluate(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], "fail")
 
     def test_historical_signed_bytes_survive_both_commitment_forms(self):
         for artifact in ("agreement", "payeeBoundAgreement"):
@@ -3116,7 +3195,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 vector = self.cases[
                     f"historical-{artifact}-prefixed-bytes-{commitment}"
                 ]
-                self.assertEqual(evaluate(self.data, vector)[0], "pass")
+                self.assertEqual(evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())[0], "pass")
                 self.assertEqual(
                     generator.canonical_bytes(
                         self.data["scenarios"][artifact]["agreement"]
@@ -3164,7 +3243,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
 
     def test_missing_proof_keeps_ternary_phase_mapping(self):
         vector = self.cases["buyer-identity-authority-unavailable"]
-        verdict, want = evaluate(self.data, vector)
+        verdict, want = evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())
         self.assertEqual((verdict, want["authorizedAction"]), ("indeterminate", False))
         self.assertEqual(
             phase_result(verdict),
@@ -3189,12 +3268,13 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "not-completely-modeled-non-authorizing-indeterminate",
         )
         self.assertEqual(
-            evaluate(self.data, self.cases["modeled-old-reader-agreement"])[0],
+            evaluate(self.data, self.cases["modeled-old-reader-agreement"], trusted_contexts=fixture_profile_contexts())[0],
             "pass",
         )
         self.assertEqual(
             evaluate(
-                self.data, self.cases["modeled-old-reader-identityBoundAgreement"]
+                self.data, self.cases["modeled-old-reader-identityBoundAgreement"],
+                trusted_contexts=fixture_profile_contexts(),
             )[0],
             "fail",
         )

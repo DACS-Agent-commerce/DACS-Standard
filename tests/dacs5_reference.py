@@ -1455,7 +1455,22 @@ def _settlement_evidence_shape_valid(record):
     return True
 
 
-def _delivery_evidence_shape_valid(record):
+def _delivery_phase_optional_fields_compatible(record):
+    """Reject fields that belong to a different delivery family for every outcome."""
+    if not isinstance(record, dict):
+        return False
+    incompatible = {
+        "deliver-storage-program": {"attestationRef", "credentialDelivery"},
+        "deliver-entitlement": {"attestationRef"},
+        "deliver-attested-payload": {"credentialDelivery"},
+    }
+    fields = incompatible.get(record.get("phase"))
+    return fields is not None and not fields.intersection(record)
+
+
+def _delivery_evidence_shape_valid(
+    record, *, enforce_phase_fields=True, enforce_success_closure=True
+):
     """Closed current DACS-4 §9.7 DeliveryEvidence wire shape."""
     if not isinstance(record, dict):
         return False
@@ -1529,7 +1544,7 @@ def _delivery_evidence_shape_valid(record):
             or renewal_seq > _MAX_SAFE_JSON_INTEGER
         ):
             return False
-    if outcome == "success":
+    if outcome == "success" and enforce_success_closure:
         if (
             not _sha256_hex(record.get("deliverableContentHash"))
             or not isinstance(record.get("deliverableAnchor"), dict)
@@ -1542,7 +1557,70 @@ def _delivery_evidence_shape_valid(record):
             return False
         if phase != "deliver-entitlement" and "credentialDelivery" in record:
             return False
-    return True
+    return (
+        not enforce_phase_fields
+        or _delivery_phase_optional_fields_compatible(record)
+    )
+
+
+def _payload_attestation_record_shape_valid(record):
+    """Validate the DACS-4 base shape while preserving signed minor extensions."""
+    if not isinstance(record, dict):
+        return False
+    required = {
+        "payloadAttestationVersion", "jobId", "agreementHash",
+        "deliverableSpecHash", "payloadFormat", "payloadContentHash",
+        "verificationMethod", "verificationMethodHash", "attempt", "decision",
+        "reason", "verifiedAt", "signature",
+    }
+    if not required <= set(record):
+        return False
+    if not _delivery_inner_type_valid(record, "payloadAttestationVersion"):
+        return False
+    if any(
+        not _nonempty_jcs_string(record.get(field))
+        for field in ("jobId", "payloadFormat", "verificationMethod", "reason")
+    ):
+        return False
+    if any(
+        not _sha256_hex(record.get(field))
+        for field in (
+            "agreementHash", "deliverableSpecHash", "payloadContentHash",
+            "verificationMethodHash",
+        )
+    ):
+        return False
+    if (
+        not _safe_nonnegative_integer(record.get("attempt"))
+        or not _string_member(
+            record.get("decision"), {"pass", "fail", "indeterminate", "error"}
+        )
+        or not _non_boolean_number(record.get("verifiedAt"))
+    ):
+        return False
+    method_ref = record.get("methodEvidenceRef")
+    if (
+        (method_ref is not None and not _attestation_ref_shape_valid(method_ref))
+        or (record.get("decision") == "pass" and method_ref is None)
+    ):
+        return False
+    if "methodTransactionRef" in record:
+        transaction_ref = record["methodTransactionRef"]
+        if (
+            not isinstance(transaction_ref, dict)
+            or set(transaction_ref) != {"kind", "value"}
+            or not _nonempty_jcs_string(transaction_ref.get("kind"))
+            or not _nonempty_jcs_string(transaction_ref.get("value"))
+        ):
+            return False
+    signature = record.get("signature")
+    return (
+        isinstance(signature, dict)
+        and set(signature) == {"algorithm", "signer", "value"}
+        and _nonempty_jcs_string(signature.get("algorithm"))
+        and _claim_reference_shape_valid(signature.get("signer"))
+        and _nonempty_jcs_string(signature.get("value"))
+    )
 
 
 def authenticated_delivery_roles(bundle):
@@ -2748,7 +2826,7 @@ def _validate_delivery_artifact_closure_disposition(
         "anchor": anchor,
         "contentHash": record.get("deliverableContentHash"),
     }
-    dependency_result, delivered, _ = _resolved_delivery_dependency(
+    dependency_result, delivered, payload_receipt = _resolved_delivery_dependency(
         closure.get("deliverable"),
         payload_ref,
         verified_receipt_by_canonical_ref,
@@ -2828,17 +2906,17 @@ def _validate_delivery_artifact_closure_disposition(
     if payload_record is None:
         return _combine_closure_results(results)
 
-    required = {
-        "payloadAttestationVersion", "jobId", "agreementHash",
-        "deliverableSpecHash", "payloadFormat", "payloadContentHash",
-        "verificationMethod", "verificationMethodHash", "attempt", "decision",
-        "reason", "methodEvidenceRef", "verifiedAt",
-        "signature",
-    }
-    if not required <= set(payload_record) or not _delivery_inner_type_valid(
+    payload_type_valid = _delivery_inner_type_valid(
         payload_record, "payloadAttestationVersion"
-    ):
-        results.append(_closure_result("error", "payload attestation record lacks required fields or has an unsupported type"))
+    )
+    if not payload_type_valid:
+        results.append(_closure_result(
+            "fail", "payload attestation record has an unsupported type"
+        ))
+    elif not _payload_attestation_record_shape_valid(payload_record):
+        results.append(_closure_result(
+            "error", "payload attestation record is malformed"
+        ))
     attempt = payload_record.get("attempt")
     method_hash = payload_record.get("verificationMethodHash")
     attestation_address = (
@@ -2863,6 +2941,7 @@ def _validate_delivery_artifact_closure_disposition(
             and isinstance(signature, dict)
             and attestation_ref.get("signer") != signature.get("signer")
         )
+        or not payload_type_valid
         or not _signed_inner_artifact_valid(
             payload_record, PAYLOAD_ATTESTATION_DOMAIN, pubkeys
         )
@@ -2875,6 +2954,22 @@ def _validate_delivery_artifact_closure_disposition(
         deliverable_spec.get("verificationMethod")
         if isinstance(deliverable_spec, dict) else None
     )
+    access_model = (
+        deliverable_spec.get("accessModel", "public")
+        if isinstance(deliverable_spec, dict) else "public"
+    )
+    if delivered is not None:
+        results.append(_validate_resolved_storage(
+            delivered,
+            record.get("deliverableContentHash"),
+            access_model,
+            "attested payload",
+            authenticated_storage_binding=(
+                payload_receipt.get("storageBinding")
+                if isinstance(payload_receipt, dict) else None
+            ),
+            buyer=buyer,
+        ))
     results.append(validate_payload_attestation_locator_context(
         payload_record,
         attestation_ref,

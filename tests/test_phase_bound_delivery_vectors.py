@@ -25,21 +25,6 @@ ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
 PAYLOAD_DOMAIN = "dacs-payload-attestation:v1:"
 BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 DELIVERY_KINDS = {"deliver-storage-program", "deliver-entitlement", "deliver-attested-payload"}
-DELIVERY_REQUIRED_FIELDS = {
-    "deliveryEvidenceVersion", "jobId", "phaseIndex", "phase", "outcome",
-    "observedAt", "signature",
-}
-DELIVERY_OPTIONAL_FIELDS = {
-    "reason", "deliverableContentHash", "deliverableAnchor", "attestationRef",
-    "credentialDelivery",
-}
-PAYLOAD_ATTESTATION_REQUIRED_FIELDS = {
-    "payloadAttestationVersion", "jobId", "agreementHash", "deliverableSpecHash",
-    "payloadFormat", "payloadContentHash", "verificationMethod",
-    "verificationMethodHash", "attempt", "decision", "reason", "verifiedAt",
-    "signature",
-}
-PAYLOAD_ATTESTATION_OPTIONAL_FIELDS = {"methodEvidenceRef", "methodTransactionRef"}
 
 
 def canonical_bytes(value):
@@ -55,10 +40,24 @@ def artifact_hash(artifact):
 
 
 def artifact_ref(address, artifact):
+    signature = artifact.get("signature") if isinstance(artifact, dict) else None
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not all(
+            isinstance(signature.get(field), str)
+            for field in ("algorithm", "signer", "value")
+        )
+    ):
+        return None
+    try:
+        content_hash = artifact_hash(artifact)
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
     return {
         "anchor": {"kind": "storage-program", "locator": address},
-        "contentHash": artifact_hash(artifact),
-        "signer": artifact["signature"]["signer"],
+        "contentHash": content_hash,
+        "signer": signature["signer"],
     }
 
 
@@ -168,7 +167,10 @@ def resolve_evidence(case, supplied_ref):
     artifact = entry.get("artifact")
     if not isinstance(artifact, dict):
         return "error", None, None
-    if supplied_ref != artifact_ref(address, artifact):
+    resolved_ref = artifact_ref(address, artifact)
+    if resolved_ref is None:
+        return "error", None, None
+    if supplied_ref != resolved_ref:
         return "fail", None, None
     return "pass", position, entry
 
@@ -255,6 +257,8 @@ def validate_delivery_artifact(
     receipts = case.get("verifiedReceiptByCanonicalRef")
     if outcome not in {"success", "failure"}:
         return "error"
+    if not R._delivery_phase_optional_fields_compatible(evidence):
+        return "fail"
     if outcome == "success":
         if not isinstance(content_hash, str) or not isinstance(anchor, dict):
             return "fail"
@@ -463,9 +467,8 @@ def validate_delivery_artifact(
             phase_kind=phase,
             expected_writer=parties["seller"],
         )
-        if payload_availability[0] == "error":
-            return "error"
-        payload_unavailable = payload_availability[0] == "indeterminate"
+        if payload_availability[0] != "pass":
+            return payload_availability[0]
         if payload is not None and "storedHash" in payload:
             return "error"
         if payload is not None and content_hash != payload.get("cleartextHash"):
@@ -503,17 +506,18 @@ def validate_delivery_artifact(
         if availability[0] != "pass":
             return availability[0]
         record = record_entry["artifact"]
+        if not R._delivery_inner_type_valid(record, "payloadAttestationVersion"):
+            return "fail"
+        if not R._payload_attestation_record_shape_valid(record):
+            return "error"
         expected_ref = artifact_ref(record_address, record)
+        if expected_ref is None:
+            return "error"
         if "signer" not in supplied:
             expected_ref.pop("signer", None)
         if supplied != expected_ref:
             return "fail"
-        present = set(record)
-        if (
-            not PAYLOAD_ATTESTATION_REQUIRED_FIELDS <= present
-            or not R._delivery_inner_type_valid(record, "payloadAttestationVersion")
-            or not verify_signature(record, PAYLOAD_DOMAIN)
-        ):
+        if not verify_signature(record, PAYLOAD_DOMAIN):
             return "fail"
         method_hash, attempt = record.get("verificationMethodHash"), record.get("attempt")
         if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 0:
@@ -559,8 +563,6 @@ def validate_delivery_artifact(
         )
         if locator_disposition != "pass":
             return locator_disposition
-        if payload_unavailable:
-            return "indeterminate"
         cleartext = payload.get("cleartextUtf8")
         cleartext_disposition, cleartext_bytes = R._resolved_exact_bytes(
             payload, "attested payload cleartext"
@@ -613,28 +615,10 @@ def validate_delivery_artifact(
 
 
 def exact_delivery_evidence_shape(evidence):
-    if not isinstance(evidence, dict):
-        return False
-    present = set(evidence)
-    signature = evidence.get("signature")
-    index = evidence.get("phaseIndex")
-    observed_at = evidence.get("observedAt")
-    return (
-        DELIVERY_REQUIRED_FIELDS <= present
-        and not present - DELIVERY_REQUIRED_FIELDS - DELIVERY_OPTIONAL_FIELDS
-        and evidence.get("deliveryEvidenceVersion") == "1"
-        and "evidenceVersion" not in evidence
-        and isinstance(evidence.get("jobId"), str)
-        and bool(evidence["jobId"])
-        and isinstance(index, int)
-        and not isinstance(index, bool)
-        and index >= 0
-        and evidence.get("phase") in DELIVERY_KINDS
-        and evidence.get("outcome") in {"success", "failure"}
-        and isinstance(observed_at, (int, float))
-        and not isinstance(observed_at, bool)
-        and isinstance(signature, dict)
-        and set(signature) == {"algorithm", "signer", "value"}
+    return R._delivery_evidence_shape_valid(
+        evidence,
+        enforce_phase_fields=False,
+        enforce_success_closure=False,
     )
 
 
@@ -1240,6 +1224,177 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 select(case)["available"] = malformed
                 with self.subTest(dependency=name, availability=malformed):
                     self.assertEqual(evaluate(case), "error")
+
+    def test_attested_payload_dependency_receipt_result_is_propagated(self):
+        def fresh_case():
+            return G.make(
+                "payload-receipt",
+                "pass",
+                "authenticated dependency receipt",
+                lambda: G.attested_case(((6, b"attested one"),)),
+            )
+
+        def payload_receipt(case):
+            evidence = case["evidenceRecords"][0]["artifact"]
+            ref_value = {
+                "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+                "contentHash": evidence["deliverableContentHash"],
+            }
+            authority = case["verifiedReceiptByCanonicalRef"][
+                canonical_bytes(ref_value).decode("utf-8")
+            ]
+            payload = next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "deliverable"
+            )
+            return authority, authority["receipt"], payload
+
+        self.assertEqual(evaluate(fresh_case()), "pass")
+        mutations = (
+            ("writer", "fail", lambda authority, receipt, payload: receipt.__setitem__("writer", G.BUYER)),
+            ("logical-address", "fail", lambda authority, receipt, payload: receipt.__setitem__("logicalAddress", "dacs4:deliverable:other:6")),
+            ("native-address", "fail", lambda authority, receipt, payload: receipt.__setitem__("nativeAddress", "native:other")),
+            ("content", "fail", lambda authority, receipt, payload: receipt.__setitem__("contentHash", "00" * 32)),
+            ("lifecycle", "fail", lambda authority, receipt, payload: receipt.__setitem__("state", "accepted")),
+            ("resolvability", "fail", lambda authority, receipt, payload: payload.__setitem__("independentlyResolvable", False)),
+            ("transaction-shape", "error", lambda authority, receipt, payload: receipt.__setitem__("transactionRef", {})),
+            ("nonce-shape", "error", lambda authority, receipt, payload: receipt.__setitem__("nonce", [])),
+        )
+        for name, expected, mutate in mutations:
+            case = fresh_case()
+            mutate(*payload_receipt(case))
+            with self.subTest(dimension=name):
+                self.assertEqual(evaluate(case), expected)
+
+        malformed = fresh_case()
+        evidence = malformed["evidenceRecords"][0]["artifact"]
+        ref_value = {
+            "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+            "contentHash": evidence["deliverableContentHash"],
+        }
+        malformed["verifiedReceiptByCanonicalRef"][
+            canonical_bytes(ref_value).decode("utf-8")
+        ] = []
+        self.assertEqual(evaluate(malformed), "error")
+
+        unavailable = fresh_case()
+        unavailable["verifiedReceiptByCanonicalRef"].pop(
+            canonical_bytes(ref_value).decode("utf-8")
+        )
+        self.assertEqual(evaluate(unavailable), "indeterminate")
+
+    def test_failure_phase_fields_are_checked_before_empty_closure(self):
+        attestation_ref = G.attested_case(((6, b"attested one"),))[
+            "evidenceRecords"
+        ][0]["artifact"]["attestationRef"]
+        credential_delivery = G.credential_case()["evidenceRecords"][0][
+            "artifact"
+        ]["credentialDelivery"]
+        cases = (
+            ("deliver-storage-program", "attestationRef", attestation_ref),
+            ("deliver-storage-program", "credentialDelivery", credential_delivery),
+            ("deliver-entitlement", "attestationRef", attestation_ref),
+            ("deliver-attested-payload", "credentialDelivery", credential_delivery),
+        )
+        bundle = G.storage_case()["bundle"]
+        for phase, field, value in cases:
+            record = G.evidence(1, phase)
+            record.update({"outcome": "failure", "reason": "delivery failed"})
+            self.assertTrue(R._delivery_evidence_shape_valid(record))
+            self.assertEqual(
+                validate_delivery_artifact({"bundle": bundle}, record), "pass"
+            )
+            record[field] = copy.deepcopy(value)
+            with self.subTest(phase=phase, field=field):
+                self.assertFalse(
+                    R._delivery_phase_optional_fields_compatible(record)
+                )
+                self.assertFalse(R._delivery_evidence_shape_valid(record))
+                self.assertEqual(
+                    validate_delivery_artifact({"bundle": bundle}, record), "fail"
+                )
+
+        for phase, field in (
+            ("deliver-attested-payload", "attestationRef"),
+            ("deliver-entitlement", "credentialDelivery"),
+        ):
+            malformed = G.evidence(1, phase)
+            malformed.update({
+                "outcome": "failure", "reason": "delivery failed", field: [],
+            })
+            with self.subTest(phase=phase, malformed=field):
+                self.assertFalse(exact_delivery_evidence_shape(malformed))
+
+    def test_payload_attestation_base_shape_errors_before_semantic_closure(self):
+        def fresh_case():
+            return G.make(
+                "payload-shape",
+                "pass",
+                "payload attestation base shape",
+                lambda: G.attested_case(((6, b"attested one"),)),
+            )
+
+        valid = fresh_case()
+        record = next(
+            entry["artifact"] for entry in valid["artifactRecords"]
+            if entry.get("kind") == "PayloadAttestationRecord"
+        )
+        self.assertTrue(R._payload_attestation_record_shape_valid(record))
+        record["laterMinorAuditLabel"] = "preserved"
+        self.assertTrue(R._payload_attestation_record_shape_valid(record))
+
+        malformed = (
+            ("verifiedAt", []),
+            ("reason", {}),
+            ("jobId", ""),
+            ("agreementHash", "not-a-hash"),
+            ("deliverableSpecHash", "not-a-hash"),
+            ("payloadFormat", ""),
+            ("payloadContentHash", "not-a-hash"),
+            ("verificationMethod", []),
+            ("verificationMethodHash", "not-a-hash"),
+            ("decision", "maybe"),
+            ("methodEvidenceRef", {}),
+            ("methodTransactionRef", {"kind": "demos-web2-request"}),
+            ("attempt", True),
+            ("attempt", -1),
+            ("attempt", R._MAX_SAFE_JSON_INTEGER + 1),
+            ("signature", []),
+            ("signature", {"algorithm": "ed25519", "signer": G.VERIFIER, "value": []}),
+        )
+        for field, value in malformed:
+            case = fresh_case()
+            candidate = next(
+                entry["artifact"] for entry in case["artifactRecords"]
+                if entry.get("kind") == "PayloadAttestationRecord"
+            )
+            candidate[field] = copy.deepcopy(value)
+            with self.subTest(field=field, value=value):
+                self.assertFalse(
+                    R._payload_attestation_record_shape_valid(candidate)
+                )
+                self.assertEqual(evaluate(case), "error")
+
+    def test_malformed_evidence_artifacts_do_not_escape_reference_resolution(self):
+        mutations = (
+            ("empty", lambda artifact: artifact.clear()),
+            ("missing-signature", lambda artifact: artifact.pop("signature")),
+            ("non-object-signature", lambda artifact: artifact.__setitem__("signature", [])),
+            ("non-string-signer", lambda artifact: artifact["signature"].__setitem__("signer", [])),
+            ("nested-signature-value", lambda artifact: artifact["signature"].__setitem__("value", {})),
+            ("non-canonical-content", lambda artifact: artifact.__setitem__("laterMinorAuditLabel", chr(0xD800))),
+        )
+        for name, mutate in mutations:
+            case = G.storage_case()
+            mutate(case["evidenceRecords"][0]["artifact"])
+            with self.subTest(mutation=name):
+                self.assertEqual(evaluate(case), "error")
+
+        mismatched = G.storage_case()
+        mismatched["evidenceRecords"][0]["artifact"] = copy.deepcopy(
+            mismatched["evidenceRecords"][1]["artifact"]
+        )
+        self.assertEqual(evaluate(mismatched), "fail")
 
     def test_legacy_consumers_close_every_delivery_kind_at_frozen_addresses(self):
         cases = {

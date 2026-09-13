@@ -443,6 +443,10 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
                 "storedContentHash": digest,
                 "available": True,
                 "independentlyResolvable": True,
+                "_storageBinding": {
+                    "effectiveAccessMode": "public",
+                    "storedContentHash": digest,
+                },
             },
             "payloadAttestationRecord": {
                 "logicalAddress": attestation_address,

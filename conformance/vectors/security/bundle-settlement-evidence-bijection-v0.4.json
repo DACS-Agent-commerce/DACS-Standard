@@ -301,6 +301,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "e9e4109084dd1e53fd92900c54bb8ea768446d795d2fef59e6bf893cee71f871"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "5ecf00788e4f0d5506595999625058082522704f2cff8175b29f6cee50b60dd9"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-standard-completed:3:d16d247283d31ae2427e7613a6bf852809cd1ac97e31b7ae5f938fec51affe0f:0\"},\"contentHash\":\"7950df66bf19242ecd81ff8322d8c7a92116d059444e06af7723bb37ba4d004c\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -1888,6 +1892,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "dd1ce8146be57469528f288535f8730797915f039dda09090b5acd77726cac3e"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "4f5da84db3fb65c6e00d323cd62b3be0de7cd31d7709e395f29e6882d9fc7472"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-invalid-bundle-signature:3:3293d22b366a1d76db732fc547f12be64561f0aa88f21e350dc7b4b46c123e34:0\"},\"contentHash\":\"80a8f08394b8163197babd6985814967b789d5cba4a752f394795627a1b519ad\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -2355,6 +2363,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "ae6c3bff275feab6a279eb617b1065703a7d45aec6e1ff9650621c8e4103eae4"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "cae333e4fe3e2e9715d33ce9051ebcd77d5417c5205c9552ae2f8b61abd7c5de"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-mismatched-listing-signer:3:77ae325cf135b9a5af45311411ac4df6ac0b6d9edbf5e596e72a343907cc6717:0\"},\"contentHash\":\"9a397405b8859927b45e3bad1e96d5b00903721c8b9ba09947c1ea1feabb0362\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -2822,6 +2834,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "2962db86a3b7ca10b1a21e2f1aaaa4a172c9a7666e8172c22f0fbacaabf8e1fb"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "70409da988f3ce52c622d7a8458cf4b18783daac6007897de39babe96f61ddf8"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3:15c5ebbbf88c163746fb5991da9580639d0243972972ea1066025b37db30efc2:0\"},\"contentHash\":\"e3c88fa48251b6b981f6b23af42df65729f53e109f618b4860c3a49df2f0677a\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -5187,6 +5203,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "15138a7246d7619fb36a509646ec62013cb5ac85030b592dd1dc6c933b7c2e3a"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "77e079355271f1d66d20842565ce13d11096e54faa2d8908d1dfd1ba7f4c8665"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-invalid-deliverable-locator-closure:3:a091e49e36c81f74af60bb9df13e1e892b41e6b91527e8834ddb5965341cc1fc:0\"},\"contentHash\":\"2ff4f11fdaaca5f0232eabdc8971565f14d6ef0a5a04602d2993f5fb0040e243\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -5654,6 +5674,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "dee3f7897c2bed5aefa4d811d6e3c25f821a999e6deed87860119304df23dd85"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "ce6df9f54e823a0ff2dcd1ac7a999665a5420c5d825491800288b94d854d81c5"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:ATTACKER-JOB:3:deadbeef:0\"},\"contentHash\":\"abec3aa8fc13507d731d69d2be32332314e498fa62f9f18e9314e0c2cc8921f1\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -6121,6 +6145,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "f8eafa3601591dda5e3e9033c4bc93ab20e9f052e2dbfa9b485fd5125e4ee8c7"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "2a0e4c9c6e57851ab2fc8ca2f57bcded72ceab231ef7d301c41d63f5737d9fa5"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-invalid-attestation-content-hash-closure:3:1b0fdab9be2cff3c5f5ea965b06c0ae055e23ebb1a42921820944a6505b905d1:0\"},\"contentHash\":\"dededededededededededededededededededededededededededededededede\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -8686,6 +8714,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "c3813bab92fe4e513d19c621c33b8f280454dce5c3cd710ef7a997316334a788"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "9ea0deb050230d7ff58104149a0267530401c88af241207c51da07f3bde62b97"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-unavailable-native-transaction-observation:3:d5ecc2909df05a73e218d9db609b76735ada0e9d8260579e11ebe48a62bbc748:0\"},\"contentHash\":\"e3a59241d6f2c4915b5fe8ad64e22a084d34bcc26502835f25527c8730846d63\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -9131,6 +9163,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "102a9c3e0cdb8d466d473f7181e603d9264a9f0655e9d04f35595af25069177f"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "779956850eda8eb880b3fac74e146a2fc3901b7ae40a1f50c8b1456d450c868e"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-unobserved-resigned-native-transaction:3:4b105114880f006f3412a094db45bf669a368b17d3c5e40156814bc2ad81fc26:0\"},\"contentHash\":\"a9b8bd1ee3f1df636b3b20d6ec5f59985adbc6ec65674861b0409015b9814722\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -9598,6 +9634,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "b02dd71c5e03e61463dca849ab51d015e289ae87102520e5fbd821d757105390"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "7dc66f144a4502c0a8bd2bf8b04f6f944df63c417ccb06c7632375b44707a114"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-invalid-native-transaction-observation:3:6696595f35127a0baf82762b4c3cc62140498e559ef631ce641358150efa9004:0\"},\"contentHash\":\"fd563f3cdb3d0aa1cd2245f6994f790977bb4c83d700eddb3c643b9d1001379d\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -10065,6 +10105,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "849fddb41fa1ced2a2734ee22a88dbd7061e23b842e935f89c472dddbc0b6a72"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "2eb4ddb9f3225b90f16012b2c9ec857ae24941902f224411dbe3b27314c0b990"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-invalid-terminal-included-native-transaction:3:65af984370fe31b54bb4157dfd0ca6df2e281438f8b0eb642c353a49b421ad42:0\"},\"contentHash\":\"c5d17112497c762055360205a62c2cb7433e7d60280f0b4bbec8d76ca65f68bd\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -10858,6 +10902,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "63279eeb3f387ff2e08b66f30b35fd115c6997a661a676119b13b3d27382f5d7"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "b2a243e9795912317629166127e4b8298ab9a402a06938cefcea0d6210701c96"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-legacy-attested-completed:517e7f6b66b7d1f91fad1a4dfa301ab49f8f82426dac693163463bf9ec896b7d:0\"},\"contentHash\":\"ec46768aa42808e6b948c09d64278437fb2b03c93d6db7584b9c70cea64e8aea\",\"signer\":\"did:demos:orchestrator\"}": {
@@ -11216,6 +11264,10 @@
               "kind": "fixture-demos-bft-proof",
               "value": "57f8248770b089336f2939d30e0887e6b3336db22657dafcda727f34ad669806"
             }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "7f093cf6b65e22503400b455532ceeee23b50571bb2a66015078ca589ec20bd3"
           }
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-legacy-self-signed-attested-completed:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0\"},\"contentHash\":\"0f72ecfe9df2cde16943294089a25a2d8e2e66d4a20d010e2b4a03da79563547\",\"signer\":\"did:demos:orchestrator\"}": {

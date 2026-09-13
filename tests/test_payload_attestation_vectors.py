@@ -130,6 +130,8 @@ def _evaluate_admitted_projection(vector, seeds):
 
     if not R._delivery_inner_type_valid(record, "payloadAttestationVersion"):
         return "fail"
+    if not R._payload_attestation_record_shape_valid(record):
+        return "error"
     if not verify_signature(record, seeds["verifierEd25519"], PAYLOAD_DOMAIN):
         return "fail"
 
@@ -296,6 +298,19 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         self.assertEqual(evaluate(case, seeds), "pass")
         record["laterMinorAuditLabel"] = "unsigned-tampering"
         self.assertNotEqual(evaluate(case, seeds), "pass")
+
+    def test_standalone_consumer_reuses_payload_attestation_base_shape(self):
+        import generate_payload_attestation_vectors as G
+
+        seeds = self.data["publicTestSeeds"]
+        for field, value in (("verifiedAt", []), ("reason", {})):
+            case = G.base_case()
+            case["payloadAttestationRecord"][field] = value
+            with self.subTest(field=field):
+                self.assertFalse(R._payload_attestation_record_shape_valid(
+                    case["payloadAttestationRecord"]
+                ))
+                self.assertEqual(evaluate(case, seeds), "error")
 
     def test_happy_path_is_dpa1_coherent_and_transitively_resigned(self):
         data = json.loads(HAPPY_PATH.read_text(encoding="utf-8"))

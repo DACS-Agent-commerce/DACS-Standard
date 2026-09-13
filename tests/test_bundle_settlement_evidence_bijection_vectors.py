@@ -1013,6 +1013,139 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
                 self.assertEqual(disposition, "error", reason)
 
+    def test_primary_attested_payload_closes_stored_bytes_and_storage_authority(self):
+        def fresh_authority():
+            return copy.deepcopy(
+                self.data["executionAuthorities"]["standard-completed"]
+            )
+
+        def payload_material(authority):
+            closure = authority["deliveryArtifactAuthorityByPhaseKey"][
+                "3:deliver-attested-payload"
+            ]
+            record = next(
+                resolution["record"]
+                for resolution in authority[
+                    "referenceValidationByCanonicalRef"
+                ].values()
+                if resolution.get("record", {}).get("phase")
+                == "deliver-attested-payload"
+            )
+            payload_ref = {
+                "anchor": copy.deepcopy(record["deliverableAnchor"]),
+                "contentHash": record["deliverableContentHash"],
+            }
+            receipt_authority = authority["verifiedReceiptByCanonicalRef"][
+                R.canonical(payload_ref).decode("utf-8")
+            ]
+            return closure, receipt_authority
+
+        baseline = fresh_authority()
+        disposition, reason, _ = derive_phase_disposition(baseline, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+        changed_bytes = fresh_authority()
+        closure, _ = payload_material(changed_bytes)
+        closure["deliverable"]["storedBytesBase64url"] = encode(
+            b"different stored bytes"
+        )
+        self.assertEqual(
+            derive_phase_disposition(changed_bytes, self.pubkeys)[0], "fail"
+        )
+
+        changed_commitment = fresh_authority()
+        closure, _ = payload_material(changed_commitment)
+        closure["deliverable"]["storedContentHash"] = "00" * 32
+        self.assertEqual(
+            derive_phase_disposition(changed_commitment, self.pubkeys)[0], "fail"
+        )
+
+        missing_authority = fresh_authority()
+        _, receipt_authority = payload_material(missing_authority)
+        receipt_authority.pop("storageBinding")
+        self.assertEqual(
+            derive_phase_disposition(missing_authority, self.pubkeys)[0],
+            "indeterminate",
+        )
+
+        malformed_authority = fresh_authority()
+        _, receipt_authority = payload_material(malformed_authority)
+        receipt_authority["storageBinding"] = []
+        self.assertEqual(
+            derive_phase_disposition(malformed_authority, self.pubkeys)[0], "error"
+        )
+
+        for access_model in ("buyer-only", "encrypt-to-buyer"):
+            private = fresh_authority()
+            listing = private["listing"]
+            deliverable_spec = listing["offering"]["deliverable"]
+            deliverable_spec["accessModel"] = access_model
+            closure, receipt_authority = payload_material(private)
+            resolved = closure["deliverable"]
+            if access_model == "encrypt-to-buyer":
+                stored_bytes = b"fixture encrypted attested payload"
+                stored_hash = hashlib.sha256(stored_bytes).hexdigest()
+                resolved["storedBytesBase64url"] = encode(stored_bytes)
+                resolved["storedContentHash"] = stored_hash
+                binding = {
+                    "effectiveAccessMode": access_model,
+                    "storedContentHash": stored_hash,
+                    "encryption": {
+                        "recipient": "did:demos:buyer",
+                        "ciphertextContentHash": stored_hash,
+                    },
+                }
+            else:
+                binding = {
+                    "effectiveAccessMode": access_model,
+                    "storedContentHash": resolved["storedContentHash"],
+                    "acl": {
+                        "mode": "restricted",
+                        "allowed": ["did:demos:buyer"],
+                    },
+                }
+            receipt_authority["storageBinding"] = binding
+            record = closure["payloadAttestationRecord"]["artifact"]
+            record["deliverableSpecHash"] = R._complete_object_hash(
+                deliverable_spec
+            )
+            resign_listing(listing, self.data["seeds"]["seller"])
+            private["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+                listing
+            )
+            relink_payload_attestation(private, self.data["seeds"])
+            with self.subTest(access_model=access_model):
+                disposition, reason, _ = derive_phase_disposition(
+                    private, self.pubkeys
+                )
+                self.assertEqual(disposition, "pass", reason)
+
+    def test_primary_payload_attestation_shape_errors_without_relinking(self):
+        malformed = (
+            ("verifiedAt", []),
+            ("reason", {}),
+            ("agreementHash", "not-a-hash"),
+            ("methodEvidenceRef", {}),
+            ("attempt", True),
+            ("signature", []),
+        )
+        for field, value in malformed:
+            authority = copy.deepcopy(
+                self.data["executionAuthorities"]["standard-completed"]
+            )
+            record = authority["deliveryArtifactAuthorityByPhaseKey"][
+                "3:deliver-attested-payload"
+            ]["payloadAttestationRecord"]["artifact"]
+            record[field] = copy.deepcopy(value)
+            with self.subTest(field=field):
+                self.assertFalse(
+                    R._payload_attestation_record_shape_valid(record)
+                )
+                disposition, reason, _ = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "error", reason)
+
     def test_primary_consumer_executes_public_and_both_credential_storage_modes(self):
         storage = self.data["executionAuthorities"]["completed-storage-delivery"]
         storage_closure = storage["deliveryArtifactAuthorityByPhaseKey"][

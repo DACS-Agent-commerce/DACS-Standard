@@ -14,6 +14,37 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — authenticated bundle/pointer and delivery authority
+
+- **Protocol-owned family admission** (#333) — requires fixed operation,
+  authenticated address, or uniquely verified registered-domain context before
+  a bundle, pointer, or delivery-evidence selector can choose a schema. Full
+  bundles require one supported recognized selector; pointers cannot be
+  promoted through shared `bundleVersion`; inert unknown signed members remain
+  SIG-5 hash-bound. FAB/EBFAB pointer domains and all legacy signed bytes remain
+  unchanged. The unresolved generic `BundleExtendedPointer` domain is recorded
+  without inventing a fallback, and unsupported shared-address dispatch refuses.
+- **Delivery authority closure** (#333) — binds every inner dependency to its
+  complete canonical reference and authenticated lifecycle receipt, verifies
+  effective ACL/encryption recipient and exact stored/ciphertext commitments,
+  supports arbitrary exact bytes, makes malformed alternate-dependency inputs
+  total, and derives standalone payload-attestation locators from authenticated
+  job/phase/method/attempt context. Missing authority remains indeterminate;
+  malformed input errors and authenticated contradictions fail.
+
+### Fixed — delivery closure reference validation
+
+- **Signed-format and legacy closure parity** (#333) — the executable DACS-4/DACS-5
+  reference consumers now hash exact delivered UTF-8 bytes, bind entitlement
+  grant roles to authenticated bundle parties, classify current registered artifact
+  discriminators without consuming contextual or inert version extensions, preserve
+  self-signed payload closure without a native transaction, and distinguish complete
+  DeliverableSpec/VerificationMethod hashes from signature-omitted envelope hashes.
+  Current `DeliveryEvidence` and PDE-7 legacy delivery-shaped `SettlementEvidence`
+  now share the same phase-specific inner closure checks while legacy reads retain
+  their signed unindexed addresses, never synthesize PDE-5 credential binding, and
+  remain indeterminate when required artifact or native authority is unavailable.
+
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
 - Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.
@@ -302,6 +333,26 @@ The format used per release:
   including mocked, disabled new/in-flight behavior, stale and forged
   definitions, missing authority, signed-scope mutation, untrusted mode input,
   and contradictory discovery hints.
+
+### Added — DACS-4 v0.7 / DACS-5 v0.5
+
+- **Phase-bound delivery evidence and exact credential handover — PDE-1..PDE-8**
+  (§9.6, §9.7, §10.4.3, CORE §B.1/§B.7; #329, #330) — introduces the
+  structurally distinct `DeliveryEvidence` artifact under
+  `dacs-delivery-evidence:v1:` so every delivery result signs its exact
+  `phaseIndex`. Current evidence, deliverable, entitlement, and payload-
+  attestation addresses are phase-indexed; renewal and attempt counters remain
+  independent within each invocation. Successful entitlement evidence binds
+  the exact EntitlementRecord hash/anchor and, when present, the complete
+  credential reference/access model, cleartext credential digest, and renewal
+  sequence while asserting delivered only. DACS-5 now verifies a one-to-one
+  phase/evidence mapping even when optional per-phase pointers are absent.
+  Historical unindexed delivery-shaped `SettlementEvidence` remains
+  byte-stable and readable only for one unambiguous matching delivery; it
+  cannot satisfy repetition or be reported as DV-5-verified. Adds deterministic
+  signed vectors for repeated storage/entitlement/attested delivery, address
+  and cross-phase replay, credential mismatch/substitution, legacy reads,
+  discriminator/domain separation, and unresolved evidence.
 
 ### Added — DACS-4 v0.6
 

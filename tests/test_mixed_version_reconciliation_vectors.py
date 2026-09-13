@@ -83,13 +83,15 @@ class MixedVersionReconciliationTests(unittest.TestCase):
 
     def test_expected_pass_copies_have_every_required_signer(self):
         """A reconciliation verdict is meaningful only after each accepted copy passes
-        the §10.4.1 signer-set gate. Keep this check independent of cryptography so a
-        missing required signature cannot hide when the optional crypto package is absent."""
+        the §10.4.1 signer-set and authenticated family gates. Public fixture keys
+        establish the signature-domain context before type-specific admission."""
+        pubkeys = {claim: base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+                   for claim, value in self.data["publicKeys"].items()}
         for v in self.vectors:
             if v["expected"] != "pass":
                 continue
             for role, bundle in v["copies"].items():
-                ok, reason = R._bundle_signatures_valid(bundle, pubkeys=None)
+                ok, reason = R._bundle_signatures_valid(bundle, pubkeys=pubkeys)
                 with self.subTest(vector=v["name"], role=role):
                     self.assertTrue(ok, reason)
 

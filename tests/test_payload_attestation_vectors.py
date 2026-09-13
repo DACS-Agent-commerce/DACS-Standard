@@ -1,4 +1,5 @@
 import base64
+import copy
 import hashlib
 import json
 import subprocess
@@ -11,6 +12,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
 )
+
+import dacs5_reference as R
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,7 +71,39 @@ def verify_signature(artifact, seed_hex, domain):
     return True
 
 
+def _complete_method_ref(ref):
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    return (
+        isinstance(ref, dict)
+        and {"anchor", "contentHash"} <= set(ref) <= {"anchor", "contentHash", "signer"}
+        and isinstance(anchor, dict) and set(anchor) == {"kind", "locator"}
+        and anchor.get("kind") in {"storage-program", "ipfs", "https"}
+        and isinstance(anchor.get("locator"), str) and bool(anchor["locator"])
+        and R._sha256_hex(ref.get("contentHash"))
+        and ("signer" not in ref or isinstance(ref["signer"], str) and bool(ref["signer"]))
+    )
+
+
 def evaluate(vector, seeds):
+    """Evaluate the legacy unindexed projection under authenticated caller context.
+
+    Listing/agreement projections and trusted resolver maps must be produced by
+    the caller's independent admission, not copied from presented records. This
+    fixture consumer does not implement those native proof codecs.
+    """
+    if not isinstance(vector, dict) or not isinstance(seeds, dict):
+        return "error"
+    required = ("listing", "agreement", "payloadAttestationRecord", "payloadAttestationRef",
+                "settlementEvidence", "methodEvidence")
+    if any(not isinstance(vector.get(key), dict) for key in required):
+        return "error"
+    try:
+        return _evaluate_admitted_projection(vector, seeds)
+    except (KeyError, TypeError, ValueError, UnicodeError):
+        return "error"
+
+
+def _evaluate_admitted_projection(vector, seeds):
     listing = vector["listing"]
     agreement = vector["agreement"]
     record = vector["payloadAttestationRecord"]
@@ -76,10 +111,9 @@ def evaluate(vector, seeds):
     evidence = vector["settlementEvidence"]
 
     pipeline = listing.get("pipeline")
-    if not isinstance(pipeline, list) or not any(
-        isinstance(step, dict) and step.get("kind") == "deliver-attested-payload"
-        for step in pipeline
-    ):
+    if (not isinstance(pipeline, list)
+            or any(not isinstance(step, dict) for step in pipeline)
+            or sum(step.get("kind") == "deliver-attested-payload" for step in pipeline) != 1):
         return "fail"
     deliverable = listing.get("offering", {}).get("deliverable")
     if not isinstance(deliverable, dict) or deliverable.get("kind") != "attested-payload":
@@ -94,13 +128,17 @@ def evaluate(vector, seeds):
     if agreement.get("deliverable", {}).get("hash") != spec_hash:
         return "fail"
 
-    if record.get("payloadAttestationVersion") != "1":
-        return "fail"
-    if "resultVersion" in record or "evidenceVersion" in record:
+    if not R._delivery_inner_type_valid(record, "payloadAttestationVersion"):
         return "fail"
     if not verify_signature(record, seeds["verifierEd25519"], PAYLOAD_DOMAIN):
         return "fail"
 
+    if not R._attestation_ref_shape_valid(record_ref):
+        return "error"
+    # This retained standalone projection is legacy/unindexed. Current indexed
+    # evidence is admitted by the phase-bound consumer, never downgraded here.
+    if "phaseIndex" in evidence or "phaseIndex" in record:
+        return "error"
     record_unsigned = {k: v for k, v in record.items() if k != "signature"}
     record_hash = hash_hex(record_unsigned)
     if record_ref.get("contentHash") != record_hash:
@@ -108,7 +146,20 @@ def evaluate(vector, seeds):
     if record_ref.get("signer") != record.get("signature", {}).get("signer"):
         return "fail"
 
-    payload = vector["payloadUtf8"].encode("utf-8")
+    if "payloadBytesBase64url" in vector:
+        payload_disposition, payload = R._exact_base64url_bytes(
+            vector["payloadBytesBase64url"], "delivered payload"
+        )
+        if "payloadUtf8" in vector:
+            text_result, text_bytes = R._utf8_bytes(vector["payloadUtf8"], "delivered payload")
+            if text_result[0] != "pass":
+                return text_result[0]
+            if payload is not None and text_bytes != payload:
+                return "fail"
+    else:
+        payload_disposition, payload = R._utf8_bytes(vector.get("payloadUtf8"), "delivered payload")
+    if payload_disposition[0] != "pass":
+        return payload_disposition[0]
     payload_hash = hashlib.sha256(payload).hexdigest()
     expected_fields = {
         "jobId": agreement.get("jobId"),
@@ -127,58 +178,49 @@ def evaluate(vector, seeds):
     attempt = record.get("attempt")
     if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 0:
         return "fail"
+    expected_locator = f"dacs4:payload-attestation:{agreement['jobId']}:{hash_hex(method)}:{attempt}"
+    if record_ref["anchor"] != {"kind": "storage-program", "locator": expected_locator}:
+        return "fail"
     if record.get("decision") != "pass":
         return "fail"
 
     method_ref = record.get("methodEvidenceRef")
-    if not isinstance(method_ref, dict):
-        return "fail"
+    if not _complete_method_ref(method_ref):
+        return "error"
     method_evidence = vector["methodEvidence"]
+    resolution_map = vector.get("trustedMethodEvidenceByCanonicalRef")
+    if resolution_map is None:
+        return "indeterminate"
+    if not isinstance(resolution_map, dict):
+        return "error"
+    resolved = resolution_map.get(canonical_bytes(method_ref).decode("utf-8"))
+    if resolved is None:
+        return "indeterminate"
+    if not isinstance(resolved, dict):
+        return "error"
+    if resolved.get("available") is False:
+        return "indeterminate"
+    if resolved.get("available") is not True:
+        return "error"
+    if (resolved.get("reference") != method_ref
+            or canonical_bytes(resolved.get("artifact")) != canonical_bytes(method_evidence)):
+        return "fail"
     if method_evidence.get("disposition") == "unavailable":
         return "indeterminate"
     if method_ref.get("contentHash") != hash_hex(method_evidence):
         return "fail"
-    if not method_evidence.get("proofValid", method_evidence.get("signatureValid", False)):
-        return "fail"
-
-    if method["kind"] == "consensus-backed-proxy":
-        endpoint = method.get("endpoint", {})
-        request = method_evidence.get("request", {})
-        if request.get("method") != endpoint.get("method"):
-            return "fail"
-        if request.get("url") != endpoint.get("urlTemplate"):
-            return "fail"
-        response = method_evidence.get("response", {})
-        if not isinstance(response.get("status"), int) or not (200 <= response["status"] < 300):
-            return "fail"
-        response_data = response.get("data")
-        if not isinstance(response_data, str):
-            return "fail"
-        response_hash = hashlib.sha256(response_data.encode("utf-8")).hexdigest()
-        if response.get("responseHash") != response_hash:
-            return "fail"
-        if response_hash != record["payloadContentHash"]:
-            return "fail"
-        transaction = method_evidence.get("transaction", {})
-        method_tx = record.get("methodTransactionRef")
-        if not isinstance(method_tx, dict):
-            return "fail"
-        if (
-            transaction.get("kind") != method_tx.get("kind")
-            or transaction.get("value") != method_tx.get("value")
-            or transaction.get("state") not in {"included", "finalized"}
-            or transaction.get("authenticated") is not True
-        ):
-            return "fail"
-    elif method["kind"] == "self-signed":
-        if method_evidence.get("kind") != "self-signed-payload":
-            return "fail"
-        if method_evidence.get("payloadContentHash") != record["payloadContentHash"]:
-            return "fail"
-        if method_evidence.get("signatureValid") is not True:
-            return "fail"
-    else:
-        return "fail"
+    method_disposition, _ = R.validate_delivery_method_evidence(
+        method,
+        method_evidence,
+        record.get("methodTransactionRef"),
+        vector.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        delivered_cleartext=vector.get("payloadUtf8"),
+        delivered_bytes=payload,
+        payload_content_hash=record["payloadContentHash"],
+        require_finalized=False,
+    )
+    if method_disposition != "pass":
+        return method_disposition
 
     if not verify_signature(evidence, seeds["orchestratorEd25519"], EVIDENCE_DOMAIN):
         return "fail"
@@ -188,7 +230,9 @@ def evaluate(vector, seeds):
         return "fail"
     if evidence.get("deliverableContentHash") != record["payloadContentHash"]:
         return "fail"
-    if not isinstance(evidence.get("deliverableAnchor"), dict):
+    if evidence.get("deliverableAnchor") != {
+        "kind": "storage-program", "locator": "dacs4:deliverable:" + agreement["jobId"]
+    }:
         return "fail"
     if evidence.get("attestationRef") != record_ref:
         return "fail"
@@ -218,13 +262,40 @@ class PayloadAttestationVectorTests(unittest.TestCase):
 
     def test_generator_is_byte_deterministic(self):
         result = subprocess.run(
-            ["python3", str(GENERATOR), "--check"],
+            [sys.executable, str(GENERATOR), "--check"],
             cwd=ROOT,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_signed_optional_endpoint_and_record_fields_remain_bound(self):
+        import generate_payload_attestation_vectors as G
+
+        case = G.base_case()
+        seeds = self.data["publicTestSeeds"]
+        self.assertEqual(evaluate(case, seeds), "pass")
+        deliverable = case["listing"]["offering"]["deliverable"]
+        method = deliverable["verificationMethod"]
+        method["endpoint"]["laterMinorAuditLabel"] = "preserve-me"
+        method["signature"] = {"purpose": "inert-method-extension"}
+        deliverable["signature"] = {"purpose": "inert-deliverable-extension"}
+        record = case["payloadAttestationRecord"]
+        record["laterMinorAuditLabel"] = "preserve-me"
+        case["agreement"]["deliverable"]["hash"] = G.hash_hex(deliverable)
+        record["deliverableSpecHash"] = G.hash_hex(deliverable)
+        record["verificationMethodHash"] = G.hash_hex(method)
+        key = G.canonical_bytes(record["methodTransactionRef"]).decode("utf-8")
+        case["trustedNativeTransactionObservationsByCanonicalRef"][key] = (
+            G.trusted_native_observation(method, case["methodEvidence"])
+        )
+        G.refresh_record_and_evidence(case)
+        self.assertEqual(record["deliverableSpecHash"], R._complete_object_hash(deliverable))
+        self.assertEqual(record["verificationMethodHash"], R._complete_object_hash(method))
+        self.assertEqual(evaluate(case, seeds), "pass")
+        record["laterMinorAuditLabel"] = "unsigned-tampering"
+        self.assertNotEqual(evaluate(case, seeds), "pass")
 
     def test_happy_path_is_dpa1_coherent_and_transitively_resigned(self):
         data = json.loads(HAPPY_PATH.read_text(encoding="utf-8"))
@@ -332,6 +403,23 @@ class PayloadAttestationVectorTests(unittest.TestCase):
                     EVIDENCE_DOMAIN,
                 )
             )
+
+    def test_native_observations_and_self_signed_method_input_are_load_bearing(self):
+        seeds = self.data["publicTestSeeds"]
+        by_name = {vector["name"]: vector for vector in self.data["vectors"]}
+        for name, expected in (
+            ("resigned-arbitrary-native-transaction-unobserved", "indeterminate"),
+            ("native-transaction-observation-contradicts-envelope", "fail"),
+            ("native-transaction-observation-unavailable", "indeterminate"),
+            ("standalone-included-native-observation", "pass"),
+            ("self-signed-method-input-signature-invalid", "fail"),
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(by_name[name], seeds), expected)
+
+        malformed = copy.deepcopy(by_name["dahr-payload-bound-success"])
+        malformed["payloadUtf8"] = chr(0xD800)
+        self.assertEqual(evaluate(malformed, seeds), "error")
 
 
 if __name__ == "__main__":

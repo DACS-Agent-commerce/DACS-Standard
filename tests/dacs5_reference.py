@@ -26,12 +26,15 @@ authenticated keys. The explicitly named legacy helpers retain structural-only
 fixture replay when keys are omitted.
 """
 import base64
+import binascii
 import hashlib
 import json
 import math
 import re
 import unicodedata
 from urllib.parse import quote, urlsplit
+
+from scripts import jcs
 
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -45,9 +48,27 @@ FAULT_BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
+ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
+PAYLOAD_ATTESTATION_DOMAIN = "dacs-payload-attestation:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
+
+_BUNDLE_SELECTOR_BY_FAMILY = {
+    "legacy": "bundleVersion",
+    "fault": "faultBundleVersion",
+    "evidence-bound": "evidenceBoundFaultBundleVersion",
+}
+_BUNDLE_DOMAIN_BY_FAMILY = {
+    "legacy": BUNDLE_DOMAIN,
+    "fault": FAULT_BUNDLE_DOMAIN,
+    "evidence-bound": EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN,
+}
+_POINTER_DOMAIN_BY_FAMILY = {
+    "fault": FAULT_POINTER_DOMAIN,
+    "evidence-bound": EVIDENCE_BOUND_FAULT_POINTER_DOMAIN,
+}
 
 BB6_DEFAULT_BUDGET = 8
 
@@ -168,8 +189,8 @@ def _required_bundle_signers(bundle):
 # Canonicalisation + hashing (extracted from test_bundle_binding_vectors.py)
 # --------------------------------------------------------------------------- #
 def canonical(value):
-    """RFC 8785-style JCS: sorted keys, tight separators, non-ASCII preserved."""
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    """CORE §B.2 RFC 8785/JCS bytes from the repository canonicalizer."""
+    return jcs.canonicalize(value).encode("utf-8")
 
 
 def bundle_hash(bundle):
@@ -187,6 +208,12 @@ def listing_hash(listing):
 
 def settlement_evidence_hash(record):
     """DACS-4 §9.7 evidence hash: canonical form minus its signature envelope."""
+    unsigned = {k: v for k, v in record.items() if k != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def delivery_evidence_hash(record):
+    """DACS-4 §9.7 DeliveryEvidence hash: canonical form minus its signature envelope."""
     unsigned = {k: v for k, v in record.items() if k != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
@@ -484,34 +511,40 @@ def b64url_decode(value):
 
 
 def bundle_type(bundle):
-    """Return the exact supported §10.4 discriminator class or None.
+    """Return the syntactic supported §10.4 selector, or ``None``.
 
-    Discriminators are exclusive. Unknown, stripped, or multiply-labelled objects do not
-    inherit a legacy type merely because one verifier happens to recognize fewer fields.
+    This helper does not admit an untrusted record.  Consumers authenticate a fixed
+    protocol operation or signing domain first, then require this selector to agree.
+    Unknown members remain inert and hash-bound under SIG-5; suffix spelling alone does
+    not turn one into a selector known by this pinned reader.
     """
     if not isinstance(bundle, dict):
         return None
-    candidates = []
-    if bundle.get("bundleVersion") == "1":
-        candidates.append("legacy")
-    if bundle.get("faultBundleVersion") == "1":
-        candidates.append("fault")
-    if bundle.get("evidenceBoundFaultBundleVersion") == "1":
-        candidates.append("evidence-bound")
-    known_keys = {
-        "bundleVersion",
-        "faultBundleVersion",
-        "evidenceBoundFaultBundleVersion",
-    }
-    unknown_discriminators = {
-        key for key in bundle
-        if isinstance(key, str) and key.endswith("BundleVersion") and key not in known_keys
-    }
-    if unknown_discriminators:
+    present = [
+        family
+        for family, selector in _BUNDLE_SELECTOR_BY_FAMILY.items()
+        if selector in bundle
+    ]
+    if len(present) != 1:
         return None
-    if any(key in bundle and bundle.get(key) != "1" for key in known_keys):
-        return None
-    return candidates[0] if len(candidates) == 1 else None
+    family = present[0]
+    selector = _BUNDLE_SELECTOR_BY_FAMILY[family]
+    return family if bundle.get(selector) == "1" else None
+
+
+def _full_bundle_family_shape_valid(bundle, family):
+    """Apply one internally selected full-bundle family boundary.
+
+    ``family`` is supplied only by a fixed protocol operation or an authenticated
+    signature-domain probe.  It is never copied from a record or caller label.
+    """
+    if family not in _BUNDLE_SELECTOR_BY_FAMILY or not isinstance(bundle, dict):
+        return False
+    if bundle_type(bundle) != family:
+        return False
+    # ``pointerKind`` is a recognized pointer-family member, not an inert extension.
+    # A pointer therefore cannot be promoted merely because it shares a version literal.
+    return "pointerKind" not in bundle
 
 
 def bundle_type_rank(bundle):
@@ -519,13 +552,10 @@ def bundle_type_rank(bundle):
 
 
 def bundle_domain(bundle):
+    """Syntactic convenience for already-admitted records; not an admission API."""
     kind = bundle_type(bundle)
-    if kind == "legacy":
-        return BUNDLE_DOMAIN
-    if kind == "fault":
-        return FAULT_BUNDLE_DOMAIN
-    if kind == "evidence-bound":
-        return EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN
+    if kind in _BUNDLE_DOMAIN_BY_FAMILY:
+        return _BUNDLE_DOMAIN_BY_FAMILY[kind]
     raise ValueError("unsupported, missing, or non-exclusive bundle discriminator")
 
 
@@ -538,7 +568,7 @@ def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
     try:
         Ed25519PublicKey.from_public_bytes(pubkey_bytes).verify(b64url_decode(sig_value), payload)
         return True
-    except InvalidSignature:
+    except (InvalidSignature, TypeError, ValueError):
         return False
 
 
@@ -845,7 +875,7 @@ def _full_standing(bundle):
     return bool(parties) and parties <= signed
 
 
-def _bundle_signatures_valid(bundle, pubkeys):
+def _bundle_signatures_valid_for_family(bundle, pubkeys, family):
     """§10.4.1 bundle signature validity + required-signer, applied IDENTICALLY to both bundle types
     (round-10; AttestationBundle and FaultAttestationBundle). The required-signer set is
     OUTCOME-DEPENDENT (spec DACS-5 §10.4.1 lines 318-323, :475/:798): a non-abort outcome
@@ -859,12 +889,34 @@ def _bundle_signatures_valid(bundle, pubkeys):
     Returns (ok, reason)."""
     if not isinstance(bundle, dict):
         return (False, "bundle is not an object")
-    if bundle_type(bundle) is None:
-        return (False, "unsupported, missing, or non-exclusive bundle discriminator")
+    if not _full_bundle_family_shape_valid(bundle, family):
+        return (False, "full-bundle selector does not match authenticated family context")
+    parties = bundle.get("parties")
+    raw_sigs = bundle.get("signatures")
+    if (
+        not isinstance(parties, list)
+        or any(
+            not isinstance(party, dict)
+            or not isinstance(party.get("role"), str)
+            or not isinstance(party.get("primaryClaim"), str)
+            for party in parties
+        )
+    ):
+        return (False, "bundle parties are malformed")
+    if (
+        not isinstance(raw_sigs, list)
+        or any(
+            not isinstance(signature, dict)
+            or not isinstance(signature.get("party"), str)
+            for signature in raw_sigs
+        )
+    ):
+        return (False, "bundle signatures are malformed")
     anchor_role = bundle.get("anchoredByRole")
-    role_holder = {p.get("role"): p.get("primaryClaim") for p in bundle.get("parties", [])}
-    raw_sigs = bundle.get("signatures", [])                # RAW list — NEVER a party-keyed dict (F2: a
-    signers_present = {s.get("party") for s in raw_sigs}   # party-keyed dict silently drops all-but-last)
+    role_holder = {p.get("role"): p.get("primaryClaim") for p in parties}
+    # Keep the RAW list for verification: a party-keyed dict would silently
+    # discard all but the last duplicate signature.
+    signers_present = {s.get("party") for s in raw_sigs}
 
     # F1 required-signer set (§10.4.1 verification-and-signer rules, DACS-5 lines 318-323), applied
     # TYPE-AGNOSTICALLY to both AttestationBundle and FaultAttestationBundle (spec :475/:798: the
@@ -895,7 +947,7 @@ def _bundle_signatures_valid(bundle, pubkeys):
     # before verify_sig at this same site.
     if pubkeys is not None and HAVE_CRYPTO:
         h = bundle_hash(bundle)
-        dom = bundle_domain(bundle)
+        dom = _BUNDLE_DOMAIN_BY_FAMILY[family]
         for s in raw_sigs:
             party = s.get("party")
             pk = pubkeys.get(party)
@@ -913,8 +965,134 @@ def _bundle_signatures_valid(bundle, pubkeys):
     return (True, "ok")
 
 
+def _authenticated_bundle_signature_family(bundle, pubkeys):
+    """Recover the full-bundle family from cryptographically verified domain use.
+
+    The selector is deliberately not consulted during this probe.  Only after exactly
+    one registered full-bundle domain verifies does the caller compare the selector and
+    schema, so changing an unauthenticated label cannot select a family or domain.
+    """
+    if not isinstance(bundle, dict) or not isinstance(pubkeys, dict) or not HAVE_CRYPTO:
+        return None
+    signatures = bundle.get("signatures")
+    if not isinstance(signatures, list) or not signatures:
+        return None
+    try:
+        content_hash = bundle_hash(bundle)
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+    candidates = []
+    for family, domain in _BUNDLE_DOMAIN_BY_FAMILY.items():
+        valid = True
+        for signature in signatures:
+            if not isinstance(signature, dict):
+                valid = False
+                break
+            party = signature.get("party")
+            value = signature.get("value")
+            canonical_ok, _ = sig6_canonical(value)
+            if (
+                not isinstance(party, str)
+                or signature.get("algorithm") not in SUPPORTED_SIGNATURE_ALGORITHMS
+                or not canonical_ok
+                or party not in pubkeys
+                or not verify_sig(pubkeys[party], domain, content_hash, value)
+            ):
+                valid = False
+                break
+        if valid:
+            candidates.append(family)
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def _syntactic_bundle_family(bundle, _pubkeys):
+    """Resolve an archival family from the released structural selector only."""
+    return bundle_type(bundle)
+
+
+def _current_bundle_validation(bundle, pubkeys, family):
+    """Validate a bundle after its family was authenticated from signature use."""
+    if _authenticated_bundle_signature_family(bundle, pubkeys) != family:
+        return (False, "full-bundle family cannot be authenticated before parsing")
+    return _bundle_signatures_valid_for_family(bundle, pubkeys, family)
+
+
+def _legacy_bundle_validation(bundle, pubkeys, family):
+    """Frozen structural validation, with cryptography when legacy keys are supplied."""
+    return _bundle_signatures_valid_for_family(bundle, pubkeys, family)
+
+
+def _current_family_refusal(subject):
+    return "%s family cannot be authenticated before parsing" % subject
+
+
+def _legacy_family_refusal(subject):
+    return "%s has an unsupported bundle type" % subject
+
+
+def _bundle_signatures_valid(bundle, pubkeys):
+    """Admit a generic full-bundle read only with authenticated family context."""
+    family = _authenticated_bundle_signature_family(bundle, pubkeys)
+    if family is None:
+        return (False, "full-bundle family cannot be authenticated before parsing")
+    return _bundle_signatures_valid_for_family(bundle, pubkeys, family)
+
+
+def _validate_current_evidence_receipt(receipt, expected_nonce, *, expected_state=None):
+    """Validate the current CORE AnchorReceipt contract used by SEB admission."""
+    transaction_ref = receipt.get("transactionRef")
+    evidence = receipt.get("evidence")
+    block_ref = receipt.get("blockRef")
+    nonce = receipt.get("nonce")
+    observed_at = receipt.get("observedAt")
+    if not (
+        receipt.get("receiptVersion") == "1"
+        and _nonempty_jcs_string(receipt.get("substrate"))
+        and _nonempty_jcs_string(receipt.get("finalityProfile"))
+        and isinstance(transaction_ref, dict)
+        and set(transaction_ref) == {"kind", "value"}
+        and _nonempty_jcs_string(transaction_ref.get("kind"))
+        and _nonempty_jcs_string(transaction_ref.get("value"))
+        and (nonce is None or _nonempty_jcs_string(nonce))
+        and _string_member(receipt.get("state"), {"included", "finalized"})
+        and receipt.get("observationDisposition") == "established"
+        and _non_boolean_number(observed_at)
+        and isinstance(block_ref, dict)
+        and _nonempty_jcs_string(block_ref.get("id"))
+        and isinstance(evidence, dict)
+        and set(evidence) == {"kind", "value"}
+        and _nonempty_jcs_string(evidence.get("kind"))
+        and _nonempty_jcs_string(evidence.get("value"))
+    ):
+        return (False, "anchor receipt is malformed or lacks authenticated lifecycle evidence")
+    if expected_nonce is not None and (
+        not _nonempty_jcs_string(expected_nonce) or nonce != expected_nonce
+    ):
+        return (False, "anchor receipt nonce does not match execution authority")
+    if expected_state is not None and receipt.get("state") != expected_state:
+        return (False, "anchor receipt state contradicts authenticated lifecycle")
+    return (True, "ok")
+
+
+def _validate_legacy_evidence_receipt(receipt, expected_nonce, *, expected_state=None):
+    """Validate only the frozen pre-SR-2 receipt shape used by archival fixtures."""
+    nonce = receipt.get("nonce")
+    if (
+        not _nonempty_jcs_string(receipt.get("transaction"))
+        or not (
+            _nonempty_jcs_string(nonce)
+            or _safe_nonnegative_integer(nonce)
+        )
+        or (expected_nonce is not None and nonce != expected_nonce)
+    ):
+        return (False, "historical anchor receipt transaction or nonce is malformed")
+    return (True, "ok")
+
+
 def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase_index,
-                                          phase_kind, signer, *, resolved=False):
+                                          phase_kind, signer, *, resolved=False,
+                                          current_delivery=False,
+                                          receipt_validator=_validate_current_evidence_receipt):
     """Validate independently authenticated execution authority against a verified receipt."""
     if not isinstance(execution, dict) or not isinstance(receipt, dict):
         return (False, "missing executionAuthority or anchorReceipt binding")
@@ -933,30 +1111,23 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
             bundle.get("jobId"), quote(rail_id, safe="-._~"), phase_index,
             ":resolved" if resolved else "",
         )
+    elif current_delivery:
+        expected_logical = "dacs4:delivery:%s:%d" % (bundle.get("jobId"), phase_index)
     else:
         expected_logical = execution.get("evidenceLogicalAddress")
         if not isinstance(expected_logical, str) or not expected_logical:
-            return (False, "delivery execution authority lacks evidenceLogicalAddress")
+            return (False, "legacy delivery execution authority lacks evidenceLogicalAddress")
     anchor = ref.get("anchor") if isinstance(ref, dict) else None
-    nonce = receipt.get("nonce")
     expected_nonce = execution.get("anchorNonce")
+    receipt_ok, receipt_reason = receipt_validator(receipt, expected_nonce)
+    if not receipt_ok:
+        return (False, receipt_reason)
     if (
         receipt.get("logicalAddress") != expected_logical
         or not isinstance(anchor, dict)
         or receipt.get("nativeAddress") != anchor.get("locator")
         or receipt.get("contentHash") != ref.get("contentHash")
-        or not isinstance(receipt.get("transaction"), str)
-        or not receipt["transaction"]
         or receipt.get("writer") != signer
-        or not (
-            (isinstance(nonce, str) and bool(nonce))
-            or (
-                isinstance(nonce, int)
-                and not isinstance(nonce, bool)
-                and nonce >= 0
-            )
-        )
-        or (expected_nonce is not None and nonce != expected_nonce)
     ):
         return (False, "anchor receipt does not bind address, content, transaction, writer, or nonce")
     return (True, expected_logical)
@@ -1284,15 +1455,1524 @@ def _settlement_evidence_shape_valid(record):
     return True
 
 
+def _delivery_evidence_shape_valid(record):
+    """Closed current DACS-4 §9.7 DeliveryEvidence wire shape."""
+    if not isinstance(record, dict):
+        return False
+    required = {
+        "deliveryEvidenceVersion", "jobId", "phaseIndex", "phase", "outcome",
+        "observedAt", "signature",
+    }
+    optional = {
+        "reason", "deliverableContentHash", "deliverableAnchor", "attestationRef",
+        "credentialDelivery",
+    }
+    if not required <= set(record) or set(record) - required - optional:
+        return False
+    phase_index = record.get("phaseIndex")
+    phase = record.get("phase")
+    outcome = record.get("outcome")
+    signature = record.get("signature")
+    if (
+        record.get("deliveryEvidenceVersion") != "1"
+        or "evidenceVersion" in record
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or isinstance(phase_index, bool)
+        or not isinstance(phase_index, int)
+        or phase_index < 0
+        or phase_index > _MAX_SAFE_JSON_INTEGER
+        or not _string_member(phase, DELIVERY_PHASES)
+        or not _string_member(outcome, {"success", "failure"})
+        or not _non_boolean_number(record.get("observedAt"))
+        or not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not _nonempty_jcs_string(signature.get("algorithm"))
+        or not _claim_reference_shape_valid(signature.get("signer"))
+        or not _nonempty_jcs_string(signature.get("value"))
+    ):
+        return False
+    if outcome == "failure":
+        if not _nonempty_jcs_string(record.get("reason")):
+            return False
+    elif "reason" in record:
+        return False
+    if "deliverableContentHash" in record and not _sha256_hex(record["deliverableContentHash"]):
+        return False
+    if "deliverableAnchor" in record:
+        anchor = record["deliverableAnchor"]
+        if (
+            not isinstance(anchor, dict)
+            or set(anchor) != {"kind", "locator"}
+            or not _nonempty_jcs_string(anchor.get("kind"))
+            or not _nonempty_jcs_string(anchor.get("locator"))
+        ):
+            return False
+    if "attestationRef" in record and not _attestation_ref_shape_valid(record["attestationRef"]):
+        return False
+    if "credentialDelivery" in record:
+        binding = record["credentialDelivery"]
+        credential_ref = binding.get("credentialRef") if isinstance(binding, dict) else None
+        renewal_seq = binding.get("renewalSeq") if isinstance(binding, dict) else None
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != {"credentialRef", "credentialCleartextHash", "renewalSeq"}
+            or not isinstance(credential_ref, dict)
+            or set(credential_ref) != {"ref", "accessModel"}
+            or not _attestation_ref_shape_valid(credential_ref.get("ref"))
+            or not _string_member(
+                credential_ref.get("accessModel"), {"buyer-only", "encrypt-to-buyer"}
+            )
+            or not _sha256_hex(binding.get("credentialCleartextHash"))
+            or isinstance(renewal_seq, bool)
+            or not isinstance(renewal_seq, int)
+            or renewal_seq < 0
+            or renewal_seq > _MAX_SAFE_JSON_INTEGER
+        ):
+            return False
+    if outcome == "success":
+        if (
+            not _sha256_hex(record.get("deliverableContentHash"))
+            or not isinstance(record.get("deliverableAnchor"), dict)
+        ):
+            return False
+        if phase == "deliver-attested-payload":
+            if not _attestation_ref_shape_valid(record.get("attestationRef")):
+                return False
+        elif "attestationRef" in record:
+            return False
+        if phase != "deliver-entitlement" and "credentialDelivery" in record:
+            return False
+    return True
+
+
+def authenticated_delivery_roles(bundle):
+    """Resolve unique delivery parties after the caller authenticates the bundle."""
+    parties = bundle.get("parties") if isinstance(bundle, dict) else None
+    if not isinstance(parties, list) or any(not isinstance(party, dict) for party in parties):
+        return "error", None
+    claims_by_role = {}
+    for role in ("buyer", "seller"):
+        matches = [party for party in parties if party.get("role") == role]
+        if len(matches) != 1:
+            return "error", None
+        claim = matches[0].get("primaryClaim")
+        if not isinstance(claim, str) or not claim:
+            return "error", None
+        claims_by_role[role] = claim
+    return "pass", claims_by_role
+
+
+def _complete_object_hash(value):
+    """Hash every member of a complete, non-envelope object as received."""
+    if not isinstance(value, dict):
+        return None
+    try:
+        return hashlib.sha256(canonical(value)).hexdigest()
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+
+
+def _signed_envelope_content_hash(record):
+    """Hash a signed DACS envelope while omitting only its signature member."""
+    if not isinstance(record, dict):
+        return None
+    unsigned = {key: value for key, value in record.items() if key != "signature"}
+    return _complete_object_hash(unsigned)
+
+
+def _signed_inner_artifact_valid(record, domain, pubkeys, expected_signer=None):
+    if not isinstance(record, dict) or not isinstance(pubkeys, dict):
+        return False
+    signature = record.get("signature")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(signature.get("signer"), str)
+        or signature["signer"] not in pubkeys
+        or (expected_signer is not None and signature["signer"] != expected_signer)
+    ):
+        return False
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    content_hash = _signed_envelope_content_hash(record)
+    return bool(
+        canonical_ok
+        and content_hash
+        and verify_sig(
+            pubkeys[signature["signer"]], domain, content_hash, signature["value"]
+        )
+    )
+
+
+_CLOSURE_DISPOSITION_PRIORITY = {
+    "pass": 0,
+    "indeterminate": 1,
+    "fail": 2,
+    "error": 3,
+}
+
+
+def _closure_result(disposition, reason="ok"):
+    if disposition not in _CLOSURE_DISPOSITION_PRIORITY:
+        raise ValueError("unknown closure disposition: %r" % (disposition,))
+    return (disposition, reason)
+
+
+class _DispositionReason(str):
+    """Carry a closure disposition through the legacy Boolean core."""
+
+    def __new__(cls, value, disposition):
+        instance = super().__new__(cls, value)
+        instance.disposition = disposition
+        return instance
+
+
+def _combine_closure_results(results):
+    """Keep deterministic contradictions and malformed input visible over outages."""
+    selected = _closure_result("pass")
+    for result in results:
+        if _CLOSURE_DISPOSITION_PRIORITY[result[0]] > _CLOSURE_DISPOSITION_PRIORITY[selected[0]]:
+            selected = result
+    return selected
+
+
+def _utf8_bytes(value, subject):
+    if not isinstance(value, str):
+        return (_closure_result("error", subject + " is not a string"), None)
+    try:
+        return (_closure_result("pass"), value.encode("utf-8"))
+    except UnicodeEncodeError:
+        return (_closure_result("error", subject + " is not valid UTF-8"), None)
+
+
+def _resolved_exact_bytes(value, subject):
+    """Resolve exact bytes from the compatible text/binary adapter representations.
+
+    ``cleartextUtf8`` preserves existing text adapters.  The canonical unpadded
+    ``cleartextBytesBase64url`` arm carries arbitrary bytes.  When both are supplied
+    they must decode to identical bytes; neither spelling may silently win.
+    """
+    if not isinstance(value, dict):
+        return (_closure_result("error", subject + " authority is malformed"), None)
+    has_text = "cleartextUtf8" in value
+    has_binary = "cleartextBytesBase64url" in value
+    if not has_text and not has_binary:
+        return (_closure_result("indeterminate", subject + " exact bytes are unavailable"), None)
+    results = []
+    decoded = []
+    if has_text:
+        result, raw = _utf8_bytes(value.get("cleartextUtf8"), subject + " UTF-8 bytes")
+        results.append(result)
+        if raw is not None:
+            decoded.append(raw)
+    if has_binary:
+        result, raw = _exact_base64url_bytes(
+            value.get("cleartextBytesBase64url"), subject + " Base64URL bytes"
+        )
+        results.append(result)
+        if raw is not None:
+            decoded.append(raw)
+    combined = _combine_closure_results(results)
+    if combined[0] != "pass":
+        return (combined, None)
+    if len(decoded) == 2 and decoded[0] != decoded[1]:
+        return (_closure_result("fail", subject + " byte representations contradict"), None)
+    return (_closure_result("pass"), decoded[0])
+
+
+def _exact_base64url_bytes(value, subject):
+    """Decode one canonical unpadded RFC 4648 section 5 byte representation."""
+    if value is None:
+        return (_closure_result("indeterminate", subject + " is unavailable"), None)
+    if not isinstance(value, str) or re.fullmatch(r"[A-Za-z0-9_-]*", value) is None:
+        return (_closure_result("error", subject + " is malformed"), None)
+    try:
+        decoded = base64.b64decode(
+            value + "=" * (-len(value) % 4), altchars=b"-_", validate=True
+        )
+    except (binascii.Error, ValueError):
+        return (_closure_result("error", subject + " is malformed"), None)
+    canonical_value = base64.urlsafe_b64encode(decoded).rstrip(b"=").decode("ascii")
+    if canonical_value != value:
+        return (_closure_result("error", subject + " is not canonical"), None)
+    return (_closure_result("pass"), decoded)
+
+
+def _resolved_availability(entry, subject):
+    """Apply the shared strict availability contract before resolver data is read."""
+    if entry is None:
+        return (_closure_result("indeterminate", subject + " authority is unavailable"), None)
+    if not isinstance(entry, dict):
+        return (_closure_result("error", subject + " authority is malformed"), None)
+    available = entry.get("available")
+    if available is False:
+        return (_closure_result("indeterminate", subject + " authority is unavailable"), None)
+    if available is not True:
+        return (_closure_result("error", subject + " availability is malformed"), None)
+    return (_closure_result("pass"), entry)
+
+
+def _validated_dependency_receipt(
+    reference,
+    entry,
+    receipt_by_canonical_ref,
+    completed,
+    subject,
+    *,
+    job_id,
+    phase_index,
+    phase_kind,
+    expected_writer,
+    reference_validator=None,
+):
+    """Validate one already-proof-checked SR-2 receipt against its complete ref.
+
+    The map is the output of the consumer's protocol-owned SR-2 proof adapter.  This
+    reference predicate validates the portable receipt and exact tuple; it does not
+    invent a substrate proof codec.  A map name or Boolean inside untrusted JSON is not
+    proof and MUST NOT be used to populate this input in a production consumer.
+    ``expected_writer`` constrains a protocol-required writer role when one exists;
+    an optional reference signer, when present, is always checked independently.
+    """
+    if (
+        not _nonempty_jcs_string(job_id)
+        or isinstance(phase_index, bool)
+        or not isinstance(phase_index, int)
+        or phase_index < 0
+        or phase_index > _MAX_SAFE_JSON_INTEGER
+        or not _nonempty_jcs_string(phase_kind)
+    ):
+        return (_closure_result("error", subject + " authenticated job/phase context is malformed"), None)
+    if reference_validator is None:
+        reference_validator = _attestation_ref_shape_valid
+    if not reference_validator(reference):
+        return (_closure_result("error", subject + " reference is malformed"), None)
+    if receipt_by_canonical_ref is None:
+        return (_closure_result("indeterminate", subject + " receipt authority is unavailable"), None)
+    if not isinstance(receipt_by_canonical_ref, dict):
+        return (_closure_result("error", subject + " receipt authority is malformed"), None)
+    try:
+        reference_key = canonical(reference).decode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return (_closure_result("error", subject + " reference is not canonicalizable"), None)
+    receipt_authority = receipt_by_canonical_ref.get(reference_key)
+    if receipt_authority is None:
+        return (_closure_result("indeterminate", subject + " verified receipt is unavailable"), None)
+    if not isinstance(receipt_authority, dict):
+        return (_closure_result("error", subject + " verified receipt is malformed"), None)
+    if "receipt" in receipt_authority:
+        if (
+            set(receipt_authority) - {"receipt", "storageBinding"}
+            or not isinstance(receipt_authority.get("receipt"), dict)
+            or (
+                "storageBinding" in receipt_authority
+                and not isinstance(receipt_authority.get("storageBinding"), dict)
+            )
+        ):
+            return (_closure_result("error", subject + " receipt adapter output is malformed"), None)
+        receipt = receipt_authority["receipt"]
+    else:
+        # Existing top-level and legacy fixture adapters expose a bare portable
+        # AnchorReceipt.  Keep that shape readable; authenticated storage metadata,
+        # when required, is carried beside it in the adapter envelope above.
+        receipt = receipt_authority
+
+    native_address = entry.get("nativeAddress")
+    if native_address is None:
+        return (_closure_result("indeterminate", subject + " native-address authority is unavailable"), None)
+    if not _nonempty_jcs_string(native_address):
+        return (_closure_result("error", subject + " native-address authority is malformed"), None)
+    independently_resolvable = entry.get("independentlyResolvable")
+    if completed and independently_resolvable is None:
+        return (_closure_result("indeterminate", subject + " resolvability authority is unavailable"), None)
+    if independently_resolvable is not None and not isinstance(
+        independently_resolvable, bool
+    ):
+        return (_closure_result("error", subject + " resolvability authority is malformed"), None)
+
+    transaction_ref = receipt.get("transactionRef")
+    evidence = receipt.get("evidence")
+    block_ref = receipt.get("blockRef")
+    observed_at = receipt.get("observedAt")
+    nonce = receipt.get("nonce")
+    required_shape = (
+        receipt.get("receiptVersion") == "1"
+        and _nonempty_jcs_string(receipt.get("substrate"))
+        and _nonempty_jcs_string(receipt.get("finalityProfile"))
+        and _nonempty_jcs_string(receipt.get("logicalAddress"))
+        and _nonempty_jcs_string(receipt.get("nativeAddress"))
+        and _sha256_hex(receipt.get("contentHash"))
+        and isinstance(transaction_ref, dict)
+        and set(transaction_ref) == {"kind", "value"}
+        and _nonempty_jcs_string(transaction_ref.get("kind"))
+        and _nonempty_jcs_string(transaction_ref.get("value"))
+        and _nonempty_jcs_string(receipt.get("writer"))
+        and (nonce is None or _nonempty_jcs_string(nonce))
+        and _string_member(receipt.get("state"), {
+            "submitted", "accepted", "included", "finalized", "rejected",
+            "dropped", "replaced", "expired", "reorged",
+        })
+        and receipt.get("observationDisposition") == "established"
+        and _non_boolean_number(observed_at)
+        and isinstance(evidence, dict)
+        and set(evidence) == {"kind", "value"}
+        and _nonempty_jcs_string(evidence.get("kind"))
+        and _nonempty_jcs_string(evidence.get("value"))
+    )
+    if not required_shape:
+        return (_closure_result("error", subject + " verified receipt is malformed"), None)
+    if receipt["state"] in {"included", "finalized"} and (
+        not isinstance(block_ref, dict)
+        or not _nonempty_jcs_string(block_ref.get("id"))
+    ):
+        return (_closure_result("error", subject + " receipt lacks its required blockRef"), None)
+
+    anchor = reference["anchor"]
+    if (
+        receipt.get("logicalAddress") != anchor.get("locator")
+        or receipt.get("nativeAddress") != native_address
+        or receipt.get("contentHash") != reference.get("contentHash")
+        or (expected_writer is not None and receipt.get("writer") != expected_writer)
+        or ("signer" in reference and receipt.get("writer") != reference["signer"])
+    ):
+        return (_closure_result("fail", subject + " receipt contradicts its full reference or authority"), receipt_authority)
+    if completed:
+        if receipt.get("state") != "finalized" or independently_resolvable is not True:
+            return (_closure_result("fail", subject + " is not finalized and independently resolvable"), receipt_authority)
+    elif receipt.get("state") not in {"included", "finalized"}:
+        return (_closure_result("fail", subject + " is not included or finalized"), receipt_authority)
+    return (_closure_result("pass"), receipt_authority)
+
+
+def _resolved_delivery_dependency(
+    entry,
+    reference,
+    receipt_by_canonical_ref,
+    completed,
+    subject,
+    *,
+    job_id,
+    phase_index,
+    phase_kind,
+    expected_writer,
+    reference_validator=None,
+):
+    availability_result, entry = _resolved_availability(entry, subject)
+    if availability_result[0] != "pass":
+        return availability_result, None, None
+    receipt_result, receipt = _validated_dependency_receipt(
+        reference,
+        entry,
+        receipt_by_canonical_ref,
+        completed,
+        subject,
+        job_id=job_id,
+        phase_index=phase_index,
+        phase_kind=phase_kind,
+        expected_writer=expected_writer,
+        reference_validator=reference_validator,
+    )
+    return receipt_result, entry, receipt
+
+
+def _validate_authenticated_storage_binding(
+    binding, access_model, buyer, cleartext_hash, stored_hash, subject
+):
+    if binding is None:
+        return _closure_result("indeterminate", subject + " authenticated storage authority is unavailable")
+    if not isinstance(binding, dict):
+        return _closure_result("error", subject + " authenticated storage authority is malformed")
+    effective_access_model = binding.get("effectiveAccessMode")
+    if not _string_member(
+        effective_access_model, {"public", "buyer-only", "encrypt-to-buyer"}
+    ):
+        return _closure_result("error", subject + " effective access mode is malformed")
+    # Validate the complete authority shape before interpreting value conflicts.
+    fields = {"effectiveAccessMode", "storedContentHash"}
+    if effective_access_model == "buyer-only":
+        fields.add("acl")
+    elif effective_access_model == "encrypt-to-buyer":
+        fields.add("encryption")
+    if set(binding) != fields or not _sha256_hex(binding.get("storedContentHash")):
+        return _closure_result("error", subject + " storage authority or digest is malformed")
+    acl = binding.get("acl")
+    encryption = binding.get("encryption")
+    if effective_access_model == "buyer-only" and (
+        not isinstance(acl, dict)
+        or set(acl) != {"mode", "allowed"}
+        or not _nonempty_jcs_string(acl.get("mode"))
+        or not isinstance(acl.get("allowed"), list)
+        or any(not _nonempty_jcs_string(value) for value in acl["allowed"])
+    ):
+        return _closure_result("error", subject + " authenticated ACL is malformed")
+    if effective_access_model == "encrypt-to-buyer" and (
+        not isinstance(encryption, dict)
+        or set(encryption) != {"recipient", "ciphertextContentHash"}
+        or not _nonempty_jcs_string(encryption.get("recipient"))
+        or not _sha256_hex(encryption.get("ciphertextContentHash"))
+    ):
+        return _closure_result("error", subject + " authenticated encryption evidence is malformed")
+    # DV-2 preserves public-to-private over-provision; private modes are exact.
+    if access_model != "public" and effective_access_model != access_model:
+        return _closure_result("fail", subject + " effective access mode contradicts the agreement")
+    if binding["storedContentHash"] != stored_hash:
+        return _closure_result("fail", subject + " authenticated stored-byte commitment differs")
+    if effective_access_model != "public" and not _nonempty_jcs_string(buyer):
+        return _closure_result("indeterminate", subject + " authenticated buyer is unavailable")
+    if effective_access_model in {"public", "buyer-only"} and stored_hash != cleartext_hash:
+        return _closure_result("fail", subject + " storage does not contain the plaintext bytes")
+    if effective_access_model == "buyer-only" and (
+        acl["mode"] != "restricted" or acl["allowed"] != [buyer]
+    ):
+        return _closure_result("fail", subject + " authenticated ACL is not restricted to the buyer")
+    if effective_access_model == "encrypt-to-buyer" and (
+        encryption["recipient"] != buyer or encryption["ciphertextContentHash"] != stored_hash
+    ):
+        return _closure_result("fail", subject + " authenticated encryption evidence does not bind the buyer and ciphertext")
+    return _closure_result("pass")
+
+
+def _validate_resolved_storage(
+    delivered,
+    expected_cleartext_hash,
+    access_model,
+    subject,
+    *,
+    authenticated_storage_binding=None,
+    buyer=None,
+):
+    """Bind arbitrary exact bytes, effective ACL/recipient, and stored bytes."""
+    if not isinstance(delivered, dict):
+        return _closure_result("error", subject + " authority is malformed")
+    results = []
+    if "storedHash" in delivered:
+        results.append(_closure_result(
+            "error", subject + " uses obsolete storedHash resolver metadata"
+        ))
+    if not _string_member(
+        access_model, {"public", "buyer-only", "encrypt-to-buyer"}
+    ):
+        results.append(_closure_result("error", subject + " access model is malformed"))
+    for field in ("cleartextHash", "storedContentHash"):
+        if not _sha256_hex(delivered.get(field)):
+            results.append(_closure_result(
+                "error", subject + " " + field + " is malformed"
+            ))
+    if not _sha256_hex(expected_cleartext_hash):
+        results.append(_closure_result(
+            "error", subject + " expected cleartext hash is malformed"
+        ))
+
+    cleartext_result, cleartext_bytes = _resolved_exact_bytes(
+        delivered, subject + " cleartext"
+    )
+    results.append(cleartext_result)
+    stored_result, stored_bytes = _exact_base64url_bytes(
+        delivered.get("storedBytesBase64url"), subject + " exact stored bytes"
+    )
+    results.append(stored_result)
+    recomputed_hash = None
+    if cleartext_bytes is not None:
+        recomputed_hash = hashlib.sha256(cleartext_bytes).hexdigest()
+        if (
+            delivered.get("cleartextHash") != recomputed_hash
+            or expected_cleartext_hash != recomputed_hash
+        ):
+            results.append(_closure_result(
+                "fail", subject + " cleartext bytes do not match delivery evidence"
+            ))
+    stored_hash = None
+    if stored_bytes is not None:
+        stored_hash = hashlib.sha256(stored_bytes).hexdigest()
+        if delivered.get("storedContentHash") != stored_hash:
+            results.append(_closure_result(
+                "fail", subject + " exact stored bytes do not match the resolver commitment"
+            ))
+    if recomputed_hash is not None and stored_hash is not None:
+        results.append(_validate_authenticated_storage_binding(
+            authenticated_storage_binding,
+            access_model,
+            buyer,
+            recomputed_hash,
+            stored_hash,
+            subject,
+        ))
+    return _combine_closure_results(results)
+
+
+def _validate_resolved_credential(
+    credential,
+    binding,
+    credential_ref,
+    subject="entitlement credential",
+    *,
+    authenticated_storage_binding=None,
+    buyer=None,
+):
+    """Bind arbitrary exact credential bytes to signed and resolver commitments."""
+    if not isinstance(credential, dict):
+        return _closure_result("error", subject + " authority is malformed")
+    results = []
+    allowed_fields = {
+        "credentialRef", "cleartextBytesBase64url", "cleartextHash",
+        "storedBytesBase64url", "storedContentHash", "nativeAddress",
+        "independentlyResolvable", "available",
+    }
+    if set(credential) - allowed_fields:
+        results.append(_closure_result(
+            "error", subject + " has unsupported resolver fields"
+        ))
+    resolved_ref = credential.get("credentialRef")
+    if (
+        not isinstance(resolved_ref, dict)
+        or set(resolved_ref) != {"ref", "accessModel"}
+        or not _attestation_ref_shape_valid(resolved_ref.get("ref"))
+        or not _string_member(
+            resolved_ref.get("accessModel"), {"buyer-only", "encrypt-to-buyer"}
+        )
+    ):
+        results.append(_closure_result(
+            "error", subject + " resolver credentialRef is malformed"
+        ))
+
+    ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
+    ref_content_hash = ref_value.get("contentHash") if isinstance(ref_value, dict) else None
+    access_model = (
+        credential_ref.get("accessModel") if isinstance(credential_ref, dict) else None
+    )
+    signed_cleartext_hash = (
+        binding.get("credentialCleartextHash") if isinstance(binding, dict) else None
+    )
+    for label, digest in (
+        ("signed cleartext hash", signed_cleartext_hash),
+        ("resolver cleartextHash", credential.get("cleartextHash")),
+        ("resolver storedContentHash", credential.get("storedContentHash")),
+        ("signed credential reference contentHash", ref_content_hash),
+    ):
+        if not _sha256_hex(digest):
+            results.append(_closure_result("error", subject + " " + label + " is malformed"))
+    if not _string_member(access_model, {"buyer-only", "encrypt-to-buyer"}):
+        results.append(_closure_result("error", subject + " access model is malformed"))
+
+    exact_bytes_result, exact_bytes = _exact_base64url_bytes(
+        credential.get("cleartextBytesBase64url"), subject + " exact cleartext bytes"
+    )
+    results.append(exact_bytes_result)
+    stored_bytes_result, stored_bytes = _exact_base64url_bytes(
+        credential.get("storedBytesBase64url"), subject + " exact stored bytes"
+    )
+    results.append(stored_bytes_result)
+    try:
+        resolver_ref_matches = canonical(credential.get("credentialRef")) == canonical(
+            credential_ref
+        )
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        resolver_ref_matches = False
+    if not resolver_ref_matches:
+        results.append(_closure_result(
+            "fail", subject + " reference does not match the signed entitlement"
+        ))
+    if credential.get("storedContentHash") != ref_content_hash:
+        results.append(_closure_result(
+            "fail", subject + " storage commitment does not match its signed reference"
+        ))
+    if exact_bytes is not None:
+        recomputed_hash = hashlib.sha256(exact_bytes).hexdigest()
+        if (
+            signed_cleartext_hash != recomputed_hash
+            or credential.get("cleartextHash") != recomputed_hash
+        ):
+            results.append(_closure_result(
+                "fail", subject + " exact bytes do not match cleartext commitments"
+            ))
+        if stored_bytes is not None:
+            stored_hash = hashlib.sha256(stored_bytes).hexdigest()
+            if credential.get("storedContentHash") != stored_hash:
+                results.append(_closure_result(
+                    "fail", subject + " exact stored bytes do not match the resolver commitment"
+                ))
+            results.append(_validate_authenticated_storage_binding(
+                authenticated_storage_binding,
+                access_model,
+                buyer,
+                recomputed_hash,
+                stored_hash,
+                subject,
+            ))
+    return _combine_closure_results(results)
+
+
+def _canonical_method_transaction_ref(transaction_ref):
+    if (
+        not isinstance(transaction_ref, dict)
+        or set(transaction_ref) != {"kind", "value"}
+        or not _nonempty_jcs_string(transaction_ref.get("kind"))
+        or not _nonempty_jcs_string(transaction_ref.get("value"))
+    ):
+        return None
+    try:
+        return canonical(transaction_ref).decode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+
+
+_DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR = {
+    # Current type-specific major-version signals registered by the repository's
+    # schemas. Contextual recipe/listing/rail/registry/protocol versions are not
+    # structural discriminators and therefore deliberately do not appear here.
+    "receiptVersion": "receipt",
+    "bundleVersion": "bundle",
+    "requirementVersion": "requirement",
+    "dacsVersion": "dacs",
+    "indexVersion": "index",
+    "resultVersion": "result",
+    "recordVersion": "record",
+    "agreementVersion": "agreement",
+    "payeeBoundAgreementVersion": "payee-bound-agreement",
+    "finalityCommitmentVersion": "finality-commitment",
+    "transcriptVersion": "transcript",
+    "entitlementVersion": "entitlement",
+    "payloadAttestationVersion": "payload-attestation",
+    "evidenceVersion": "settlement",
+    "deliveryEvidenceVersion": "delivery",
+    "amendmentVersion": "amendment",
+    "priorPaymentDispositionVersion": "prior-payment-disposition",
+    "faultBundleVersion": "fault-bundle",
+    "evidenceBoundFaultBundleVersion": "evidence-bound-fault-bundle",
+    "bindingVersion": "binding",
+    "derivationVersion": "derivation",
+    "replayableDerivationVersion": "replayable-derivation",
+    "settlementVerifiedDerivationVersion": "settlement-verified-derivation",
+    "replayableSettlementVerifiedDerivationVersion": (
+        "replayable-settlement-verified-derivation"
+    ),
+    "jobBoundReplayableDerivationVersion": "job-bound-replayable-derivation",
+    "ratingVersion": "rating",
+    "manifestVersion": "manifest",
+}
+
+def _delivery_artifact_type(record):
+    """Return a syntactic current selector for diagnostics, never admission."""
+    if not isinstance(record, dict):
+        return None
+    present = [
+        key for key in _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR if key in record
+    ]
+    if len(present) != 1:
+        return None
+    discriminator = present[0]
+    if record.get(discriminator) != "1":
+        return None
+    return _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR[discriminator]
+
+
+def _delivery_inner_type_valid(record, discriminator):
+    """Validate a selector only after the phase fixed the expected inner family."""
+    expected = _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR.get(discriminator)
+    if expected not in {"entitlement", "payload-attestation"} or not isinstance(record, dict):
+        return False
+    present = [
+        key for key in _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR if key in record
+    ]
+    return (
+        present == [discriminator]
+        and record.get(discriminator) == "1"
+    )
+
+
+def _authenticated_evidence_wire_type(record, pubkeys):
+    """Authenticate SettlementEvidence/DeliveryEvidence family before parsing it."""
+    if not isinstance(record, dict) or not isinstance(pubkeys, dict) or not HAVE_CRYPTO:
+        return None
+    signature = record.get("signature")
+    if not isinstance(signature, dict):
+        return None
+    signer = signature.get("signer")
+    value = signature.get("value")
+    canonical_ok, _ = sig6_canonical(value)
+    if (
+        not isinstance(signer, str)
+        or signer not in pubkeys
+        or signature.get("algorithm") not in SUPPORTED_SIGNATURE_ALGORITHMS
+        or not canonical_ok
+    ):
+        return None
+    try:
+        content_hash = settlement_evidence_hash(record)
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+    candidates = []
+    for family, domain in (
+        ("settlement", SETTLEMENT_EVIDENCE_DOMAIN),
+        ("delivery", DELIVERY_EVIDENCE_DOMAIN),
+    ):
+        if verify_sig(pubkeys[signer], domain, content_hash, value):
+            candidates.append(family)
+    if len(candidates) != 1:
+        return None
+    family = candidates[0]
+    expected_selector = (
+        "evidenceVersion" if family == "settlement" else "deliveryEvidenceVersion"
+    )
+    present = [
+        selector
+        for selector in ("evidenceVersion", "deliveryEvidenceVersion")
+        if selector in record
+    ]
+    if present != [expected_selector] or record.get(expected_selector) != "1":
+        return None
+    return family
+
+
+def validate_payload_attestation_locator_context(
+    record, attestation_ref, execution, method, *, legacy=False
+):
+    """Bind a standalone payload attestation to authenticated locator context.
+
+    ``execution`` and ``method`` are outputs of the protocol-owned session/listing
+    resolution path.  This predicate does not accept a family or locator label from the
+    record's caller and does not authenticate those authority objects by naming them.
+    """
+    if execution is None or method is None:
+        return _closure_result("indeterminate", "payload attestation locator authority is unavailable")
+    if not isinstance(execution, dict) or not isinstance(method, dict):
+        return _closure_result("error", "payload attestation locator authority is malformed")
+    if not isinstance(record, dict) or not _attestation_ref_shape_valid(attestation_ref):
+        return _closure_result("error", "payload attestation record or complete reference is malformed")
+    phase_index = execution.get("phaseIndex")
+    attempt = record.get("attempt")
+    if (
+        not _nonempty_jcs_string(execution.get("jobId"))
+        or execution.get("phaseKind") != "deliver-attested-payload"
+        or not _nonempty_jcs_string(method.get("kind"))
+        or isinstance(phase_index, bool)
+        or not isinstance(phase_index, int)
+        or phase_index < 0
+        or isinstance(attempt, bool)
+        or not isinstance(attempt, int)
+        or attempt < 0
+        or attempt > _MAX_SAFE_JSON_INTEGER
+    ):
+        return _closure_result("error", "payload attestation phase or attempt context is malformed")
+    try:
+        method_hash = _complete_object_hash(method)
+        record_hash = _signed_envelope_content_hash(record)
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return _closure_result("error", "payload attestation context is not canonicalizable")
+    if not _sha256_hex(method_hash) or not _sha256_hex(record_hash):
+        return _closure_result("error", "payload attestation context is not canonicalizable")
+    expected_locator = (
+        f"dacs4:payload-attestation:{execution.get('jobId')}:{method_hash}:{attempt}"
+        if legacy
+        else (
+            f"dacs4:payload-attestation:{execution.get('jobId')}:{phase_index}:"
+            f"{method_hash}:{attempt}"
+        )
+    )
+    signature = record.get("signature")
+    if (
+        record.get("jobId") != execution.get("jobId")
+        or record.get("verificationMethod") != method.get("kind")
+        or record.get("verificationMethodHash") != method_hash
+        or attestation_ref.get("anchor")
+        != {"kind": "storage-program", "locator": expected_locator}
+        or attestation_ref.get("contentHash") != record_hash
+        or (
+            "signer" in attestation_ref
+            and (
+                not isinstance(signature, dict)
+                or attestation_ref.get("signer") != signature.get("signer")
+            )
+        )
+    ):
+        return _closure_result("fail", "payload attestation does not bind authenticated job, phase, method, attempt, and locator")
+    return _closure_result("pass")
+
+
+def validate_delivery_method_evidence(
+    method,
+    method_evidence,
+    transaction_ref,
+    trusted_native_observations_by_canonical_ref,
+    *,
+    delivered_cleartext,
+    delivered_bytes,
+    payload_content_hash,
+    require_finalized,
+):
+    """Fixture-only method dispatch; no production consensus-proof format is implied."""
+    if not isinstance(method, dict) or not isinstance(method.get("kind"), str):
+        return _closure_result("error", "verification method is malformed")
+    if not isinstance(method_evidence, dict):
+        return _closure_result("error", "method evidence is malformed")
+
+    method_kind = method["kind"]
+    if method_kind == "self-signed":
+        if transaction_ref is not None:
+            return _closure_result("fail", "self-signed method carries a native transaction")
+        method_input = method_evidence.get("methodInput")
+        permitted_method_input = {
+            "identifier", "assertion", "assertionBytesBase64url", "signature"
+        }
+        if (
+            method_evidence.get("kind") != "self-signed-payload"
+            or not isinstance(method_input, dict)
+            or not {"identifier", "signature"} <= set(method_input)
+            or set(method_input) - permitted_method_input
+            or method_evidence.get("payloadContentHash") != payload_content_hash
+        ):
+            return _closure_result("error", "self-signed method input is malformed")
+        identifier = method_input.get("identifier")
+        assertion_result, assertion_bytes = _resolved_exact_bytes(
+            {
+                **(
+                    {"cleartextUtf8": method_input.get("assertion")}
+                    if "assertion" in method_input else {}
+                ),
+                **(
+                    {"cleartextBytesBase64url": method_input.get("assertionBytesBase64url")}
+                    if "assertionBytesBase64url" in method_input else {}
+                ),
+            },
+            "self-signed assertion",
+        )
+        if assertion_result[0] != "pass":
+            return assertion_result
+        if assertion_bytes != delivered_bytes:
+            return _closure_result("fail", "self-signed assertion is not the delivered payload")
+        signature_value = method_input.get("signature")
+        canonical_ok, _ = sig6_canonical(signature_value)
+        if (
+            not isinstance(identifier, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", identifier)
+            or not canonical_ok
+        ):
+            return _closure_result("error", "self-signed method key or signature is malformed")
+        try:
+            raw_signature = base64.urlsafe_b64decode(
+                signature_value + "=" * (-len(signature_value) % 4)
+            )
+            Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier)).verify(
+                raw_signature, assertion_bytes
+            )
+        except (InvalidSignature, TypeError, ValueError):
+            return _closure_result("fail", "self-signed method signature does not verify")
+        return _closure_result("pass")
+
+    if method_kind != "consensus-backed-proxy":
+        return _closure_result("error", "unsupported delivery verification method")
+
+    endpoint = method.get("endpoint")
+    request = method_evidence.get("request")
+    response = method_evidence.get("response")
+    transaction = method_evidence.get("transaction")
+    if (
+        not isinstance(endpoint, dict)
+        or not _string_member(endpoint.get("method"), {"GET", "POST"})
+        or not _nonempty_jcs_string(endpoint.get("urlTemplate"))
+        or not isinstance(request, dict)
+        or not isinstance(response, dict)
+        or not isinstance(transaction, dict)
+    ):
+        return _closure_result("error", "consensus-backed proxy evidence is malformed")
+
+    expected_request = {
+        "method": endpoint["method"],
+        "url": endpoint["urlTemplate"],
+    }
+    for optional in ("headers", "body"):
+        if optional in endpoint:
+            expected_request[optional] = endpoint[optional]
+    if request != expected_request:
+        return _closure_result("fail", "native request contradicts the signed method")
+
+    status = response.get("status")
+    response_data_result, response_data_bytes = _resolved_exact_bytes(
+        {
+            **({"cleartextUtf8": response.get("data")} if "data" in response else {}),
+            **(
+                {"cleartextBytesBase64url": response.get("dataBytesBase64url")}
+                if "dataBytesBase64url" in response else {}
+            ),
+        },
+        "native response data",
+    )
+    if response_data_result[0] != "pass":
+        return response_data_result
+    if (
+        isinstance(status, bool)
+        or not isinstance(status, int)
+        or not 200 <= status < 300
+        or response_data_bytes != delivered_bytes
+        or response.get("responseHash")
+        != hashlib.sha256(response_data_bytes).hexdigest()
+        or response.get("responseHash") != payload_content_hash
+        or not _sha256_hex(response.get("responseHeadersHash"))
+    ):
+        return _closure_result("fail", "native response does not commit to delivered bytes")
+
+    transaction_key = _canonical_method_transaction_ref(transaction_ref)
+    if (
+        transaction_key is None
+        or transaction.get("kind") != transaction_ref.get("kind")
+        or transaction.get("value") != transaction_ref.get("value")
+        or not _string_member(transaction.get("state"), {"included", "finalized"})
+        or method_evidence.get("proofValid") is not True
+        or transaction.get("authenticated") is not True
+    ):
+        return _closure_result("fail", "method envelope contradicts its native transaction")
+    if require_finalized and transaction.get("state") != "finalized":
+        return _closure_result("fail", "terminal delivery native transaction is not finalized")
+
+    observations = trusted_native_observations_by_canonical_ref
+    if observations is None:
+        return _closure_result("indeterminate", "trusted native transaction authority is unavailable")
+    if not isinstance(observations, dict):
+        return _closure_result("error", "trusted native transaction authority is malformed")
+    observation = observations.get(transaction_key)
+    if observation is None:
+        return _closure_result("indeterminate", "trusted native transaction observation is unavailable")
+    if not isinstance(observation, dict):
+        return _closure_result("error", "trusted native transaction observation is malformed")
+    if observation.get("available") is False:
+        if set(observation) != {"available"}:
+            return _closure_result("error", "unavailable native observation has ambiguous fields")
+        return _closure_result("indeterminate", "trusted native transaction observation is unavailable")
+    if (
+        set(observation)
+        != {"available", "transaction", "verificationMethod", "request", "response"}
+        or observation.get("available") is not True
+    ):
+        return _closure_result("error", "trusted native transaction observation is malformed")
+    observed_response = {
+        "status": response.get("status"),
+        "responseHash": response.get("responseHash"),
+        "responseHeadersHash": response.get("responseHeadersHash"),
+    }
+    if (
+        observation.get("transaction") != transaction
+        or observation.get("verificationMethod") != method
+        or observation.get("request") != request
+        or observation.get("response") != observed_response
+    ):
+        return _closure_result("fail", "method envelope contradicts trusted native observation")
+    return _closure_result("pass")
+
+
+def _validate_delivery_artifact_closure_disposition(
+    record,
+    phase_key,
+    listing,
+    bundle,
+    pubkeys,
+    execution,
+    closure,
+    verified_receipt_by_canonical_ref,
+    trusted_native_observations_by_canonical_ref,
+    *,
+    legacy,
+):
+    """Validate delivery closure under an explicit current or PDE-7 address policy."""
+    if record.get("outcome") != "success":
+        return _closure_result("pass")
+
+    results = []
+    if execution is None:
+        results.append(_closure_result("indeterminate", "session execution authority is unavailable"))
+        execution = {}
+    elif not isinstance(execution, dict):
+        results.append(_closure_result("error", "session execution authority is malformed"))
+        execution = {}
+    if closure is None:
+        return _combine_closure_results(
+            results + [_closure_result("indeterminate", "delivery artifact authority is unavailable")]
+        )
+    if not isinstance(closure, dict):
+        return _combine_closure_results(
+            results + [_closure_result("error", "delivery artifact authority is malformed")]
+        )
+
+    phase = record.get("phase")
+    job_id = record.get("jobId")
+    completed = bundle.get("outcome") == "completed"
+    try:
+        authenticated_phase_index = int(phase_key.split(":", 1)[0])
+    except (AttributeError, TypeError, ValueError):
+        return _combine_closure_results(
+            results + [_closure_result("error", "authenticated delivery phase key is malformed")]
+        )
+    phase_index = None if legacy else record.get("phaseIndex")
+    if not legacy and phase_key != f"{phase_index}:{phase}":
+        results.append(_closure_result("fail", "delivery closure phase key does not match signed evidence"))
+    deliverable_address = (
+        f"dacs4:deliverable:{job_id}"
+        if legacy else f"dacs4:deliverable:{job_id}:{phase_index}"
+    )
+    anchor = record.get("deliverableAnchor")
+    role_status, parties = authenticated_delivery_roles(bundle)
+    if role_status != "pass":
+        results.append(_closure_result("error", "authenticated delivery parties are missing or ambiguous"))
+        parties = {}
+    seller = parties.get("seller")
+    buyer = parties.get("buyer")
+
+    if phase == "deliver-storage-program":
+        if set(closure) - {"deliverable"}:
+            results.append(_closure_result("error", "storage delivery closure is ambiguous"))
+        deliverable_ref = {
+            "anchor": anchor,
+            "contentHash": record.get("deliverableContentHash"),
+        }
+        dependency_result, delivered, receipt = _resolved_delivery_dependency(
+            closure.get("deliverable"),
+            deliverable_ref,
+            verified_receipt_by_canonical_ref,
+            completed,
+            "storage deliverable",
+            job_id=job_id,
+            phase_index=authenticated_phase_index,
+            phase_kind=phase,
+            expected_writer=seller,
+            reference_validator=_deliverable_ref_shape_valid,
+        )
+        results.append(dependency_result)
+        if anchor != {"kind": "storage-program", "locator": deliverable_address}:
+            results.append(_closure_result("fail", "storage anchor does not bind the exact job and phase"))
+        offering = listing.get("offering")
+        deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
+        if (
+            not isinstance(deliverable_spec, dict)
+            or deliverable_spec.get("kind") != "storage-program"
+        ):
+            results.append(_closure_result(
+                "fail", "signed storage DeliverableSpec is malformed"
+            ))
+            access_model = "public"
+        else:
+            access_model = deliverable_spec.get("accessModel", "public")
+        if delivered is not None:
+            if delivered.get("logicalAddress") != deliverable_address:
+                results.append(_closure_result("fail", "storage deliverable does not close over the exact job and phase"))
+            results.append(_validate_resolved_storage(
+                delivered,
+                record.get("deliverableContentHash"),
+                access_model,
+                "storage deliverable",
+                authenticated_storage_binding=(
+                    receipt.get("storageBinding") if isinstance(receipt, dict) else None
+                ),
+                buyer=buyer,
+            ))
+        if "attestationRef" in record or "credentialDelivery" in record:
+            results.append(_closure_result("fail", "storage delivery carries phase-only fields"))
+        return _combine_closure_results(results)
+
+    if phase == "deliver-entitlement":
+        if role_status != "pass":
+            return _combine_closure_results(results + [
+                _closure_result("error", "entitlement delivery parties are missing or ambiguous")
+            ])
+        permitted_closure_fields = (
+            {"entitlementRecord"}
+            if legacy else {"entitlementRecord", "credential"}
+        )
+        if set(closure) - permitted_closure_fields:
+            results.append(_closure_result("error", "entitlement delivery closure is ambiguous"))
+        offering = listing.get("offering")
+        deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
+        duration_sec = (
+            deliverable_spec.get("durationSec") if isinstance(deliverable_spec, dict) else None
+        )
+        renewable = (
+            deliverable_spec.get("renewable") if isinstance(deliverable_spec, dict) else None
+        )
+        if (
+            not isinstance(deliverable_spec, dict)
+            or deliverable_spec.get("kind") != "entitlement"
+            or not _non_boolean_number(duration_sec)
+            or not isinstance(renewable, bool)
+        ):
+            results.append(_closure_result("fail", "signed entitlement DeliverableSpec is malformed"))
+
+        entitlement_ref = {
+            "anchor": anchor,
+            "contentHash": record.get("deliverableContentHash"),
+        }
+        dependency_result, entitlement_entry, _ = _resolved_delivery_dependency(
+            closure.get("entitlementRecord"),
+            entitlement_ref,
+            verified_receipt_by_canonical_ref,
+            completed,
+            "entitlement record",
+            job_id=job_id,
+            phase_index=authenticated_phase_index,
+            phase_kind=phase,
+            expected_writer=seller,
+            reference_validator=_deliverable_ref_shape_valid,
+        )
+        results.append(dependency_result)
+        entitlement = entitlement_entry.get("artifact") if entitlement_entry is not None else None
+        if entitlement_entry is not None and not isinstance(entitlement, dict):
+            results.append(_closure_result("error", "resolved entitlement record is malformed"))
+            entitlement = None
+        if entitlement is None:
+            return _combine_closure_results(results)
+
+        renewal_seq = entitlement.get("renewalSeq")
+        entitlement_address = (
+            f"dacs4:entitlement:{job_id}:{renewal_seq}"
+            if legacy
+            else f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        )
+        required = {
+            "entitlementVersion", "jobId", "grantee", "grantor", "startsAt",
+            "endsAt", "scope", "renewable", "renewalSeq", "signature",
+        }
+        terms_match = (
+            _non_boolean_number(duration_sec)
+            and _non_boolean_number(entitlement.get("startsAt"))
+            and _non_boolean_number(entitlement.get("endsAt"))
+            and entitlement["endsAt"] == entitlement["startsAt"] + duration_sec * 1000
+            and isinstance(renewable, bool)
+            and entitlement.get("renewable") == renewable
+        )
+        if (
+            not required <= set(entitlement)
+            or not _delivery_inner_type_valid(entitlement, "entitlementVersion")
+            or entitlement.get("jobId") != job_id
+            or entitlement.get("grantee") != parties.get("buyer")
+            or entitlement.get("grantor") != parties.get("seller")
+            or isinstance(renewal_seq, bool)
+            or not isinstance(renewal_seq, int)
+            or renewal_seq < 0
+            or renewal_seq > _MAX_SAFE_JSON_INTEGER
+            or not _non_boolean_number(entitlement.get("startsAt"))
+            or not _non_boolean_number(entitlement.get("endsAt"))
+            or entitlement.get("endsAt", 0) < entitlement.get("startsAt", 0)
+            or not isinstance(entitlement.get("scope"), dict)
+            or not isinstance(entitlement.get("renewable"), bool)
+            or not terms_match
+            or not _signed_inner_artifact_valid(
+                entitlement,
+                ENTITLEMENT_DOMAIN,
+                pubkeys,
+                expected_signer=parties.get("seller"),
+            )
+            or anchor != {"kind": "storage-program", "locator": entitlement_address}
+            or entitlement_entry.get("logicalAddress") != entitlement_address
+            or record.get("deliverableContentHash")
+            != _signed_envelope_content_hash(entitlement)
+            or "attestationRef" in record
+        ):
+            results.append(_closure_result("fail", "entitlement record does not close over the signed offering, job, and phase"))
+
+        credential_ref = entitlement.get("credentialRef")
+        if legacy:
+            # Frozen SettlementEvidence has no signed PDE-5 binding. The record is
+            # still validated as historical audit data, but no credential input can
+            # upgrade it to a delivered/DV-5 assertion.
+            credential_value = (
+                credential_ref.get("ref")
+                if isinstance(credential_ref, dict) else None
+            )
+            if credential_ref is not None and (
+                not isinstance(credential_ref, dict)
+                or set(credential_ref) != {"ref", "accessModel"}
+                or not _attestation_ref_shape_valid(credential_value)
+                or not _string_member(
+                    credential_ref.get("accessModel"),
+                    {"buyer-only", "encrypt-to-buyer"},
+                )
+            ):
+                results.append(_closure_result(
+                    "error", "historical entitlement credential reference is malformed"
+                ))
+            return _combine_closure_results(results)
+        binding = record.get("credentialDelivery")
+        if credential_ref is None:
+            if binding is not None or "credential" in closure:
+                results.append(_closure_result("fail", "credential-free entitlement has contradictory delivery data"))
+            return _combine_closure_results(results)
+        if not isinstance(binding, dict):
+            results.append(_closure_result("fail", "credential entitlement lacks its exact delivery binding"))
+            binding = {}
+        ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
+        credential_result, credential, credential_receipt = _resolved_delivery_dependency(
+            closure.get("credential"),
+            ref_value,
+            verified_receipt_by_canonical_ref,
+            completed,
+            "entitlement credential",
+            job_id=job_id,
+            phase_index=authenticated_phase_index,
+            phase_kind=phase,
+            expected_writer=(
+                ref_value.get("signer", seller) if isinstance(ref_value, dict) else seller
+            ),
+        )
+        results.append(credential_result)
+        try:
+            exact_credential_ref = canonical(binding.get("credentialRef")) == canonical(credential_ref)
+        except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+            exact_credential_ref = False
+        if (
+            not _attestation_ref_shape_valid(ref_value)
+            or not exact_credential_ref
+            or binding.get("renewalSeq") != renewal_seq
+        ):
+            results.append(_closure_result("fail", "credential delivery does not close over the signed entitlement"))
+        if credential is not None:
+            results.append(_validate_resolved_credential(
+                credential,
+                binding,
+                credential_ref,
+                authenticated_storage_binding=(
+                    credential_receipt.get("storageBinding")
+                    if isinstance(credential_receipt, dict) else None
+                ),
+                buyer=buyer,
+            ))
+        return _combine_closure_results(results)
+
+    if phase != "deliver-attested-payload":
+        return _combine_closure_results(
+            results + [_closure_result("error", "unsupported delivery phase closure")]
+        )
+
+    expected_closure_fields = {
+        "agreementHash", "deliverable", "payloadAttestationRecord", "methodEvidence"
+    }
+    if set(closure) - expected_closure_fields:
+        results.append(_closure_result("error", "attested-payload closure is ambiguous"))
+    payload_ref = {
+        "anchor": anchor,
+        "contentHash": record.get("deliverableContentHash"),
+    }
+    dependency_result, delivered, _ = _resolved_delivery_dependency(
+        closure.get("deliverable"),
+        payload_ref,
+        verified_receipt_by_canonical_ref,
+        completed,
+        "attested payload",
+        job_id=job_id,
+        phase_index=authenticated_phase_index,
+        phase_kind=phase,
+        expected_writer=seller,
+        reference_validator=_deliverable_ref_shape_valid,
+    )
+    results.append(dependency_result)
+    attestation_ref = record.get("attestationRef")
+    attestation_projection = closure.get("payloadAttestationRecord")
+    attestation_artifact = (attestation_projection.get("artifact")
+                            if isinstance(attestation_projection, dict) else None)
+    attestation_signature = (attestation_artifact.get("signature")
+                             if isinstance(attestation_artifact, dict) else None)
+    # The signature is verified below; its writer binding is required even when
+    # the optional reference signer is omitted.
+    attestation_writer = (attestation_signature.get("signer")
+                          if isinstance(attestation_signature, dict) else None)
+    dependency_result, attestation_entry, _ = _resolved_delivery_dependency(
+        closure.get("payloadAttestationRecord"),
+        attestation_ref,
+        verified_receipt_by_canonical_ref,
+        completed,
+        "payload attestation record",
+        job_id=job_id,
+        phase_index=authenticated_phase_index,
+        phase_kind=phase,
+        expected_writer=attestation_writer,
+    )
+    results.append(dependency_result)
+    execution_agreement_hash = execution.get("agreementHash")
+    closure_agreement_hash = closure.get("agreementHash")
+    if execution_agreement_hash is None:
+        results.append(_closure_result("indeterminate", "session agreement hash authority is unavailable"))
+    elif not _sha256_hex(execution_agreement_hash):
+        results.append(_closure_result("error", "session agreement hash authority is malformed"))
+    if closure_agreement_hash is None:
+        results.append(_closure_result("indeterminate", "agreement hash authority is unavailable"))
+    elif not _sha256_hex(closure_agreement_hash):
+        results.append(_closure_result("error", "agreement hash authority is malformed"))
+    if not isinstance(anchor, dict) or anchor.get("locator") != deliverable_address:
+        results.append(_closure_result("fail", "attested payload anchor does not bind the exact job and phase"))
+    if delivered is not None and (
+        delivered.get("logicalAddress") != deliverable_address
+        or delivered.get("cleartextHash") != record.get("deliverableContentHash")
+    ):
+        results.append(_closure_result("fail", "attested payload does not close over the exact job and phase"))
+    if delivered is not None and "storedHash" in delivered:
+        results.append(_closure_result(
+            "error", "attested payload uses obsolete storedHash resolver metadata"
+        ))
+
+    cleartext = delivered.get("cleartextUtf8") if delivered is not None else None
+    cleartext_bytes = None
+    if delivered is not None:
+        cleartext_result, cleartext_bytes = _resolved_exact_bytes(
+            delivered, "attested payload cleartext"
+        )
+        results.append(cleartext_result)
+        if (
+            cleartext_bytes is not None
+            and hashlib.sha256(cleartext_bytes).hexdigest()
+            != record.get("deliverableContentHash")
+        ):
+            results.append(_closure_result("fail", "attested payload bytes do not match delivery evidence"))
+
+    payload_record = attestation_entry.get("artifact") if attestation_entry is not None else None
+    if attestation_entry is not None and not isinstance(payload_record, dict):
+        results.append(_closure_result("error", "resolved payload attestation record is malformed"))
+        payload_record = None
+    if not _attestation_ref_shape_valid(attestation_ref):
+        results.append(_closure_result("error", "payload attestation reference is malformed"))
+    if payload_record is None:
+        return _combine_closure_results(results)
+
+    required = {
+        "payloadAttestationVersion", "jobId", "agreementHash",
+        "deliverableSpecHash", "payloadFormat", "payloadContentHash",
+        "verificationMethod", "verificationMethodHash", "attempt", "decision",
+        "reason", "methodEvidenceRef", "verifiedAt",
+        "signature",
+    }
+    if not required <= set(payload_record) or not _delivery_inner_type_valid(
+        payload_record, "payloadAttestationVersion"
+    ):
+        results.append(_closure_result("error", "payload attestation record lacks required fields or has an unsupported type"))
+    attempt = payload_record.get("attempt")
+    method_hash = payload_record.get("verificationMethodHash")
+    attestation_address = (
+        f"dacs4:payload-attestation:{job_id}:{method_hash}:{attempt}"
+        if legacy
+        else f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:{attempt}"
+    )
+    signature = payload_record.get("signature")
+    if (
+        isinstance(attempt, bool)
+        or not isinstance(attempt, int)
+        or attempt < 0
+        or attempt > _MAX_SAFE_JSON_INTEGER
+        or not isinstance(attestation_ref, dict)
+        or attestation_ref.get("anchor")
+        != {"kind": "storage-program", "locator": attestation_address}
+        or attestation_entry.get("logicalAddress") != attestation_address
+        or attestation_ref.get("contentHash")
+        != _signed_envelope_content_hash(payload_record)
+        or (
+            "signer" in attestation_ref
+            and isinstance(signature, dict)
+            and attestation_ref.get("signer") != signature.get("signer")
+        )
+        or not _signed_inner_artifact_valid(
+            payload_record, PAYLOAD_ATTESTATION_DOMAIN, pubkeys
+        )
+    ):
+        results.append(_closure_result("fail", "payload attestation does not bind its exact phase-indexed artifact"))
+
+    offering = listing.get("offering")
+    deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
+    method = (
+        deliverable_spec.get("verificationMethod")
+        if isinstance(deliverable_spec, dict) else None
+    )
+    results.append(validate_payload_attestation_locator_context(
+        payload_record,
+        attestation_ref,
+        execution,
+        method,
+        legacy=legacy,
+    ))
+    if (
+        not isinstance(deliverable_spec, dict)
+        or not isinstance(method, dict)
+        or deliverable_spec.get("kind") != "attested-payload"
+        or payload_record.get("jobId") != job_id
+        or (
+            execution_agreement_hash is not None
+            and payload_record.get("agreementHash") != execution_agreement_hash
+        )
+        or (
+            closure_agreement_hash is not None
+            and payload_record.get("agreementHash") != closure_agreement_hash
+        )
+        or payload_record.get("deliverableSpecHash")
+        != _complete_object_hash(deliverable_spec)
+        or payload_record.get("payloadFormat") != deliverable_spec.get("payloadFormat")
+        or payload_record.get("payloadContentHash") != record.get("deliverableContentHash")
+        or payload_record.get("verificationMethod") != method.get("kind")
+        or payload_record.get("verificationMethodHash") != _complete_object_hash(method)
+        or payload_record.get("decision") != "pass"
+        or "credentialDelivery" in record
+    ):
+        results.append(_closure_result("fail", "payload attestation does not bind authenticated commerce context"))
+
+    method_kind = method.get("kind") if isinstance(method, dict) else None
+    if method_kind == "self-signed":
+        if "methodTransactionRef" in payload_record:
+            results.append(_closure_result(
+                "fail", "self-signed payload attestation carries a native transaction"
+            ))
+    elif method_kind == "consensus-backed-proxy":
+        if "methodTransactionRef" not in payload_record:
+            results.append(_closure_result(
+                "fail", "transaction-bound payload attestation lacks its native transaction"
+            ))
+    else:
+        results.append(_closure_result(
+            "error", "payload attestation uses an unsupported verification method"
+        ))
+
+    method_ref = payload_record.get("methodEvidenceRef")
+    method_writer = method_ref.get("signer") if isinstance(method_ref, dict) else None
+    method_dependency_result, method_entry, _ = _resolved_delivery_dependency(
+        closure.get("methodEvidence"),
+        method_ref,
+        verified_receipt_by_canonical_ref,
+        completed,
+        "method evidence",
+        job_id=job_id,
+        phase_index=authenticated_phase_index,
+        phase_kind=phase,
+        expected_writer=method_writer,
+    )
+    results.append(method_dependency_result)
+    method_evidence = method_entry.get("artifact") if method_entry is not None else None
+    if method_entry is not None and not isinstance(method_evidence, dict):
+        results.append(_closure_result("error", "resolved method evidence is malformed"))
+        method_evidence = None
+    if not _attestation_ref_shape_valid(method_ref):
+        results.append(_closure_result("error", "method evidence reference is malformed"))
+    elif method_entry is not None and (
+        method_entry.get("logicalAddress") != method_ref.get("anchor", {}).get("locator")
+        or method_ref.get("contentHash") != _complete_object_hash(method_evidence)
+    ):
+        results.append(_closure_result("fail", "method evidence does not match its authenticated reference"))
+    if method_evidence is not None and cleartext_bytes is not None:
+        results.append(validate_delivery_method_evidence(
+            method,
+            method_evidence,
+            payload_record.get("methodTransactionRef"),
+            trusted_native_observations_by_canonical_ref,
+            delivered_cleartext=cleartext,
+            delivered_bytes=cleartext_bytes,
+            payload_content_hash=record.get("deliverableContentHash"),
+            require_finalized=completed,
+        ))
+    return _combine_closure_results(results)
+
+
 def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
                                             session_execution_authority_by_phase_key,
-                                            verified_receipt_by_canonical_ref):
+                                            verified_receipt_by_canonical_ref,
+                                            evidence_type, *,
+                                            receipt_validator=_validate_current_evidence_receipt):
     """Resolve one exact phase from trusted SB-1 authority plus verified SR-2 receipt evidence."""
     ref_key = canonical(ref).decode("utf-8")
     receipt = verified_receipt_by_canonical_ref.get(ref_key)
     if not isinstance(receipt, dict):
-        return (False, "settlement evidence lacks a verified SR-2 receipt", None)
+        return (False, "evidence record lacks a verified SR-2 receipt", None)
     matches = []
+    current_delivery = evidence_type == "delivery"
     for phase_key, execution in session_execution_authority_by_phase_key.items():
         if not isinstance(execution, dict):
             continue
@@ -1305,6 +2985,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
             or phase_key != f"{phase_index}:{phase_kind}"
             or execution.get("jobId") != bundle.get("jobId")
             or phase_kind != record.get("phase")
+            or (current_delivery and phase_index != record.get("phaseIndex"))
             or execution.get("phaseOrchestrator") != signer
         ):
             continue
@@ -1317,7 +2998,8 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
         for resolved in resolution_classes:
             ok, _ = _validate_evidence_resolution_binding(
                 ref, execution, receipt, bundle, phase_index, phase_kind, signer,
-                resolved=resolved,
+                resolved=resolved, current_delivery=current_delivery,
+                receipt_validator=receipt_validator,
             )
             if ok:
                 matches.append((phase_key, resolved))
@@ -1335,6 +3017,7 @@ def _known_authenticated_st8_successor(
     reference_validation_by_canonical_ref,
     session_execution_authority_by_phase_key,
     verified_receipt_by_canonical_ref,
+    receipt_validator,
 ):
     """Return true only for a fully authenticated exact-:resolved successor already in authority."""
     interim_id = canonical(interim_ref)
@@ -1377,6 +3060,8 @@ def _known_authenticated_st8_successor(
             bundle,
             session_execution_authority_by_phase_key,
             verified_receipt_by_canonical_ref,
+            "settlement",
+            receipt_validator=receipt_validator,
         )
         lifecycle = resolution.get("lifecycle")
         if (
@@ -1389,7 +3074,7 @@ def _known_authenticated_st8_successor(
     return False
 
 
-def validate_ebfab(
+def _validate_ebfab_boolean(
     bundle,
     listing,
     pubkeys,
@@ -1397,9 +3082,12 @@ def validate_ebfab(
     bundle_lifecycle,
     session_execution_authority_by_phase_key,
     verified_receipt_by_canonical_ref,
+    delivery_artifact_authority_by_phase_key=None,
+    trusted_native_observations_by_canonical_ref=None,
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    _receipt_validator=_validate_current_evidence_receipt,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -1408,9 +3096,9 @@ def validate_ebfab(
     settlementEvidence bijection, and the SR-2 lifecycle threshold. It intentionally
     remains test support rather than a general DACS validator.
     """
-    if bundle_type(bundle) != "evidence-bound":
+    if not _full_bundle_family_shape_valid(bundle, "evidence-bound"):
         return (False, "not an EvidenceBoundFaultAttestationBundle", None)
-    if not _absolute_fault_bundle_shape_valid(bundle):
+    if not _absolute_fault_bundle_shape_valid(bundle, "evidence-bound"):
         return (False, "malformed EvidenceBoundFaultAttestationBundle", None)
     if (
         not isinstance(listing, dict)
@@ -1419,9 +3107,15 @@ def validate_ebfab(
         or not isinstance(bundle_lifecycle, dict)
         or not isinstance(session_execution_authority_by_phase_key, dict)
         or not isinstance(verified_receipt_by_canonical_ref, dict)
+        or (
+            delivery_artifact_authority_by_phase_key is not None
+            and not isinstance(delivery_artifact_authority_by_phase_key, dict)
+        )
     ):
         return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
-    ok, reason = _bundle_signatures_valid(bundle, pubkeys)
+    ok, reason = _bundle_signatures_valid_for_family(
+        bundle, pubkeys, "evidence-bound"
+    )
     if not ok:
         return (False, reason, None)
     try:
@@ -1632,31 +3326,55 @@ def validate_ebfab(
         return (False, "settlementEvidence member lacks exact authenticated resolution", None)
     authenticated_records = []
     actual_keys = []
+    pending_closure_result = None
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
         if not isinstance(record, dict):
-            return (False, "settlement evidence lacks authenticated record", None)
+            return (False, "evidence reference lacks an authenticated record", None)
+        evidence_type = _authenticated_evidence_wire_type(record, pubkeys)
+        if evidence_type == "settlement":
+            shape_valid = _settlement_evidence_shape_valid(record)
+            evidence_domain = SETTLEMENT_EVIDENCE_DOMAIN
+        elif evidence_type == "delivery":
+            shape_valid = _delivery_evidence_shape_valid(record)
+            evidence_domain = DELIVERY_EVIDENCE_DOMAIN
+        else:
+            return (False, "evidence record has an unsupported or ambiguous discriminator", None)
+        if not shape_valid:
+            return (False, "evidence record does not satisfy its closed type shape", None)
+        evidence_hash = (
+            delivery_evidence_hash(record)
+            if evidence_type == "delivery"
+            else settlement_evidence_hash(record)
+        )
+        record_phase = record.get("phase")
+        if record_phase in PAYMENT_PHASES and evidence_type != "settlement":
+            return (False, "payment phase does not resolve to SettlementEvidence", None)
+        if record_phase in DELIVERY_PHASES:
+            if evidence_type == "settlement" and pipeline_kinds.count(record_phase) != 1:
+                return (False, "legacy delivery evidence is not a single unambiguous invocation", None)
+        elif record_phase not in PAYMENT_PHASES:
+            return (False, "evidence record does not name a supported evidence phase", None)
         signature = record.get("signature")
         if (
-            not _settlement_evidence_shape_valid(record)
-            or record.get("jobId") != bundle.get("jobId")
+            record.get("jobId") != bundle.get("jobId")
             or not isinstance(signature, dict)
             or signature.get("algorithm") != "ed25519"
             or not isinstance(signature.get("signer"), str)
             or signature.get("signer") not in pubkeys
-            or ref.get("contentHash") != settlement_evidence_hash(record)
+            or ref.get("contentHash") != evidence_hash
         ):
-            return (False, "settlement evidence record does not bind this job, phase, signer, or hash", None)
+            return (False, "evidence record does not bind this job, phase, signer, or hash", None)
         canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
         if not canonical_ok:
             return (False, canonical_reason, None)
         if not verify_sig(
             pubkeys[signature["signer"]],
-            SETTLEMENT_EVIDENCE_DOMAIN,
-            settlement_evidence_hash(record),
+            evidence_domain,
+            evidence_hash,
             signature["value"],
         ):
-            return (False, "settlement evidence signature does not verify", None)
+            return (False, "evidence signature does not verify under its type domain", None)
         binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
             ref,
             record,
@@ -1664,6 +3382,8 @@ def validate_ebfab(
             bundle,
             session_execution_authority_by_phase_key,
             verified_receipt_by_canonical_ref,
+            evidence_type,
+            receipt_validator=_receipt_validator,
         )
         if not binding_ok:
             return (False, binding_result, None)
@@ -1677,7 +3397,35 @@ def validate_ebfab(
             else "failure"
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
-            return (False, "settlement evidence record contradicts the signed phase result", None)
+            return (False, "evidence record contradicts the signed phase result", None)
+        if record_phase in DELIVERY_PHASES:
+            delivery_authority = (
+                delivery_artifact_authority_by_phase_key
+                if isinstance(delivery_artifact_authority_by_phase_key, dict)
+                else {}
+            )
+            closure_disposition, closure_reason = (
+                _validate_delivery_artifact_closure_disposition(
+                    record,
+                    phase_key,
+                    listing,
+                    bundle,
+                    pubkeys,
+                    session_execution_authority_by_phase_key.get(phase_key),
+                    delivery_authority.get(phase_key),
+                    verified_receipt_by_canonical_ref,
+                    trusted_native_observations_by_canonical_ref,
+                    legacy=evidence_type == "settlement",
+                )
+            )
+            if closure_disposition in {"fail", "error"}:
+                return (
+                    False,
+                    _DispositionReason(closure_reason, closure_disposition),
+                    None,
+                )
+            if closure_disposition == "indeterminate" and pending_closure_result is None:
+                pending_closure_result = (closure_disposition, closure_reason)
         actual_keys.append(phase_key)
         authenticated_records.append((ref, resolution, record, phase_key, resolved_record))
     if (
@@ -1731,6 +3479,7 @@ def validate_ebfab(
                 reference_validation_by_canonical_ref,
                 session_execution_authority_by_phase_key,
                 verified_receipt_by_canonical_ref,
+                _receipt_validator,
             ):
                 return (False, "expired ST-8 record suppresses a known authenticated successor", None)
         elif record.get("reason") in st8_reasons:
@@ -1798,6 +3547,8 @@ def validate_ebfab(
             bundle,
             session_execution_authority_by_phase_key,
             verified_receipt_by_canonical_ref,
+            "settlement",
+            receipt_validator=_receipt_validator,
         )
         if not interim_binding_ok:
             return (False, interim_binding_result, None)
@@ -1816,11 +3567,20 @@ def validate_ebfab(
             return (False, "failed ST-8 interim dependency is not included or finalized", None)
 
     completed = bundle.get("outcome") == "completed"
-    for resolution in exact_resolutions:
+    for ref, resolution in zip(actual_refs, exact_resolutions):
         lifecycle = resolution.get("lifecycle")
         if not isinstance(lifecycle, dict):
-            return (False, "settlement evidence lacks authenticated lifecycle", None)
+            return (False, "evidence record lacks authenticated lifecycle", None)
         state = lifecycle.get("state")
+        receipt = verified_receipt_by_canonical_ref.get(
+            canonical(ref).decode("utf-8")
+        )
+        receipt_matches, _ = (
+            _receipt_validator(receipt, None, expected_state=state)
+            if isinstance(receipt, dict) else (False, "missing receipt")
+        )
+        if not receipt_matches:
+            return (False, "evidence lifecycle contradicts its verified receipt", None)
         if completed and (
             state != "finalized" or lifecycle.get("independentlyResolvable") is not True
         ):
@@ -1836,21 +3596,139 @@ def validate_ebfab(
         bundle_lifecycle.get("state"), {"included", "finalized"}
     ):
         return (False, "failed or aborted EBFAB is not included or finalized", None)
+    if pending_closure_result is not None:
+        disposition, reason = pending_closure_result
+        return (False, _DispositionReason(reason, disposition), None)
     return (True, "ok", expected_keys)
 
 
+def _validate_ebfab_disposition_with_receipts(receipt_validator, args, kwargs):
+    selected = dict(kwargs)
+    selected["_receipt_validator"] = receipt_validator
+    ok, reason, phase_keys = _validate_ebfab_boolean(*args, **selected)
+    if ok:
+        return ("pass", str(reason), phase_keys)
+    disposition = getattr(reason, "disposition", "fail")
+    return (disposition, str(reason), None)
+
+
+def validate_ebfab_disposition(*args, **kwargs):
+    """Validate EBFAB admission with the current CORE AnchorReceipt contract."""
+    return _validate_ebfab_disposition_with_receipts(
+        _validate_current_evidence_receipt, args, kwargs
+    )
+
+
+def validate_legacy_ebfab_disposition(*args, **kwargs):
+    """Validate frozen EBFAB fixtures with the named historical receipt contract."""
+    return _validate_ebfab_disposition_with_receipts(
+        _validate_legacy_evidence_receipt, args, kwargs
+    )
+
+
+def validate_ebfab(*args, **kwargs):
+    """Boolean current-receipt EBFAB admission wrapper."""
+    disposition, reason, phase_keys = validate_ebfab_disposition(*args, **kwargs)
+    return (disposition == "pass", reason, phase_keys)
+
+
+def validate_legacy_ebfab(*args, **kwargs):
+    """Boolean archival EBFAB verifier; never current action authority."""
+    disposition, reason, phase_keys = validate_legacy_ebfab_disposition(
+        *args, **kwargs
+    )
+    return (disposition == "pass", reason, phase_keys)
+
+
+def _tagged_copy_validation_for_derive(
+    tagged, *, ebfab_validator=validate_ebfab_disposition
+):
+    """Preserve the SEB disposition/reason before divergence and ranking."""
+    if not isinstance(tagged, dict):
+        return ("error", "tagged copy is not an object")
+    bundle = tagged.get("bundle")
+    bundle_authority = tagged.get("bundleAdmissionAuthority")
+    ebfab_authority = tagged.get("ebfabAuthority")
+    if bundle_authority is None and ebfab_authority is None:
+        return ("indeterminate", "bundle admission authority is unavailable")
+    bundle_pubkeys = (
+        bundle_authority.get("publicKeys")
+        if isinstance(bundle_authority, dict) else None
+    )
+    ebfab_pubkeys = (
+        ebfab_authority.get("publicKeys")
+        if isinstance(ebfab_authority, dict) else None
+    )
+    bundle_kind = _authenticated_bundle_signature_family(bundle, bundle_pubkeys)
+    ebfab_kind = _authenticated_bundle_signature_family(bundle, ebfab_pubkeys)
+    if ebfab_kind == "evidence-bound":
+        kind = ebfab_kind
+        pubkeys = ebfab_pubkeys
+    elif bundle_kind in {"legacy", "fault"}:
+        kind = bundle_kind
+        pubkeys = bundle_pubkeys
+    elif bundle_kind == "evidence-bound":
+        if not isinstance(ebfab_authority, dict):
+            return ("indeterminate", "EBFAB validation authority is unavailable")
+        if not isinstance(ebfab_pubkeys, dict):
+            return ("indeterminate", "EBFAB public-key authority is unavailable")
+        return ("error", "EBFAB family cannot be authenticated by EBFAB authority")
+    else:
+        kind = None
+        pubkeys = None
+    if kind is None:
+        if bundle_authority is not None and not isinstance(bundle_authority, dict):
+            return ("error", "bundle admission authority is malformed")
+        if bundle_authority is not None and not isinstance(bundle_pubkeys, dict):
+            return ("indeterminate", "bundle admission public-key authority is unavailable")
+        return ("error", "tagged copy family cannot be authenticated before parsing")
+    ok, reason = _bundle_signatures_valid_for_family(bundle, pubkeys, kind)
+    if not ok:
+        return ("error", reason)
+    if kind != "evidence-bound":
+        return ("pass", "non-EBFAB copy uses its existing admission path")
+    if not isinstance(ebfab_authority, dict):
+        return ("indeterminate", "EBFAB validation authority is unavailable")
+    disposition, reason, _ = ebfab_validator(
+        bundle,
+        ebfab_authority.get("listing"),
+        ebfab_authority.get("publicKeys"),
+        ebfab_authority.get("referenceValidationByCanonicalRef"),
+        ebfab_authority.get("bundleLifecycle"),
+        ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
+        ebfab_authority.get("verifiedReceiptByCanonicalRef"),
+        ebfab_authority.get("deliveryArtifactAuthorityByPhaseKey"),
+        ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        effective_pipeline=ebfab_authority.get("effectivePipeline"),
+        additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
+    )
+    return (disposition, reason)
+
+
 def _tagged_copy_valid_for_derive(tagged):
-    """Reject an EBFAB before divergence/ranking unless its authenticated SEB gate passes."""
+    """Boolean current-receipt admission wrapper."""
+    disposition, _ = _tagged_copy_validation_for_derive(tagged)
+    return disposition == "pass"
+
+
+def _tagged_legacy_copy_validation_for_derive(tagged):
+    """Apply the frozen selector-based derive admission contract.
+
+    Legacy/FAB copies retain their released syntactic admission. EBFAB is the
+    sole family that additionally requires its named archival SEB authority.
+    """
+    if not isinstance(tagged, dict):
+        return ("error", "tagged copy is not an object")
     bundle = tagged.get("bundle")
     kind = bundle_type(bundle)
     if kind is None:
-        return False
+        return ("error", "tagged copy has an unsupported bundle type")
     if kind != "evidence-bound":
-        return True
+        return ("pass", "non-EBFAB copy uses its existing admission path")
     authority = tagged.get("ebfabAuthority")
     if not isinstance(authority, dict):
-        return False
-    ok, _, _ = validate_ebfab(
+        return ("indeterminate", "EBFAB validation authority is unavailable")
+    disposition, reason, _ = validate_legacy_ebfab_disposition(
         bundle,
         authority.get("listing"),
         authority.get("publicKeys"),
@@ -1858,13 +3736,23 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("bundleLifecycle"),
         authority.get("sessionExecutionAuthorityByPhaseKey"),
         authority.get("verifiedReceiptByCanonicalRef"),
+        authority.get("deliveryArtifactAuthorityByPhaseKey"),
+        authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
         additional_commit_phase=authority.get("additionalCommitPhase"),
     )
-    return ok
+    return (disposition, reason)
 
 
-def _post_fetch_valid(fetched, binding, pubkeys):
+def _tagged_legacy_copy_valid_for_derive(tagged):
+    """Boolean archival-receipt admission wrapper."""
+    disposition, _ = _tagged_legacy_copy_validation_for_derive(tagged)
+    return disposition == "pass"
+
+
+def _post_fetch_binding_valid_with_profile(
+        fetched, binding, pubkeys, *, family_resolver, bundle_validator,
+        family_refusal):
     """FULL BB-5 post-fetch validation of one fetched copy against the binding that resolved it
     (round-9). Any failure => the copy is INERT (the caller DROPS it; it never reaches the BB-6
     ladder at any standing). Checks, in order:
@@ -1879,6 +3767,14 @@ def _post_fetch_valid(fetched, binding, pubkeys):
     Returns (ok, reason)."""
     if not isinstance(fetched, dict):
         return (False, "fetched copy is not an object")
+    if not isinstance(binding, dict):
+        return (False, "binding is not an object")
+    family = family_resolver(fetched, pubkeys)
+    if family is None:
+        return (False, family_refusal("full-bundle"))
+    ok_sig, reason = bundle_validator(fetched, pubkeys, family)
+    if not ok_sig:
+        return (False, reason)
     if fetched.get("jobId") != binding.get("jobId"):
         return (False, "BB-5 check 7: fetched.jobId != binding.jobId")
     if not _holds_role(fetched, binding.get("signer"), binding.get("role")):
@@ -1886,7 +3782,7 @@ def _post_fetch_valid(fetched, binding, pubkeys):
     if fetched.get("anchoredByRole") != binding.get("role"):
         return (False, "BB-5 check 9: anchoredByRole (%r) != bound role (%r)"
                 % (fetched.get("anchoredByRole"), binding.get("role")))
-    if is_fab(fetched):
+    if family in {"fault", "evidence-bound"}:
         roster = roster_roles(fetched)
         try:
             fset = implied_fault_set(fetched.get("outcome"), fetched.get("anchoredByRole"), roster)
@@ -1896,18 +3792,39 @@ def _post_fetch_valid(fetched, binding, pubkeys):
             return (False, "§10.4.1 faultedParty %r outside the permissible set %r for (%r, %r)"
                     % (fetched.get("faultedParty"), sorted(fset), fetched.get("outcome"),
                        fetched.get("anchoredByRole")))
-    ok_sig, reason = _bundle_signatures_valid(fetched, pubkeys)
-    if not ok_sig:
-        return (False, reason)
     if bundle_hash(fetched) != binding.get("bundleContentHash"):
         return (False, "BB-5 check 8: recomputed §10.4.1 hash != binding.bundleContentHash")
     return (True, "ok")
 
 
+def _post_fetch_valid(fetched, binding, pubkeys):
+    """Current BB-5 post-fetch validation with authenticated family selection."""
+    return _post_fetch_binding_valid_with_profile(
+        fetched,
+        binding,
+        pubkeys,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
+    )
+
+
+def _post_fetch_legacy_valid(fetched, binding, pubkeys):
+    """Archival BB-5 post-fetch validation under the released selector contract."""
+    return _post_fetch_binding_valid_with_profile(
+        fetched,
+        binding,
+        pubkeys,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
+    )
+
+
 def _post_fetch_address_valid_with_profile(
         fetched, resolved_address, expected_role, expected_content_hash, pubkeys,
         expected_jobid=None, expected_participant=None, *, pure_mapping_resolver,
-        job_id_validator):
+        job_id_validator, family_resolver, bundle_validator, family_refusal):
     """Pure-mapping equivalent of BB-5 post-fetch validation.
 
     The role is authenticated by recomputing its deterministic logical/native address from the
@@ -1916,6 +3833,12 @@ def _post_fetch_address_valid_with_profile(
     """
     if not isinstance(fetched, dict):
         return (False, "fetched copy is not an object")
+    family = family_resolver(fetched, pubkeys)
+    if family is None:
+        return (False, family_refusal("full-bundle"))
+    ok_sig, reason = bundle_validator(fetched, pubkeys, family)
+    if not ok_sig:
+        return (False, reason)
     job_id = fetched.get("jobId")
     if not isinstance(job_id, str):
         return (False, "pure-mapping check: fetched.jobId must be a string")
@@ -1934,7 +3857,8 @@ def _post_fetch_address_valid_with_profile(
     parties = fetched.get("parties")
     if expected_participant is None:
         if not isinstance(parties, list) or not any(
-            party.get("role") == expected_role for party in parties
+            isinstance(party, dict) and party.get("role") == expected_role
+            for party in parties
         ):
             return (False, "pure-mapping check: fetched roster has no holder for resolved role")
     else:
@@ -1949,7 +3873,7 @@ def _post_fetch_address_valid_with_profile(
             return (False, "pure-mapping check: fetched roster lacks a unique holder for resolved role")
         if role_holders[0] != expected_participant:
             return (False, "pure-mapping check: role holder != authenticated participant")
-    if is_fab(fetched):
+    if family in {"fault", "evidence-bound"}:
         roster = roster_roles(fetched)
         try:
             fset = implied_fault_set(fetched.get("outcome"), expected_role, roster)
@@ -1958,9 +3882,6 @@ def _post_fetch_address_valid_with_profile(
         if fetched.get("faultedParty") not in fset:
             return (False, "§10.4.1 faultedParty %r outside the permissible set %r for (%r, %r)"
                     % (fetched.get("faultedParty"), sorted(fset), fetched.get("outcome"), expected_role))
-    ok_sig, reason = _bundle_signatures_valid(fetched, pubkeys)
-    if not ok_sig:
-        return (False, reason)
     if bundle_hash(fetched) != expected_content_hash:
         return (False, "pure-mapping check: recomputed §10.4.1 hash != expected contentHash")
     return (True, "ok")
@@ -1995,6 +3916,9 @@ def _post_fetch_address_valid(fetched, resolved_address, expected_role,
         expected_participant=expected_participant,
         pure_mapping_resolver=resolver,
         job_id_validator=validate_current_job_id,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
     )
 
 
@@ -2017,6 +3941,9 @@ def _post_fetch_legacy_address_valid(fetched, resolved_address, expected_role,
         expected_jobid=expected_jobid,
         pure_mapping_resolver=resolver,
         job_id_validator=lambda job_id: job_id,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
     )
 
 
@@ -2216,8 +4143,31 @@ def _attestation_ref_shape_valid(ref):
     )
 
 
-def _absolute_fault_bundle_shape_valid(bundle):
-    if bundle_type(bundle) not in {"fault", "evidence-bound"}:
+def _deliverable_ref_shape_valid(ref):
+    """DACS-4 deliverable reference shape with its deliberately open anchor kind."""
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    return (
+        isinstance(ref, dict)
+        and set(ref) <= {"anchor", "contentHash", "signer"}
+        and {"anchor", "contentHash"} <= set(ref)
+        and isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and _nonempty_jcs_string(anchor.get("kind"))
+        and _nonempty_jcs_string(anchor.get("locator"))
+        and _sha256_hex(ref.get("contentHash"))
+        and (
+            "signer" not in ref
+            or _claim_reference_shape_valid(ref["signer"])
+        )
+    )
+
+
+def _absolute_fault_bundle_shape_valid(bundle, family=None):
+    if family is None:
+        family = bundle_type(bundle)
+    if family not in {"fault", "evidence-bound"} or not _full_bundle_family_shape_valid(
+        bundle, family
+    ):
         return False
     listing_ref = bundle.get("listingRef")
     parties = bundle.get("parties")
@@ -2307,8 +4257,10 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
         return {"ok": False, "reason": "pointer and dereferenced bundle must be objects", "recomputedHash": None}
     if binding is not None and not isinstance(binding, dict):
         return {"ok": False, "reason": "binding must be an object", "recomputedHash": None}
-    if pointer.get("faultBundleVersion") != "1" or "bundleVersion" in pointer:
+    if not _pointer_family_shape_valid(pointer, "fault"):
         return {"ok": False, "reason": "not a FaultBundleExtendedPointer discriminator", "recomputedHash": None}
+    if not _full_bundle_family_shape_valid(dereferenced_bundle, "fault"):
+        return {"ok": False, "reason": "dereferenced record is not a full FaultAttestationBundle", "recomputedHash": None}
     recomputed = bundle_hash(dereferenced_bundle)
     if pointer["fullBundleContentHash"] != recomputed:
         return {"ok": False, "reason": "dereferenced content hash mismatch", "recomputedHash": recomputed}
@@ -2334,52 +4286,80 @@ def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
         return False
 
 
+def _pointer_family_shape_valid(pointer, family):
+    if family not in _POINTER_DOMAIN_BY_FAMILY or not isinstance(pointer, dict):
+        return False
+    present = [
+        candidate
+        for candidate, selector in _BUNDLE_SELECTOR_BY_FAMILY.items()
+        if selector in pointer
+    ]
+    return (
+        present == [family]
+        and pointer.get(_BUNDLE_SELECTOR_BY_FAMILY[family]) == "1"
+        and pointer.get("pointerKind") == "extended"
+    )
+
+
+def _authenticated_pointer_signature_family(pointer, pubkeys):
+    """Recover FAB/EBFAB pointer family from its verified domain, not its label."""
+    if not isinstance(pointer, dict) or not isinstance(pubkeys, dict) or not HAVE_CRYPTO:
+        return None
+    signature = pointer.get("signature")
+    if not isinstance(signature, dict):
+        return None
+    signer = signature.get("signer")
+    value = signature.get("value")
+    canonical_ok, _ = sig6_canonical(value)
+    if (
+        not isinstance(signer, str)
+        or signer not in pubkeys
+        or signature.get("algorithm") not in SUPPORTED_SIGNATURE_ALGORITHMS
+        or not canonical_ok
+    ):
+        return None
+    try:
+        content_hash = pointer_hash(pointer)
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+    candidates = [
+        family
+        for family, domain in _POINTER_DOMAIN_BY_FAMILY.items()
+        if verify_sig(pubkeys[signer], domain, content_hash, value)
+    ]
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def _resolve_absolute_fault_pointer_payload(
-    pointer, dereferenced_bundle, binding, keys, ebfab_authority, *,
-    expected_jobid, expected_role, expected_signer, address_deriver,
+    family,
+    pointer,
+    dereferenced_bundle,
+    binding,
+    keys,
+    ebfab_authority,
+    *,
+    expected_jobid,
+    expected_role,
+    expected_signer,
+    address_deriver,
+    ebfab_validator,
 ):
     """Shared FAB/EBFAB type, signature, SEB, fault, and identity checks.
 
-    This is the historical verification core. Public current callers perform
-    authenticated session/role/profile/JID admission before entering it; the
-    explicitly named legacy wrapper uses it only for frozen archival fixtures.
+    The caller authenticates ``family`` from the pointer signature before this
+    function parses the selector. Current and archival public entry points also
+    select their receipt validator explicitly before entering this core.
     """
     if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
         return {"ok": False, "reason": "pointer and dereferenced bundle must be objects"}
     if binding is not None and not isinstance(binding, dict):
         return {"ok": False, "reason": "binding must be an object"}
-    known_pointer_discriminators = {
-        "bundleVersion",
-        "faultBundleVersion",
-        "evidenceBoundFaultBundleVersion",
-    }
-    if any(
-        isinstance(key, str)
-        and key.endswith("BundleVersion")
-        and key not in known_pointer_discriminators
-        for key in pointer
-    ):
-        return {"ok": False, "reason": "unknown pointer discriminator"}
-    present_discriminators = {
-        key for key in known_pointer_discriminators if key in pointer
-    }
-    if len(present_discriminators) != 1:
-        return {"ok": False, "reason": "non-exclusive pointer discriminator"}
-    only_discriminator = next(iter(present_discriminators))
-    if only_discriminator == "bundleVersion" or pointer.get(only_discriminator) != "1":
-        return {"ok": False, "reason": "unsupported pointer discriminator"}
-    pointer_candidates = []
-    if pointer.get("faultBundleVersion") == "1":
-        pointer_candidates.append(("fault", FAULT_POINTER_DOMAIN))
-    if pointer.get("evidenceBoundFaultBundleVersion") == "1":
-        pointer_candidates.append(("evidence-bound", EVIDENCE_BOUND_FAULT_POINTER_DOMAIN))
-    if len(pointer_candidates) != 1:
-        return {"ok": False, "reason": "unsupported or non-exclusive pointer discriminator"}
-    pointer_kind, domain = pointer_candidates[0]
-    if bundle_type(dereferenced_bundle) != pointer_kind:
+    if not _pointer_family_shape_valid(pointer, family):
+        return {"ok": False, "reason": "pointer selector does not match authenticated family context"}
+    pointer_kind = family
+    domain = _POINTER_DOMAIN_BY_FAMILY[family]
+    if not _full_bundle_family_shape_valid(dereferenced_bundle, family):
         return {"ok": False, "reason": "pointer and dereferenced bundle types differ"}
-    if pointer.get("pointerKind") != "extended":
-        return {"ok": False, "reason": "unsupported pointer kind"}
     segment_refs = pointer.get("segmentRefs")
     full_bundle_url = pointer.get("fullBundleUrl")
     url_ok = _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url)
@@ -2392,9 +4372,11 @@ def _resolve_absolute_fault_pointer_payload(
         ))
     ):
         return {"ok": False, "reason": "malformed extended pointer payload"}
-    if not _absolute_fault_bundle_shape_valid(dereferenced_bundle):
+    if not _absolute_fault_bundle_shape_valid(dereferenced_bundle, family):
         return {"ok": False, "reason": "malformed dereferenced absolute-fault bundle"}
-    bundle_ok, bundle_reason = _bundle_signatures_valid(dereferenced_bundle, keys)
+    bundle_ok, bundle_reason = _bundle_signatures_valid_for_family(
+        dereferenced_bundle, keys, family
+    )
     if not bundle_ok:
         return {"ok": False, "reason": bundle_reason}
     try:
@@ -2409,8 +4391,12 @@ def _resolve_absolute_fault_pointer_payload(
         return {"ok": False, "reason": "faultedParty is outside the §10.4.1 permissible set"}
     if pointer_kind == "evidence-bound":
         if not isinstance(ebfab_authority, dict):
-            return {"ok": False, "reason": "EBFAB pointer lacks SEB validation authority"}
-        seb_ok, seb_reason, _ = validate_ebfab(
+            return {
+                "ok": False,
+                "disposition": "indeterminate",
+                "reason": "EBFAB pointer lacks SEB validation authority",
+            }
+        seb_disposition, seb_reason, _ = ebfab_validator(
             dereferenced_bundle,
             ebfab_authority.get("listing"),
             keys,
@@ -2418,9 +4404,17 @@ def _resolve_absolute_fault_pointer_payload(
             ebfab_authority.get("bundleLifecycle"),
             ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
             ebfab_authority.get("verifiedReceiptByCanonicalRef"),
+            ebfab_authority.get("deliveryArtifactAuthorityByPhaseKey"),
+            ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            effective_pipeline=ebfab_authority.get("effectivePipeline"),
+            additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
         )
-        if not seb_ok:
-            return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
+        if seb_disposition != "pass":
+            return {
+                "ok": False,
+                "disposition": seb_disposition,
+                "reason": "dereferenced EBFAB fails SEB: " + seb_reason,
+            }
 
     signature = pointer.get("signature")
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
@@ -2457,7 +4451,11 @@ def _resolve_absolute_fault_pointer_payload(
         )
         if not binding_result["ok"]:
             return {"ok": False, "reason": "binding invalid: " + binding_result["reason"]}
-    return {"ok": True, "reason": "pointer type, signature, and triple identity hold"}
+    return {
+        "ok": True,
+        "disposition": "pass",
+        "reason": "pointer type, signature, and triple identity hold",
+    }
 
 
 def resolve_absolute_fault_pointer(
@@ -2508,7 +4506,14 @@ def resolve_absolute_fault_pointer(
         or pointer_signature.get("signer") != expected_signer
     ):
         return {"ok": False, "reason": "pointer signer differs from trusted role authority"}
+    family = _authenticated_pointer_signature_family(pointer, keys)
+    if family is None:
+        return {
+            "ok": False,
+            "reason": "absolute-pointer family cannot be authenticated before parsing",
+        }
     return _resolve_absolute_fault_pointer_payload(
+        family,
         pointer,
         dereferenced_bundle,
         binding,
@@ -2518,6 +4523,7 @@ def resolve_absolute_fault_pointer(
         expected_role=expected_role,
         expected_signer=expected_signer,
         address_deriver=_current_logical_address,
+        ebfab_validator=validate_ebfab_disposition,
     )
 
 
@@ -2544,7 +4550,14 @@ def resolve_legacy_absolute_fault_pointer(
             expected_jobid = binding.get("jobId")
         if expected_role is None:
             expected_role = binding.get("role")
+    family = _authenticated_pointer_signature_family(pointer, pubkeys)
+    if family is None:
+        return {
+            "ok": False,
+            "reason": "absolute-pointer family cannot be authenticated before parsing",
+        }
     return _resolve_absolute_fault_pointer_payload(
+        family,
         pointer,
         dereferenced_bundle,
         binding,
@@ -2554,6 +4567,7 @@ def resolve_legacy_absolute_fault_pointer(
         expected_role=expected_role,
         expected_signer=None,
         address_deriver=legacy_logical_address,
+        ebfab_validator=validate_legacy_ebfab_disposition,
     )
 
 
@@ -2572,16 +4586,29 @@ def _role_of_party(bundle, party):
     return None
 
 
-def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt", *, job_bound=False):
+def _derive(
+    party,
+    tagged_bundles,
+    window_start,
+    window_end,
+    basis="finalisedAt",
+    *,
+    job_bound=False,
+    excluded_dispositions=None,
+    tagged_copy_validation=_tagged_copy_validation_for_derive,
+):
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
 
     tagged_bundles: list of {"bundle": <dict>, "resolvedRole": "buyer"|"seller",
       "counterpartyDisposition": "present"|"absent"|None, "counterpartyRef": ...?,
-      "absenceEvidenceRef": ...?, "selectedByRoleResolution": true?} — each input copy
-      carries its §10.5.1 resolution tag. The job-bound variant additionally requires a
-      trusted requested `resolvedJobId`. EBFAB inputs are admitted only by that variant and
-      require the true marker because BB-6 resolution precedes SEB admission.
+      "absenceEvidenceRef": ...?, "selectedByRoleResolution": true?,
+      "bundleAdmissionAuthority": {"publicKeys": <claim-resolution output>}?} — each
+      input copy carries its §10.5.1 resolution context. Public keys must come from the
+      protocol-owned claim-resolution path; this map's name does not authenticate caller
+      data. The job-bound variant additionally requires a trusted requested
+      `resolvedJobId`. EBFAB inputs are admitted only by that variant and require their
+      complete `ebfabAuthority` because BB-6 resolution precedes SEB admission.
 
     Returns a ReputationDerivation dict (bundleCount, metrics, resolutionContext,
     bundleRefs, windowingBasis). Metrics reproduce byte-identically across runs given
@@ -2604,12 +4631,16 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
     if not job_bound:
         # Historical replayableDerivationVersion "1" semantics: no trusted requested jobId
-        # member and no EBFAB admission. Keep this path byte-compatible with released v1.
-        scoped = [t for t in tagged_bundles
-                  if isinstance(t, dict)
-                  and bundle_type(t.get("bundle")) in {"legacy", "fault"}
-                  and party in _primary_claims(t["bundle"])
-                  and window_start <= t["bundle"][clock] <= window_end]
+        # member and no EBFAB admission. Keep this path byte- and meaning-compatible
+        # with the released selector-based v1 contract; it is not current action admission.
+        scoped = [
+            tagged for tagged in tagged_bundles
+            if isinstance(tagged, dict)
+            and bundle_type(tagged.get("bundle")) in {"legacy", "fault"}
+            and party in _primary_claims(tagged["bundle"])
+            and _non_boolean_number(tagged["bundle"].get(clock))
+            and window_start <= tagged["bundle"][clock] <= window_end
+        ]
     else:
         candidates = []
         rejected_selected_jobs = set()
@@ -2617,27 +4648,23 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
             if not isinstance(tagged, dict):
                 continue
             bundle = tagged.get("bundle")
-            kind = bundle_type(bundle)
             selected = tagged.get("selectedByRoleResolution") is True
-
-            # The requested jobId belongs to authenticated address/binding resolution
-            # context. Never recover it from returned bundle content.
-            if kind == "evidence-bound" and not selected:
+            if not selected:
                 continue
             resolved_job = tagged.get("resolvedJobId")
             if not isinstance(resolved_job, str) or not resolved_job:
-                if kind is None and not selected:
-                    continue
                 raise ValueError("admitted role resolution lacks trusted resolvedJobId")
-            if kind is None and not selected:
-                continue
-            if kind is None:
+            disposition, reason = tagged_copy_validation(tagged)
+            if disposition != "pass":
                 rejected_selected_jobs.add(resolved_job)
+                if isinstance(excluded_dispositions, list):
+                    excluded_dispositions.append({
+                        "resolvedJobId": resolved_job,
+                        "disposition": disposition,
+                        "reason": reason,
+                    })
                 continue
             if bundle.get("jobId") != resolved_job:
-                rejected_selected_jobs.add(resolved_job)
-                continue
-            if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
                 rejected_selected_jobs.add(resolved_job)
                 continue
             if party not in _primary_claims(bundle):
@@ -2792,9 +4819,47 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False)
 
 
-def derive_job_bound(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+def derive_job_bound(
+    party,
+    tagged_bundles,
+    window_start,
+    window_end,
+    basis="finalisedAt",
+    *,
+    excluded_dispositions=None,
+):
     """Emit the distinct job-bound replay receipt used by strengthened EBFAB replay."""
-    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=True)
+    return _derive(
+        party,
+        tagged_bundles,
+        window_start,
+        window_end,
+        basis,
+        job_bound=True,
+        excluded_dispositions=excluded_dispositions,
+    )
+
+
+def derive_legacy_job_bound(
+    party,
+    tagged_bundles,
+    window_start,
+    window_end,
+    basis="finalisedAt",
+    *,
+    excluded_dispositions=None,
+):
+    """Emit an archival job-bound receipt using frozen EBFAB receipt semantics."""
+    return _derive(
+        party,
+        tagged_bundles,
+        window_start,
+        window_end,
+        basis,
+        job_bound=True,
+        excluded_dispositions=excluded_dispositions,
+        tagged_copy_validation=_tagged_legacy_copy_validation_for_derive,
+    )
 
 
 def is_replayable_derivation(d):
@@ -3077,7 +5142,7 @@ def _entry_structural_gate(entry, index, *, require_resolved_job=False):
     return (True, None)
 
 
-def _bundle_shape_ok(bundle):
+def _bundle_shape_ok(bundle, family=None):
     """Round-10 D6 deref'd-copy shape validator (step-5 1c). Validates EXACTLY the fields the replay
     path consumes from a dereferenced bundle copy by subscript / hash-key / iteration — beyond the
     isinstance-dict guard already applied — and nothing more. The consuming site justifying each field
@@ -3113,7 +5178,9 @@ def _bundle_shape_ok(bundle):
     if not isinstance(bundle.get("anchoredByRole"), str):
         return (False, "anchoredByRole must be a string (got %s)" % type(bundle.get("anchoredByRole")).__name__)
     # faultedParty: _fab_faulted(bundle) = bundle["faultedParty"] (subscript) on a FAB pair/mixed.
-    if is_fab(bundle) and not isinstance(bundle.get("faultedParty"), str):
+    if family in {"fault", "evidence-bound"} and not isinstance(
+        bundle.get("faultedParty"), str
+    ):
         return (False, "faultedParty must be a string on a FaultAttestationBundle (got %s)"
                 % type(bundle.get("faultedParty")).__name__)
     # phaseSummary: _phase_summary_diverges builds {e["index"]: e} — e["index"] subscript AND dict key
@@ -3229,6 +5296,7 @@ def _current_operation_admission(
 def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None,
                                  anchor_deref=None, pure_mapping_resolver=None,
                                  *, binding_verifier, address_validator,
+                                 family_resolver, bundle_validator, family_refusal,
                                  entry_authorities=None):
     """Executable replay validation of every authenticated copy in a ReplayableReputationDerivation
     (round-6 blocker #2). For each entry: re-verify roleEvidence (BB-4/BB-5 via verify_binding);
@@ -3296,7 +5364,11 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
             continue
         # (1c) WINNER shape validator — AFTER the content-hash check (hash-mismatch reason stays first),
         # BEFORE any structural read of the winner (roster, signatures, faultedParty, divergence).
-        ok_w, reason_w = _bundle_shape_ok(auth)
+        auth_family = family_resolver(auth, pubkeys)
+        if auth_family is None:
+            reasons.append("%s: %s" % (ch, family_refusal("winner copy")))
+            continue
+        ok_w, reason_w = _bundle_shape_ok(auth, auth_family)
         if not ok_w:
             reasons.append("%s: winner copy %s" % (ch, reason_w))
             continue
@@ -3439,10 +5511,22 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
                     # :NNN and counterparty :NNN copies are already _bundle_shape_ok'd). A shape-malformed
                     # fetched copy is fetched-then-invalid => DROPPED (R1/R3a/R3b), NEVER a refusal — an
                     # extra candidate must not refuse an honest receipt (BB-6/BB-7 inertness).
-                    ok_shape, _shape_reason = _bundle_shape_ok(fetched)
+                    fetched_family = family_resolver(fetched, pubkeys)
+                    if fetched_family is None:
+                        continue
+                    ok_shape, _shape_reason = _bundle_shape_ok(
+                        fetched, fetched_family
+                    )
                     if not ok_shape:
                         continue   # fetched-then-shape-invalid => DROPPED inert (same R1/R3 semantics)
-                    pf_ok, _pf_reason = _post_fetch_valid(fetched, cand, pubkeys)
+                    pf_ok, _pf_reason = _post_fetch_binding_valid_with_profile(
+                        fetched,
+                        cand,
+                        pubkeys,
+                        family_resolver=family_resolver,
+                        bundle_validator=bundle_validator,
+                        family_refusal=family_refusal,
+                    )
                     if not pf_ok:
                         continue   # fetched-then-invalid => DROPPED, truly inert (never reaches the ladder)
                     anchored[nat] = fetched
@@ -3487,7 +5571,11 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
             # (1c) COUNTERPARTY shape validator — AFTER the isinstance-dict guard, BEFORE divergence()
             # (which subscripts outcome/faultedParty/anchoredByRole/phaseSummary on an otherwise-
             # unvalidated copy). divergence() itself stays untouched.
-            ok_cp, reason_cp = _bundle_shape_ok(cp)
+            cp_family = family_resolver(cp, pubkeys)
+            if cp_family is None:
+                reasons.append("%s: %s" % (ch, family_refusal("counterparty copy")))
+                continue
+            ok_cp, reason_cp = _bundle_shape_ok(cp, cp_family)
             if not ok_cp:
                 reasons.append("%s: counterparty copy %s" % (ch, reason_cp))
                 continue
@@ -3504,7 +5592,14 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
                     continue
-                pf_cp_ok, pf_cp_reason = _post_fetch_valid(cp, cp_binding, pubkeys)
+                pf_cp_ok, pf_cp_reason = _post_fetch_binding_valid_with_profile(
+                    cp,
+                    cp_binding,
+                    pubkeys,
+                    family_resolver=family_resolver,
+                    bundle_validator=bundle_validator,
+                    family_refusal=family_refusal,
+                )
             else:
                 pf_cp_ok, pf_cp_reason = address_validator(
                     cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
@@ -3580,6 +5675,9 @@ def validate_resolution_context(derivation, deref, evidence_deref=None,
         return _post_fetch_address_valid_with_profile(
             *args,
             job_id_validator=validate_current_job_id,
+            family_resolver=_authenticated_bundle_signature_family,
+            bundle_validator=_current_bundle_validation,
+            family_refusal=_current_family_refusal,
             **kwargs,
         )
 
@@ -3592,6 +5690,9 @@ def validate_resolution_context(derivation, deref, evidence_deref=None,
         pure_mapping_resolver=pure_mapping_resolver,
         binding_verifier=current_binding_verifier,
         address_validator=current_address_validator,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
         entry_authorities=entry_authorities,
     )
 
@@ -3622,6 +5723,9 @@ def validate_legacy_resolution_context(derivation, deref, evidence_deref=None,
         pure_mapping_resolver=resolver,
         binding_verifier=legacy_binding_verifier,
         address_validator=legacy_address_validator,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
     )
 
 
@@ -3629,6 +5733,8 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
                     evidence_deref=None, pubkeys=None, anchor_deref=None,
                     pure_mapping_resolver=None, ebfab_authority_resolver=None,
                     *, binding_verifier, address_validator,
+                    family_resolver, bundle_validator, family_refusal,
+                    tagged_copy_validator, job_bound_deriver,
                     entry_authorities=None):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
     full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
@@ -3654,6 +5760,9 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
         pure_mapping_resolver=pure_mapping_resolver,
         binding_verifier=binding_verifier,
         address_validator=address_validator,
+        family_resolver=family_resolver,
+        bundle_validator=bundle_validator,
+        family_refusal=family_refusal,
         entry_authorities=entry_authorities)
     if not ok:
         return (False, None)
@@ -3667,11 +5776,17 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
                "absenceEvidenceRef": entry.get("absenceEvidenceRef"),
                "absenceBinding": entry.get("absenceBinding"),
                "roleEvidence": entry.get("roleEvidence"),
-               "bb6Context": entry.get("bb6Context")}
+               "bb6Context": entry.get("bb6Context"),
+               # ``pubkeys`` is the protocol consumer's claim-resolution output used
+               # above for BB-4/BB-5, not a record-provided family label.
+               "bundleAdmissionAuthority": {"publicKeys": pubkeys}}
         if job_bound:
             tag["resolvedJobId"] = entry["resolvedJobId"]
             tag["selectedByRoleResolution"] = True
-            if bundle_type(b) == "evidence-bound":
+            family = family_resolver(b, pubkeys)
+            if family is None:
+                return (False, None)
+            if family == "evidence-bound":
                 authority = (
                     ebfab_authority_resolver(b, entry)
                     if callable(ebfab_authority_resolver)
@@ -3680,14 +5795,17 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
                 if not isinstance(authority, dict):
                     return (False, None)
                 tag["ebfabAuthority"] = authority
-                if not _tagged_copy_valid_for_derive(tag):
+                if not tagged_copy_validator(tag):
                     return (False, None)
         tagged.append(tag)
         if job_bound and entry.get("counterpartyDisposition") == "present":
             counterparty = _deref_role_copy(
                 anchor_deref, entry.get("counterpartyRoleEvidence")
             )
-            if bundle_type(counterparty) == "evidence-bound":
+            counterparty_family = family_resolver(counterparty, pubkeys)
+            if counterparty_family is None:
+                return (False, None)
+            if counterparty_family == "evidence-bound":
                 counterparty_entry = {
                     "contentHash": (entry.get("counterpartyRef") or {}).get("contentHash"),
                     "resolvedJobId": entry["resolvedJobId"],
@@ -3708,9 +5826,10 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
                     "resolvedJobId": entry["resolvedJobId"],
                     "selectedByRoleResolution": True,
                     "roleEvidence": entry.get("counterpartyRoleEvidence"),
+                    "bundleAdmissionAuthority": {"publicKeys": pubkeys},
                     "ebfabAuthority": authority,
                 }
-                if not _tagged_copy_valid_for_derive(counterparty_tag):
+                if not tagged_copy_validator(counterparty_tag):
                     return (False, None)
                 tagged.append(counterparty_tag)
     # (round-13 B3) read the now-REQUIRED, vocab-checked windowingBasis WITHOUT a silent default —
@@ -3721,7 +5840,7 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
     basis = derivation["windowingBasis"]
     if basis not in IMPLEMENTED_WINDOWING_BASES:
         return (False, None)   # declared basis valid but unimplemented -> no honest replay claim
-    replayed = (derive_job_bound if job_bound else derive)(
+    replayed = (job_bound_deriver if job_bound else derive)(
         party, tagged, window_start, window_end, basis)
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
@@ -3759,6 +5878,9 @@ def replay_receipt(derivation, deref, party, window_start, window_end,
         return _post_fetch_address_valid_with_profile(
             *args,
             job_id_validator=validate_current_job_id,
+            family_resolver=_authenticated_bundle_signature_family,
+            bundle_validator=_current_bundle_validation,
+            family_refusal=_current_family_refusal,
             **kwargs,
         )
 
@@ -3775,6 +5897,11 @@ def replay_receipt(derivation, deref, party, window_start, window_end,
         ebfab_authority_resolver,
         binding_verifier=current_binding_verifier,
         address_validator=current_address_validator,
+        family_resolver=_authenticated_bundle_signature_family,
+        bundle_validator=_current_bundle_validation,
+        family_refusal=_current_family_refusal,
+        tagged_copy_validator=_tagged_copy_valid_for_derive,
+        job_bound_deriver=derive_job_bound,
         entry_authorities=entry_authorities,
     )
 
@@ -3810,4 +5937,9 @@ def replay_legacy_receipt(derivation, deref, party, window_start, window_end,
         ebfab_authority_resolver,
         binding_verifier=legacy_binding_verifier,
         address_validator=legacy_address_validator,
+        family_resolver=_syntactic_bundle_family,
+        bundle_validator=_legacy_bundle_validation,
+        family_refusal=_legacy_family_refusal,
+        tagged_copy_validator=_tagged_legacy_copy_valid_for_derive,
+        job_bound_deriver=derive_legacy_job_bound,
     )

@@ -1352,7 +1352,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     self.assertEqual(disposition, "error", reason)
 
     def test_reference_canonical_uses_repository_jcs_without_ascii_hash_churn(self):
-        from jcs import canonicalize
+        from scripts.jcs import canonicalize
 
         for value, expected in ((1.0, "1"), (-0.0, "0"), (1e-7, "1e-7")):
             with self.subTest(value=value):

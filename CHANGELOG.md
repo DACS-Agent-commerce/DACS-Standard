@@ -14,6 +14,40 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — CORE v0.3 SR-2 registry authority and receipt copies
+
+- **Registry authority provenance and rollback context repaired** (#338) — the
+  registry-bootstrap evaluator now requires a complete closed
+  `expectedRegistryTuple` supplied independently beside the release trust pin,
+  matches all four fields before root classification, validates complete
+  receipt/evidence context before nested access, and validates selection mode
+  plus every present closed stored-latest pair before choosing a chain.
+  Historical mode validates but does not apply latest ancestry. Logical/native
+  resolution now collapses only canonically identical receipt snapshots,
+  returns `indeterminate` for unequal same-tuple lifecycle snapshots without a
+  binding-native ordering primitive, and evaluates delivery after grouping from
+  the earliest finite verified delivery. This changes evaluator configuration
+  and corrected candidate verdicts only: `AnchorReceipt`,
+  `RegistryBootstrapDescriptor`, signature domains, and signed descriptor bytes
+  are unchanged. This repair adds candidate coverage without changing an
+  existing vector verdict. Independent verifier outputs bind the complete evidence reference and exact
+  canonical receipt hash; they remain modeled outputs rather than proof material.
+- **Numeric registry selection and historical fork semantics repaired** (#338,
+  ratified 11 September 2026) — corrects the unreleased
+  `RegistryIndexSnapshot` v1 entry version in place to a positive JSON safe
+  integer equal to `Recipe.recipeVersion` or `RailDefinition.railVersion`.
+  Explicit pins are exact and uncoerced; omitted pins select the unique greatest
+  numeric version in the authenticated recipe family or rail ID before
+  eligibility, with no older fallback. Registry identity comparisons use
+  derived NFC keys without changing authenticated bytes, and fetched definitions
+  must repeat the indexed identity and version. Historical traversal now
+  classifies every competitor through the exact sequence/hash target and stops
+  there, so a fork at or before the target remains `indeterminate` while a later
+  fork does not erase retained historical authority. The generator records the
+  definition→entry→snapshot→receipt→descriptor→evidence dependency order. The
+  signed registry-bootstrap corpus was subsequently renewed at `3c94a48`,
+  preserving all 76 case names and expected outcomes.
+
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
 - Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.
@@ -212,6 +246,45 @@ The format used per release:
   unchanged.
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
+
+### Added — CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 / DACS-4 v0.7
+
+- **Portable logical-to-native resolution and registry bootstrap** (CORE §5.1
+  SR2-10..SR2-13; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3;
+  Demos mapping §A.2; #242) — makes a verified `AnchorReceipt` the portable
+  mapping carrier on write-input substrates without changing its v1 bytes,
+  requires call-site authority and lifecycle checks, timely direct delivery
+  once a qualifying receipt exists, fail-closed substrate non-admission and
+  absence, and bounded public discovery, and preserves finalized
+  bundle references as the public audit path for session artifacts. Adds the
+  distinct signed `RegistryBootstrapDescriptor` trust root for the recipe and
+  rail index major lines, immutable content-sequenced snapshots, exact
+  first-contact pins, dual-authorized key rotation, cumulative revocation,
+  fork/rollback refusal, exact sequence-and-descriptor-hash historical replay,
+  and authenticated definition references. PA-2 session and signed bundle
+  shapes now carry the descriptor hash paired with the numeric registry
+  version. Registry hashes use the repository's JCS/NFC implementation;
+  invalid candidates are discarded, unresolved signed competitors prevent
+  availability from selecting a branch, and equivalent receipt/reference
+  carriers do not create false forks. Exact-head security hardening restricts
+  authenticated references to the two registered class-specific predicates,
+  binds the registry-index v1 shape/kind/revision, requires every accepted
+  latest head to descend from the persisted descriptor pair, and discards
+  invalid same-key roots before fork counting. Closed snapshot, entry, and
+  entry-anchor shapes reject unknown members. Every transport copy is classified
+  before same-hash descriptor identities collapse and forks are counted, so an
+  invalid-signature copy cannot suppress a valid or unresolved copy by arriving
+  first. Canonicalization failures in
+  receipt tuples and resolved definitions now return fail-closed dispositions
+  instead of escaping the reference evaluator. Registers
+  `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,
+  indeterminate, and boundary vectors for both algorithms. Malformed receipt
+  and carrier shapes are discarded before storage lookup, ordering, or tuple
+  comparison; invalid first-contact roots are discarded before fork
+  classification; only the two SR2-10 authenticated-reference surfaces are
+  admitted; finite JCS fractions are accepted when signed and pinned; and
+  authenticated definition content with an unsafe JCS integer fails explicitly
+  rather than escaping the evaluator.
 
 ### Fixed — DACS-1 v0.7 / DACS-2 v0.6
 

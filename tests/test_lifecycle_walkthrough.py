@@ -121,6 +121,9 @@ class LifecycleWalkthroughTests(unittest.TestCase):
         for bad in [
             "dacs4:payment:not-a-ulid:evm-erc20%3A8453%3AUSDC:3",
             f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3a8453%3aUSDC:3",
+            f"dacs4:payment:{self.module.JOB_ID}:rail%:3",
+            f"dacs4:payment:{self.module.JOB_ID}:rail%FF:3",
+            f"dacs4:payment:{self.module.JOB_ID}:e%CC%81:3",
             f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3A8453%3AUSDC:03",
             good + ":unknown",
         ]:

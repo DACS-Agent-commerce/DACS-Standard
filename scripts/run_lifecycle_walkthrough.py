@@ -20,7 +20,7 @@ import sys
 import unicodedata
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote_to_bytes
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -126,9 +126,16 @@ def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
     job_id, encoded_rail, phase_text = parts[2:5]
     if JOB_ID_RE.fullmatch(job_id) is None:
         raise ValueError("payment evidence logical address carries a non-ULID jobId")
-    rail_id = unquote(encoded_rail)
+    if re.search(r"%(?![0-9A-Fa-f]{2})", encoded_rail):
+        raise ValueError("payment evidence railId has malformed percent encoding")
+    try:
+        rail_id = unquote_to_bytes(encoded_rail).decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise ValueError("payment evidence railId is not valid UTF-8") from exc
     if quote(rail_id, safe="") != encoded_rail:
         raise ValueError("payment evidence railId is not canonically CF-4 encoded")
+    if unicodedata.normalize("NFC", rail_id) != rail_id:
+        raise ValueError("payment evidence railId is not NFC-normalized")
     if PHASE_INDEX_RE.fullmatch(phase_text) is None:
         raise ValueError("payment evidence phaseIndex is not a bare integer")
     return job_id, rail_id, int(phase_text), len(parts) == 6

@@ -1,4 +1,5 @@
 import base64
+import copy
 import json
 import subprocess
 import sys
@@ -120,6 +121,35 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         wrap = lambda r: {"kind": "SettlementEvidenceCase", "settlementEvidence": r, "specRefs": ["§9.5.4"]}
         return self._write(wrap(interim)), self._write(wrap(resolved))
 
+    def test_valid_optional_units_agree_with_dacs5_consumer(self):
+        import importlib.util
+        gen, ver = self._load_pack_modules()
+        spec = importlib.util.spec_from_file_location("unit_dacs5_reference", ROOT / "tests/dacs5_reference.py")
+        consumer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(consumer)
+        for unit in ("", "request"):
+            with self.subTest(unit=unit):
+                case = json.loads(RESOLVED.read_text(encoding="utf-8"))
+                record = case["settlementEvidence"]
+                record["paymentAmount"]["unit"] = unit
+                gen.sign(record, gen.ORCHESTRATOR_SEED)
+                self.assertEqual(ver.validate_pair(INTERIM, self._write(case)), [])
+                self.assertTrue(consumer._price_term_shape_valid(record["paymentAmount"]))
+        self.assertTrue(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC"}))
+        for unit in (None, 1, [], {}):
+            self.assertFalse(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC", "unit": unit}))
+
+    def test_direct_verifier_apis_reject_malformed_nested_containers(self):
+        _, ver = self._load_pack_modules()
+        for refs in (None, 7, {}, "bad", [{"kind": []}]):
+            with self.subTest(refs=refs):
+                path = self._write({"kind": "SettlementEvidenceCase", "settlementEvidence": {"paymentTxRefs": refs}})
+                self.assertTrue(ver.validate_interim(path)[1])
+                self.assertTrue(ver.validate_resolved(path, None))
+        self.assertTrue(ver.validate_resolved(RESOLVED, {"paymentTxRefs": 7}))
+        self.assertTrue(ver.validate_resolved(RESOLVED, []))
+        self.assertIsNotNone(ver.verify_signature([]))
+
     def test_file_error_diagnostics_survive_path_resolution_failures(self):
         _, ver = self._load_pack_modules()
         missing = Path(self._tempdir.name) / "missing.json"
@@ -149,6 +179,111 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertEqual(resolved["settlementFinality"]["model"], "htlc-reveal")
         self.assertEqual({r["kind"] for r in resolved["paymentTxRefs"]}, {"htlc-lock", "htlc-reveal", "htlc-claim"})
         self.assertNotIn("settlementAmendment", resolved)
+
+    def test_htlc9_loader_rejects_duplicate_decoded_member_names_recursively(self):
+        _, ver = self._load_pack_modules()
+        cases = {
+            "root": '{"kind":"SettlementEvidenceCase","kind":"SettlementEvidenceCase"}',
+            "nested escaped spelling": (
+                '{"kind":"SettlementEvidenceCase",'
+                '"metadata":{"x":1,"\\u0078":2}}'
+            ),
+        }
+        for name, source in cases.items():
+            with self.subTest(name=name):
+                evidence, errors = ver.load_case(self._write_text(source))
+                self.assertIsNone(evidence)
+                self.assertTrue(any("duplicate JSON member 'x'" in error
+                                    if name != "root" else "duplicate JSON member 'kind'" in error
+                                    for error in errors), errors)
+
+        nfd, nfc = "e" + chr(0x0301), chr(0x00E9)
+        distinct_names = self._write(
+            {
+                "kind": "SettlementEvidenceCase",
+                "settlementEvidence": {nfd: 1, nfc: 2},
+            }
+        )
+        evidence, errors = ver.load_case(distinct_names)
+        self.assertIsNotNone(evidence)
+        self.assertEqual(evidence[nfd], 1)
+        self.assertEqual(evidence[nfc], 2)
+        self.assertFalse(any("duplicate JSON" in error for error in errors), errors)
+
+    def test_htlc9_loader_reports_controlled_input_and_canonicalization_errors(self):
+        _, ver = self._load_pack_modules()
+        root_array = self._write_text("[]")
+        nested_array = self._write_text(
+            '{"kind":"SettlementEvidenceCase","settlementEvidence":[]}'
+        )
+        malformed_json = self._write_text("{")
+        invalid_utf8 = self._write_bytes(b"\xff")
+        unreadable_shape = Path(self._tempdir.name) / "directory.json"
+        unreadable_shape.mkdir()
+
+        cases = [
+            (root_array, "fixture root MUST be an object"),
+            (nested_array, "settlementEvidence MUST be an object"),
+            (malformed_json, "invalid JSON"),
+            (invalid_utf8, "not valid UTF-8"),
+            (unreadable_shape, "could not be read"),
+        ]
+        for path, needle in cases:
+            with self.subTest(path=path.name):
+                _, errors = ver.load_case(path)
+                self.assertTrue(any(needle in error for error in errors), errors)
+                result = subprocess.run(
+                    [sys.executable, str(VERIFY_HTLC9), str(path), str(RESOLVED)],
+                    cwd=ROOT,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+        # Preserve valid envelope/signature shape so this case reaches the
+        # canonical-number boundary rather than the earlier signer check.
+        canonicalization_case = json.loads(INTERIM.read_text(encoding="utf-8"))
+        canonicalization_case["settlementEvidence"]["oversizedNumber"] = 2 ** 53
+        canonicalization_path = self._write(canonicalization_case)
+        _, errors = ver.load_case(canonicalization_path)
+        self.assertTrue(any("cannot be canonicalized" in error for error in errors), errors)
+        result = subprocess.run(
+            [sys.executable, str(VERIFY_HTLC9), str(canonicalization_path), str(RESOLVED)],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_htlc9_rejected_interim_stops_pair_dependent_checks(self):
+        _, ver = self._load_pack_modules()
+        rejected = self._write(
+            {"kind": "SettlementEvidenceCase", "settlementEvidence": {}}
+        )
+        errors = ver.validate_pair(rejected, RESOLVED)
+        self.assertTrue(errors)
+        self.assertFalse(any("interim record's" in error for error in errors), errors)
+        self.assertFalse(any("signer continuity" in error for error in errors), errors)
+
+    def test_htlc9_price_term_unit_enforces_only_the_optional_string_shape(self):
+        _, ver = self._load_pack_modules()
+        self.assertEqual(ver.validate_resolved(RESOLVED, None), [])
+        committed = json.loads(RESOLVED.read_text(encoding="utf-8"))
+        for unit in ["", " ", "per-call", chr(0x00E9)]:
+            with self.subTest(valid_unit=unit):
+                candidate = copy.deepcopy(committed)
+                candidate["settlementEvidence"]["paymentAmount"]["unit"] = unit
+                errors = ver.validate_resolved(self._write(candidate), None)
+                self.assertFalse(any("paymentAmount.unit" in error for error in errors), errors)
+        for unit in [None, False, 0, [], {}]:
+            with self.subTest(invalid_unit=unit):
+                candidate = copy.deepcopy(committed)
+                candidate["settlementEvidence"]["paymentAmount"]["unit"] = unit
+                errors = ver.validate_resolved(self._write(candidate), None)
+                self.assertTrue(any("paymentAmount.unit MUST be a string" in error
+                                    for error in errors), errors)
 
     def test_htlc9_verifier_rejects_a_garbage_signature(self):
         gen, ver = self._load_pack_modules()

@@ -42,6 +42,9 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Evidence (SettlementEvidence).** The uniform record produced by every DACS-4 payment and delivery phase. Defined in §9.7.
 - **Extended-pointer pattern.** A pattern for handling artifacts larger than the substrate’s anchored-storage cap: the canonical address contains a pointer with externalUrl + externalContentHash; payload is hosted externally. Used by deliverables (§9.6.1) and bundles (§10.4.2).
 - **FaultAttestationBundle.** The v0.3 end-of-session artifact carrying absolute hashed `faultedParty` fault attribution; structurally distinguished from the legacy AttestationBundle by its `faultBundleVersion` literal and signed under its own `dacs-fault-bundle:v1:` domain. Defined in §10.4/§10.4.1.
+- **FinalityBoundEvidenceFaultAttestationBundle.** Unallocated #392 candidate DACS-5 bundle type whose successful payment members are finality-bound and pass FV; its distinct pointer and bundle domains prevent EBFAB or outer signatures from implying that guarantee. §10.4.1–§10.4.3.
+- **FinalityBoundSettlementEvidence.** Unallocated #392 candidate payment-success type whose exclusive discriminator and signature domain bind the exact signed rail profile; acceptance requires consumer execution of FV-1..FV-10. It does not change or upgrade `SettlementEvidence`. §9.7.
+- **Finality verification (FV).** Four-value consumer recomputation over signed evidence, rail and agreement plus independently trusted raw proof authority. The repository reference codec is synthetic-conformance-only; unavailable production-native proof remains `indeterminate`. §9.7.0.
 - **Fixed-price negotiation.** DACS-3 pattern in which the buyer accepts the listed terms. Defined in §8.4.1.
 - **HKDF.** The key derivation function specified in RFC 5869; used in HTLC preimage derivation per §9.5.4.
 - **HTLC.** Hash Time-Locked Contract; the generic atomic-swap pattern used by pay-cross-chain-htlc. §9.5.4.

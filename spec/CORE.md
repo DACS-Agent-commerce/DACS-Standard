@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 registers the DACS-4 finality-bound settlement-evidence signature domain and is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -492,6 +492,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
+| DACS-4 finality-bound settlement evidence | "dacs-finality-bound-evidence:v1:" | §9.7 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
@@ -500,9 +501,13 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
 | DACS-5 fault attestation bundle | "dacs-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 evidence-bound fault attestation bundle | "dacs-evidence-bound-fault-bundle:v1:" | §10.4.1 |
+| DACS-5 finality-bound evidence fault attestation bundle | "dacs-finality-bound-evidence-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 BundleBinding | "dacs-bundle-binding:v1:" | §10.4.2 |
+| DACS-5 legacy bundle activation checkpoint | "dacs-legacy-bundle-checkpoint:v1:" | §10.4.1 |
+| DACS-5 legacy bundle checkpoint binding | "dacs-legacy-bundle-checkpoint-binding:v1:" | §10.4.1 |
 | DACS-5 FaultAttestationBundle extended pointer | "dacs-fault-bundle-pointer:v1:" | §10.4.2 |
 | DACS-5 EvidenceBoundFaultAttestationBundle extended pointer | "dacs-evidence-bound-fault-bundle-pointer:v1:" | §10.4.2 |
+| DACS-5 FinalityBoundEvidenceFaultAttestationBundle extended pointer | "dacs-finality-bound-evidence-fault-bundle-pointer:v1:" | §10.4.2 |
 | DACS-5 rating record | "dacs-rating:v1:" | §10.6 |
 | DACS-1 bundle session-key root binding | "dacs-session-binding:v1:" | §6.3.2 |
 | DACS-3 auto-accept commitment | "dacs-auto-accept-commitment:v1:" | §8.4.1 |
@@ -735,7 +740,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Unsigned derivation-data types use the same distinct-type rule; the unallocated current-use candidate carries only `currentUseReplayableDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 

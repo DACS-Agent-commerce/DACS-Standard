@@ -48,6 +48,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
+| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 8 | `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
@@ -79,6 +80,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 67 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1170,6 +1172,65 @@ Run the dependency-free executable checks from the repository root:
 
 ```sh
 python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
+```
+
+### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
+
+Sixty-seven candidate cases execute consumer-verifiable settlement finality for
+block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
+liquidity-tank profiles. The consumer derives the model and strength from the
+exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
+always treated as a producer report, never as proof.
+
+The fixture-only proof codec uses raw JCS-encoded transaction, event and header
+bodies, Merkle relations, every ancestry link, independently pinned Ed25519
+observation/provider authorities, and weighted BFT certificates. Cases cover
+network, genesis, transaction/index, proof/root/path, quorum/key, freshness,
+provider-byte/attestation, malformed-nested-input and production-codec-unavailable
+failures. Provider capture passes only as `provisional-provider-capture`.
+HTLC carries four independently verified source-lock/source-claim/
+destination-lock/destination-reveal arms and recomputes contract, per-chain
+hashlock, preimage, amount and timelock relations from authenticated bytes.
+Liquidity-tank verifies coordinator, source and destination arms and exact bridge,
+transfer, asset and amount binding.
+
+The same corpus executes the distinct DACS-5 finality-bound bundle and pointer,
+all six FV models, non-pass propagation, new/new and new/older authenticated
+reconciliation, no weaker fallback, and frozen-reader refusal. The separate
+`current-use-reputation-v1.json` corpus composes that consumer with the #391
+historical arm. Existing EBFAB and reputation contracts remain unchanged. The
+synthetic fixture policy is not a registered live substrate policy; native
+production proof-wire support remains unavailable.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_settlement_finality_verification_vectors.py --write
+python3 scripts/generate_settlement_finality_verification_vectors.py --check
+python3 -m unittest tests.test_settlement_finality_verification_vectors -v
+```
+
+### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
+
+Eight candidate fixtures drive the complete stronger DACS-5 consumer path. Six
+compose the finality-bound bundle consumer with every FV model, exact RSV and
+applicable SB-3 checks; the provider-receipt case remains classified as
+provisional capture. Two retain the complete original requests for the legacy
+write-input BundleBinding and deterministic pure-mapping arms.
+
+The focused executable tests mutate every duplicated historical join, checkpoint
+discovery and external trust, BB-6 standing/budget/admission order, role absence,
+new/older precedence, required settlement binding, metrics and replay inputs. They
+also execute old-reader refusal and malformed-container totality. Native anchor
+and settlement-binding proofs are independently pinned signed synthetic fixtures
+for offline testing only; they do not define a production Demos proof codec.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_current_use_reputation_vectors.py
+python3 scripts/generate_current_use_reputation_vectors.py --check
+python3 -m unittest tests.test_current_use_reputation_vectors -v
 ```
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1

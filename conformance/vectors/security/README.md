@@ -191,7 +191,7 @@ python3 -m unittest tests.test_alternative_payment_projection_vectors -v
 
 ### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9
 
-22 candidate vectors make the attested-payload success gate executable. The two
+27 candidate vectors make the attested-payload success gate executable. The two
 positive cases carry genuine deterministic Ed25519 signatures over the distinct
 `dacs-payload-attestation:v1:` and `dacs-evidence:v1:` domains: one composes a
 finalized DAHR `web2Request` commitment, and one proves that `self-signed`
@@ -220,7 +220,7 @@ python3 -m unittest tests.test_payload_attestation_vectors -v
 
 ### `phase-bound-delivery-evidence-v0.7.json` — §9.7 PDE-1..PDE-8
 
-49 deterministic vectors execute the current `DeliveryEvidence` wire contract
+63 deterministic vectors execute the current `DeliveryEvidence` wire contract
 and its DACS-5 one-to-one mapping through fully shaped, three-party-signed
 `FaultAttestationBundle` artifacts. The attested-delivery positives resolve and
 execute the DPA-3..DPA-9 payload/method-evidence chain, while the companion SEB
@@ -340,7 +340,7 @@ assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
 
 ### `bundle-settlement-evidence-bijection-v0.4.json` — §10.4.3 SEB-1..SEB-6
 
-30 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
+46 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
 `settlementEvidence[]` array to the
 phase keys derived from a signature-verified DACS-1 listing pipeline and the
 domain-verified EBFAB `phaseSummary`; no caller-supplied expected set is trusted.

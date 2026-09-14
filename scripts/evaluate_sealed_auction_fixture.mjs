@@ -149,6 +149,11 @@ function reproduce(vector) {
       || resolution.definition.bindingVersion !== binding.bindingVersion) {
     return { ...result, verdict: "fail" };
   }
+  if (receipt.entries.length > Number(resolution.definition.limits.maximumRecords)
+      || Buffer.byteLength(canonical(receipt.entries), "utf8")
+      > Number(resolution.definition.limits.maximumBytes)) {
+    return { ...result, verdict: "fail" };
+  }
   const revealDeadline = listing.parameters.commitDeadline + listing.parameters.revealWindow * 1000;
   if (receipt.completenessEvidence.finalizedState.timestamp < revealDeadline) {
     return { ...result, verdict: "fail" };
@@ -280,6 +285,7 @@ const controls = new Set([
   "self-selected-definition-key-rejected",
   "binding-id-substitution-rejected",
   "binding-version-substitution-rejected",
+  "binding-record-ceiling-exceeded",
   "equal-price-earliest-commit",
   "equal-price-equal-time-bidhash",
   "fractional-price-full-precision",

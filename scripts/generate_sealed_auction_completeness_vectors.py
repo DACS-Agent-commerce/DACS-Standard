@@ -97,6 +97,8 @@ def binding_definition(
     proof_key: str | None = None,
     binding_id: str = "test-complete-log",
     binding_version: str = "1",
+    maximum_records: str = "100",
+    maximum_bytes: str = "1048576",
 ) -> dict:
     """Return the authenticated test adapter policy resolved through SR-2.
 
@@ -122,7 +124,10 @@ def binding_definition(
             "writerRule": "record-bidder-claim",
             "addressCodec": "dacs3-sealed-auction-v1",
         },
-        "limits": {"maximumRecords": "100", "maximumBytes": "1048576"},
+        "limits": {
+            "maximumRecords": maximum_records,
+            "maximumBytes": maximum_bytes,
+        },
         "ordering": "orderKey-then-contentHash-ascending",
         "conflictRule": "indeterminate-on-finalized-conflict",
     }
@@ -1097,6 +1102,21 @@ def build() -> dict:
         signed_agreement(alternate_version_receipt),
         authenticated_invocation=invocation_authority(receipt),
         resolved_binding=binding_resolution(alternate_version_definition),
+    ))
+    bounded_definition = binding_definition(maximum_records="5")
+    bounded_binding = binding_ref(bounded_definition)
+    bounded_receipt = signed_receipt(
+        entries, records, candidate_binding=bounded_binding
+    )
+    vectors.append(make_vector(
+        "binding-record-ceiling-exceeded",
+        "fail",
+        "the authenticated definition's record ceiling rejects rather than truncates a six-record prefix",
+        entries,
+        records,
+        bounded_receipt,
+        signed_agreement(bounded_receipt),
+        resolved_binding=binding_resolution(bounded_definition),
     ))
 
     vectors.append(make_vector(

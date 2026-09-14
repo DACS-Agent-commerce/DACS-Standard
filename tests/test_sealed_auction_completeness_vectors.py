@@ -27,6 +27,16 @@ RECEIPT_DOMAIN = "dacs-sealed-selection-receipt:v1:"
 AGREEMENT_DOMAIN = "dacs-sealed-selection-agreement:v1:"
 BINDING_DOMAIN = "test-candidate-set-proof:v1:"
 UNSIGNED_CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
+COMMIT_RECORD_KEYS = {
+    "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
+    "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+}
+REVEAL_RECORD_KEYS = COMMIT_RECORD_KEYS | {"commitRef", "bid", "salt"}
+BINDING_DEFINITION_KEYS = {
+    "candidateSetBindingDefinitionVersion", "bindingId", "bindingVersion",
+    "substrate", "collectionPrefixTemplate", "proof", "finality",
+    "admission", "limits", "ordering", "conflictRule",
+}
 
 
 def canonical(value):
@@ -128,11 +138,15 @@ def compare_amounts(left, right):
     return 0
 
 
-def fixture_record_receipt_matches(receipt, ref, bidder):
+def fixture_record_receipt_matches(receipt, ref, bidder, definition=None):
     """Interpret a receipt already authenticated by the complete-set proof.
 
     This test-bft binding is a fixture codec, not a native SR-2 verifier.
     """
+    definition = definition or {
+        "substrate": "test-bft",
+        "finality": {"profile": "test-bft-final"},
+    }
     required = {
         "receiptVersion", "substrate", "finalityProfile", "logicalAddress",
         "nativeAddress", "contentHash", "transactionRef", "writer", "nonce",
@@ -145,8 +159,8 @@ def fixture_record_receipt_matches(receipt, ref, bidder):
     evidence = receipt["evidence"]
     return (
         receipt["receiptVersion"] == "1"
-        and receipt["substrate"] == "test-bft"
-        and receipt["finalityProfile"] == "test-bft-final"
+        and receipt["substrate"] == definition["substrate"]
+        and receipt["finalityProfile"] == definition["finality"]["profile"]
         and receipt["writer"] == bidder
         and ("signer" not in ref or ref["signer"] == bidder)
         and isinstance(transaction, dict) and set(transaction) == {"kind", "value"}
@@ -193,22 +207,144 @@ class Evaluator:
     def _structural_gate(self):
         params = self.listing.get("parameters", {})
         rule = params.get("selectionRule")
-        if self.listing.get("phaseKind") not in {
+        phase_kind = self.listing.get("phaseKind")
+        if phase_kind not in {
             "negotiate-sealed-envelope-complete",
             "negotiate-sealed-envelope-procurement-complete",
         }:
+            return "fail"
+        mode_present = "auctionMode" in params
+        mode = params.get("auctionMode")
+        if (
+            phase_kind == "negotiate-sealed-envelope-complete"
+            and mode_present and mode != "demand"
+        ) or (
+            phase_kind == "negotiate-sealed-envelope-procurement-complete"
+            and (not mode_present or mode != "procurement")
+        ):
             return "fail"
         if rule not in {"lowest-price", "highest-price"}:
             return "fail"
         if self.receipt.get("selectionRule") != rule:
             return "fail"
-        if self.receipt.get("candidateSetBinding") != params.get("candidateSetBinding"):
+        candidate_binding = params.get("candidateSetBinding")
+        if (
+            not isinstance(candidate_binding, dict)
+            or set(candidate_binding) != {"bindingId", "bindingVersion", "definitionRef"}
+            or self.receipt.get("candidateSetBinding") != candidate_binding
+        ):
             return "fail"
-        if not self.ctx.get("bindingDefinitionResolved"):
+        definition_ref = candidate_binding.get("definitionRef")
+        if (
+            not isinstance(definition_ref, dict)
+            or set(definition_ref) != {"anchor", "contentHash", "signer"}
+            or not isinstance(definition_ref.get("anchor"), dict)
+            or set(definition_ref["anchor"]) != {"kind", "locator"}
+        ):
+            return "fail"
+
+        invocation = self.ctx.get("authenticatedInvocation")
+        if invocation is None:
             return "indeterminate"
+        invocation_keys = {
+            "authenticated", "jobId", "listingRef", "phaseIndex", "phaseKind",
+            "publisherClaim", "selectionRule", "candidateSetBinding",
+            "pricingCurrency",
+        }
+        if (
+            not isinstance(invocation, dict)
+            or set(invocation) != invocation_keys
+            or invocation.get("authenticated") is not True
+        ):
+            return "fail"
+        for actual, expected in (
+            (self.listing.get("listingRef"), invocation["listingRef"]),
+            (self.listing.get("phaseIndex"), invocation["phaseIndex"]),
+            (phase_kind, invocation["phaseKind"]),
+            (self.listing.get("publisherClaim"), invocation["publisherClaim"]),
+            (rule, invocation["selectionRule"]),
+            (candidate_binding, invocation["candidateSetBinding"]),
+            (self.listing.get("pricingCurrency"), invocation["pricingCurrency"]),
+        ):
+            if actual != expected:
+                return "fail"
+        listing_currency = invocation.get("pricingCurrency")
+        if not isinstance(listing_currency, str) or not listing_currency:
+            return "fail"
+        self.listing_currency = listing_currency
+
+        authority = self.ctx.get("bindingRegistryAuthority")
+        if authority is None:
+            return "indeterminate"
+        if (
+            not isinstance(authority, dict)
+            or set(authority) != {"registryId", "governanceClaim"}
+        ):
+            return "fail"
+        resolution = self.ctx.get("bindingResolution")
+        if resolution is None:
+            return "indeterminate"
+        resolution_keys = {
+            "registryId", "governanceClaim", "authenticated", "bindingId",
+            "bindingVersion", "definitionRef", "definition",
+        }
+        if (
+            not isinstance(resolution, dict)
+            or set(resolution) != resolution_keys
+            or resolution.get("authenticated") is not True
+            or resolution.get("registryId") != authority.get("registryId")
+            or resolution.get("governanceClaim") != authority.get("governanceClaim")
+            or resolution.get("bindingId") != candidate_binding.get("bindingId")
+            or resolution.get("bindingVersion") != candidate_binding.get("bindingVersion")
+            or resolution.get("definitionRef") != definition_ref
+            or definition_ref.get("signer") != authority.get("governanceClaim")
+        ):
+            return "fail"
+        definition = resolution.get("definition")
+        if (
+            not isinstance(definition, dict)
+            or set(definition) != BINDING_DEFINITION_KEYS
+            or digest(definition) != definition_ref.get("contentHash")
+            or definition.get("bindingId") != candidate_binding.get("bindingId")
+            or definition.get("bindingVersion") != candidate_binding.get("bindingVersion")
+            or definition.get("candidateSetBindingDefinitionVersion") != "1"
+            or definition.get("collectionPrefixTemplate") != "dacs3:auction:{jobId}"
+            or definition.get("ordering") != "orderKey-then-contentHash-ascending"
+            or definition.get("conflictRule") != "indeterminate-on-finalized-conflict"
+            or not isinstance(definition.get("proof"), dict)
+            or set(definition["proof"]) != {"kind", "domain", "verificationKey"}
+            or not isinstance(definition.get("finality"), dict)
+            or set(definition["finality"]) != {
+                "profile", "maximumLagStates", "minimumTimestampRule"
+            }
+            or definition["finality"].get("maximumLagStates") != "0"
+            or definition["finality"].get("minimumTimestampRule")
+            != "at-or-after-reveal-deadline"
+            or not isinstance(definition.get("admission"), dict)
+            or definition["admission"] != {
+                "writerRule": "record-bidder-claim",
+                "addressCodec": "dacs3-sealed-auction-v1",
+            }
+            or not isinstance(definition.get("limits"), dict)
+            or set(definition["limits"]) != {"maximumRecords", "maximumBytes"}
+        ):
+            return "fail"
+        try:
+            if (
+                int(definition["limits"]["maximumRecords"]) <= 0
+                or str(int(definition["limits"]["maximumRecords"]))
+                != definition["limits"]["maximumRecords"]
+                or int(definition["limits"]["maximumBytes"]) <= 0
+                or str(int(definition["limits"]["maximumBytes"]))
+                != definition["limits"]["maximumBytes"]
+            ):
+                return "fail"
+        except (TypeError, ValueError):
+            return "fail"
+        self.binding_definition = definition
         if self.receipt.get("sealedSelectionReceiptVersion") != "1":
             return "fail"
-        job_id = self.agreement.get("jobId")
+        job_id = invocation.get("jobId")
         if not isinstance(job_id, str) or self.receipt.get("collectionPrefix") != (
             "dacs3:auction:" + quote(job_id, safe="")
         ):
@@ -224,13 +360,13 @@ class Evaluator:
             if "reservePrice" in pricing:
                 reserve = pricing["reservePrice"]
                 reserve_status, _ = inspect_price(reserve)
-                if reserve_status != "positive" or reserve.get("currency") != "USD":
+                if reserve_status != "positive" or reserve.get("currency") != listing_currency:
                     return "fail"
         for key, expected in (
-            ("jobId", self.listing.get("listingRef") and self.agreement.get("jobId")),
-            ("listingRef", self.listing.get("listingRef")),
-            ("phaseIndex", self.listing.get("phaseIndex")),
-            ("phaseKind", self.listing.get("phaseKind")),
+            ("jobId", job_id),
+            ("listingRef", invocation["listingRef"]),
+            ("phaseIndex", invocation["phaseIndex"]),
+            ("phaseKind", invocation["phaseKind"]),
         ):
             if self.receipt.get(key) != expected:
                 return "fail"
@@ -249,18 +385,42 @@ class Evaluator:
             return "fail"
         if evidence.get("recordCount") != str(len(entries)):
             return "fail"
+        limits = self.binding_definition["limits"]
+        if (
+            len(entries) > int(limits["maximumRecords"])
+            or len(canonical(entries)) > int(limits["maximumBytes"])
+        ):
+            return "fail"
+        if evidence.get("substrate") != self.binding_definition.get("substrate"):
+            return "fail"
         conflicts = self.ctx.get("knownConflictingStates")
         if not isinstance(conflicts, list) or conflicts:
             return "indeterminate"
         if evidence.get("finalizedState") != self.ctx.get("latestFinalizedState"):
             return "indeterminate"
+        finalized_state = evidence.get("finalizedState")
+        reveal_deadline = (
+            self.listing["parameters"]["commitDeadline"]
+            + self.listing["parameters"]["revealWindow"] * 1000
+        )
+        if (
+            not isinstance(finalized_state, dict)
+            or type(finalized_state.get("timestamp")) is not int
+            or finalized_state["timestamp"] < reveal_deadline
+        ):
+            return "fail"
         proof = evidence.get("proof")
+        proof_policy = self.binding_definition["proof"]
         if not isinstance(proof, dict) or not proof.get("value"):
             return "indeterminate"
-        public_key = self.ctx.get("bindingPublicKey")
+        if proof.get("kind") != proof_policy.get("kind"):
+            return "fail"
+        public_key = proof_policy.get("verificationKey")
         if not public_key:
             return "indeterminate"
-        payload = (BINDING_DOMAIN + digest(binding_payload(self.receipt))).encode("ascii")
+        payload = (
+            proof_policy.get("domain", "") + digest(binding_payload(self.receipt))
+        ).encode("ascii")
         if not verify(public_key, proof.get("value"), payload):
             return "fail"
         return None
@@ -283,11 +443,13 @@ class Evaluator:
                 return "indeterminate"
             reason = None
             disposition = None
-            required = {
-                "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
-                "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
-            }
-            if not isinstance(record, dict) or not required.issubset(record):
+            kind = record.get("recordKind") if isinstance(record, dict) else None
+            expected_keys = (
+                COMMIT_RECORD_KEYS if kind == "commit"
+                else REVEAL_RECORD_KEYS if kind == "reveal"
+                else set()
+            )
+            if not isinstance(record, dict) or set(record) != expected_keys:
                 reason = "malformed-record"
             elif digest(unsigned(record)) != record_hash:
                 reason = "malformed-record"
@@ -305,14 +467,7 @@ class Evaluator:
                 ):
                     reason = "bad-signature"
                 else:
-                    kind = record.get("recordKind")
-                    commit_only = {"commitRef", "bid", "salt"}.isdisjoint(record)
-                    reveal_complete = all(field in record for field in ("commitRef", "bid", "salt"))
-                    if kind == "commit" and not commit_only:
-                        reason = "malformed-record"
-                    elif kind == "reveal" and not reveal_complete:
-                        reason = "malformed-record"
-                    elif kind == "reveal":
+                    if kind == "reveal":
                         try:
                             if len(decode_b64url(record["salt"])) < 32:
                                 reason = "malformed-record"
@@ -323,14 +478,17 @@ class Evaluator:
                             price = bid.get("price") if isinstance(bid, dict) else None
                             if inspect_price(price)[0] == "malformed":
                                 reason = "malformed-record"
-                    elif kind not in {"commit", "reveal"}:
-                        reason = "malformed-record"
                     if reason is None:
                         receipt = entry.get("anchorReceipt", {})
                         expected_address = logical_address(record["jobId"], kind, record["bidderClaim"], record["bidHash"])
                         if receipt.get("logicalAddress") != expected_address or receipt.get("contentHash") != record_hash or receipt.get("nativeAddress") != ref.get("anchor", {}).get("locator"):
                             reason = "wrong-address"
-                        elif not fixture_record_receipt_matches(receipt, ref, record["bidderClaim"]):
+                        elif not fixture_record_receipt_matches(
+                            receipt,
+                            ref,
+                            record["bidderClaim"],
+                            self.binding_definition,
+                        ):
                             reason = "wrong-address"
                         elif receipt.get("state") != "finalized" or receipt.get("observationDisposition") != "established" or not isinstance(receipt.get("blockRef", {}).get("timestamp"), int):
                             reason = "unfinalized"
@@ -416,7 +574,7 @@ class Evaluator:
             amount_status, amount = inspect_price(price)
             if amount_status == "malformed" or amount is None:
                 raise AssertionError("malformed reveal price passed the record gate")
-            if price.get("currency") != "USD":
+            if price.get("currency") != self.listing_currency:
                 reason = "currency-mismatch"
             elif amount_status == "non-positive":
                 reason = "non-positive-price"
@@ -599,7 +757,20 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "auction-pricing-without-reserve",
             "trailing-linebreak-price-amounts-rejected",
             "complete-lowest-price",
+            "complete-demand-absent-auction-mode",
+            "complete-demand-explicit-auction-mode",
+            "demand-phase-procurement-mode-rejected",
+            "procurement-phase-demand-mode-rejected",
+            "demand-role-direction-rejected",
             "complete-highest-price",
+            "finalized-state-at-reveal-deadline",
+            "finalized-state-before-reveal-deadline-rejected",
+            "binding-definition-unavailable",
+            "definition-content-hash-substitution-rejected",
+            "definition-ref-substitution-rejected",
+            "self-selected-definition-key-rejected",
+            "binding-id-substitution-rejected",
+            "binding-version-substitution-rejected",
             "equal-price-earliest-commit",
             "equal-price-equal-time-bidhash",
             "fractional-price-full-precision",
@@ -609,6 +780,9 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "malformed-price-shapes-rejected",
             "noncanonical-price-amounts-rejected",
             "noncanonical-decimal-shapes-rejected",
+            "non-usd-listing-matching-bids",
+            "non-usd-listing-usd-bids-excluded",
+            "non-usd-listing-third-currency-reserve-rejected",
             "zero-and-negative-prices-excluded",
             "long-integer-lowest-price",
             "long-integer-highest-price",
@@ -616,6 +790,13 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "long-fraction-highest-price",
             "long-fraction-inclusive-reserve-ceiling",
             "long-fraction-inclusive-reserve-floor",
+            "resigned-cross-job-artifacts-rejected",
+            "resigned-cross-listing-artifacts-rejected",
+            "resigned-cross-phase-artifacts-rejected",
+            "signed-commit-extra-member-rejected",
+            "signed-commit-missing-member-rejected",
+            "signed-reveal-extra-member-rejected",
+            "signed-reveal-missing-member-rejected",
         }
         self.assertEqual(set(actual), controls)
         for vector in self.data["vectors"]:
@@ -639,6 +820,11 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
     def test_attack_cases_are_present(self):
         names = {vector["name"] for vector in self.data["vectors"]}
         required = {
+            "complete-demand-absent-auction-mode",
+            "complete-demand-explicit-auction-mode",
+            "demand-phase-procurement-mode-rejected",
+            "procurement-phase-demand-mode-rejected",
+            "demand-role-direction-rejected",
             "omitted-better-reveal",
             "selective-discovery-stale-signed-set",
             "finalized-fork-conflict",
@@ -668,8 +854,61 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "long-fraction-highest-price",
             "long-fraction-inclusive-reserve-ceiling",
             "long-fraction-inclusive-reserve-floor",
+            "finalized-state-at-reveal-deadline",
+            "finalized-state-before-reveal-deadline-rejected",
+            "binding-definition-unavailable",
+            "definition-content-hash-substitution-rejected",
+            "definition-ref-substitution-rejected",
+            "self-selected-definition-key-rejected",
+            "binding-id-substitution-rejected",
+            "binding-version-substitution-rejected",
+            "non-usd-listing-matching-bids",
+            "non-usd-listing-usd-bids-excluded",
+            "non-usd-listing-third-currency-reserve-rejected",
+            "resigned-cross-job-artifacts-rejected",
+            "resigned-cross-listing-artifacts-rejected",
+            "resigned-cross-phase-artifacts-rejected",
+            "signed-commit-extra-member-rejected",
+            "signed-commit-missing-member-rejected",
+            "signed-reveal-extra-member-rejected",
+            "signed-reveal-missing-member-rejected",
         }
         self.assertTrue(required.issubset(names))
+
+    def test_demand_controls_pin_absent_and_explicit_modes_and_roles(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        absent = vectors["complete-demand-absent-auction-mode"]
+        explicit = vectors["complete-demand-explicit-auction-mode"]
+        self.assertNotIn("auctionMode", absent["listing"]["parameters"])
+        self.assertEqual(explicit["listing"]["parameters"]["auctionMode"], "demand")
+        for vector in (absent, explicit):
+            winner = vector["receipt"]["winner"]["bidderClaim"]
+            roles = {party["role"]: party["primaryClaim"] for party in vector["agreement"]["parties"]}
+            self.assertEqual(roles["buyer"], winner)
+            self.assertEqual(roles["seller"], vector["listing"]["publisherClaim"])
+
+    def test_authenticated_authority_rows_are_independent_inputs(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        for name in (
+            "resigned-cross-job-artifacts-rejected",
+            "resigned-cross-listing-artifacts-rejected",
+            "resigned-cross-phase-artifacts-rejected",
+            "self-selected-definition-key-rejected",
+            "binding-id-substitution-rejected",
+            "binding-version-substitution-rejected",
+        ):
+            with self.subTest(vector=name):
+                vector = vectors[name]
+                invocation = vector["context"]["authenticatedInvocation"]
+                submitted = vector["receipt"]
+                self.assertTrue(invocation["authenticated"])
+                self.assertTrue(
+                    submitted["jobId"] != invocation["jobId"]
+                    or submitted["listingRef"] != invocation["listingRef"]
+                    or submitted["phaseKind"] != invocation["phaseKind"]
+                    or submitted["candidateSetBinding"] != invocation["candidateSetBinding"]
+                )
+                self.assertEqual(Evaluator(vector).evaluate(), "fail")
 
     def test_non_positive_prices_are_excluded_before_selection(self):
         vector = next(

@@ -24,6 +24,7 @@ RECEIPT_DOMAIN = "dacs-sealed-selection-receipt:v1:"
 AGREEMENT_DOMAIN = "dacs-sealed-selection-agreement:v1:"
 BINDING_DOMAIN = "test-candidate-set-proof:v1:"
 JOB_ID = "01JZZZZZZZZZZZZZZZZZZZZZZZ"
+FOREIGN_JOB_ID = "01JYYYYYYYYYYYYYYYYYYYYYYYYY"
 LISTING_REF = {
     "listingId": "complete-sealed-demo",
     "version": 1,
@@ -59,6 +60,11 @@ CLAIMS = {
 BIDDER_NAMES = ("bidder-a", "bidder-b", "bidder-c")
 CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
 PRICE_KEYS = frozenset({"amount", "currency", "unit"})
+COMMIT_RECORD_KEYS = frozenset({
+    "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
+    "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+})
+REVEAL_RECORD_KEYS = COMMIT_RECORD_KEYS | {"commitRef", "bid", "salt"}
 
 
 def canonical(value: object) -> bytes:
@@ -84,6 +90,77 @@ def public_key(name: str) -> str:
         format=serialization.PublicFormat.Raw,
     )
     return b64url(raw)
+
+
+def binding_definition(
+    *,
+    proof_key: str | None = None,
+    binding_id: str = "test-complete-log",
+    binding_version: str = "1",
+) -> dict:
+    """Return the authenticated test adapter policy resolved through SR-2.
+
+    This is a portable fixture definition, not a Demos-native binding claim.
+    """
+    return {
+        "candidateSetBindingDefinitionVersion": "1",
+        "bindingId": binding_id,
+        "bindingVersion": binding_version,
+        "substrate": "test-bft",
+        "collectionPrefixTemplate": "dacs3:auction:{jobId}",
+        "proof": {
+            "kind": "test-complete-prefix",
+            "domain": BINDING_DOMAIN,
+            "verificationKey": proof_key or public_key("binding"),
+        },
+        "finality": {
+            "profile": "test-bft-final",
+            "maximumLagStates": "0",
+            "minimumTimestampRule": "at-or-after-reveal-deadline",
+        },
+        "admission": {
+            "writerRule": "record-bidder-claim",
+            "addressCodec": "dacs3-sealed-auction-v1",
+        },
+        "limits": {"maximumRecords": "100", "maximumBytes": "1048576"},
+        "ordering": "orderKey-then-contentHash-ascending",
+        "conflictRule": "indeterminate-on-finalized-conflict",
+    }
+
+
+def binding_definition_ref(definition: dict | None = None) -> dict:
+    definition = definition or binding_definition()
+    return attestation_ref(
+        "storage-program",
+        "stor-test-binding-" + digest(definition)[:24],
+        digest(definition),
+        CLAIMS["publisher"],
+    )
+
+
+def binding_ref(definition: dict | None = None, *, binding_id: str | None = None,
+                binding_version: str | None = None) -> dict:
+    definition = definition or binding_definition()
+    return {
+        "bindingId": binding_id or definition["bindingId"],
+        "bindingVersion": binding_version or definition["bindingVersion"],
+        "definitionRef": binding_definition_ref(definition),
+    }
+
+
+def binding_resolution(definition: dict | None = None, *, reference: dict | None = None,
+                       binding_id: str | None = None,
+                       binding_version: str | None = None) -> dict:
+    definition = definition or binding_definition()
+    return {
+        "registryId": "dacs-sr2-binding-registry-v1",
+        "governanceClaim": CLAIMS["publisher"],
+        "authenticated": True,
+        "bindingId": binding_id or definition["bindingId"],
+        "bindingVersion": binding_version or definition["bindingVersion"],
+        "definitionRef": copy.deepcopy(reference or binding_definition_ref(definition)),
+        "definition": copy.deepcopy(definition),
+    }
 
 
 def unsigned(value: dict) -> dict:
@@ -164,12 +241,22 @@ def compare_decimal_parts(left: tuple[str, str], right: tuple[str, str]) -> int:
     return 0
 
 
-def logical_address(kind: str, bidder_claim: str, value: str) -> str:
+def logical_address(job_id: str, kind: str, bidder_claim: str, value: str) -> str:
     encoded = bidder_claim.replace("%", "%25").replace(":", "%3A")
-    return f"dacs3:auction:{JOB_ID}:{kind}:{encoded}:{value}"
+    return f"dacs3:auction:{job_id}:{kind}:{encoded}:{value}"
 
 
-def make_record_pair(name: str, price: object, commit_time: int, reveal_time: int, ordinal: int) -> tuple[list[dict], dict]:
+def make_record_pair(
+    name: str,
+    price: object,
+    commit_time: int,
+    reveal_time: int,
+    ordinal: int,
+    *,
+    job_id: str = JOB_ID,
+    listing_ref: dict = LISTING_REF,
+    phase_index: int = PHASE_INDEX,
+) -> tuple[list[dict], dict]:
     claim = CLAIMS[name]
     bid = {
         "price": copy.deepcopy(price),
@@ -180,9 +267,9 @@ def make_record_pair(name: str, price: object, commit_time: int, reveal_time: in
     commit = sign_artifact({
         "sealedAuctionRecordVersion": "1",
         "recordKind": "commit",
-        "jobId": JOB_ID,
-        "listingRef": LISTING_REF,
-        "phaseIndex": PHASE_INDEX,
+        "jobId": job_id,
+        "listingRef": listing_ref,
+        "phaseIndex": phase_index,
         "bidderClaim": claim,
         "bidHash": commitment,
         "createdAt": commit_time - 50,
@@ -193,9 +280,9 @@ def make_record_pair(name: str, price: object, commit_time: int, reveal_time: in
     reveal = sign_artifact({
         "sealedAuctionRecordVersion": "1",
         "recordKind": "reveal",
-        "jobId": JOB_ID,
-        "listingRef": LISTING_REF,
-        "phaseIndex": PHASE_INDEX,
+        "jobId": job_id,
+        "listingRef": listing_ref,
+        "phaseIndex": phase_index,
         "bidderClaim": claim,
         "bidHash": commitment,
         "commitRef": commit_ref,
@@ -215,7 +302,7 @@ def make_record_pair(name: str, price: object, commit_time: int, reveal_time: in
                 "receiptVersion": "1",
                 "substrate": "test-bft",
                 "finalityProfile": "test-bft-final",
-                "logicalAddress": logical_address(record["recordKind"], claim, commitment),
+                "logicalAddress": logical_address(job_id, record["recordKind"], claim, commitment),
                 "nativeAddress": ref["anchor"]["locator"],
                 "contentHash": record_hash,
                 "transactionRef": {"kind": "test-tx", "value": "tx-" + record_hash[:20]},
@@ -243,6 +330,10 @@ def base_material(
     *,
     equal_commit_time: bool = False,
     price_overrides: dict[str, object] | None = None,
+    currency: str = "USD",
+    job_id: str = JOB_ID,
+    listing_ref: dict = LISTING_REF,
+    phase_index: int = PHASE_INDEX,
 ) -> tuple[list[dict], dict]:
     entries: list[dict] = []
     records: dict[str, dict] = {}
@@ -252,10 +343,13 @@ def base_material(
             commit_time = COMMIT_DEADLINE - 20_000
         pair_entries, pair_records = make_record_pair(
             name,
-            (price_overrides or {}).get(name, {"amount": amount, "currency": "USD"}),
+            (price_overrides or {}).get(name, {"amount": amount, "currency": currency}),
             commit_time,
             COMMIT_DEADLINE + 20_000 + index * 2_000,
             index,
+            job_id=job_id,
+            listing_ref=listing_ref,
+            phase_index=phase_index,
         )
         entries.extend(pair_entries)
         records.update(pair_records)
@@ -272,7 +366,13 @@ def binding_payload(collection_prefix: str, evidence: dict) -> dict:
     }
 
 
-def completeness_evidence(entries: list[dict], collection_prefix: str, state: dict = CURRENT_STATE) -> dict:
+def completeness_evidence(
+    entries: list[dict],
+    collection_prefix: str,
+    state: dict = CURRENT_STATE,
+    *,
+    proof_key_name: str = "binding",
+) -> dict:
     evidence = {
         "substrate": "test-bft",
         "finalizedState": copy.deepcopy(state),
@@ -280,7 +380,9 @@ def completeness_evidence(entries: list[dict], collection_prefix: str, state: di
         "recordCount": str(len(entries)),
         "proof": {"kind": "test-complete-prefix", "value": ""},
     }
-    proof = KEYS["binding"].sign((BINDING_DOMAIN + digest(binding_payload(collection_prefix, evidence))).encode("ascii"))
+    proof = KEYS[proof_key_name].sign(
+        (BINDING_DOMAIN + digest(binding_payload(collection_prefix, evidence))).encode("ascii")
+    )
     evidence["proof"]["value"] = b64url(proof)
     return evidence
 
@@ -294,7 +396,15 @@ def decode_salt(value: str) -> bytes:
     return decoded
 
 
-def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: str | None = None) -> tuple[list[dict], list[dict], dict | None]:
+def derive(
+    entries: list[dict],
+    records: dict,
+    *,
+    selection_rule: str,
+    currency: str = "USD",
+    reserve: str | None = None,
+    job_id: str = JOB_ID,
+) -> tuple[list[dict], list[dict], dict | None]:
     record_decisions: list[dict] = []
     valid_commits: dict[str, list[tuple[dict, dict]]] = {}
     valid_reveals: dict[str, list[tuple[dict, dict]]] = {}
@@ -306,11 +416,19 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
         if not isinstance(record, dict):
             reason = "malformed-record"
         else:
+            kind = record.get("recordKind")
+            expected_keys = (
+                COMMIT_RECORD_KEYS if kind == "commit"
+                else REVEAL_RECORD_KEYS if kind == "reveal"
+                else frozenset()
+            )
+            if set(record) != expected_keys:
+                reason = "malformed-record"
             signature = record.get("signature", {})
             expected_name = next((name for name, claim in CLAIMS.items() if claim == record.get("bidderClaim")), None)
-            if expected_name not in BIDDER_NAMES or signature.get("signer") != record.get("bidderClaim"):
+            if reason is None and (expected_name not in BIDDER_NAMES or signature.get("signer") != record.get("bidderClaim")):
                 reason = "bad-signature"
-            else:
+            elif reason is None:
                 try:
                     KEYS[expected_name].public_key().verify(
                         base64.urlsafe_b64decode(signature["value"] + "=" * (-len(signature["value"]) % 4)),
@@ -319,7 +437,6 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
                 except Exception:
                     reason = "bad-signature"
             if reason is None:
-                kind = record.get("recordKind")
                 if kind == "reveal":
                     try:
                         decode_salt(record.get("salt"))
@@ -331,7 +448,7 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
                         if price_amount(price)[0] == "malformed":
                             reason = "malformed-record"
                 want_address = logical_address(
-                    kind or "", record["bidderClaim"], record["bidHash"]
+                    job_id, kind or "", record["bidderClaim"], record["bidHash"]
                 )
                 if reason is None and entry["anchorReceipt"].get("logicalAddress") != want_address:
                     reason = "wrong-address"
@@ -421,7 +538,7 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
         amount_status, amount = price_amount(price)
         if amount_status == "malformed" or amount is None:
             raise AssertionError("malformed reveal price passed the record gate")
-        if price.get("currency") != "USD":
+        if price.get("currency") != currency:
             reason = "currency-mismatch"
         elif amount_status == "non-positive":
             reason = "non-positive-price"
@@ -481,33 +598,45 @@ def signed_receipt(
     *,
     selection_rule: str = "lowest-price",
     reserve: str | None = None,
+    currency: str = "USD",
     state: dict = CURRENT_STATE,
     phase_kind: str = "negotiate-sealed-envelope-procurement-complete",
+    job_id: str = JOB_ID,
+    listing_ref: dict = LISTING_REF,
+    phase_index: int = PHASE_INDEX,
+    candidate_binding: dict | None = None,
+    proof_key_name: str = "binding",
 ) -> dict:
     if phase_kind not in {
         "negotiate-sealed-envelope-complete",
         "negotiate-sealed-envelope-procurement-complete",
     }:
         raise ValueError("unsupported complete auction phase")
-    collection_prefix = "dacs3:auction:" + JOB_ID
+    collection_prefix = "dacs3:auction:" + job_id
     record_decisions, bid_decisions, winner = derive(
-        entries, records, selection_rule=selection_rule, reserve=reserve
+        entries,
+        records,
+        selection_rule=selection_rule,
+        currency=currency,
+        reserve=reserve,
+        job_id=job_id,
     )
     receipt = {
         "sealedSelectionReceiptVersion": "1",
-        "jobId": JOB_ID,
-        "listingRef": LISTING_REF,
-        "phaseIndex": PHASE_INDEX,
+        "jobId": job_id,
+        "listingRef": copy.deepcopy(listing_ref),
+        "phaseIndex": phase_index,
         "phaseKind": phase_kind,
-        "candidateSetBinding": {
-            "bindingId": "test-complete-log",
-            "bindingVersion": "1",
-            "definitionRef": attestation_ref("storage-program", "stor-test-binding", "77" * 32, CLAIMS["publisher"]),
-        },
+        "candidateSetBinding": copy.deepcopy(candidate_binding or binding_ref()),
         "collectionPrefix": collection_prefix,
         "selectionRule": selection_rule,
         "entries": copy.deepcopy(entries),
-        "completenessEvidence": completeness_evidence(entries, collection_prefix, state),
+        "completenessEvidence": completeness_evidence(
+            entries,
+            collection_prefix,
+            state,
+            proof_key_name=proof_key_name,
+        ),
         "recordDecisions": record_decisions,
         "bidDecisions": bid_decisions,
         **({"winner": winner} if winner else {}),
@@ -524,8 +653,8 @@ def signed_agreement(receipt: dict) -> dict:
     receipt_hash = digest(unsigned(receipt))
     agreement = {
         "sealedSelectionAgreementVersion": "1",
-        "jobId": JOB_ID,
-        "listingRef": LISTING_REF,
+        "jobId": receipt["jobId"],
+        "listingRef": copy.deepcopy(receipt["listingRef"]),
         "parties": [
             {
                 "role": "buyer",
@@ -585,7 +714,7 @@ def selection_receipt_anchor(receipt: dict) -> dict:
         "receiptVersion": "1",
         "substrate": "test-bft",
         "finalityProfile": "test-bft-final",
-        "logicalAddress": f"dacs3:selection:{JOB_ID}:{PHASE_INDEX}",
+        "logicalAddress": f"dacs3:selection:{receipt['jobId']}:{receipt['phaseIndex']}",
         "nativeAddress": native_address,
         "contentHash": receipt_hash,
         "transactionRef": {"kind": "test-tx", "value": "tx-selection-" + receipt_hash[:16]},
@@ -599,6 +728,50 @@ def selection_receipt_anchor(receipt: dict) -> dict:
     }
 
 
+def invocation_authority(receipt: dict, *, currency: str = "USD") -> dict:
+    return {
+        "authenticated": True,
+        "jobId": receipt["jobId"],
+        "listingRef": copy.deepcopy(receipt["listingRef"]),
+        "phaseIndex": receipt["phaseIndex"],
+        "phaseKind": receipt["phaseKind"],
+        "publisherClaim": CLAIMS["publisher"],
+        "selectionRule": receipt["selectionRule"],
+        "candidateSetBinding": copy.deepcopy(receipt["candidateSetBinding"]),
+        "pricingCurrency": currency,
+    }
+
+
+def replace_record(
+    entries: list[dict], records: dict, old_hash: str, replacement: dict
+) -> tuple[list[dict], dict]:
+    updated_entries = copy.deepcopy(entries)
+    updated_records = copy.deepcopy(records)
+    updated_records.pop(old_hash)
+    replacement_hash = digest(unsigned(replacement))
+    updated_records[replacement_hash] = copy.deepcopy(replacement)
+    for entry in updated_entries:
+        if entry["recordRef"]["contentHash"] != old_hash:
+            continue
+        locator = "stor-" + replacement["recordKind"] + "-" + replacement_hash[:24]
+        entry["recordRef"] = attestation_ref(
+            "storage-program", locator, replacement_hash, replacement["bidderClaim"]
+        )
+        anchor = entry["anchorReceipt"]
+        anchor["logicalAddress"] = logical_address(
+            replacement["jobId"], replacement["recordKind"],
+            replacement["bidderClaim"], replacement["bidHash"],
+        )
+        anchor["nativeAddress"] = locator
+        anchor["contentHash"] = replacement_hash
+        anchor["transactionRef"]["value"] = "tx-" + replacement_hash[:20]
+        anchor["evidence"]["value"] = "proof-" + replacement_hash[:20]
+    updated_entries.sort(
+        key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"])
+    )
+    return updated_entries, updated_records
+
+
 def make_vector(
     name: str,
     expected: str,
@@ -609,11 +782,39 @@ def make_vector(
     agreement: dict,
     *,
     reserve: str | None = None,
+    reserve_currency: str | None = None,
+    currency: str = "USD",
+    auction_mode: str | None = None,
+    omit_auction_mode: bool = False,
+    authenticated_invocation: dict | None = None,
+    resolved_binding: dict | None = None,
     **context_overrides,
 ) -> dict:
+    candidate_binding = receipt["candidateSetBinding"]
+    definition = binding_definition()
+    default_resolution = binding_resolution(
+        definition,
+        reference=candidate_binding["definitionRef"],
+        binding_id=candidate_binding["bindingId"],
+        binding_version=candidate_binding["bindingVersion"],
+    )
+    phase_kind = receipt["phaseKind"]
+    effective_mode = auction_mode or (
+        "demand" if phase_kind == "negotiate-sealed-envelope-complete"
+        else "procurement"
+    )
+    invocation = authenticated_invocation or invocation_authority(
+        receipt, currency=currency
+    )
     context = {
-        "bindingDefinitionResolved": True,
-        "bindingPublicKey": public_key("binding"),
+        "bindingRegistryAuthority": {
+            "registryId": "dacs-sr2-binding-registry-v1",
+            "governanceClaim": CLAIMS["publisher"],
+        },
+        "bindingResolution": copy.deepcopy(
+            default_resolution if resolved_binding is None else resolved_binding
+        ),
+        "authenticatedInvocation": copy.deepcopy(invocation),
         "latestFinalizedState": copy.deepcopy(CURRENT_STATE),
         "knownConflictingStates": [],
         "recordPublicKeys": {CLAIMS[name]: public_key(name) for name in BIDDER_NAMES},
@@ -628,23 +829,29 @@ def make_vector(
     }
     context.update(context_overrides)
     listing = {
-        "listingRef": LISTING_REF,
+        "listingRef": copy.deepcopy(receipt["listingRef"]),
         "publisherClaim": CLAIMS["publisher"],
-        "phaseIndex": PHASE_INDEX,
-        "phaseKind": receipt["phaseKind"],
+        "phaseIndex": receipt["phaseIndex"],
+        "phaseKind": phase_kind,
+        "pricingCurrency": currency,
         "parameters": {
             "commitDeadline": COMMIT_DEADLINE,
             "revealWindow": 120,
             "selectionRule": receipt["selectionRule"],
             "candidateSetBinding": receipt["candidateSetBinding"],
-            "auctionMode": ("demand" if receipt["phaseKind"] == "negotiate-sealed-envelope-complete" else "procurement"),
+            "auctionMode": effective_mode,
         },
     }
+    if omit_auction_mode:
+        del listing["parameters"]["auctionMode"]
     if reserve is not None:
         listing["pricing"] = {
             "kind": "auction",
             "selectionRule": receipt["selectionRule"],
-            "reservePrice": {"amount": reserve, "currency": "USD"},
+            "reservePrice": {
+                "amount": reserve,
+                "currency": reserve_currency or currency,
+            },
         }
     return {
         "name": name,
@@ -664,6 +871,69 @@ def build() -> dict:
     receipt = signed_receipt(entries, records)
     agreement = signed_agreement(receipt)
     vectors.append(make_vector("complete-lowest-price", "pass", "complete current set selects bidder B", entries, records, receipt, agreement))
+
+    demand_receipt = signed_receipt(
+        entries,
+        records,
+        phase_kind="negotiate-sealed-envelope-complete",
+    )
+    demand_agreement = signed_agreement(demand_receipt)
+    vectors.append(make_vector(
+        "complete-demand-absent-auction-mode",
+        "pass",
+        "demand-complete permits the signed auctionMode discriminator to be absent and assigns winner as buyer",
+        entries,
+        records,
+        demand_receipt,
+        demand_agreement,
+        omit_auction_mode=True,
+    ))
+    vectors.append(make_vector(
+        "complete-demand-explicit-auction-mode",
+        "pass",
+        "demand-complete permits explicit demand and assigns winner as buyer",
+        entries,
+        records,
+        demand_receipt,
+        demand_agreement,
+        auction_mode="demand",
+    ))
+    vectors.append(make_vector(
+        "demand-phase-procurement-mode-rejected",
+        "fail",
+        "the demand phase cannot be relabelled with procurement auctionMode",
+        entries,
+        records,
+        demand_receipt,
+        demand_agreement,
+        auction_mode="procurement",
+    ))
+    vectors.append(make_vector(
+        "procurement-phase-demand-mode-rejected",
+        "fail",
+        "the procurement phase requires the explicit procurement auctionMode",
+        entries,
+        records,
+        receipt,
+        agreement,
+        auction_mode="demand",
+    ))
+    wrong_demand_roles = copy.deepcopy(demand_agreement)
+    for party in wrong_demand_roles["parties"]:
+        party["role"] = (
+            "buyer" if party["primaryClaim"] == CLAIMS["publisher"] else "seller"
+        )
+    wrong_demand_roles = resign_agreement(wrong_demand_roles)
+    vectors.append(make_vector(
+        "demand-role-direction-rejected",
+        "fail",
+        "demand-complete rejects procurement party projection even when both parties re-sign",
+        entries,
+        records,
+        demand_receipt,
+        wrong_demand_roles,
+        auction_mode="demand",
+    ))
     no_reserve = make_vector("auction-pricing-without-reserve", "pass", "optional reservePrice may be absent from valid auction pricing", entries, records, receipt, agreement)
     no_reserve["listing"]["pricing"] = {"kind": "auction", "selectionRule": "lowest-price"}
     vectors.append(no_reserve)
@@ -683,6 +953,41 @@ def build() -> dict:
     stale_records = {entry["recordRef"]["contentHash"]: records[entry["recordRef"]["contentHash"]] for entry in stale_entries}
     stale_receipt = signed_receipt(stale_entries, stale_records, state=STALE_STATE)
     vectors.append(make_vector("selective-discovery-stale-signed-set", "indeterminate", "valid old proof is not current completeness", stale_entries, stale_records, stale_receipt, signed_agreement(stale_receipt)))
+
+    deadline_state = {
+        "id": "state-reveal-deadline",
+        "height": "198",
+        "timestamp": REVEAL_DEADLINE,
+    }
+    deadline_receipt = signed_receipt(entries, records, state=deadline_state)
+    vectors.append(make_vector(
+        "finalized-state-at-reveal-deadline",
+        "pass",
+        "a complete authenticated state at the exact reveal deadline satisfies the lower bound",
+        entries,
+        records,
+        deadline_receipt,
+        signed_agreement(deadline_receipt),
+        latestFinalizedState=copy.deepcopy(deadline_state),
+    ))
+    before_deadline_state = {
+        "id": "state-before-reveal-deadline",
+        "height": "197",
+        "timestamp": REVEAL_DEADLINE - 1,
+    }
+    before_deadline_receipt = signed_receipt(
+        entries, records, state=before_deadline_state
+    )
+    vectors.append(make_vector(
+        "finalized-state-before-reveal-deadline-rejected",
+        "fail",
+        "a valid latest-state proof one millisecond before reveal deadline is too early to establish completeness",
+        entries,
+        records,
+        before_deadline_receipt,
+        signed_agreement(before_deadline_receipt),
+        latestFinalizedState=copy.deepcopy(before_deadline_state),
+    ))
 
     no_proof = copy.deepcopy(receipt)
     no_proof["completenessEvidence"]["proof"]["value"] = ""
@@ -710,7 +1015,88 @@ def build() -> dict:
 
     vectors.append(make_vector(
         "binding-definition-unavailable", "indeterminate", "the signed listing binding definition must resolve",
-        entries, records, receipt, agreement, bindingDefinitionResolved=False,
+        entries, records, receipt, agreement, bindingResolution=None,
+    ))
+
+    substituted_definition_resolution = binding_resolution()
+    substituted_definition_resolution["definition"]["proof"][
+        "verificationKey"
+    ] = public_key("publisher")
+    vectors.append(make_vector(
+        "definition-content-hash-substitution-rejected",
+        "fail",
+        "a substituted resolved definition cannot authenticate under the signed definitionRef content hash",
+        entries,
+        records,
+        receipt,
+        agreement,
+        resolved_binding=substituted_definition_resolution,
+    ))
+    substituted_ref_resolution = binding_resolution()
+    substituted_ref_resolution["definitionRef"] = binding_definition_ref(
+        binding_definition(binding_version="2")
+    )
+    vectors.append(make_vector(
+        "definition-ref-substitution-rejected",
+        "fail",
+        "a registry result for another immutable definition ref cannot satisfy the signed binding ref",
+        entries,
+        records,
+        receipt,
+        agreement,
+        resolved_binding=substituted_ref_resolution,
+    ))
+
+    alternate_definition = binding_definition(proof_key=public_key("publisher"))
+    alternate_binding = binding_ref(alternate_definition)
+    alternate_receipt = signed_receipt(
+        entries,
+        records,
+        candidate_binding=alternate_binding,
+        proof_key_name="publisher",
+    )
+    vectors.append(make_vector(
+        "self-selected-definition-key-rejected",
+        "fail",
+        "fully re-signed artifacts cannot replace the authenticated listing's definition reference and proof key",
+        entries,
+        records,
+        alternate_receipt,
+        signed_agreement(alternate_receipt),
+        authenticated_invocation=invocation_authority(receipt),
+        resolved_binding=binding_resolution(alternate_definition),
+    ))
+    alternate_id_definition = binding_definition(binding_id="self-selected-log")
+    alternate_id_binding = binding_ref(alternate_id_definition)
+    alternate_id_receipt = signed_receipt(
+        entries, records, candidate_binding=alternate_id_binding
+    )
+    vectors.append(make_vector(
+        "binding-id-substitution-rejected",
+        "fail",
+        "a resolved self-selected binding identity cannot replace the signed invocation binding",
+        entries,
+        records,
+        alternate_id_receipt,
+        signed_agreement(alternate_id_receipt),
+        authenticated_invocation=invocation_authority(receipt),
+        resolved_binding=binding_resolution(alternate_id_definition),
+    ))
+    alternate_version_definition = binding_definition(binding_version="2")
+    alternate_version_binding = binding_ref(alternate_version_definition)
+    alternate_version_receipt = signed_receipt(
+        entries, records, candidate_binding=alternate_version_binding
+    )
+    vectors.append(make_vector(
+        "binding-version-substitution-rejected",
+        "fail",
+        "a resolved self-selected binding version cannot replace the signed invocation binding",
+        entries,
+        records,
+        alternate_version_receipt,
+        signed_agreement(alternate_version_receipt),
+        authenticated_invocation=invocation_authority(receipt),
+        resolved_binding=binding_resolution(alternate_version_definition),
     ))
 
     vectors.append(make_vector(
@@ -904,6 +1290,54 @@ def build() -> dict:
             signed_agreement(malformed_receipt),
         ))
 
+    eur_entries, eur_records = base_material(currency="EUR")
+    eur_receipt = signed_receipt(
+        eur_entries, eur_records, currency="EUR", reserve="80"
+    )
+    vectors.append(make_vector(
+        "non-usd-listing-matching-bids",
+        "pass",
+        "a signed EUR listing derives EUR eligibility and admits the inclusive reserve boundary",
+        eur_entries,
+        eur_records,
+        eur_receipt,
+        signed_agreement(eur_receipt),
+        currency="EUR",
+        reserve="80",
+    ))
+    mixed_currency_entries, mixed_currency_records = base_material(
+        currency="EUR",
+        price_overrides={
+            "bidder-a": {"amount": "100", "currency": "USD"},
+            "bidder-b": {"amount": "80", "currency": "USD"},
+        },
+    )
+    mixed_currency_receipt = signed_receipt(
+        mixed_currency_entries, mixed_currency_records, currency="EUR"
+    )
+    vectors.append(make_vector(
+        "non-usd-listing-usd-bids-excluded",
+        "pass",
+        "USD bids are authenticated and excluded from an EUR listing before EUR winner selection",
+        mixed_currency_entries,
+        mixed_currency_records,
+        mixed_currency_receipt,
+        signed_agreement(mixed_currency_receipt),
+        currency="EUR",
+    ))
+    vectors.append(make_vector(
+        "non-usd-listing-third-currency-reserve-rejected",
+        "fail",
+        "a GBP reserve contradicts the signed EUR listing currency",
+        eur_entries,
+        eur_records,
+        eur_receipt,
+        signed_agreement(eur_receipt),
+        currency="EUR",
+        reserve="80",
+        reserve_currency="GBP",
+    ))
+
     non_positive_entries, non_positive_records = base_material(("0", "-1", "100"))
     non_positive_receipt = signed_receipt(
         non_positive_entries, non_positive_records, selection_rule="highest-price"
@@ -980,6 +1414,92 @@ def build() -> dict:
             reserve=reserve,
         ))
 
+    foreign_entries, foreign_records = base_material(job_id=FOREIGN_JOB_ID)
+    foreign_receipt = signed_receipt(
+        foreign_entries, foreign_records, job_id=FOREIGN_JOB_ID
+    )
+    vectors.append(make_vector(
+        "resigned-cross-job-artifacts-rejected",
+        "fail",
+        "internally consistent foreign-job records, proof, receipt, anchor and agreement cannot replace the authenticated invocation job",
+        foreign_entries,
+        foreign_records,
+        foreign_receipt,
+        signed_agreement(foreign_receipt),
+        authenticated_invocation=invocation_authority(receipt),
+    ))
+    foreign_listing_ref = {
+        "listingId": "other-complete-sealed-demo",
+        "version": 2,
+        "contentHash": "92" * 32,
+    }
+    foreign_listing_entries, foreign_listing_records = base_material(
+        listing_ref=foreign_listing_ref
+    )
+    foreign_listing_receipt = signed_receipt(
+        foreign_listing_entries,
+        foreign_listing_records,
+        listing_ref=foreign_listing_ref,
+    )
+    vectors.append(make_vector(
+        "resigned-cross-listing-artifacts-rejected",
+        "fail",
+        "internally consistent foreign-listing artifacts cannot replace the authenticated invocation listing",
+        foreign_listing_entries,
+        foreign_listing_records,
+        foreign_listing_receipt,
+        signed_agreement(foreign_listing_receipt),
+        authenticated_invocation=invocation_authority(receipt),
+    ))
+    vectors.append(make_vector(
+        "resigned-cross-phase-artifacts-rejected",
+        "fail",
+        "internally consistent demand artifacts cannot replace an authenticated procurement invocation",
+        entries,
+        records,
+        demand_receipt,
+        demand_agreement,
+        auction_mode="demand",
+        authenticated_invocation=invocation_authority(receipt),
+    ))
+
+    commit_hash = next(
+        record_hash for record_hash, record in records.items()
+        if record["recordKind"] == "commit"
+        and record["bidderClaim"] == CLAIMS["bidder-a"]
+    )
+    reveal_hash = next(
+        record_hash for record_hash, record in records.items()
+        if record["recordKind"] == "reveal"
+        and record["bidderClaim"] == CLAIMS["bidder-b"]
+    )
+    shape_cases = (
+        ("signed-commit-extra-member-rejected", commit_hash, "extra", "bidder-a"),
+        ("signed-commit-missing-member-rejected", commit_hash, "missing", "bidder-a"),
+        ("signed-reveal-extra-member-rejected", reveal_hash, "extra", "bidder-b"),
+        ("signed-reveal-missing-member-rejected", reveal_hash, "missing", "bidder-b"),
+    )
+    for name, old_hash, mutation, signer in shape_cases:
+        changed_record = unsigned(records[old_hash])
+        if mutation == "extra":
+            changed_record["unknownMember"] = "signed-but-forbidden"
+        else:
+            del changed_record["createdAt"]
+        changed_record = sign_artifact(changed_record, signer, RECORD_DOMAIN)
+        changed_entries, changed_records = replace_record(
+            entries, records, old_hash, changed_record
+        )
+        changed_receipt = signed_receipt(changed_entries, changed_records)
+        vectors.append(make_vector(
+            name,
+            "fail",
+            "an authenticated record with a signed " + mutation + " member violates its exact closed recordKind shape",
+            changed_entries,
+            changed_records,
+            changed_receipt,
+            signed_agreement(changed_receipt),
+        ))
+
     wrong_address_entries = copy.deepcopy(entries)
     for entry in wrong_address_entries:
         record = records[entry["recordRef"]["contentHash"]]
@@ -1002,7 +1522,7 @@ def build() -> dict:
             "recordSignature": RECORD_DOMAIN + " || sha256(JCS(record without signature))",
             "receiptSignature": RECEIPT_DOMAIN + " || sha256(JCS(receipt without signature))",
             "agreementSignature": AGREEMENT_DOMAIN + " || sha256(JCS(agreement without signatures))",
-            "candidateSetProof": "deterministic Ed25519 test binding over prefix/finalized-state/recordSetHash/count; models the SAC-3 adapter boundary, not a production Demos proof",
+            "candidateSetProof": "authenticated test SR-2 registry resolution pins definition ref/id/version and derives deterministic Ed25519 proof verification, finality, admission, ordering, conflict and resource policy; models the SAC-3 adapter boundary, not a production Demos proof",
             "generator": "scripts/generate_sealed_auction_completeness_vectors.py",
         },
         "publicKeys": {name: public_key(name) for name in KEYS},

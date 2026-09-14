@@ -100,13 +100,59 @@ function compareDecimalParts(a, b) {
 
 
 function reproduce(vector) {
-  const { receipt, context, listing } = vector;
+  const { receipt, agreement, context, listing } = vector;
   const records = context.resolvedRecords;
   const result = {
     name: vector.name,
     recordSetHash: digest(receipt.entries),
     receiptContentHash: digest(unsigned(receipt)),
   };
+  const invocation = context.authenticatedInvocation;
+  const binding = listing.parameters?.candidateSetBinding;
+  const resolution = context.bindingResolution;
+  const phaseKind = listing.phaseKind;
+  const modePresent = Object.hasOwn(listing.parameters ?? {}, "auctionMode");
+  const mode = listing.parameters?.auctionMode;
+  if (invocation === null || invocation === undefined || resolution === null || resolution === undefined) {
+    return { ...result, verdict: "indeterminate" };
+  }
+  if (invocation.authenticated !== true
+      || !equal(listing.listingRef, invocation.listingRef)
+      || listing.phaseIndex !== invocation.phaseIndex
+      || phaseKind !== invocation.phaseKind
+      || listing.publisherClaim !== invocation.publisherClaim
+      || listing.parameters.selectionRule !== invocation.selectionRule
+      || !equal(binding, invocation.candidateSetBinding)
+      || listing.pricingCurrency !== invocation.pricingCurrency
+      || receipt.jobId !== invocation.jobId
+      || !equal(receipt.listingRef, invocation.listingRef)
+      || receipt.phaseIndex !== invocation.phaseIndex
+      || receipt.phaseKind !== invocation.phaseKind
+      || !equal(receipt.candidateSetBinding, binding)
+      || receipt.collectionPrefix !== `dacs3:auction:${encodeURIComponent(invocation.jobId)}`) {
+    return { ...result, verdict: "fail" };
+  }
+  if ((phaseKind === "negotiate-sealed-envelope-complete" && modePresent && mode !== "demand")
+      || (phaseKind === "negotiate-sealed-envelope-procurement-complete"
+          && (!modePresent || mode !== "procurement"))) {
+    return { ...result, verdict: "fail" };
+  }
+  if (resolution.authenticated !== true
+      || resolution.registryId !== context.bindingRegistryAuthority?.registryId
+      || resolution.governanceClaim !== context.bindingRegistryAuthority?.governanceClaim
+      || resolution.bindingId !== binding.bindingId
+      || resolution.bindingVersion !== binding.bindingVersion
+      || !equal(resolution.definitionRef, binding.definitionRef)
+      || binding.definitionRef.signer !== context.bindingRegistryAuthority?.governanceClaim
+      || digest(resolution.definition) !== binding.definitionRef.contentHash
+      || resolution.definition.bindingId !== binding.bindingId
+      || resolution.definition.bindingVersion !== binding.bindingVersion) {
+    return { ...result, verdict: "fail" };
+  }
+  const revealDeadline = listing.parameters.commitDeadline + listing.parameters.revealWindow * 1000;
+  if (receipt.completenessEvidence.finalizedState.timestamp < revealDeadline) {
+    return { ...result, verdict: "fail" };
+  }
   let reserve = null;
   if (listing.pricing !== undefined) {
     const pricing = listing.pricing;
@@ -116,27 +162,40 @@ function reproduce(vector) {
     }
     if (Object.hasOwn(pricing, "reservePrice")) {
       const inspected = inspectPrice(pricing.reservePrice);
-      if (inspected.status !== "positive" || pricing.reservePrice.currency !== "USD") {
+      if (inspected.status !== "positive" || pricing.reservePrice.currency !== listing.pricingCurrency) {
         return { ...result, verdict: "fail" };
       }
       reserve = inspected.parts;
     }
   }
   const commitDeadline = listing.parameters.commitDeadline;
-  const revealDeadline = commitDeadline + listing.parameters.revealWindow * 1000;
+  const recordRevealDeadline = commitDeadline + listing.parameters.revealWindow * 1000;
   const commits = new Map();
   const reveals = new Map();
   let malformedPriceCount = 0;
 
   for (const entry of receipt.entries) {
     const record = records[entry.recordRef.contentHash];
+    const commonKeys = [
+      "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
+      "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+    ];
+    const expectedKeys = record?.recordKind === "commit"
+      ? commonKeys
+      : record?.recordKind === "reveal"
+        ? [...commonKeys, "commitRef", "bid", "salt"]
+        : [];
+    if (record === null || typeof record !== "object" || Array.isArray(record)
+        || !equal(Object.keys(record).sort(), expectedKeys.sort())) {
+      return { ...result, verdict: "fail" };
+    }
     const timestamp = entry.anchorReceipt.blockRef.timestamp;
     if (record.recordKind === "commit" && timestamp <= commitDeadline) {
       const values = commits.get(record.bidderClaim) ?? [];
       values.push({ entry, record });
       commits.set(record.bidderClaim, values);
     }
-    if (record.recordKind === "reveal" && timestamp <= revealDeadline) {
+    if (record.recordKind === "reveal" && timestamp <= recordRevealDeadline) {
       const values = reveals.get(record.bidderClaim) ?? [];
       values.push({ entry, record });
       reveals.set(record.bidderClaim, values);
@@ -162,7 +221,7 @@ function reproduce(vector) {
         malformedPriceCount += 1;
         continue;
       }
-      if (price.currency === "USD" && inspected.status === "positive") {
+      if (price.currency === listing.pricingCurrency && inspected.status === "positive") {
         const reserveOrder = reserve === null ? 0 : compareDecimalParts(inspected.parts, reserve);
         const outsideReserve = reserve !== null && (
           (receipt.selectionRule === "lowest-price" && reserveOrder > 0)
@@ -183,6 +242,17 @@ function reproduce(vector) {
   });
   const winner = eligible[0];
   if (!winner) return { ...result, verdict: "fail" };
+  const buyers = agreement.parties.filter((party) => party.role === "buyer");
+  const sellers = agreement.parties.filter((party) => party.role === "seller");
+  const expectedBuyer = phaseKind === "negotiate-sealed-envelope-complete"
+    ? winner.commit.record.bidderClaim : listing.publisherClaim;
+  const expectedSeller = phaseKind === "negotiate-sealed-envelope-complete"
+    ? listing.publisherClaim : winner.commit.record.bidderClaim;
+  if (buyers.length !== 1 || sellers.length !== 1
+      || buyers[0].primaryClaim !== expectedBuyer
+      || sellers[0].primaryClaim !== expectedSeller) {
+    return { ...result, verdict: "fail" };
+  }
   return {
     ...result,
     verdict: "pass",
@@ -195,8 +265,21 @@ function reproduce(vector) {
 const data = JSON.parse(readFileSync(path, "utf8"));
 const controls = new Set([
   "complete-lowest-price",
+  "complete-demand-absent-auction-mode",
+  "complete-demand-explicit-auction-mode",
+  "demand-phase-procurement-mode-rejected",
+  "procurement-phase-demand-mode-rejected",
+  "demand-role-direction-rejected",
   "auction-pricing-without-reserve",
   "complete-highest-price",
+  "finalized-state-at-reveal-deadline",
+  "finalized-state-before-reveal-deadline-rejected",
+  "binding-definition-unavailable",
+  "definition-content-hash-substitution-rejected",
+  "definition-ref-substitution-rejected",
+  "self-selected-definition-key-rejected",
+  "binding-id-substitution-rejected",
+  "binding-version-substitution-rejected",
   "equal-price-earliest-commit",
   "equal-price-equal-time-bidhash",
   "fractional-price-full-precision",
@@ -207,6 +290,9 @@ const controls = new Set([
   "malformed-price-shapes-rejected",
   "noncanonical-price-amounts-rejected",
   "noncanonical-decimal-shapes-rejected",
+  "non-usd-listing-matching-bids",
+  "non-usd-listing-usd-bids-excluded",
+  "non-usd-listing-third-currency-reserve-rejected",
   "zero-and-negative-prices-excluded",
   "long-integer-lowest-price",
   "long-integer-highest-price",
@@ -214,6 +300,13 @@ const controls = new Set([
   "long-fraction-highest-price",
   "long-fraction-inclusive-reserve-ceiling",
   "long-fraction-inclusive-reserve-floor",
+  "resigned-cross-job-artifacts-rejected",
+  "resigned-cross-listing-artifacts-rejected",
+  "resigned-cross-phase-artifacts-rejected",
+  "signed-commit-extra-member-rejected",
+  "signed-commit-missing-member-rejected",
+  "signed-reveal-extra-member-rejected",
+  "signed-reveal-missing-member-rejected",
 ]);
 const output = data.vectors.filter((vector) => controls.has(vector.name)).map(reproduce);
 process.stdout.write(`${JSON.stringify(output)}\n`);

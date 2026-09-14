@@ -39,6 +39,13 @@ The format used per release:
   latest-finalized enumeration, record-set proof, ordering, lag, and fork/reorg
   handling. Historical sealed phases remain audit-readable under their
   released, explicitly non-complete semantics.
+- **Complete-profile conformance coverage completed** — the deterministic SAC
+  corpus now covers demand with absent and explicit mode, both role directions,
+  authenticated SR-2 definition resolution and policy derivation, the exact
+  reveal-deadline finality boundary, listing-derived non-USD currency, an
+  independently authenticated invocation tuple, fully re-signed cross-session
+  artifacts, and exact closed commit/reveal shapes. These fixture controls do
+  not add or imply a native provider completeness capability.
 
 ### Fixed — CORE v0.3 raw JSON admission
 

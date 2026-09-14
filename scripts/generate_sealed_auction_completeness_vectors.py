@@ -104,6 +104,8 @@ def binding_definition(
 
     This is a portable fixture definition, not a Demos-native binding claim.
     """
+    if re.fullmatch(r"[1-9][0-9]*", binding_version) is None:
+        raise ValueError("bindingVersion must be a canonical positive decimal")
     return {
         "candidateSetBindingDefinitionVersion": "1",
         "bindingId": binding_id,
@@ -230,6 +232,27 @@ def price_amount(price: object) -> tuple[str, tuple[str, str] | None]:
     ):
         return "malformed", None
     return classify_amount(price["amount"])
+
+
+def record_shape_valid(record: object) -> bool:
+    if not isinstance(record, dict):
+        return False
+    kind = record.get("recordKind")
+    expected_keys = (
+        COMMIT_RECORD_KEYS if kind == "commit"
+        else REVEAL_RECORD_KEYS if kind == "reveal"
+        else frozenset()
+    )
+    signature = record.get("signature")
+    return (
+        set(record) == expected_keys
+        and record.get("sealedAuctionRecordVersion") == "1"
+        and isinstance(signature, dict)
+        and set(signature) == {"algorithm", "signer", "value"}
+        and signature.get("algorithm") == "ed25519"
+        and isinstance(signature.get("signer"), str)
+        and isinstance(signature.get("value"), str)
+    )
 
 
 def compare_decimal_parts(left: tuple[str, str], right: tuple[str, str]) -> int:
@@ -422,12 +445,7 @@ def derive(
             reason = "malformed-record"
         else:
             kind = record.get("recordKind")
-            expected_keys = (
-                COMMIT_RECORD_KEYS if kind == "commit"
-                else REVEAL_RECORD_KEYS if kind == "reveal"
-                else frozenset()
-            )
-            if set(record) != expected_keys:
+            if not record_shape_valid(record):
                 reason = "malformed-record"
             signature = record.get("signature", {})
             expected_name = next((name for name, claim in CLAIMS.items() if claim == record.get("bidderClaim")), None)
@@ -1103,6 +1121,22 @@ def build() -> dict:
         authenticated_invocation=invocation_authority(receipt),
         resolved_binding=binding_resolution(alternate_version_definition),
     ))
+    noncanonical_version_definition = copy.deepcopy(binding_definition())
+    noncanonical_version_definition["bindingVersion"] = "01"
+    noncanonical_version_binding = binding_ref(noncanonical_version_definition)
+    noncanonical_version_receipt = signed_receipt(
+        entries, records, candidate_binding=noncanonical_version_binding
+    )
+    vectors.append(make_vector(
+        "noncanonical-binding-version-rejected",
+        "fail",
+        "an internally consistent authenticated bindingVersion must still use canonical positive-decimal form",
+        entries,
+        records,
+        noncanonical_version_receipt,
+        signed_agreement(noncanonical_version_receipt),
+        resolved_binding=binding_resolution(noncanonical_version_definition),
+    ))
     bounded_definition = binding_definition(maximum_records="5")
     bounded_binding = binding_ref(bounded_definition)
     bounded_receipt = signed_receipt(
@@ -1498,14 +1532,22 @@ def build() -> dict:
         ("signed-commit-missing-member-rejected", commit_hash, "missing", "bidder-a"),
         ("signed-reveal-extra-member-rejected", reveal_hash, "extra", "bidder-b"),
         ("signed-reveal-missing-member-rejected", reveal_hash, "missing", "bidder-b"),
+        ("signed-commit-wrong-version-rejected", commit_hash, "version", "bidder-a"),
+        ("signed-reveal-wrong-version-rejected", reveal_hash, "version", "bidder-b"),
+        ("signed-commit-signature-extra-member-rejected", commit_hash, "signature-extra", "bidder-a"),
+        ("signed-reveal-signature-extra-member-rejected", reveal_hash, "signature-extra", "bidder-b"),
     )
     for name, old_hash, mutation, signer in shape_cases:
         changed_record = unsigned(records[old_hash])
         if mutation == "extra":
             changed_record["unknownMember"] = "signed-but-forbidden"
-        else:
+        elif mutation == "missing":
             del changed_record["createdAt"]
+        elif mutation == "version":
+            changed_record["sealedAuctionRecordVersion"] = "2"
         changed_record = sign_artifact(changed_record, signer, RECORD_DOMAIN)
+        if mutation == "signature-extra":
+            changed_record["signature"]["unknownMember"] = "signed-shape-extension"
         changed_entries, changed_records = replace_record(
             entries, records, old_hash, changed_record
         )

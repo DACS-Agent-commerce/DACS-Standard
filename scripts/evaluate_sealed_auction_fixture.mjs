@@ -87,6 +87,28 @@ function inspectPrice(price) {
 }
 
 
+function recordShapeValid(record) {
+  if (record === null || typeof record !== "object" || Array.isArray(record)) return false;
+  const commonKeys = [
+    "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
+    "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+  ];
+  const expectedKeys = record.recordKind === "commit"
+    ? commonKeys
+    : record.recordKind === "reveal"
+      ? [...commonKeys, "commitRef", "bid", "salt"]
+      : [];
+  const signature = record.signature;
+  return equal(Object.keys(record).sort(), expectedKeys.sort())
+    && record.sealedAuctionRecordVersion === "1"
+    && signature !== null && typeof signature === "object" && !Array.isArray(signature)
+    && equal(Object.keys(signature).sort(), ["algorithm", "signer", "value"])
+    && signature.algorithm === "ed25519"
+    && typeof signature.signer === "string"
+    && typeof signature.value === "string";
+}
+
+
 function compareDecimalParts(a, b) {
   if (a.whole.length !== b.whole.length) return a.whole.length < b.whole.length ? -1 : 1;
   if (a.whole !== b.whole) return a.whole < b.whole ? -1 : 1;
@@ -142,6 +164,8 @@ function reproduce(vector) {
       || resolution.governanceClaim !== context.bindingRegistryAuthority?.governanceClaim
       || resolution.bindingId !== binding.bindingId
       || resolution.bindingVersion !== binding.bindingVersion
+      || typeof binding.bindingVersion !== "string"
+      || !/^[1-9][0-9]*$/.test(binding.bindingVersion)
       || !equal(resolution.definitionRef, binding.definitionRef)
       || binding.definitionRef.signer !== context.bindingRegistryAuthority?.governanceClaim
       || digest(resolution.definition) !== binding.definitionRef.contentHash
@@ -181,17 +205,7 @@ function reproduce(vector) {
 
   for (const entry of receipt.entries) {
     const record = records[entry.recordRef.contentHash];
-    const commonKeys = [
-      "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
-      "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
-    ];
-    const expectedKeys = record?.recordKind === "commit"
-      ? commonKeys
-      : record?.recordKind === "reveal"
-        ? [...commonKeys, "commitRef", "bid", "salt"]
-        : [];
-    if (record === null || typeof record !== "object" || Array.isArray(record)
-        || !equal(Object.keys(record).sort(), expectedKeys.sort())) {
+    if (!recordShapeValid(record)) {
       return { ...result, verdict: "fail" };
     }
     const timestamp = entry.anchorReceipt.blockRef.timestamp;
@@ -285,6 +299,7 @@ const controls = new Set([
   "self-selected-definition-key-rejected",
   "binding-id-substitution-rejected",
   "binding-version-substitution-rejected",
+  "noncanonical-binding-version-rejected",
   "binding-record-ceiling-exceeded",
   "equal-price-earliest-commit",
   "equal-price-equal-time-bidhash",
@@ -313,6 +328,10 @@ const controls = new Set([
   "signed-commit-missing-member-rejected",
   "signed-reveal-extra-member-rejected",
   "signed-reveal-missing-member-rejected",
+  "signed-commit-wrong-version-rejected",
+  "signed-reveal-wrong-version-rejected",
+  "signed-commit-signature-extra-member-rejected",
+  "signed-reveal-signature-extra-member-rejected",
 ]);
 const output = data.vectors.filter((vector) => controls.has(vector.name)).map(reproduce);
 process.stdout.write(`${JSON.stringify(output)}\n`);

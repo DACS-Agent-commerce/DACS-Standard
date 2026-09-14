@@ -123,6 +123,27 @@ def inspect_price(price):
     return inspect_amount(price["amount"])
 
 
+def record_shape_valid(record):
+    if not isinstance(record, dict):
+        return False
+    kind = record.get("recordKind")
+    expected_keys = (
+        COMMIT_RECORD_KEYS if kind == "commit"
+        else REVEAL_RECORD_KEYS if kind == "reveal"
+        else set()
+    )
+    signature = record.get("signature")
+    return (
+        set(record) == expected_keys
+        and record.get("sealedAuctionRecordVersion") == "1"
+        and isinstance(signature, dict)
+        and set(signature) == {"algorithm", "signer", "value"}
+        and signature.get("algorithm") == "ed25519"
+        and isinstance(signature.get("signer"), str)
+        and isinstance(signature.get("value"), str)
+    )
+
+
 def compare_amounts(left, right):
     left_whole, left_fraction = left
     right_whole, right_fraction = right
@@ -296,6 +317,8 @@ class Evaluator:
             or resolution.get("governanceClaim") != authority.get("governanceClaim")
             or resolution.get("bindingId") != candidate_binding.get("bindingId")
             or resolution.get("bindingVersion") != candidate_binding.get("bindingVersion")
+            or not isinstance(candidate_binding.get("bindingVersion"), str)
+            or re.fullmatch(r"[1-9][0-9]*", candidate_binding.get("bindingVersion", "")) is None
             or resolution.get("definitionRef") != definition_ref
             or definition_ref.get("signer") != authority.get("governanceClaim")
         ):
@@ -444,12 +467,7 @@ class Evaluator:
             reason = None
             disposition = None
             kind = record.get("recordKind") if isinstance(record, dict) else None
-            expected_keys = (
-                COMMIT_RECORD_KEYS if kind == "commit"
-                else REVEAL_RECORD_KEYS if kind == "reveal"
-                else set()
-            )
-            if not isinstance(record, dict) or set(record) != expected_keys:
+            if not record_shape_valid(record):
                 reason = "malformed-record"
             elif digest(unsigned(record)) != record_hash:
                 reason = "malformed-record"
@@ -771,6 +789,7 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "self-selected-definition-key-rejected",
             "binding-id-substitution-rejected",
             "binding-version-substitution-rejected",
+            "noncanonical-binding-version-rejected",
             "binding-record-ceiling-exceeded",
             "equal-price-earliest-commit",
             "equal-price-equal-time-bidhash",
@@ -798,6 +817,10 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "signed-commit-missing-member-rejected",
             "signed-reveal-extra-member-rejected",
             "signed-reveal-missing-member-rejected",
+            "signed-commit-wrong-version-rejected",
+            "signed-reveal-wrong-version-rejected",
+            "signed-commit-signature-extra-member-rejected",
+            "signed-reveal-signature-extra-member-rejected",
         }
         self.assertEqual(set(actual), controls)
         for vector in self.data["vectors"]:
@@ -863,6 +886,7 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "self-selected-definition-key-rejected",
             "binding-id-substitution-rejected",
             "binding-version-substitution-rejected",
+            "noncanonical-binding-version-rejected",
             "binding-record-ceiling-exceeded",
             "non-usd-listing-matching-bids",
             "non-usd-listing-usd-bids-excluded",
@@ -874,6 +898,10 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "signed-commit-missing-member-rejected",
             "signed-reveal-extra-member-rejected",
             "signed-reveal-missing-member-rejected",
+            "signed-commit-wrong-version-rejected",
+            "signed-reveal-wrong-version-rejected",
+            "signed-commit-signature-extra-member-rejected",
+            "signed-reveal-signature-extra-member-rejected",
         }
         self.assertTrue(required.issubset(names))
 

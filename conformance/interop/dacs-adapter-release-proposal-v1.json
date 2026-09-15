@@ -53,8 +53,8 @@
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "bbe41c6bfdc58ae5d1cd795b39ed646fc78e35e4ba44facbf70bfcec3476795f",
-      "gitBlob": "44441d05e0cf100c1b0cb3a0456d81edd5bd9ac2"
+      "sha256": "e5f5ed65a9e42306e96f1d314d25ba73e6b48794f8ad01647115b454ad092ecb",
+      "gitBlob": "31f6f1933a619c9267c722936109942378dfc82d"
     },
     "wrappedStandard": {
       "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
@@ -87,6 +87,7 @@
       "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
       "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
       "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
+      "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
       "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry"
     ]
   },
@@ -276,12 +277,13 @@
           "expected": true
         },
         {
-          "caseId": "signing::reject-raw-digest-preimage",
+          "caseId": "signing::reject-mismatched-ascii-hex-hash",
           "operation": "domainSepVerify",
           "separator": "dacs-listing:v1:",
-          "messageBytesHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313736",
           "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
           "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "derivation": "the final lowercase-hex digit differs from the pinned Listing artifact hash while the pinned signature is unchanged",
           "expected": false
         },
         {
@@ -292,6 +294,30 @@
           "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
           "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
           "expected": false
+        }
+      ],
+      "primitiveControls": [
+        {
+          "caseId": "signing::raw-digest-does-not-verify-golden-signature",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": false,
+          "scope": "existing Standard Ed25519 primitive only; excluded from adapter execution because raw digest bytes are outside the bounded message grammar"
+        }
+      ],
+      "unsupportedCases": [
+        {
+          "caseId": "signing::valid-raw-digest-profile-boundary",
+          "operation": "domainSepVerify",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "signatureBytesHex": "241763d990b8ba3b04270108cdeb598a3aa44b26b8b79079086a45fa3a7e1c08ca9fb07bc66b85ec3cb9aa81007b8dc0d22e69647877072ccfe19507c8e1d70a",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "primitiveVerification": true,
+          "adapterErrorCode": "UNSUPPORTED_CASE",
+          "reason": "a cryptographically valid signature cannot admit raw digest bytes into the bounded ASCII lowercase-hex message profile"
         }
       ],
       "genericFamilyMilestone": "incomplete",

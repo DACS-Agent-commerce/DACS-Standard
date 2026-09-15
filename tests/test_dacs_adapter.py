@@ -58,7 +58,7 @@ class DacsAdapterTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn(
-            "14 advertised-family cases, 4 bounded F5 cases, 1 unsupported mapping",
+            "14 advertised-family cases, 4 bounded F5 cases, 2 unsupported mappings",
             completed.stdout,
         )
 
@@ -237,6 +237,7 @@ class DacsAdapterTests(unittest.TestCase):
         seed = {"$dacsType": "bytes", "hex": sign_case["privateKeyBytesHex"]}
         signature = {"$dacsType": "bytes", "hex": sign_case["expected"]["hex"]}
         public_key = {"$dacsType": "bytes", "hex": family["cases"][1]["publicKeyHex"]}
+        raw_verify_case = family["unsupportedCases"][0]
         requests = [
             request(
                 "raw-digest-sign",
@@ -246,6 +247,17 @@ class DacsAdapterTests(unittest.TestCase):
                     {"$dacsType": "bytes", "hex": sign_case["artifactHashHex"]},
                     sign_case["separator"],
                     seed,
+                ],
+            ),
+            request(
+                "valid-raw-digest-verify",
+                "execute",
+                operation="domainSepVerify",
+                params=[
+                    {"$dacsType": "bytes", "hex": raw_verify_case["messageBytesHex"]},
+                    raw_verify_case["separator"],
+                    {"$dacsType": "bytes", "hex": raw_verify_case["signatureBytesHex"]},
+                    {"$dacsType": "bytes", "hex": raw_verify_case["publicKeyHex"]},
                 ],
             ),
             request(
@@ -276,7 +288,7 @@ class DacsAdapterTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(
             [response["error"]["code"] for response in responses],
-            ["UNSUPPORTED_CASE"] * 4,
+            ["UNSUPPORTED_CASE"] * 5,
         )
 
     def test_unknown_and_ambiguous_operations_abstain_with_controlled_errors(self):

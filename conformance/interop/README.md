@@ -55,16 +55,23 @@ intermediate hash, then `messageBytes`. The bounded profile selects the
 Standard's existing Listing golden: the message is the 64 ASCII lowercase-hex
 artifact hash, the separator is exactly `dacs-listing:v1:`, and no intermediate
 hash is present. It pins signing output, successful verification, and the
-existing negative control showing that the same signature does not verify when
-the 32 raw digest bytes replace the 64 ASCII bytes. An unknown non-DACS
-separator returns `false` on verification.
+in-profile negative control where one lowercase-hex message digit changes while
+the signature stays fixed. An unknown non-DACS separator returns `false` on
+verification.
+
+The existing Standard test showing that the golden signature does not verify
+over the 32 raw digest bytes remains pinned as a primitive-level control. Raw
+digest bytes are outside the adapter profile: both signing and verification
+return `UNSUPPORTED_CASE` before cryptography, including when a separately
+generated raw-digest signature is cryptographically valid.
 
 This is a primitive bridge. It does not parse an artifact, derive its hash,
 establish signer authority, admit intermediate hashes, or claim the full CORE
 B.7 separator registry. Emission under any separator other than the selected
 Listing separator returns `UNSUPPORTED_CASE`; DACS-shaped non-Listing
-verification separators also return `UNSUPPORTED_CASE`. Those are unsupported
-inputs, not failed conformance candidates.
+verification separators and Listing messages outside the 64 lowercase-hex
+grammar also return `UNSUPPORTED_CASE`. Those are unsupported inputs, not
+failed conformance candidates.
 
 The generic four-family milestone remains incomplete because the shared runner
 maps every operation error to an observed `THROWN` outcome. The remaining exact

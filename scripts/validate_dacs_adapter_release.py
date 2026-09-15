@@ -199,10 +199,24 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
             _load_bytes_at_revision(family["controlSource"])
             raw = sources[family["source"]]["signing"]
             selected = {case["caseId"]: case for case in family["cases"]}
+            if set(selected) != {
+                "signing::sign-ascii-hex-hash",
+                "signing::verify-ascii-hex-hash",
+                "signing::reject-mismatched-ascii-hex-hash",
+                "signing::unknown-separator-false",
+            }:
+                raise ValueError("bounded F5 selected case set drift")
             sign_case = selected["signing::sign-ascii-hex-hash"]
             verify_case = selected["signing::verify-ascii-hex-hash"]
-            raw_digest_case = selected["signing::reject-raw-digest-preimage"]
+            mismatch_case = selected["signing::reject-mismatched-ascii-hex-hash"]
             unknown_case = selected["signing::unknown-separator-false"]
+            primitive_controls = family.get("primitiveControls", [])
+            unsupported_cases = family.get("unsupportedCases", [])
+            if len(primitive_controls) != 1 or len(unsupported_cases) != 1:
+                raise ValueError("bounded F5 must pin one primitive control and one unsupported case")
+            raw_digest_control = primitive_controls[0]
+            raw_digest_unsupported = unsupported_cases[0]
+            unsupported += len(unsupported_cases)
             if raw["separator"] != sign_case["separator"]:
                 raise ValueError("domain separator drift")
             if raw["signature"] != sign_case["sourceExpected"]:
@@ -235,13 +249,47 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
             public_key = bytes.fromhex(verify_case["publicKeyHex"])
             if not walkthrough.verify_ed25519(public_key, signature, payload):
                 raise ValueError("existing Standard Ed25519 verification helper rejected the pin")
-            raw_digest_payload = raw["separator"].encode("utf-8") + bytes.fromhex(
-                raw_digest_case["messageBytesHex"]
-            )
-            if raw_digest_case["expected"] is not False or walkthrough.verify_ed25519(
-                public_key, signature, raw_digest_payload
+            mismatch_message = bytes.fromhex(mismatch_case["messageBytesHex"])
+            if (
+                len(mismatch_message) != 64
+                or any(byte not in b"0123456789abcdef" for byte in mismatch_message)
+                or mismatch_message == artifact_hash.encode("ascii")
+                or mismatch_case["signatureBytesHex"] != signature.hex()
+                or mismatch_case["publicKeyHex"] != public_key.hex()
+                or mismatch_case["expected"] is not False
+                or walkthrough.verify_ed25519(
+                    public_key,
+                    signature,
+                    raw["separator"].encode("utf-8") + mismatch_message,
+                )
             ):
-                raise ValueError("existing Standard raw-digest negative control drift")
+                raise ValueError("bounded F5 in-profile mismatch control drift")
+            raw_digest = bytes.fromhex(raw_digest_control["messageBytesHex"])
+            raw_digest_payload = raw["separator"].encode("utf-8") + raw_digest
+            if (
+                raw_digest.hex() != artifact_hash
+                or raw_digest_control["signatureBytesHex"] != signature.hex()
+                or raw_digest_control["publicKeyHex"] != public_key.hex()
+                or raw_digest_control["expected"] is not False
+                or walkthrough.verify_ed25519(
+                    public_key, signature, raw_digest_payload
+                )
+            ):
+                raise ValueError("existing Standard raw-digest primitive control drift")
+            valid_raw_signature = walkthrough.sign_ed25519(
+                bytes.fromhex(sign_case["privateKeyBytesHex"]), raw_digest_payload
+            )
+            if (
+                raw_digest_unsupported["messageBytesHex"] != raw_digest.hex()
+                or raw_digest_unsupported["signatureBytesHex"] != valid_raw_signature.hex()
+                or raw_digest_unsupported["publicKeyHex"] != public_key.hex()
+                or raw_digest_unsupported["primitiveVerification"] is not True
+                or raw_digest_unsupported["adapterErrorCode"] != "UNSUPPORTED_CASE"
+                or not walkthrough.verify_ed25519(
+                    public_key, valid_raw_signature, raw_digest_payload
+                )
+            ):
+                raise ValueError("valid raw-digest adapter-boundary case drift")
             if unknown_case["expected"] is not False:
                 raise ValueError("unknown-separator verification control drift")
         else:
@@ -264,11 +312,12 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
         print(f"adapter release proposal: FAIL: {exc}", file=sys.stderr)
         return 1
+    unsupported_label = "mapping" if counts["unsupportedCases"] == 1 else "mappings"
     print(
         "adapter release proposal: PASS "
         f"({counts['executableCases']} advertised-family cases, "
         f"{counts['boundedCases']} bounded F5 cases, "
-        f"{counts['unsupportedCases']} unsupported mapping)"
+        f"{counts['unsupportedCases']} unsupported {unsupported_label})"
     )
     return 0
 

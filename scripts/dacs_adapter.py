@@ -323,6 +323,11 @@ def _execute(operation: str, params: list[Any]) -> Any:
             raise AdapterError(
                 "INVALID_PARAMS", "domainSepVerify message, signature, and public key must be byte tags"
             )
+        if re.fullmatch(rb"[0-9a-f]{64}", message) is None:
+            raise AdapterError(
+                "UNSUPPORTED_CASE",
+                "the bounded verification profile requires an ASCII lowercase-hex sha256 message",
+            )
         payload = separator.encode("utf-8") + message
         return _verify_ed25519(public_key, signature, payload)
     raise AdapterError(

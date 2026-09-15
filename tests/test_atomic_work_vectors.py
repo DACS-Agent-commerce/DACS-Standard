@@ -30,7 +30,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 302)
+        self.assertEqual(vector_count, 303)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -459,6 +459,10 @@ class AtomicWorkVectorTests(unittest.TestCase):
             by_name["awp-purchase-composed-admission"]["input"]["authority"],
         )
         for name, verdict in (
+            (
+                "awp-completion-composed-claims-evidence-and-bundle-finalized",
+                "fail",
+            ),
             ("awp-composed-profile-empty-required-roles", "fail"),
             ("awp-composed-common-receipt-missing", "indeterminate"),
             ("awp-composed-winner-receipt-mismatch", "fail"),
@@ -471,6 +475,35 @@ class AtomicWorkVectorTests(unittest.TestCase):
         ):
             with self.subTest(name=name):
                 self.assertEqual(ref.evaluate_vector(by_name[name])[0], verdict)
+
+        completion = copy.deepcopy(
+            by_name["awp-completion-composed-admission"]["input"]
+        )
+        ref.evaluate_completion_admission(completion)
+        explicit_false = copy.deepcopy(completion)
+        explicit_false["claimsEvidenceFinalized"] = False
+        explicit_false["claimsBundleFinalized"] = False
+        ref.evaluate_completion_admission(explicit_false)
+        for field in (
+            "claimsEvidenceFinalized",
+            "claimsBundleFinalized",
+        ):
+            forbidden = copy.deepcopy(completion)
+            forbidden[field] = True
+            with self.subTest(field=field, claim=True):
+                with self.assertRaises(ref.Invalid):
+                    ref.evaluate_completion_admission(forbidden)
+            for malformed in (None, 0, 1, "false", [], {}):
+                candidate = copy.deepcopy(completion)
+                candidate[field] = malformed
+                with self.subTest(field=field, malformed=malformed):
+                    with self.assertRaises(ref.Invalid):
+                        ref.evaluate_completion_admission(candidate)
+        both_forbidden = copy.deepcopy(completion)
+        both_forbidden["claimsEvidenceFinalized"] = True
+        both_forbidden["claimsBundleFinalized"] = True
+        with self.assertRaises(ref.Invalid):
+            ref.evaluate_completion_admission(both_forbidden)
 
     def test_closed_capability_and_algorithm_confusion_are_rejected(self):
         identity = next(

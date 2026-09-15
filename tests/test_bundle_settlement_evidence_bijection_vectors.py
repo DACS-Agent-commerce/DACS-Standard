@@ -1120,31 +1120,134 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 )
                 self.assertEqual(disposition, "pass", reason)
 
-    def test_primary_payload_attestation_shape_errors_without_relinking(self):
-        malformed = (
-            ("verifiedAt", []),
-            ("reason", {}),
-            ("agreementHash", "not-a-hash"),
-            ("methodEvidenceRef", {}),
-            ("attempt", True),
-            ("signature", []),
-        )
-        for field, value in malformed:
-            authority = copy.deepcopy(
-                self.data["executionAuthorities"]["standard-completed"]
-            )
-            record = authority["deliveryArtifactAuthorityByPhaseKey"][
+    def test_primary_payload_attestation_shape_errors_after_full_relinking(self):
+        source = self.data["executionAuthorities"]["standard-completed"]
+        source_snapshot = canonical_json(source)
+        seeds = self.data["seeds"]
+
+        def payload_record(authority):
+            return authority["deliveryArtifactAuthorityByPhaseKey"][
                 "3:deliver-attested-payload"
             ]["payloadAttestationRecord"]["artifact"]
+
+        def signed_chain(authority):
+            evidence = next(
+                resolution["record"]
+                for resolution in authority[
+                    "referenceValidationByCanonicalRef"
+                ].values()
+                if resolution.get("record", {}).get("phase")
+                == "deliver-attested-payload"
+            )
+            return copy.deepcopy({
+                "payloadSignature": payload_record(authority)["signature"],
+                "attestationRef": evidence["attestationRef"],
+                "evidenceSignature": evidence["signature"],
+                "bundleSignatures": authority["bundle"]["signatures"],
+            })
+
+        baseline = copy.deepcopy(source)
+        disposition, reason, _ = derive_phase_disposition(baseline, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+        signed_extension = copy.deepcopy(source)
+        extension_record = payload_record(signed_extension)
+        extension_record["laterMinorAuditLabel"] = "preserve-me"
+        extension_before = signed_chain(signed_extension)
+        relink_payload_attestation(signed_extension, seeds)
+        extension_after = signed_chain(signed_extension)
+        self.assertNotEqual(extension_after, extension_before)
+        disposition, reason, _ = derive_phase_disposition(
+            signed_extension, self.pubkeys
+        )
+        self.assertEqual(disposition, "pass", reason)
+
+        malformed_fields = (
+            ("jobId", ""),
+            ("payloadFormat", []),
+            ("verificationMethod", ""),
+            ("reason", {}),
+            ("agreementHash", "not-a-hash"),
+            ("deliverableSpecHash", []),
+            ("payloadContentHash", "00"),
+            ("verificationMethodHash", "AA" * 32),
+            ("attempt", True),
+            ("attempt", -1),
+            ("decision", "accept"),
+            ("verifiedAt", []),
+            ("methodEvidenceRef", {}),
+            ("methodTransactionRef", {"kind": "", "value": "x"}),
+        )
+        for index, (field, value) in enumerate(malformed_fields):
+            authority = copy.deepcopy(source)
+            record = payload_record(authority)
+            record["evidenceCompletionCase"] = f"field-{index}"
             record[field] = copy.deepcopy(value)
-            with self.subTest(field=field):
-                self.assertFalse(
-                    R._payload_attestation_record_shape_valid(record)
-                )
+            before = signed_chain(authority)
+            relink_payload_attestation(authority, seeds)
+            after = signed_chain(authority)
+            with self.subTest(field=field, value=value):
+                self.assertNotEqual(after["payloadSignature"], before["payloadSignature"])
+                self.assertNotEqual(after["attestationRef"], before["attestationRef"])
+                self.assertNotEqual(after["evidenceSignature"], before["evidenceSignature"])
+                self.assertNotEqual(after["bundleSignatures"], before["bundleSignatures"])
+                self.assertFalse(R._payload_attestation_record_shape_valid(record))
                 disposition, reason, _ = derive_phase_disposition(
                     authority, self.pubkeys
                 )
                 self.assertEqual(disposition, "error", reason)
+
+        out_of_range_attempt = copy.deepcopy(source)
+        out_of_range_record = payload_record(out_of_range_attempt)
+        out_of_range_record["evidenceCompletionCase"] = "attempt-out-of-range"
+        before = signed_chain(out_of_range_attempt)
+        relink_payload_attestation(out_of_range_attempt, seeds)
+        after_relink = signed_chain(out_of_range_attempt)
+        out_of_range_record["attempt"] = 2 ** 53
+        self.assertNotEqual(after_relink, before)
+        self.assertFalse(
+            R._payload_attestation_record_shape_valid(out_of_range_record)
+        )
+        disposition, reason, _ = derive_phase_disposition(
+            out_of_range_attempt, self.pubkeys
+        )
+        self.assertEqual(disposition, "error", reason)
+
+        malformed_signatures = (
+            [],
+            {"algorithm": "ed25519", "signer": "did:demos:orchestrator"},
+            {"algorithm": "rsa", "signer": "did:demos:orchestrator", "value": "AA"},
+            {"algorithm": "ed25519", "signer": [], "value": "AA"},
+            {"algorithm": "ed25519", "signer": "did:demos:orchestrator", "value": "="},
+        )
+        for index, signature in enumerate(malformed_signatures):
+            authority = copy.deepcopy(source)
+            record = payload_record(authority)
+            record["evidenceCompletionCase"] = f"signature-{index}"
+            before = signed_chain(authority)
+            relink_payload_attestation(authority, seeds)
+            after_relink = signed_chain(authority)
+            record["signature"] = copy.deepcopy(signature)
+            with self.subTest(signature=signature):
+                self.assertNotEqual(
+                    after_relink["payloadSignature"], before["payloadSignature"]
+                )
+                self.assertNotEqual(
+                    after_relink["attestationRef"], before["attestationRef"]
+                )
+                self.assertNotEqual(
+                    after_relink["evidenceSignature"], before["evidenceSignature"]
+                )
+                self.assertNotEqual(
+                    after_relink["bundleSignatures"], before["bundleSignatures"]
+                )
+                self.assertFalse(R._payload_attestation_record_shape_valid(record))
+                disposition, reason, _ = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "error", reason)
+
+        self.assertEqual(canonical_json(source), source_snapshot)
 
     def test_primary_consumer_executes_public_and_both_credential_storage_modes(self):
         storage = self.data["executionAuthorities"]["completed-storage-delivery"]

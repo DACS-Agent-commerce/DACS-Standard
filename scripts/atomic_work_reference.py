@@ -3997,6 +3997,15 @@ def _evaluate_composed_admission(
     validate_intent(intent, data.get("claimedWorkId"))
     if intent.get("profile") != expected_profile:
         raise Invalid("composed admission profile mismatch")
+    if expected_profile == "dacs-completion-v1":
+        for field in ("claimsEvidenceFinalized", "claimsBundleFinalized"):
+            if field not in data:
+                continue
+            claim = data[field]
+            if type(claim) is not bool:
+                raise Invalid("Completion finalization claim must be Boolean")
+            if claim:
+                raise Invalid("Completion inclusion cannot finalize evidence/bundle")
     if not isinstance(capability, dict):
         raise Unknown("composed admission capability unavailable")
     consume_capability_for_intent(

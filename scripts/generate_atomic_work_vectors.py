@@ -2208,6 +2208,11 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     composed_completion = composed_completion_admission(
         purchase, purchase_receipt, completion, final_receipt(completion)
     )
+    composed_completion_both_claims = {
+        **composed_completion,
+        "claimsEvidenceFinalized": True,
+        "claimsBundleFinalized": True,
+    }
     mismatched_completion = completion_intent(
         purchase_receipt, gate_mode="sequential"
     )
@@ -2282,6 +2287,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-purchase-composed-retry-admission", ["AWP-5", "AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry, "pass", "A complete retry proves the prior rolled-back Work receipt, advances generation N to N+1, and carries that same generation through the terminal receipt and settlement."),
         vector("awp-purchase-composed-retry-generation-skip", ["AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry_generation_skip, "fail", "A retry cannot skip a generation or present a slot transition that differs from its terminal receipt."),
         vector("awp-completion-composed-admission", ["AWP-13", "AWP-14", "AWP-15", "AWP-16"], "completion-admission", composed_completion, "pass", "One Completion verifier consumes the finalized Purchase and exact authority context through delivery settlement."),
+        vector("awp-completion-composed-claims-evidence-and-bundle-finalized", ["AWP-16"], "completion-admission", composed_completion_both_claims, "fail", "Supplying both forbidden finalization claims cannot be hidden by the composed verifier's derived false state."),
         vector("awp-completion-gate-mode-differs-from-purchase", ["AWP-13"], "completion-admission", mismatched_completion_admission, "fail", "A signed Completion intent cannot reinterpret the commitment proof path selected by its verified Purchase intent."),
         vector("awp-composed-profile-empty-required-roles", ["AWP-5", "AWP-15"], "purchase-admission", empty_required_roles, "fail", "Exact profile shape is enforced before an empty requiredRoles list can erase authorization requirements.", boundary_rules=["AWP-5", "AWP-15"]),
         vector("awp-composed-common-receipt-missing", ["AWP-11", "AWP-12"], "purchase-admission", missing_common_receipt, "indeterminate", "Co-final admission without its resulting common BFT receipt remains unavailable; it cannot retroactively switch payment paths.", boundary_rules=["AWP-12"]),

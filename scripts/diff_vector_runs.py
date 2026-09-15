@@ -23,6 +23,9 @@ Usage:
 
     python3 scripts/diff_vector_runs.py RUN.json [RUN2.json ...]
 
+For a fixture with named `evaluations`, result names are the stable
+`<case>::<evaluation>` identifiers published by `load_expected`.
+
 Each run is checked against the set's expected verdicts, and — when two or
 more runs target the same set — against each other, case by case. Any
 mismatch, missing case, unknown case name, or abstention exits 1. Abstentions
@@ -40,8 +43,9 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
-# A set's expected verdicts may live as a security vector set (`vectors[{name}]`) or as a golden
-# identity fixture (`cases[{id}]`, e.g. control-gate-vectors) — resolve either without a hand-built mirror.
+# A set's expected verdicts may live as a security vector set
+# (`vectors[{name}]`) or as a golden identity fixture.  Golden identity cases
+# with `evaluations` expand to stable `<case>::<evaluation>` identities.
 FIXTURE_DIRS = (
     SECURITY_DIR,
     os.path.join(ROOT, "conformance", "fixtures", "identity"),
@@ -52,21 +56,26 @@ VERDICT_FIELDS = ("expected", "decision")
 
 @dataclass(frozen=True)
 class RunResult:
-    verdict: str | None
+    verdict: object | None
     abstention_reason: str | None = None
 
 
-def _verdict_of(entry: dict) -> str | None:
+def _verdict_value(value: object) -> object | None:
+    if isinstance(value, dict) and "decision" in value:
+        return value["decision"]
+    return value
+
+
+def _verdict_of(entry: dict) -> object | None:
     """A vector/case's expected verdict: a bare string, or an object carrying `.decision`
     (the vet-control `{decision, throws}` shape — only the decision participates in agreement)."""
     for field in VERDICT_FIELDS:
         if field in entry:
-            value = entry[field]
-            return value.get("decision") if isinstance(value, dict) else value
+            return _verdict_value(entry[field])
     return None
 
 
-def load_expected(set_name: str) -> dict[str, str]:
+def load_expected(set_name: str) -> dict[str, object]:
     """Map case name -> expected verdict for a set.
 
     Resolves ``<set>.json`` from the security-vectors dir (``vectors[{name}]``) or the identity
@@ -84,9 +93,32 @@ def load_expected(set_name: str) -> dict[str, str]:
         raise SystemExit(f"ERROR: unknown set '{set_name}' — none of: {searched}")
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
-    expected: dict[str, str] = {}
+    status = data.get("status")
+    if isinstance(status, str) and status.startswith("superseded"):
+        replacement = data.get("supersededBy", "the current golden set")
+        raise SystemExit(
+            f"ERROR: set '{set_name}' is superseded and not executable; "
+            f"use {replacement}"
+        )
+    expected: dict[str, object] = {}
     for entry in data.get("vectors") or data.get("cases") or []:
         name = entry.get("name") or entry.get("id")
+        evaluations = entry.get("evaluations")
+        if name and isinstance(evaluations, dict) and "expectedOutput" in entry:
+            labels = list(evaluations)
+            output = entry["expectedOutput"]
+            if labels == ["result"]:
+                outputs = {"result": output}
+            elif isinstance(output, dict) and set(output) == set(labels):
+                outputs = output
+            else:
+                raise SystemExit(
+                    f"ERROR: set '{set_name}' case '{name}' does not map "
+                    "expectedOutput one-to-one to its named evaluations"
+                )
+            for label in labels:
+                expected[f"{name}::{label}"] = _verdict_value(outputs[label])
+            continue
         verdict = _verdict_of(entry)
         if name and verdict is not None:
             expected[name] = verdict

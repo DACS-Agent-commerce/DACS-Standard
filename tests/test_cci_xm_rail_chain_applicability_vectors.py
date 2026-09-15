@@ -272,6 +272,16 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual(result["failedAt"], "RD-5")
                 self.assertFalse(result["maySubmitPayment"])
 
+    def test_manifest_no_longer_promotes_the_contradictory_golden(self):
+        cases = {
+            case["id"]: case
+            for case in json.loads(MANIFEST.read_text(encoding="utf-8"))["cases"]
+        }
+        self.assertNotIn("settlement-cross-chainid-matching-kind-pass", cases)
+        corrected = cases["settlement-cross-chainid-mismatch-fail"]
+        self.assertEqual(corrected["want"], "fail")
+        self.assertEqual(corrected["status"], "candidate")
+
     def test_eip155_chain_ids_stop_at_the_safe_integer_boundary(self):
         maximum = 2**53 - 1
         claim = f"cci-xm:evm:{maximum}:opaque-address"
@@ -329,16 +339,6 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
         self.assertFalse(result["tier2Applicable"])
         self.assertEqual(result["bindingTier"], 3)
         self.assertTrue(result["maySubmitPayment"])
-
-    def test_manifest_no_longer_promotes_the_contradictory_golden(self):
-        cases = {
-            case["id"]: case
-            for case in json.loads(MANIFEST.read_text(encoding="utf-8"))["cases"]
-        }
-        self.assertNotIn("settlement-cross-chainid-matching-kind-pass", cases)
-        corrected = cases["settlement-cross-chainid-mismatch-fail"]
-        self.assertEqual(corrected["want"], "fail")
-        self.assertEqual(corrected["status"], "candidate")
 
     def test_normative_text_pins_the_same_predicate_and_empty_alias_table(self):
         dacs1 = DACS1.read_text(encoding="utf-8")

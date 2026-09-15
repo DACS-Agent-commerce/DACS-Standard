@@ -612,6 +612,19 @@ A session nonce is **a challenge the verifier issues**, not a value the presente
 - (SN-3) **Issuance and binding.** The verifier MUST issue the nonce to the presenter before the presentation is produced, bound to the session's `jobId`. The transport of the challenge is substrate- and protocol-specific and is out of scope; the value the verifier matches against MUST be the one it generated for this session. The verifier MUST compare the presented nonce against the nonce it issued for this `jobId` and reject any mismatch.
 - (SN-4) **Single-use and retention.** A verifier MUST accept a nonce for at most one presentation. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed before validating the attempt and reject every later presentation carrying it, including a fresh, changed, or re-signed presentation for the same `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/attempted/consumed record and, for an accepted attempt, the authenticated admission record required by IBH-4 at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`, and one nonce MUST NOT be issued to more than one presenter or presentation.
 
+The SN-4 record is verifier/issuer-owned mutable state, not a `consumed: false`
+assertion accepted from a presenter or ordinary caller.  It MUST bind at least
+the `jobId`, evaluated actor/party, Vet attempt, expected verifier, issuance
+authority, issued nonce and expiry.  A presentation carrying the exact issued
+nonce consumes that record atomically before later bundle, requirement,
+signature, result, composite or receipt processing can fail; a missing or
+different nonce neither authorizes the attempt nor consumes some other
+issuance.  One successful admission MAY yield an internal capability used by
+nested checks of that same presentation, so those checks do not consume the
+nonce again.  Such a capability and ledger are execution state and MUST NOT be
+inserted into or inferred from a signed `IdentityBundle`, `VerifyResult` or
+`CompositeVerificationRecord`.
+
 > **Note (non-normative).** This is the standard SIWD/EIP-4361 challenge-response shape, lifted to a shared primitive because both DACS-1 (presentation) and DACS-2 (holder-/attestation-binding) depend on the same nonce having these properties. Constraining provenance — not just the match check — is what stops two conforming implementations from disagreeing on the very value the replay defence rests on.
 
 ## C. Composed open standards

@@ -1,4 +1,29 @@
 {
+  "anchorReceipt": {
+    "blockRef": {
+      "height": "366",
+      "id": "8c7cba0e87b7edc5650795bc88019d51c9da6d4d291499de02585fb847435e5a",
+      "timestamp": 1760000300500
+    },
+    "contentHash": "8c03885061b15b36201e3496f43cac3d3cdb451f47ce8fcbde4a628f56722488",
+    "evidence": {
+      "kind": "fixture-finality-proof",
+      "value": "29276137fd2e0e7badf46ff205ed06c05cec72b4510559417c0d055c2440b154"
+    },
+    "finalityProfile": "fixture-deterministic-finality",
+    "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAV:cross-chain-htlc%3A84532%3A80002:4:resolved",
+    "nativeAddress": "stor-8c03885061b15b36201e3496f43cac3d3cdb451f47ce8fcbde4a628f56722488",
+    "observationDisposition": "established",
+    "observedAt": 1760000301000,
+    "receiptVersion": "1",
+    "state": "finalized",
+    "substrate": "fixture-sr2",
+    "transactionRef": {
+      "kind": "fixture-transaction",
+      "value": "d6603bb0adebc6c66371097dc8ac4e808625aa890f311b3272a4082e362cc9c9"
+    },
+    "writer": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+  },
   "kind": "SettlementEvidenceCase",
   "settlementEvidence": {
     "evidenceVersion": "1",

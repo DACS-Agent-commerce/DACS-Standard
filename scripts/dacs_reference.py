@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""Shared fail-closed primitives for local DACS reference consumers.
+"""Shared, fail-closed primitives for the repository's reference consumers.
 
-This module models parser and verifier-owned nonce state for offline
-conformance checks.  It is not a durable production nonce store.
+This module is an offline conformance model, not a durable production nonce or
+receipt store.  It centralises the strict JCS and ClaimReference boundaries used
+by the DACS-1/Vet and HTLC fixtures, plus the verifier-owned mutable nonce state
+needed to model CORE SN-1..SN-4 without putting that state in signed artifacts.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import json
 import re
 import threading
 import unicodedata
 from typing import Any, Iterable
+from urllib.parse import quote, unquote_to_bytes
+
+import jcs
 
 
 SAFE_INTEGER = 2**53 - 1
@@ -27,8 +33,9 @@ _ULID = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 _UPPER_HEX = frozenset("0123456789ABCDEF")
 _HEX = frozenset("0123456789ABCDEFabcdef")
 
-# DACS-1 v0.x registered claim schemes used by current artifacts. Historical
-# generic ``cci:<hex>`` spellings are deliberately absent.
+# DACS-1 v0.x registered claim schemes used by current artifacts.  Historical
+# generic ``cci:<hex>`` spellings are deliberately absent; current key signers
+# use the explicit registered ``key`` scheme.
 REGISTERED_SCHEMES = frozenset(
     {
         "cci-xm",
@@ -59,26 +66,47 @@ class DuplicateJSONMember(ValueError):
     """A JSON object repeated an exact member name."""
 
 
-def loads_unique_json(source: str) -> Any:
-    """Decode JSON while rejecting exact duplicate names at every object depth."""
+def loads_unique_json(value: str | bytes | bytearray) -> Any:
+    """Parse JSON while rejecting exact duplicate member names recursively."""
 
     def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
-        for name, value in pairs:
-            if name in result:
-                raise DuplicateJSONMember(f"duplicate JSON member {name!r}")
-            result[name] = value
+        for key, item in pairs:
+            if key in result:
+                raise DuplicateJSONMember(f"invalid JSON: duplicate JSON member {key!r}")
+            result[key] = item
         return result
 
-    def reject_constant(value: str) -> None:
-        raise ValueError(f"non-JSON numeric constant {value}")
+    def reject_constant(constant: str) -> None:
+        raise ValueError(f"invalid JSON: non-JSON numeric constant {constant}")
 
-    return json.loads(source, object_pairs_hook=unique_object, parse_constant=reject_constant)
+    try:
+        return json.loads(
+            value,
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except json.JSONDecodeError as error:
+        raise ValueError(f"invalid JSON: {error.msg}") from error
+    except UnicodeDecodeError as error:
+        raise ValueError("invalid JSON: input is not valid UTF-8") from error
+
+
+def canonical_bytes(value: Any) -> bytes:
+    """Return the repository's strict CORE §B.2 JCS bytes."""
+
+    return jcs.canonicalize(value).encode("utf-8")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def canonical_equal(left: Any, right: Any) -> bool:
+    return canonical_bytes(left) == canonical_bytes(right)
 
 
 def exact_safe_integer(value: Any, *, minimum: int | None = None) -> bool:
-    """Return whether ``value`` is a non-Boolean JSON safe integer."""
-
     if type(value) is not int or not -SAFE_INTEGER <= value <= SAFE_INTEGER:
         return False
     return minimum is None or value >= minimum
@@ -101,7 +129,7 @@ class ClaimReference:
 
     @property
     def identity(self) -> tuple[str, str]:
-        """Return CF-3 identity; parameters intentionally do not participate."""
+        """CF-3 identity; parameters intentionally do not participate."""
 
         return self.scheme, self.identifier
 
@@ -135,22 +163,14 @@ def _parse_parameters(value: str | None) -> tuple[tuple[str, str], ...]:
         key, parameter_value = member.split("=", 1)
         if not key:
             raise ValueError("ClaimReference parameter key must not be empty")
-        for component_name, component in (
-            ("parameter key", key),
-            ("parameter value", parameter_value),
-        ):
-            if any(
-                char.isspace() or unicodedata.category(char).startswith("C")
-                for char in component
-            ):
-                raise ValueError(
-                    f"ClaimReference {component_name} contains whitespace or a control"
-                )
+        for component_name, component in (("parameter key", key), ("parameter value", parameter_value)):
+            if any(ch.isspace() or unicodedata.category(ch).startswith("C") for ch in component):
+                raise ValueError(f"ClaimReference {component_name} contains whitespace or a control")
             _validate_percent_escapes(component, component=component_name)
             for reserved in (":", "?", "=", "&"):
                 if reserved in component:
                     raise ValueError(
-                        f"ClaimReference {component_name} contains an unescaped reserved delimiter"
+                        f"ClaimReference {component_name} contains unescaped reserved delimiter"
                     )
         parsed.append((key, parameter_value))
     if len({key for key, _ in parsed}) != len(parsed):
@@ -164,18 +184,14 @@ def _validate_did(identifier: str) -> None:
     if ":" not in identifier:
         raise ValueError("DID identifier must contain a method and method-specific id")
     method, method_specific = identifier.split(":", 1)
-    if (
-        _DID_METHOD.fullmatch(method) is None
-        or not method_specific
-        or method_specific.endswith(":")
-    ):
+    if _DID_METHOD.fullmatch(method) is None or not method_specific or method_specific.endswith(":"):
         raise ValueError("DID method or method-specific id is malformed")
     if method == "demos" and _DID_DEMOS_AGENT.fullmatch(identifier) is None:
         raise ValueError("Demos agent DID must be demos:agent:<64 lowercase hex>")
     index = 0
     while index < len(method_specific):
-        char = method_specific[index]
-        if char == "%":
+        ch = method_specific[index]
+        if ch == "%":
             if (
                 index + 2 >= len(method_specific)
                 or method_specific[index + 1] not in _HEX
@@ -186,7 +202,7 @@ def _validate_did(identifier: str) -> None:
                 )
             index += 3
             continue
-        if char != ":" and _DID_ID_CHAR.fullmatch(char) is None:
+        if ch != ":" and _DID_ID_CHAR.fullmatch(ch) is None:
             raise ValueError("DID method-specific id contains an invalid byte spelling")
         index += 1
 
@@ -202,13 +218,10 @@ def _validate_domain(identifier: str) -> None:
     try:
         import idna
 
-        canonical = idna.encode(
-            identifier, uts46=False, std3_rules=True
-        ).decode("ascii")
+        if idna.encode(identifier, uts46=False, std3_rules=True).decode("ascii") != identifier:
+            raise ValueError("domain identifier is not canonical")
     except (UnicodeError, ValueError) as error:
         raise ValueError("domain identifier is not canonical") from error
-    if canonical != identifier:
-        raise ValueError("domain identifier is not canonical")
     labels = identifier.split(".")
     if any(not label or len(label.encode("ascii")) > 63 for label in labels):
         raise ValueError("domain identifier is not canonical")
@@ -226,11 +239,7 @@ def parse_claim_reference(
 ) -> ClaimReference:
     """Parse one signed CF-2 byte form without repairing it in place."""
 
-    if (
-        not isinstance(value, str)
-        or not value
-        or value != unicodedata.normalize("NFC", value)
-    ):
+    if not isinstance(value, str) or not value or value != unicodedata.normalize("NFC", value):
         raise ValueError("ClaimReference must be a non-empty NFC string")
     try:
         value.encode("utf-8")
@@ -248,29 +257,23 @@ def parse_claim_reference(
     identifier, parameter_text = (
         remainder.split("?", 1) if "?" in remainder else (remainder, None)
     )
-    if not identifier or any(
-        char.isspace() or unicodedata.category(char).startswith("C")
-        for char in identifier
+    if (
+        not identifier
+        or any(ch.isspace() or unicodedata.category(ch).startswith("C") for ch in identifier)
     ):
-        raise ValueError(
-            "ClaimReference identifier is empty or contains whitespace/control"
-        )
+        raise ValueError("ClaimReference identifier is empty or contains whitespace/control")
     parameters = _parse_parameters(parameter_text)
 
     if scheme == "key" and _KEY.fullmatch(identifier) is None:
-        raise ValueError("key identifier must be 32-byte lowercase hex")
+        raise ValueError(f"{scheme} identifier must be 32-byte lowercase hex")
     if scheme in {"lei", "cci-lei"} and _LEI.fullmatch(identifier) is None:
         raise ValueError("LEI identifier must be exactly 20 uppercase alphanumerics")
-    if (
-        scheme in {"finra-crd", "cci-finra-crd"}
-        and _POSITIVE_DECIMAL.fullmatch(identifier) is None
-    ):
+    if scheme in {"finra-crd", "cci-finra-crd"} and _POSITIVE_DECIMAL.fullmatch(identifier) is None:
         raise ValueError("FINRA CRD identifier must be a canonical positive decimal")
     if scheme == "did":
         _validate_did(identifier)
     if scheme == "domain":
         _validate_domain(identifier)
-
     if scheme == "cci-xm":
         # Generic references retain name-style subchains. PB-2's EVM numeric
         # chain profile is a separate settlement eligibility check.
@@ -306,6 +309,32 @@ def parse_claim_reference(
         raise ValueError("NAICS identifier must be six digits")
 
     return ClaimReference(value, scheme, identifier, parameters)
+
+
+def cf4_encode(value: str) -> str:
+    if not isinstance(value, str) or value != unicodedata.normalize("NFC", value):
+        raise ValueError("CF-4 source segment must be an NFC string")
+    return quote(value, safe="-._~")
+
+
+def cf4_decode(value: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError("CF-4 segment must be a string")
+    _validate_percent_escapes(value, component="CF-4 segment")
+    try:
+        decoded = unquote_to_bytes(value).decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("CF-4 segment is not valid UTF-8") from error
+    if cf4_encode(decoded) != value:
+        raise ValueError("CF-4 segment is not canonically encoded")
+    return decoded
+
+
+def composite_logical_address(job_id: Any, evaluated_party: Any) -> str:
+    if not isinstance(job_id, str) or _ULID.fullmatch(job_id) is None:
+        raise ValueError("composite jobId must be a canonical ULID")
+    reference = parse_claim_reference(evaluated_party)
+    return f"dacs2:composite:{job_id}:{cf4_encode(reference.canonical)}"
 
 
 def presentation_nonce(bundle: Any) -> str | None:
@@ -367,42 +396,37 @@ class NonceLedger:
         "expiresAt",
     }
 
-    def __init__(self, issuance_records: Any):
+    def __init__(self, issuance_records: Any, *, registered_schemes: Iterable[str] = REGISTERED_SCHEMES):
         if not isinstance(issuance_records, list):
             raise ValueError("trusted nonce issuances must be a list")
         self._lock = threading.Lock()
         self._records: dict[str, NonceIssuance] = {}
         self._consumed: dict[str, int] = {}
         nonces: set[str] = set()
+        schemes = frozenset(registered_schemes)
         for item in issuance_records:
-            issuance = self._parse_issuance(item)
+            issuance = self._parse_issuance(item, registered_schemes=schemes)
             if issuance.challenge_id in self._records or issuance.nonce in nonces:
                 raise ValueError("trusted nonce issuances must be unique")
             self._records[issuance.challenge_id] = issuance
             nonces.add(issuance.nonce)
 
     @classmethod
-    def _parse_issuance(cls, item: Any) -> NonceIssuance:
+    def _parse_issuance(cls, item: Any, *, registered_schemes: Iterable[str] = REGISTERED_SCHEMES) -> NonceIssuance:
         if not isinstance(item, dict) or set(item) != cls._FIELDS:
             raise ValueError("trusted nonce issuance has the wrong shape")
         if not isinstance(item.get("challengeId"), str) or not item["challengeId"]:
             raise ValueError("trusted nonce challengeId is invalid")
         nonce = item.get("nonce")
-        if (
-            not isinstance(nonce, str)
-            or _NONCE.fullmatch(nonce) is None
-            or len(nonce) % 2
-        ):
-            raise ValueError(
-                "issued nonce must be canonical lowercase hex with at least 128 bits"
-            )
+        if not isinstance(nonce, str) or _NONCE.fullmatch(nonce) is None or len(nonce) % 2:
+            raise ValueError("issued nonce must be canonical lowercase hex with at least 128 bits")
         if not isinstance(item.get("jobId"), str) or _ULID.fullmatch(item["jobId"]) is None:
             raise ValueError("issued nonce jobId is invalid")
         if not isinstance(item.get("actor"), str) or item["actor"] not in {"buyer", "seller"}:
             raise ValueError("issued nonce actor is invalid")
-        parse_claim_reference(item.get("evaluatedParty"))
-        parse_claim_reference(item.get("expectedVerifier"))
-        parse_claim_reference(item.get("issuedBy"))
+        parse_claim_reference(item.get("evaluatedParty"), registered_schemes=registered_schemes)
+        parse_claim_reference(item.get("expectedVerifier"), registered_schemes=registered_schemes)
+        parse_claim_reference(item.get("issuedBy"), registered_schemes=registered_schemes)
         if item["issuedBy"] != item["expectedVerifier"]:
             raise ValueError("issued nonce authority is not the expected verifier")
         for name in ("phaseIndex", "attempt", "issuedAt", "expiresAt"):
@@ -424,10 +448,13 @@ class NonceLedger:
             item["expiresAt"],
         )
 
-    def consume(
-        self, challenge_id: Any, presented_nonce: Any, trusted_now: Any
-    ) -> NonceIssuance:
-        """Consume one exact issuance before later candidate checks."""
+    def consume(self, challenge_id: Any, presented_nonce: Any, trusted_now: Any) -> NonceIssuance:
+        """Consume an exact issued nonce before any later presentation checks.
+
+        Missing and wrong nonces never authorize and do not consume another
+        issuance.  An exact nonce is consumed on the attempt even when it is
+        expired or a later bundle/record check fails.
+        """
 
         if not isinstance(challenge_id, str) or not isinstance(presented_nonce, str):
             raise NonceRejected("session nonce missing")

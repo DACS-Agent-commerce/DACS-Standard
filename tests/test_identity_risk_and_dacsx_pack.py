@@ -145,6 +145,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 record = case["settlementEvidence"]
                 record["paymentAmount"]["unit"] = unit
                 gen.sign(record, gen.ORCHESTRATOR_SEED)
+                case["anchorReceipt"] = gen.fixture_receipt(record, resolved=True)
                 self.assertEqual(ver.validate_pair(INTERIM, self._write(case)), [])
                 self.assertTrue(consumer._price_term_shape_valid(record["paymentAmount"]))
         self.assertTrue(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC"}))
@@ -167,6 +168,79 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         result = subprocess.run(["python3", str(VERIFY_HTLC9)], cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("both signatures verified", result.stdout)
+
+    def test_htlc9_raw_loader_rejects_invalid_json_before_verification(self):
+        _, ver = self._load_pack_modules()
+        cases = [
+            (
+                '{"kind":"SettlementEvidenceCase","kind":"Other","settlementEvidence":{}}',
+                "duplicate JSON member",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":{"phase":"one","phase":"two"}}',
+                "duplicate JSON member",
+            ),
+            ('{"kind":', "invalid JSON"),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":NaN}',
+                "non-JSON numeric constant",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":Infinity}',
+                "non-JSON numeric constant",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":-Infinity}',
+                "non-JSON numeric constant",
+            ),
+        ]
+        for raw_json, expected_error in cases:
+            with self.subTest(raw_json=raw_json):
+                path = Path(self._tempdir.name) / "duplicate.json"
+                path.write_text(raw_json, encoding="utf-8")
+                with mock.patch.object(
+                    ver, "verify_signature", side_effect=AssertionError("verification reached")
+                ) as verify_signature:
+                    evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(expected_error in error for error in errors), errors)
+                verify_signature.assert_not_called()
+
+        path = Path(self._tempdir.name) / "invalid-utf8.json"
+        path.write_bytes(b"\xff")
+        with mock.patch.object(
+            ver, "verify_signature", side_effect=AssertionError("verification reached")
+        ) as verify_signature:
+            evidence, errors = ver.load_case(path)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("not valid UTF-8" in error for error in errors), errors)
+        verify_signature.assert_not_called()
+
+    def test_unique_json_loader_preserves_unique_nested_data_and_controls_parse_errors(self):
+        self._load_pack_modules()
+        from dacs_reference import loads_unique_json  # noqa: WPS433
+
+        raw_json = '{"outer":{"name":"value"},"items":[{"id":1},{"id":2}]}'
+        self.assertEqual(loads_unique_json(raw_json), json.loads(raw_json))
+        with self.assertRaisesRegex(ValueError, "invalid JSON"):
+            loads_unique_json('{"outer":')
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                with self.assertRaisesRegex(ValueError, "non-JSON numeric constant"):
+                    loads_unique_json(f'{{"value":{constant}}}')
+
+    def test_htlc9_loader_controls_recursion_and_read_errors(self):
+        _, ver = self._load_pack_modules()
+        path = Path(self._tempdir.name) / "case.json"
+        for error, expected in (
+            (RecursionError("maximum recursion depth exceeded"), "maximum recursion depth"),
+            (OSError("unreadable fixture"), "fixture file could not be read"),
+        ):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(Path, "read_text", side_effect=error):
+                    evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(expected in item for item in errors), errors)
 
     def test_htlc9_json_file_admission_is_duplicate_aware_and_controlled(self):
         _, ver = self._load_pack_modules()
@@ -283,6 +357,25 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertEqual(resolved["settlementFinality"]["model"], "htlc-reveal")
         self.assertEqual({r["kind"] for r in resolved["paymentTxRefs"]}, {"htlc-lock", "htlc-reveal", "htlc-claim"})
         self.assertNotIn("settlementAmendment", resolved)
+
+    def test_htlc9_receipt_reference_binding_and_path_policy(self):
+        _, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        ref = json.loads(RESOLVED.read_text(encoding="utf-8"))["settlementEvidence"]["supersedesEvidenceRef"]
+        check = lambda value, receipt=True: ver.supersession_binding_errors(
+            value, interim, expected_phase_orchestrator=ver.EXPECTED_PHASE_ORCHESTRATOR,
+            require_fixture_receipt=receipt,
+        )
+        self.assertEqual(check(ref), [])
+        with_signer = dict(ref, signer=ver.EXPECTED_PHASE_ORCHESTRATOR)
+        self.assertEqual(check(with_signer), [])
+        self.assertTrue(check(dict(ref, signer="key:" + "11" * 32)))
+        alternate = dict(ref, anchor={"kind": "https", "locator": "https://example.invalid/record"})
+        self.assertTrue(check(alternate))
+        self.assertEqual(check(alternate, receipt=False), [])
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, RESOLVED))
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM.parent / ".." / "settlement" / INTERIM.name, RESOLVED))
+        self.assertFalse(ver.requires_fixture_receipts(Path("custom-interim.json"), Path("custom-resolved.json")))
 
     def test_htlc9_verifier_rejects_a_garbage_signature(self):
         gen, ver = self._load_pack_modules()

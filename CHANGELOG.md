@@ -44,6 +44,51 @@ The format used per release:
   now share the same phase-specific inner closure checks while legacy reads retain
   their signed unindexed addresses, never synthesize PDE-5 credential binding, and
   remain indeterminate when required artifact or native authority is unavailable.
+### Fixed — authenticated Vet replay and reference consumers
+
+- **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
+  IDs are explicitly positive safe integers; the textual `cci-xm` PB profile
+  shares that applicability ceiling while retaining larger values as generic,
+  non-applicable claims. Unsafe numeric rails fail before tier selection.
+- Private candidate review follow-up: retain exact production input hashes and authenticated session/registry pins; distinguish non-authorizing historical reconstruction from active current-time acceptance; require Composite members while preserving optional source-attestation signer semantics.
+- **Presence/Vet executable boundary repaired** (#362) — the candidate reader
+  now separates presenter-signed presence metadata from verified predicates,
+  which match only the authenticated `VerifyResult.method` and JCS-equal
+  `data`. It binds the complete ordered `freshness` + `dealSpecific` projection
+  before authenticating results, reconstructs the signed historical decision
+  at `generatedAt`, and applies VP-C1..VP-C3 reuse at independently trusted
+  current time. Verifier-issued nonce, job, actor, phase, attempt, and verifier
+  authority remain outer invocation state so reusable VerifyResult v1 artifacts
+  stay session-agnostic. Canonical ClaimReference parsing, safe-integer time
+  checks, and no-throw malformed-container handling are shared by the affected
+  consumers.
+- **HTLC and lifecycle authority checks aligned** — the HTLC-9/ST-8 fixture
+  pair uses the registered `key:` signer and both signatures are checked against
+  caller-independent expected phase-orchestrator authority. Optional
+  `supersedesEvidenceRef.signer` remains optional but, when present, binds that
+  authority and the authenticated interim signer. Lifecycle phase indices are
+  exact non-Boolean safe integers before addressing, lookup, or comparison, and
+  the walkthrough uses the repository JCS implementation.
+
+### Fixed — CORE v0.3 raw JSON admission
+
+- **Lossless pre-canonicalisation gate** (CORE §B.2 CF-5; #385) — makes
+  reader rejection of out-of-profile numbers mandatory and requires exact
+  received UTF-8 JSON text to pass duplicate-member, raw-number, Unicode,
+  single-value, and strict-JSON checks before JCS, hashing, signature
+  verification, or schema decisions. Parse, DACS-profile, and canonicalisation
+  failures remain distinct; rejected bytes acquire no content hash or signature
+  authority. The in-repository external admission APIs now require the exact
+  received bytes and refuse decoded strings whose source bytes may have been
+  transformed. The profile caps JSON container nesting at an inclusive 128
+  so parser, admission, and canonicalizer recursion limits cannot disagree or
+  escape as host exceptions. Adds 51 raw-text vectors covering depth
+  boundaries, nested/escape-equivalent duplicate keys, safe-magnitude
+  boundaries and exponent spellings, negative
+  zero/fractions, overflow/underflow, parser extensions, lone surrogates,
+  invalid UTF-8, a valid literal replacement character, BOM, comments, malformed
+  syntax, and trailing data, reproduced by both the standard-library adapter and
+  an independent recursive-descent parser.
 
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
@@ -266,8 +311,10 @@ The format used per release:
   registry snapshot, including for an all-presence requirement, so the
   algorithm remains consistent with CRQ-1 and composes with descriptor-bound
   registry resolution. Empty collection and exact-boolean configuration
-  semantics are explicit. Adds 38 deterministic vectors with genuine Ed25519
-  bundle, VerifyResult, and composite signatures. No artifact or schema change.
+  semantics are explicit. Adds 47 deterministic vectors with genuine Ed25519
+  bundle, VerifyResult, and composite signatures, including an independently
+  bound authority context that rejects a valid replacement signature without
+  changing the referenced content hash. No artifact or schema change.
 
 ### Added — signed alternative-payment projection
 

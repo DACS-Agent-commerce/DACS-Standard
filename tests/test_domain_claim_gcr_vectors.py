@@ -3,6 +3,7 @@ import hashlib
 import ipaddress
 import json
 import re
+import sys
 import unicodedata
 import unittest
 from pathlib import Path
@@ -13,6 +14,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from dacs_reference import exact_safe_integer  # noqa: E402
+
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "domain-claim-gcr-v0.4.json"
 LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -92,10 +96,36 @@ def serialize_current_domain_bundle(producer_input):
         if not isinstance(metadata, dict) or set(metadata) != {"demosGcrDomain"}:
             raise ValueError("producer claim metadata has an unexpected shape")
         native = metadata["demosGcrDomain"]
-        if not isinstance(native, dict) or native.get("context") != "web2.domain":
+        native_keys = {
+            "context", "hostname", "account", "proofUrl",
+            "sourceTransaction", "recordedAt",
+        }
+        if not isinstance(native, dict) or set(native) != native_keys:
+            raise ValueError("producer Demos domain metadata has an unexpected shape")
+        if native.get("context") != "web2.domain":
             raise ValueError("producer metadata is not a Demos domain record")
-        if native.get("hostname") != ref[len("domain:"):]:
+        host = ref[len("domain:"):]
+        if native.get("hostname") != host:
             raise ValueError("producer metadata hostname is not canonical")
+        if not isinstance(native.get("account"), str) or HEX64.fullmatch(
+            native["account"]
+        ) is None:
+            raise ValueError("producer metadata account is not 64 lowercase hex")
+        if native.get("proofUrl") != f"https://{host}/.well-known/demos-cci.txt":
+            raise ValueError("producer metadata proofUrl is not canonical")
+        source_transaction = native.get("sourceTransaction")
+        if (
+            not isinstance(source_transaction, dict)
+            or set(source_transaction) != {"txHash", "blockNumber"}
+            or not isinstance(source_transaction.get("txHash"), str)
+            or HEX64.fullmatch(source_transaction["txHash"]) is None
+            or not exact_safe_integer(
+                source_transaction.get("blockNumber"), minimum=0
+            )
+        ):
+            raise ValueError("producer metadata sourceTransaction is invalid")
+        if not exact_safe_integer(native.get("recordedAt"), minimum=0):
+            raise ValueError("producer metadata recordedAt is invalid")
         emitted = {"ref": ref, "metadata": copy.deepcopy(metadata)}
         if ref in emitted_by_ref and emitted_by_ref[ref] != emitted:
             raise ValueError("duplicate semantic domain has conflicting metadata")
@@ -436,6 +466,50 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
         reader_only = copy.deepcopy(alias)
         reader_only.pop("producerInput")
         self.assertEqual("pass", evaluate(reader_only)[0])
+
+    def test_current_producer_validates_complete_dcr6_metadata(self):
+        canonical = next(
+            v for v in self.doc["vectors"] if v["name"] == "canonical-production"
+        )["producerInput"]
+
+        def metadata(candidate):
+            return candidate["claims"][0]["metadata"]["demosGcrDomain"]
+
+        cases = {
+            "missing sourceTransaction": lambda value: metadata(value).pop(
+                "sourceTransaction"
+            ),
+            "extra metadata member": lambda value: metadata(value).__setitem__(
+                "proofBody", "not-persistent-evidence"
+            ),
+            "wrong context": lambda value: metadata(value).__setitem__(
+                "context", "web2.other"
+            ),
+            "uppercase account": lambda value: metadata(value).__setitem__(
+                "account", metadata(value)["account"].upper()
+            ),
+            "noncanonical proof URL": lambda value: metadata(value).__setitem__(
+                "proofUrl", "https://agent.example/demos-cci.txt"
+            ),
+            "source transaction extra member": lambda value: metadata(value)[
+                "sourceTransaction"
+            ].__setitem__("transactionIndex", 0),
+            "source transaction hash prefix": lambda value: metadata(value)[
+                "sourceTransaction"
+            ].__setitem__("txHash", "0x" + "11" * 32),
+            "Boolean block number": lambda value: metadata(value)[
+                "sourceTransaction"
+            ].__setitem__("blockNumber", True),
+            "unsafe recordedAt": lambda value: metadata(value).__setitem__(
+                "recordedAt", 2**53
+            ),
+        }
+        for name, change in cases.items():
+            with self.subTest(name=name):
+                candidate = copy.deepcopy(canonical)
+                change(candidate)
+                with self.assertRaises(ValueError):
+                    serialize_current_domain_bundle(candidate)
 
     def test_current_producer_checks_presented_by_claim_reference(self):
         vector = next(

@@ -243,7 +243,7 @@ A conforming rail author MUST:
 - (RD-2) anchor the rail via SR-2 at the canonical address;
 - (RD-3) specify railVersion as monotonically increasing per railId;
 - (RD-4) specify supersedes when replacing a prior rail with the same railId;
-- (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive integer; a mismatch MUST be rejected before the rail can participate in PB-2.
+- (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive safe integer under CORE §B.2; a malformed, non-positive, unsafe, or mismatched value MUST be rejected before the rail can participate in PB-2.
 - (RD-6) keep `phaseHandler` invariant across every version sharing a `railId`.
   A registry update that would change that handler MUST use a new `railId`;
   the steward and registry-index publisher MUST reject a same-`railId` handler
@@ -486,7 +486,12 @@ non-payee artifact and follows the same unbound-destination meaning as
      conforms to the DACS-1 EVM settlement-chain profile. Its scheme is
      `cci-xm`, its family component is byte-equal to the lowercase ASCII
      literal `evm`, its `<chainId>` is a bare positive minimal-decimal integer,
-     and the address component after `cci-xm:evm:<chainId>:` and before any
+     and, for this PB-2 applicability predicate, its numeric value is no greater
+     than `9007199254740991`, the largest chain ID a conforming signed
+     `RailDefinition` can represent under CORE §B.2. A larger textual value may
+     remain a readable generic `cci-xm` claim, but it does not establish an
+     EIP-155 settlement chain for PB-2 and cannot make tier 2 applicable. The
+     address component after `cci-xm:evm:<chainId>:` and before any
      optional `?` parameters is non-empty. The address component is otherwise
      opaque and does not determine the settlement chain; parameters likewise
      do not determine it. The claim's canonical chain identifier is the

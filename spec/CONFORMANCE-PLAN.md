@@ -104,7 +104,7 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | RT-1, RT-2 (rate phase) | §10.6.1 | run-after-settle; one-record-per-direction; rating domain-sep sig; RT-1 producer-reject out-of-range/over-length; RT-2 deriver-exclude non-conforming; `dimensions` opaque | `conformance/` |
 | ERC-8004 publication (optional) | §10.7 | token-owner-signed entry; bundle-anchor pointer; rate-limit | `conformance/` |
 
-### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, JID-1..JID-4, CD-1, SN-1..SN-4)
+### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-5, JID-1..JID-4, CD-1, SN-1..SN-4)
 
 A cross-cutting test category that every conforming implementation runs once:
 
@@ -119,6 +119,7 @@ A cross-cutting test category that every conforming implementation runs once:
   - the DACS-5 rating address `dacs5:rating:{jobId}:{rater}` MUST round-trip a multi-colon `{rater}`.
 
   An address whose variable segments are left raw (unescaped) MUST be rejected as malformed.
+- **CF-5 (raw JSON admission).** Before object-model canonicalisation, two independent parsers MUST agree on the raw-byte corpus. Positive cases proceed to the pinned JCS bytes. Parse failures are distinct from DACS-profile failures; neither produces canonical bytes. Cases cover duplicate decoded names at the top level, nested inside objects, and inside arrays; escape-equivalent duplicates; the inclusive ±(2^53−1) boundary and rejected ±2^53/larger/exponent-equivalent tokens before rounding; valid fractions, exponent spellings, negative zero, and a literal UTF-8 replacement character; overflow, non-zero underflow, `NaN`/Infinity extensions, malformed/lone-surrogate Unicode, ill-formed UTF-8, BOM, comments, invalid number/escape forms, trailing data, and the inclusive 128-container nesting limit plus depth-129 rejection. The concrete set is `conformance/vectors/security/raw-json-profile-v0.1.json` and its two in-repository adapters are executed by `tests/test_raw_json_profile_vectors.py`. In this repository, `scripts/raw_json_profile.py`'s bytes-only `loads` and `loads_reference` functions are the executable CF-5 external-byte entry points; both refuse decoded `str` because it cannot prove that the exact received bytes passed strict UTF-8 admission. Other scripts that use the standard library JSON loader for trusted repository fixtures are not external artifact-ingress gates and do not claim CF-5 admission for those reads.
 - **JID-1..JID-4 (canonical job identifier).** Run
   `conformance/vectors/security/job-id-grammar-v0.1.json`. Accept the complete
   26-byte uppercase Crockford grammar including its `0` and `7` first-byte

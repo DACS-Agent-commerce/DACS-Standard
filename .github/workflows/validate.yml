@@ -50,6 +50,9 @@ jobs:
       - name: Verify canonical JSON vectors are deterministic
         run: python3 scripts/generate_canonical_json_vectors.py --check
 
+      - name: Verify raw JSON admission vectors are deterministic
+        run: python3 scripts/generate_raw_json_profile_vectors.py --check
+
       - name: Verify payload-attestation vectors are deterministic
         run: python3 scripts/generate_payload_attestation_vectors.py --check
 

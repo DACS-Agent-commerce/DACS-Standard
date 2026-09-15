@@ -28,6 +28,8 @@ MAX_REQUEST_BYTES = 1_048_576
 MAX_REQUEST_ID_CHARS = 256
 MAX_PARAMS = 5
 MAX_DIAGNOSTIC_CHARS = 320
+BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
+DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
 
 
 class AdapterError(Exception):
@@ -238,7 +240,17 @@ def _metadata() -> dict[str, Any]:
             "drift-signed-scope",
             "sig-value-encoding",
         ],
-        "operations": ["canonicalize", "signedScopeHash", "signatureValueVerdict"],
+        "operations": [
+            "canonicalize",
+            "signedScopeHash",
+            "signatureValueVerdict",
+            "domainSepSign",
+            "domainSepVerify",
+        ],
+        "boundedOperationProfiles": {
+            "domainSepSign": "listing-single-hash-golden-v1",
+            "domainSepVerify": "listing-single-hash-golden-v1",
+        },
         "wrappedStandard": {
             "revision": wrapped["revision"],
             "tree": wrapped["tree"],
@@ -270,6 +282,49 @@ def _execute(operation: str, params: list[Any]) -> Any:
         except (TypeError, ValueError):
             return "REJECT"
         return "ACCEPT"
+    if operation == "domainSepSign":
+        if len(params) not in {3, 4}:
+            raise AdapterError("INVALID_PARAMS", "domainSepSign requires three or four parameters")
+        message, separator, private_seed = params[:3]
+        if len(params) == 4:
+            raise AdapterError(
+                "UNSUPPORTED_CASE", "the bounded Listing signing profile has no intermediate hash"
+            )
+        if separator != BOUNDED_F5_SEPARATOR:
+            raise AdapterError(
+                "UNSUPPORTED_CASE", "the bounded signing profile emits only dacs-listing:v1:"
+            )
+        if not isinstance(message, bytes) or re.fullmatch(rb"[0-9a-f]{64}", message) is None:
+            raise AdapterError(
+                "UNSUPPORTED_CASE",
+                "the bounded signing profile requires an ASCII lowercase-hex sha256 message",
+            )
+        if not isinstance(private_seed, bytes) or len(private_seed) != 32:
+            raise AdapterError("INVALID_PARAMS", "domainSepSign private key must be 32 raw bytes")
+        payload = separator.encode("utf-8") + message
+        return {"hex": _sign_ed25519(private_seed, payload).hex()}
+    if operation == "domainSepVerify":
+        if len(params) not in {4, 5}:
+            raise AdapterError("INVALID_PARAMS", "domainSepVerify requires four or five parameters")
+        message, separator, signature, public_key = params[:4]
+        if len(params) == 5:
+            raise AdapterError(
+                "UNSUPPORTED_CASE", "the bounded Listing verification profile has no intermediate hash"
+            )
+        if not isinstance(separator, str):
+            raise AdapterError("INVALID_PARAMS", "domainSepVerify separator must be a string")
+        if separator != BOUNDED_F5_SEPARATOR:
+            if DACS_SEPARATOR_SHAPE.fullmatch(separator):
+                raise AdapterError(
+                    "UNSUPPORTED_CASE", "the bounded verification profile selects only dacs-listing:v1:"
+                )
+            return False
+        if not all(isinstance(value, bytes) for value in (message, signature, public_key)):
+            raise AdapterError(
+                "INVALID_PARAMS", "domainSepVerify message, signature, and public key must be byte tags"
+            )
+        payload = separator.encode("utf-8") + message
+        return _verify_ed25519(public_key, signature, payload)
     raise AdapterError(
         "UNSUPPORTED_OPERATION",
         f"operation {operation!r} is not advertised by this adapter release",

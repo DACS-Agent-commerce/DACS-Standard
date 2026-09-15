@@ -29,6 +29,21 @@
         "path": "conformance/shared-suite/seed-corpus.mjs",
         "sha256": "0fabf44fb1475b236f884139dc147e57ad8885fc56dd72466adc800ff40b267e",
         "gitBlob": "07e6036bbf6ac3a59b02b1c0eb69ea08b47a860b"
+      },
+      {
+        "path": "conformance/shared-suite/ADAPTER.md",
+        "sha256": "8bb912956f4c03ec2ffef8fd647765e5b813a938655bea0427970282247f91ff",
+        "gitBlob": "9bdb3c16f366c8800f5cb1444367fe5ddb03e2d3"
+      },
+      {
+        "path": "conformance/partner-kit/sign.mjs",
+        "sha256": "5873bef2e3c0446f2b96c55d7a23713f2ae215c2dfa7e3273f011945cc48c303",
+        "gitBlob": "83ae6128e052650a5c48c2ec8dc423e4aff90322"
+      },
+      {
+        "path": "conformance/partner-kit/domain-sep.mjs",
+        "sha256": "666dc2044bc75b8e6d20098443ef31d8c7f672475eb0d51817f1f8a2cb673893",
+        "gitBlob": "0c6c0b83e725763a67d1f77c4112e97d800eb304"
       }
     ]
   },
@@ -38,8 +53,8 @@
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "5d8b56f683d5bbdab89f58b877cd6763e1b458456bc834b388d100f3897e135e",
-      "gitBlob": "245bdf452630e3f9f001ae9d9bbae74909170bae"
+      "sha256": "bbe41c6bfdc58ae5d1cd795b39ed646fc78e35e4ba44facbf70bfcec3476795f",
+      "gitBlob": "44441d05e0cf100c1b0cb3a0456d81edd5bd9ac2"
     },
     "wrappedStandard": {
       "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
@@ -71,7 +86,8 @@
       "verifyBundle and legacySignatureValueImport are not exposed by this release",
       "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
       "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
-      "domainSepSign and domainSepVerify abstain because dacs-adapter/1 F5 does not bind messageBytes to the Standard single-hash artifact_hash grammar"
+      "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
+      "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry"
     ]
   },
   "sources": {
@@ -227,22 +243,60 @@
     },
     {
       "id": "domain-separated-signing",
-      "operation": null,
-      "status": "blocked",
+      "operations": ["domainSepSign", "domainSepVerify"],
+      "status": "bounded-operation-profile",
+      "advertisedFamily": false,
+      "profile": "listing-single-hash-golden-v1",
       "source": "domainSeparatedSigning",
+      "controlSource": {
+        "path": "tests/test_flow_trace_signing.py",
+        "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+        "sha256": "e5cde864b5b0a25ef8a58b1f7dc3106d19c6cd2482fe8d6209a571819e0a6564",
+        "gitBlob": "042f83f9494f942a449967b5fe40931651dad378",
+        "lines": "38-42"
+      },
       "cases": [
         {
-          "caseId": "signing",
+          "caseId": "signing::sign-ascii-hex-hash",
+          "operation": "domainSepSign",
           "separator": "dacs-listing:v1:",
           "artifactHashHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313737",
+          "privateKeyBytesHex": "1111111111111111111111111111111111111111111111111111111111111111",
           "sourceExpected": "fppio4yI01PfnS1TVphR4g1PYsEAdc8Jt1jhmK96yhWfX7vs41z3WuOacKuJhl0NfgzdLOaOh9VcsA4B3rhDBA",
-          "expectedSignatureHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
-          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+          "expected": {"hex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304"}
+        },
+        {
+          "caseId": "signing::verify-ascii-hex-hash",
+          "operation": "domainSepVerify",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313737",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": true
+        },
+        {
+          "caseId": "signing::reject-raw-digest-preimage",
+          "operation": "domainSepVerify",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": false
+        },
+        {
+          "caseId": "signing::unknown-separator-false",
+          "operation": "domainSepVerify",
+          "separator": "not-a-dacs-separator:v1:",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313737",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": false
         }
       ],
-      "blocker": "dacs-adapter/1 F5 accepts arbitrary messageBytes plus an optional intermediateHashBytes value, while CORE B.7 at this Standard revision defines the single-hash signed bytes as UTF8(domain_separator) || ASCII(lowercase_hex_sha256). The interface does not identify the Standard payload grammar or distinguish its three composite separators, and its runner treats an operation failure as a mismatch rather than a case-level abstention. Advertising F5 would therefore overclaim support or invent bytes.",
-      "firstMilestone": "incomplete",
-      "requiredHandoffQuestion": "For dacs-adapter/1 F5, does messageBytes mean the complete bytes after the separator, with intermediateHashBytes absent for CORE B.7 single-hash cases, and will the runner classify an explicit unsupported-case result as ABSTAIN? If not, should F5 add an explicit Standard payload-grammar or artifact-kind parameter before DACS-Standard advertises domainSepSign/domainSepVerify?"
+      "genericFamilyMilestone": "incomplete",
+      "remainingBlocker": "The bounded profile executes only the pinned Listing primitive bytes. Other registered separators, composite payloads, and signing inputs return UNSUPPORTED_CASE; the shared runner currently converts that operation error to THROWN instead of a case-level ABSTAIN.",
+      "requiredHandoffQuestion": "Will the shared runner classify the adapter's explicit UNSUPPORTED_CASE error as ABSTAIN rather than THROWN, so BigInt host-type inputs and F5 cases outside listing-single-hash-golden-v1 remain unscored?"
     }
   ]
 }

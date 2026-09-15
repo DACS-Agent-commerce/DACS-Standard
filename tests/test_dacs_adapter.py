@@ -57,7 +57,10 @@ class DacsAdapterTests(unittest.TestCase):
             timeout=60,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("14 executable cases, 2 unsupported mappings", completed.stdout)
+        self.assertIn(
+            "14 advertised-family cases, 4 bounded F5 cases, 1 unsupported mapping",
+            completed.stdout,
+        )
 
     def test_metadata_separates_adapter_and_wrapped_standard_identity(self):
         completed, responses = run_adapter([request("metadata", "metadata")])
@@ -82,9 +85,19 @@ class DacsAdapterTests(unittest.TestCase):
         )
         self.assertEqual(
             metadata["operations"],
-            ["canonicalize", "signedScopeHash", "signatureValueVerdict"],
+            [
+                "canonicalize",
+                "signedScopeHash",
+                "signatureValueVerdict",
+                "domainSepSign",
+                "domainSepVerify",
+            ],
         )
-        self.assertNotIn("domainSepSign", metadata["operations"])
+        self.assertNotIn("domain-sep-sign", metadata["supportedFamilies"])
+        self.assertEqual(
+            metadata["boundedOperationProfiles"]["domainSepSign"],
+            "listing-single-hash-golden-v1",
+        )
 
     def test_selected_canonicalization_cases_execute(self):
         family = next(item for item in self.descriptor["families"] if item["id"] == "canonicalization")
@@ -184,10 +197,91 @@ class DacsAdapterTests(unittest.TestCase):
         )
         self.assertEqual(responses[-1]["result"], "ACCEPT")
 
+    def test_bounded_f5_cases_execute_exact_bytes(self):
+        family = next(
+            item for item in self.descriptor["families"] if item["id"] == "domain-separated-signing"
+        )
+        self.assertEqual(family["status"], "bounded-operation-profile")
+        self.assertFalse(family["advertisedFamily"])
+        requests = []
+        for case in family["cases"]:
+            if case["operation"] == "domainSepSign":
+                params = [
+                    {"$dacsType": "bytes", "hex": case["messageBytesHex"]},
+                    case["separator"],
+                    {"$dacsType": "bytes", "hex": case["privateKeyBytesHex"]},
+                ]
+            else:
+                params = [
+                    {"$dacsType": "bytes", "hex": case["messageBytesHex"]},
+                    case["separator"],
+                    {"$dacsType": "bytes", "hex": case["signatureBytesHex"]},
+                    {"$dacsType": "bytes", "hex": case["publicKeyHex"]},
+                ]
+            requests.append(
+                request(case["caseId"], "execute", operation=case["operation"], params=params)
+            )
+        completed, responses = run_adapter(requests)
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual(
+            [response["result"] for response in responses],
+            [case["expected"] for case in family["cases"]],
+        )
+
+    def test_bounded_f5_refuses_out_of_profile_emission_and_dacs_separator(self):
+        family = next(
+            item for item in self.descriptor["families"] if item["id"] == "domain-separated-signing"
+        )
+        sign_case = family["cases"][0]
+        message = {"$dacsType": "bytes", "hex": sign_case["messageBytesHex"]}
+        seed = {"$dacsType": "bytes", "hex": sign_case["privateKeyBytesHex"]}
+        signature = {"$dacsType": "bytes", "hex": sign_case["expected"]["hex"]}
+        public_key = {"$dacsType": "bytes", "hex": family["cases"][1]["publicKeyHex"]}
+        requests = [
+            request(
+                "raw-digest-sign",
+                "execute",
+                operation="domainSepSign",
+                params=[
+                    {"$dacsType": "bytes", "hex": sign_case["artifactHashHex"]},
+                    sign_case["separator"],
+                    seed,
+                ],
+            ),
+            request(
+                "other-domain-sign",
+                "execute",
+                operation="domainSepSign",
+                params=[message, "dacs-bundle:v1:", seed],
+            ),
+            request(
+                "intermediate-sign",
+                "execute",
+                operation="domainSepSign",
+                params=[
+                    message,
+                    sign_case["separator"],
+                    seed,
+                    {"$dacsType": "bytes", "hex": "00" * 32},
+                ],
+            ),
+            request(
+                "other-domain-verify",
+                "execute",
+                operation="domainSepVerify",
+                params=[message, "dacs-bundle:v1:", signature, public_key],
+            ),
+        ]
+        completed, responses = run_adapter(requests)
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(
+            [response["error"]["code"] for response in responses],
+            ["UNSUPPORTED_CASE"] * 4,
+        )
+
     def test_unknown_and_ambiguous_operations_abstain_with_controlled_errors(self):
         completed, responses = run_adapter(
             [
-                request("domain", "execute", operation="domainSepSign", params=[]),
                 request(
                     "artifact",
                     "execute",
@@ -232,7 +326,6 @@ class DacsAdapterTests(unittest.TestCase):
         self.assertEqual(
             [response["error"]["code"] for response in responses],
             [
-                "UNSUPPORTED_OPERATION",
                 "UNSUPPORTED_ARTIFACT",
                 "UNSUPPORTED_ARTIFACT",
                 "UNSUPPORTED_ARTIFACT",

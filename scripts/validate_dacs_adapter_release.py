@@ -37,7 +37,7 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _load_json_at_revision(source: dict[str, Any]) -> dict[str, Any]:
+def _load_bytes_at_revision(source: dict[str, Any]) -> bytes:
     path = source["path"]
     revision = source["revision"]
     blob = _git("rev-parse", f"{revision}:{path}")
@@ -56,7 +56,11 @@ def _load_json_at_revision(source: dict[str, Any]) -> dict[str, Any]:
     current = (ROOT / path).read_bytes()
     if current != data:
         raise ValueError(f"{path}: working file differs from the pinned source revision")
-    return json.loads(data)
+    return data
+
+
+def _load_json_at_revision(source: dict[str, Any]) -> dict[str, Any]:
+    return json.loads(_load_bytes_at_revision(source))
 
 
 def _case_by_name(vectors: list[dict[str, Any]], case_id: str) -> dict[str, Any]:
@@ -129,11 +133,12 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
         for name, value in descriptor["sources"].items()
     }
     executable = 0
+    bounded = 0
     unsupported = 0
     for family in descriptor["families"]:
         status = family["status"]
-        if status == "blocked":
-            unsupported += len(family["cases"])
+        if status == "bounded-operation-profile":
+            bounded += len(family["cases"])
         elif status != "executable":
             raise ValueError(f"family {family['id']}: invalid status {status!r}")
         else:
@@ -183,23 +188,25 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
                 if actual["expected"].upper() != selected["expected"]:
                     raise ValueError(f"{selected['caseId']}: SIG-6 adapter verdict drift")
         elif family["id"] == "domain-separated-signing":
-            if (
-                family["operation"] is not None
-                or not family.get("blocker")
-                or family.get("firstMilestone") != "incomplete"
-                or not family.get("requiredHandoffQuestion")
-            ):
-                raise ValueError("blocked F5 mapping must have no advertised operation and an exact blocker")
+            if family.get("advertisedFamily") is not False:
+                raise ValueError("bounded F5 profile must not advertise the generic family")
+            if family.get("genericFamilyMilestone") != "incomplete":
+                raise ValueError("bounded F5 profile must retain the incomplete generic milestone")
+            if set(family.get("operations", [])) != {"domainSepSign", "domainSepVerify"}:
+                raise ValueError("bounded F5 operation set drift")
+            if not family.get("remainingBlocker") or not family.get("requiredHandoffQuestion"):
+                raise ValueError("bounded F5 profile must retain its abstention blocker and handoff")
+            _load_bytes_at_revision(family["controlSource"])
             raw = sources[family["source"]]["signing"]
-            selected = family["cases"][0]
-            if selected["caseId"] != "signing":
-                raise ValueError("unexpected domain-separated signing source selector")
-            if raw["separator"] != selected["separator"]:
+            selected = {case["caseId"]: case for case in family["cases"]}
+            sign_case = selected["signing::sign-ascii-hex-hash"]
+            verify_case = selected["signing::verify-ascii-hex-hash"]
+            raw_digest_case = selected["signing::reject-raw-digest-preimage"]
+            unknown_case = selected["signing::unknown-separator-false"]
+            if raw["separator"] != sign_case["separator"]:
                 raise ValueError("domain separator drift")
-            if raw["signature"] != selected["sourceExpected"]:
+            if raw["signature"] != sign_case["sourceExpected"]:
                 raise ValueError("domain signature source drift")
-            if raw["publicKeyHex"] != selected["publicKeyHex"]:
-                raise ValueError("domain signing public key drift")
 
             sys.path.insert(0, str(ROOT / "scripts"))
             jcs = _load_module(ROOT / "scripts" / "jcs.py", "dacs_release_jcs")
@@ -207,22 +214,43 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
                 ROOT / "scripts" / "run_lifecycle_walkthrough.py", "dacs_release_walkthrough"
             )
             artifact_hash = _sha256(jcs.canonicalize(raw["doc"]).encode("utf-8"))
-            if artifact_hash != selected["artifactHashHex"]:
+            if artifact_hash != sign_case["artifactHashHex"]:
                 raise ValueError("domain signing artifact hash drift")
+            if artifact_hash.encode("ascii").hex() != sign_case["messageBytesHex"]:
+                raise ValueError("domain signing message bytes drift")
             payload = (raw["separator"] + artifact_hash).encode("ascii")
-            signature = walkthrough.sign_ed25519(bytes.fromhex(raw["seed"]), payload)
-            if signature.hex() != selected["expectedSignatureHex"]:
+            if raw["seed"] != sign_case["privateKeyBytesHex"]:
+                raise ValueError("domain signing private seed drift")
+            signature = walkthrough.sign_ed25519(bytes.fromhex(sign_case["privateKeyBytesHex"]), payload)
+            if signature.hex() != sign_case["expected"]["hex"]:
                 raise ValueError("existing Standard Ed25519 helper no longer reproduces the pin")
             if base64.urlsafe_b64encode(signature).rstrip(b"=").decode("ascii") != raw["signature"]:
                 raise ValueError("source signature encoding drift")
-            if not walkthrough.verify_ed25519(bytes.fromhex(raw["publicKeyHex"]), signature, payload):
+            if raw["publicKeyHex"] != verify_case["publicKeyHex"]:
+                raise ValueError("domain signing public key drift")
+            if bytes.fromhex(verify_case["messageBytesHex"]) != artifact_hash.encode("ascii"):
+                raise ValueError("domain verification message bytes drift")
+            if verify_case["signatureBytesHex"] != signature.hex() or verify_case["expected"] is not True:
+                raise ValueError("domain verification positive case drift")
+            public_key = bytes.fromhex(verify_case["publicKeyHex"])
+            if not walkthrough.verify_ed25519(public_key, signature, payload):
                 raise ValueError("existing Standard Ed25519 verification helper rejected the pin")
+            raw_digest_payload = raw["separator"].encode("utf-8") + bytes.fromhex(
+                raw_digest_case["messageBytesHex"]
+            )
+            if raw_digest_case["expected"] is not False or walkthrough.verify_ed25519(
+                public_key, signature, raw_digest_payload
+            ):
+                raise ValueError("existing Standard raw-digest negative control drift")
+            if unknown_case["expected"] is not False:
+                raise ValueError("unknown-separator verification control drift")
         else:
             raise ValueError(f"unknown release family {family['id']!r}")
 
     return {
         "families": len(descriptor["families"]),
         "executableCases": executable,
+        "boundedCases": bounded,
         "unsupportedCases": unsupported,
     }
 
@@ -238,8 +266,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(
         "adapter release proposal: PASS "
-        f"({counts['families']} families, {counts['executableCases']} executable cases, "
-        f"{counts['unsupportedCases']} unsupported mappings)"
+        f"({counts['executableCases']} advertised-family cases, "
+        f"{counts['boundedCases']} bounded F5 cases, "
+        f"{counts['unsupportedCases']} unsupported mapping)"
     )
     return 0
 

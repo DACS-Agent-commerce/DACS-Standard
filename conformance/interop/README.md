@@ -28,7 +28,11 @@ The executable operations are:
 - `signatureValueVerdict`, calling
   `scripts/validate_conformance_vectors.py::decode_signature_value` with legacy
   spelling disabled. This operation is encoding-only, as required by F3, and
-  does not impose Ed25519's decoded-length rule.
+  does not impose Ed25519's decoded-length rule;
+- `domainSepSign` and `domainSepVerify`, calling the existing walkthrough
+  Ed25519 primitives under the bounded `listing-single-hash-golden-v1` profile.
+  These operation names are advertised, but the generic `domain-sep-sign`
+  family is not.
 
 `verifyBundle` and legacy import are not advertised. Unknown operations and
 unrecognised artifact shapes return controlled errors. The input loop caps each
@@ -44,28 +48,31 @@ The current runner maps every operation error to `THROWN`, which would still
 look like the expected rejection; it must recognize this explicit unsupported
 result as `ABSTAIN` before the BigInt case can enter a shared cross-run.
 
-## F5 blocker — first interoperability milestone incomplete
+## Bounded F5 profile
 
-This is an unsupported mapping, not a failed conformance candidate. The exact
-handoff question for the neutral runner owner is:
+The pinned neutral source defines its bytes as UTF-8 separator, optional
+intermediate hash, then `messageBytes`. The bounded profile selects the
+Standard's existing Listing golden: the message is the 64 ASCII lowercase-hex
+artifact hash, the separator is exactly `dacs-listing:v1:`, and no intermediate
+hash is present. It pins signing output, successful verification, and the
+existing negative control showing that the same signature does not verify when
+the 32 raw digest bytes replace the 64 ASCII bytes. An unknown non-DACS
+separator returns `false` on verification.
 
-> For `dacs-adapter/1` F5, does `messageBytes` mean the complete bytes after the
-> separator, with `intermediateHashBytes` absent for CORE B.7 single-hash cases,
-> and will the runner classify an explicit unsupported-case result as `ABSTAIN`?
-> If not, should F5 add an explicit Standard payload-grammar or artifact-kind
-> parameter before DACS-Standard advertises `domainSepSign`/`domainSepVerify`?
+This is a primitive bridge. It does not parse an artifact, derive its hash,
+establish signer authority, admit intermediate hashes, or claim the full CORE
+B.7 separator registry. Emission under any separator other than the selected
+Listing separator returns `UNSUPPORTED_CASE`; DACS-shaped non-Listing
+verification separators also return `UNSUPPORTED_CASE`. Those are unsupported
+inputs, not failed conformance candidates.
 
-CORE B.7 defines single-hash signed bytes as UTF-8 `domain_separator` followed
-by the ASCII lowercase-hex SHA-256 artifact hash. It separately defines three
-composite payload grammars. F5 accepts arbitrary `messageBytes`, a separator,
-and an optional `intermediateHashBytes` value, but does not identify which
-Standard grammar those bytes represent. The shared runner also treats an
-operation error as an observed mismatch, rather than a case-level abstention.
-Advertising `domainSepSign` or `domainSepVerify` would therefore overstate the
-mapping or require inventing a new byte contract. The release descriptor pins
-the Standard's existing domain-separated signing case and exact expected bytes,
-records this family as blocked, and the validator reproduces it directly with
-the existing Ed25519 helpers. The adapter does not advertise F5.
+The generic four-family milestone remains incomplete because the shared runner
+maps every operation error to an observed `THROWN` outcome. The remaining exact
+handoff question is:
+
+> Will the shared runner classify the adapter's explicit `UNSUPPORTED_CASE`
+> error as `ABSTAIN` rather than `THROWN`, so BigInt host-type inputs and F5
+> cases outside `listing-single-hash-golden-v1` remain unscored?
 
 ## Run
 
@@ -82,4 +89,9 @@ python3 -m unittest tests.test_dacs_adapter
 
 These commands are a Standard self-check. An `INTEROP-AGREE` result requires a
 separate adapter from a distinct implementation codebase and a shared runner;
-none is claimed by this proposal.
+none is claimed by this proposal. The immutable neutral-source export supplied
+for this work contains the interface and adapter sources but no self-contained
+runner executable or config schema. The reproducible adapter handoff command is
+`python3 scripts/dacs_adapter.py`; the neutral runner owner can pass that command
+through its documented repeatable `--adapter` option once the runner is
+published.

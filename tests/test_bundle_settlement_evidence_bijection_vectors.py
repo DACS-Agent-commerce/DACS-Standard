@@ -1147,6 +1147,9 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             })
 
         baseline = copy.deepcopy(source)
+        self.assertEqual(
+            payload_record(baseline)["payloadAttestationVersion"], "1"
+        )
         disposition, reason, _ = derive_phase_disposition(baseline, self.pubkeys)
         self.assertEqual(disposition, "pass", reason)
 
@@ -1191,11 +1194,39 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertNotEqual(after["attestationRef"], before["attestationRef"])
                 self.assertNotEqual(after["evidenceSignature"], before["evidenceSignature"])
                 self.assertNotEqual(after["bundleSignatures"], before["bundleSignatures"])
+                self.assertTrue(R._signed_inner_artifact_valid(
+                    record, R.PAYLOAD_ATTESTATION_DOMAIN, self.pubkeys
+                ))
                 self.assertFalse(R._payload_attestation_record_shape_valid(record))
                 disposition, reason, _ = derive_phase_disposition(
                     authority, self.pubkeys
                 )
                 self.assertEqual(disposition, "error", reason)
+                self.assertEqual(reason, "payload attestation record is malformed")
+
+        for version_action in ("unsupported", "missing"):
+            authority = copy.deepcopy(source)
+            record = payload_record(authority)
+            record["evidenceCompletionCase"] = f"version-{version_action}"
+            if version_action == "unsupported":
+                record["payloadAttestationVersion"] = "2"
+            else:
+                record.pop("payloadAttestationVersion")
+            before = signed_chain(authority)
+            relink_payload_attestation(authority, seeds)
+            after = signed_chain(authority)
+            with self.subTest(payloadAttestationVersion=version_action):
+                self.assertNotEqual(after, before)
+                self.assertTrue(R._signed_inner_artifact_valid(
+                    record, R.PAYLOAD_ATTESTATION_DOMAIN, self.pubkeys
+                ))
+                disposition, reason, _ = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(
+                    reason, "payload attestation record has an unsupported type"
+                )
 
         out_of_range_attempt = copy.deepcopy(source)
         out_of_range_record = payload_record(out_of_range_attempt)
@@ -1203,6 +1234,11 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         before = signed_chain(out_of_range_attempt)
         relink_payload_attestation(out_of_range_attempt, seeds)
         after_relink = signed_chain(out_of_range_attempt)
+        self.assertTrue(R._signed_inner_artifact_valid(
+            out_of_range_record, R.PAYLOAD_ATTESTATION_DOMAIN, self.pubkeys
+        ))
+        # Values beyond the JCS safe-integer range cannot themselves be signed.
+        # Mutate only after proving the complete relinked chain is coherent.
         out_of_range_record["attempt"] = 2 ** 53
         self.assertNotEqual(after_relink, before)
         self.assertFalse(
@@ -1212,6 +1248,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             out_of_range_attempt, self.pubkeys
         )
         self.assertEqual(disposition, "error", reason)
+        self.assertEqual(reason, "payload attestation record is malformed")
 
         malformed_signatures = (
             [],
@@ -1227,6 +1264,11 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             before = signed_chain(authority)
             relink_payload_attestation(authority, seeds)
             after_relink = signed_chain(authority)
+            self.assertTrue(R._signed_inner_artifact_valid(
+                record, R.PAYLOAD_ATTESTATION_DOMAIN, self.pubkeys
+            ))
+            # A malformed signature envelope cannot verify by definition. Apply it
+            # after proving the hash-excluded signature's outer chain is coherent.
             record["signature"] = copy.deepcopy(signature)
             with self.subTest(signature=signature):
                 self.assertNotEqual(
@@ -1246,6 +1288,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     authority, self.pubkeys
                 )
                 self.assertEqual(disposition, "error", reason)
+                self.assertEqual(reason, "payload attestation record is malformed")
 
         self.assertEqual(canonical_json(source), source_snapshot)
 

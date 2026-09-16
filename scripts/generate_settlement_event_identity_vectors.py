@@ -521,7 +521,17 @@ def build_document() -> dict:
     vectors = build_vectors()
     return {
         "set": "settlement-event-identity-v0.6",
-        "spec": "DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay",
+        "spec": "DACS-4 §9.5.8 SB-1 signed event identity and legacy replay",
+        "tier": "candidate",
+        "conformanceProfile": {
+            "status": "partially-superseded",
+            "currentCollisionAuthority": False,
+            "normativeScope": (
+                "sb1-event-identity-projection-and-same-tuple-idempotency-only"
+            ),
+            "historicalCollisionVectors": ["same-event-second-job-rejected"],
+            "currentCollisionAuthoritySet": "sb2-collision-authority-v0.8",
+        },
         "hash": hash_hex(vectors),
         "count": len(vectors),
         "publicKey": Ed25519PrivateKey.from_private_bytes(SEED).public_key().public_bytes_raw().hex(),

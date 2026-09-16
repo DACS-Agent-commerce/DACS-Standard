@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.7** on the common DACS v0.1 baseline. v0.7 defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -84,7 +84,11 @@ coordinates. When a claim is intended to establish the DACS-4 PB-2
 chain-specific payee binding for an EVM rail, producers MUST emit
 `cci-xm:evm:<chainId>:<address>`, where `<chainId>` is the EIP-155 chain ID as
 a bare positive decimal integer with no leading zeros and `<address>` is
-non-empty. The family component is the lowercase ASCII literal `evm`; any
+non-empty. For PB-2 applicability, `<chainId>` MUST be no greater than
+`9007199254740991`, matching the largest conforming numeric chain ID in a
+signed `RailDefinition`; larger textual identifiers remain readable generic
+`cci-xm` claims but do not conform to this PB-2 profile. The family component
+is the lowercase ASCII literal `evm`; any
 other spelling does not conform to this profile.
 
 For PB-2 chain applicability, a reader treats the bytes after
@@ -262,7 +266,7 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 **Session nonce binding.** `presentedAt` is always present (a required schema field). A bundle presented in the context of a specific session SHOULD additionally carry a session-binding nonce:
 
 - The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim and session-key presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
-- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the session’s expected nonce, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, per-`jobId`, single-use — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it.
+- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the distinct challenge it issued for this exact `jobId` and presenter, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, distinct per presentation, bounded-lifetime, and consumed on the first attempt including failure — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it. A later stage reverifies the retained accepted presentation and does not re-accept the consumed nonce.
 - For SIWD the nonce lives in the omitted `presentation` field and so is not in `bundle_hash`; the verifier's nonce-match check above is the binding for that kind and is therefore a MUST, not advisory.
 - Bundles presented without session-nonce binding are usable only outside session contexts (e.g., listing publication where the bundle is the seller’s own self-binding to the listing).
 
@@ -607,7 +611,7 @@ type ListingTerms = {
 }
 ```
 
-**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement`, DACS-3 §8.4.3 SE-8), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
+**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope` or `negotiate-sealed-envelope-complete`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement` or `negotiate-sealed-envelope-procurement-complete`, DACS-3 §8.4.3 SE-8 / §8.4.4 SAC-9), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
 
 **`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).
 
@@ -635,7 +639,10 @@ type PhaseType =
   | "vet-credentials"
   // DACS-3
   | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
+  | "negotiate-sealed-envelope-complete" | "negotiate-sealed-envelope-procurement-complete"
   | "commit-agreement" | "commit-payee-bound-agreement"
+  | "commit-identity-bound-agreement" | "commit-identity-bound-payee-agreement"
+  | "commit-selection-bound-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
@@ -654,12 +661,19 @@ Per-kind parameter shapes are normative in the owning chapter:
 | negotiate-rfq | {maxTurns, timeoutSec, channelSubnet?, rfqInitiator?} | 8 |
 | negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
+| negotiate-sealed-envelope-complete | {commitDeadline, revealWindow, selectionRule, candidateSetBinding, auctionMode?, channelSubnet?}; `selectionRule` is `"lowest-price"` or `"highest-price"`; `auctionMode`, when present, MUST be `"demand"`; DACS-3 §8.4.4 | 8 |
+| negotiate-sealed-envelope-procurement-complete | {commitDeadline, revealWindow, selectionRule, candidateSetBinding, auctionMode, channelSubnet?}; `selectionRule` is `"lowest-price"` or `"highest-price"`; `auctionMode` MUST be `"procurement"`; DACS-3 §8.4.4 | 8 |
 | commit-agreement | none | 8 |
 | commit-payee-bound-agreement | none | 8 |
+| commit-selection-bound-agreement | none; consumes only `SealedSelectionAgreementDocument` | 8 |
+| commit-identity-bound-agreement | none | 8 |
+| commit-identity-bound-payee-agreement | none | 8 |
 | pay-alternative | {alternatives: PaymentRailRef[]} (DACS-4 APR-1; listing projection only, never executable) | 9 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
 | rate | optional {required?: boolean} | 10 |
+
+For a new session under the current DACS-1 v0.8 / DACS-3 v0.6 profile, a sealed-envelope listing MUST use one of the two `*-complete` negotiation phases and `commit-selection-bound-agreement`. The two earlier sealed phase kinds remain valid signed historical inputs and may complete an already pinned session, but they cannot establish candidate-set completeness and MUST NOT be selected for a new current-profile session. This is paired with the structurally distinct new phase and agreement types so an older reader rejects a current complete-profile listing rather than silently ignoring its security requirements.
 
 **Canonical serialisation and signature**
 The listing follows the §B.2 canonical-form template, omitting the `signature` field. The signature.value is computed over:
@@ -669,6 +683,13 @@ Verifiers MUST:
 - recompute the canonical form, listing hash, and domain-separated signed bytes;
 - resolve signature.signer to the corresponding key (via seller.identity.claims, then via DACS-2 verification if a verifiable identifier);
 - verify the signature against signed_bytes.
+
+A transacting reader MUST validate every pipeline phase against its supported
+closed `PhaseType` set before negotiation, commitment, payment, or irreversible
+delivery. In particular, the two identity-bound commitment phases are distinct
+signed Listing values. A reader that does not implement them MUST refuse the
+Listing as unsupported and MUST NOT rename either phase to an older commitment
+phase or discard it and continue.
 
 If signature.algorithm is sr1-aggregate, the signer’s IdentityBundle.presentation MUST be of kind sr1-root and the signature is the SR-1 root signature over signed_bytes — the SR-1 aggregate signature scheme applies to the same domain-separated payload, not directly to the listing hash.
 
@@ -815,7 +836,7 @@ type ListingValidationDisposition =
 ```
 
 1. schema conformance;
-2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
+2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Ordinary additive-minor skew is not checked here because §11.1.2 + SIG-5 make it forward-readable. A declared pre-v1 corrective profile is different: its exact release/commit and per-document tuple MUST already have passed CORE §11.1.2 profile admission before this listing-validation sequence begins; a missing or different pin refuses the session rather than falling through this major-only field;
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
 4. canonical form well-formed and signature verifies;
 5. revocation check per RB-4..RB-6 returns `absent`;
@@ -1117,7 +1138,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Forged listings.** *Threat:* an attacker publishes a listing impersonating a known seller. *Mitigation:* listings are signed; the signer MUST be a key referenced in seller.identity.claims, and the bundle itself MUST verify. A reader following the validation order detects the impersonation at the signature step or the bundle-conformance step.
 
-**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one session and replays it in another. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates fresh per session and which is bound to the session-binding nonce when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). Verifiers in a session context MUST validate the nonce; bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
+**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings or omits real ones. *Mitigation:* ListingSummary includes the anchor and contentHash; clients dereference and verify. A poisoned catalog causes UX confusion (a listing that does not exist on chain, or a missing listing) but cannot produce a verifiable false transaction.
 

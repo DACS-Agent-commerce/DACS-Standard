@@ -14,7 +14,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
 | CA-* | Agreement commitment phase validation | §8.6 | §14.3 |
 | CD-* | Canonical decimal handling | §8.5.1 | §14.6 |
-| CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
+| CF-* | Canonical form, raw JSON admission, and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
 | CH-* | Private-channel membership, replay handling, canonical message/signature wire, and strict historical-import dispatch | §8.3.1 / §8.3.3 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
@@ -54,6 +54,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RSV-* | SettlementEvidence semantic admission before reputation | §10.5.1 | §14.5 |
 | SB-* | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |
+| SAC-* | Complete sealed-auction set, selection receipt, and agreement binding | §8.4.4 | §14.3 |
 | SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |

@@ -10,9 +10,7 @@ import subprocess
 import sys
 import threading
 
-import unicodedata
 import unittest
-import urllib.parse
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -24,9 +22,17 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "tests"))
-from channel_message_fixture_authority import TRUSTED_CONTEXTS  # noqa: E402
+from channel_message_fixture_authority import (  # noqa: E402
+    CURRENT_MODULE_VERSIONS,
+    CURRENT_PARTICIPANTS,
+    CURRENT_RELEASE_PIN,
+    TRUSTED_CONTEXTS,
+    TRUSTED_PROFILE_ADMISSIONS,
+    trusted_profile_admission,
+)
 import generate_channel_message_vectors as channel_fixture_generator  # noqa: E402
 import jcs  # noqa: E402
+from dacs_reference import parse_claim_reference  # noqa: E402
 
 
 VECTORS = (
@@ -48,7 +54,6 @@ LEGACY_VECTOR_HASH = "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc
 LOWER_HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 LOWER_HEX_128 = re.compile(r"^[0-9a-f]{128}$")
 BASE64URL = re.compile(r"^[A-Za-z0-9_-]+$")
-CLAIM_SCHEME = re.compile(r"^[a-z][a-z0-9-]*$")
 MESSAGE_TYPES = {
     "offer", "counter", "accept", "reject", "sealed-envelope-commit",
     "sealed-envelope-reveal", "abort",
@@ -63,14 +68,20 @@ SR1_REF = "did:example:dacs-349-sr1-root"
 SR1_PUBLIC = bytes.fromhex(
     "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
 )
-ALICE_REF = "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
-ALICE_PUBLIC = bytes.fromhex(ALICE_REF.removeprefix("cci:"))
-BOB_REF = "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
-BOB_PUBLIC = bytes.fromhex(BOB_REF.removeprefix("cci:"))
+# Current-wire Ed25519 members carry the canonical registered DACS-1
+# key:<pubkeyhex> claims.  The historical generic cci:<64hex> spellings below
+# are frozen legacy-era identities: they resolve only on the explicit
+# legacy-import arm and the current scheme registry refuses the scheme.
+ALICE_REF = "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+ALICE_PUBLIC = bytes.fromhex(ALICE_REF.removeprefix("key:"))
+BOB_REF = "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+BOB_PUBLIC = bytes.fromhex(BOB_REF.removeprefix("key:"))
 LEGACY_MEMBER_REF = "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
 LEGACY_PUBLIC = bytes.fromhex(LEGACY_MEMBER_REF.removeprefix("cci:"))
 UNRESOLVED_REF = "did:example:unresolved"
 LEGACY_UNRESOLVED_REF = "did:demos:placeholder"
+# The historical spelling of the Alice fixture key on the frozen-era wire.
+HISTORICAL_ALICE_REF = "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
 
 
 def canonical_bytes(value):
@@ -92,45 +103,50 @@ def decode_b64url(value):
     return raw
 
 
-def parse_claim_ref(value):
+def parse_current_claim_ref(value):
+    """Current-arm ClaimReference parse.
+
+    This is exactly the shared DACS-1 registered-scheme parser and registry
+    from ``scripts/dacs_reference.py`` (``parse_claim_reference`` /
+    ``REGISTERED_SCHEMES``): the current wire accepts only registered
+    schemes — ``key:``, ``did:``, and the specific ``cci-*`` schemes — and
+    refuses the generic ``cci:<64hex>`` historical spelling.  No permissive
+    local variant of this parse exists on the current arm.
+    """
+
+    parsed = parse_claim_reference(value)
+    return parsed.scheme, parsed.identifier
+
+
+def parse_historical_claim_ref(value):
+    """Frozen historical ClaimReference grammar for the legacy-import arm only.
+
+    The frozen ``channel-message-replay-v0.1.json`` corpus carries its
+    Ed25519 senders as generic ``cci:<64 lowercase hex>`` claims and its
+    unresolved sender as a pre-profile Demos DID.  This grammar is closed to
+    exactly those two historical spellings so the archival bytes keep
+    verifying byte-for-byte; it is never reachable from ``current-read``,
+    which uses the registered current parser above.
+    """
+
     if (
         not isinstance(value, str)
-        or value != unicodedata.normalize("NFC", value)
-        or ":" not in value
+        or not value
+        or value != value.lower()
+        or "?" in value
     ):
-        raise ValueError("malformed ClaimReference")
-    scheme, remainder = value.split(":", 1)
-    if remainder.count("?") > 1:
-        raise ValueError("malformed ClaimReference")
-    identifier, separator, parameters = remainder.partition("?")
-    if not CLAIM_SCHEME.fullmatch(scheme) or not identifier:
-        raise ValueError("malformed ClaimReference")
-    if scheme == "cci" and not LOWER_HEX_64.fullmatch(identifier):
-        raise ValueError("malformed CCI ClaimReference")
-    if separator:
-        pairs = parameters.split("&")
-        if not parameters or any(pair.count("=") != 1 for pair in pairs):
-            raise ValueError("malformed ClaimReference parameters")
-        decoded_keys = []
-        for pair in pairs:
-            key, parameter_value = pair.split("=", 1)
-            for component in (key, parameter_value):
-                if any(character in component for character in ":?&="):
-                    raise ValueError("unescaped reserved ClaimReference parameter")
-                for match in re.finditer("%", component):
-                    if not re.match(r"[0-9A-F]{2}", component[match.start() + 1:match.start() + 3]):
-                        raise ValueError("non-canonical ClaimReference percent escape")
-                try:
-                    urllib.parse.unquote(component, errors="strict")
-                except UnicodeDecodeError as exc:
-                    raise ValueError("malformed ClaimReference parameter encoding") from exc
-            decoded_keys.append(urllib.parse.unquote(key, errors="strict"))
-        if (
-            any(not key for key in decoded_keys)
-            or decoded_keys != sorted(decoded_keys)
-            or len(decoded_keys) != len(set(decoded_keys))
-        ):
-            raise ValueError("non-canonical ClaimReference parameters")
+        raise ValueError("malformed historical ClaimReference")
+    scheme, separator, identifier = value.partition(":")
+    if not separator or not identifier:
+        raise ValueError("malformed historical ClaimReference")
+    if scheme == "cci":
+        if LOWER_HEX_64.fullmatch(identifier) is None:
+            raise ValueError("historical cci identifier must be 64 lowercase hex")
+    elif scheme == "did":
+        if re.fullmatch(r"[a-z0-9]+:[A-Za-z0-9._-]+", identifier) is None:
+            raise ValueError("malformed historical did ClaimReference")
+    else:
+        raise ValueError("scheme is outside the frozen historical registry")
     return scheme, identifier
 
 
@@ -150,7 +166,14 @@ def validate_context(ctx):
     )
 
 
-def validate_authenticated_members(members):
+def validate_authenticated_members(members, *, parse_ref=parse_current_claim_ref):
+    """Validate the verifier-owned member capability for one arm.
+
+    ``parse_ref`` is the arm's ClaimReference parser: the current arm uses
+    the shared registered-scheme parser; the historical arm uses the frozen
+    historical grammar.  Both authorities share the same member shape rules.
+    """
+
     if not isinstance(members, list) or not members:
         return False
     seen = set()
@@ -178,7 +201,7 @@ def validate_authenticated_members(members):
         if set(member) != expected_keys:
             return False
         try:
-            identity = parse_claim_ref(member["claim"])
+            identity = parse_ref(member["claim"])
         except (TypeError, ValueError):
             return False
         if (
@@ -221,6 +244,54 @@ def validate_authenticated_members(members):
 
 class ReusedChannelIdError(ValueError):
     """A trusted state issuer has already retained this channel identifier."""
+
+
+class ProfileAdmissionError(ValueError):
+    def __init__(self, verdict, message):
+        super().__init__(message)
+        self.verdict = verdict
+
+
+class AuthenticatedProfileAuthority:
+    """Verifier-owned exact-profile capability for one current session."""
+
+    KEYS = {
+        "source", "authenticated", "sessionId", "participantIdentities",
+        "releasePin", "moduleVersions",
+    }
+
+    def __init__(self, context):
+        if context is None:
+            raise ProfileAdmissionError("indeterminate", "profile authority unavailable")
+        if not isinstance(context, dict) or set(context) != self.KEYS:
+            raise ProfileAdmissionError("error", "malformed profile authority")
+        participants = context.get("participantIdentities")
+        modules = context.get("moduleVersions")
+        if (
+            context.get("source") != "fixture-verifier-owned"
+            or context.get("authenticated") is not True
+            or not isinstance(context.get("sessionId"), str)
+            or not context["sessionId"]
+            or not isinstance(participants, list)
+            or not participants
+            or any(not isinstance(item, str) or not item for item in participants)
+            or len(participants) != len(set(participants))
+            or not isinstance(context.get("releasePin"), str)
+            or not isinstance(modules, dict)
+            or set(modules) != set(CURRENT_MODULE_VERSIONS)
+            or any(not isinstance(value, str) for value in modules.values())
+        ):
+            raise ProfileAdmissionError("error", "malformed profile authority")
+        self._context = copy.deepcopy(context)
+
+    def admit(self, session_id, participant_identities):
+        if (
+            self._context["sessionId"] != session_id
+            or self._context["participantIdentities"] != list(participant_identities)
+            or self._context["releasePin"] != CURRENT_RELEASE_PIN
+            or self._context["moduleVersions"] != CURRENT_MODULE_VERSIONS
+        ):
+            raise ProfileAdmissionError("fail", "profile authority mismatch")
 
 
 _STATE_ISSUANCE_CAPABILITY = object()
@@ -375,6 +446,27 @@ class LiveNegotiationStateIssuer(_VerifierStateIssuer):
 
     state_type = LiveNegotiationState
 
+    def __init__(self, registry, profile_authority, participant_identities):
+        if not isinstance(profile_authority, AuthenticatedProfileAuthority):
+            raise TypeError("authenticated profile authority required")
+        if (
+            not isinstance(participant_identities, (list, tuple))
+            or not participant_identities
+            or any(
+                not isinstance(identity, str) or not identity
+                for identity in participant_identities
+            )
+            or len(participant_identities) != len(set(participant_identities))
+        ):
+            raise ValueError("authenticated participant identities required")
+        super().__init__(registry)
+        self._profile_authority = profile_authority
+        self._participant_identities = tuple(participant_identities)
+
+    def issue(self, channel_id, initial_sequence=0):
+        self._profile_authority.admit(channel_id, self._participant_identities)
+        return super().issue(channel_id, initial_sequence)
+
     def _record_closure(self, state, terminal_status):
         with self._lock:
             if not isinstance(state, LiveNegotiationState) or not self._is_issued(state):
@@ -407,30 +499,58 @@ class AuthenticatedChannelAuthority:
     Untrusted message/session input cannot construct or replace this capability.
     A production implementation obtains equivalent data only after its DACS-1/
     DACS-2 membership-binding verification has succeeded.
+
+    Channels named in ``historical_channels`` are historical audit channels:
+    their member claims are validated and resolved with the frozen
+    historical ClaimReference grammar (generic ``cci:<64hex>`` primary keys
+    and pre-profile DIDs) so the archival ``legacy-import`` arm keeps
+    verifying frozen bytes.  Every other channel is a current channel: its
+    members must parse under the shared current DACS-1 registered-scheme
+    registry, and no unregistered generic ``cci:`` claim can ever bind, be
+    resolved, or be admitted there.
     """
 
-    def __init__(self, bindings):
+    def __init__(self, bindings, *, historical_channels=frozenset()):
         if not isinstance(bindings, dict) or not bindings:
             raise ValueError("authenticated channel bindings required")
+        if not isinstance(historical_channels, (set, frozenset)):
+            raise ValueError("historical channels must be a set of identifiers")
+        self._historical_channels = frozenset(historical_channels)
         self._bindings = {}
         for channel_id, members in bindings.items():
             if not isinstance(channel_id, str) or not channel_id:
                 raise ValueError("invalid authenticated channel identifier")
-            if not validate_authenticated_members(members):
+            parse_ref = self._claim_parser(channel_id)
+            if not validate_authenticated_members(members, parse_ref=parse_ref):
                 raise ValueError("invalid authenticated channel membership")
             self._bindings[channel_id] = {
-                parse_claim_ref(member["claim"]): copy.deepcopy(member)
+                parse_ref(member["claim"]): copy.deepcopy(member)
                 for member in members
             }
+
+    def _claim_parser(self, channel_id):
+        return (
+            parse_historical_claim_ref
+            if channel_id in self._historical_channels
+            else parse_current_claim_ref
+        )
 
     def resolve(self, channel_id, sender):
         members = self._bindings.get(channel_id)
         if members is None:
             return "unavailable", None
-        return "resolved", copy.deepcopy(members.get(parse_claim_ref(sender)))
+        try:
+            identity = self._claim_parser(channel_id)(sender)
+        except (TypeError, ValueError):
+            # A sender that cannot be parsed under the bound channel's
+            # registry is never a member; fail closed without mutation.
+            return "resolved", None
+        return "resolved", copy.deepcopy(members.get(identity))
 
 
-def authenticated_members():
+def current_members():
+    """Current-channel membership: every claim is a registered DACS-1 scheme."""
+
     return [
         {
             "claim": ALICE_REF,
@@ -470,6 +590,28 @@ def authenticated_members():
             "authorityType": "primary-key",
             "resolution": "unavailable",
         },
+    ]
+
+
+def historical_members():
+    """Historical audit-channel membership for the frozen legacy wire only.
+
+    These bindings keep the frozen corpus's historical claim spellings
+    (generic ``cci:<64hex>`` and the pre-profile Demos DID); they authenticate
+    only through the explicitly selected ``legacy-import`` arm.  The
+    historical spelling of the Alice fixture key is bound so the synthetic
+    legacy-framing negatives fail for their intended framing/domain reasons.
+    """
+
+    return [
+        {
+            "claim": HISTORICAL_ALICE_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": ALICE_PUBLIC.hex(),
+        },
         {
             "claim": LEGACY_MEMBER_REF,
             "algorithm": "ed25519",
@@ -487,22 +629,31 @@ def authenticated_members():
     ]
 
 
-AUTHORITY = AuthenticatedChannelAuthority({
-    channel_id: authenticated_members()
-    for channel_id in ("channel-349", "channel-reused", "chan-session-1", "chan-session-7")
-})
+HISTORICAL_CHANNELS = frozenset({"chan-session-1", "chan-session-7"})
+AUTHORITY = AuthenticatedChannelAuthority(
+    {
+        "channel-349": current_members(),
+        "channel-reused": current_members(),
+        **{
+            channel_id: historical_members()
+            for channel_id in sorted(HISTORICAL_CHANNELS)
+        },
+    },
+    historical_channels=HISTORICAL_CHANNELS,
+)
 
 
-def common_shape(message):
+def common_shape(message, parse_ref=parse_current_claim_ref):
     required = {"channelId", "sequence", "sender", "sentAt", "type", "body", "signature"}
     if not required <= set(message):
         return False
     message_type = message["type"]
     try:
-        parse_claim_ref(message["sender"])
+        parse_ref(message["sender"])
         canonical_bytes({key: value for key, value in message.items() if key != "signature"})
     except (TypeError, ValueError):
         return False
+    refs_present = "refs" in message
     refs = message.get("refs")
     return (
         isinstance(message["channelId"], str)
@@ -516,7 +667,7 @@ def common_shape(message):
         and isinstance(message_type, str)
         and message_type in MESSAGE_TYPES
         and (
-            refs is None
+            not refs_present
             or (
                 isinstance(refs, dict)
                 and set(refs) <= {"repliesTo"}
@@ -616,11 +767,11 @@ def evaluate_current(message, authority, state):
     if not isinstance(algorithm, str) or algorithm not in ALGORITHMS:
         return "error"
     try:
-        parse_claim_ref(signature.get("signer"))
+        parse_current_claim_ref(signature.get("signer"))
         raw_signature = decode_b64url(signature.get("value"))
     except (TypeError, ValueError):
         return "error"
-    if parse_claim_ref(signature["signer"]) != parse_claim_ref(message["sender"]):
+    if parse_current_claim_ref(signature["signer"]) != parse_current_claim_ref(message["sender"]):
         return "fail"
     trusted_status = trusted_inputs_status(
         message, authority, state, LiveNegotiationState
@@ -650,7 +801,9 @@ def evaluate_current(message, authority, state):
 
 
 def evaluate_legacy(message, authority, state):
-    if "canonicalChannelMessageVersion" in message or not common_shape(message):
+    if "canonicalChannelMessageVersion" in message or not common_shape(
+        message, parse_historical_claim_ref
+    ):
         return "error"
     if not isinstance(message.get("signature"), str) or not LOWER_HEX_128.fullmatch(message["signature"]):
         return "error"
@@ -699,12 +852,26 @@ def evaluate(message, operation, authority, state):
     return "error"
 
 
-def trusted_fixture_state(ctx, operation):
+def trusted_fixture_state(ctx, operation, profile_context=None):
     """Provision state from independently reviewed harness configuration."""
     if not validate_context(ctx):
         return "error", None
     if operation == "current-read":
-        issuer_type = LiveNegotiationStateIssuer
+        try:
+            profile_authority = AuthenticatedProfileAuthority(profile_context)
+            issuer = LiveNegotiationStateIssuer(
+                RetainedChannelRegistry(ctx["priorChannelIds"]),
+                profile_authority,
+                CURRENT_PARTICIPANTS,
+            )
+            state = issuer.issue(ctx["sessionChannelId"], ctx["lastSequence"])
+        except ProfileAdmissionError as exc:
+            return exc.verdict, None
+        except ReusedChannelIdError:
+            return "fail", None
+        except (TypeError, ValueError):
+            return "error", None
+        return None, state
     elif operation == "legacy-import":
         issuer_type = HistoricalAuditStateIssuer
     else:
@@ -717,6 +884,16 @@ def trusted_fixture_state(ctx, operation):
     except ValueError:
         return "error", None
     return None, state
+
+
+def trusted_live_issuer(registry, session_id):
+    """Construct a live issuer only after exact current-profile admission."""
+
+    return LiveNegotiationStateIssuer(
+        registry,
+        AuthenticatedProfileAuthority(trusted_profile_admission(session_id)),
+        CURRENT_PARTICIPANTS,
+    )
 
 
 class ChannelMessageVectorTests(unittest.TestCase):
@@ -734,7 +911,12 @@ class ChannelMessageVectorTests(unittest.TestCase):
             or canonical_bytes(vector["ctx"]) != canonical_bytes(expected)
         ):
             return "error"
-        setup_verdict, state = trusted_fixture_state(expected, operation)
+        expected_profile = TRUSTED_PROFILE_ADMISSIONS.get(vector["name"])
+        if vector.get("profileAdmission") != expected_profile:
+            return "error"
+        setup_verdict, state = trusted_fixture_state(
+            expected, operation, expected_profile
+        )
         if setup_verdict is not None:
             return setup_verdict
         return evaluate(vector.get("message"), operation, authority, state)
@@ -786,8 +968,19 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertEqual(
             "pass", self.fixture_result(vector, "legacy-import", AUTHORITY)
         )
+        current_context = {
+            "sessionChannelId": "channel-349",
+            "lastSequence": 0,
+            "priorChannelIds": ["channel-100", "channel-200"],
+        }
+        setup_verdict, live_state = trusted_fixture_state(
+            current_context,
+            "current-read",
+            trusted_profile_admission("channel-349"),
+        )
+        self.assertIsNone(setup_verdict)
         self.assertEqual(
-            "error", self.fixture_result(vector, "current-read", AUTHORITY)
+            "error", evaluate(vector["message"], "current-read", AUTHORITY, live_state)
         )
 
     def test_four_mixed_wire_barriers_are_distinguishing(self):
@@ -866,7 +1059,9 @@ class ChannelMessageVectorTests(unittest.TestCase):
             "error", self.fixture_result(valid, "current-read", AUTHORITY)
         )
 
-        issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry(["channel-100", "channel-200"]))
+        issuer = trusted_live_issuer(
+            RetainedChannelRegistry(["channel-100", "channel-200"]), "channel-349"
+        )
         state = issuer.issue("channel-349")
         self.assertEqual(
             "pass",
@@ -880,7 +1075,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
             "pass", self.fixture_result(qualified, "current-read", AUTHORITY)
         )
 
-        first = copy.deepcopy(authenticated_members()[0])
+        first = copy.deepcopy(current_members()[0])
         second = copy.deepcopy(first)
         first["claim"] += "?role=a"
         second["claim"] += "?role=b"
@@ -888,9 +1083,101 @@ class ChannelMessageVectorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid authenticated channel membership"):
             AuthenticatedChannelAuthority({"channel-duplicate": [first, second]})
 
+    def test_current_read_refuses_generic_cci_while_canonical_key_passes(self):
+        """Registered-scheme boundary regression (PR #367 review row 1).
+
+        Integrated current DACS-1 registers ``key:``, ``did:``, and the
+        specific ``cci-*`` schemes; the generic ``cci:<64hex>`` spelling is a
+        frozen historical form.  A correctly signed current-envelope message
+        whose sender/signer use the generic spelling is refused by
+        ``current-read`` (malformed unregistered claim, no retry), the same
+        spelling can never be bound as a current-channel member, and the
+        canonical ``key:`` spelling of the very same key passes unchanged.
+        """
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        canonical = by_name["canonical-valid-first"]["message"]
+        issuer = trusted_live_issuer(
+            RetainedChannelRegistry(["channel-100", "channel-200"]), "channel-349"
+        )
+        state = issuer.issue("channel-349")
+        self.assertEqual(
+            "pass", evaluate(canonical, "current-read", AUTHORITY, state)
+        )
+        self.assertEqual(1, state.last_sequence)
+
+        # The corpus-level refusal case executes the same boundary.
+        self.assertEqual(
+            "error",
+            self.fixture_result(
+                by_name["canonical-generic-cci-sender-refused"],
+                "current-read",
+                AUTHORITY,
+            ),
+        )
+
+        # An independently signed generic-cci message is refused too, the
+        # refusal never advances live state, and the archival arm never
+        # retries it (the current envelope is not a legacy shape).
+        generic_refused = channel_fixture_generator.sign_current(
+            channel_fixture_generator.unsigned_message(
+                sequence=2, sender=channel_fixture_generator.HISTORICAL_ALICE_REF
+            ),
+            signer=channel_fixture_generator.HISTORICAL_ALICE_REF,
+        )
+        self.assertEqual(
+            "error", evaluate(generic_refused, "current-read", AUTHORITY, state)
+        )
+        self.assertEqual(1, state.last_sequence)
+        audit_state = HistoricalAuditStateIssuer(RetainedChannelRegistry()).issue(
+            "channel-349"
+        )
+        self.assertEqual(
+            "error",
+            evaluate(generic_refused, "legacy-import", AUTHORITY, audit_state),
+        )
+
+        # The generic spelling cannot become a current-channel member: the
+        # current membership authority enforces the same shared registry.
+        with self.assertRaisesRegex(
+            ValueError, "invalid authenticated channel membership"
+        ):
+            AuthenticatedChannelAuthority({"channel-generic": [{
+                "claim": channel_fixture_generator.HISTORICAL_ALICE_REF,
+                "algorithm": "ed25519",
+                "authorityType": "primary-key",
+                "resolution": "resolved",
+                "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+                "publicKey": ALICE_PUBLIC.hex(),
+            }]})
+
+        # The historical spelling still verifies archival bytes only through
+        # the explicit legacy-import arm on a historical audit channel.
+        historical_authority = AuthenticatedChannelAuthority(
+            {"chan-archival": historical_members()},
+            historical_channels={"chan-archival"},
+        )
+        legacy_unsigned = {
+            "channelId": "chan-archival",
+            "sequence": 1,
+            "sender": channel_fixture_generator.HISTORICAL_ALICE_REF,
+            "sentAt": channel_fixture_generator.NOW,
+            "type": "offer",
+            "body": {"currency": "DEM", "price": "10"},
+        }
+        legacy_message = channel_fixture_generator.sign_legacy(legacy_unsigned)
+        audit_state = HistoricalAuditStateIssuer(
+            RetainedChannelRegistry()
+        ).issue("chan-archival")
+        self.assertEqual(
+            "pass",
+            evaluate(legacy_message, "legacy-import", historical_authority, audit_state),
+        )
+
     def test_current_entry_point_advances_only_valid_live_state(self):
         by_name = {item["name"]: item for item in self.document["vectors"]}
-        issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry(["channel-100", "channel-200"]))
+        issuer = trusted_live_issuer(
+            RetainedChannelRegistry(["channel-100", "channel-200"]), "channel-349"
+        )
         state = issuer.issue("channel-349")
 
         self.assertEqual(
@@ -918,7 +1205,9 @@ class ChannelMessageVectorTests(unittest.TestCase):
                 self.assertEqual(sequence, state.last_sequence)
 
     def test_live_issuance_and_terminal_transitions_are_trusted(self):
-        issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry(["channel-100", "channel-200"]))
+        issuer = trusted_live_issuer(
+            RetainedChannelRegistry(["channel-100", "channel-200"]), "channel-349"
+        )
         state = issuer.issue("channel-349")
         self.assertIn("channel-349", issuer.used_channel_ids)
         with self.assertRaisesRegex(ReusedChannelIdError, "already used"):
@@ -948,7 +1237,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         )
         self.assertEqual(2, state.last_sequence)
 
-        abort_issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry())
+        abort_issuer = trusted_live_issuer(RetainedChannelRegistry(), "channel-349")
         abort_state = abort_issuer.issue("channel-349")
         abort = channel_fixture_generator.sign_current(
             channel_fixture_generator.unsigned_message(
@@ -968,18 +1257,18 @@ class ChannelMessageVectorTests(unittest.TestCase):
         )
         self.assertEqual(1, abort_state.last_sequence)
 
-        timeout_issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry())
+        timeout_issuer = trusted_live_issuer(RetainedChannelRegistry(), "channel-349")
         timeout_state = timeout_issuer.issue("channel-349")
         self.assertTrue(timeout_issuer.record_timeout(timeout_state))
         self.assertEqual("timeout", timeout_state.terminal_status)
 
     def test_registry_continuity_across_issuer_facades(self):
         registry = RetainedChannelRegistry(["channel-100"])
-        first = LiveNegotiationStateIssuer(registry)
+        first = trusted_live_issuer(registry, "channel-349")
         state = first.issue("channel-349")
         message = self.document["vectors"][0]["message"]
         self.assertEqual("pass", evaluate(message, "current-read", AUTHORITY, state))
-        second = LiveNegotiationStateIssuer(registry)
+        second = trusted_live_issuer(registry, "channel-349")
         self.assertIn("channel-349", second.used_channel_ids)
         self.assertEqual(1, state.last_sequence)
         with self.assertRaises(ReusedChannelIdError):
@@ -1011,7 +1300,9 @@ class ChannelMessageVectorTests(unittest.TestCase):
                 )
                 self.assertEqual(sequence, state.last_sequence)
 
-        live_state = LiveNegotiationStateIssuer(RetainedChannelRegistry()).issue("chan-session-7")
+        live_state = trusted_live_issuer(
+            RetainedChannelRegistry(), "chan-session-7"
+        ).issue("chan-session-7")
         self.assertEqual(
             "error",
             evaluate(
@@ -1031,20 +1322,23 @@ class ChannelMessageVectorTests(unittest.TestCase):
             item for item in self.legacy["vectors"]
             if item["name"] == "sender-not-cci"
         )
-        mismatch_authority = AuthenticatedChannelAuthority({
-            "channel-349": [{
-                "claim": UNRESOLVED_REF,
-                "algorithm": "ecdsa-secp256k1",
-                "authorityType": "primary-key",
-                "resolution": "unavailable",
-            }],
-            "chan-session-7": [{
-                "claim": LEGACY_UNRESOLVED_REF,
-                "algorithm": "ecdsa-secp256k1",
-                "authorityType": "primary-key",
-                "resolution": "unavailable",
-            }],
-        })
+        mismatch_authority = AuthenticatedChannelAuthority(
+            {
+                "channel-349": [{
+                    "claim": UNRESOLVED_REF,
+                    "algorithm": "ecdsa-secp256k1",
+                    "authorityType": "primary-key",
+                    "resolution": "unavailable",
+                }],
+                "chan-session-7": [{
+                    "claim": LEGACY_UNRESOLVED_REF,
+                    "algorithm": "ecdsa-secp256k1",
+                    "authorityType": "primary-key",
+                    "resolution": "unavailable",
+                }],
+            },
+            historical_channels={"chan-session-7"},
+        )
 
         for vector, operation in (
             (current, "current-read"),
@@ -1052,7 +1346,8 @@ class ChannelMessageVectorTests(unittest.TestCase):
         ):
             with self.subTest(operation=operation):
                 setup_verdict, matching_state = trusted_fixture_state(
-                    TRUSTED_CONTEXTS[vector["name"]], operation
+                    TRUSTED_CONTEXTS[vector["name"]], operation,
+                    TRUSTED_PROFILE_ADMISSIONS.get(vector["name"]),
                 )
                 self.assertIsNone(setup_verdict)
                 self.assertEqual(
@@ -1062,7 +1357,8 @@ class ChannelMessageVectorTests(unittest.TestCase):
                     ),
                 )
                 setup_verdict, mismatch_state = trusted_fixture_state(
-                    TRUSTED_CONTEXTS[vector["name"]], operation
+                    TRUSTED_CONTEXTS[vector["name"]], operation,
+                    TRUSTED_PROFILE_ADMISSIONS.get(vector["name"]),
                 )
                 self.assertIsNone(setup_verdict)
                 self.assertEqual(
@@ -1077,7 +1373,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
 
     def test_absent_authority_is_indeterminate_without_state_mutation(self):
         message = self.document["vectors"][0]["message"]
-        issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry())
+        issuer = trusted_live_issuer(RetainedChannelRegistry(), "channel-349")
         state = issuer.issue("channel-349")
         self.assertEqual(
             "indeterminate", evaluate(message, "current-read", None, state)
@@ -1088,7 +1384,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         )
 
         unavailable_authority = AuthenticatedChannelAuthority({
-            "channel-unrelated": authenticated_members()
+            "channel-unrelated": current_members()
         })
         self.assertEqual(
             "indeterminate",
@@ -1096,14 +1392,16 @@ class ChannelMessageVectorTests(unittest.TestCase):
         )
         self.assertEqual(0, state.last_sequence)
 
-        foreign_state = LiveNegotiationStateIssuer(RetainedChannelRegistry()).issue("channel-foreign")
+        foreign_state = trusted_live_issuer(
+            RetainedChannelRegistry(), "channel-foreign"
+        ).issue("channel-foreign")
         self.assertEqual(
             "fail", evaluate(message, "current-read", None, foreign_state)
         )
 
     def test_malformed_enum_containers_return_controlled_errors(self):
         current = self.document["vectors"][0]["message"]
-        issuer = LiveNegotiationStateIssuer(RetainedChannelRegistry())
+        issuer = trusted_live_issuer(RetainedChannelRegistry(), "channel-349")
         state = issuer.issue("channel-349")
         mutations = (
             ("message type", lambda value: value.__setitem__("type", [])),
@@ -1148,7 +1446,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         )
 
         for field in ("algorithm", "authorityType", "resolution"):
-            member = copy.deepcopy(authenticated_members()[0])
+            member = copy.deepcopy(current_members()[0])
             member[field] = []
             with self.subTest(authenticated_member_field=field):
                 with self.assertRaisesRegex(
@@ -1196,6 +1494,86 @@ class ChannelMessageVectorTests(unittest.TestCase):
             bytes.fromhex(legacy["signature"]),
             LEGACY_DOMAIN + message_digest(legacy_unsigned).hex().encode("ascii"),
         ))
+
+    def test_v05_positive_compatibility_contract(self):
+        """PR #367 review row 1: the v0.6 replacement keeps an explicit
+        positive v0.5 compatibility contract. Valid historical bytes are
+        accepted by the explicitly selected ``legacy-import`` operation,
+        refused by ``current-read``, and never retried on the other arm; the
+        current wire stays independently acceptable on ``current-read``."""
+        by_name = {item["name"]: item for item in self.legacy["vectors"]}
+        issuer = HistoricalAuditStateIssuer(
+            RetainedChannelRegistry(["chan-session-1", "chan-session-2"])
+        )
+        state = issuer.issue("chan-session-7")
+
+        # (1) Positive legacy-import acceptance: every valid v0.5 message
+        # (pass-expected corpus members) is accepted by the explicitly invoked
+        # historical operation, byte-for-byte with its frozen signature.
+        for name in (
+            "valid-first-message",
+            "valid-next-message",
+            "valid-sequence-gap",
+        ):
+            with self.subTest(legacy_import=name):
+                message = copy.deepcopy(by_name[name]["message"])
+                signature_before = message["signature"]
+                self.assertEqual(
+                    "pass", evaluate(message, "legacy-import", AUTHORITY, state)
+                )
+                self.assertEqual(signature_before, message["signature"])
+
+        # (2) Current-read refusal of the same valid legacy bytes: a fresh
+        # historical cursor must reject them without fallback, and the
+        # refused bytes stay unchanged (no re-encode, no retry).
+        refused_issuer = HistoricalAuditStateIssuer(
+            RetainedChannelRegistry(["chan-session-1", "chan-session-2"])
+        )
+        refused_state = refused_issuer.issue("chan-session-7")
+        for name in (
+            "valid-first-message",
+            "valid-next-message",
+            "valid-sequence-gap",
+        ):
+            with self.subTest(current_read_refuses=name):
+                message = copy.deepcopy(by_name[name]["message"])
+                signature_before = message["signature"]
+                self.assertEqual(
+                    "error",
+                    evaluate(message, "current-read", AUTHORITY, refused_state),
+                )
+                self.assertEqual(signature_before, message["signature"])
+        # The current-read refusal did not advance historical or live state.
+        self.assertEqual(5, state.last_sequence)
+        self.assertEqual(0, refused_state.last_sequence)
+
+        # (3) No fallback in either direction: legacy-import rejects a current
+        # wire message (discriminator present) and current-read rejects a
+        # legacy wire message (discriminator absent); neither operation ever
+        # returns the other arm's verdict for the same bytes.
+        current_message = copy.deepcopy(self.document["vectors"][0]["message"])
+        live_issuer = trusted_live_issuer(RetainedChannelRegistry(), "channel-349")
+        live_state = live_issuer.issue("channel-349")
+        self.assertEqual(
+            "error",
+            evaluate(current_message, "legacy-import", AUTHORITY, live_state),
+        )
+        self.assertEqual(
+            "pass", evaluate(current_message, "current-read", AUTHORITY, live_state)
+        )
+
+        # (4) The archival-only legacy rule is stated, and no legacy fallback
+        # is added anywhere in the current arm.
+        dacs3 = DACS3.read_text(encoding="utf-8")
+        for text in (
+            "read/import-only compatibility",
+            "New producers MUST NOT emit it",
+            "rejects on this operation without trying",
+            "MUST NOT try the other arm",
+        ):
+            self.assertIn(text, dacs3)
+        self.assertNotIn("legacy fallback", dacs3)
+        self.assertNotIn("fallback to legacy", dacs3)
 
     def test_spec_and_mapping_define_the_accepted_boundary(self):
         dacs3 = DACS3.read_text(encoding="utf-8")

@@ -53,6 +53,10 @@ function signedBytes(kind: string, artifactHash: string): Uint8Array {
 }
 function jcs(obj: any): string { /* RFC 8785 canonical JSON */ }
 function sha256Hex(bytes: Uint8Array | string): string { /* sha256, hex-encoded */ }
+function base64urlNoPad(bytes: Uint8Array): string {
+  // CORE §B.7 SIG-6: unpadded Base64URL that re-encodes to itself.
+  return base64url(bytes).replace(/=+$/, "");
+}
 
 // SDK imports used throughout
 import { Demos } from "@kynesyslabs/demosdk/websdk";
@@ -336,16 +340,17 @@ async function negotiateRFQ(
   transcript.push(await sendChannelMsg(subnet, buyerDemos, {
     channelId: subnetId,
     sequence: 1,
-    type: "counter",
+    type: "offer",
     body: { price: { amount: "85", currency: "USDC" }, deliverable: listing.offering.deliverable },
   }));
 
-  // Turn 2: seller counters 95 USDC
+  // Turn 2: seller counters 95 USDC (refs at the message level, per §8.3.3)
   transcript.push(await sendChannelMsg(subnet, sellerDemos, {
     channelId: subnetId,
     sequence: 2,
     type: "counter",
-    body: { price: { amount: "95", currency: "USDC" }, refs: { repliesTo: 1 } },
+    refs: { repliesTo: 1 },
+    body: { price: { amount: "95", currency: "USDC" } },
   }));
 
   // Turn 3: buyer counters 90 USDC
@@ -353,7 +358,8 @@ async function negotiateRFQ(
     channelId: subnetId,
     sequence: 3,
     type: "counter",
-    body: { price: { amount: "90", currency: "USDC" }, refs: { repliesTo: 2 } },
+    refs: { repliesTo: 2 },
+    body: { price: { amount: "90", currency: "USDC" } },
   }));
 
   // Turn 4: seller accepts
@@ -361,7 +367,8 @@ async function negotiateRFQ(
     channelId: subnetId,
     sequence: 4,
     type: "accept",
-    body: { acceptedTerms: transcript[2].body, refs: { repliesTo: 3 } },
+    refs: { repliesTo: 3 },
+    body: { acceptedTerms: transcript[2].body },
   });
   transcript.push(acceptMsg);
 
@@ -421,20 +428,39 @@ async function negotiateRFQ(
   return { agreement, agreementHash, commitment };
 }
 
-async function sendChannelMsg(subnet: any, sender: Demos, msg: Partial<ChannelMessage>) {
-  const envelope = {
+async function sendChannelMsg(subnet: any, sender: Demos, msg: Partial<CanonicalChannelMessage>) {
+  // DACS-3 §8.3.3 CH-7: the current message is a discriminated
+  // CanonicalChannelMessage. `sender` is the author's canonical primary
+  // ClaimReference (CF-2 byte form) under the registered DACS-1 scheme
+  // registry — e.g. `key:<64 lowercase hex>` for an Ed25519 primary key;
+  // the generic historical `cci:<hex>` spelling is unregistered and refused
+  // on current reads — and the authenticated CH-1 membership binding — not
+  // the message — supplies the member's key and key type.
+  const senderClaim = lookupPrimaryClaim(sender);
+  const unsignedMessage = {
+    canonicalChannelMessageVersion: "1",  // exclusive current-message discriminator (CH-7)
     channelId: msg.channelId,
-    sequence: msg.sequence,
-    sender: { primaryClaim: lookupPrimaryClaim(sender), address: sender.getAddress() },
+    sequence: msg.sequence,                // positive integer, monotonic per channel
+    sender: senderClaim,
     sentAt: Date.now(),
     type: msg.type,
     body: msg.body,
-    refs: msg.refs,
+    ...(msg.refs ? { refs: msg.refs } : {}),
   };
-  const envHash = sha256Hex(jcs(envelope));
+  // DACS-3 §8.3.3 CH-8: exact signed bytes —
+  //   message_hash := lowercase_hex(sha256(UTF8(JCS(unsigned_message))))
+  //   signed_bytes := UTF8("dacs-canonical-channel-message:v1:") || ASCII(message_hash)
+  const messageHash = sha256Hex(jcs(unsignedMessage));   // 64-char lowercase hex, ASCII-encoded
   const signed = {
-    ...envelope,
-    signature: await sender.sign(signedBytes("channelmsg", envHash)),
+    ...unsignedMessage,
+    signature: {
+      signatureVersion: "1",              // version-1 signature envelope (CH-7)
+      signer: senderClaim,                 // same party as `sender` under CORE §B.1/CF-3
+      algorithm: "ed25519",                // matches the authenticated primary key's type
+      value: base64urlNoPad(await sender.sign(
+        concat(utf8("dacs-canonical-channel-message:v1:"), ascii(messageHash)),
+      )),                                  // CORE §B.7 SIG-6 unpadded Base64URL
+    },
   };
 
   // ⚠ Today: subnet.sendMessage({ recipient, content }) is the SDK call.
@@ -724,7 +750,7 @@ The trace is an honest forward projection of what production DACS-on-Demos code 
 
 ### 9.3 SR-4 (L2PS) — channel-message envelope API
 
-**Trace assumption.** `sendChannelMsg(...)` sends a fully-structured envelope (sequence, signature, refs) and the SDK preserves the structure on the receive side.
+**Trace assumption.** `sendChannelMsg(...)` sends a fully-structured `CanonicalChannelMessage` envelope (discriminator, sequence, signature envelope, refs) and the SDK preserves the structure on the receive side.
 
 **Reality today.** `@kynesyslabs/demosdk@4.0.16` exposes the historical Demos message container: no current DACS discriminator, a bare lowercase-hex Ed25519 value, and the frozen `dacs-channelmsg:v1:` raw-digest signed bytes. It is evidence for the explicit read/import arm, not the current DACS type.
 

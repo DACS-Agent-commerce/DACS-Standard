@@ -24,8 +24,21 @@
     "status": "frozen read/import-only; new producers MUST NOT emit",
     "operation": "legacy-import"
   },
-  "count": 46,
-  "hash": "01a618fa2d6beca853df27220d43f9a45327986c2a2b4e0d947e48127c75279e",
+  "correctiveProfileFixture": {
+    "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+    "moduleVersions": {
+      "core": "0.3",
+      "dacs1": "0.8",
+      "dacs2": "0.6",
+      "dacs3": "0.6",
+      "dacs4": "0.8",
+      "dacs5": "0.6"
+    },
+    "authority": "verifier-owned and bound to exact session plus participant identities",
+    "legacyImportExempt": true
+  },
+  "count": 55,
+  "hash": "35bf78ef68087267d711d1a238b2e509ff9bc96726fe080665b8dad09b93ed38",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -36,7 +49,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -45,9 +58,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -57,6 +70,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -68,7 +102,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 2,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -77,9 +111,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "92tCOA5xk6TWaL2ejB_b70CnD2yKDOFlLWoCjwI5R4laI2AK_a7X1RT2KAST1YOOOnc3U9ahvfnlrSEZi7iTDg"
+          "value": "JHrA-br74p2st4c2BEHy25LzGoqfZnMnn-XOisTNZVMMnQRYX6S7dzzzZGEuotw_654e_7LzXlgig-1ES6zHBA"
         }
       },
       "ctx": {
@@ -89,6 +123,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -100,7 +155,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 5,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -109,9 +164,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "7jW1ptfNqesupTLvkQxb4JWcf8cw4ZTwrOYycLVpDKphSr4H_U7ZPM2vOBMSbC3soEZtFaQuhVxet9uMjX5cCg"
+          "value": "eOyov5it8DOJGuDbG0J0Lv_P35_p9TxqzD8pF0ww8kZ5IqvUcVaGbbSxPHj39GIGPVkFkROC1hgm0hpQtwNbCg"
         }
       },
       "ctx": {
@@ -121,6 +176,377 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-missing-authority",
+      "expected": "indeterminate",
+      "operation": "current-read",
+      "note": "missing verifier-owned exact-profile authority refuses before live state issuance",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "current-profile-partial-module-tuple",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "a partial module tuple is malformed before current channel processing",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8"
+        }
+      }
+    },
+    {
+      "name": "current-profile-wrong-release-pin",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "an authenticated different release pin refuses the session",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "ffffffffffffffffffffffffffffffffffffffff",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-duplicate-participant",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "duplicate participant identities make profile authority malformed",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-session-mismatch",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "profile authority for a different session cannot issue live state",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-other",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-identity-mismatch",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "profile authority must bind the exact authenticated participants",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-unauthenticated",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unauthenticated profile material cannot issue live state",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": false,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -132,7 +558,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 3,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -141,9 +567,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "F0LuVeofX7htCa7eDE-mhokW3mJat8k91F_vXZI2-J_AOX4L13sAPZOr0CEOFtcmVTHxX7xcuj050d3JaxlZAw"
+          "value": "d0VZ7BITdCvLtw6YpAqa7OrOHR0pkjmbbML2uaZG13zs3GrsS8T7MQRHwUjPUgxs7YgxziuSpsRrvZn-qQbfCA"
         }
       },
       "ctx": {
@@ -153,6 +579,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -164,7 +611,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 3,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -173,9 +620,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "F0LuVeofX7htCa7eDE-mhokW3mJat8k91F_vXZI2-J_AOX4L13sAPZOr0CEOFtcmVTHxX7xcuj050d3JaxlZAw"
+          "value": "d0VZ7BITdCvLtw6YpAqa7OrOHR0pkjmbbML2uaZG13zs3GrsS8T7MQRHwUjPUgxs7YgxziuSpsRrvZn-qQbfCA"
         }
       },
       "ctx": {
@@ -185,6 +632,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -196,7 +664,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-foreign",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -205,9 +673,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "xfhQ3_ERJXYhQZPwxBUCuiXAYmavRLC5GlC8xvGVunZ1NP3WxeFHXtKIV4gd5FS51gFkKYB2FO0PA_gp56WiDQ"
+          "value": "ooZMbfbB4jYJu6y0_TG_1E1Hr3zLBjxj2c8ybyoRcqLcRJEvgkiljFMNjUDWMM5D0vkZLhvliGqHwdmGkgGJAA"
         }
       },
       "ctx": {
@@ -217,6 +685,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -228,7 +717,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-reused",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -237,9 +726,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "cgu0gWmUGpT62WL1aGRLd64fs9u790BLuFIje6S7-zjPHfXvxtD2sykXBMVkb5E7w_MkZoO_KArfLP_QAg1yBQ"
+          "value": "G4PLDl0iLRFo9LtFNby_MW0ipTg-IF-8W0Bf0oi1A1mssfrDfLEo-yQNQhUizwWHDwhRfiGaxlCvzYdH3JQnDg"
         }
       },
       "ctx": {
@@ -248,6 +737,27 @@
         "priorChannelIds": [
           "channel-reused"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-reused",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -280,6 +790,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -291,7 +822,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 2,
-        "sender": "cci:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+        "sender": "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -300,9 +831,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+          "signer": "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
           "algorithm": "ed25519",
-          "value": "ISgCxrhPEQgVQ0IixZTkq9e8rn-Lzm-JTpDKtIBWJ97uDS2wDhTL8Q68mwWIqrDGX29yXi9LE9DG7M-DFD8RAQ"
+          "value": "4si2bZ5hYllv2GDKly53qZVTjU3gwTQaLc1U0neAq61ZLCRmY0-K3bI2ARw0tKs83m5K9Oak5cINp_u3FfwMDg"
         }
       },
       "ctx": {
@@ -312,6 +843,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -323,7 +875,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 2,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -332,9 +884,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "g26iLA-HC4uX4PvdkzI6HidkNIrQ-bmCjfLr87dK9T3w68xiZqRtWLfNtSILaaTW47Ri82wwuXNbuZQjvhFADA"
+          "value": "rj9uKb2AQFNqpAcNj8mZGasfrjpWKzZAAwmnL2T5Wc2LIIPIxQUGSzO1pOh_iUCNKz80hVe6HioolH_PVkjdAQ"
         }
       },
       "ctx": {
@@ -344,6 +896,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -355,7 +928,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 2,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57?role=buyer",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57?role=buyer",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -364,9 +937,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57?role=author",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57?role=author",
           "algorithm": "ed25519",
-          "value": "BEnA_QikUKWekjnm1VtMl1HEvI3j9fvu6tKdHF4Dn0D-aJH00RJz4puwXAaGw_qEWjcDftxprexQfAN4Zgo3BA"
+          "value": "kZ6AxgHtCkB6DSlUyMVcaRP0o15VoypQD_UYfxByENZa1DzITsKCHRVRbWR651kLByv_FTHy7lPBDol0cXKUBg"
         }
       },
       "ctx": {
@@ -376,6 +949,80 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-generic-cci-sender-refused",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "DACS-1 registers key:, did:, and specific cci-* schemes; the historical generic cci spelling of the same key is malformed on current-read while canonical key: passes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -387,7 +1034,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -396,9 +1043,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -408,6 +1055,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -419,7 +1087,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -428,9 +1096,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ=="
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA=="
         }
       },
       "ctx": {
@@ -440,6 +1108,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -451,7 +1140,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -460,9 +1149,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "+8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "+JmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -472,6 +1161,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -483,7 +1193,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -492,9 +1202,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "93c94bc42fe1f47f84427759f96b345ee73db9bcf20ded6ba81580fdb8320bbd9ec76e17d73622c7383dab9ec120539e5f9adb156b6802c7c3a3603d10e31a0d"
+          "value": "74999718582fa99eeb632c9bb7239b2841c08bce1cf9e0ae2b50d73f531e084a8feaafbd10bc4007836d0b311dc6acce9d9ea88e893d2c3dd6547b4182e56504"
         }
       },
       "ctx": {
@@ -504,6 +1214,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -515,7 +1246,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -524,9 +1255,9 @@
         },
         "signature": {
           "signatureVersion": "2",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -536,6 +1267,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -547,7 +1299,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -556,9 +1308,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "rsa-pss",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -568,6 +1320,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -579,7 +1352,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -588,9 +1361,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ecdsa-secp256k1",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -600,6 +1373,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -632,6 +1426,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -664,6 +1479,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -696,6 +1532,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -728,6 +1585,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -760,6 +1638,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -792,6 +1691,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -824,6 +1744,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -856,6 +1797,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -867,7 +1829,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -876,9 +1838,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "signer": "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
           "algorithm": "ed25519",
-          "value": "zuHAFea0J47WULRqrROoCaMUBBR0pQIT2t3m47vU5MD-v0nh_y23Xz6mG6PqI-qe2bQ6-E-qotFFb1XEBny3DA"
+          "value": "48AcM7OsVoPiWfwfb_GO8s9BeybLGtGKADX1Ge7FykwXJdspjLM44FlAHgiYCfLiqPhEkd-dxbi5GgQwr4VXDw"
         }
       },
       "ctx": {
@@ -888,6 +1850,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -899,7 +1882,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -909,9 +1892,9 @@
         "refs": {},
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "YVSAioTCwAB4dL0gPUTTx5wVGoAjInqO-jS3YGX9uc63dwPEligZCj6j_oA83jMwKCxJsynZwTTVGChnj1K5BQ"
+          "value": "si9vK1S35zDAlHuBKcZo5oietWskngq75sBjN7wLib5MQrxdE0I3AA336WjZm-zEajivDid9Ai1ZROsIYjAICw"
         }
       },
       "ctx": {
@@ -921,6 +1904,81 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-null-refs",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "a present refs member must be an object; JSON null is not absence",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "refs": null,
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "SKAeJGXaL6vehtYi8NrtF_i2uMwEjTUFez7vyTyo8jqGGblEdnm66w7oBnsUQWm-LeTkrRMdryF2PI2RmVQuDA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -932,7 +1990,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -944,9 +2002,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "z0cnqH_-z-XnoaBvUpu2IO1SusEI5wT-EwfQCVP5A_r_Hh12hzabapYKK6L10IG-pM3MURCv9RjD9rw3nsvWBQ"
+          "value": "als5L1cQRIyv3zfippccda1xRzQebfRqZLEd37DTqH3iY78b5K7l5chfvdXwroN1lP0Tuvv-GkwNoDXei7xMCA"
         }
       },
       "ctx": {
@@ -956,6 +2014,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -967,7 +2046,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": true,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -976,9 +2055,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "YUTJo02U4gB5BD8whw1RWMcWZbL7-7eSQnn3VWCVK1eVq8NuQ6Wcv34koa4yKdX1KkkzskJ2zUXg_w6vzDJtCg"
+          "value": "Ic4U2AmclCUZnreaaetzdg-XwsuYD_3plpknr_o2sJP5-76d98oyiHIzs31I0OO78hOOWorpC6Sr-v1GAOmCBg"
         }
       },
       "ctx": {
@@ -988,6 +2067,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -999,7 +2099,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1008,9 +2108,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "s9AhKiU8dMynoVA6WVghYuVk-s2suebvGSOTh8ilabAWRbOAAj4SpK2TlkC5I5atmeJIruqzbWw9zcE3xOJeBw"
+          "value": "Kyt7kygznHPXBaBwLi5qqzCmefNDZVNVaop5avWLWJCoFLSl8u0gY9VApjiZVTcgK6Cn5mvyAAWQK7ELT_z0Cg"
         }
       },
       "ctx": {
@@ -1020,6 +2120,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1031,7 +2152,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1040,9 +2161,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA",
           "keyHint": "must-not-be-ignored"
         }
       },
@@ -1053,6 +2174,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1063,7 +2205,7 @@
       "message": {
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1072,9 +2214,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -1084,6 +2226,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1095,14 +2258,14 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
           "currency": "DEM",
           "price": "10"
         },
-        "signature": "93c94bc42fe1f47f84427759f96b345ee73db9bcf20ded6ba81580fdb8320bbd9ec76e17d73622c7383dab9ec120539e5f9adb156b6802c7c3a3603d10e31a0d"
+        "signature": "74999718582fa99eeb632c9bb7239b2841c08bce1cf9e0ae2b50d73f531e084a8feaafbd10bc4007836d0b311dc6acce9d9ea88e893d2c3dd6547b4182e56504"
       },
       "ctx": {
         "sessionChannelId": "channel-349",
@@ -1111,6 +2274,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1122,7 +2306,7 @@
         "canonicalChannelMessageVersion": "2",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1131,9 +2315,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -1143,6 +2327,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1154,7 +2359,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1169,6 +2374,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1180,7 +2406,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1189,9 +2415,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "kuIlXmHxvRTjVI_HRS7pmpHtSydE_oWqaS9WD9iy1gcxFGa-HvZklhmKTGKd4DixL1f0HkMphpfBbHrZ3pr5Dg"
+          "value": "ZGrws30AjWdl5QWLfuG1ucDJKpM8diL-HwODgoo2yYT8WfhmvLPYA2VO5FeqUTACkqxRWneiTyzqnI9BcQSADw"
         }
       },
       "ctx": {
@@ -1201,6 +2427,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1212,7 +2459,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1221,9 +2468,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "BT-qe1Z5kNpjpoO6grtuWJaKBHUtD2Il-vso8fK__PdDQ_gkmaYNNghdjkfn6iv9M--C1nlf_vo3hx55cVkQBw"
+          "value": "Ogs0zs5D-JWYNrR0mlyTKk3rQ75IiujPUesJN-nkhmmTtuOUBZEeQ0yuyU773DonCh_AE8u4Dq-XOvbbJMinDA"
         }
       },
       "ctx": {
@@ -1233,6 +2480,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1241,7 +2509,7 @@
       "operation": "legacy-import",
       "note": "historical type signs the raw digest, not ASCII lowercase hex",
       "message": {
-        "channelId": "channel-349",
+        "channelId": "chan-session-7",
         "sequence": 1,
         "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
@@ -1250,14 +2518,14 @@
           "currency": "DEM",
           "price": "10"
         },
-        "signature": "ada7f530d2536241c426866b33781bf9e56b55d556a8c2401590a81c211fb066645724b1cfa9f34c7db944b100b8eb73825426cd344847146b72d7f2c472e201"
+        "signature": "0a323f2723389947ce3a133f23de6509c6ff40415e66e66313f90ad142527a9fbc072b328ba6393f96288a9419f9c941efbff2038cef278330e0450071eb2106"
       },
       "ctx": {
-        "sessionChannelId": "channel-349",
+        "sessionChannelId": "chan-session-7",
         "lastSequence": 0,
         "priorChannelIds": [
-          "channel-100",
-          "channel-200"
+          "chan-session-1",
+          "chan-session-2"
         ]
       }
     },
@@ -1267,7 +2535,7 @@
       "operation": "legacy-import",
       "note": "the current domain cannot authenticate a historical message",
       "message": {
-        "channelId": "channel-349",
+        "channelId": "chan-session-7",
         "sequence": 1,
         "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
@@ -1276,14 +2544,14 @@
           "currency": "DEM",
           "price": "10"
         },
-        "signature": "048ad36634f6edbf7bae47a916d741745a5c3c38c88795da55fa955987eba64cf78ee1e14198db976ae29f11018070d2ccbcd1c01b1d6ed5e264528a19a0ba0d"
+        "signature": "c92d7302de27828fc95d06bf47d911818d62d53eda7f194b60951343bef0a78f4258feea3dcea4ec6b49d79b2dc70aa931962802309631e42663ed788141cb07"
       },
       "ctx": {
-        "sessionChannelId": "channel-349",
+        "sessionChannelId": "chan-session-7",
         "lastSequence": 0,
         "priorChannelIds": [
-          "channel-100",
-          "channel-200"
+          "chan-session-1",
+          "chan-session-2"
         ]
       }
     },
@@ -1347,7 +2615,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1359,9 +2627,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "JQs8fct45fFT5JDcADV9r8D_Y7o0pyfMB7T3po7yhElVEh3HYvBYfQ2zshu9JpliXDWOlLDtW8PYuOlkn1Y1BA"
+          "value": "6VowazRxFlB8w4EJyjxfXTye5ZaoNWmMBdnV9HLF3JzCU1ss-LJgCNVoi9TJefDbU7F5MgvxtX8uPa1dBByNAg"
         }
       },
       "ctx": {
@@ -1371,6 +2639,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1382,7 +2671,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1391,9 +2680,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "JQs8fct45fFT5JDcADV9r8D_Y7o0pyfMB7T3po7yhElVEh3HYvBYfQ2zshu9JpliXDWOlLDtW8PYuOlkn1Y1BA"
+          "value": "6VowazRxFlB8w4EJyjxfXTye5ZaoNWmMBdnV9HLF3JzCU1ss-LJgCNVoi9TJefDbU7F5MgvxtX8uPa1dBByNAg"
         }
       },
       "ctx": {
@@ -1403,6 +2692,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1414,7 +2724,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1423,9 +2733,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -1435,6 +2745,27 @@
           "channel-100",
           "channel-200"
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     },
     {
@@ -1446,7 +2777,7 @@
         "canonicalChannelMessageVersion": "1",
         "channelId": "channel-349",
         "sequence": 1,
-        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
         "sentAt": 1900000000000,
         "type": "offer",
         "body": {
@@ -1455,9 +2786,9 @@
         },
         "signature": {
           "signatureVersion": "1",
-          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "algorithm": "ed25519",
-          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
         }
       },
       "ctx": {
@@ -1469,11 +2800,32 @@
         ],
         "authenticatedMembers": [
           {
-            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "claim": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
             "algorithm": "ed25519",
             "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
           }
         ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
       }
     }
   ]

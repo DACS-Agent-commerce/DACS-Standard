@@ -43,11 +43,11 @@ normalization-tolerant job-specific derivation. Its affected document tuple is:
 | Document | Version | Status |
 | --- | --- | --- |
 | [CORE](CORE.md) | 0.3 | Draft corrective candidate |
-| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.7 | Draft corrective candidate |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate |
 | [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft; current composed module |
 | [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft; current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft corrective candidate; current composed module |
-| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft corrective candidate |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.6 | Draft corrective candidate |
 
 The candidate is not an admissible live profile until a coordinated release
 records an annotated tag or immutable merge commit here. At that point every
@@ -63,6 +63,20 @@ and authenticated participant identity. Caller-supplied profile objects and
 opaque labels are not authority. Missing, duplicate, unauthenticated,
 identity-mismatched, or session-mismatched evidence fails closed before any
 protocol action.
+
+This candidate tuple also carries the **DACS-3 v0.6 channel-message wire
+replacement** declared under the same CORE §11.1.2 pre-v1 corrective boundary
+(#349). The current channel message is the discriminated
+`CanonicalChannelMessage` with the exclusive
+`canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature
+envelope, and the byte-exact
+`"dacs-canonical-channel-message:v1:" || ASCII(lowercase-hex sha256(JCS(unsigned_message)))`
+signed-byte framing. The historical Demos wire is archival-only: accepted only
+by the explicitly selected `legacy-import` operation, refused on
+`current-read`, with no fallback between arms and no legacy fallback anywhere.
+This tuple does not claim ordinary cross-minor compatibility with a pre-v0.6
+channel-message profile, and mixed corrective/pre-corrective live operation
+remains unsupported for channel messages exactly as for `jobId`.
 
 ## Qualified implementation claims
 

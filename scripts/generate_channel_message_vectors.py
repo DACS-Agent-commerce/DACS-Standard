@@ -5,6 +5,13 @@ The current DACS wire is deliberately distinct from the historical Demos
 message accepted by the frozen ``channel-message-replay-v0.1.json`` corpus.
 This generator exercises the current wire and the strict, read-only dispatch
 boundary.  It never rewrites the historical corpus.
+
+Current-wire sender/signer identities are canonical registered DACS-1 claims
+(``key:<64hex>`` for Ed25519 primary keys, ``did:`` for the ECDSA/SR-1
+fixtures).  The generic ``cci:<64hex>`` spelling is a frozen historical form:
+it is deliberately absent from the current registry and a current read must
+refuse it (DACS-1 registers ``key:``, ``did:``, and specific ``cci-*``
+schemes only).
 """
 from __future__ import annotations
 
@@ -25,6 +32,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import jcs  # noqa: E402
+from dacs_reference import parse_claim_reference  # noqa: E402
 
 
 OUTPUT = (
@@ -76,76 +84,53 @@ ECDSA_PRIVATE_VALUE = (
     % (SECP256K1_ORDER - 1)
 ) + 1
 ECDSA_PRIVATE = ec.derive_private_key(ECDSA_PRIVATE_VALUE, ec.SECP256K1())
-ALICE_REF = f"cci:{public_hex(ALICE)}"
-BOB_REF = f"cci:{public_hex(BOB)}"
-OUTSIDER_REF = f"cci:{public_hex(OUTSIDER)}"
+# Current-wire sender/signer identities are canonical registered DACS-1
+# claims.  The Ed25519 members use the registered self-authenticating key:
+# scheme; the non-Ed25519 algorithm fixtures use did: references.  The
+# generic cci:<64hex> spelling is not in the current scheme registry.
+ALICE_REF = f"key:{public_hex(ALICE)}"
+BOB_REF = f"key:{public_hex(BOB)}"
+OUTSIDER_REF = f"key:{public_hex(OUTSIDER)}"
 ECDSA_REF = "did:example:dacs-349-ecdsa"
 SR1_REF = "did:example:dacs-349-sr1-root"
 UNRESOLVED_REF = "did:example:unresolved"
-LEGACY_MEMBER_REF = "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
-LEGACY_UNRESOLVED_REF = "did:demos:placeholder"
+# The historical spelling of the Alice fixture key: the frozen corpus era
+# carried Ed25519 primary keys as generic cci:<64hex> claims.  It appears in
+# the generated corpus only inside explicit legacy-import compatibility
+# cases and the current-read refusal regression; the current arm refuses it.
+HISTORICAL_ALICE_REF = f"cci:{public_hex(ALICE)}"
+CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+CURRENT_MODULE_VERSIONS = {
+    "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
+    "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.6",
+}
+CURRENT_PARTICIPANTS = sorted(
+    [ALICE_REF, BOB_REF, ECDSA_REF, SR1_REF, UNRESOLVED_REF],
+    key=lambda value: value.encode("utf-8"),
+)
 
 
-def authenticated_members() -> list[dict]:
-    """Deterministic keys used to construct the verifier-owned test capability."""
+def current_ref(value: str) -> str:
+    """Validate that a current-wire identity is a registered DACS-1 claim."""
 
-    return [
-        {
-            "claim": ALICE_REF,
-            "algorithm": "ed25519",
-            "authorityType": "primary-key",
-            "resolution": "resolved",
-            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
-            "publicKey": public_hex(ALICE),
-        },
-        {
-            "claim": BOB_REF,
-            "algorithm": "ed25519",
-            "authorityType": "primary-key",
-            "resolution": "resolved",
-            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
-            "publicKey": public_hex(BOB),
-        },
-        {
-            "claim": ECDSA_REF,
-            "algorithm": "ecdsa-secp256k1",
-            "authorityType": "primary-key",
-            "resolution": "resolved",
-            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
-            "publicKey": ECDSA_PRIVATE.public_key().public_bytes(
-                serialization.Encoding.X962,
-                serialization.PublicFormat.CompressedPoint,
-            ).hex(),
-        },
-        {
-            "claim": SR1_REF,
-            "algorithm": "sr1-aggregate",
-            "authorityType": "sr1-root",
-            "resolution": "resolved",
-            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
-            "publicKey": public_hex(SR1_ROOT),
-        },
-        {
-            "claim": UNRESOLVED_REF,
-            "algorithm": "ed25519",
-            "authorityType": "primary-key",
-            "resolution": "unavailable",
-        },
-        {
-            "claim": LEGACY_MEMBER_REF,
-            "algorithm": "ed25519",
-            "authorityType": "primary-key",
-            "resolution": "resolved",
-            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
-            "publicKey": LEGACY_MEMBER_REF.removeprefix("cci:"),
-        },
-        {
-            "claim": LEGACY_UNRESOLVED_REF,
-            "algorithm": "ed25519",
-            "authorityType": "primary-key",
-            "resolution": "unavailable",
-        },
-    ]
+    return parse_claim_reference(value).canonical
+
+
+# Fail closed at generation time: every current-wire identity must parse
+# under the shared current scheme registry (scripts/dacs_reference.py), and
+# the historical generic cci:<64hex> spelling must NOT.  Current vectors and
+# the current membership authority never carry unregistered claims.
+for _current_identity in (
+    ALICE_REF, BOB_REF, OUTSIDER_REF, ECDSA_REF, SR1_REF, UNRESOLVED_REF,
+):
+    current_ref(_current_identity)
+try:
+    parse_claim_reference(HISTORICAL_ALICE_REF)
+except ValueError:
+    pass
+else:  # pragma: no cover - generation authoring guard
+    raise RuntimeError("generic cci: must stay unregistered for current reads")
+del _current_identity
 
 
 def current_payload(unsigned: dict, domain: bytes, framing: str) -> bytes:
@@ -281,8 +266,22 @@ def context(**updates: object) -> dict:
     return value
 
 
+def profile_admission(session_id: str, **updates: object) -> dict:
+    value = {
+        "source": "fixture-verifier-owned",
+        "authenticated": True,
+        "sessionId": session_id,
+        "participantIdentities": copy.deepcopy(CURRENT_PARTICIPANTS),
+        "releasePin": CURRENT_RELEASE_PIN,
+        "moduleVersions": copy.deepcopy(CURRENT_MODULE_VERSIONS),
+    }
+    value.update(copy.deepcopy(updates))
+    return value
+
+
 def case(name: str, expected: str, message: dict, *, note: str,
-         ctx: dict | None = None, operation: str = "current-read", **extra: object) -> dict:
+         ctx: dict | None = None, operation: str = "current-read",
+         omit_profile_admission: bool = False, **extra: object) -> dict:
     selected_context = copy.deepcopy(ctx if ctx is not None else context())
     value = {
         "name": name,
@@ -292,6 +291,10 @@ def case(name: str, expected: str, message: dict, *, note: str,
         "message": copy.deepcopy(message),
         "ctx": selected_context,
     }
+    if operation == "current-read" and not omit_profile_admission:
+        value["profileAdmission"] = profile_admission(
+            selected_context.get("sessionChannelId", "")
+        )
     value.update(copy.deepcopy(extra))
     return value
 
@@ -351,6 +354,7 @@ def build_vectors() -> list[dict]:
         unsigned_message(), key=BOB, signer=BOB_REF
     )
     empty_refs = sign_current(unsigned_message(refs={}))
+    null_refs = sign_current(unsigned_message(refs=None))
     invalid_replies_to = sign_current(unsigned_message(refs={"repliesTo": True}))
     boolean_sequence = sign_current(unsigned_message(sequence=True))
     empty_channel = sign_current(unsigned_message(channelId=""))
@@ -372,10 +376,18 @@ def build_vectors() -> list[dict]:
         unsigned_message(), domain=LEGACY_DOMAIN, framing="hex"
     )
 
+    # The two synthetic legacy-wire negatives are historical-arm messages:
+    # they run on the historical audit channel with the historical spelling
+    # of the Alice key, so their failures prove framing/domain confusion and
+    # not an unresolvable sender.
+    legacy_ctx = context(
+        sessionChannelId="chan-session-7",
+        priorChannelIds=["chan-session-1", "chan-session-2"],
+    )
     legacy_unsigned = {
-        "channelId": "channel-349",
+        "channelId": "chan-session-7",
         "sequence": 1,
-        "sender": ALICE_REF,
+        "sender": HISTORICAL_ALICE_REF,
         "sentAt": NOW,
         "type": "offer",
         "body": {"currency": "DEM", "price": "10"},
@@ -421,6 +433,16 @@ def build_vectors() -> list[dict]:
     sr1_wrong_domain = sign_current_sr1(sr1_unsigned, domain=LEGACY_DOMAIN)
     sr1_raw_framing = sign_current_sr1(sr1_unsigned, framing="raw")
 
+    # Regression for the scheme-registry boundary: an otherwise well-formed
+    # current message whose Ed25519 sender/signer is spelled with the
+    # historical generic cci:<64hex> scheme is malformed on current-read —
+    # DACS-1 registers key:, did:, and specific cci-* schemes only, and the
+    # canonical key:<pubkeyhex> spelling of the same key passes.
+    generic_cci_current = sign_current(
+        unsigned_message(sender=HISTORICAL_ALICE_REF),
+        signer=HISTORICAL_ALICE_REF,
+    )
+
     return [
         case("canonical-valid-first", "pass", valid,
              note="current discriminator, SIG-6 value, hex-digest framing and fresh sequence"),
@@ -428,6 +450,42 @@ def build_vectors() -> list[dict]:
              ctx=context(lastSequence=1), note="strictly increasing sequence"),
         case("canonical-valid-sequence-gap", "pass", valid_gap,
              ctx=context(lastSequence=2), note="CH-6 requires monotonicity, not contiguity"),
+        case("current-profile-missing-authority", "indeterminate", valid,
+             omit_profile_admission=True,
+             note="missing verifier-owned exact-profile authority refuses before live state issuance"),
+        case("current-profile-partial-module-tuple", "error", valid,
+             profileAdmission=profile_admission(
+                 "channel-349",
+                 moduleVersions={
+                     key: value for key, value in CURRENT_MODULE_VERSIONS.items()
+                     if key != "dacs5"
+                 },
+             ),
+             note="a partial module tuple is malformed before current channel processing"),
+        case("current-profile-wrong-release-pin", "fail", valid,
+             profileAdmission=profile_admission("channel-349", releasePin="f" * 40),
+             note="an authenticated different release pin refuses the session"),
+        case("current-profile-duplicate-participant", "error", valid,
+             profileAdmission=profile_admission(
+                 "channel-349",
+                 participantIdentities=CURRENT_PARTICIPANTS + [ALICE_REF],
+             ),
+             note="duplicate participant identities make profile authority malformed"),
+        case("current-profile-session-mismatch", "fail", valid,
+             profileAdmission=profile_admission("channel-other"),
+             note="profile authority for a different session cannot issue live state"),
+        case("current-profile-identity-mismatch", "fail", valid,
+             profileAdmission=profile_admission(
+                 "channel-349",
+                 participantIdentities=[
+                     identity for identity in CURRENT_PARTICIPANTS
+                     if identity != BOB_REF
+                 ] + [OUTSIDER_REF],
+             ),
+             note="profile authority must bind the exact authenticated participants"),
+        case("current-profile-unauthenticated", "error", valid,
+             profileAdmission=profile_admission("channel-349", authenticated=False),
+             note="unauthenticated profile material cannot issue live state"),
         case("canonical-duplicate-sequence", "fail", duplicate,
              ctx=context(lastSequence=3), note="duplicate sequence is a replay"),
         case("canonical-decreasing-sequence", "fail", duplicate,
@@ -449,6 +507,8 @@ def build_vectors() -> list[dict]:
         case("canonical-qualified-member-identity", "pass", qualified_member,
              ctx=context(lastSequence=1),
              note="CF-3 ignores advisory qualifiers when sender, signer and authenticated membership identities are matched"),
+        case("canonical-generic-cci-sender-refused", "error", generic_cci_current,
+             note="DACS-1 registers key:, did:, and specific cci-* schemes; the historical generic cci spelling of the same key is malformed on current-read while canonical key: passes"),
         case("canonical-tampered-body", "fail", tampered,
              note="message-body mutation breaks the signature"),
         case("canonical-padded-base64url", "error", padded,
@@ -485,6 +545,8 @@ def build_vectors() -> list[dict]:
              note="signature.signer must canonically equal sender"),
         case("canonical-empty-refs-object", "pass", empty_refs,
              note="the optional refs object may omit its optional repliesTo member"),
+        case("canonical-null-refs", "error", null_refs,
+             note="a present refs member must be an object; JSON null is not absence"),
         case("canonical-boolean-replies-to", "error", invalid_replies_to,
              note="repliesTo is a positive integer and excludes JSON booleans"),
         case("canonical-boolean-sequence", "error", boolean_sequence,
@@ -506,9 +568,11 @@ def build_vectors() -> list[dict]:
         case("cross-domain-legacy-to-current", "fail", current_legacy_domain,
              note="the historical domain cannot authenticate a current message"),
         case("mixed-legacy-hex-digest-framing", "fail", legacy_hex_framing,
+             ctx=copy.deepcopy(legacy_ctx),
              operation="legacy-import",
              note="historical type signs the raw digest, not ASCII lowercase hex"),
         case("cross-domain-current-to-legacy", "fail", legacy_current_signature,
+             ctx=copy.deepcopy(legacy_ctx),
              operation="legacy-import",
              note="the current domain cannot authenticate a historical message"),
         case(
@@ -565,6 +629,12 @@ def render() -> str:
             "vectorsHash": LEGACY_VECTOR_HASH,
             "status": "frozen read/import-only; new producers MUST NOT emit",
             "operation": "legacy-import",
+        },
+        "correctiveProfileFixture": {
+            "releasePin": CURRENT_RELEASE_PIN,
+            "moduleVersions": CURRENT_MODULE_VERSIONS,
+            "authority": "verifier-owned and bound to exact session plus participant identities",
+            "legacyImportExempt": True,
         },
         "count": len(vectors),
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

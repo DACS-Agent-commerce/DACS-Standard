@@ -31,6 +31,49 @@ consumer-model trial, or real-agent trace is included in this package.
   existing protocol/conformance review pilot. It does not evaluate a model loop,
   tool-use policy, session, Harbor adapter, or consumer agent.
 
+## One-time setup before offline evaluation
+
+The runtime pin is **exactly CPython 3.12.6**, not any Python 3.12 release.
+The runner refuses 3.12.14 and other unvalidated versions before executing a
+case. Keep that pin when reproducing the historical evidence.
+
+Prepare the public Git objects and runtime before the offline evaluation phase.
+These setup commands may download public source and dependencies. With `uv`
+already installed, run from this package directory; choose fresh directories
+outside the candidate checkout:
+
+```sh
+PILOT_CANDIDATE=/absolute/path/to/new-pilot-candidate
+PILOT_VENV=/absolute/path/to/new-pilot-venv
+
+git init "$PILOT_CANDIDATE"
+git -C "$PILOT_CANDIDATE" remote add origin https://github.com/DACS-Agent-commerce/DACS-Standard.git
+git -C "$PILOT_CANDIDATE" fetch --depth=1 origin 37010daa0a7c5900afcda6e314f1ae53f3afeb7b
+git -C "$PILOT_CANDIDATE" checkout --detach 37010daa0a7c5900afcda6e314f1ae53f3afeb7b
+git -C "$PILOT_CANDIDATE" fetch --depth=1 origin ff8c289d22d07e09a1733b1ae7791100bfdbd923
+git -C "$PILOT_CANDIDATE" cat-file -e ff8c289d22d07e09a1733b1ae7791100bfdbd923^{commit}
+
+uv python install 3.12.6
+uv venv --python 3.12.6 "$PILOT_VENV"
+uv pip install --python "$PILOT_VENV/bin/python" -r requirements.txt
+"$PILOT_VENV/bin/python" -c 'import platform, cryptography; assert platform.python_implementation() == "CPython"; assert platform.python_version() == "3.12.6"; assert cryptography.__version__ == "46.0.5"'
+git -C "$PILOT_CANDIDATE" status --porcelain
+```
+
+The final Git status must be empty. A shallow candidate fetch alone does not
+supply the required base object; the separate base fetch above is intentional.
+An existing clean checkout with both exact objects and the named origin is
+also valid. An already available CPython 3.12.6 environment with the pinned
+dependencies may replace the `uv` setup.
+
+After setup, run locally without network:
+
+```sh
+PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh verify-historical "$PILOT_CANDIDATE"
+PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh reproduce "$PILOT_CANDIDATE" /absolute/path/to/new-output
+PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh verify-portable "$PILOT_CANDIDATE" /absolute/path/to/new-output/results.json
+```
+
 ## Author/reviewer input
 
 Use a clean checkout of the named DACS Standard origin at the exact candidate

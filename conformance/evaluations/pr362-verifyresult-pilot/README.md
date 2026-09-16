@@ -25,7 +25,7 @@ readiness.
 
 The checkout must be clean. The runner performs no network or live-system
 operation and writes only to the fresh output directory supplied by the caller.
-Set `PYTHON_BIN` when `python3` is not the recorded interpreter.
+Set `PYTHON_BIN` when `python3` is not the recorded interpreter. See [Task.md one-time setup](Task.md#one-time-setup-before-offline-evaluation) for an exact CPython 3.12.6 environment and both required Git objects, including the separate base fetch for shallow checkouts.
 
 ## Commands
 

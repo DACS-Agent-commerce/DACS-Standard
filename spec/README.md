@@ -6,7 +6,7 @@ This directory holds the authoritative DACS standard, published as a **Core docu
 |------|-------------|
 | [`CORE.md`](./CORE.md) | **Foundation.** Framing (§1–5), Demos production mapping (§A), global terminology + shared types + the universal signature/canonical-form scheme (§B), composed open standards (§C), governance & versioning (§11), the unified threat model (§12), the glossary (§13), and the conformance frame (§14). Read this to implement the shared model. |
 | [`DACS-1-IDENTIFY.md`](./DACS-1-IDENTIFY.md) | Identity claims, identity bundles, signed/anchored listings, discovery (chapter 6). |
-| [`DACS-2-VET.md`](./DACS-2-VET.md) | Verification methods, recipe registry, the vet-credentials phase (chapter 7). |
+| [`DACS-2-VET.md`](./DACS-2-VET.md) | Verification methods, recipe registry, and the `vet-credentials` and `vet-credentials-provenanced` phases (chapter 7). |
 | [`DACS-3-NEGOTIATE.md`](./DACS-3-NEGOTIATE.md) | Private negotiation patterns and agreement commitment (chapter 8). |
 | [`DACS-4-SETTLE.md`](./DACS-4-SETTLE.md) | Payment rail registry, payment and delivery phases, settlement evidence (chapter 9). |
 | [`DACS-5-VERIFY.md`](./DACS-5-VERIFY.md) | Session record, attestation bundle, reputation derivation (chapter 10). |

@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler, and registers the structurally distinct `vet-credentials-provenanced` phase. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -636,7 +636,7 @@ type PhaseStep = {
 }
 type PhaseType =
   // DACS-2
-  | "vet-credentials"
+  | "vet-credentials" | "vet-credentials-provenanced"
   // DACS-3
   | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
   | "negotiate-sealed-envelope-complete" | "negotiate-sealed-envelope-procurement-complete"
@@ -657,6 +657,7 @@ Per-kind parameter shapes are normative in the owning chapter:
 | Phase kind | Parameters | Owning chapter |
 | --- | --- | --- |
 | vet-credentials | none | 7 |
+| vet-credentials-provenanced | none; the complete `2 × |C|` session-specific authorization set is supplied through the phase invocations, not unsigned listing parameters | 7 |
 | negotiate-fixed-price | none | 8 |
 | negotiate-rfq | {maxTurns, timeoutSec, channelSubnet?, rfqInitiator?} | 8 |
 | negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
@@ -673,6 +674,12 @@ Per-kind parameter shapes are normative in the owning chapter:
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
 | rate | optional {required?: boolean} | 10 |
 
+**Provenanced Vet PhaseStep cardinality.** If a pipeline contains
+`vet-credentials-provenanced`, it MUST contain exactly one such step and no
+legacy `vet-credentials` step. That one step fans out internally to the
+per-publisher/candidate-pair invocations required by DACS-2 PVPC-1. Legacy-only
+pipelines retain their existing PIPE-5 repetition semantics; this minor does
+not retroactively impose an exact-one rule on `vet-credentials`.
 For a new session under the current DACS-1 v0.8 / DACS-3 v0.6 profile, a sealed-envelope listing MUST use one of the two `*-complete` negotiation phases and `commit-selection-bound-agreement`. The two earlier sealed phase kinds remain valid signed historical inputs and may complete an already pinned session, but they cannot establish candidate-set completeness and MUST NOT be selected for a new current-profile session. This is paired with the structurally distinct new phase and agreement types so an older reader rejects a current complete-profile listing rather than silently ignoring its security requirements.
 
 **Canonical serialisation and signature**
@@ -841,7 +848,9 @@ type ListingValidationDisposition =
 4. canonical form well-formed and signature verifies;
 5. revocation check per RB-4..RB-6 returns `absent`;
 6. `seller.identity` bundle conformant per §6.3.2;
-7. pipeline references valid phase types per DACS-3/4/5;
+7. pipeline references valid phase types per DACS-3/4/5 and, when it contains
+   `vet-credentials-provenanced`, contains exactly one such step and no legacy
+   Vet step as required above;
 8. if pipeline contains any concrete pay-* phase or `pay-alternative`,
    `acceptedRails` MUST be present and
    non-empty and the reader MUST run listing-time rail resolution under

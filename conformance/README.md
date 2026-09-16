@@ -39,6 +39,11 @@ For a runnable five-stage builder path, see the dependency-free
 artifact chain, emits canonical bytes/hashes/signature payloads/refs, and executes
 five deterministic failure examples without importing a live substrate SDK.
 
+The [`interop/`](./interop/) directory carries the non-normative issue-270
+`dacs-adapter/1` proposal. It pins the exact Standard sources selected for an
+offline cross-run handoff, exposes only operations backed by existing Standard
+primitives, and records the unresolved F5 byte-contract mapping as a blocker.
+
 Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 
 ## Coverage

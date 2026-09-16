@@ -1,0 +1,328 @@
+{
+  "schema": "dacs-adapter-release-proposal/1",
+  "status": "proposal-non-normative",
+  "issue": 270,
+  "protocol": {
+    "id": "dacs-adapter/1",
+    "repository": "https://github.com/cX3po/pathos-dacs-ref",
+    "revision": "1297dd5f79d2e1305bfd4e8e4b2fa6830bc72eda",
+    "path": "conformance/shared-suite/ADAPTER-PROTOCOL.md",
+    "sha256": "ce6fd9a13e385a0f41edc2ade231920a36c5960e5c3db9f43ab5a52e9d17e844",
+    "gitBlob": "d44260a06d5e4dfc74c2f36f5bbe75457f94cbb6",
+    "exportedCompanionInputs": [
+      {
+        "path": "conformance/shared-suite/PINNED-SOURCES.json",
+        "sha256": "f20256582b214f0bd17a3ef6ca3f8252984ec6551ec1946479911a04e4c60a49",
+        "gitBlob": "64a2c723914a43f5d6eb628c7cd5fe7140b31112"
+      },
+      {
+        "path": "conformance/shared-suite/adapter-contract.mjs",
+        "sha256": "5c56269d39c239069282aca2714d57e9247edc994215becb19be97505b530639",
+        "gitBlob": "150ded1dc0008f7be1b61b1fed1618573c8fa179"
+      },
+      {
+        "path": "conformance/shared-suite/reference-adapter.mjs",
+        "sha256": "a56be205546115a7cd5bf7da4db404af9cf85771f50131418035af94e975eecc",
+        "gitBlob": "cb0c781e120657b062157607b98f81f92f91b5d8"
+      },
+      {
+        "path": "conformance/shared-suite/seed-corpus.mjs",
+        "sha256": "0fabf44fb1475b236f884139dc147e57ad8885fc56dd72466adc800ff40b267e",
+        "gitBlob": "07e6036bbf6ac3a59b02b1c0eb69ea08b47a860b"
+      },
+      {
+        "path": "conformance/shared-suite/ADAPTER.md",
+        "sha256": "8bb912956f4c03ec2ffef8fd647765e5b813a938655bea0427970282247f91ff",
+        "gitBlob": "9bdb3c16f366c8800f5cb1444367fe5ddb03e2d3"
+      },
+      {
+        "path": "conformance/partner-kit/sign.mjs",
+        "sha256": "5873bef2e3c0446f2b96c55d7a23713f2ae215c2dfa7e3273f011945cc48c303",
+        "gitBlob": "83ae6128e052650a5c48c2ec8dc423e4aff90322"
+      },
+      {
+        "path": "conformance/partner-kit/domain-sep.mjs",
+        "sha256": "666dc2044bc75b8e6d20098443ef31d8c7f672475eb0d51817f1f8a2cb673893",
+        "gitBlob": "0c6c0b83e725763a67d1f77c4112e97d800eb304"
+      }
+    ]
+  },
+  "adapter": {
+    "name": "dacs-standard-primitives",
+    "version": "issue-270-proposal.1",
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "source": {
+      "path": "scripts/dacs_adapter.py",
+      "sha256": "e5f5ed65a9e42306e96f1d314d25ba73e6b48794f8ad01647115b454ad092ecb",
+      "gitBlob": "31f6f1933a619c9267c722936109942378dfc82d"
+    },
+    "wrappedStandard": {
+      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "tree": "8cab6c094a360ded90537b34d3e0a9a4c376f5c2",
+      "primitives": [
+        {
+          "path": "scripts/jcs.py",
+          "sha256": "db34b07bc8c3b975f1b83ea78bf6ecd302c2d23ea743d1cfae6cf95fcdc3449a",
+          "gitBlob": "021b816fb427845a2356110aaf01bf45dc3f2155"
+        },
+        {
+          "path": "scripts/validate_conformance_vectors.py",
+          "sha256": "6f0e4eca76613d49b02f89de14d5c1e21572dae711220115ba5c4b68104693d6",
+          "gitBlob": "0517d588199279ecfb1884b3c298aced2ddf2145"
+        },
+        {
+          "path": "scripts/run_lifecycle_walkthrough.py",
+          "sha256": "f2ecbb41cadfe33011c8a79bee93b65d7d6bf2cf1c5ccc0549b6fceef484dcb6",
+          "gitBlob": "7b0ddbf837a09c397b958996219634a75a8e6cc0"
+        },
+        {
+          "path": "scripts/specsource.py",
+          "sha256": "96a74cea62ddd311a0ba3aaec5279beca68cc0c152d50d6439d3016a7d0c86d9",
+          "gitBlob": "7054c6b790c35f3e5a02c82235f96b79c6659da3"
+        }
+      ]
+    },
+    "limitations": [
+      "verifyBundle and legacySignatureValueImport are not exposed by this release",
+      "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+      "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
+      "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
+      "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
+      "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry"
+    ]
+  },
+  "sources": {
+    "canonicalization": {
+      "path": "conformance/vectors/security/canonical-json-v0.1.json",
+      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "sha256": "1e355678b6feddc5dc54611eb0f61e12b9707a1506a3da9e4f679ab9f796c941",
+      "gitBlob": "c64834d5df9aaed5f7b626486f3cc79decfeba32"
+    },
+    "signedScope": {
+      "path": "conformance/vectors/dacs-v0.1-happy-path.json",
+      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "sha256": "ebb618d5d19d632c3a872205a24a9345fbf89eff58d14305d4b7a3c25cab0912",
+      "gitBlob": "bf1b8c4704a41111acd1bb26e49d682c3fd82624"
+    },
+    "sig6": {
+      "path": "conformance/vectors/security/signature-value-encoding-v0.1.json",
+      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "sha256": "b98234f14d6931d85c6ed1fc83e80a4ad00ea4feb69abb6d5ee23db95ea2a0bf",
+      "gitBlob": "27c837ccbb75ed3b1d9d34474e272d47326969f1"
+    },
+    "domainSeparatedSigning": {
+      "path": "conformance/vectors/golden.json",
+      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "sha256": "5c691b29ffe61a5667b9554b7a19c50039b1078f69d5c3fa14b86628d7bdb30f",
+      "gitBlob": "1562f75c233df815c13bffc8b451cee4fd240964"
+    }
+  },
+  "families": [
+    {
+      "id": "canonicalization",
+      "operation": "canonicalize",
+      "status": "executable",
+      "source": "canonicalization",
+      "cases": [
+        {
+          "caseId": "fraction-one-half",
+          "sourceExpected": "pass",
+          "expected": {"hex": "302e35"}
+        },
+        {
+          "caseId": "fraction-one-e-minus-seven",
+          "sourceExpected": "pass",
+          "expected": {"hex": "31652d37"}
+        },
+        {
+          "caseId": "maximum-dacs-magnitude",
+          "sourceExpected": "pass",
+          "expected": {"hex": "39303037313939323534373430393931"}
+        },
+        {
+          "caseId": "nfd-string-value-normalizes-to-nfc",
+          "sourceExpected": "pass",
+          "expected": {"hex": "7b226c6162656c223a22636166c3a9227d"}
+        },
+        {
+          "caseId": "member-name-order-is-utf16",
+          "sourceExpected": "pass",
+          "expected": {"hex": "7b22f0908080223a322c22ee8080223a317d"}
+        },
+        {
+          "caseId": "number-over-dacs-magnitude",
+          "sourceExpected": "fail",
+          "sourceExpectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+          "expectedErrorCode": "OPERATION_FAILED"
+        }
+      ],
+      "unsupportedSourceCases": [
+        {
+          "caseId": "bigint-native-type",
+          "sourceExpected": "fail",
+          "sourceExpectedErrorCode": "UNSUPPORTED-NATIVE-TYPE",
+          "adapterErrorCode": "UNSUPPORTED_CASE",
+          "reason": "Python int also represents ordinary JSON integers, so decoding the tag cannot preserve the host-language BigInt type tested by the source case. Treating an opaque Python object as an executed expected rejection would manufacture coverage. The current shared runner converts operation errors to THROWN, so it also needs a case-level abstention result before this source case can enter a cross-run."
+        }
+      ]
+    },
+    {
+      "id": "signed-scope",
+      "operation": "signedScopeHash",
+      "status": "executable",
+      "source": "signedScope",
+      "cases": [
+        {
+          "caseId": "settlement-htlc-release",
+          "kind": "SettlementEvidence",
+          "sourceExpected": "sha256:9c5499b0a9815a26ec031cb1601dc758e750f461f87935a00acb4bd05efab2f1",
+          "expected": {"hex": "9c5499b0a9815a26ec031cb1601dc758e750f461f87935a00acb4bd05efab2f1"}
+        },
+        {
+          "caseId": "attestation-bundle-happy",
+          "kind": "AttestationBundle",
+          "sourceExpected": "sha256:cb8756ff512c43488e9d51e1fb1efeb20f45af4b577460dad71c03d489a19f54",
+          "expected": {"hex": "cb8756ff512c43488e9d51e1fb1efeb20f45af4b577460dad71c03d489a19f54"}
+        }
+      ]
+    },
+    {
+      "id": "sig6-wire",
+      "operation": "signatureValueVerdict",
+      "status": "executable",
+      "source": "sig6",
+      "cases": [
+        {
+          "caseId": "canonical-base64url-unpadded",
+          "sourceExpected": "accept",
+          "expected": "ACCEPT"
+        },
+        {
+          "caseId": "standard-base64-same-bytes-rejected",
+          "sourceExpected": "reject",
+          "expected": "REJECT"
+        },
+        {
+          "caseId": "padded-base64url-same-bytes-rejected",
+          "sourceExpected": "reject",
+          "expected": "REJECT"
+        },
+        {
+          "caseId": "embedded-whitespace-rejected",
+          "sourceExpected": "reject",
+          "expected": "REJECT"
+        },
+        {
+          "caseId": "impossible-length-rejected",
+          "sourceExpected": "reject",
+          "expected": "REJECT"
+        },
+        {
+          "caseId": "non-zero-residual-bits-rejected",
+          "sourceExpected": "reject",
+          "expected": "REJECT"
+        }
+      ],
+      "excludedSourceCases": [
+        {
+          "caseId": "canonical-wire-wrong-ed25519-length-rejected",
+          "reason": "dacs-adapter/1 F3 is algorithm-independent; Ed25519 length belongs to the algorithm verifier"
+        },
+        {
+          "caseId": "declared-standard-base64-legacy-import",
+          "reason": "migration-only input; legacySignatureValueImport is not advertised"
+        },
+        {
+          "caseId": "declared-lowercase-hex-legacy-import",
+          "reason": "dacs-adapter/1 defines only base64 as a legacy source encoding"
+        },
+        {
+          "caseId": "undeclared-legacy-encoding-rejected",
+          "reason": "migration-only input; legacySignatureValueImport is not advertised"
+        }
+      ]
+    },
+    {
+      "id": "domain-separated-signing",
+      "operations": ["domainSepSign", "domainSepVerify"],
+      "status": "bounded-operation-profile",
+      "advertisedFamily": false,
+      "profile": "listing-single-hash-golden-v1",
+      "source": "domainSeparatedSigning",
+      "controlSource": {
+        "path": "tests/test_flow_trace_signing.py",
+        "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+        "sha256": "e5cde864b5b0a25ef8a58b1f7dc3106d19c6cd2482fe8d6209a571819e0a6564",
+        "gitBlob": "042f83f9494f942a449967b5fe40931651dad378",
+        "lines": "38-42"
+      },
+      "cases": [
+        {
+          "caseId": "signing::sign-ascii-hex-hash",
+          "operation": "domainSepSign",
+          "separator": "dacs-listing:v1:",
+          "artifactHashHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313737",
+          "privateKeyBytesHex": "1111111111111111111111111111111111111111111111111111111111111111",
+          "sourceExpected": "fppio4yI01PfnS1TVphR4g1PYsEAdc8Jt1jhmK96yhWfX7vs41z3WuOacKuJhl0NfgzdLOaOh9VcsA4B3rhDBA",
+          "expected": {"hex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304"}
+        },
+        {
+          "caseId": "signing::verify-ascii-hex-hash",
+          "operation": "domainSepVerify",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313737",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": true
+        },
+        {
+          "caseId": "signing::reject-mismatched-ascii-hex-hash",
+          "operation": "domainSepVerify",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313736",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "derivation": "the final lowercase-hex digit differs from the pinned Listing artifact hash while the pinned signature is unchanged",
+          "expected": false
+        },
+        {
+          "caseId": "signing::unknown-separator-false",
+          "operation": "domainSepVerify",
+          "separator": "not-a-dacs-separator:v1:",
+          "messageBytesHex": "32656463373063336238326436636338323033393431656431326165363139333965396231643834343032623933663434336631616532616564616564313737",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": false
+        }
+      ],
+      "primitiveControls": [
+        {
+          "caseId": "signing::raw-digest-does-not-verify-golden-signature",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "signatureBytesHex": "7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "expected": false,
+          "scope": "existing Standard Ed25519 primitive only; excluded from adapter execution because raw digest bytes are outside the bounded message grammar"
+        }
+      ],
+      "unsupportedCases": [
+        {
+          "caseId": "signing::valid-raw-digest-profile-boundary",
+          "operation": "domainSepVerify",
+          "separator": "dacs-listing:v1:",
+          "messageBytesHex": "2edc70c3b82d6cc8203941ed12ae61939e9b1d84402b93f443f1ae2aedaed177",
+          "signatureBytesHex": "241763d990b8ba3b04270108cdeb598a3aa44b26b8b79079086a45fa3a7e1c08ca9fb07bc66b85ec3cb9aa81007b8dc0d22e69647877072ccfe19507c8e1d70a",
+          "publicKeyHex": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "primitiveVerification": true,
+          "adapterErrorCode": "UNSUPPORTED_CASE",
+          "reason": "a cryptographically valid signature cannot admit raw digest bytes into the bounded ASCII lowercase-hex message profile"
+        }
+      ],
+      "genericFamilyMilestone": "incomplete",
+      "remainingBlocker": "The bounded profile executes only the pinned Listing primitive bytes. Other registered separators, composite payloads, and signing inputs return UNSUPPORTED_CASE; the shared runner currently converts that operation error to THROWN instead of a case-level ABSTAIN.",
+      "requiredHandoffQuestion": "Will the shared runner classify the adapter's explicit UNSUPPORTED_CASE error as ABSTAIN rather than THROWN, so BigInt host-type inputs and F5 cases outside listing-single-hash-golden-v1 remain unscored?"
+    }
+  ]
+}

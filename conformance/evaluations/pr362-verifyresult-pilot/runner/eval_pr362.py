@@ -36,6 +36,52 @@ EXPECTED_ORIGIN = "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
 EXPECTED_CASES_SHA256 = "cc07a0f2c6ca251a7afb1540d9b61780221eeec1c3639836c32294f995640f57"
 EXPECTED_PYTHON = "3.12.6"
 EXPECTED_CRYPTOGRAPHY = "46.0.5"
+EVALUATION_ID = "dacs-standard-pr362-verifyresult-pilot-v1"
+RESULT_SCHEMA_VERSION = "2"
+BUNDLE_SCHEMA_VERSION = "2"
+ASSURANCE_BOUNDARY = (
+    "deterministic object-model evaluation; network and filesystem isolation are "
+    "external execution assumptions, not observations made by this runner"
+)
+LEGACY_ASSURANCE_BOUNDARY = (
+    "offline deterministic object-model evaluation; no network, chain, payment, "
+    "delivery, or production effects"
+)
+REQUIRED_BUNDLE_FILES = {
+    "results.json", "grader-calibration.json", "reproducibility-manifest.json",
+}
+CANDIDATE_DIGEST_PATHS = {
+    "candidate/tests/test_presence_only_claim_vectors.py":
+        Path("tests/test_presence_only_claim_vectors.py"),
+    "candidate/scripts/generate_presence_only_claim_vectors.py":
+        Path("scripts/generate_presence_only_claim_vectors.py"),
+    "candidate/spec/CORE.md": Path("spec/CORE.md"),
+    "candidate/spec/DACS-2-VET.md": Path("spec/DACS-2-VET.md"),
+    "candidate/conformance/vectors/security/presence-only-claim-requirement-v0.7.json":
+        Path("conformance/vectors/security/presence-only-claim-requirement-v0.7.json"),
+}
+EXECUTION_ASSUMPTIONS = [
+    "The caller runs the evaluation without network access or live-system access.",
+    "The caller prevents concurrent mutation of the candidate checkout and packaged inputs.",
+]
+RUNNER_LIMITATIONS = [
+    "The portable runner is not a network sandbox.",
+    "The portable runner is not a filesystem sandbox and cannot observe writes outside paths it checks.",
+]
+ORACLE_SCOPE = (
+    "Independent stdlib canonicalizer restricted to recursively safe ASCII strings/member "
+    "names, booleans/null, arrays/objects, and integer JSON numbers with |n| <= 2^53-1. "
+    "Floats and non-ASCII are rejected. In this domain Python Unicode sorting equals JCS "
+    "UTF-16 sorting and stdlib integer serialization equals JCS."
+)
+MANIFEST_LIMITATIONS = [
+    "Narrow pilot only; PR #362 changes additional Standard surfaces that are not evaluated here.",
+    "The actual consumer accepts parsed Python objects; this pilot does not claim CORE CF-5 raw-byte admission coverage.",
+    "The independent canonical oracle deliberately rejects non-ASCII and fractional-number cases rather than claiming full RFC 8785 coverage.",
+    "No payment, delivery, chain, latency, memory, or production behavior was exercised.",
+    "Network absence and general filesystem non-mutation are external execution assumptions; the portable runner does not independently observe them.",
+    "Evaluation evidence is not a contributor approval, maintainer approval, merge gate, or release authorization.",
+]
 VERIFY_DOMAIN = "dacs-verifyresult:v1:"
 WRONG_DOMAIN = "dacs-eval-wrong-domain:v1:"
 SAFE_INTEGER = 9_007_199_254_740_991
@@ -268,7 +314,6 @@ def result(case_id: str, passed: bool, observations: dict[str, Any],
         "status": "pass" if passed else "fail",
         "observations": observations,
         "actualCalls": calls,
-        "forbiddenEffectsObserved": [],
         "notes": notes or [],
     }
 
@@ -511,9 +556,46 @@ def validate_frozen_cases(document: dict[str, Any]) -> None:
         raise RuntimeError("cases are not marked frozen before run")
 
 
+def _expect_exact_keys(value: Any, keys: set[str], label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != keys:
+        raise RuntimeError(f"{label} fields are missing or unexpected")
+    return value
+
+
+def load_json_object(path: Path) -> dict[str, Any]:
+    if not path.is_file() or path.is_symlink():
+        raise RuntimeError(f"required evidence is not a regular file: {path.name}")
+    if path.stat().st_size > 8 * 1024 * 1024:
+        raise RuntimeError(f"evidence file exceeds 8 MiB bound: {path.name}")
+
+    def reject_duplicates(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError(f"duplicate JSON member: {key}")
+            value[key] = item
+        return value
+
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicates)
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"invalid JSON evidence in {path.name}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise RuntimeError(f"evidence root is not an object: {path.name}")
+    return value
+
+
+def legacy_expected_results(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    legacy = copy.deepcopy(results)
+    for item in legacy:
+        item["forbiddenEffectsObserved"] = []
+    return legacy
+
+
 def validate_result_record(record: dict[str, Any], pin: dict[str, str],
                            cases: dict[str, Any], expected_results: list[dict[str, Any]],
-                           expected_harness_digest: str) -> None:
+                           expected_harness_digest: str, *, schema_version: str = RESULT_SCHEMA_VERSION,
+                           assurance_boundary: str = ASSURANCE_BOUNDARY) -> None:
     errors = []
     expected_keys = {
         "schemaVersion", "evaluationId", "scope", "assuranceBoundary",
@@ -522,13 +604,13 @@ def validate_result_record(record: dict[str, Any], pin: dict[str, str],
     }
     if set(record) != expected_keys:
         errors.append("result record fields are missing or unexpected")
-    if record.get("schemaVersion") != "1":
+    if record.get("schemaVersion") != schema_version:
         errors.append("result schema version is wrong")
-    if record.get("evaluationId") != "dacs-standard-pr362-verifyresult-pilot-v1":
+    if record.get("evaluationId") != EVALUATION_ID:
         errors.append("result evaluation ID is wrong")
     if record.get("scope") != cases.get("scope"):
         errors.append("result scope is stale or wrong")
-    if record.get("assuranceBoundary") != "offline deterministic object-model evaluation; no network, chain, payment, delivery, or production effects":
+    if record.get("assuranceBoundary") != assurance_boundary:
         errors.append("result assurance boundary is stale or wrong")
     started = record.get("startedAtUnixNs")
     completed = record.get("completedAtUnixNs")
@@ -559,16 +641,18 @@ def validate_result_record(record: dict[str, Any], pin: dict[str, str],
         raise RuntimeError("; ".join(errors))
 
 
-def verify_results(path: Path, historical_harness: Path | None = None) -> None:
+def verify_historical_result(path: Path, historical_harness: Path) -> None:
     pin = verify_candidate_pin()
-    record = json.loads(path.read_text(encoding="utf-8"))
-    cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+    record = load_json_object(path)
+    cases = load_json_object(CASES_PATH)
     validate_frozen_cases(cases)
     consumer, producer = load_candidate_modules()
     expected_results = run_cases(consumer, producer)
-    harness = historical_harness or Path(__file__)
+    expected_results = legacy_expected_results(expected_results)
     validate_result_record(
-        record, pin, cases, expected_results, sha256_file(harness)
+        record, pin, cases, expected_results, sha256_file(historical_harness),
+        schema_version="1",
+        assurance_boundary=LEGACY_ASSURANCE_BOUNDARY,
     )
     verify_candidate_unchanged(pin)
     print(json.dumps({"status": "pass", "verifiedResult": str(path), "candidateHead": pin["head"]}, sort_keys=True))
@@ -649,7 +733,7 @@ def calibrate_grader(record: dict[str, Any], pin: dict[str, str], cases: dict[st
         },
     }
     return {
-        "schemaVersion": "1",
+        "schemaVersion": RESULT_SCHEMA_VERSION,
         "scope": "Result-verifier calibration only; distinct from the 12 protocol evaluation cases.",
         "beforeFixFinding": "The prior metadata-only verifier could accept altered overall/case statuses and empty observations when pins and case IDs remained unchanged.",
         "afterFixBehavior": "The verifier reruns all deterministic cases in memory and compares every stable case result field; only run timestamps vary.",
@@ -663,22 +747,288 @@ def calibrate_grader(record: dict[str, Any], pin: dict[str, str], cases: dict[st
     }
 
 
+def validate_grader_calibration(calibration: dict[str, Any], record: dict[str, Any],
+                                pin: dict[str, str], cases: dict[str, Any],
+                                expected_results: list[dict[str, Any]],
+                                expected_harness_digest: str) -> None:
+    expected = calibrate_grader(
+        record, pin, cases, expected_results, expected_harness_digest
+    )
+    if calibration != expected:
+        raise RuntimeError(
+            "grader calibration is missing, stale, altered, or inconsistent with the deterministic controls"
+        )
+
+
+def _command_option(command: Any, option: str) -> str:
+    if not isinstance(command, list) or not all(isinstance(item, str) for item in command):
+        raise RuntimeError("manifest command is malformed")
+    if command.count(option) != 1:
+        raise RuntimeError(f"manifest command must contain {option} exactly once")
+    index = command.index(option)
+    if index + 1 >= len(command):
+        raise RuntimeError(f"manifest command has no value for {option}")
+    return command[index + 1]
+
+
+def candidate_from_manifest(manifest: dict[str, Any]) -> Path:
+    return Path(_command_option(manifest.get("command"), "--candidate")).resolve()
+
+
+def validate_package_claims() -> None:
+    required = {
+        "README.md": [
+            "not a network or filesystem sandbox",
+            "external execution assumptions",
+        ],
+        "Task.md": [
+            "not a network or filesystem sandbox",
+            "external execution assumptions",
+        ],
+        "REVIEW.md": [
+            "did not rerun the historical harness",
+            "external execution assumptions",
+        ],
+    }
+    for name, phrases in required.items():
+        text = " ".join(
+            (PACKAGE_ROOT / name).read_text(encoding="utf-8").lower().split()
+        )
+        for phrase in phrases:
+            if phrase not in text:
+                raise RuntimeError(f"P5 package claim boundary is missing from {name}: {phrase}")
+
+
+def validate_manifest(manifest: dict[str, Any], bundle: Path, record: dict[str, Any],
+                      calibration: dict[str, Any], pin: dict[str, str],
+                      cases: dict[str, Any], expected_harness_digest: str) -> None:
+    _expect_exact_keys(manifest, {
+        "schemaVersion", "evaluationId", "candidate", "command",
+        "verificationCommand", "runtime", "executionBoundary", "oracleScope",
+        "digests", "caseFreeze", "statusVocabulary", "limitations",
+    }, "manifest")
+    if manifest.get("schemaVersion") != BUNDLE_SCHEMA_VERSION:
+        raise RuntimeError("manifest schema version is wrong")
+    if manifest.get("evaluationId") != EVALUATION_ID:
+        raise RuntimeError("manifest evaluation ID is wrong")
+    if manifest.get("candidate") != record.get("candidate") or manifest.get("candidate") != {
+        "origin": pin["origin"], "head": pin["head"], "base": pin["base"],
+    }:
+        raise RuntimeError("manifest candidate identity does not match the result or checkout")
+
+    command = manifest.get("command")
+    if (not isinstance(command, list) or len(command) != 8
+            or command[2::2] != ["--candidate", "--cases", "--output-dir"]):
+        raise RuntimeError("manifest reproduction command shape is wrong")
+    recorded_candidate = Path(_command_option(command, "--candidate"))
+    recorded_cases = Path(_command_option(command, "--cases"))
+    recorded_output = Path(_command_option(command, "--output-dir"))
+    if not all(path.is_absolute() for path in (
+        recorded_candidate, recorded_cases, recorded_output
+    )):
+        raise RuntimeError("manifest reproduction paths must be absolute")
+    verification_command = manifest.get("verificationCommand")
+    if (not isinstance(verification_command, list) or len(verification_command) != 6
+            or verification_command[2::2] != ["--cases", "--bundle-dir"]):
+        raise RuntimeError("manifest verification command shape is wrong")
+    recorded_verification_bundle = Path(
+        _command_option(verification_command, "--bundle-dir")
+    )
+    if (not recorded_verification_bundle.is_absolute()
+            or recorded_verification_bundle != recorded_output):
+        raise RuntimeError("manifest reproduction and verification output paths disagree")
+
+    runtime = _expect_exact_keys(
+        manifest.get("runtime"),
+        {"python", "pythonExecutable", "implementation", "cryptography", "platform"},
+        "manifest runtime",
+    )
+    if runtime.get("python") != EXPECTED_PYTHON or runtime.get("implementation") != "CPython":
+        raise RuntimeError("manifest Python runtime is outside the recorded pin")
+    if runtime.get("cryptography") != EXPECTED_CRYPTOGRAPHY:
+        raise RuntimeError("manifest cryptography runtime is outside the recorded pin")
+    if not isinstance(runtime.get("pythonExecutable"), str) or not runtime["pythonExecutable"]:
+        raise RuntimeError("manifest Python executable is missing")
+    if not isinstance(runtime.get("platform"), str) or not runtime["platform"]:
+        raise RuntimeError("manifest platform is missing")
+    if (command[0] != runtime["pythonExecutable"]
+            or verification_command[0] != runtime["pythonExecutable"]
+            or command[1] != verification_command[1]
+            or not Path(command[1]).is_absolute()
+            or Path(command[1]).name != "eval_pr362.py"):
+        raise RuntimeError("manifest command and runtime relationships are inconsistent")
+
+    boundary = _expect_exact_keys(
+        manifest.get("executionBoundary"),
+        {"externalAssumptions", "runnerObservations", "runnerLimitations"},
+        "manifest execution boundary",
+    )
+    if boundary.get("externalAssumptions") != EXECUTION_ASSUMPTIONS:
+        raise RuntimeError("manifest external execution assumptions are missing or altered")
+    observations = _expect_exact_keys(
+        boundary.get("runnerObservations"),
+        {"candidateGitStateCleanBeforeAndAfter", "candidateOriginHeadAndBaseMatched",
+         "outputWritesRequestedUnder"},
+        "manifest runner observations",
+    )
+    if observations != {
+        "candidateGitStateCleanBeforeAndAfter": True,
+        "candidateOriginHeadAndBaseMatched": True,
+        "outputWritesRequestedUnder": str(recorded_output),
+    }:
+        raise RuntimeError("manifest runner observations are false or inconsistent")
+    if boundary.get("runnerLimitations") != RUNNER_LIMITATIONS:
+        raise RuntimeError("manifest sandbox limitations are missing or altered")
+    if manifest.get("oracleScope") != ORACLE_SCOPE:
+        raise RuntimeError("manifest oracle scope is missing or altered")
+    if manifest.get("limitations") != MANIFEST_LIMITATIONS:
+        raise RuntimeError("manifest assurance limitations are missing or altered")
+
+    digests = manifest.get("digests")
+    expected_digest_keys = {
+        "cases.json", "runner/eval_pr362.py", "results.json",
+        "grader-calibration.json", *CANDIDATE_DIGEST_PATHS,
+    }
+    _expect_exact_keys(digests, expected_digest_keys, "manifest digests")
+    for relative in CANDIDATE_DIGEST_PATHS.values():
+        candidate_file = CANDIDATE / relative
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            raise RuntimeError(f"candidate digest input is not a regular file: {relative}")
+    actual_digests = {
+        "cases.json": sha256_file(CASES_PATH),
+        "runner/eval_pr362.py": expected_harness_digest,
+        "results.json": sha256_file(bundle / "results.json"),
+        "grader-calibration.json": sha256_file(bundle / "grader-calibration.json"),
+        **{
+            name: sha256_file(CANDIDATE / relative)
+            for name, relative in CANDIDATE_DIGEST_PATHS.items()
+        },
+    }
+    if digests != actual_digests:
+        raise RuntimeError("manifest digest inventory is incomplete, stale, or inconsistent")
+    if record.get("casesSha256") != actual_digests["cases.json"]:
+        raise RuntimeError("result and manifest case digests disagree")
+    if record.get("harnessSha256") != actual_digests["runner/eval_pr362.py"]:
+        raise RuntimeError("result and manifest runner digests disagree")
+
+    freeze = _expect_exact_keys(
+        manifest.get("caseFreeze"),
+        {"casesMtimeUnixNs", "runStartedAtUnixNs", "frozenBeforeRun"},
+        "manifest case freeze",
+    )
+    if (type(freeze.get("casesMtimeUnixNs")) is not int
+            or freeze.get("runStartedAtUnixNs") != record.get("startedAtUnixNs")
+            or freeze.get("frozenBeforeRun") is not True
+            or freeze["casesMtimeUnixNs"] > freeze["runStartedAtUnixNs"]):
+        raise RuntimeError("manifest case-freeze evidence is malformed or inconsistent")
+    if manifest.get("statusVocabulary") != cases.get("statusVocabulary"):
+        raise RuntimeError("manifest status vocabulary is stale or wrong")
+    if calibration.get("schemaVersion") != BUNDLE_SCHEMA_VERSION:
+        raise RuntimeError("calibration and manifest schema versions disagree")
+    validate_package_claims()
+
+
+def verify_bundle(bundle: Path) -> dict[str, Any]:
+    bundle = bundle.resolve()
+    if not bundle.is_dir():
+        raise RuntimeError("bundle path is not a directory")
+    entries = {path.name for path in bundle.iterdir()}
+    if entries != REQUIRED_BUNDLE_FILES:
+        missing = sorted(REQUIRED_BUNDLE_FILES - entries)
+        extra = sorted(entries - REQUIRED_BUNDLE_FILES)
+        raise RuntimeError(f"bundle inventory mismatch; missing={missing!r}; unexpected={extra!r}")
+
+    record = load_json_object(bundle / "results.json")
+    calibration = load_json_object(bundle / "grader-calibration.json")
+    manifest = load_json_object(bundle / "reproducibility-manifest.json")
+    pin = verify_candidate_pin()
+    cases = load_json_object(CASES_PATH)
+    validate_frozen_cases(cases)
+    consumer, producer = load_candidate_modules()
+    expected_results = run_cases(consumer, producer)
+    harness_digest = sha256_file(Path(__file__))
+    validate_result_record(record, pin, cases, expected_results, harness_digest)
+    validate_grader_calibration(
+        calibration, record, pin, cases, expected_results, harness_digest
+    )
+    validate_manifest(
+        manifest, bundle, record, calibration, pin, cases, harness_digest
+    )
+    verify_candidate_unchanged(pin)
+
+    protocol_pass = all(
+        item["status"] == "pass" for item in expected_results
+        if item["caseId"].startswith("EVAL-")
+    )
+    mutant_pass = next(
+        item["status"] == "pass" for item in expected_results
+        if item["caseId"] == "CAL-001"
+    )
+    criteria = {
+        "P1": "pass",
+        "P2": "pass" if protocol_pass else "fail",
+        "P3": "pass" if mutant_pass else "fail",
+        "P4": "pass",
+        "P5": "pass",
+    }
+    candidate_disposition = "pass" if protocol_pass and mutant_pass else "fail"
+    return {
+        "runValidity": {"status": "valid", "reason": None},
+        "candidateDisposition": candidate_disposition,
+        "artifactScore": 1.0 if all(value == "pass" for value in criteria.values()) else 0.0,
+        "criteria": criteria,
+        "bundle": str(bundle),
+        "candidateHead": pin["head"],
+    }
+
+
 def main() -> int:
     global CANDIDATE, OUTPUT, CASES_PATH, RESULTS_PATH, MANIFEST_PATH
     global GRADER_CALIBRATION_PATH
     parser = argparse.ArgumentParser()
-    parser.add_argument("--candidate", type=Path, required=True,
+    parser.add_argument("--candidate", type=Path,
                         help="clean DACS-Standard checkout at the pinned candidate commit")
     parser.add_argument("--cases", type=Path, default=PACKAGE_ROOT / "cases.json",
                         help="frozen case document (defaults to the packaged copy)")
     parser.add_argument("--output-dir", type=Path, default=PACKAGE_ROOT / "reproduction",
                         help="directory for a fresh run; ignored by verification except for defaults")
-    parser.add_argument("--verify-results", type=Path)
+    parser.add_argument("--verify-historical-result", type=Path,
+                        help="verify only the byte-preserved schema-v1 historical result")
+    parser.add_argument("--bundle-dir", type=Path,
+                        help="strictly verify a complete three-artifact evidence bundle")
     parser.add_argument("--historical-harness", type=Path,
                         help="exact harness whose digest is recorded by historical results")
     parser.add_argument("--replace-output", action="store_true",
                         help="explicitly replace existing fresh-run outputs")
     args = parser.parse_args()
+    if args.bundle_dir and args.verify_historical_result:
+        parser.error("--bundle-dir and --verify-historical-result are mutually exclusive")
+    if args.bundle_dir:
+        bundle = args.bundle_dir.resolve()
+        try:
+            manifest = load_json_object(bundle / "reproducibility-manifest.json")
+            CANDIDATE = (
+                args.candidate.resolve() if args.candidate
+                else candidate_from_manifest(manifest)
+            )
+            OUTPUT = bundle
+            CASES_PATH = args.cases.resolve()
+            RESULTS_PATH = bundle / "results.json"
+            MANIFEST_PATH = bundle / "reproducibility-manifest.json"
+            GRADER_CALIBRATION_PATH = bundle / "grader-calibration.json"
+            verify_runtime_pin()
+            print(json.dumps(verify_bundle(bundle), sort_keys=True))
+            return 0
+        except Exception as exc:
+            print(json.dumps({
+                "runValidity": {"status": "invalid", "reason": str(exc)[:500]},
+                "candidateDisposition": None,
+                "artifactScore": None,
+                "bundle": str(bundle),
+            }, sort_keys=True))
+            return 2
+    if args.candidate is None:
+        parser.error("--candidate is required unless --bundle-dir is used")
     CANDIDATE = args.candidate.resolve()
     OUTPUT = args.output_dir.resolve()
     CASES_PATH = args.cases.resolve()
@@ -686,12 +1036,15 @@ def main() -> int:
     MANIFEST_PATH = OUTPUT / "reproducibility-manifest.json"
     GRADER_CALIBRATION_PATH = OUTPUT / "grader-calibration.json"
     verify_runtime_pin()
-    if args.verify_results:
-        verify_results(
-            args.verify_results.resolve(),
-            args.historical_harness.resolve() if args.historical_harness else None,
+    if args.verify_historical_result:
+        if args.historical_harness is None:
+            parser.error("--verify-historical-result requires --historical-harness")
+        verify_historical_result(
+            args.verify_historical_result.resolve(), args.historical_harness.resolve()
         )
         return 0
+    if args.historical_harness:
+        parser.error("--historical-harness requires --verify-historical-result")
 
     if OUTPUT == CANDIDATE or CANDIDATE in OUTPUT.parents:
         raise RuntimeError("output directory must be outside the candidate checkout")
@@ -708,7 +1061,7 @@ def main() -> int:
 
     started_ns = time.time_ns()
     pin = verify_candidate_pin()
-    cases_doc = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+    cases_doc = load_json_object(CASES_PATH)
     validate_frozen_cases(cases_doc)
     cases_digest = sha256_file(CASES_PATH)
     harness_digest = sha256_file(Path(__file__))
@@ -717,8 +1070,8 @@ def main() -> int:
     verify_candidate_unchanged(pin)
     overall = "pass" if all(item["status"] == "pass" for item in case_results) else "fail"
     record = {
-        "schemaVersion": "1", "evaluationId": "dacs-standard-pr362-verifyresult-pilot-v1",
-        "scope": cases_doc["scope"], "assuranceBoundary": "offline deterministic object-model evaluation; no network, chain, payment, delivery, or production effects",
+        "schemaVersion": RESULT_SCHEMA_VERSION, "evaluationId": EVALUATION_ID,
+        "scope": cases_doc["scope"], "assuranceBoundary": ASSURANCE_BOUNDARY,
         "candidate": {"origin": pin["origin"], "head": pin["head"], "base": pin["base"]},
         "casesSha256": cases_digest, "harnessSha256": harness_digest,
         "startedAtUnixNs": started_ns, "completedAtUnixNs": time.time_ns(),
@@ -732,32 +1085,36 @@ def main() -> int:
         json.dumps(grader_calibration, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     manifest = {
-        "schemaVersion": "1", "evaluationId": record["evaluationId"],
+        "schemaVersion": BUNDLE_SCHEMA_VERSION, "evaluationId": record["evaluationId"],
         "candidate": record["candidate"],
         "command": [sys.executable, str(Path(__file__)),
                     "--candidate", str(CANDIDATE),
                     "--cases", str(CASES_PATH),
                     "--output-dir", str(OUTPUT)],
         "verificationCommand": [sys.executable, str(Path(__file__)),
-                                "--candidate", str(CANDIDATE),
                                 "--cases", str(CASES_PATH),
-                                "--output-dir", str(OUTPUT),
-                                "--verify-results", str(RESULTS_PATH)],
+                                "--bundle-dir", str(OUTPUT)],
         "runtime": {"python": platform.python_version(), "pythonExecutable": sys.executable,
                     "implementation": platform.python_implementation(),
                     "cryptography": importlib.metadata.version("cryptography"),
                     "platform": platform.platform()},
-        "permissions": {"network": False, "liveSystems": False,
-                        "candidateWrites": False, "outputRoot": str(OUTPUT)},
-        "oracleScope": "Independent stdlib canonicalizer restricted to recursively safe ASCII strings/member names, booleans/null, arrays/objects, and integer JSON numbers with |n| <= 2^53-1. Floats and non-ASCII are rejected. In this domain Python Unicode sorting equals JCS UTF-16 sorting and stdlib integer serialization equals JCS.",
+        "executionBoundary": {
+            "externalAssumptions": EXECUTION_ASSUMPTIONS,
+            "runnerObservations": {
+                "candidateGitStateCleanBeforeAndAfter": True,
+                "candidateOriginHeadAndBaseMatched": True,
+                "outputWritesRequestedUnder": str(OUTPUT),
+            },
+            "runnerLimitations": RUNNER_LIMITATIONS,
+        },
+        "oracleScope": ORACLE_SCOPE,
         "digests": {
             "cases.json": cases_digest,
             "runner/eval_pr362.py": harness_digest,
-            "candidate/tests/test_presence_only_claim_vectors.py": sha256_file(CANDIDATE / "tests" / "test_presence_only_claim_vectors.py"),
-            "candidate/scripts/generate_presence_only_claim_vectors.py": sha256_file(CANDIDATE / "scripts" / "generate_presence_only_claim_vectors.py"),
-            "candidate/spec/CORE.md": sha256_file(CANDIDATE / "spec" / "CORE.md"),
-            "candidate/spec/DACS-2-VET.md": sha256_file(CANDIDATE / "spec" / "DACS-2-VET.md"),
-            "candidate/conformance/vectors/security/presence-only-claim-requirement-v0.7.json": sha256_file(CANDIDATE / "conformance" / "vectors" / "security" / "presence-only-claim-requirement-v0.7.json"),
+            **{
+                name: sha256_file(CANDIDATE / relative)
+                for name, relative in CANDIDATE_DIGEST_PATHS.items()
+            },
             "results.json": sha256_file(RESULTS_PATH),
             "grader-calibration.json": sha256_file(GRADER_CALIBRATION_PATH),
         },
@@ -765,14 +1122,7 @@ def main() -> int:
                        "runStartedAtUnixNs": started_ns,
                        "frozenBeforeRun": CASES_PATH.stat().st_mtime_ns <= started_ns},
         "statusVocabulary": cases_doc["statusVocabulary"],
-        "limitations": [
-            "Narrow pilot only; PR #362 changes additional Standard surfaces that are not evaluated here.",
-            "The actual consumer accepts parsed Python objects; this pilot does not claim CORE CF-5 raw-byte admission coverage.",
-            "The independent canonical oracle deliberately rejects non-ASCII and fractional-number cases rather than claiming full RFC 8785 coverage.",
-            "No payment, delivery, chain, network, latency, memory, or production behavior was exercised.",
-            "Per-case forbiddenEffectsObserved records the asserted protocol decision guard only; the harness does not provide general filesystem, network, payment, or delivery effect tracing.",
-            "Evaluation evidence is not a contributor approval, maintainer approval, merge gate, or release authorization."
-        ]
+        "limitations": MANIFEST_LIMITATIONS,
     }
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     verify_candidate_unchanged(pin)

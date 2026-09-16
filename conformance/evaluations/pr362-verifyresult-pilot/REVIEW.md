@@ -12,8 +12,9 @@
   `ff8c289d22d07e09a1733b1ae7791100bfdbd923`.
 - The base is an ancestor of the candidate and the candidate checkout was clean
   before and after evaluation.
-- The byte-preserved historical record passed a deterministic rerun against the
-  byte-preserved historical harness.
+- The portable current runner reproduced the historical record's deterministic
+  case content and authenticated the digest of the byte-preserved historical
+  harness. It did not rerun the historical harness.
 - The portable fresh run passed 12/12 cases: 11 protocol cases and one
   historical-defect mutant.
 - The regenerated evidence-checker calibration accepted the untampered baseline
@@ -21,10 +22,14 @@
 - Its verifier-only disposition control accepted an honestly reported
   deterministic failure and rejected the same record after its aggregate was
   changed to `pass`; candidate code and frozen cases were not mutated.
-- Fresh and historical case-result arrays are byte-equivalent after JSON
-  extraction. At record level, only run timestamps and the intentionally new
-  portable-harness digest differ.
-- Both the historical and portable fresh results passed the portable verifier.
+- Fresh and historical case decisions, calls, observations, and notes are
+  equivalent. The schema-v2 fresh result intentionally omits the legacy
+  `forbiddenEffectsObserved` field because the runner did not independently
+  observe general effects; its assurance boundary, timestamps, and portable
+  harness digest also differ from the preserved schema-v1 record.
+- The historical result passed the legacy-record verification path. The fresh
+  result, calibration record, and reproducibility manifest passed the strict
+  complete-bundle verifier together.
 - A second write to the occupied fresh-output directory was rejected, proving
   the wrapper's no-silent-replacement behavior.
 - Every published source-file copy under `historical/` was checked
@@ -36,28 +41,37 @@
 ```sh
 PYTHON_BIN=/path/to/python3 ./run.sh verify-historical /path/to/pr362-checkout
 PYTHON_BIN=/path/to/python3 ./run.sh reproduce /path/to/pr362-checkout /path/to/new-output
-PYTHON_BIN=/path/to/python3 ./run.sh verify-portable /path/to/pr362-checkout /path/to/new-output/results.json
+PYTHON_BIN=/path/to/python3 ./run.sh verify-bundle /path/to/new-output
 ```
 
 The publication-candidate reproduction was executed after relocation with the
 same recorded runtime, Python 3.12.6 with `cryptography` 46.0.5, and explicit
 candidate/case/output arguments encoded by `run.sh reproduce`.
 
-Relocated reproduction SHA-256 values:
+The reported absence of network access, live-system access, and arbitrary
+candidate/source mutation depends on external execution assumptions. The
+portable runner is not a network or filesystem sandbox. It checks exact Git
+identity and clean status before and after execution and authenticates the
+files named by the bundle, but it does not independently observe general
+network activity or writes outside checked paths and does not claim container
+isolation.
+
+Repair-verification reproduction SHA-256 values:
 
 - portable runner:
-  `af18aa44c1d9ac479172cc1535a249147f6c001ed0ad9b0051c867810ad8a421`;
+  `f966bc6c4039207a6de48b56b653b8b0bf738cfe5093ed5419517d866ed3fc0d`;
 - `results.json`:
-  `7cf2257632739d5243ad9c0cdc7b1ff6fa0f0deb4beb453d7577e6d5b18e3e1f`;
+  `9b391d49717fd1a4a8c7dc679b8ec7ac1bf56d0e7e3eff9cba7b7cb9e93debd6`;
 - `grader-calibration.json`:
-  `4172de6b9785550f26adee0683417692af0629a08684cabfa75377c7eae3c5f0`;
+  `70a0c55e597a27873d7d34fe14b8cce483e5704441f1c95919d6198de2fcd758`;
 - `reproducibility-manifest.json`:
-  `008a15256c732eba1be0f133a339cc069078e9f03fe1321b14f653d50eb14327`.
+  `3a0be6747dacde4f22cabfe58b34079c882d4dcae2a99a68344e13faf7a0ab03`.
 
 ## Assurance decision
 
-This evidence supports acceptance of the package as a portable reproduction of
-the bounded #362 protocol pilot. It does not support calling the artifact a
+This evidence supports independent verification of the package as a portable
+reproduction of the bounded #362 protocol pilot, subject to the external
+execution assumptions above. It does not support calling the artifact a
 completed Harbor agent Task or making claims about consumer-model performance,
 general JCS, a second cryptographic implementation, SDK interoperability, live
 behavior, general side effects, latency, memory, cost, merge, release, or

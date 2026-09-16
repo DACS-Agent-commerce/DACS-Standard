@@ -10,7 +10,7 @@ cross-repository schema, or require another repository to adopt these names.
 | `caseId` | Stable local case identifier | Identifier does not imply global registry or normative status |
 | `requirements` | Standard clauses interpreted by the case set | Cite the exact Standard revision; unresolved interpretation stays visible |
 | `repository` / `revision` / `base` | Exact evaluated Git objects and origin | Verify objects and cleanliness before execution |
-| `environment` | Runtime, dependency versions, permissions, oracle scope | Record frozen/simulated/live boundary and material omissions |
+| `environment` | Runtime, dependency versions, oracle scope, externally supplied controls, and runner observations | Distinguish a sandbox-enforced property from an external execution assumption; record frozen/simulated/live boundary and material omissions |
 | `expected` | Case-specific observable decision or invariant | Keep exact hidden truth with the Task/verifier when evaluating an agent |
 | `forbiddenEffects` | Outcomes or mutations that invalidate success | Distinguish asserted protocol guards from general effect instrumentation |
 | `actualEvidence` | Candidate calls, oracle observations, artifact hashes | Recompute independently where practical; do not trust self-report |

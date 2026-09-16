@@ -71,7 +71,7 @@ After setup, run locally without network:
 ```sh
 PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh verify-historical "$PILOT_CANDIDATE"
 PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh reproduce "$PILOT_CANDIDATE" /absolute/path/to/new-output
-PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh verify-portable "$PILOT_CANDIDATE" /absolute/path/to/new-output/results.json
+PYTHON_BIN="$PILOT_VENV/bin/python" ./run.sh verify-bundle /absolute/path/to/new-output
 ```
 
 ## Author/reviewer input
@@ -81,8 +81,10 @@ commit. Verify the preserved historical result by rerunning the deterministic
 cases, then create a fresh result in a new output directory and verify it with
 the portable runner. Report candidate disposition, run validity, case evidence,
 grader-control evidence, exact artifact hashes, and all assurance limits. Do not
-use network or live systems, modify the candidate checkout, replace historical
-evidence, run a paid model trial, or claim Harbor/consumer-agent calibration.
+provide network or live-system access, modify the candidate checkout, replace
+historical evidence, run a paid model trial, or claim Harbor/consumer-agent
+calibration. The portable runner cannot enforce the first two conditions as a
+sandbox; the caller is responsible for the external execution boundary.
 
 There are no later turns, model prompts, secrets, credentials, or external
 context. The package README supplies only the invocation syntax and public
@@ -98,8 +100,9 @@ scope boundary.
 - The recorded compatible runtime is CPython 3.12.6 with `cryptography` 46.0.5.
   A missing or materially different dependency is an unvalidated runtime, not
   evidence about the candidate.
-- The task uses no judge, tool server, session memory, network, credentials, or
-  live service.
+- The task uses no judge, tool server, session memory, credentials, or live
+  service. The intended execution has no network access, but that is an
+  external assumption rather than independently observed evidence.
 
 ## Environment and effects
 
@@ -113,39 +116,44 @@ scope boundary.
   and historical results must stay outside the agent-visible environment.
 - **Reads:** Git metadata and five pinned candidate files named in the
   reproducibility manifest.
-- **Writes:** only the caller-selected fresh output directory. The three files
-  written are `results.json`, `grader-calibration.json`, and
-  `reproducibility-manifest.json`.
+- **Requested writes:** the runner itself targets only the caller-selected fresh
+  output directory. The three files written are `results.json`,
+  `grader-calibration.json`, and `reproducibility-manifest.json`. The in-process
+  runner does not observe arbitrary writes by imported candidate code.
 - **Prohibited effects:** any candidate or source-evidence mutation, network or
   live-system access, payment, delivery, chain activity, repository posting,
   merge, release, deployment, or credential access.
-- **Isolation:** the candidate and cases are immutable inputs. A fresh output
-  directory supplies run separation. Existing outputs are refused unless the
-  caller explicitly invokes the runner's `--replace-output` option; the wrapper
-  never uses that option.
+- **External execution assumptions:** the caller supplies the candidate and
+  cases as immutable inputs and withholds network/live-system access. A fresh
+  output directory supplies run separation. Existing outputs are refused unless
+  the caller explicitly invokes the runner's `--replace-output` option; the
+  wrapper never uses that option. The portable runner is not a network or
+  filesystem sandbox and does not claim container isolation.
 - **Production difference:** all data is deterministic and local. No production
   provider, SDK implementation, chain, or effect instrumentation is present.
 
 ## Verification and scoring
 
-Pass iff the pinned, clean checkout produces all eleven protocol-case outcomes
-and the one historical-mutant detection defined by the frozen cases, the result
-verifier accepts the untampered record, and all seven altered-report controls
-are rejected.
+The bundle earns full artifact credit iff the pinned, clean checkout produces
+all eleven protocol-case outcomes and the one historical-mutant detection
+defined by the frozen cases; the strict verifier accepts all three mutually
+consistent bundle artifacts; and all seven altered-report controls plus the
+honest-failure/altered-pass disposition control behave as declared.
 
 | ID | Required result | Independent evidence | Pass condition |
 |---|---|---|---|
 | P1 | Exact provenance and input integrity | Git origin/head/base/clean checks; case and harness SHA-256 | Every pin and digest matches before cases run |
 | P2 | Protocol behavior | Safe-subset oracle plus actual candidate `authenticate_result` and `evaluate` calls | All 11 `EVAL-*` records match their frozen expectations |
 | P3 | Historical-defect sensitivity | Test-only full-signed-object-hash mutant | `CAL-001` detects signature-only identity instability without modifying the candidate |
-| P4 | Evidence-record integrity | Deterministic rerun and stable-field comparison | Untampered record accepted; changed status, observations, count/order, head, or origin rejected in all 7 controls; verifier-only honest-fail record accepted and altered-pass record rejected |
-| P5 | Honest assurance boundary | Manifest, README, and review evidence | No unsupported Harbor, model, SDK, JCS, live, or general side-effect claim |
+| P4 | Bundle and evidence-record integrity | Deterministic rerun, all three required artifacts, manifest digests/relationships, and recorded grader controls | Complete untampered bundle accepted; changed status, observations, count/order, head, or origin rejected in all 7 controls; verifier-only honest-fail record accepted and altered-pass record rejected |
+| P5 | Honest assurance boundary | Schema-v2 manifest execution-boundary fields plus README, Task, and review disclaimers | Network/filesystem controls are labelled external assumptions; runner observations and sandbox limitations are explicit; no unsupported Harbor, model, SDK, JCS, live, container-isolation, or general side-effect claim |
 
 For the exact candidate pilot, `candidateDisposition` is `pass` only when P2
 and P3 pass. A protocol-case failure in an otherwise valid run is a valid
 candidate result, not an infrastructure error. The reusable author/reviewer
 artifact earns `artifactScore: 1.0` only when P1 through P5 all pass; otherwise
-it earns `0.0` pending repair. This package does not alter the historical
+it earns `0.0` for a valid candidate failure. Invalid evidence has no score.
+This package does not alter the historical
 independent review's evidence-quality score of 3/4.
 
 Accepted operational alternatives are any clean checkout with the same exact
@@ -157,13 +165,14 @@ are not interchangeable.
 ### Invalid-run conditions
 
 A run is invalid and receives no candidate disposition when the checkout has a
-wrong origin/head/base or tracked changes; the frozen case bytes differ; a
-required file or dependency is missing; setup/import/execution fails; evidence
-is missing or corrupt; the recorded harness digest cannot be resolved; the
-runtime writes to the candidate; or any prohibited external effect occurs.
+wrong origin/head/base or observed tracked/untracked changes; the frozen case
+bytes differ; a required file or dependency is missing; setup/import/execution
+fails; any of the three required bundle artifacts is missing, corrupt, altered,
+or mutually inconsistent; the recorded harness digest cannot be resolved; or
+an externally instrumented execution reports a prohibited external effect.
 Missing/corrupt evidence remains an infrastructure/evidence failure rather than
-a candidate failure. The portable runner intentionally raises on these
-conditions instead of synthesizing a zero score.
+a candidate failure. The strict entry point reports the invalid run with a null
+candidate disposition and null artifact score.
 
 ## Fairness and leakage
 
@@ -181,7 +190,9 @@ conditions instead of synthesizing a zero score.
   this scope.
 - A realistic wrong result changes or empties a stable case observation while
   retaining plausible metadata. A prohibited collateral change modifies the
-  candidate or preserved source evidence.
+  candidate or preserved source evidence. The runner detects Git-visible
+  candidate changes and bundle digest changes; broader side effects require an
+  externally controlled sandbox or monitor and are not claimed here.
 
 ## Limits and open decisions
 
@@ -194,6 +205,9 @@ conditions instead of synthesizing a zero score.
 - There is no second SDK, general interoperability result, live behavior,
   production effect tracing, performance result, Harbor run, paid model trial,
   consumer-model trace, or scored agent capability evidence.
+- The runner is in-process and provides neither network nor filesystem
+  sandboxing. Network absence, immutable mounted inputs, and observation of
+  general collateral effects remain external execution assumptions.
 - The evaluation-record vocabulary and fields are a coordination proposal for
   #270/#402. They do not make a normative format decision.
 - Human review remains needed before this Draft can be promoted, before a

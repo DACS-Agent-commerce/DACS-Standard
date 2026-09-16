@@ -26,6 +26,13 @@ NFC over values only. CORE §B.2 makes that values-only scope explicit.
 Canonically equivalent member names therefore remain distinct. Invalid Unicode
 (a lone surrogate, in a key or a value) is rejected — that is a well-formedness
 matter, not a CF-1 normalisation matter.
+
+CF-5 is intentionally not implemented here: by the time ``canonicalize``
+receives a language object, duplicate member names and raw numeric spellings may
+already have been lost. Externally supplied DACS JSON bytes must first pass
+``raw_json_profile.loads`` with the exact received bytes (or an equivalent
+strict raw-input gate); decoded text does not establish CF-5 admission. Only an
+accepted object model reaches this module.
 """
 
 from __future__ import annotations
@@ -159,27 +166,86 @@ def _encode_float(value: float) -> str:
 
 
 def _canonicalize(value: Any) -> str:
-    if value is None:
-        return "null"
-    if value is True:
-        return "true"
-    if value is False:
-        return "false"
-    if isinstance(value, str):
-        return _encode_value_string(value)
-    if isinstance(value, (int, float)):
-        return _encode_number(value)
-    if isinstance(value, list):
-        return "[" + ",".join(_canonicalize(item) for item in value) + "]"
-    if isinstance(value, dict):
-        for key in value:
-            if not isinstance(key, str):
-                raise ValueError(f"object member name must be a string, got {type(key).__name__}")
-            _ensure_utf8(key)
-        # RFC 8785 §3.2.3: sort member names by their UTF-16 code units, as received.
-        ordered = sorted(value.items(), key=lambda kv: kv[0].encode("utf-16-be"))
-        return "{" + ",".join(_encode_key(k) + ":" + _canonicalize(v) for k, v in ordered) + "}"
-    raise TypeError(f"unserialisable type: {type(value).__name__}")
+    """Traverse a JSON value iteratively, preserving all scalar encoders."""
+
+    output: list[str] = []
+    active_containers: set[int] = set()
+    stack: list[tuple[str, Any]] = [("value", value)]
+
+    while stack:
+        action, item = stack.pop()
+        if action == "text":
+            output.append(item)
+            continue
+        if action == "leave":
+            active_containers.remove(item)
+            continue
+        if action == "list-next":
+            iterator, first = item
+            try:
+                child = next(iterator)
+            except StopIteration:
+                output.append("]")
+                continue
+            if not first:
+                output.append(",")
+            stack.append(("list-next", (iterator, False)))
+            stack.append(("value", child))
+            continue
+
+        if item is None:
+            output.append("null")
+        elif item is True:
+            output.append("true")
+        elif item is False:
+            output.append("false")
+        elif isinstance(item, str):
+            output.append(_encode_value_string(item))
+        elif isinstance(item, (int, float)):
+            output.append(_encode_number(item))
+        elif isinstance(item, list):
+            identity = id(item)
+            if identity in active_containers:
+                raise ValueError("cyclic list/dict value is not serialisable as JSON")
+            active_containers.add(identity)
+            stack.append(("leave", identity))
+            # Preserve the public API's iterator semantics, including accepted
+            # list subclasses and mutations during child serialization.
+            output.append("[")
+            stack.append(("list-next", (iter(item), True)))
+        elif isinstance(item, dict):
+            identity = id(item)
+            if identity in active_containers:
+                raise ValueError("cyclic list/dict value is not serialisable as JSON")
+            for key in item:
+                if not isinstance(key, str):
+                    raise ValueError(
+                        "object member name must be a string, "
+                        f"got {type(key).__name__}"
+                    )
+                _ensure_utf8(key)
+            # RFC 8785 §3.2.3: sort member names by their UTF-16 code units,
+            # as received.  The list snapshots keys and values before traversal,
+            # matching the previous recursive implementation's validation-to-use
+            # behavior.
+            ordered = sorted(
+                item.items(), key=lambda pair: pair[0].encode("utf-16-be")
+            )
+            active_containers.add(identity)
+            stack.append(("leave", identity))
+            stack.append(("text", "}"))
+            for index in range(len(ordered) - 1, -1, -1):
+                key, member_value = ordered[index]
+                stack.append(("value", member_value))
+                stack.append(("text", ":"))
+                stack.append(("text", _encode_key(key)))
+                if index:
+                    stack.append(("text", ","))
+            stack.append(("text", "{"))
+        else:
+            raise TypeError(f"unserialisable type: {type(item).__name__}")
+
+    return "".join(output)
 
 
 def canonicalize(value: Any) -> str:

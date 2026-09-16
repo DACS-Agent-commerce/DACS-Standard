@@ -7,17 +7,17 @@
     "implementationOwnedReleasePin": "0000000000000000000000000000000000000001",
     "moduleVersions": {
       "core": "0.3",
-      "dacs1": "0.7",
+      "dacs1": "0.8",
       "dacs2": "0.6",
-      "dacs3": "0.5",
+      "dacs3": "0.6",
       "dacs4": "0.8",
-      "dacs5": "0.5"
+      "dacs5": "0.6"
     },
     "peerEvidence": "verifier-owned context, separate from vector input, binds the exact session and expected peer identity"
   },
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
   "count": 47,
-  "hash": "59aa84253caf029ff38e18df3529f8a078fa721afa33c2c08f969589b3b1e598",
+  "hash": "e5c9af256924bfba2cd2197ef06d844ceee6c3bc2a4d589fd7214144edfddb51",
   "vectors": [
     {
       "name": "canonical-ulid",
@@ -470,11 +470,11 @@
         "releasePin": "0000000000000000000000000000000000000001",
         "moduleVersions": {
           "core": "0.3",
-          "dacs1": "0.7",
+          "dacs1": "0.8",
           "dacs2": "0.6",
-          "dacs3": "0.5",
+          "dacs3": "0.6",
           "dacs4": "0.8",
-          "dacs5": "0.5"
+          "dacs5": "0.6"
         }
       },
       "note": "Matching caller-supplied bytes are not authenticated peer evidence.",

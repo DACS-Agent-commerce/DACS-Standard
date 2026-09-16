@@ -678,7 +678,11 @@ def bind_fixture_receipt_evidence(case: dict[str, Any]) -> None:
     the serialized independent results; it never derives them from a descriptor.
     Legacy labels select the existing fixture outcomes only during generation.
     """
-    labels = case.pop("verifiedEvidenceValues")
+    labels = case.pop("verifiedEvidenceValues", None)
+    if labels is None:
+        # The mutation already supplied exact independent verifier results
+        # (for example, the forward-readable extended-evidence vectors).
+        return
     if not isinstance(labels, list):
         case["verifiedReceiptEvidence"] = labels
         return
@@ -1318,7 +1322,55 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["descriptors"][0]["futurePolicyHint"] = {"weight": 1.5}
         resign_root(case)
 
+    def extended_receipt_evidence(case: dict[str, Any]) -> None:
+        """SIG-5 forward-readable optional evidence member, re-signed and pinned.
+
+        The receipt evidence gains an additive ``futureHint`` member, the
+        complete extended evidence record is copied into the independent
+        verifier sidecar, the receipt hash is recomputed over the extended
+        receipt, and the descriptor is re-signed and re-pinned.
+        """
+        root = case["descriptors"][0]
+        root["indexAnchorReceipt"]["evidence"]["futureHint"] = "forward-compatible"
+        case.pop("verifiedEvidenceValues", None)
+        case["verifiedReceiptEvidence"] = [{
+            "evidence": copy.deepcopy(root["indexAnchorReceipt"]["evidence"]),
+            "receiptHash": hash_hex(root["indexAnchorReceipt"]),
+        }]
+        resign_root(case)
+
+    def extended_evidence_mismatch(case: dict[str, Any]) -> None:
+        """The sidecar result must equal the complete extended evidence record."""
+        extended_receipt_evidence(case)
+        case["verifiedReceiptEvidence"][0]["evidence"]["futureHint"] = "attacker-different"
+
+    def extended_evidence_missing_required(case: dict[str, Any]) -> None:
+        """An optional member cannot replace the required kind/value members."""
+        extended_receipt_evidence(case)
+        root = case["descriptors"][0]
+        del root["indexAnchorReceipt"]["evidence"]["kind"]
+        case["verifiedReceiptEvidence"] = [{
+            "evidence": copy.deepcopy(root["indexAnchorReceipt"]["evidence"]),
+            "receiptHash": hash_hex(root["indexAnchorReceipt"]),
+        }]
+        resign_root(case)
+
     vectors.extend([
+        bootstrap_vector(
+            "extended-evidence-optional-member-is-forward-readable", "pass",
+            "a signed optional evidence member is admitted when the independent verifier result repeats the complete extended record",
+            extended_receipt_evidence,
+        ),
+        bootstrap_vector(
+            "extended-evidence-sidecar-must-equal-complete-record", "indeterminate",
+            "an optional member with a different value in the verifier sidecar does not authorize the receipt",
+            extended_evidence_mismatch,
+        ),
+        bootstrap_vector(
+            "extended-evidence-required-members-stay-required", "fail",
+            "an optional member cannot replace the required evidence kind and value members",
+            extended_evidence_missing_required,
+        ),
         bootstrap_vector(
             "signed-unknown-member-is-preserved", "pass",
             "SIG-5 includes unknown members in the descriptor hash and signature",
@@ -1370,6 +1422,19 @@ def document(set_name: str, spec: str, model: str, vectors: list[dict[str, Any]]
         "set": set_name,
         "spec": spec,
         "decisionModel": model,
+        "syntheticProfileAdmissionFixture": {
+            "scope": "candidate conformance fixture only; not a published release or live deployment profile",
+            "implementationOwnedReleasePin": "0000000000000000000000000000000000000001",
+            "moduleVersions": {
+                "core": "0.3",
+                "dacs1": "0.8",
+                "dacs2": "0.6",
+                "dacs3": "0.6",
+                "dacs4": "0.8",
+                "dacs5": "0.6",
+            },
+            "peerEvidence": "verifier-owned context, separate from vector input, binds the exact session and expected peer identity",
+        },
         "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),
         "count": len(vectors),

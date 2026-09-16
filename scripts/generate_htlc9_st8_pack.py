@@ -41,7 +41,7 @@ RESOLVED_PATH = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
 
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 ORCHESTRATOR_SEED = bytes.fromhex("41" * 32)  # public test seed; never a production key
-ORCHESTRATOR_SIGNER = "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+ORCHESTRATOR_SIGNER = "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
 INTERIM_SIGNATURE = "J9aWl1-dZrsE9Gch3-jMOVj0wKwH_ohFS3IlcNYIZMnoyKBT6uCTyX367zvPzMdnP2m57-1fnxATbKtJ7_K3Ag"
 RESOLVED_SIGNATURE = "DvJWDESPE7O5rHSFHhTo0pIg2CtkoAYONy6wf9csI9qEKHr9UyV-6AZ6FxqJnsAbh3i-SU8gTY8mWzrpLR7IBw"
 
@@ -74,7 +74,7 @@ def signer_ref(seed: bytes) -> str:
     except ImportError:  # pragma: no cover
         raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
     pub = Ed25519PrivateKey.from_private_bytes(seed).public_key()
-    return "cci:" + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+    return "key:" + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
 
 
 def sign(record: dict, seed: bytes) -> None:

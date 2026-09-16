@@ -15,8 +15,15 @@ from sr2_resolution_reference import (  # noqa: E402
     _valid_index_snapshot,
     _verify_snapshot,
     descriptor_hash,
+    evaluate_bootstrap,
+    evaluate_resolution,
     evaluate_vector,
     hash_hex,
+)
+from generate_sr2_resolution_vectors import (  # noqa: E402
+    OLD_SEED,
+    BOOTSTRAP_DOMAIN,
+    sign_descriptor,
 )
 
 
@@ -68,6 +75,32 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             )
             all_names.extend(vector["name"] for vector in vectors)
         self.assertEqual(len(all_names), len(set(all_names)))
+
+    def test_candidate_profile_metadata_is_explicit_and_consistent(self):
+        expected_versions = {
+            "core": "0.3",
+            "dacs1": "0.8",
+            "dacs2": "0.6",
+            "dacs3": "0.6",
+            "dacs4": "0.8",
+            "dacs5": "0.6",
+        }
+        for document in self.documents:
+            fixture = document["syntheticProfileAdmissionFixture"]
+            self.assertEqual(fixture["moduleVersions"], expected_versions)
+            self.assertEqual(
+                fixture["implementationOwnedReleasePin"],
+                "0000000000000000000000000000000000000001",
+            )
+            self.assertIn("candidate conformance fixture only", fixture["scope"])
+
+        manifest = json.loads((ROOT / "conformance" / "MANIFEST.json").read_text(encoding="utf-8"))
+        manifest_fixture = manifest["syntheticProfileAdmissionFixture"]
+        self.assertEqual(manifest_fixture["moduleVersions"], expected_versions)
+        self.assertEqual(
+            manifest_fixture["implementationOwnedReleasePin"],
+            "0000000000000000000000000000000000000001",
+        )
 
     def test_every_declared_outcome_executes(self):
         for document in self.documents:
@@ -282,6 +315,111 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         malformed = copy.deepcopy(vector)
         malformed["input"]["verifiedReceiptEvidence"][0]["receiptHash"] = []
         self.assertEqual(evaluate_vector(malformed), "fail")
+
+    def test_optional_evidence_extension_is_forward_readable(self):
+        # mj-deving/cX3po finding 1: an additive future member in
+        # AnchorReceipt.evidence must not fail closed when the independent
+        # verifier result repeats the complete extended record and the
+        # descriptor is re-signed and re-pinned.
+        vector = copy.deepcopy(self.vectors["valid-recipe-registry-root"])
+        case = vector["input"]
+        receipt = case["descriptors"][0]["indexAnchorReceipt"]
+        pre_extension_hash = hash_hex(receipt)
+        receipt["evidence"]["futureHint"] = "forward-compatible"
+        case["verifiedReceiptEvidence"] = [{
+            "evidence": copy.deepcopy(receipt["evidence"]),
+            "receiptHash": hash_hex(receipt),
+        }]
+        sign_descriptor(case["descriptors"][0], OLD_SEED, domain=BOOTSTRAP_DOMAIN)
+        case["trustPin"]["descriptorHash"] = descriptor_hash(case["descriptors"][0])
+        self.assertEqual(evaluate_vector(vector), "pass")
+
+        # The optional member must be bound by complete equality on both
+        # sides: a sidecar that disagrees on the extension cannot authorize.
+        mismatch = copy.deepcopy(vector)
+        mismatch["input"]["verifiedReceiptEvidence"][0]["evidence"]["futureHint"] = "attacker-different"
+        self.assertEqual(evaluate_vector(mismatch), "indeterminate")
+
+        # The receipt hash binds the complete extended receipt snapshot: a
+        # sidecar still naming the pre-extension receipt hash cannot
+        # authorize the extended receipt.
+        stale_hash = copy.deepcopy(vector)
+        stale_hash["input"]["verifiedReceiptEvidence"][0]["receiptHash"] = pre_extension_hash
+        self.assertEqual(evaluate_vector(stale_hash), "indeterminate")
+
+        # Required members stay required: the extension cannot replace kind/value.
+        required = copy.deepcopy(vector)
+        del required["input"]["descriptors"][0]["indexAnchorReceipt"]["evidence"]["kind"]
+        self.assertEqual(evaluate_vector(required), "fail")
+
+    def test_deep_runtime_input_never_leaks_host_recursion_errors(self):
+        # mj-deving/cX3po finding 2: deeply nested runtime-controlled
+        # descriptor/storage input must normalize RecursionError/OverflowError
+        # into deterministic dispositions at the deepcopy, canonicalization,
+        # and hashing boundaries. Neither entry point may raise; the wrapper's
+        # guarded deepcopy makes malformed bootstrap input fail and malformed
+        # resolution input indeterminate, while direct evaluation of a deep
+        # snapshot keeps the unavailable-proof result indeterminate.
+        def nested(depth=1200):
+            value = {}
+            for _ in range(depth):
+                value = {"child": value}
+            return value
+
+        bootstrap = self.vectors["valid-recipe-registry-root"]
+        deep_descriptor = {
+            "name": "deep-descriptor-member",
+            "family": "bootstrap",
+            "input": {
+                **copy.deepcopy(bootstrap["input"]),
+                "descriptors": [
+                    {**copy.deepcopy(bootstrap["input"]["descriptors"][0]),
+                     "futureDeep": nested()}
+                ],
+            },
+        }
+        self.assertEqual(evaluate_vector(deep_descriptor), "fail")
+
+        deep_storage = copy.deepcopy(bootstrap)
+        native = deep_storage["input"]["descriptors"][0]["nativeIndexAddress"]
+        deep_storage["input"]["indexStorage"][native] = nested()
+        self.assertEqual(evaluate_vector(deep_storage), "fail")
+        self.assertEqual(
+            evaluate_bootstrap(deep_storage["input"]), "indeterminate"
+        )
+
+        deep_evidence = copy.deepcopy(bootstrap)
+        receipt = deep_evidence["input"]["descriptors"][0]["indexAnchorReceipt"]
+        receipt["evidence"]["futureDeep"] = nested()
+        self.assertEqual(evaluate_vector(deep_evidence), "fail")
+
+        resolution = self.vectors["direct-finalized-receipt-resolves"]
+        deep_receipt = copy.deepcopy(resolution)
+        deep_receipt["input"]["carriers"][0]["receipt"]["futureDeep"] = nested()
+        self.assertEqual(evaluate_vector(deep_receipt), "indeterminate")
+        # Direct evaluation of the same deep input must not raise either: the
+        # iterative JCS traversal canonicalizes it and the carrier is judged
+        # on its content. The wrapper's guarded deepcopy is the boundary that
+        # normalizes the same depth to a fail-closed disposition.
+        self.assertIn(
+            evaluate_resolution(deep_receipt["input"]), {"pass", "indeterminate"}
+        )
+
+        deep_artifact = copy.deepcopy(resolution)
+        deep_artifact["input"]["storage"] = {
+            deep_artifact["input"]["carriers"][0]["receipt"]["nativeAddress"]: nested()
+        }
+        self.assertEqual(evaluate_vector(deep_artifact), "indeterminate")
+
+    def test_extended_evidence_vectors_execute(self):
+        expected = {
+            "extended-evidence-optional-member-is-forward-readable": "pass",
+            "extended-evidence-sidecar-must-equal-complete-record": "indeterminate",
+            "extended-evidence-required-members-stay-required": "fail",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), verdict)
 
     def test_descriptor_and_index_scalar_guards_are_total(self):
         vector = copy.deepcopy(self.vectors["valid-recipe-registry-root"])

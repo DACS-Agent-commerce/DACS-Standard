@@ -34,28 +34,33 @@ composition is:
 
 The coordinated cut is identified by the annotated repository tag `v0.4`.
 
-## Unreleased JID-1 corrective candidate
+## Unreleased JID-1 and PA-2 registry-pin corrective candidate
 
 This candidate is a **breaking pre-v1 correction** under CORE §11.1.2, not an
 ordinary additive minor. It replaces the existing `jobId` meaning and every
-normalization-tolerant job-specific derivation. Its affected document tuple is:
+normalization-tolerant job-specific derivation. It also replaces numeric-only
+PA-2 registry authority with the exact signed
+`(registryVersion, registryDescriptorHash)` pair in current session and bundle
+inputs; a missing descriptor hash on a historical artifact remains readable
+but cannot authorize current PA-2 replay. Its affected document tuple is:
 
 | Document | Version | Status |
 | --- | --- | --- |
 | [CORE](CORE.md) | 0.3 | Draft corrective candidate |
-| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.7 | Draft corrective candidate |
-| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft; current composed module |
-| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.5 | Draft; current composed module |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate |
+| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft corrective candidate |
+| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft; current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft corrective candidate; current composed module |
-| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft corrective candidate |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.6 | Draft corrective candidate |
 
 The candidate is not an admissible live profile until a coordinated release
 records an annotated tag or immutable merge commit here. At that point every
 implementation claim MUST pin that identifier and this complete tuple. A
 deployment that cannot authenticate the same exact pin for every participant
 MUST refuse before producing, signing, resolving, comparing, or acting on a
-JID-1 artifact. A pre-JID-1 artifact is archival input only and cannot be
-silently promoted into this profile.
+JID-1 artifact or acting on a PA-2 registry pin. A pre-JID-1 artifact or
+numeric-only PA-2 registry pin is archival input only and cannot be silently
+promoted into this profile.
 
 That authenticated authority MUST be verifier- or orchestrator-owned context
 outside caller-controlled artifacts and phase input, bound to the exact session

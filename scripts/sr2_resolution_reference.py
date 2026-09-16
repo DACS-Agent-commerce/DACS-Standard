@@ -66,6 +66,36 @@ def hash_hex(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
+def _safe_canonical_bytes(value: Any) -> bytes | None:
+    """Canonicalize without letting depth/overflow failures escape the evaluator.
+
+    Runtime-controlled depth (a deeply nested descriptor or storage value) can
+    exhaust the host recursion limit inside JCS traversal; huge integers can
+    raise OverflowError through float conversion paths. Both are malformed
+    input, not host failures: callers receive ``None`` and map it to a
+    deterministic fail-closed disposition.
+    """
+    try:
+        return canonical_bytes(value)
+    except (TypeError, ValueError, UnicodeError, RecursionError, OverflowError):
+        return None
+
+
+def _safe_hash_hex(value: Any) -> str | None:
+    try:
+        return hash_hex(value)
+    except (TypeError, ValueError, UnicodeError, RecursionError, OverflowError):
+        return None
+
+
+def _safe_deepcopy(value: Any) -> Any:
+    """Copy untrusted input without letting host recursion errors escape."""
+    try:
+        return deepcopy(value)
+    except (TypeError, ValueError, RecursionError, OverflowError):
+        return None
+
+
 def descriptor_hash(descriptor: dict[str, Any]) -> str:
     return hash_hex({k: v for k, v in descriptor.items() if k not in SIGNATURE_FIELDS})
 
@@ -73,10 +103,9 @@ def descriptor_hash(descriptor: dict[str, Any]) -> str:
 def _try_descriptor_hash(descriptor: Any) -> str | None:
     if not isinstance(descriptor, dict):
         return None
-    try:
-        return descriptor_hash(descriptor)
-    except (TypeError, ValueError, UnicodeError):
-        return None
+    return _safe_hash_hex(
+        {k: v for k, v in descriptor.items() if k not in SIGNATURE_FIELDS}
+    )
 
 
 def _decode_b64url(value: Any) -> bytes | None:
@@ -201,9 +230,7 @@ def _valid_receipt_shape(receipt: Any) -> bool:
             return False
         if "timestamp" in block_ref and not _finite_number(block_ref["timestamp"]):
             return False
-    try:
-        canonical_bytes(receipt)
-    except (TypeError, ValueError, UnicodeError):
+    if _safe_canonical_bytes(receipt) is None:
         return False
     return True
 
@@ -218,6 +245,24 @@ def _receipt_tuple(receipt: dict[str, Any]) -> tuple[Any, ...]:
         receipt.get("nativeAddress"),
         receipt.get("contentHash"),
         canonical_bytes(transaction_ref).decode("utf-8"),
+        receipt.get("writer"),
+        receipt.get("nonce"),
+    )
+
+
+def _safe_receipt_tuple(receipt: Any) -> tuple[Any, ...] | None:
+    """Compute the SR2-5 tuple without letting host exceptions escape."""
+    if not _valid_receipt_shape(receipt):
+        return None
+    transaction_bytes = _safe_canonical_bytes(receipt["transactionRef"])
+    if transaction_bytes is None:
+        return None
+    return (
+        receipt.get("substrate"),
+        receipt.get("logicalAddress"),
+        receipt.get("nativeAddress"),
+        receipt.get("contentHash"),
+        transaction_bytes.decode("utf-8"),
         receipt.get("writer"),
         receipt.get("nonce"),
     )
@@ -285,10 +330,10 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
             ):
                 continue
             content = storage.get(native)
-            try:
-                content_matches = content is not None and hash_hex(content) == carrier.get("contentHash")
-            except (TypeError, ValueError, UnicodeError):
-                content_matches = False
+            content_matches = (
+                content is not None
+                and _safe_hash_hex(content) == carrier.get("contentHash")
+            )
             if not content_matches:
                 continue
             if expected_hash is not None and carrier.get("contentHash") != expected_hash:
@@ -314,19 +359,18 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
             continue
         native = receipt["nativeAddress"]
         content = storage.get(native)
-        try:
-            content_matches = content is not None and hash_hex(content) == receipt.get("contentHash")
-        except (TypeError, ValueError, UnicodeError):
-            content_matches = False
+        content_matches = (
+            content is not None
+            and _safe_hash_hex(content) == receipt.get("contentHash")
+        )
         if not content_matches:
             continue
-        try:
-            receipt_tuple = _receipt_tuple(receipt)
-            receipt_identity = canonical_bytes(receipt)
-        except (TypeError, ValueError, UnicodeError):
-            # An unsupported transactionRef cannot participate in an SR2-5
-            # identity comparison. Discard this carrier just like any other
-            # malformed or unverifiable receipt candidate.
+        # An unsupported transactionRef or uncanonicalizable snapshot cannot
+        # participate in an SR2-5 identity comparison. Discard this carrier
+        # just like any other malformed or unverifiable receipt candidate.
+        receipt_tuple = _safe_receipt_tuple(receipt)
+        receipt_identity = _safe_canonical_bytes(receipt)
+        if receipt_tuple is None or receipt_identity is None:
             continue
         delivered_at = carrier.get("deliveredAt")
         verified_delivery = delivered_at if _finite_number(delivered_at) else None
@@ -415,12 +459,19 @@ def _valid_stored_latest(value: Any) -> bool:
 
 
 def _valid_verified_receipt_evidence(value: Any) -> bool:
-    """Validate independent successful verifier outputs, not presented proof bytes."""
+    """Validate independent successful verifier outputs, not presented proof bytes.
+
+    SIG-5 / CORE §11.1.2 forward readability: a future minor may add optional
+    members to the evidence record or to this result shape. Required members
+    stay required and the consumer below still requires complete canonical
+    equality between the receipt's evidence and the verifier result's evidence,
+    so an additive member is admitted exactly when both sides carry it.
+    """
     return isinstance(value, list) and all(
         isinstance(item, dict)
-        and set(item) == {"evidence", "receiptHash"}
+        and {"evidence", "receiptHash"}.issubset(item)
         and _valid_reference(item.get("evidence"))
-        and set(item["evidence"]) == {"kind", "value"}
+        and {"kind", "value"}.issubset(item["evidence"])
         and _valid_hash(item.get("receiptHash"))
         for item in value
     )
@@ -503,19 +554,15 @@ def _verify_snapshot(descriptor: dict[str, Any], case: dict[str, Any]) -> str:
     verified_evidence = case.get("verifiedReceiptEvidence")
     if not _valid_verified_receipt_evidence(verified_evidence):
         return "fail"
-    try:
-        receipt_digest = hash_hex(receipt)
-        evidence_bytes = canonical_bytes(evidence_record)
-    except (TypeError, ValueError, UnicodeError):
+    receipt_digest = _safe_hash_hex(receipt)
+    evidence_bytes = _safe_canonical_bytes(evidence_record)
+    if receipt_digest is None or evidence_bytes is None:
         return "fail"
-    try:
-        verified = any(
-            result["receiptHash"] == receipt_digest
-            and canonical_bytes(result["evidence"]) == evidence_bytes
-            for result in verified_evidence
-        )
-    except (TypeError, ValueError, UnicodeError):
-        return "fail"
+    verified = any(
+        result["receiptHash"] == receipt_digest
+        and _safe_canonical_bytes(result["evidence"]) == evidence_bytes
+        for result in verified_evidence
+    )
     if not verified:
         return "indeterminate"
     index_storage = case.get("indexStorage")
@@ -524,11 +571,11 @@ def _verify_snapshot(descriptor: dict[str, Any], case: dict[str, Any]) -> str:
     snapshot = index_storage.get(descriptor.get("nativeIndexAddress"))
     if snapshot is None:
         return "indeterminate"
-    try:
-        if hash_hex(snapshot) != descriptor.get("indexContentHash"):
-            return "indeterminate"
-    except (TypeError, ValueError, UnicodeError):
+    snapshot_digest = _safe_hash_hex(snapshot)
+    if snapshot_digest is None:
         return "fail"
+    if snapshot_digest != descriptor.get("indexContentHash"):
+        return "indeterminate"
     if not _valid_index_snapshot(snapshot, descriptor):
         return "fail"
     return "pass"
@@ -676,9 +723,8 @@ def _load_indexed_definition(
     definition = definition_storage.get(locator)
     if definition is None:
         return "indeterminate", None, None
-    try:
-        definition_hash = hash_hex(definition)
-    except (TypeError, ValueError, UnicodeError):
+    definition_hash = _safe_hash_hex(definition)
+    if definition_hash is None:
         return "fail", None, None
     if definition_hash != entry.get("contentHash"):
         return "fail", None, None
@@ -835,7 +881,7 @@ def _classify_descriptor_identities(
         candidate_hash = _try_descriptor_hash(candidate)
         try:
             status = classify(candidate)
-        except (TypeError, ValueError, UnicodeError):
+        except (TypeError, ValueError, UnicodeError, RecursionError, OverflowError):
             status = "fail"
         if candidate_hash is None or status not in {"pass", "indeterminate"}:
             continue
@@ -944,11 +990,20 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
 
 
 def evaluate_vector(vector: dict[str, Any]) -> str:
+    """Evaluate one fixture, never leaking a host recursion/overflow failure.
+
+    The initial :func:`copy.deepcopy` is itself a boundary over
+    runtime-controlled input: a nesting depth beyond the host limit is
+    malformed input, not an exception for the caller. Bootstrap fails
+    deterministically; resolution returns ``indeterminate``.
+    """
     if not isinstance(vector, dict):
         return "error"
     family = vector.get("family")
     if family == "resolution":
-        return evaluate_resolution(deepcopy(vector.get("input")))
+        copied = _safe_deepcopy(vector.get("input"))
+        return "indeterminate" if copied is None else evaluate_resolution(copied)
     if family == "bootstrap":
-        return evaluate_bootstrap(deepcopy(vector.get("input")))
+        copied = _safe_deepcopy(vector.get("input"))
+        return "fail" if copied is None else evaluate_bootstrap(copied)
     return "error"

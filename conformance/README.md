@@ -23,7 +23,9 @@ profile identifier would incorrectly create a new full-profile version.
 
 The `registry-bootstrap-v0.1` security corpus has been regenerated for the
 ratified numeric-version contract, including dependent hashes, signatures, and
-successor links. The existing 76 expected outcomes are preserved. Check local
+successor links, and now also carries the forward-readable optional-evidence
+extension vectors (76 + 3 = 79 expected outcomes; all prior outcomes are
+preserved). Check local
 byte determinism with `python3 scripts/generate_sr2_resolution_vectors.py --check`;
 this bounded fixture check does not establish native proof verification or
 integrated full-suite acceptance.
@@ -130,8 +132,18 @@ codec under `dacs-recipe:v1:`; this does not allocate a production signature
 wire format or establish live registry-steward authorization. The selector-only
 unit projections are not complete wire artifacts.
 
-The stored 76-vector bootstrap corpus still represents the preceding numeric
-migration. Renewal and review of its dependent hashes, signatures, references
-and sidecars for this additional schema correction remain outstanding. Current
-source/ordinary-fixture checks do not establish corpus determinism or full
-integrated acceptance for this follow-up.
+The renewed bootstrap corpus contains 79 deterministic cases, including three
+optional-evidence forward-readability controls. Its dependent hashes,
+signatures, references and security-vector index are regenerated, and the
+checked-in generator plus integrated reference tests establish byte-identical
+reproduction for this fixture profile.
+
+### AP2 fixture-profile scope in the composed candidate
+
+The AP2 handler-safety corpus retains its explicitly synthetic DACS-4 v0.7
+profile and verifier-owned module tuple. Those fixture bytes and expected
+outcomes are preserved; its local profile-admission tests do not establish
+admission of the later composed tuple in `spec/PROFILE.md`. Current composed
+profile metadata is checked by the JID reference controls. Deployment or
+end-to-end AP2 support for the composed candidate requires separate exact-pin
+consumer evidence; a green pinned fixture-profile run is not that evidence.

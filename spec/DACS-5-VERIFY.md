@@ -4,7 +4,9 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 participates in the declared CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 added the non-terminal `audit-pending` gate, required every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, added the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and added structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.6** on the common DACS v0.1 baseline. v0.6 consumes the structurally distinct DACS-3 `SealedSelectionAgreementDocument` and requires SAC-8 receipt reproduction before its winner or price can enter audit or settlement-verified reputation; v0.5 participates in the declared CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+
+**Breaking pre-v1 correction — PA-2 registry pin.** DACS-5 v0.6 participates in the exact corrective tuple `0.3/0.8/0.6/0.6/0.8/0.6`: PA-2 bundle authority that previously admitted a numeric registry version alone now requires the signed byte-exact `(registryVersion, registryDescriptorHash)` pair. Numeric-only historical bundles remain replayable but cannot establish current-profile audit or reputation authority.
 
 ### 10.1 Abstract
 
@@ -156,9 +158,10 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
 - (ST-11) **Completed-bundle audit gate.** After the last successful settle/rate step, the session enters `audit-pending`; it does not enter `finalised` merely because commercial performance is complete. During `audit-pending`, the producer MUST:
   1. obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for every required DACS-2 composite record, the DACS-3 commitment, and every DACS-4 settlement/delivery evidence record;
   2. independently resolve each receipt's native address, recompute the referenced artifact's canonical content hash, and match its logical/session bindings;
-  3. resolve the exact signed Listing and agreement, enforce their four-way
+  3. resolve the exact signed Listing and agreement, enforce their five-way
      commitment phase/artifact/domain dispatch, and for an identity-bound phase
-     obtain `verified` from the terminal proof above;
+     obtain `verified` from the terminal proof above, or for the independent
+     selection-bound phase reproduce SAC-8 without identity companions;
   4. construct and obtain all required signatures on the completed bundle, anchor the role-specific copy under §10.4.2, and obtain a verified `finalized` receipt for the bundle itself; and
   5. publish the applicable logical→native `BundleBinding` on a write-input substrate.
 
@@ -370,9 +373,13 @@ type IdentityBoundTerminalVerificationInput = {
 The terminal consumer MUST verify the complete Listing signature and require
 exactly one recognized negotiation phase immediately followed by exactly one
 agreement commitment phase. It MUST require the matching signed
-`phaseSummary` entry, resolve `agreementRef`, and enforce DACS-3's four-way
+`phaseSummary` entry, resolve `agreementRef`, and enforce DACS-3's five-way
 phase/artifact/domain matrix before admitting the bundle. A terminal bundle
 signature or caller type label cannot upgrade the fetched agreement.
+
+For the independent selection-bound phase, the consumer instead resolves and
+reproduces the exact SAC-8 receipt. It MUST NOT pass that agreement through
+`IdentityBoundTerminalVerificationInput` or invent identity companions.
 
 For an identity-bound phase, every agreement role comes from the verified
 agreement. The consumer MUST run CORE IBH-1..IBH-5 against each exact
@@ -594,10 +601,10 @@ released bundle shapes because the new Listing phase was unknown—and therefore
 unusable—to pre-APR readers; it does not reinterpret any historical valid
 Listing or bundle bytes.
 
-**Agreement dispatch and identity-bound admission.** For every terminal bundle
+**Agreement dispatch and identity-bound admission; independent selection admission.** For every terminal bundle
 that carries `agreementRef`, the producer and consumer MUST resolve and verify
 the signed Listing, fetched agreement, and commitment record before accepting
-the bundle as terminal evidence. They apply DACS-3's exact four-way signed
+the bundle as terminal evidence. They apply DACS-3's exact five-way signed
 phase/artifact/domain dispatch independently of the commitment-record form. An
 unsupported, missing, dual, renamed, or mismatched discriminator is rejected
 before terminal admission or counting; neither `agreementRef` nor a bundle type
@@ -609,9 +616,13 @@ unavailable otherwise-consistent proof is `indeterminate` and leaves the
 session open or the bundle uncounted. Existing agreement phases retain their
 historical validation and require no new companion fields.
 
-The terminal gate above is conjunctive: a successful identity-bound admission
-never bypasses the Listing ordering, session, payment, payout, APR, or SEB
-obligations applicable to the same bundle.
+When the signed phase selects `SealedSelectionAgreementDocument`, both sides
+instead reproduce SAC-8 before terminal admission or counting. That path uses
+the selection receipt and carries no identity companion or IBH decision.
+
+The terminal gate above is conjunctive: a successful identity- or
+selection-bound admission never bypasses the Listing ordering, session,
+payment, payout, APR, or SEB obligations applicable to the same bundle.
 
 A failed or aborted bundle MUST be produced when the session reaches its terminal state. A completed bundle MUST instead be constructed, signed, anchored, finalized, and made independently resolvable during `audit-pending`; its finalized receipt is the prerequisite for the `finalised` terminal transition (ST-11). The bundle MUST include references to:
 
@@ -850,10 +861,12 @@ The job-bound `derive_job_bound` path retains the released metric semantics but 
 derive_settlement_verified(party, bundles, windowStart, windowEnd):
 
   # Resolve each copy's signed Listing, agreement, and commitment before it can
-  # enter scope. Exact DACS-3 four-way dispatch applies for every agreementRef.
+  # enter scope. Exact DACS-3 five-way dispatch applies for every agreementRef.
   # For either identity-bound phase, run §10.4 identity-bound terminal
-  # verification against actual bundle/CVR companions. Rejected, unsupported,
-  # or indeterminate copies are not admitted and therefore cannot be counted.
+  # verification against actual bundle/CVR companions. For the independent
+  # selection-bound phase, reproduce SAC-8 without identity companions.
+  # Rejected, unsupported, or indeterminate copies are not admitted and
+  # therefore cannot be counted.
   bundles := [b for b in bundles where terminal_agreement_admission(b) == verified]
 
   scoped := [b for b in bundles
@@ -1107,7 +1120,7 @@ Only the remaining records’ values, whose target matches the scored party, are
 
 - fetch the anchor at agreementRef.anchor.locator;
 - compare the hashed bytes to agreementRef.contentHash — a mismatch MUST cause that bundle to be excluded;
-- parse the result as a DACS-3 AgreementArtifact, selecting its schema and signing domain from the required version discriminator.
+- parse the result as a DACS-3 AgreementArtifact, selecting its schema and signing domain from the required version discriminator. For `SealedSelectionAgreementDocument`, resolve and independently reproduce the exact `selectionReceiptRef` under DACS-3 SAC-8 before using the winner, parties, or price; an unavailable receipt is `indeterminate`, and an invalid or non-reproducible receipt rejects the agreement.
 
 agreementRef is an AttestationRef, not an inline AgreementArtifact, so the volume step MUST dereference it before reading terms.price.
 

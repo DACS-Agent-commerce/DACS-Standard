@@ -10,10 +10,9 @@ Two signed ``SettlementEvidence`` fixtures form one supersession pair:
 
 This verifier is executable, not a shape check: each record's Ed25519 signature
 is verified over ``"dacs-evidence:v1:" || sha256hex(JCS(record minus signature))``
-against an independently pinned ``key:<pubkey-hex>`` phase orchestrator, and
-the supersession hash is recomputed. JSON is parsed with recursive
-duplicate-member and non-JSON numeric-constant rejection before
-canonicalization, hashing, or signature verification.
+against an independently pinned ``key:<pubkey-hex>`` phase orchestrator, and the
+supersession hash is recomputed.  The committed pair additionally carries
+fixture-only authenticated receipt context checked against both records.
 No amendment of any kind is accepted — ST-8 resolution is a same-phase
 supersession, not a ``correction`` (DACS-4-SETTLE.md: "No ``correction``
 amendment is used").
@@ -28,7 +27,6 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
-import json
 import re
 import sys
 from pathlib import Path
@@ -38,10 +36,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jcs  # noqa: E402
 from dacs_reference import (  # noqa: E402
-    DuplicateJSONMember,
+    cf4_encode,
     exact_safe_integer,
     loads_unique_json,
     parse_claim_reference,
+    DuplicateJSONMember,
     price_term_unit_is_valid,
 )
 
@@ -59,6 +58,8 @@ EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 EXPECTED_PHASE_ORCHESTRATOR = (
     "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
 )
+FIXTURE_RAIL_ID = "cross-chain-htlc:84532:80002"
+FIXTURE_PHASE_INDEX = 4
 CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
 FORBIDDEN_KEYS = {"settlementAmendment", "amendmentType", "amendmentRefs", "amendsEvidenceRef", "refundAmount"}
 DELIVERY_ONLY_KEYS = {"deliverableContentHash", "deliverableAnchor", "attestationRef"}
@@ -104,6 +105,8 @@ TXREF_FIELDS = {
 }
 TX_HASH = re.compile(r"^0x[0-9a-f]{64}$")
 TXREF_HASH_FIELD = {"htlc-lock": "lockTxHash", "htlc-reveal": "revealTxHash", "htlc-claim": "claimTxHash"}
+
+
 def attestation_ref_errors(value: Any) -> list[str]:
     """DACS-2 §7.5.2 AttestationRef exact wire shape: {anchor:{kind,locator}, contentHash, signer?}."""
     if not isinstance(value, dict):
@@ -125,10 +128,9 @@ def attestation_ref_errors(value: Any) -> list[str]:
         try:
             parse_claim_reference(value.get("signer"))
         except ValueError:
-            errs.append(
-                "signer, when present, MUST be a canonical registered "
-                "ClaimReference (DACS-1 §6.3.1 and CORE CF-2)"
-            )
+            errs.append("signer, when present, MUST be a canonical registered ClaimReference "
+                        "in non-empty scheme:identifier form "
+                        "(DACS-1 §6.3.1 and CORE CF-2)")
     if not isinstance(value.get("contentHash"), str) or not HEX64.fullmatch(value["contentHash"]):
         errs.append("contentHash MUST be 64 lowercase hex (no prefix)")
     return errs
@@ -241,25 +243,99 @@ def _walk_keys(obj: Any):
             yield from _walk_keys(v)
 
 
+def fixture_receipt_errors(
+    receipt: Any,
+    evidence: dict,
+    *,
+    resolved: bool,
+    expected_phase_orchestrator: str,
+) -> list[str]:
+    """Validate committed fixture receipt authority and logical/native binding."""
+
+    if not isinstance(receipt, dict):
+        return ["anchorReceipt MUST be an object in the committed fixture"]
+    required = {
+        "receiptVersion", "substrate", "finalityProfile", "logicalAddress",
+        "nativeAddress", "contentHash", "transactionRef", "writer", "state",
+        "observationDisposition", "observedAt", "blockRef", "evidence",
+    }
+    if set(receipt) != required:
+        return ["anchorReceipt fields do not match the pinned fixture receipt shape"]
+    suffix = ":resolved" if resolved else ""
+    expected_logical = (
+        f"dacs4:payment:{evidence.get('jobId')}:"
+        f"{cf4_encode(FIXTURE_RAIL_ID)}:{FIXTURE_PHASE_INDEX}{suffix}"
+    )
+    try:
+        expected_hash = content_hash_hex(evidence)
+    except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError):
+        return ["settlementEvidence is not strict JCS-canonicalizable"]
+    errors: list[str] = []
+    if (
+        receipt.get("receiptVersion") != "1"
+        or receipt.get("logicalAddress") != expected_logical
+        or receipt.get("nativeAddress") != f"stor-{expected_hash}"
+        or receipt.get("nativeAddress") == receipt.get("logicalAddress")
+        or receipt.get("contentHash") != expected_hash
+        or receipt.get("writer") != expected_phase_orchestrator
+        or receipt.get("state") != "finalized"
+        or receipt.get("observationDisposition") != "established"
+    ):
+        errors.append(
+            "anchorReceipt MUST bind the pinned logical/native address, content hash, "
+            "finalized lifecycle, and expected phase-orchestrator writer"
+        )
+    for field in ("transactionRef", "evidence"):
+        item = receipt.get(field)
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"kind", "value"}
+            or not isinstance(item.get("kind"), str)
+            or not item["kind"]
+            or not isinstance(item.get("value"), str)
+            or not item["value"]
+        ):
+            errors.append(f"anchorReceipt.{field} MUST be a non-empty kind/value binding")
+    block = receipt.get("blockRef")
+    evidence_observed_at = evidence.get("observedAt")
+    if (
+        not isinstance(block, dict)
+        or set(block) != {"id", "height", "timestamp"}
+        or not isinstance(block.get("id"), str)
+        or not block["id"]
+        or not isinstance(block.get("height"), str)
+        or re.fullmatch(r"0|[1-9][0-9]*", block["height"]) is None
+        or not exact_safe_integer(block.get("timestamp"), minimum=0)
+        or not exact_safe_integer(receipt.get("observedAt"), minimum=0)
+        or not exact_safe_integer(evidence_observed_at, minimum=0)
+        or block["timestamp"] < evidence_observed_at
+        or block["timestamp"] > receipt["observedAt"]
+    ):
+        errors.append("anchorReceipt block/observation chronology is invalid")
+    return errors
+
+
 def load_case(
     path: Path,
     *,
     expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+    require_fixture_receipt: bool = False,
+    resolved: bool = False,
 ) -> tuple[dict | None, list[str]]:
     try:
-        data = loads_unique_json(path.read_text(encoding="utf-8"))
+        raw_json = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
-    except DuplicateJSONMember as exc:
-        return None, [fail(path, str(exc))]
-    except json.JSONDecodeError as exc:
-        return None, [fail(path, f"invalid JSON: {exc}")]
-    except UnicodeError as exc:
-        return None, [fail(path, f"invalid UTF-8: {exc}")]
-    except (ValueError, RecursionError) as exc:
-        return None, [fail(path, f"invalid JSON: {exc}")]
-    except OSError as exc:
-        return None, [fail(path, f"fixture file could not be read: {exc}")]
+    except UnicodeDecodeError:
+        return None, [fail(path, "invalid UTF-8: input is not valid UTF-8")]
+    except (OSError, RecursionError) as error:
+        return None, [fail(path, f"fixture file could not be read: {error}")]
+    try:
+        data = loads_unique_json(raw_json)
+    except RecursionError as error:
+        return None, [fail(path, f"invalid JSON: {error}")]
+    except ValueError as error:
+        return None, [fail(path, str(error))]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []
@@ -285,6 +361,16 @@ def load_case(
     sig_err = verify_signature(evidence, expected_phase_orchestrator)
     if sig_err:
         errors.append(fail(path, sig_err))
+    if require_fixture_receipt:
+        errors += [
+            fail(path, error)
+            for error in fixture_receipt_errors(
+                data.get("anchorReceipt"),
+                evidence,
+                resolved=resolved,
+                expected_phase_orchestrator=expected_phase_orchestrator,
+            )
+        ]
     return evidence, errors
 
 
@@ -299,9 +385,13 @@ def validate_interim(
     path: Path,
     *,
     expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+    require_fixture_receipt: bool = False,
 ) -> tuple[dict | None, list[str]]:
     evidence, errors = load_case(
-        path, expected_phase_orchestrator=expected_phase_orchestrator
+        path,
+        expected_phase_orchestrator=expected_phase_orchestrator,
+        require_fixture_receipt=require_fixture_receipt,
+        resolved=False,
     )
     if evidence is None:
         return None, errors
@@ -340,9 +430,13 @@ def validate_resolved(
     interim: dict | None,
     *,
     expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+    require_fixture_receipt: bool = False,
 ) -> list[str]:
     evidence, errors = load_case(
-        path, expected_phase_orchestrator=expected_phase_orchestrator
+        path,
+        expected_phase_orchestrator=expected_phase_orchestrator,
+        require_fixture_receipt=require_fixture_receipt,
+        resolved=True,
     )
     if evidence is None:
         return errors
@@ -428,24 +522,51 @@ def validate_resolved(
             return errors
         if ref["contentHash"] != expected:
             errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
+        errors += [fail(path, error) for error in supersession_binding_errors(
+            ref, interim,
+            expected_phase_orchestrator=expected_phase_orchestrator,
+            require_fixture_receipt=require_fixture_receipt,
+        )]
         if interim.get("jobId") != evidence.get("jobId"):
             errors.append(fail(path, "resolved and interim records MUST share jobId"))
-        if "signer" in ref:
-            interim_signature = interim.get("signature")
-            interim_signer = (
-                interim_signature.get("signer")
-                if isinstance(interim_signature, dict) else None
-            )
-            if (
-                ref["signer"] != expected_phase_orchestrator
-                or ref["signer"] != interim_signer
-            ):
-                errors.append(fail(
-                    path,
-                    "supersedesEvidenceRef.signer MUST equal the independently "
-                    "expected phase orchestrator and authenticated interim signer",
-                ))
     return errors
+
+
+def supersession_binding_errors(
+    reference: dict,
+    interim: dict,
+    *,
+    expected_phase_orchestrator: str,
+    require_fixture_receipt: bool,
+) -> list[str]:
+    """Bind a shape-checked reference to the authenticated interim authority.
+
+    Receipt mode uses the pinned fixture native-address mapping, which
+    fixture_receipt_errors also requires of the interim receipt. Custom pairs
+    retain their historical hash/signature-only contract and make no claim
+    that their arbitrary locator was resolved or authenticated.
+    """
+    errors = []
+    signature = interim.get("signature")
+    if "signer" in reference and (
+        reference["signer"] != expected_phase_orchestrator
+        or not isinstance(signature, dict)
+        or reference["signer"] != signature.get("signer")
+    ):
+        errors.append("supersedesEvidenceRef.signer MUST match the independently expected phase orchestrator and authenticated interim signer")
+    if require_fixture_receipt and reference["anchor"] != {
+        "kind": "storage-program", "locator": f"stor-{content_hash_hex(interim)}",
+    }:
+        errors.append("supersedesEvidenceRef.anchor MUST match the authenticated interim fixture native anchor")
+    return errors
+
+
+def requires_fixture_receipts(interim_path: Path, resolved_path: Path) -> bool:
+    """An equivalent spelling of either committed fixture retains its policy."""
+    return (
+        interim_path.resolve() == DEFAULT_INTERIM.resolve()
+        or resolved_path.resolve() == DEFAULT_RESOLVED.resolve()
+    )
 
 
 def validate_pair(
@@ -454,9 +575,14 @@ def validate_pair(
     *,
     expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
 ) -> list[str]:
+    try:
+        require_fixture_receipts = requires_fixture_receipts(interim_path, resolved_path)
+    except (OSError, RuntimeError) as error:
+        return [fail(interim_path, f"pair paths could not be resolved: {error}")]
     interim, errors = validate_interim(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,
+        require_fixture_receipt=require_fixture_receipts,
     )
     admitted_interim = interim if interim is not None and not errors else None
     if errors:
@@ -465,6 +591,7 @@ def validate_pair(
         resolved_path,
         admitted_interim,
         expected_phase_orchestrator=expected_phase_orchestrator,
+        require_fixture_receipt=require_fixture_receipts,
     )
     return errors
 

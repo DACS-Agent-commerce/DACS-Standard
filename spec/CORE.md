@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification and is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 is a **breaking pre-v1 corrective candidate** under §11.1.2: it adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification; pins one byte-exact canonical `jobId` grammar across the stack; and corrects the shared SN-4/Vet execution boundary so presentation admission uses verifier-issued, issuer-owned nonce state and authenticated current-profile context rather than caller-projected authority. The signed artifact shapes and domains remain unchanged, but a pre-correction implementation carrying the same v0.3 label is not presumed interoperable. v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -612,6 +612,19 @@ A session nonce is **a challenge the verifier issues**, not a value the presente
 - (SN-3) **Issuance and binding.** The verifier MUST issue the nonce to the presenter before the presentation is produced, bound to the session's `jobId`. The transport of the challenge is substrate- and protocol-specific and is out of scope; the value the verifier matches against MUST be the one it generated for this session. The verifier MUST compare the presented nonce against the nonce it issued for this `jobId` and reject any mismatch.
 - (SN-4) **Single-use and retention.** A verifier MUST accept a nonce for at most one presentation. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed before validating the attempt and reject every later presentation carrying it, including a fresh, changed, or re-signed presentation for the same `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/attempted/consumed record and, for an accepted attempt, the authenticated admission record required by IBH-4 at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`, and one nonce MUST NOT be issued to more than one presenter or presentation.
 
+The SN-4 record is verifier/issuer-owned mutable state, not a `consumed: false`
+assertion accepted from a presenter or ordinary caller.  It MUST bind at least
+the `jobId`, evaluated actor/party, Vet attempt, expected verifier, issuance
+authority, issued nonce and expiry.  A presentation carrying the exact issued
+nonce consumes that record atomically before later bundle, requirement,
+signature, result, composite or receipt processing can fail; a missing or
+different nonce neither authorizes the attempt nor consumes some other
+issuance.  One successful admission MAY yield an internal capability used by
+nested checks of that same presentation, so those checks do not consume the
+nonce again.  Such a capability and ledger are execution state and MUST NOT be
+inserted into or inferred from a signed `IdentityBundle`, `VerifyResult` or
+`CompositeVerificationRecord`.
+
 > **Note (non-normative).** This is the standard SIWD/EIP-4361 challenge-response shape, lifted to a shared primitive because both DACS-1 (presentation) and DACS-2 (holder-/attestation-binding) depend on the same nonce having these properties. Constraining provenance — not just the match check — is what stops two conforming implementations from disagreeing on the very value the replay defence rests on.
 
 ## C. Composed open standards
@@ -699,7 +712,36 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
 5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
 
-CORE v0.3 together with DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.5 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; these versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
+The unreleased coordinated corrective candidate is CORE v0.3 together with
+DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.5. It
+declares two breaking corrections within one exact-pinned boundary:
+
+- for `jobId`, the former “ULID or substrate-equivalent” allowance,
+  major-only listing admission, and normalization-tolerant job-specific
+  derivations are replaced by JID-1..JID-4 plus exact corrective-profile
+  admission; and
+- for Vet, CORE v0.3, DACS-1 v0.7, and DACS-2 v0.6 change existing execution
+  behaviour: the declared presentation kind selects the nonce conveyance;
+  verifier-issued SN-4 state is consumed on attempt; current invocation,
+  aggregation, time, signer, result-set, registry, and receipt authority comes
+  from authenticated verifier/orchestrator context; and unsigned or
+  caller-projected substitutes fail closed. Existing `IdentityBundle`,
+  `VerifyResult`, and `CompositeVerificationRecord` signed shapes and domains
+  are unchanged.
+
+`PROFILE.md` records the complete tuple and identifies the three documents
+whose existing behaviour changes. Retaining their v0.x labels does not assert
+same-version interoperability with a pre-correction implementation: only the
+future exact coordinated release tag or immutable specification commit plus
+the complete tuple can establish the live profile. A Vet decision, composite,
+invocation record, or conformance result produced or interpreted only under
+pre-correction execution semantics remains historical evidence and cannot
+establish current admission, authorize current protocol action, or be relabelled
+as evidence for this correction. This does not revoke VP-C1..VP-C3 reuse of a
+structurally unchanged `VerifyResult` v1: after current-profile admission, a
+current verifier may qualify that result from its authenticated recipe family,
+version, signed predicates, times, and current trusted context. The reusable
+result does not itself assert or prove a producing profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 

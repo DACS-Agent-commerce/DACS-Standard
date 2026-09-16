@@ -14,12 +14,90 @@ The format used per release:
 
 ## [Unreleased]
 
-### Fixed — authenticated Vet replay and reference consumers
+### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6)
+
+- **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened
+  session-presentation and Vet rules below are included in the existing
+  unreleased coordinated corrective candidate while retaining the current
+  CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 labels and complete module tuple. This
+  is a breaking pre-v1 correction, not an ordinary additive or same-version
+  interoperability claim. Live use requires a future exact coordinated
+  release tag or immutable specification commit plus the complete tuple to be
+  authenticated for every participant before protocol action. Matching module
+  labels, artifact-version fields, signatures, registry availability, fixture
+  hashes, the walkthrough `profileSha256`, or `MANIFEST.json` `inputBindings`
+  are insufficient. Existing signed artifact shapes and domains remain
+  frozen; pre-correction Vet decisions, composite/invocation records, and
+  conformance results retain only their explicitly selected historical
+  semantics and cannot be relabelled as current-profile evidence or authorize
+  current effects. A structurally unchanged `VerifyResult` v1 remains reusable
+  under VP-C1..VP-C3 after authenticated current-profile admission and current
+  qualification; the result itself does not establish a producing profile.
 
 - **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
   IDs are explicitly positive safe integers; the textual `cci-xm` PB profile
   shares that applicability ceiling while retaining larger values as generic,
   non-applicable claims. Unsafe numeric rails fail before tier selection.
+- The executable DACS-1/Vet reference now admits each presentation through a
+  verifier-owned active-phase context and an issuer-owned mutable SN-4 ledger.
+  Exact issued nonces are consumed on presentation attempt and retained by the
+  runtime; missing/wrong nonces and caller `consumed: false` snapshots cannot
+  authorize an invocation.  The context independently pins actor/evaluated
+  party, selected primary claim, attempt, expected verifier, phase orchestrator,
+  anchor writer, recipe
+  registry, trusted time, and composite receipt.  It also binds the expected
+  verifier to the verifier IdentityBundle and composite/reference signers while
+  keeping VerifyResult authority independent (#366).
+- Composite freshness now uses signed `generatedAt`, with safe-integer,
+  participating-result and authenticated receipt/execution chronology checks;
+  unsigned `evaluatedAt` is ignored as authority.  Record receipts validate the
+  CF-4 logical address separately from the native locator, content hash, writer,
+  transaction and finalized fixture lifecycle.  VerifyResult v1 remains
+  session-agnostic and reusable under VP-C1..VP-C3; no signed v1 shape changed.
+- A shared strict JCS/ClaimReference reference helper replaces ad-hoc
+  `json.dumps` equality/hashing in the affected paths, retains DID
+  method-specific bytes while enforcing exact percent escapes and the Demos
+  self-certifying DID profile, and rejects invalid numbers/Unicode without
+  changing four-disposition precedence.  The lifecycle walkthrough now rejects
+  bool/float phase indices before keying or comparison.
+- The HTLC-9/ST-8 fixtures use the registered `key:` signer spelling.  Their
+  existing public-key signatures remain under the frozen evidence domain, and
+  the regenerated wrappers add finalized receipt context; the verifier pins an
+  independent expected phase orchestrator and validates both receipts (#366).
+  Equivalent committed-file paths retain receipt validation; receipt-backed
+  supersession references bind the interim native anchor and any optional
+  signer to the expected authenticated authority. Custom pairs retain their
+  documented hash/signature-only locator contract.
+- Common invocation admission checks authenticated session/job/recipe pins
+  for every operation. The shared current registry excludes deferred CCI
+  contexts and validates specified structured identifier components, with the
+  existing deferred-LEI fixture arm explicitly selected for compatibility.
+
+### Fixed — executable DACS-1 / Vet golden inputs
+
+- The 30 DACS-1/Vet manifest cases now use only registered DACS-2 method
+  kinds and resolve every result against an exact, signed recipe family. The
+  three aggregation cases exercise CRQ-1 through signed composite records and
+  the production `VetCredentialsInput`/trusted-session boundary, including
+  exact job, bundle, requirement, registry-pin, and committed-result-set
+  checks. The fixture resolver independently binds the expected result signer,
+  authenticated source-attestation reference, and complete serialized result
+  hash in addition to the signature-excluded `VerifyResultRef.contentHash`;
+  result references must be unique and every exercised identifier must be in
+  its scheme's canonical form. Aggregate outputs retain only the normative
+  decision and reasons. Six additional CRQ-2 cases pin exact-family explicit
+  and implicit-latest resolution, reject another selected method family,
+  require verified parameters from authenticated `VerifyResult.data` rather
+  than signed claim metadata, and fail closed on malformed or unresolved
+  requirement selectors, and ensure unresolved qualification preflight cannot
+  be masked by either ordinary decision-precedence ladder;
+  VPC-4 terminal attribution is derived separately (`fail` maps to
+  `counterparty`, never `permanent`). The cross-run tool rejects the
+  superseded control-gate sketch and exposes all 44 replacement evaluations
+  under stable `<case>::<evaluation>` names (#363).
+
+### Fixed — integrated presence and current-profile consumers
+
 - Private candidate review follow-up: retain exact production input hashes and authenticated session/registry pins; distinguish non-authorizing historical reconstruction from active current-time acceptance; require Composite members while preserving optional source-attestation signer semantics.
 - **Presence/Vet executable boundary repaired** (#362) — the candidate reader
   now separates presenter-signed presence metadata from verified predicates,
@@ -165,7 +243,6 @@ The format used per release:
   create party fault during an outage. No historical downgrade profile is
   registered. Adds 22 deterministic disposition vectors covering all required
   issue cases and the explicitly weaker authenticated no-binding rail posture.
-
 
 ### Fixed — DACS-X conformance provenance
 

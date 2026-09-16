@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification and is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 is a **breaking pre-v1 corrective candidate** under §11.1.2: it adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification; pins one byte-exact canonical `jobId` grammar across the stack; and corrects the shared SN-4/Vet execution boundary so presentation admission uses verifier-issued, issuer-owned nonce state and authenticated current-profile context rather than caller-projected authority. The signed artifact shapes and domains remain unchanged, but a pre-correction implementation carrying the same v0.3 label is not presumed interoperable. v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -712,7 +712,36 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
 5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
 
-CORE v0.3 together with DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.5 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; these versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
+The unreleased coordinated corrective candidate is CORE v0.3 together with
+DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.5. It
+declares two breaking corrections within one exact-pinned boundary:
+
+- for `jobId`, the former “ULID or substrate-equivalent” allowance,
+  major-only listing admission, and normalization-tolerant job-specific
+  derivations are replaced by JID-1..JID-4 plus exact corrective-profile
+  admission; and
+- for Vet, CORE v0.3, DACS-1 v0.7, and DACS-2 v0.6 change existing execution
+  behaviour: the declared presentation kind selects the nonce conveyance;
+  verifier-issued SN-4 state is consumed on attempt; current invocation,
+  aggregation, time, signer, result-set, registry, and receipt authority comes
+  from authenticated verifier/orchestrator context; and unsigned or
+  caller-projected substitutes fail closed. Existing `IdentityBundle`,
+  `VerifyResult`, and `CompositeVerificationRecord` signed shapes and domains
+  are unchanged.
+
+`PROFILE.md` records the complete tuple and identifies the three documents
+whose existing behaviour changes. Retaining their v0.x labels does not assert
+same-version interoperability with a pre-correction implementation: only the
+future exact coordinated release tag or immutable specification commit plus
+the complete tuple can establish the live profile. A Vet decision, composite,
+invocation record, or conformance result produced or interpreted only under
+pre-correction execution semantics remains historical evidence and cannot
+establish current admission, authorize current protocol action, or be relabelled
+as evidence for this correction. This does not revoke VP-C1..VP-C3 reuse of a
+structurally unchanged `VerifyResult` v1: after current-profile admission, a
+current verifier may qualify that result from its authenticated recipe family,
+version, signed predicates, times, and current trusted context. The reusable
+result does not itself assert or prove a producing profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 

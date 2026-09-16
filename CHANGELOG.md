@@ -14,7 +14,25 @@ The format used per release:
 
 ## [Unreleased]
 
-### Fixed — Vet admission, provenance, time, and receipt authority
+### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6)
+
+- **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened
+  session-presentation and Vet rules below are included in the existing
+  unreleased coordinated corrective candidate while retaining the current
+  CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 labels and complete module tuple. This
+  is a breaking pre-v1 correction, not an ordinary additive or same-version
+  interoperability claim. Live use requires a future exact coordinated
+  release tag or immutable specification commit plus the complete tuple to be
+  authenticated for every participant before protocol action. Matching module
+  labels, artifact-version fields, signatures, registry availability, fixture
+  hashes, the walkthrough `profileSha256`, or `MANIFEST.json` `inputBindings`
+  are insufficient. Existing signed artifact shapes and domains remain
+  frozen; pre-correction Vet decisions, composite/invocation records, and
+  conformance results retain only their explicitly selected historical
+  semantics and cannot be relabelled as current-profile evidence or authorize
+  current effects. A structurally unchanged `VerifyResult` v1 remains reusable
+  under VP-C1..VP-C3 after authenticated current-profile admission and current
+  qualification; the result itself does not establish a producing profile.
 
 - **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
   IDs are explicitly positive safe integers; the textual `cci-xm` PB profile

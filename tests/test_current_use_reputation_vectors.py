@@ -773,6 +773,19 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         }
         self.assertIn("rebound", _current_use_sb2_conflict([first, second]))
 
+    def test_solana_projection_rejects_malformed_alphabet_and_width(self):
+        request = self.fixture["currentRequestsByModel"]["commitment-level"]
+        binding = request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]
+        bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][binding["nativeAddress"]]
+        authority = self.fixture["dependencies"]["bundleAuthorityByContentHash"][bundle_hash(bundle)]
+        record = next(iter(authority["referenceValidationByCanonicalRef"].values()))["record"]
+        self.assertIsNotNone(_current_use_settlement_tx_ids(record))
+        for signature in ("not-base58-0OIl", generator.FixtureFactory.base58(b"\x05" * 63)):
+            malformed = copy.deepcopy(record)
+            malformed["paymentTxRefs"][0]["signature"] = signature
+            with self.subTest(signature=signature):
+                self.assertIsNone(_current_use_settlement_tx_ids(malformed))
+
     def test_new_new_and_each_new_older_pair_selects_authenticated_new_copy(self):
         new_new = self.derive([self.fixture["currentRequestsByModel"]["block-depth"]])
         self.assertEqual("pass", new_new["decision"], new_new["reason"])

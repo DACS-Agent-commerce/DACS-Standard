@@ -132,7 +132,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(67, self.data["count"])
+        self.assertEqual(69, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -227,6 +227,72 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             del trust["providerAttestations"][response_hash][field]
             with self.subTest(scope="attestation", field=field):
                 self.assertNotEqual("pass", verify_finality(control, trust)["decision"])
+
+    def test_provider_attestation_map_boundary_is_typed_on_direct_and_composed_paths(self):
+        control = self.cases["fv-provider-receipt-canonical-success"]["input"]
+        self.assertEqual(
+            "pass", verify_finality(control, self.trust)["decision"]
+        )
+        trust = copy.deepcopy(self.trust)
+        trust.pop("providerAttestations")
+        with self.subTest(direct="missing"):
+            result = verify_finality(control, trust)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("unavailable", result["reason"])
+        unavailable = (None, {}, {"00" * 32: None})
+        malformed = ([], [1, 2], "map", 7, True)
+        for value in unavailable:
+            trust = copy.deepcopy(self.trust)
+            trust["providerAttestations"] = value
+            with self.subTest(direct="unavailable", value=value):
+                result = verify_finality(control, trust)
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("unavailable", result["reason"])
+        for value in malformed:
+            trust = copy.deepcopy(self.trust)
+            trust["providerAttestations"] = value
+            with self.subTest(direct="malformed", value=value):
+                result = verify_finality(control, trust)
+                self.assertEqual("error", result["decision"])
+                self.assertIn("malformed trusted provider attestation map", result["reason"])
+
+        composed_trust = copy.deepcopy(self.trust)
+        composed = copy.deepcopy(composed_trust)
+        composed.pop("copyPresenceByJobRole", None)
+        case = self.strong["provider-receipt"]
+        response_hash = control["context"]["responseAttestation"]["contentHash"]
+        attestation = composed_trust["providerAttestations"][response_hash]
+        trust = copy.deepcopy(composed_trust)
+        trust.pop("providerAttestations")
+        with self.subTest(composed="missing"):
+            decision, reason, _ = self.strong_result(case, trust=trust)
+            self.assertEqual("indeterminate", decision)
+            self.assertIn("unavailable", reason)
+        for label, value in (
+            ("null", None),
+            ("empty", {}),
+            ("nonmatching", {"00" * 32: attestation}),
+        ):
+            trust = copy.deepcopy(composed_trust)
+            trust["providerAttestations"] = value
+            with self.subTest(composed="unavailable", value=label):
+                decision, reason, _ = self.strong_result(case, trust=trust)
+                self.assertEqual("indeterminate", decision)
+                self.assertIn("unavailable", reason)
+        for value in ([], [attestation], "map", 7, True):
+            trust = copy.deepcopy(composed_trust)
+            trust["providerAttestations"] = value
+            with self.subTest(composed="malformed", value=value):
+                decision, reason, _ = self.strong_result(case, trust=trust)
+                self.assertEqual("error", decision)
+                self.assertIn(
+                    "malformed trusted provider attestation map", reason
+                )
+        with self.subTest(composed="canonical"):
+            decision, reason, _ = self.strong_result(
+                case, trust=composed_trust
+            )
+            self.assertEqual("pass", decision, reason)
 
     def test_malformed_nested_inputs_refuse_without_exceptions(self):
         control = self.cases["fv-block-depth-canonical-success"]["input"]

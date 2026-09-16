@@ -140,6 +140,19 @@ IMPLEMENTED_WINDOWING_BASES = frozenset({"finalisedAt"})
 _SIG6_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
 _CANONICAL_POSITIVE_DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 _MAX_SAFE_JSON_INTEGER = 9_007_199_254_740_991
+_BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+
+def _base58_decode(value):
+    if not isinstance(value, str) or not value:
+        raise ValueError("invalid base58")
+    number = 0
+    for char in value:
+        if char not in _BASE58_ALPHABET:
+            raise ValueError("invalid base58")
+        number = number * 58 + _BASE58_ALPHABET.index(char)
+    raw = number.to_bytes((number.bit_length() + 7) // 8, "big") if number else b""
+    return b"\x00" * (len(value) - len(value.lstrip("1"))) + raw
 
 
 def sig6_canonical(value):
@@ -246,11 +259,11 @@ CURRENT_BUNDLE_ROLES = {"buyer", "seller", "orchestrator"}
 AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
 AUTHORITATIVE_MODULE_VERSIONS = {
     "core": "0.3",
-    "dacs1": "0.7",
+    "dacs1": "0.8",
     "dacs2": "0.6",
-    "dacs3": "0.5",
+    "dacs3": "0.6",
     "dacs4": "0.8",
-    "dacs5": "0.5",
+    "dacs5": "0.6",
 }
 AUTHORITATIVE_LOCAL_PROFILE = {
     "releasePin": AUTHORITATIVE_RELEASE_PIN,
@@ -1136,6 +1149,12 @@ def _chain_tx_ref_shape_valid(ref):
         ref["cluster"], {"mainnet", "devnet", "testnet"}
     ):
         return False
+    if kind in {"solana", "solana-instruction"}:
+        try:
+            if len(_base58_decode(ref["signature"])) != 64:
+                return False
+        except ValueError:
+            return False
     if kind == "ap2" and "receiptAttestation" in ref:
         return _attestation_ref_shape_valid(ref["receiptAttestation"])
     return True
@@ -5713,6 +5732,11 @@ def _current_use_settlement_tx_ids(record):
                 or not _nonempty_jcs_string(signature)
                 or not _safe_nonnegative_integer(index)
             ):
+                return None
+            try:
+                if len(_base58_decode(signature)) != 64:
+                    return None
+            except ValueError:
                 return None
             projected.append("solana:%s:%s:%d" % (cluster, signature, index))
         elif kind == "demos":

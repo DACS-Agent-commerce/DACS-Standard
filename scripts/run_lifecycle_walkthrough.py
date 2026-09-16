@@ -17,13 +17,15 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import jcs  # noqa: E402
+
 PROFILE = ROOT / "spec" / "PROFILE.md"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 SB2_VECTORS = (
@@ -83,34 +85,33 @@ JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
 PHASE_INDEX_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 
 
-def nfc_deep(value: Any) -> Any:
-    """Apply CORE CF-1 recursively and reject key collisions after NFC."""
+def canonical_json(value: Any) -> bytes:
+    """Produce strict repository CORE §B.2 JCS bytes."""
 
-    if isinstance(value, str):
-        return unicodedata.normalize("NFC", value)
-    if isinstance(value, list):
-        return [nfc_deep(item) for item in value]
-    if isinstance(value, dict):
-        result: dict[str, Any] = {}
-        for key, item in value.items():
-            normal_key = unicodedata.normalize("NFC", key)
-            if normal_key in result:
-                raise ValueError("object keys collide after NFC normalisation")
-            result[normal_key] = nfc_deep(item)
-        return result
+    return jcs.canonicalize(value).encode("utf-8")
+
+
+def require_phase_index(value: Any, *, label: str = "phaseIndex") -> int:
+    """Reject bool/float aliases before comparison, keying, or addressing."""
+
+    if type(value) is not int or not 0 <= value <= 9_007_199_254_740_991:
+        raise ValueError(f"{label} must be an exact non-negative safe integer")
     return value
 
 
-def canonical_json(value: Any) -> bytes:
-    """Produce the repository's integer/string-only RFC 8785 byte form."""
-
-    return json.dumps(
-        nfc_deep(value),
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")
+def phase_summary_by_index(bundle: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    summary = bundle.get("phaseSummary")
+    if not isinstance(summary, list):
+        raise ValueError("phaseSummary must be an array")
+    indexed: dict[int, dict[str, Any]] = {}
+    for entry in summary:
+        if not isinstance(entry, dict):
+            raise ValueError("phaseSummary entries must be objects")
+        index = require_phase_index(entry.get("index"), label="phaseSummary index")
+        if index in indexed:
+            raise ValueError("phaseSummary indices must be unique")
+        indexed[index] = entry
+    return indexed
 
 
 def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
@@ -131,7 +132,10 @@ def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
         raise ValueError("payment evidence railId is not canonically CF-4 encoded")
     if PHASE_INDEX_RE.fullmatch(phase_text) is None:
         raise ValueError("payment evidence phaseIndex is not a bare integer")
-    return job_id, rail_id, int(phase_text), len(parts) == 6
+    phase_index = require_phase_index(
+        int(phase_text), label="payment evidence phaseIndex"
+    )
+    return job_id, rail_id, phase_index, len(parts) == 6
 
 
 def sha256_hex(value: bytes) -> str:
@@ -314,6 +318,9 @@ class FakeSubstrate:
         return None if binding is None else self.native_anchors.get(binding["nativeAddress"])
 
     def claim_settlement(self, tx_id: str, job_id: str, phase_index: int) -> str:
+        phase_index = require_phase_index(
+            phase_index, label="settlement claim phaseIndex"
+        )
         binding = (job_id, phase_index)
         prior = self.settlement_claims.get(tx_id)
         if prior is None:
@@ -344,7 +351,8 @@ def sign_value(kind: str, unsigned: dict[str, Any], role: str) -> str:
 def signature_entries(artifact: dict[str, Any]) -> list[dict[str, Any]]:
     if "signature" in artifact:
         return [artifact["signature"]]
-    return artifact.get("signatures", [])
+    entries = artifact.get("signatures", [])
+    return entries if isinstance(entries, list) else []
 
 
 def key_from_claim(claim: str) -> bytes:
@@ -359,18 +367,26 @@ def verify_signatures(kind: str, artifact: dict[str, Any]) -> list[dict[str, Any
     payload = (DOMAINS[kind] + digest).encode("ascii")
     results = []
     for envelope in signature_entries(artifact):
-        signer = envelope.get("signer") or envelope.get("party")
+        signer = None
+        algorithm = None
         canonical = False
-        try:
-            signature = decode_base64url(envelope["value"])
-            canonical = True
-            verified = verify_ed25519(key_from_claim(signer), signature, payload)
-        except (KeyError, TypeError, ValueError):
-            verified = False
+        verified = False
+        if isinstance(envelope, dict):
+            signer = envelope.get("signer") or envelope.get("party")
+            algorithm = envelope.get("algorithm")
+            if algorithm == "ed25519":
+                try:
+                    signature = decode_base64url(envelope["value"])
+                    canonical = True
+                    verified = verify_ed25519(
+                        key_from_claim(signer), signature, payload
+                    )
+                except (KeyError, TypeError, ValueError):
+                    verified = False
         results.append(
             {
                 "signer": signer,
-                "algorithm": envelope.get("algorithm"),
+                "algorithm": algorithm,
                 "canonicalBase64Url": canonical,
                 "verified": verified,
             }
@@ -543,26 +559,81 @@ def stage_entry(stage: str, artifacts: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def parties_match_trusted_roles(
+    parties: Any,
+    trusted_role_claims: dict[str, str],
+    *,
+    allow_non_winning: bool,
+) -> bool:
+    """Match each authenticated role exactly once without artifact fallback."""
+
+    if not isinstance(parties, list):
+        return False
+    matches = {role: [] for role in trusted_role_claims}
+    for party in parties:
+        if not isinstance(party, dict):
+            return False
+        role = party.get("role")
+        if isinstance(role, str) and role in matches:
+            matches[role].append(party.get("primaryClaim"))
+        elif not (allow_non_winning and role == "bidder-non-winning"):
+            return False
+    return all(
+        claims == [trusted_role_claims[role]]
+        for role, claims in matches.items()
+    )
+
+
 def validate_agreement_against_listing(
-    listing: dict[str, Any], agreement: dict[str, Any]
+    listing: dict[str, Any],
+    agreement: dict[str, Any],
+    *,
+    trusted_role_claims: dict[str, str],
 ) -> dict[str, Any]:
     """Verify agreement signatures and enforce the listing's rail policy."""
 
     signature_results = verify_signatures("PayeeBoundAgreementDocument", agreement)
-    required_signers = {
-        party["primaryClaim"]
-        for party in agreement.get("parties", [])
-        if party.get("role") in {"buyer", "seller"}
-    }
+    trusted_roles_valid = (
+        isinstance(trusted_role_claims, dict)
+        and set(trusted_role_claims) == {"buyer", "seller"}
+        and all(
+            isinstance(claim, str) and claim
+            for claim in trusted_role_claims.values()
+        )
+        and trusted_role_claims["buyer"] != trusted_role_claims["seller"]
+    )
+    required_signers = (
+        set(trusted_role_claims.values()) if trusted_roles_valid else set()
+    )
     verified_signers = {
         result["signer"] for result in signature_results if result["verified"]
     }
     selected_rail = agreement.get("terms", {}).get("rail", {}).get("railId")
+    payout_bindings = agreement.get("terms", {}).get("payoutBindings")
+    payout_indices_valid = isinstance(payout_bindings, list)
+    if payout_indices_valid:
+        try:
+            for binding in payout_bindings:
+                if not isinstance(binding, dict):
+                    raise ValueError("payout binding must be an object")
+                require_phase_index(
+                    binding.get("phaseIndex"), label="payout binding phaseIndex"
+                )
+        except ValueError:
+            payout_indices_valid = False
     accepted_rails = {
         rail.get("railId") for rail in listing.get("acceptedRails", [])
     }
     reason = None
-    if not signature_results or not all(
+    if not trusted_roles_valid:
+        reason = "trusted agreement roles must be distinct buyer and seller claims"
+    elif not parties_match_trusted_roles(
+        agreement.get("parties"),
+        trusted_role_claims,
+        allow_non_winning=True,
+    ):
+        reason = "agreement parties do not match independently authenticated roles"
+    elif not signature_results or not all(
         result["verified"] for result in signature_results
     ):
         reason = "agreement signatures do not verify"
@@ -570,6 +641,8 @@ def validate_agreement_against_listing(
         reason = "agreement is missing a required buyer or seller signature"
     elif selected_rail not in accepted_rails:
         reason = "agreement selected a rail outside listing policy"
+    elif not payout_indices_valid:
+        reason = "agreement payout binding phaseIndex is invalid"
     return {
         "accepted": reason is None,
         "observed": "accept" if reason is None else "reject-before-settle",
@@ -637,7 +710,10 @@ def evaluate_delivery_after_payment(
 
 
 def consume_bundle_pair(
-    left: dict[str, Any], right: dict[str, Any]
+    left: dict[str, Any],
+    right: dict[str, Any],
+    *,
+    trusted_role_claims: dict[str, str],
 ) -> dict[str, Any]:
     """Consume two role copies and classify whether reputation may use them."""
 
@@ -645,11 +721,42 @@ def consume_bundle_pair(
         "leftCopy": verify_signatures("AttestationBundle", left),
         "rightCopy": verify_signatures("AttestationBundle", right),
     }
+    trusted_roles_valid = (
+        isinstance(trusted_role_claims, dict)
+        and set(trusted_role_claims) in (
+            {"buyer", "seller"},
+            {"buyer", "seller", "orchestrator"},
+        )
+        and all(
+            isinstance(claim, str) and claim
+            for claim in trusted_role_claims.values()
+        )
+        and trusted_role_claims["buyer"] != trusted_role_claims["seller"]
+    )
+    if not trusted_roles_valid:
+        return {
+            "disposition": "invalid",
+            "reputationDisposition": "exclude",
+            "reason": "trusted session roles must identify distinct buyer and seller claims",
+            "signatureResults": signature_results,
+        }
+    required_signers = set(trusted_role_claims.values())
     for label, bundle in (("leftCopy", left), ("rightCopy", right)):
         results = signature_results[label]
-        required_signers = {
-            party["primaryClaim"] for party in bundle.get("parties", [])
-        }
+        if not parties_match_trusted_roles(
+            bundle.get("parties"),
+            trusted_role_claims,
+            allow_non_winning=False,
+        ):
+            return {
+                "disposition": "invalid",
+                "reputationDisposition": "exclude",
+                "reason": (
+                    f"{label} parties do not match independently authenticated "
+                    "session roles"
+                ),
+                "signatureResults": signature_results,
+            }
         verified_signers = {
             result["signer"] for result in results if result["verified"]
         }
@@ -672,8 +779,16 @@ def consume_bundle_pair(
             "reason": "bundle copies identify different jobs",
             "signatureResults": signature_results,
         }
-    left_phases = {entry["index"]: entry for entry in left.get("phaseSummary", [])}
-    right_phases = {entry["index"]: entry for entry in right.get("phaseSummary", [])}
+    try:
+        left_phases = phase_summary_by_index(left)
+        right_phases = phase_summary_by_index(right)
+    except ValueError as error:
+        return {
+            "disposition": "invalid",
+            "reputationDisposition": "exclude",
+            "reason": str(error),
+            "signatureResults": signature_results,
+        }
     phase_keys = ("kind", "outcome", "errorClass")
     divergent = left.get("outcome") != right.get("outcome") or set(
         left_phases
@@ -708,6 +823,12 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
     identity_results = {
         role: result["verification"]
         for role, result in identity_validations.items()
+    }
+    trusted_session_role_claims = {
+        role: identities[role]["presentedBy"] for role in SEEDS
+    }
+    trusted_agreement_role_claims = {
+        role: trusted_session_role_claims[role] for role in ("buyer", "seller")
     }
 
     deliverable = {
@@ -1020,6 +1141,8 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
         "deliveryRef": delivery_ref,
         "bundleBase": bundle_base,
         "bundleCopies": bundle_copies,
+        "trustedAgreementRoleClaims": trusted_agreement_role_claims,
+        "trustedSessionRoleClaims": trusted_session_role_claims,
     }
     return [dacs1, dacs2, dacs3, dacs4, dacs5], context
 
@@ -1030,6 +1153,7 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     payment = context["payment"]
     delivery = context["delivery"]
     bundle = context["bundleBase"]
+    phase_summary_by_index(bundle)
     pipeline = listing["pipeline"]
     kinds = [step["kind"] for step in pipeline]
 
@@ -1043,12 +1167,17 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
         canonical_json(listing["offering"]["deliverable"])
     ):
         raise ValueError("agreement deliverable does not bind the listing")
-    agreement_validation = validate_agreement_against_listing(listing, agreement)
+    agreement_validation = validate_agreement_against_listing(
+        listing,
+        agreement,
+        trusted_role_claims=context["trustedAgreementRoleClaims"],
+    )
     if not agreement_validation["accepted"]:
         raise ValueError(agreement_validation["reason"])
-    expected_vet = {json.dumps(ref, sort_keys=True) for ref in context["vetRefs"].values()}
+    expected_vet = {canonical_json(ref) for ref in context["vetRefs"].values()}
     actual_party_vet = {
-        json.dumps(party["vetRecordRef"], sort_keys=True) for party in agreement["parties"]
+        canonical_json(party["vetRecordRef"])
+        for party in agreement["parties"]
     }
     if expected_vet != actual_party_vet:
         raise ValueError("agreement parties do not bind the DACS-2 records")
@@ -1099,12 +1228,16 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     if [entry["kind"] for entry in bundle["phaseSummary"]] != kinds:
         raise ValueError("bundle phaseSummary diverges from the listing pipeline")
     for entry, index in zip(bundle["phaseSummary"], range(len(pipeline))):
-        if entry["index"] != index:
+        if require_phase_index(
+            entry.get("index"), label="bundle phaseSummary index"
+        ) != index:
             raise ValueError("bundle phaseSummary index is not the bare pipeline index")
     if {item["party"] for item in bundle["signatures"]} != set(CLAIMS.values()):
         raise ValueError("completed bundle is missing a required signer")
     bundle_consumption = consume_bundle_pair(
-        context["bundleCopies"]["buyer"], context["bundleCopies"]["seller"]
+        context["bundleCopies"]["buyer"],
+        context["bundleCopies"]["seller"],
+        trusted_role_claims=context["trustedSessionRoleClaims"],
     )
     if (
         bundle_consumption["disposition"] != "unified"
@@ -1154,7 +1287,12 @@ def malformed_identity_case(identity: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def outside_policy_case(listing: dict[str, Any], agreement: dict[str, Any]) -> dict[str, Any]:
+def outside_policy_case(
+    listing: dict[str, Any],
+    agreement: dict[str, Any],
+    *,
+    trusted_role_claims: dict[str, str],
+) -> dict[str, Any]:
     candidate_unsigned = copy.deepcopy(
         signing_scope("PayeeBoundAgreementDocument", agreement)
     )
@@ -1165,7 +1303,11 @@ def outside_policy_case(listing: dict[str, Any], agreement: dict[str, Any]) -> d
     candidate = signed_multi(
         "PayeeBoundAgreementDocument", candidate_unsigned, ["buyer", "seller"]
     )
-    validation = validate_agreement_against_listing(listing, candidate)
+    validation = validate_agreement_against_listing(
+        listing,
+        candidate,
+        trusted_role_claims=trusted_role_claims,
+    )
     signatures_valid = bool(validation["signatureResults"]) and all(
         result["verified"] for result in validation["signatureResults"]
     )
@@ -1304,7 +1446,11 @@ def divergent_bundle_case(context: dict[str, Any]) -> dict[str, Any]:
         "AttestationBundle", seller_unsigned, ["buyer", "seller", "orchestrator"]
     )
     seller["anchoredByRole"] = "seller"
-    consumption = consume_bundle_pair(buyer, seller)
+    consumption = consume_bundle_pair(
+        buyer,
+        seller,
+        trusted_role_claims=context["trustedSessionRoleClaims"],
+    )
     buyer_hash = artifact_hash("AttestationBundle", buyer)
     seller_hash = artifact_hash("AttestationBundle", seller)
     return {
@@ -1395,7 +1541,11 @@ def build_trace() -> dict[str, Any]:
     validate_happy_path(stages, context)
     negatives = [
         malformed_identity_case(context["identities"]["buyer"]),
-        outside_policy_case(context["listing"], context["agreement"]),
+        outside_policy_case(
+            context["listing"],
+            context["agreement"],
+            trusted_role_claims=context["trustedAgreementRoleClaims"],
+        ),
         duplicate_settlement_case(substrate),
         delivery_failure_case(context),
         divergent_bundle_case(context),

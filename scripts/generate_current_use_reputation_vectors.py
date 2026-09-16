@@ -207,6 +207,26 @@ class CurrentUseFixtureFactory:
             ),
         )
 
+    def replay_context(self, request: dict) -> dict:
+        """Return the per-case trusted query context and role authority."""
+        return trusted_current_context(
+            [
+                trusted_role_authority(request["jobId"], role, CLAIMS[role])
+                for role in ("buyer", "seller")
+            ],
+            query=trusted_query_authority(
+                CLAIMS["buyer"], FIXTURE_QUERY_WINDOW[0], FIXTURE_QUERY_WINDOW[1],
+                "finalisedAt",
+            ),
+        )
+
+    def replay_keys(self) -> dict:
+        """Return the independently authenticated current verification keys."""
+        return trusted_verification_keys({
+            CLAIMS[role]: self.finality.keys[role].public_key().public_bytes_raw()
+            for role in ("buyer", "seller", "orchestrator", "steward")
+        })
+
     def _sign(self, key: Ed25519PrivateKey, domain: str, digest: str) -> str:
         return b64u(key.sign((domain + digest).encode("ascii")))
 
@@ -670,6 +690,120 @@ class CurrentUseFixtureFactory:
             "verifierConfig": self.config,
         }
 
+    def replay_dependencies(self, request: dict) -> dict:
+        """Return the per-case authenticated dependency closure."""
+        deps = self.dependencies
+        closure = {
+            "bundlesByNativeAddress": {},
+            "checkpointsByNativeAddress": {},
+            "bundleAuthorityByContentHash": {},
+            "settlementBindingProofByCanonicalRef": {},
+            "agreementsByCanonicalRef": {},
+            "ratingsByCanonicalRef": {},
+            "absenceEvidenceByCanonicalRef": {},
+        }
+        native_addresses: list[str] = []
+        eras: list[dict] = []
+        for role_request in request["roles"].values():
+            if role_request.get("mappingKind") == "binding":
+                native_addresses.extend(
+                    binding["nativeAddress"]
+                    for binding in role_request["selectionContext"]["candidateBindings"]
+                )
+            if "resolvedAddress" in role_request:
+                native_addresses.append(role_request["resolvedAddress"])
+            eras.extend(
+                era for era in (
+                    role_request.get("legacyEraEvidenceByNativeAddress") or {}
+                ).values() if era
+            )
+            if "legacyEraEvidence" in role_request:
+                eras.append(role_request["legacyEraEvidence"])
+        for native in native_addresses:
+            bundle = deps["bundlesByNativeAddress"][native]
+            closure["bundlesByNativeAddress"][native] = copy.deepcopy(bundle)
+            digest = bundle_hash(bundle)
+            authority = deps["bundleAuthorityByContentHash"].get(digest)
+            if authority is not None:
+                closure["bundleAuthorityByContentHash"][digest] = copy.deepcopy(authority)
+            agreement_ref = bundle.get("agreementRef")
+            if agreement_ref is not None:
+                key = canonical(agreement_ref).decode("utf-8")
+                if key in deps["agreementsByCanonicalRef"]:
+                    closure["agreementsByCanonicalRef"][key] = copy.deepcopy(
+                        deps["agreementsByCanonicalRef"][key]
+                    )
+            for rating_ref in bundle.get("ratingRefs", []):
+                key = canonical(rating_ref).decode("utf-8")
+                if key in deps["ratingsByCanonicalRef"]:
+                    closure["ratingsByCanonicalRef"][key] = copy.deepcopy(
+                        deps["ratingsByCanonicalRef"][key]
+                    )
+            if isinstance(authority, dict):
+                for ref_key in authority.get("finalityVerificationByCanonicalRef", {}):
+                    if ref_key in deps["settlementBindingProofByCanonicalRef"]:
+                        closure["settlementBindingProofByCanonicalRef"][ref_key] = (
+                            copy.deepcopy(
+                                deps["settlementBindingProofByCanonicalRef"][ref_key]
+                            )
+                        )
+        for era in eras:
+            for receipt_name in ("checkpointReceipt", "historicalAnchorReceipt"):
+                receipt = era[receipt_name]
+                checkpoint_native = receipt["nativeAddress"]
+                if receipt_name == "checkpointReceipt" and (
+                    checkpoint_native in deps["checkpointsByNativeAddress"]
+                ):
+                    closure["checkpointsByNativeAddress"][checkpoint_native] = (
+                        copy.deepcopy(deps["checkpointsByNativeAddress"][checkpoint_native])
+                    )
+                historical_native = receipt["nativeAddress"]
+                if (
+                    receipt_name == "historicalAnchorReceipt"
+                    and historical_native in deps["bundlesByNativeAddress"]
+                ):
+                    bundle = deps["bundlesByNativeAddress"][historical_native]
+                    closure["bundlesByNativeAddress"][historical_native] = copy.deepcopy(bundle)
+                    digest = bundle_hash(bundle)
+                    authority = deps["bundleAuthorityByContentHash"].get(digest)
+                    if authority is not None:
+                        closure["bundleAuthorityByContentHash"][digest] = copy.deepcopy(authority)
+        return closure
+
+    def replay_config(self, request: dict) -> dict:
+        """Return the per-case verifier configuration and pinned receipts."""
+        config = copy.deepcopy(self.config)
+        job_id = request["jobId"]
+        config["partyRolesByJob"] = {job_id: copy.deepcopy(self.config["partyRolesByJob"][job_id])}
+        receipts = []
+        for role_request in request["roles"].values():
+            receipts.extend((role_request.get("anchorReceiptsByNativeAddress") or {}).values())
+            if "anchorReceipt" in role_request:
+                receipts.append(role_request["anchorReceipt"])
+            for era in (role_request.get("legacyEraEvidenceByNativeAddress") or {}).values():
+                if era:
+                    receipts.extend(
+                        era.get(receipt_name) for receipt_name in
+                        ("checkpointReceipt", "historicalAnchorReceipt")
+                    )
+            if "legacyEraEvidence" in role_request:
+                era = role_request["legacyEraEvidence"]
+                receipts.extend(
+                    era.get(receipt_name) for receipt_name in
+                    ("checkpointReceipt", "historicalAnchorReceipt")
+                )
+        pins = {}
+        for receipt in receipts:
+            if not receipt:
+                continue
+            key = ":".join((
+                receipt["substrate"], receipt["purpose"], receipt["subjectId"],
+                receipt["subjectRole"], receipt["nativeAddress"],
+            ))
+            pins[key] = self.config["pinnedSyntheticAnchorProofHashBySubject"][key]
+        config["pinnedSyntheticAnchorProofHashBySubject"] = pins
+        return config
+
 
 def _serializable(value: Any) -> Any:
     if isinstance(value, bytes):
@@ -682,33 +816,81 @@ def _serializable(value: Any) -> Any:
 
 
 def document() -> dict:
-    fixture = CurrentUseFixtureFactory().build()
+    factory = CurrentUseFixtureFactory()
+    fixture = factory.build()
     historical = _serializable(fixture["historicalRequests"])
     expectations = fixture["expectations"]
-    vectors = [
-        {
-            "name": "current-use-" + item["model"],
-            "source": "settlement-finality-verification.json#dacs5.strongBundleCases",
-            "model": item["model"],
-            "expected": "pass",
-            "finalityClass": item["finalityClass"],
-            "currency": item["currency"],
-        }
+    replay_inputs = [
+        (
+            "current-use-" + item["model"],
+            _serializable(fixture["currentRequestsByModel"][item["model"]]),
+            _serializable(factory.replay_dependencies(
+                fixture["currentRequestsByModel"][item["model"]]
+            )),
+            _serializable(factory.replay_config(
+                fixture["currentRequestsByModel"][item["model"]]
+            )),
+            {
+                "name": "current-use-" + item["model"],
+                "source": "settlement-finality-verification.json#dacs5.strongBundleCases",
+                "model": item["model"],
+                "expected": "pass",
+                "finalityClass": item["finalityClass"],
+                "currency": item["currency"],
+            },
+            factory.replay_context(fixture["currentRequestsByModel"][item["model"]]),
+            _serializable(factory.replay_keys()),
+        )
         for item in expectations
     ] + [
-        {
-            "name": "historical-original-bundle-binding",
-            "mappingKind": "binding",
-            "expected": "pass",
-            "request": historical[0],
-        },
-        {
-            "name": "historical-original-pure-mapping",
-            "mappingKind": "pure",
-            "expected": "pass",
-            "request": historical[1],
-        },
+        (
+            "historical-original-bundle-binding",
+            historical[0],
+            _serializable(factory.replay_dependencies(
+                fixture["historicalRequests"][0]
+            )),
+            _serializable(factory.replay_config(fixture["historicalRequests"][0])),
+            {
+                "name": "historical-original-bundle-binding",
+                "mappingKind": "binding",
+                "expected": "pass",
+            },
+            factory.replay_context(fixture["historicalRequests"][0]),
+            _serializable(factory.replay_keys()),
+        ),
+        (
+            "historical-original-pure-mapping",
+            historical[1],
+            _serializable(factory.replay_dependencies(
+                fixture["historicalRequests"][1]
+            )),
+            _serializable(factory.replay_config(fixture["historicalRequests"][1])),
+            {
+                "name": "historical-original-pure-mapping",
+                "mappingKind": "pure",
+                "expected": "pass",
+            },
+            factory.replay_context(fixture["historicalRequests"][1]),
+            _serializable(factory.replay_keys()),
+        ),
     ]
+    vectors = []
+    for _name, request, dependencies, verifier_config, expected, context, keys in replay_inputs:
+        vector = dict(expected)
+        vector["replay"] = {
+            "request": request,
+            "dependencies": dependencies,
+            "verifierConfig": verifier_config,
+            "trustedContext": context,
+            "verificationKeys": keys,
+            "query": {
+                "party": CLAIMS["buyer"],
+                "windowStart": FIXTURE_QUERY_WINDOW[0],
+                "windowEnd": FIXTURE_QUERY_WINDOW[1],
+                "windowingBasis": "finalisedAt",
+            },
+        }
+        vectors.append(vector)
     return {
         "set": "current-use-reputation-v1",
         "spec": "DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8",
@@ -716,6 +898,14 @@ def document() -> dict:
         "fixturePolicy": (
             "Synthetic signed native proofs for offline conformance only; no production Demos "
             "native cryptographic codec is claimed. Trust roots are verifier configuration."
+        ),
+        "replayPolicy": (
+            "Every vector embeds the complete executable replay input: the exact "
+            "request, its full authenticated dependency closure, the verifier "
+            "configuration with public keys, the trusted query context, and the "
+            "expected outcome. The set hash is computed over these complete replay "
+            "inputs; mutating any authority, receipt, finality, or "
+            "historical-evidence member of the bound payload yields a non-pass."
         ),
         "count": len(vectors),
         "hash": hashlib.sha256(canonical(vectors)).hexdigest(),

@@ -86,15 +86,18 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         out.write_text(json.dumps(data), encoding="utf-8")
         return out
 
+    def _write_raw(self, data):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
+        out.write_bytes(data)
+        return out
+
     def _write_text(self, data):
         out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
         out.write_text(data, encoding="utf-8")
         return out
 
     def _write_bytes(self, data):
-        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
-        out.write_bytes(data)
-        return out
+        return self._write_raw(data)
 
     def _pair(self, gen, mutate_interim=None, mutate_resolved=None,
               interim_seed=None, resolved_seed=None, mutate_interim_signed=None,
@@ -130,12 +133,143 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 self.assertIsNone(evidence)
                 self.assertIn("fixture file not found", errors[0])
 
+    def test_valid_optional_units_agree_with_dacs5_consumer(self):
+        import importlib.util
+        gen, ver = self._load_pack_modules()
+        spec = importlib.util.spec_from_file_location("unit_dacs5_reference", ROOT / "tests/dacs5_reference.py")
+        consumer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(consumer)
+        for unit in ("", "request"):
+            with self.subTest(unit=unit):
+                case = json.loads(RESOLVED.read_text(encoding="utf-8"))
+                record = case["settlementEvidence"]
+                record["paymentAmount"]["unit"] = unit
+                gen.sign(record, gen.ORCHESTRATOR_SEED)
+                self.assertEqual(ver.validate_pair(INTERIM, self._write(case)), [])
+                self.assertTrue(consumer._price_term_shape_valid(record["paymentAmount"]))
+        self.assertTrue(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC"}))
+        for unit in (None, 1, [], {}):
+            self.assertFalse(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC", "unit": unit}))
+
+    def test_non_json_numeric_constants_have_controlled_raw_admission_errors(self):
+        _, ver = self._load_pack_modules()
+        for token in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(token=token):
+                path = self._write_raw(("{\"x\":" + token + "}").encode("utf-8"))
+                evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertIn("invalid JSON", errors[0])
+                self.assertIn("non-JSON numeric constant", errors[0])
+
     def test_htlc9_pack_is_deterministic_and_verifies(self):
         check = subprocess.run(["python3", str(GENERATE_HTLC9), "--check"], cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
         result = subprocess.run(["python3", str(VERIFY_HTLC9)], cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("both signatures verified", result.stdout)
+
+    def test_htlc9_json_file_admission_is_duplicate_aware_and_controlled(self):
+        _, ver = self._load_pack_modules()
+        with self.assertRaisesRegex(ver.DuplicateJSONMember, "duplicate JSON member"):
+            ver.loads_unique_json('{"outer":{"same":1,"same":2}}')
+        self.assertEqual(
+            len(ver.loads_unique_json(r'{"e\u0301":1,"\u00e9":2}')),
+            2,
+        )
+
+        cases = [
+            (
+                self._write_raw(
+                    b'{"kind":"SettlementEvidenceCase",'
+                    b'"settlementEvidence":{"jobId":"first","jobId":"second"}}'
+                ),
+                "duplicate JSON member 'jobId'",
+            ),
+            (self._write_raw(b'{"kind":'), "invalid JSON"),
+            (self._write_raw(b"\xff"), "invalid UTF-8"),
+        ]
+        unreadable = Path(self._tempdir.name) / "directory.json"
+        unreadable.mkdir()
+        cases.append((unreadable, "fixture file could not be read"))
+        for path, message in cases:
+            with self.subTest(message=message):
+                evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_price_term_optional_unit_is_string_only_and_may_be_empty(self):
+        gen, ver = self._load_pack_modules()
+        for value in ({}, {"unit": ""}, {"unit": "per-call"}):
+            with self.subTest(value=value):
+                self.assertTrue(ver.price_term_unit_is_valid(value))
+        for unit in (None, True, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertFalse(ver.price_term_unit_is_valid({"unit": unit}))
+
+        interim, resolved = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence["paymentAmount"].__setitem__(
+                "unit", ""
+            ),
+        )
+        self.assertEqual(ver.validate_pair(interim, resolved), [])
+
+        invalid = json.loads(RESOLVED.read_text(encoding="utf-8"))
+        invalid["settlementEvidence"]["paymentAmount"]["unit"] = 7
+        errors = ver.validate_pair(INTERIM, self._write(invalid))
+        self.assertTrue(
+            any("paymentAmount.unit MUST be a string when present" in error
+                for error in errors),
+            errors,
+        )
+
+    def test_htlc9_pair_uses_independently_expected_phase_orchestrator(self):
+        gen, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))[
+            "settlementEvidence"
+        ]
+        resolved = json.loads(RESOLVED.read_text(encoding="utf-8"))[
+            "settlementEvidence"
+        ]
+        self.assertEqual(
+            ver.EXPECTED_PHASE_ORCHESTRATOR,
+            interim["signature"]["signer"],
+        )
+        self.assertEqual(
+            ver.EXPECTED_PHASE_ORCHESTRATOR,
+            resolved["signature"]["signer"],
+        )
+        self.assertTrue(gen.ORCHESTRATOR_SIGNER.startswith("key:"))
+        errors = ver.validate_pair(
+            INTERIM,
+            RESOLVED,
+            expected_phase_orchestrator="key:" + "11" * 32,
+        )
+        self.assertEqual(2, sum("expected phase orchestrator" in e for e in errors))
+
+    def test_optional_supersedes_signer_binds_expected_interim_authority(self):
+        gen, ver = self._load_pack_modules()
+        valid_i, valid_r = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence[
+                "supersedesEvidenceRef"
+            ].__setitem__("signer", ver.EXPECTED_PHASE_ORCHESTRATOR),
+        )
+        self.assertEqual([], ver.validate_pair(valid_i, valid_r))
+
+        invalid_i, invalid_r = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence[
+                "supersedesEvidenceRef"
+            ].__setitem__("signer", "key:" + "11" * 32),
+        )
+        errors = ver.validate_pair(invalid_i, invalid_r)
+        self.assertTrue(any("expected phase orchestrator" in e for e in errors))
+
+    def test_htlc9_non_object_root_is_rejected_without_throwing(self):
+        _, ver = self._load_pack_modules()
+        errors = ver.validate_pair(self._write([]), RESOLVED)
+        self.assertTrue(any("root MUST be an object" in error for error in errors))
 
     def test_htlc9_resolved_record_binds_the_interim_content_hash(self):
         gen, ver = self._load_pack_modules()
@@ -176,7 +310,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
         self.assertIsNone(ver.verify_signature(interim))
         reason = ver.verify_signature(
-            interim, "cci:" + "00" * 32
+            interim, "key:" + "00" * 32
         )
         self.assertIn("independently expected phase orchestrator", reason)
 
@@ -227,7 +361,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         invalid_utf8 = self._write_bytes(b"\xff")
         evidence, errors = ver.load_case(invalid_utf8)
         self.assertIsNone(evidence)
-        self.assertTrue(any("not valid UTF-8" in error for error in errors))
+        self.assertTrue(any("invalid UTF-8" in error for error in errors))
 
         scalar_root = self._write_text("[]")
         evidence, errors = ver.load_case(scalar_root)
@@ -239,7 +373,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         ):
             evidence, errors = ver.load_case(Path(self._tempdir.name) / "unreadable")
         self.assertIsNone(evidence)
-        self.assertTrue(any("fixture could not be read" in error for error in errors))
+        self.assertTrue(any("fixture file could not be read" in error for error in errors))
 
         malformed_nested = self._write_text(json.dumps({
             "kind": "SettlementEvidenceCase",
@@ -326,7 +460,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         # the named guard fires without relying on signature, SIG-6, or content-hash
         # backstops.
         new_cases = [
-            ("cross-signer phase pair", {"resolved_seed": bytes.fromhex("42" * 32)}, "signer continuity"),
+            ("cross-signer phase pair", {"resolved_seed": bytes.fromhex("42" * 32)}, "expected phase orchestrator"),
             ("interim observedAt equals finalityObservedAt", {"mutate_interim": lambda e: e.__setitem__("observedAt", 1760000290000)}, "interim.observedAt MUST be less"),
             ("finalityObservedAt after resolved observedAt", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityObservedAt", 1760000300001)}, "less than or equal to resolved.observedAt"),
             ("claim reuses lock transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "claim.claimTxHash MUST differ"),
@@ -339,8 +473,8 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             ("htlc-reveal finality carries finalityBlocks", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityBlocks", 1)}, "SettlementFinalityRecord"),
             ("htlc-reveal finality carries finalityCommitmentLevel", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityCommitmentLevel", "final")}, "SettlementFinalityRecord"),
             ("PriceTerm has an unknown field", {"mutate_resolved": lambda e: e["paymentAmount"].__setitem__("asset", "USDC")}, "PriceTerm fields MUST be exactly"),
-            ("AttestationRef signer is empty", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "")}, "non-empty ClaimReference"),
-            ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "scheme:identifier"),
+            ("AttestationRef signer is empty", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "")}, "canonical registered ClaimReference"),
+            ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "canonical registered ClaimReference"),
             ("AttestationRef signer scheme has uppercase", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "Cci:deadbeef")}, "DACS-1 §6.3.1"),
             ("AttestationRef signer scheme has plus", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "cci+x:deadbeef")}, "DACS-1 §6.3.1"),
         ]

@@ -40,6 +40,7 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 SIG_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
+BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 COMMITMENT_RANK = {"processed": 0, "confirmed": 1, "finalized": 2}
 PAYMENT_PHASE_BY_MODEL = {
     "block-depth": {"pay-evm-erc20", "pay-x402"},
@@ -72,6 +73,18 @@ def b64url_decode(value: Any) -> bytes:
     if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:
         raise ValueError("non-minimal Base64URL")
     return raw
+
+
+def base58_decode(value: Any) -> bytes:
+    if not isinstance(value, str) or not value:
+        raise ValueError("invalid base58")
+    number = 0
+    for char in value:
+        if char not in BASE58_ALPHABET:
+            raise ValueError("invalid base58")
+        number = number * 58 + BASE58_ALPHABET.index(char)
+    raw = number.to_bytes((number.bit_length() + 7) // 8, "big") if number else b""
+    return b"\x00" * (len(value) - len(value.lstrip("1"))) + raw
 
 
 def decode_json_bytes(value: Any) -> tuple[bytes, Any]:
@@ -502,6 +515,12 @@ def _transaction_ref_shape(reference: Any) -> bool:
         if field in {"kind", *selected[1], "receiptAttestation"}:
             continue
         if not _nonempty_string(value):
+            return False
+    if kind == "solana-instruction":
+        try:
+            if len(base58_decode(reference["signature"])) != 64:
+                return False
+        except ValueError:
             return False
     return "receiptAttestation" not in reference or _attestation_ref(reference["receiptAttestation"])
 
@@ -1194,7 +1213,12 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     response_hash = hashlib.sha256(response_raw).hexdigest()
     if context["responseAttestation"].get("contentHash") != response_hash:
         return _result("fail", "provider response hash differs from signed attestation reference")
-    attestation = (trusted.get("providerAttestations") or {}).get(response_hash)
+    attestation_map = trusted.get("providerAttestations")
+    if attestation_map is None:
+        return _result("indeterminate", "authenticated SR-3 provider attestation unavailable")
+    if not isinstance(attestation_map, dict):
+        return _result("error", "malformed trusted provider attestation map")
+    attestation = attestation_map.get(response_hash)
     if attestation is None:
         return _result("indeterminate", "authenticated SR-3 provider attestation unavailable")
     required_attestation = {

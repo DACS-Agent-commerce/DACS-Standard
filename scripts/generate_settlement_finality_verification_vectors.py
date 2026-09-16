@@ -337,13 +337,27 @@ class FixtureFactory:
     def tx_id(label: str) -> str:
         return hashlib.sha256(("tx:" + label).encode()).hexdigest()
 
+    @staticmethod
+    def base58(value: bytes) -> str:
+        alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+        number = int.from_bytes(value, "big")
+        encoded = ""
+        while number:
+            number, remainder = divmod(number, 58)
+            encoded = alphabet[remainder] + encoded
+        return "1" * (len(value) - len(value.lstrip(b"\x00"))) + (encoded or "1")
+
+    @classmethod
+    def solana_signature(cls, label: str) -> str:
+        return cls.base58(hashlib.sha512(("solana-signature:" + label).encode()).digest())
+
     def transaction_ref(self, model: str, label: str) -> dict:
         if model == "block-depth":
             return {"kind": "evm-event", "chainId": 1, "txHash": self.tx_id(label), "logIndex": 0}
         if model == "commitment-level":
             return {
                 "kind": "solana-instruction", "cluster": "mainnet",
-                "signature": self.tx_id(label), "instructionIndex": 2,
+                "signature": self.solana_signature(label), "instructionIndex": 2,
             }
         if model == "bft-final":
             return {"kind": "demos", "txHash": self.tx_id(label), "blockNumber": 100}
@@ -1024,6 +1038,8 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-rail-signature-key-substitution", "fail", "producer cannot substitute the steward rail key", changed("block-depth", lambda v: factory.resign_rail(v["rail"], key_name="orchestrator", signer=CLAIMS["orchestrator"]))),
         case("fv-rail-reference-substitution", "fail", "the exact signed rail hash is evidence-bound", changed("block-depth", lambda v: (v["evidence"]["railDefinitionRef"].__setitem__("contentHash", "00" * 32), factory.resign_evidence(v["evidence"])))),
         case("fv-producer-selects-weaker-depth", "fail", "producer report cannot lower the signed depth", changed("block-depth", lambda v: (v["evidence"]["settlementFinality"].__setitem__("finalityBlocks", 1), factory.resign_evidence(v["evidence"])))),
+        case("fv-solana-signature-invalid-base58", "error", "Solana instruction signatures use the base58 alphabet", changed("commitment-level", lambda v: (v["evidence"]["paymentTxRefs"][0].__setitem__("signature", "not-base58-0OIl"), factory.resign_evidence(v["evidence"])))),
+        case("fv-solana-signature-wrong-width", "error", "Solana instruction signatures decode to exactly 64 bytes", changed("commitment-level", lambda v: (v["evidence"]["paymentTxRefs"][0].__setitem__("signature", factory.base58(b"\x05" * 63)), factory.resign_evidence(v["evidence"])))),
     ])
 
     depth_value = factory.model_input("block-depth")

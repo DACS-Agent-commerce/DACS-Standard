@@ -155,11 +155,11 @@
       "id": "sig-registry-closed",
       "area": "signing",
       "spec": "§B.7",
-      "summary": "the domain-separator registry is exactly the published closed set of 31",
+      "summary": "the domain-separator registry is exactly the published closed set of 34",
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 31,
+        "count": 34,
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -189,6 +189,9 @@
           "dacs-rating:v1:",
           "dacs-recipe:v1:",
           "dacs-revocation:v1:",
+          "dacs-sealed-auction-record:v1:",
+          "dacs-sealed-selection-agreement:v1:",
+          "dacs-sealed-selection-receipt:v1:",
           "dacs-session-binding:v1:",
           "dacs-transcript:v1:",
           "dacs-verifyresult:v1:"
@@ -2561,7 +2564,7 @@
       "id": "identity-bound-agreement-dispatch-matrices",
       "area": "negotiate",
       "spec": "§8.5.1",
-      "summary": "all four agreement artifacts dispatch only from their exact signed Listing phase and verify only under their own signature domain",
+      "summary": "the four non-selection agreement artifacts covered by this identity-bound corpus dispatch only from their exact signed Listing phase and verify only under their own signature domain; the independent sealed-selection path is covered by its SAC corpus",
       "status": "candidate",
       "reason": "repository-native executable cryptographic corpus; pending independent reference-run convergence",
       "fixture": "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json",

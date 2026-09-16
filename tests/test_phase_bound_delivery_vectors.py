@@ -1737,7 +1737,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         self.assertIn('"dacs-delivery-evidence:v1:"', core)
         self.assertIn("type DeliveryEvidence = {", dacs4)
         self.assertIn("DACS-4 v0.7", dacs4)
-        self.assertIn("DACS-5 v0.5", dacs5)
+        self.assertIn("DACS-5 v0.6", dacs5)
         for rule in range(1, 9):
             self.assertIn(f"(PDE-{rule})", dacs4)
         for address in [

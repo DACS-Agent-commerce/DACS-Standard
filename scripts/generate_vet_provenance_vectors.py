@@ -30,8 +30,27 @@ OUTPUT = ROOT / "conformance" / "vectors" / "security" / "vet-provenance-v0.6.js
 
 BASE_VECTOR_NAMES = (
     "ordinary-bilateral-third-party-verifiers",
-    "procurement-two-bidder-completed",
+    "historical-procurement-two-bidder-completed",
 )
+
+HISTORICAL_RELEASE_PIN = "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20"
+HISTORICAL_MODULE_VERSIONS = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.6",
+    "dacs3": "0.5",
+    "dacs4": "0.8",
+    "dacs5": "0.5",
+}
+CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+CURRENT_MODULE_VERSIONS = {
+    "core": "0.3",
+    "dacs1": "0.8",
+    "dacs2": "0.6",
+    "dacs3": "0.6",
+    "dacs4": "0.8",
+    "dacs5": "0.6",
+}
 
 LISTING_DOMAIN = "dacs-listing:v1:"
 BUNDLE_DOMAIN = "dacs-bundle-presentation:v1:"
@@ -788,6 +807,20 @@ def make_case(
             "vetRecords": [],
         },
     }
+    if mode == "procurement":
+        case["profileAdmission"] = {
+            "source": "fixture-verifier-owned",
+            "authenticated": True,
+            "mode": "historical-replay",
+            "sessionId": job_id,
+            "participantIdentities": sorted(
+                [publisher["presentedBy"]]
+                + [candidate["presentedBy"] for candidate in candidates],
+                key=lambda value: value.encode("utf-8"),
+            ),
+            "releasePin": HISTORICAL_RELEASE_PIN,
+            "moduleVersions": copy.deepcopy(HISTORICAL_MODULE_VERSIONS),
+        }
     for item in sorted(
         composites,
         key=lambda env: (
@@ -1161,11 +1194,27 @@ def build_vectors() -> list[dict]:
         "pass",
     )
     add(
-        "procurement-two-bidder-completed",
+        "historical-procurement-two-bidder-completed",
         "PVPC-1; PVPC-6..PVPC-8; DACS-3 §8.5.2 check 11; ST-11",
-        "Two all-pass supplier contexts produce four distinct records, an exact eligible set, winner/loser mappings, and retained publisher-for-loser provenance.",
+        "An authenticated DACS-1 v0.7 / DACS-3 v0.5 replay produces four distinct records, an exact eligible set, winner/loser mappings, and retained publisher-for-loser provenance without claiming current sealed-auction completeness.",
         make_case("procurement"),
         "pass",
+    )
+
+    case = make_case("procurement")
+    case["profileAdmission"].update(
+        {
+            "mode": "current-session",
+            "releasePin": CURRENT_RELEASE_PIN,
+            "moduleVersions": copy.deepcopy(CURRENT_MODULE_VERSIONS),
+        }
+    )
+    add(
+        "current-profile-refuses-historical-sealed-procurement",
+        "DACS-1 §6.5; DACS-3 SAC-1",
+        "A fully authenticated current-profile session still refuses the historical sealed phase and commit-agreement pair; historical replay is never inferred from valid signatures or fixture shape.",
+        case,
+        "fail",
     )
 
     case = make_case()
@@ -1966,8 +2015,8 @@ def build_document() -> dict:
     vectors = compact_vectors(expanded_vectors)
     return {
         "set": "vet-provenance-v0.6",
-        "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection",
-        "scope": "Signed Vet provenance, bilateral and two-bidder procurement admission, agreement binding, and audit projection; excludes sealed-demand and the PVPC-6 scoped malformed-counterparty terminal-error carve-out; assumes baseline DACS-1 Listing/PhaseStep schema validation and is not a complete outer AttestationBundle fixture",
+        "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; authenticated historical DACS-1 v0.7 / DACS-3 v0.5 procurement replay and current SAC-1 refusal; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection",
+        "scope": "Signed Vet provenance, bilateral admission, authenticated historical two-bidder procurement replay, current-profile refusal of the historical sealed phase pair, agreement binding, and audit projection; does not certify current SAC-complete auction selection, excludes sealed-demand and the PVPC-6 scoped malformed-counterparty terminal-error carve-out, assumes baseline DACS-1 Listing/PhaseStep schema validation, and is not a complete outer AttestationBundle fixture",
         "provenance": "Deterministic in-repo generator; public Ed25519 test seeds; RFC 8785 JCS hashes; fixture strings are ASCII",
         "representation": {
             "kind": "two-literal-bases-with-rfc6902-subset-patches",

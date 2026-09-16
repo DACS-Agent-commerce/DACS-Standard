@@ -21,8 +21,18 @@ VECTOR_PATH = ROOT / "conformance" / "vectors" / "security" / "vet-provenance-v0
 
 BASE_VECTOR_NAMES = (
     "ordinary-bilateral-third-party-verifiers",
-    "procurement-two-bidder-completed",
+    "historical-procurement-two-bidder-completed",
 )
+
+HISTORICAL_RELEASE_PIN = "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20"
+HISTORICAL_MODULE_VERSIONS = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.6",
+    "dacs3": "0.5",
+    "dacs4": "0.8",
+    "dacs5": "0.5",
+}
 
 LISTING_DOMAIN = "dacs-listing:v1:"
 BUNDLE_DOMAIN = "dacs-bundle-presentation:v1:"
@@ -599,6 +609,33 @@ def _validate_vector(case):
         require(case.get("negotiateInput") is None, "ordinary sealed handoff")
     elif case.get("mode") == "procurement":
         require(negotiation.get("kind") == "negotiate-sealed-envelope-procurement", "procurement negotiation mode")
+        profile = case.get("profileAdmission")
+        expected_participants = sorted(
+            [case["publisher"]["presentedBy"]]
+            + [candidate["presentedBy"] for candidate in case["candidates"]],
+            key=lambda value: value.encode("utf-8"),
+        )
+        require(
+            isinstance(profile, dict)
+            and set(profile)
+            == {
+                "source",
+                "authenticated",
+                "mode",
+                "sessionId",
+                "participantIdentities",
+                "releasePin",
+                "moduleVersions",
+            }
+            and profile.get("source") == "fixture-verifier-owned"
+            and profile.get("authenticated") is True
+            and profile.get("mode") == "historical-replay"
+            and profile.get("sessionId") == job_id
+            and profile.get("participantIdentities") == expected_participants
+            and profile.get("releasePin") == HISTORICAL_RELEASE_PIN
+            and profile.get("moduleVersions") == HISTORICAL_MODULE_VERSIONS,
+            "authenticated historical sealed-procurement profile",
+        )
         parameters = negotiation.get("parameters", {})
         require(
             parameters.get("auctionMode") == "procurement"

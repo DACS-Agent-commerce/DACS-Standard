@@ -1,5 +1,7 @@
+import copy
 import importlib.util
 import json
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -92,6 +94,163 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             self.module.canonical_json(precomposed),
         )
 
+    def test_every_emitted_job_id_is_the_canonical_walkthrough_ulid(self):
+        job_ids = []
+
+        def collect(value):
+            if isinstance(value, dict):
+                if "jobId" in value:
+                    job_ids.append(value["jobId"])
+                for item in value.values():
+                    collect(item)
+            elif isinstance(value, list):
+                for item in value:
+                    collect(item)
+
+        collect(self.trace)
+        self.assertTrue(job_ids)
+        self.assertEqual(set(job_ids), {self.module.JOB_ID})
+        self.assertRegex(self.module.JOB_ID, r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
+
+    def test_payment_anchor_tuple_rejects_noncanonical_or_mismatched_shapes(self):
+        good = f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3A8453%3AUSDC:3"
+        self.assertEqual(
+            self.module.payment_anchor_tuple(good + ":resolved"),
+            (self.module.JOB_ID, self.module.RAIL_ID, 3, True),
+        )
+        for bad in [
+            "dacs4:payment:not-a-ulid:evm-erc20%3A8453%3AUSDC:3",
+            f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3a8453%3aUSDC:3",
+            f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3A8453%3AUSDC:03",
+            good + ":unknown",
+        ]:
+            with self.subTest(address=bad), self.assertRaises(ValueError):
+                self.module.payment_anchor_tuple(bad)
+
+    def test_phase_indices_are_exact_integers_before_use(self):
+        for invalid in (True, False, 3.0, -1, 9_007_199_254_740_992):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(
+                ValueError, "exact non-negative safe integer"
+            ):
+                self.module.require_phase_index(invalid)
+            with self.subTest(settlement=invalid), self.assertRaises(ValueError):
+                self.module.FakeSubstrate().claim_settlement(
+                    "evm:8453:" + "11" * 32,
+                    self.module.JOB_ID,
+                    invalid,
+                )
+
+        stages, context = self.module.build_happy_path(
+            self.module.FakeSubstrate()
+        )
+        candidate = copy.deepcopy(context)
+        candidate["bundleBase"]["phaseSummary"][1]["index"] = True
+        with self.assertRaisesRegex(ValueError, "phaseSummary index"):
+            self.module.validate_happy_path(stages, candidate)
+
+        agreement_unsigned = self.module.signing_scope(
+            "PayeeBoundAgreementDocument", context["agreement"]
+        )
+        agreement_unsigned["terms"]["payoutBindings"][0]["phaseIndex"] = True
+        agreement = self.module.signed_multi(
+            "PayeeBoundAgreementDocument",
+            agreement_unsigned,
+            ["buyer", "seller"],
+        )
+        self.assertEqual(
+            "agreement payout binding phaseIndex is invalid",
+            self.module.validate_agreement_against_listing(
+                context["listing"],
+                agreement,
+                trusted_role_claims=context["trustedAgreementRoleClaims"],
+            )["reason"],
+        )
+
+        bundle_unsigned = self.module.signing_scope(
+            "AttestationBundle", context["bundleCopies"]["buyer"]
+        )
+        bundle_unsigned["phaseSummary"][1]["index"] = True
+        bundle = self.module.signed_multi(
+            "AttestationBundle",
+            bundle_unsigned,
+            ["buyer", "seller", "orchestrator"],
+        )
+        bundle["anchoredByRole"] = "buyer"
+        consumption = self.module.consume_bundle_pair(
+            bundle,
+            context["bundleCopies"]["seller"],
+            trusted_role_claims=context["trustedSessionRoleClaims"],
+        )
+        self.assertEqual("invalid", consumption["disposition"])
+        self.assertIn("phaseSummary index", consumption["reason"])
+
+    def test_identity_bundle_accepts_authenticated_additive_members(self):
+        unsigned = {
+            "bundleVersion": "1",
+            "presentedBy": self.module.CLAIMS["buyer"],
+            "presentedAt": self.module.NOW,
+            "claims": [{"ref": self.module.CLAIMS["buyer"]}],
+            "futureMinorContext": {"advisory": ["retained", "inert"]},
+        }
+        bundle = self.module.sign_identity_presentation(unsigned, "buyer")
+        validation = self.module.validate_identity(bundle)
+        self.assertTrue(validation["accepted"], validation["errors"])
+        retained = json.loads(validation["verification"]["canonicalBytes"])
+        self.assertEqual(
+            retained["futureMinorContext"],
+            {"advisory": ["retained", "inert"]},
+        )
+
+    def test_signature_algorithm_must_select_the_executed_suite(self):
+        for envelope in (
+            "not-an-object",
+            {},
+            {"algorithm": "rsa", "signer": self.module.CLAIMS["seller"], "value": "x"},
+            {"algorithm": [], "signer": self.module.CLAIMS["seller"], "value": "x"},
+            {"algorithm": {}, "signer": self.module.CLAIMS["seller"], "value": "x"},
+        ):
+            with self.subTest(envelope=envelope):
+                results = self.module.verify_signatures(
+                    "Listing", {"signature": envelope}
+                )
+                self.assertEqual(len(results), 1)
+                self.assertFalse(results[0]["verified"])
+                self.assertFalse(results[0]["canonicalBase64Url"])
+
+    def test_consumers_require_independently_authenticated_role_maps(self):
+        _, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        with self.assertRaises(TypeError):
+            self.module.validate_agreement_against_listing(
+                context["listing"], context["agreement"]
+            )
+        with self.assertRaises(TypeError):
+            self.module.consume_bundle_pair(
+                context["bundleCopies"]["buyer"],
+                context["bundleCopies"]["seller"],
+            )
+
+        swapped = dict(context["trustedAgreementRoleClaims"])
+        swapped["buyer"], swapped["seller"] = swapped["seller"], swapped["buyer"]
+        agreement = self.module.validate_agreement_against_listing(
+            context["listing"],
+            context["agreement"],
+            trusted_role_claims=swapped,
+        )
+        self.assertFalse(agreement["accepted"])
+        self.assertEqual(
+            agreement["reason"],
+            "agreement parties do not match independently authenticated roles",
+        )
+
+        incomplete_session_roles = dict(context["trustedAgreementRoleClaims"])
+        consumption = self.module.consume_bundle_pair(
+            context["bundleCopies"]["buyer"],
+            context["bundleCopies"]["seller"],
+            trusted_role_claims=incomplete_session_roles,
+        )
+        self.assertEqual(consumption["disposition"], "invalid")
+        self.assertIn("independently authenticated session roles", consumption["reason"])
+
     def test_cross_stage_references_and_delivery_are_complete(self):
         listing = self.artifacts["listing-minimum-lifecycle"]
         agreement = self.artifacts["agreement-payee-bound-fixed-price"]
@@ -105,13 +264,26 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             step["kind"] for step in listing["artifact"]["pipeline"]
         ]
         self.assertIn("deliver-storage-program", pipeline_kinds)
+        self.assertRegex(
+            agreement["artifact"]["jobId"],
+            re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z"),
+        )
         self.assertEqual(
             agreement["artifact"]["listingRef"]["contentHash"],
             listing["artifactHash"],
         )
-        self.assertEqual(payment["artifact"]["phaseIndex"], 3)
-        self.assertEqual(delivery["artifact"]["phaseIndex"], 4)
+        self.assertNotIn("phaseIndex", payment["artifact"])
+        self.assertNotIn("phaseIndex", delivery["artifact"])
+        self.assertEqual(
+            self.module.payment_anchor_tuple(payment["logicalAddress"]),
+            (agreement["artifact"]["jobId"], self.module.RAIL_ID, 3, False),
+        )
         self.assertNotIn("settlementFinality", delivery["artifact"])
+        self.assertNotIn("SB-1", self.trace["stages"][3]["rules"])
+        self.assertEqual(
+            payment["artifact"]["paymentTxRefs"],
+            [{"kind": "evm", "chainId": 8453, "txHash": "0x" + "26" * 32}],
+        )
 
         bundle = buyer_bundle["artifact"]
         self.assertEqual(
@@ -149,6 +321,18 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             },
             {"buyer", "seller", "orchestrator"},
         )
+
+    def test_happy_path_authenticates_the_published_payment_binding(self):
+        stages, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        candidate = copy.deepcopy(context)
+        candidate["paymentTrace"]["publishedBinding"]["logicalAddress"] = (
+            f"dacs4:payment:{self.module.JOB_ID}:"
+            "evm-erc20%3A8453%3AUSDC:4"
+        )
+        with self.assertRaisesRegex(
+            ValueError, "logical address diverges from its published binding"
+        ):
+            self.module.validate_happy_path(stages, candidate)
 
     def test_all_five_negative_examples_reject_or_classify(self):
         self.assertEqual(
@@ -203,9 +387,21 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             delivery["enforcementPath"], "evaluate_delivery_after_payment"
         )
         self.assertTrue(delivery["paymentRemainsRecorded"])
+        self.assertNotIn("phaseIndex", delivery["failureEvidence"]["artifact"])
+        self.assertEqual(
+            delivery["failureEvidence"]["artifact"]["outcome"], "failure"
+        )
+        self.assertTrue(delivery["failureEvidence"]["artifact"]["reason"])
+        self.assertNotIn("errorClass", delivery["failureEvidence"]["artifact"])
         self.assertEqual(
             delivery["resultingBundle"]["artifact"]["outcome"],
             "failed-counterparty",
+        )
+        self.assertEqual(
+            delivery["resultingBundle"]["artifact"]["phaseSummary"][-1][
+                "errorClass"
+            ],
+            "counterparty",
         )
         self.assertEqual(
             delivery["resultingBundle"]["artifact"]["settlementEvidence"][0],

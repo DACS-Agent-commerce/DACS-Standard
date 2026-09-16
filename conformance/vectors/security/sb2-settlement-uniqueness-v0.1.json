@@ -1,6 +1,13 @@
 {
   "set": "sb2-settlement-uniqueness-v0.1",
-  "spec": "DACS §9.5.8 (SB-2); SB-1 key",
+  "spec": "Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only",
+  "tier": "historical",
+  "conformanceProfile": {
+    "status": "superseded",
+    "currentCollisionAuthority": false,
+    "normativeScope": "settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only",
+    "supersededBy": "sb2-collision-authority-v0.8"
+  },
   "hash": "66f5525e14aa4b21b7d8658dc792e5e09c0ae3ec7208e0ba0e6875d31e32d07f",
   "count": 20,
   "vectors": [

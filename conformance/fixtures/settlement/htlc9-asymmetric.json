@@ -2,20 +2,20 @@
   "kind": "SettlementEvidenceCase",
   "settlementEvidence": {
     "evidenceVersion": "1",
-    "jobId": "01HTLC9ASYMMETRIC000000000000",
+    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "observedAt": 1760000100000,
     "outcome": "failure",
     "paymentTxRefs": [
       {
-        "kind": "htlc-lock",
         "chainId": 84532,
         "contractAddress": "0x0000000000000000000000000000000000000308",
+        "kind": "htlc-lock",
         "lockTxHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       {
-        "kind": "htlc-reveal",
         "chainId": 80002,
         "contractAddress": "0x0000000000000000000000000000000000000308",
+        "kind": "htlc-reveal",
         "revealTxHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     ],
@@ -23,8 +23,8 @@
     "reason": "dest-revealed-source-unclaimed",
     "signature": {
       "algorithm": "ed25519",
-      "signer": "key:orchestrator",
-      "value": "sig-placeholder"
+      "signer": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+      "value": "J9aWl1-dZrsE9Gch3-jMOVj0wKwH_ohFS3IlcNYIZMnoyKBT6uCTyX367zvPzMdnP2m57-1fnxATbKtJ7_K3Ag"
     }
   },
   "specRefs": [

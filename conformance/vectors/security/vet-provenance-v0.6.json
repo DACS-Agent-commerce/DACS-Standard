@@ -1,13 +1,13 @@
 {
   "set": "vet-provenance-v0.6",
-  "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection",
-  "scope": "Signed Vet provenance, bilateral and two-bidder procurement admission, agreement binding, and audit projection; excludes sealed-demand and the PVPC-6 scoped malformed-counterparty terminal-error carve-out; assumes baseline DACS-1 Listing/PhaseStep schema validation and is not a complete outer AttestationBundle fixture",
+  "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; authenticated historical DACS-1 v0.7 / DACS-3 v0.5 procurement replay and current SAC-1 refusal; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection",
+  "scope": "Signed Vet provenance, bilateral admission, authenticated historical two-bidder procurement replay, current-profile refusal of the historical sealed phase pair, agreement binding, and audit projection; does not certify current SAC-complete auction selection, excludes sealed-demand and the PVPC-6 scoped malformed-counterparty terminal-error carve-out, assumes baseline DACS-1 Listing/PhaseStep schema validation, and is not a complete outer AttestationBundle fixture",
   "provenance": "Deterministic in-repo generator; public Ed25519 test seeds; RFC 8785 JCS hashes; fixture strings are ASCII",
   "representation": {
     "kind": "two-literal-bases-with-rfc6902-subset-patches",
     "baseVectors": [
       "ordinary-bilateral-third-party-verifiers",
-      "procurement-two-bidder-completed"
+      "historical-procurement-two-bidder-completed"
     ],
     "baseDepth": 1,
     "patchOperations": [
@@ -51,9 +51,9 @@
     "key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5": "332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
     "key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58": "e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58"
   },
-  "count": 71,
-  "hash": "be0b120084b4b22cbe552ca4473f4de6adac464543f1d336f7f38d2bfdd89e1e",
-  "expandedHash": "6b17d55c2cddfcf7e6d3a78f522070152a243957cdeb55a022ea609e1706aedc",
+  "count": 72,
+  "hash": "33625bdfee509e47658adf885e03b43716dfbb4d62919dba2e2fdd3e70aa2bea",
+  "expandedHash": "a2da4516a1135b124975de423cd3eb0b8155a7efd88a743d76f6d2cd30e1fab7",
   "vectors": [
     {
       "name": "ordinary-bilateral-third-party-verifiers",
@@ -1149,7 +1149,7 @@
       "note": "One bilateral pair uses distinct signed requirements and independently selected third-party verifiers."
     },
     {
-      "name": "procurement-two-bidder-completed",
+      "name": "historical-procurement-two-bidder-completed",
       "rule": "PVPC-1; PVPC-6..PVPC-8; DACS-3 §8.5.2 check 11; ST-11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "input": {
@@ -3232,11 +3232,67 @@
               "signer": "key:34b4d9043156cb6dcf0beb0a2949b7559c940d2bcb6dbe8c53a9b30278e3a746"
             }
           ]
+        },
+        "profileAdmission": {
+          "source": "fixture-verifier-owned",
+          "authenticated": true,
+          "mode": "historical-replay",
+          "sessionId": "01K2VPA0000000000000000202",
+          "participantIdentities": [
+            "key:17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+            "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+            "key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+          ],
+          "releasePin": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+          "moduleVersions": {
+            "core": "0.3",
+            "dacs1": "0.7",
+            "dacs2": "0.6",
+            "dacs3": "0.5",
+            "dacs4": "0.8",
+            "dacs5": "0.5"
+          }
         }
       },
-      "expandedInputHash": "f82e7e1fa37eeb50efb8480ad51b48933fa9aeb05510645154ffd32cffb1c489",
+      "expandedInputHash": "ced69681410b080314535c8580c7ccf37435245297f57e58fea185951a51ea59",
       "expected": "pass",
-      "note": "Two all-pass supplier contexts produce four distinct records, an exact eligible set, winner/loser mappings, and retained publisher-for-loser provenance."
+      "note": "An authenticated DACS-1 v0.7 / DACS-3 v0.5 replay produces four distinct records, an exact eligible set, winner/loser mappings, and retained publisher-for-loser provenance without claiming current sealed-auction completeness."
+    },
+    {
+      "name": "current-profile-refuses-historical-sealed-procurement",
+      "rule": "DACS-1 §6.5; DACS-3 SAC-1",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "historical-procurement-two-bidder-completed",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/profileAdmission/mode",
+          "value": "current-session"
+        },
+        {
+          "op": "replace",
+          "path": "/profileAdmission/moduleVersions/dacs1",
+          "value": "0.8"
+        },
+        {
+          "op": "replace",
+          "path": "/profileAdmission/moduleVersions/dacs3",
+          "value": "0.6"
+        },
+        {
+          "op": "replace",
+          "path": "/profileAdmission/moduleVersions/dacs5",
+          "value": "0.6"
+        },
+        {
+          "op": "replace",
+          "path": "/profileAdmission/releasePin",
+          "value": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+        }
+      ],
+      "expandedInputHash": "c210cb9070b0daac947ba7dd8a913946d4e59a922250ddc13572669c3bd6b7c3",
+      "expected": "fail",
+      "note": "A fully authenticated current-profile session still refuses the historical sealed phase and commit-agreement pair; historical replay is never inferred from valid signatures or fixture shape."
     },
     {
       "name": "deal-specific-only-result-union-resolves",
@@ -3905,7 +3961,7 @@
       "name": "input-array-order-is-nonauthoritative",
       "rule": "PVPC-1; PVPC-4; DACS-3 provenanced ingress",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -4258,7 +4314,7 @@
           "value": "counterparty"
         }
       ],
-      "expandedInputHash": "5a6b5ac14565e309af9d696906e63206288daf245feb95883720f7744fc32220",
+      "expandedInputHash": "19d2f8ac20a394689930e0fd42667ffd072d5b1a3f3b7eeca65e10eb42559c91",
       "expected": "pass",
       "note": "Invocation and context-keyed vetPairs input order may vary while canonical outputs and audit ordering remain unchanged."
     },
@@ -4266,7 +4322,7 @@
       "name": "procurement-conclusive-fail-excluded-and-retained",
       "rule": "PVPC-6; PVPC-8; ST-11",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -4888,7 +4944,7 @@
           "value": "41dbaf5db9849fe1211442aa88749c51a4ef719be9c6aa74d6337fcf6c878d59"
         }
       ],
-      "expandedInputHash": "6f7c56801ee5df3df0d5b1a778e67cdb9a1e59e1edae899c3eb4c86790f3b7e7",
+      "expandedInputHash": "b09f3df1c348f6f95af6a46046e865879ac1f39f80c164e240848360d243ffff",
       "expected": "pass",
       "note": "A conclusively failing second supplier is excluded before negotiation but all four of its authorization/record refs remain auditable."
     },
@@ -5254,6 +5310,29 @@
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "ordinary-bilateral-third-party-verifiers",
       "patch": [
+        {
+          "op": "add",
+          "path": "/profileAdmission",
+          "value": {
+            "source": "fixture-verifier-owned",
+            "authenticated": true,
+            "mode": "historical-replay",
+            "sessionId": "01K2VPA0000000000000000202",
+            "participantIdentities": [
+              "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+              "key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+            ],
+            "releasePin": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+            "moduleVersions": {
+              "core": "0.3",
+              "dacs1": "0.7",
+              "dacs2": "0.6",
+              "dacs3": "0.5",
+              "dacs4": "0.8",
+              "dacs5": "0.5"
+            }
+          }
+        },
         {
           "op": "replace",
           "path": "/agreementProjection",
@@ -6119,7 +6198,7 @@
           "value": "e16293cb54c6f534a2fd03494b3e76a3cb6dcdfd86ff0343f824f467ad3996b4"
         }
       ],
-      "expandedInputHash": "33bac6cfad15ec6138215e68f21bdab42e336fe757f1c4a64b4340d90084f1af",
+      "expandedInputHash": "5c8d0a9e5a9a76746c10e4d66fe3c7c78dc320eda70c430c08da5ece36b22b44",
       "expected": "pass",
       "note": "With one procurement supplier, its conclusive counterparty-role failure maps to the seller."
     },
@@ -7312,7 +7391,7 @@
       "name": "multi-candidate-prewinner-terminal-unrepresentable",
       "rule": "PVPC-8; DACS-5 pre-winner gate",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -7350,7 +7429,7 @@
           "value": false
         }
       ],
-      "expandedInputHash": "61def3a8506bd1ef1db91b18d482a111f9ce2196f0566d968a27d1d9678e3a26",
+      "expandedInputHash": "ffe0217eeb27e63f9c4bfa0b35c49eed8cab46f21ae1a93ac503fbccd70d903b",
       "expected": "indeterminate",
       "note": "The current outer bundle roles cannot represent a pre-agreement multi-candidate terminal."
     },
@@ -8625,7 +8704,7 @@
       "name": "missing-whole-bidder-pair",
       "rule": "VPA-2; VPA-9; PVPC-8",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -9425,7 +9504,7 @@
           ]
         }
       ],
-      "expandedInputHash": "5de22190e0c2b6dc62789b4e0477a2d91c0860137e325a404a5d42133e824965",
+      "expandedInputHash": "4bcd01e69d2ef096b7f82f6adc2adac2904d71b0c29241b0431011206d868b96",
       "expected": "fail",
       "note": "Shared roster count/hash detects omission of both directions for a bidder."
     },
@@ -9433,7 +9512,7 @@
       "name": "roster-count-disagreement",
       "rule": "VPA-2; VPA-9",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -9541,7 +9620,7 @@
           "value": "90c4716cbf7d5d05e18f5a8a9fd8531444a22f3d23370ed8e890d7d66842cb64"
         }
       ],
-      "expandedInputHash": "544e84f92da1b1de51e3d41024e491d0d50d2a5fe05d4a2d0e91f7095a4beb49",
+      "expandedInputHash": "861e1663fbcdfc1aa4b4a25702e95b0e080f9631f2402084dbc0ab60c1392925",
       "expected": "fail",
       "note": "Every authorization must carry the same positive roster count and commitment."
     },
@@ -9549,7 +9628,7 @@
       "name": "cross-bidder-context-substitution",
       "rule": "VPA-3; VPA-9",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -9667,7 +9746,7 @@
           "value": "23e1612de059e3ac4469fc33aa766aba10ac80181432a07cf69f5ef6584a36a7"
         }
       ],
-      "expandedInputHash": "10e1cc8d76c694d5b23997e1b87097dfb2ea96689c5e100830d506a8c4f6ec40",
+      "expandedInputHash": "217b4845d73b7500116c5a02f83f70f471d158ad1f4c6adb5b8bc371fbb4df4a",
       "expected": "fail",
       "note": "A candidate body cannot be moved under another candidate context."
     },
@@ -11032,7 +11111,7 @@
       "name": "unvetted-winning-bidder",
       "rule": "PVPC-7; DACS-3 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -11067,7 +11146,7 @@
           ]
         }
       ],
-      "expandedInputHash": "4bb88965f91ff30c5dd76592de451f437587cb910dda223a8f6607757b40a91e",
+      "expandedInputHash": "b80bfb4983af3bdfb16913f937a023805015c4d96f70fc974447cb89b8dfbd7c",
       "expected": "fail",
       "note": "The agreement cannot omit its winner's exact counterparty record."
     },
@@ -11075,7 +11154,7 @@
       "name": "unvetted-losing-bidder",
       "rule": "PVPC-7; DACS-3 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -11083,7 +11162,7 @@
           "value": "0000000000000000000000000000000000000000000000000000000000000000"
         }
       ],
-      "expandedInputHash": "2588595b904318ff8d43c0d8c88e93835da27c1b68d7359dbabf399d2c3c40fd",
+      "expandedInputHash": "2bea9d5d7643082b27ab621be71a284bd006002588a498bbcddad9f5d1a3134a",
       "expected": "fail",
       "note": "Every all-pass losing candidate needs its own exact record."
     },
@@ -11091,7 +11170,7 @@
       "name": "all-pass-loser-omitted-from-agreement",
       "rule": "DACS-3 check 11; ST-11",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -11126,7 +11205,7 @@
           ]
         }
       ],
-      "expandedInputHash": "270ef6a427a580fe1c7f29ad4b9582297e5aa0ed10d59bae8505c899894a960d",
+      "expandedInputHash": "4265b056d1bd797c420b1c5c3cbd69e45fb05367adb8e4d6a7fdc4de312b4bed",
       "expected": "fail",
       "note": "Agreement candidate contexts must equal the eligible set in both directions."
     },
@@ -11134,7 +11213,7 @@
       "name": "publisher-ref-bound-to-loser-context",
       "rule": "PVPC-7; DACS-3 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -11152,7 +11231,7 @@
           "value": "key:34b4d9043156cb6dcf0beb0a2949b7559c940d2bcb6dbe8c53a9b30278e3a746"
         }
       ],
-      "expandedInputHash": "9b3cf18d91ac3a45be2bc2df164a5cc9edeb14603129662d81b2cbfdcd24ccc1",
+      "expandedInputHash": "4247cfcfdf27ea973e3a766e6b54bb06dffa394892141755f28313c4a7545bbb",
       "expected": "fail",
       "note": "The publisher's singular AgreementParty ref must use the winner context."
     },
@@ -11160,7 +11239,7 @@
       "name": "procurement-agreement-role-inversion",
       "rule": "DACS-3 §8.5.2 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -11173,7 +11252,7 @@
           "value": "buyer"
         }
       ],
-      "expandedInputHash": "dac0ec705abe0815330326e18e24aeb5172d399a241709bde8c92d6543a295b0",
+      "expandedInputHash": "1b04520d4e6b6673fac54140bc5ee2aecdb3b0d291e583c906630a42f2eb5ac0",
       "expected": "fail",
       "note": "Publisher and winning supplier cannot use demand-mode seller/buyer roles."
     },
@@ -11181,7 +11260,7 @@
       "name": "signed-fail-cannot-be-admitted",
       "rule": "PVPC-6; PVPC-10",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -11789,7 +11868,7 @@
           "value": "41dbaf5db9849fe1211442aa88749c51a4ef719be9c6aa74d6337fcf6c878d59"
         }
       ],
-      "expandedInputHash": "c6b87bd42578551e5c30795cc874c0b569688deddbd3cffb68145907255aad8b",
+      "expandedInputHash": "cefcdae4a8a5f9ad580cc93f7a7ab1228169266e8ea5aeb37cb4c24a5a893c9f",
       "expected": "fail",
       "note": "A validly signed fail record remains audit evidence and cannot enter the eligible set."
     },
@@ -11797,7 +11876,7 @@
       "name": "retryable-error-bidder-cannot-be-silently-excluded",
       "rule": "PVPC-6",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "add",
@@ -12188,7 +12267,7 @@
           "value": null
         }
       ],
-      "expandedInputHash": "2efb311f784ec83442ec93927453de0ffc6ebef19c53181e53475f6594bc473d",
+      "expandedInputHash": "bd770870057e01f1e4be9683e3956c0a7e72ba95f43658c6e9081901c19769e9",
       "expected": "indeterminate",
       "note": "A verifier/parser error follows its retry path and blocks phase admission rather than becoming bidder censorship."
     },
@@ -12368,7 +12447,7 @@
       "name": "publisher-body-differs-across-contexts",
       "rule": "VPA-9; DACS-3 ingress",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -12486,7 +12565,7 @@
           "value": "d66c3833cfcd13f4b9600499e8a28e4d0418ed922795c097d0ecb331b46e1145"
         }
       ],
-      "expandedInputHash": "c1f563d6414d3fd22182e526514d022251f499567fcf1da09876046b7bd42c75",
+      "expandedInputHash": "edfb5b90612fa00c72e407fa80da261af12fe708f25d4f54a8982b4befdb8700",
       "expected": "fail",
       "note": "One publisher primary claim cannot hide different signed bodies across bidder contexts."
     },
@@ -14913,7 +14992,7 @@
       "name": "sealed-negotiate-session-context-job-mismatch",
       "rule": "DACS-3 provenanced ingress",
       "operation": "validate-provenanced-vet-chain-and-admission",
-      "base": "procurement-two-bidder-completed",
+      "base": "historical-procurement-two-bidder-completed",
       "patch": [
         {
           "op": "replace",
@@ -14921,7 +15000,7 @@
           "value": "01K2VPA9999999999999999999"
         }
       ],
-      "expandedInputHash": "c7797003e0cd8f986d12fcdb80f6fabc5a58c4b4b71479829e250ebe93d3c8cc",
+      "expandedInputHash": "5c35cbc41eb8666c1d51a5a98737c8107c3225ad765f1e1697b73b750f2fbc95",
       "expected": "fail",
       "note": "The sealed handoff's complete SessionContext must preserve the exact job, Listing tuple, registry pins, parties, prior Vet output, signer, and start time."
     },

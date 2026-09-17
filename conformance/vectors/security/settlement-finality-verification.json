@@ -239,8 +239,8 @@
       }
     }
   },
-  "count": 83,
-  "hash": "974a363b43fefa202881e757fc84158727a26523c6539a5ed72a2a481b2905a6",
+  "count": 85,
+  "hash": "bdfd78c0457a3b26a10e79a026d4e831736136c20c03d43408abf5f6945d4f1c",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -19714,6 +19714,366 @@
                 }
               ]
             }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "fail"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-missing-authority-malformed-response-bytes",
+      "expected": "error",
+      "note": "a malformed provider response is error before an unrelated missing SR-3 native transaction observation",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "not-base64-json",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-missing-authority-attestation-hash-mismatch",
+      "expected": "fail",
+      "note": "a provider response hash mismatch is fail before an unrelated missing SR-3 native transaction observation",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "0000000000000000000000000000000000000000000000000000000000000000"
           }
         }
       },

@@ -1418,8 +1418,6 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     sr3 = ref.get("kind") == "ap2-sr3"
     if not sr3 and "receiptTransactionObservation" in context:
         return _result("error", "frozen AP2 reference must not carry SR-3 native transaction authority")
-    if sr3 and "receiptTransactionObservation" not in context:
-        return _result("indeterminate", "authenticated SR-3 native transaction authority unavailable")
     if context.get("providerRef") != ref.get("providerRef") or canonical_bytes(context.get("responseAttestation")) != canonical_bytes(ref.get("receiptAttestation")):
         return _result("fail", "provider context differs from signed provider reference")
     try:

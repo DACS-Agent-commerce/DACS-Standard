@@ -132,7 +132,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(83, self.data["count"])
+        self.assertEqual(85, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -241,7 +241,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         with self.subTest(native="observation-missing"):
             result = verify_finality(missing, self.trust)
             self.assertEqual("indeterminate", result["decision"])
-            self.assertIn("native transaction authority unavailable", result["reason"])
+            self.assertIn("native transaction observation unavailable", result["reason"])
 
         no_profile = copy.deepcopy(self.trust)
         no_profile["sr3TransactionFinalityProfile"] = None
@@ -266,6 +266,36 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         no_bft["context"]["receiptTransactionObservation"]["finalityCertificate"] = None
         with self.subTest(native="finality-certificate-missing"):
             self.assertEqual("indeterminate", verify_finality(no_bft, self.trust)["decision"])
+
+    def test_ap2_sr3_missing_authority_does_not_hide_deterministic_facts(self):
+        control = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+
+        malformed = copy.deepcopy(control)
+        del malformed["context"]["receiptTransactionObservation"]
+        malformed["context"]["responseBytes"] = "not-base64-json"
+        with self.subTest(precedence="malformed-response-bytes"):
+            result = verify_finality(malformed, self.trust)
+            self.assertEqual("error", result["decision"])
+            self.assertIn("response bytes are malformed", result["reason"])
+
+        mismatched = copy.deepcopy(control)
+        del mismatched["context"]["receiptTransactionObservation"]
+        mismatched["context"]["responseAttestation"]["contentHash"] = "00" * 32
+        with self.subTest(precedence="attestation-hash-mismatch"):
+            result = verify_finality(mismatched, self.trust)
+            self.assertEqual("fail", result["decision"])
+            self.assertIn("provider context differs from signed provider reference", result["reason"])
+
+        absent = copy.deepcopy(control)
+        del absent["context"]["receiptTransactionObservation"]
+        none_present = copy.deepcopy(control)
+        none_present["context"]["receiptTransactionObservation"] = None
+        with self.subTest(ordering="absent-equals-none"):
+            absent_result = verify_finality(absent, self.trust)
+            none_result = verify_finality(none_present, self.trust)
+            self.assertEqual("indeterminate", absent_result["decision"])
+            self.assertEqual("indeterminate", none_result["decision"])
+            self.assertEqual(absent_result["reason"], none_result["reason"])
 
     def test_ap2_sr3_malformed_trust_and_decision_order(self):
         control = self.cases["fv-ap2-sr3-canonical-success"]["input"]

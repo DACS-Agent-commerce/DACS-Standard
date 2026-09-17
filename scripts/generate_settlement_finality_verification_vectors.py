@@ -1202,6 +1202,11 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-ap2-sr3-response-hash-contradiction", "fail", "the native transaction must commit the exact provider response hash", sr3_bad_response))
 
     vectors.extend([
+        case("fv-ap2-sr3-missing-authority-malformed-response-bytes", "error", "a malformed provider response is error before an unrelated missing SR-3 native transaction observation", changed_sr3(lambda v: (v["context"].pop("receiptTransactionObservation"), v["context"].__setitem__("responseBytes", "not-base64-json")))),
+        case("fv-ap2-sr3-missing-authority-attestation-hash-mismatch", "fail", "a provider response hash mismatch is fail before an unrelated missing SR-3 native transaction observation", changed_sr3(lambda v: (v["context"].pop("receiptTransactionObservation"), v["context"]["responseAttestation"].__setitem__("contentHash", "00" * 32)))),
+    ])
+
+    vectors.extend([
         case("fv-htlc-source-lock-missing", "indeterminate", "source lock proof is independently required", changed("htlc-reveal", lambda v: v["context"].__setitem__("sourceLock", None))),
         case("fv-htlc-source-claim-missing", "indeterminate", "source claim proof is independently required", changed("htlc-reveal", lambda v: v["context"].__setitem__("sourceClaim", None))),
         case("fv-htlc-destination-lock-missing", "indeterminate", "destination lock proof is independently required", changed("htlc-reveal", lambda v: v["context"].__setitem__("destinationLock", None))),

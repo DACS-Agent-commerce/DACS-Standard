@@ -42,6 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
+| [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -70,6 +71,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`raw-json-profile-v0.1.json`](raw-json-profile-v0.1.json) | CORE §B.2 CF-5 raw JSON admission | 59 | `accept` / `reject` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
+| [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 79 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -84,6 +86,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
+| [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -95,6 +98,67 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-10
+
+70 deterministic cases exercise the structurally distinct complete
+sealed-envelope profile. Real Ed25519 signatures cover bidder commit/reveal
+records, the selection receipt, its modeled candidate-set binding proof, and
+the publisher/winner agreement. Demand controls cover absent and explicit
+`"demand"` mode plus buyer/seller direction; procurement retains its inverse
+role direction. The independent evaluator derives exact closed record shapes,
+record authority, deadlines, listing currency, bidder eligibility, CD-1 price
+ordering, the SE-5 tie-break, receipt contents, and agreement closure from the
+signed inputs.
+`listing.pricingCurrency` and the matching
+`authenticatedInvocation.pricingCurrency` are this fixture's authenticated
+verifier projection of the listing-derived currency. They are not a new
+`PricingSpec` wire member, a full signed reserve-free Listing fixture, or a
+native listing-resolution claim.
+
+An independent Node.js evaluator separately executes 49 named controls from the
+70-case corpus and reproduces the exact candidate-set
+root, receipt content hash, demand/mode/role checks, reveal-deadline boundary,
+non-USD filtering, exact record-shape refusal, exact arbitrary-length ordering,
+inclusive reserve result, and winner for the selected controls,
+providing a second-runtime byte check rather than two calls through the Python
+oracle.
+
+Attack cases cover an omitted better reveal, a valid but stale signed set,
+missing proof, finalized fork conflict, unavailable winning record or bidder
+key, unavailable binding definition or selection-receipt anchor, authenticated
+definition/id/version/key substitution, a signed lying winner, receipt-reference
+substitution, agreement-price mismatch, invalid/late/wrong-address reveals,
+proof-count disagreement, non-finite/exponent/non-string amounts, malformed
+PriceTerm shapes, noncanonical decimal strings, fully re-signed cross-job,
+cross-listing and cross-phase artifacts, canonical binding-version rejection,
+literal record-version checks, and signed extra/missing outer and nested
+commit/reveal members. The exact reveal-deadline state passes while a valid proof one
+millisecond earlier rejects. A matching EUR listing succeeds, USD bids are
+excluded from it, and a third-currency reserve rejects the listing. Malformed signatures,
+prices, or anchor/address
+contradictions reject the whole selection; a valid signed reveal that fails to
+open its authoritative commit is instead accounted for and excluded. Canonical
+zero and negative prices are likewise excluded before selection. Long integer
+and fractional controls pin exact lowest/highest ordering and inclusive reserve
+floor/ceiling comparison without floating point or context-limited arithmetic.
+`first-acceptable` and `rule-ref` are refused
+before fetch/execution because the complete profile has no registered
+deterministic VM. The fixture's authenticated SR-2 registry resolution binds
+the exact definition ref/id/version and derives proof verification, finality,
+admission, ordering, conflict, and resource policy from that definition. This
+deterministic test adapter exercises the portable SAC-3 contract; it is
+explicitly not evidence that Demos currently supplies a production
+complete-prefix proof.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_sealed_auction_completeness_vectors.py --write
+python3 scripts/generate_sealed_auction_completeness_vectors.py --check
+python3 -m unittest tests.test_sealed_auction_completeness_vectors -v
+node scripts/evaluate_sealed_auction_fixture.mjs conformance/vectors/security/sealed-auction-completeness-v0.6.json
+```
 
 ### `canonical-json-v0.1.json` — CORE §B.2 RFC 8785 JCS + CF-1
 
@@ -187,6 +251,105 @@ Regenerate, verify, and execute with:
 python3 scripts/generate_ap2_handler_safety_vectors.py --write
 python3 scripts/generate_ap2_handler_safety_vectors.py --check
 python3 -m unittest tests.test_ap2_handler_safety_vectors -v
+```
+
+### `sr2-logical-native-resolution-v0.1.json` — CORE §5 SR2-10..SR2-13
+
+39 candidate vectors make the portable logical-to-native read path executable.
+They admit a verified direct `AnchorReceipt` at the calling rule's lifecycle
+gate, plus exact authenticated references from a finalized DACS-5 bundle or a
+verified registry snapshot only after that named carrier class's checks pass.
+They keep bare locators, unregistered or generically authenticated surfaces,
+missing class checks, unverified receipts, ordinary catalog/index assertions,
+malformed receipt/carrier shapes, missing artifacts, low lifecycle states,
+missing artifact authority, and unqualified `not found` results
+`indeterminate`. A receipt delivered after its first required gate is a
+producer conformance failure. Fractional and unsafe numeric members in the
+SR2-5 transaction reference pin canonicalization and fail-closed disposition
+behavior without uncaught exceptions. Runtime-controlled nesting depth is
+likewise normalized at the deepcopy, canonicalization, and hashing boundaries:
+direct unit regressions prove a 1,200-level receipt or storage value returns a
+disposition (never a host `RecursionError`/`OverflowError`); depth cases live
+in tests rather than the corpus because a committed vector must stay
+JSON-serializable by every reader. Transport copies collapse only when their
+canonical receipt snapshots are identical; unequal lifecycle snapshots sharing
+an SR2-5 tuple remain `indeterminate` without binding-authenticated ordering.
+Delivery is then assessed from the earliest finite verified delivery of that
+single snapshot, so timely delivery survives later redelivery while all-late
+copies fail.
+
+The set also mutates every SR2-5 tuple component and proves that two unequal
+otherwise-authorized mappings remain `indeterminate` regardless of arrival
+order, `observedAt`, or index visibility. Authoritative absence appears only
+through a declared binding policy.
+
+### `registry-bootstrap-v0.1.json` — CORE §5 registry bootstrap
+
+79 candidate vectors exercise the non-recursive recipe/rail index trust root.
+The positive chains carry genuine deterministic Ed25519 signatures under
+`dacs-registry-bootstrap:v1:` and cover hash-only/key-only first contact,
+same-key content updates, two-signature authority rotation, exact
+sequence-and-descriptor-hash historical replay, persisted-branch ancestry,
+authenticated definition references, closed registry-index shape/kind/version/
+revision checks, and SIG-5 preservation plus NFC and fractional-number
+canonicalisation of unknown members.
+
+The ratified #338-D1 source contract corrects unreleased
+`RegistryIndexSnapshot` v1 entries to numeric versions and adds family-aware
+latest selection, derived-NFC identity comparison, fetched-definition equality,
+and target-bounded historical traversal. The checked-in 79-vector file has been
+regenerated in dependency order: definition bytes and entry hashes, snapshot
+hashes, receipt bindings, descriptor signatures and pins, successor references,
+and fixture-verifier sidecars. All existing case names and expected outcomes
+are preserved, including intentional invalid-input controls. The combined
+generator's SR-2 resolution output is unchanged. Local generator determinism
+and reference-model outcomes do not establish native proof verification or
+integrated full-suite acceptance.
+In the reference harness, `definitionQuery` is the non-wire lookup input:
+recipe queries are `{id, family, version?}` or `{id, method, version?}` where `family` is
+`Recipe.defaultMethod.kind`, while rail queries are `{id, version?}`. Omitting
+`version` requests latest; a present version is a positive safe integer.
+`definitionChecks` remains modeled output from the definition signature and
+semantic verifiers rather than native proof verification.
+
+Every case supplies a closed `expectedRegistryTuple` as independent release
+configuration beside `trustPin`; it is not a signed descriptor member or wire
+field. The evaluator validates the exact recipe/rail pairing and all four tuple
+fields before root classification. `verifiedReceiptEvidence` records successful independent fixture-verifier outputs
+bound to the complete evidence reference and SHA-256 of the exact canonical
+receipt snapshot. A result for another proof kind or observation cannot authorize
+this receipt. The sidecar result and the evidence record keep their required
+members but are not exact-key-set constrained: under SIG-5 / §11.1.2 forward
+readability, a future minor may add optional members, and the evaluator admits
+an extended record exactly when the independent result repeats the complete
+extended evidence record and the exact canonical receipt hash. The generator compiles reviewed fixture outcomes into this sidecar;
+the evaluator never constructs approval from presented descriptors. These are
+modeled verifier outputs, not proof material or a native evidence verifier. The
+bounded harness does not claim an SR2-7 ordering primitive.
+
+Negative and indeterminate cases cover missing release pins, descriptor/receipt
+tuple substitutions, unavailable or recursive finality evidence, sequence and
+registry-tuple changes, key aliases, malformed/cumulative revocations, root and
+successor forks including unavailable and invalid competing candidates,
+invalid first-contact siblings discarded before fork classification,
+invalid-root suppression, post-classification duplicate transport-copy collapse
+under valid, invalid, unresolved, and reversed-order combinations, closed snapshot
+member shapes, latest rollback and sibling-branch substitution, unrelated
+historical descriptors, unsafe JCS numbers,
+mutable-address reuse, stale/missing snapshot bytes, definition failures,
+cross-domain replay, and discriminator confusion.
+Mode and stored-latest context are shape-checked before selection, including in
+historical mode; omission means `latest`, while explicit null or unsupported
+modes fail. Bootstrap snapshot admission runs the complete receipt predicate
+before nested access and then requires an established finalized receipt, exact
+descriptor bindings, block metadata, and independently verified non-recursive
+evidence.
+Public test seeds are included. Regenerate and execute both sets with:
+
+```sh
+python3 scripts/generate_sr2_resolution_vectors.py --write
+python3 scripts/generate_sr2_resolution_vectors.py --check
+python3 -m unittest tests.test_sr2_resolution_vectors -v
 ```
 
 ### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
@@ -903,42 +1066,113 @@ mismatch). Models the VC Data-Integrity `challenge` discipline, not a generic jt
 Plus a top-level `keys` map (public keys) so verification is self-contained.
 Run (reference): `npx tsx conformance/security-vectors/vp-replay/run.mts` → 13/13.
 
-### `channel-message-replay-v0.1.json` — §8.3.3 + CH-6 (channel-message replay / channelId reuse)
+### `channel-message-replay-v0.1.json` — frozen historical Demos read arm
 
-15 vectors for the cross-session / in-channel offer-replay defence (threat-matrix
-row #14 — the DACS-normative replay analog of the SR-4/L2PS nonce-reuse case, which
-was correctly **declined** as a DACS vector because the crypto envelope is left to
-implementations). A `ChannelMessage` is admitted only if **all** hold, as the
-§7.5.1 4-value decision (never collapsed):
+These 15 vectors are frozen byte-for-byte as the historical
+`LegacyDemosChannelMessage` corpus. They remain executable for explicit
+read/import compatibility and MUST NOT be treated as current producer examples.
+The historical object has no message discriminator, carries a bare
+128-lowercase-hex signature, and signs the **raw 32-byte** digest under
+`"dacs-channelmsg:v1:"`. It is selected structurally before crypto and never as
+a fallback after current-message failure. Within that historical arm, admission
+requires all of:
 
 - **CH-6** — the session's `channelId` MUST NOT be one reused from a prior session
-  (`priorChannelIds`); a reused session channel → `fail` (the whole session is rejected).
+  according to the verifier-owned retained registry; a reused session channel
+  → `fail` (the whole session is rejected).
 - **channel binding** — `message.channelId == sessionChannelId`; a foreign-channel
   message (a genuine message from another session presented here) → `fail`.
-- **signature** — over `"dacs-channelmsg:v1:" || sha256(JCS(envelope − signature))`
-  by the sender's self-describing `cci:<hex>` key. An unresolvable sender key →
-  `indeterminate` (NOT `fail`); an invalid signature → `fail`.
+- **signature** — over `UTF8("dacs-channelmsg:v1:") || raw_32_byte_sha256(UTF8(JCS(envelope − signature)))`
+  by the independently authenticated channel member key. The retained historical
+  `cci:<hex>` spelling is not membership authority. A known algorithm mismatch
+  → `fail`; matching authenticated metadata with unavailable key bytes →
+  `indeterminate`; an invalid signature → `fail`.
 - **monotonic sequence** — strictly greater than the highest already seen in the
   channel (starts at 1, §8.3.3); a duplicate or decreasing `sequence` → `fail`.
 
 A cross-session replay fails **both** ways: keep the old `channelId` → channel-binding
 `fail`; rewrite it → the signature (computed over the original `channelId`) breaks.
-Malformed artifacts — a non-canonicalisable `body`, a non-integer/negative
-`ctx.lastSequence`, or a non-string `priorChannelIds` element — return `error`,
-never collapsing to `fail` (so bad context cannot bypass the replay gate).
+Malformed artifacts or malformed trusted setup return `error`. The frozen
+`ctx` field is retained test metadata, compared against independently reviewed
+setup in `tests/channel_message_fixture_authority.py`; it never initializes
+state from the presented candidate. The runtime evaluator accepts a previously
+issued state capability, not a `ctx` object.
 
 #### Vector schema
 | field      | meaning |
 |------------|---------|
 | `name`     | stable case id |
 | `expected` | §7.5.1 verdict (4-value, never collapsed) |
-| `message`  | the `ChannelMessage` under test (channelId, sequence, sender, signature, body…) |
-| `ctx`      | per-case `{ sessionChannelId, lastSequence, priorChannelIds }` |
+| `message`  | the `LegacyDemosChannelMessage` under test (channelId, sequence, sender, signature, body…) |
+| `ctx`      | frozen scenario metadata; compared with separate trusted harness configuration, never state authority |
 
-Self-contained (sender keys are self-describing `cci:<hex>`; signatures are real
-ed25519 over the §8.3.3 signed scope). Run (reference):
-`npx tsx conformance/security-vectors/channel-message-replay/run.mts` → 20/20
-(15 persisted vectors + 5 non-serialisable robustness assertions).
+Signatures are real Ed25519 over the frozen historical scope; member/key
+authority and initial state are supplied independently by the harness. Each
+fixture is an isolated verifier lifetime. Within a lifetime, a caller-supplied
+retained registry preserves identifiers, sequences and terminal status across
+issuer facade reconstruction; live and audit registries are distinct. This
+in-memory reference does not establish durable restart or distributed-storage
+guarantees. Production adapters must retain transactional state for their replay
+horizon and demonstrate continuity across restart. The shipped executable oracle is
+`python3 -m unittest tests.test_channel_message_vectors`; it replays all 15
+persisted cases and pins the complete legacy file SHA-256. The previously cited
+external TypeScript runner is not part of this repository and is not the
+conformance authority.
+
+### `canonical-channel-message-v0.6.json` — §8.3.3 CH-6..CH-10
+
+55 deterministic cases for the discriminated current
+`CanonicalChannelMessage` and its strict historical boundary. The current arm
+uses `canonicalChannelMessageVersion: "1"`, a versioned
+`ChannelMessageSignature`, SIG-6 unpadded Base64URL, and exactly:
+
+```
+UTF8("dacs-canonical-channel-message:v1:")
+  || ASCII(lowercase_hex(sha256(UTF8(JCS(message − signature)))))
+```
+
+Current-wire sender/signer identities are canonical registered DACS-1
+claims: the Ed25519 members carry `key:<64 lowercase hex>` primary-key
+references and the non-Ed25519 algorithm fixtures carry `did:` references.
+Before issuing current live state, the harness requires verifier-owned exact
+release-pin, complete module-tuple, session, and authenticated-participant
+admission. The corpus covers missing, partial, wrong-pin, duplicate-participant,
+session-mismatch, identity-mismatch, and unauthenticated authority; the frozen
+`legacy-import` arm is non-live and exempt. It also distinguishes absent
+optional `refs` from malformed explicit `refs: null`.
+The historical generic `cci:<64hex>` spelling is unregistered on the current
+wire — an otherwise correctly signed message carrying it is refused by
+`current-read` while the canonical `key:` spelling of the same key passes —
+and it remains readable only through the explicit `legacy-import` arm for
+frozen archival bytes.
+
+The caller-selected `operation` is `current-read` or `legacy-import`; it is
+trusted harness policy, not a message member or a wire-shape inference. The same
+valid frozen legacy bytes reject on `current-read` and pass only on the explicit
+`legacy-import` operation.
+
+The corpus covers valid first/next/gapped sequences; positive, tampered,
+cross-domain, and wrong-framing examples for Ed25519, ECDSA-secp256k1, and an
+authenticated `sr1-root` aggregate signature; duplicate/decreasing,
+foreign-channel and reused-channel rejection; unavailable sender authority;
+an otherwise-valid outsider signature and a member signature made by the wrong
+key against the verifier-owned authenticated member/key capability; CF-3
+matching of a parameter-qualified sender and signer to the one member identity;
+tampering; padded/standard-Base64/hex value rejection; unknown message and
+signature versions; unknown algorithm and algorithm/key confusion; closed
+signature-envelope shape and integer/member boundaries;
+signer/sender mismatch; SIG-5 unknown-field preservation; current/legacy
+cross-domain replay; raw-versus-ASCII-hex framing in both directions; and the
+four explicit mixed-wire barriers (discriminator + bare hex, no discriminator
++ current envelope, discriminator + raw-digest signature, and historical shape
++ hex-digest signature). A frozen historical positive also records the exact
+Base64URL re-encoding of its raw signature bytes without representing that
+re-encoding as a current signature.
+
+Generate/check with
+`python3 scripts/generate_channel_message_vectors.py --check`; execute every
+current, mixed, and frozen historical verdict with
+`python3 -m unittest tests.test_channel_message_vectors`.
 
 ### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
 
@@ -971,8 +1205,9 @@ governing dispositions and are not reclassified by this set. A declared
 `resolvedResults` is therefore a neutral projection of already-authenticated
 DACS `VerifyResult` fields, not a new wire artifact. The set-level
 `recipeRegistries` project the exact snapshots selected by each authenticated
-production or replay authority; `latestByFamily` supplies the implicit pin and
-`versionsByFamily` proves exact version existence plus availability. Parameter
+production or replay authority; `versionsByFamily` supplies the complete numeric
+version inventory plus availability. Its greatest numeric member determines the
+implicit pin before eligibility; `latestByFamily` is an inert legacy hint. Parameter
 matching requires every requested own key to be present and canonically equal;
 additional extracted-data keys remain valid. `resultReuse` is neutral
 pre-aggregation cache provenance and optional rerun output; it is not a field
@@ -1356,66 +1591,25 @@ vp-replay await a second independent impl to cross-run against.
 `feeschedule-reconciliation` was authored on RB's request (#186) covering §8.5.3
 FS-1..FS-5 + §9.7.2 FR-1..FR-4; awaiting a second independent impl to cross-run against.
 
+The SR2 `method` query and CRQ `recipeDefinitions` projection derive alternative-method
+ownership from admitted definition bodies under RA-6. The latter must cover the full
+scheme/version inventory; it is not a wire artifact or an unauthenticated alias map.
+Legacy CRQ snapshots with no alternatives retain their direct default-method projection.
+
 
 The current AP2 candidate retains the complete effect-bearing provider request, including mandate, checkout, payee, amount/currency, instrument, destination and metadata, under its operation fingerprint. Same-key recovery dispatches that retained request and refuses changed semantics before provider interaction. Captured recovery must match the operation fingerprint, transaction and retained provider reference. These are local fake-provider controls; mandate cryptographic verification and authenticated status-fetch semantics remain modeled inputs. The entire trusted participant map requires unique identities.
 
-### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-10
+### Complete Recipe fixture follow-up
 
-70 deterministic cases exercise the structurally distinct complete
-sealed-envelope profile. Real Ed25519 signatures cover bidder commit/reveal
-records, the selection receipt, its modeled candidate-set binding proof, and
-the publisher/winner agreement. Demand controls cover absent and explicit
-`"demand"` mode plus buyer/seller direction; procurement retains its inverse
-role direction. The independent evaluator derives exact closed record shapes,
-record authority, deadlines, listing currency, bidder eligibility, CD-1 price
-ordering, the SE-5 tie-break, receipt contents, and agreement closure from the
-signed inputs.
-`listing.pricingCurrency` and the matching
-`authenticatedInvocation.pricingCurrency` are this fixture's authenticated
-verifier projection of the listing-derived currency. They are not a new
-`PricingSpec` wire member, a full signed reserve-free Listing fixture, or a
-native listing-resolution claim.
+The generator now constructs a registered `key` / `self-signed` Recipe with
+required age, retry and governance fields and a deterministic steward
+signature. The signature uses the test harness's `keyId` / `algorithm` / `value`
+codec under `dacs-recipe:v1:`; this does not allocate a production signature
+wire format or establish live registry-steward authorization. The selector-only
+unit projections are not complete wire artifacts.
 
-An independent Node.js evaluator separately executes 49 named controls from the
-70-case corpus and reproduces the exact candidate-set
-root, receipt content hash, demand/mode/role checks, reveal-deadline boundary,
-non-USD filtering, exact record-shape refusal, exact arbitrary-length ordering,
-inclusive reserve result, and winner for the selected controls,
-providing a second-runtime byte check rather than two calls through the Python
-oracle.
-
-Attack cases cover an omitted better reveal, a valid but stale signed set,
-missing proof, finalized fork conflict, unavailable winning record or bidder
-key, unavailable binding definition or selection-receipt anchor, authenticated
-definition/id/version/key substitution, a signed lying winner, receipt-reference
-substitution, agreement-price mismatch, invalid/late/wrong-address reveals,
-proof-count disagreement, non-finite/exponent/non-string amounts, malformed
-PriceTerm shapes, noncanonical decimal strings, fully re-signed cross-job,
-cross-listing and cross-phase artifacts, canonical binding-version rejection,
-literal record-version checks, and signed extra/missing outer and nested
-commit/reveal members. The exact reveal-deadline state passes while a valid proof one
-millisecond earlier rejects. A matching EUR listing succeeds, USD bids are
-excluded from it, and a third-currency reserve rejects the listing. Malformed signatures,
-prices, or anchor/address
-contradictions reject the whole selection; a valid signed reveal that fails to
-open its authoritative commit is instead accounted for and excluded. Canonical
-zero and negative prices are likewise excluded before selection. Long integer
-and fractional controls pin exact lowest/highest ordering and inclusive reserve
-floor/ceiling comparison without floating point or context-limited arithmetic.
-`first-acceptable` and `rule-ref` are refused
-before fetch/execution because the complete profile has no registered
-deterministic VM. The fixture's authenticated SR-2 registry resolution binds
-the exact definition ref/id/version and derives proof verification, finality,
-admission, ordering, conflict, and resource policy from that definition. This
-deterministic test adapter exercises the portable SAC-3 contract; it is
-explicitly not evidence that Demos currently supplies a production
-complete-prefix proof.
-
-Regenerate and execute with:
-
-```sh
-python3 scripts/generate_sealed_auction_completeness_vectors.py --write
-python3 scripts/generate_sealed_auction_completeness_vectors.py --check
-python3 -m unittest tests.test_sealed_auction_completeness_vectors -v
-node scripts/evaluate_sealed_auction_fixture.mjs conformance/vectors/security/sealed-auction-completeness-v0.6.json
-```
+The renewed bootstrap corpus contains 79 deterministic cases, including three
+optional-evidence forward-readability controls. Its dependent hashes,
+signatures, references and security-vector index are regenerated, and the
+checked-in generator plus integrated reference tests establish byte-identical
+reproduction for this fixture profile.

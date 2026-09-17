@@ -1,0 +1,70 @@
+{
+  "afterFixBehavior": "The verifier reruns all deterministic cases in memory and compares every stable case result field; only run timestamps vary.",
+  "beforeFixFinding": "The prior metadata-only verifier could accept altered overall/case statuses and empty observations when pins and case IDs remained unchanged.",
+  "cases": [
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-001",
+      "evidence": "result overall status differs from deterministic rerun",
+      "expected": "rejected",
+      "mutation": "overallStatus changed to fail",
+      "status": "pass"
+    },
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-002",
+      "evidence": "one or more stable case result fields differ from deterministic rerun",
+      "expected": "rejected",
+      "mutation": "EVAL-001 status changed to fail",
+      "status": "pass"
+    },
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-003",
+      "evidence": "one or more stable case result fields differ from deterministic rerun",
+      "expected": "rejected",
+      "mutation": "EVAL-001 observations emptied",
+      "status": "pass"
+    },
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-004",
+      "evidence": "result case IDs are incomplete, reordered, or stale; one or more stable case result fields differ from deterministic rerun",
+      "expected": "rejected",
+      "mutation": "one case result deleted",
+      "status": "pass"
+    },
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-005",
+      "evidence": "result case IDs are incomplete, reordered, or stale; one or more stable case result fields differ from deterministic rerun",
+      "expected": "rejected",
+      "mutation": "two case results reordered",
+      "status": "pass"
+    },
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-006",
+      "evidence": "result candidate head is stale or wrong",
+      "expected": "rejected",
+      "mutation": "candidate head changed",
+      "status": "pass"
+    },
+    {
+      "actual": "rejected",
+      "caseId": "GRADER-007",
+      "evidence": "result candidate origin is stale or wrong",
+      "expected": "rejected",
+      "mutation": "candidate origin changed",
+      "status": "pass"
+    }
+  ],
+  "overallStatus": "pass",
+  "schemaVersion": "1",
+  "scope": "Result-verifier calibration only; distinct from the 12 protocol evaluation cases.",
+  "untamperedBaseline": {
+    "actual": "accepted",
+    "expected": "accepted",
+    "status": "pass"
+  }
+}

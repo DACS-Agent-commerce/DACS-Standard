@@ -39,6 +39,11 @@ For a runnable five-stage builder path, see the dependency-free
 artifact chain, emits canonical bytes/hashes/signature payloads/refs, and executes
 five deterministic failure examples without importing a live substrate SDK.
 
+The [`evaluations/`](./evaluations/) directory contains explicitly
+non-normative, bounded evaluation proposals and reproducibility artifacts. They
+do not add conformance requirements or promote their case sets into golden
+vectors.
+
 Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 
 ## Coverage

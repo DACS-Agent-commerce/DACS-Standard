@@ -125,6 +125,7 @@ def current_receipt_fixture():
             "partyMap": {SELLER: "seller"},
             "budget": 8,
         },
+        "bundleAdmissionAuthority": {"publicKeys": TRUSTED_KEYS["keys"]},
     }]
     receipt = R.derive(SELLER, tagged, 0, 200, "finalisedAt")
     address_tagged = [{
@@ -140,6 +141,7 @@ def current_receipt_fixture():
             "kind": "address",
             "resolvedAddress": seller_binding["logicalAddress"],
         },
+        "bundleAdmissionAuthority": {"publicKeys": TRUSTED_KEYS["keys"]},
     }]
     address_receipt = R.derive(
         SELLER, address_tagged, 0, 200, "finalisedAt"

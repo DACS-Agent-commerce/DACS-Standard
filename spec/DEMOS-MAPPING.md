@@ -106,7 +106,8 @@ binding. For
   reserialisation, require `sha256(UTF8(data)) == responseHash`, and deliver
   those exact bytes so
   `PayloadAttestationRecord.payloadContentHash == responseHash ==
-  SettlementEvidence.deliverableContentHash`; and
+  DeliveryEvidence.deliverableContentHash` for current evidence (or the frozen
+  legacy `SettlementEvidence.deliverableContentHash`); and
 - (d) it MUST retain a resolvable canonical evidence envelope through
   `methodEvidenceRef`, containing or resolving the authenticated transaction
   and response commitment needed to repeat checks (a)–(c).

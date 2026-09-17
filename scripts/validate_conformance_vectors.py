@@ -66,6 +66,7 @@ HASH_EXCLUDED = {
     "IdentityBoundAgreementDocument": {"signatures"},
     "IdentityBoundPayeeAgreementDocument": {"signatures"},
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
+    "DeliveryEvidence": {"signature"},                     # §B.2 / §9.7
     "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
 }
 
@@ -81,8 +82,24 @@ KIND_SEPARATOR = {
     "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
     "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
+    "DeliveryEvidence": "dacs-delivery-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
+
+
+def lifecycle_evidence_kind_matches(kind: str, artifact: Any) -> bool:
+    """Bind a lifecycle wrapper to one exclusive supported DACS-4 selector."""
+    if kind not in {"DeliveryEvidence", "SettlementEvidence"}:
+        return True
+    if not isinstance(artifact, dict):
+        return False
+    expected = (
+        "deliveryEvidenceVersion" if kind == "DeliveryEvidence" else "evidenceVersion"
+    )
+    other = (
+        "evidenceVersion" if kind == "DeliveryEvidence" else "deliveryEvidenceVersion"
+    )
+    return artifact.get(expected) == "1" and other not in artifact
 
 # The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
 # This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64
@@ -371,6 +388,19 @@ def validate_vector(path: Path) -> list[str]:
                     f"the {kind} §B.7 separator {expected_separator!r}",
                 )
             )
+
+        if not lifecycle_evidence_kind_matches(kind, artifact["artifact"]):
+            expected_selector = (
+                "deliveryEvidenceVersion"
+                if kind == "DeliveryEvidence" else "evidenceVersion"
+            )
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} requires exclusive {expected_selector} == '1'",
+                )
+            )
+            continue
 
         # §B.2 envelope content hash over the signature-omitted canonical form.
         expected_hash = content_hash_uri(kind, artifact["artifact"])

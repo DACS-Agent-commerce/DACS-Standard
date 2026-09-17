@@ -606,8 +606,8 @@ def vectors() -> list[dict[str, object]]:
                     "dacs1": "0.7",
                     "dacs2": "0.6",
                     "dacs3": "0.5",
-                    "dacs4": "0.7",
-                    "dacs5": "0.5",
+                    "dacs4": "0.8",
+                    "dacs5": "0.6",
                 },
             },
             "expected": "fail",
@@ -982,7 +982,7 @@ def render() -> str:
             case["providerRequest"] = fixture_provider_request(case["jobId"])
     document = {
         "set": "ap2-handler-safety-v0.6",
-        "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
+        "spec": "DACS-4 v0.8 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
         "scope": (
             "candidate handler predicates: idempotency-key and transaction-id derivation, "
             "authenticated synthetic-profile and JID/phase admission ordering, checkout/payment "

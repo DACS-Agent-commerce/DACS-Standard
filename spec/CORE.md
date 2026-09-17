@@ -154,7 +154,7 @@ type AnchorReceipt = {
   observedAt: number                   // unix ms; observer time, not consensus time
   blockRef?: {
     id: string                         // canonical block/state identifier
-    height?: string                    // decimal string; avoids JSON safe-integer ambiguity
+    height?: string                    // canonical ASCII unsigned decimal: "0" or [1-9][0-9]*
     timestamp?: number                 // consensus timestamp, unix ms
   }
   replacementTransactionRef?: {              // REQUIRED for state == "replaced" when known
@@ -172,7 +172,13 @@ type AnchorReceipt = {
 
 - (SR2-4) Every receipt MUST carry binding-defined evidence for its claimed observation. An `established` receipt claiming `accepted`, `included`, or `finalized` MUST carry enough authenticated evidence for an independent consumer to verify that state. An `indeterminate` receipt MUST carry evidence of the observation failure or unorderable conflict and MUST satisfy the preserved-receipt rules above; it cannot establish a lifecycle state on its own. The receipt fields alone are assertions, not proof.
 - (SR2-5) Every receipt MUST bind one canonical logical address, its actual native address, the artifact content hash, transaction reference, writer, and applicable nonce. On a mismatch in any available binding, a consumer MUST reject the receipt as invalid; the mismatch is not an `indeterminate` observation and does not identify a different artifact.
-- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. A `finalized` receipt MUST identify the finality profile under which finality was established. Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT substitute for it.
+- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. When
+  `blockRef.height` is present, it MUST be the canonical ASCII unsigned-decimal
+  string `"0"` or `[1-9][0-9]*`; readers MUST reject signs, whitespace, Unicode
+  digits, leading zeros, decimal points, and exponents. A `finalized` receipt
+  MUST identify the finality profile under which finality was established.
+  Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT
+  substitute for it.
 - (SR2-7) Consumers MUST validate each `established` lifecycle transition against the graph above. In particular, `dropped`, `expired`, or `reorged` cannot themselves satisfy a success gate, but a later authenticated `accepted`/`included`/`finalized` snapshot MAY do so through the defined re-entry path. A `replaced` transaction cannot satisfy a gate unless the consumer separately verifies a qualifying receipt for the replacement. Each SR-2 binding MUST define how authenticated native evidence orders and reconciles snapshots for one transaction; `observedAt` MUST NOT determine precedence. Conflicting snapshots that the binding cannot order produce an `indeterminate` observation disposition over the unchanged last established state, including when that state is `included` or `finalized`.
 
 **Cross-stage gates.** DACS distinguishes reversible progression, irreversible effects, and terminal audit publication:
@@ -699,7 +705,7 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
 5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
 
-CORE v0.3 together with DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.5 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; these versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
+CORE v0.3 together with DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.6 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; these versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 

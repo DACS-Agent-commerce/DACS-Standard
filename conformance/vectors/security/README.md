@@ -37,7 +37,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
-| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.8 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -70,7 +70,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`raw-json-profile-v0.1.json`](raw-json-profile-v0.1.json) | CORE §B.2 CF-5 raw JSON admission | 59 | `accept` / `reject` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
-| [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window | 164 | `error` / `fail` / `indeterminate` / `pass` |
+| [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window | 181 | `error` / `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -400,7 +400,7 @@ remains unified. `expected` is the comparison check (`pass`/`fail`);
 
 ### `reputation-authenticated-window-v0.6.json` — DACS-5 v0.6 §10.5 AWT-1..AWT-8
 
-161 candidate vectors pin the current reputation profile's business-occurrence
+181 candidate vectors pin the current reputation profile's business-occurrence
 clock and fail-closed boundary. They cover delayed and early bundle anchoring,
 different buyer/seller copy-publication dates, producer and observer clocks,
 both inclusive outcome boundaries, unavailable/unsupported/conflicting
@@ -413,11 +413,19 @@ Finalized SR-2 receipts remain exact-bundle provenance. Their shared current
 and replay lifecycle path enforces CORE §5.1 before replacement authorization:
 an established `replaced` predecessor never finalized, its authenticated edge
 strictly precedes successor finalization, and the successor carries its own
-final receipt. Ordered replacement chains and duplicate collapse pass;
-reversed/equal-order edges, after-finality transitions, reorg conflicts,
-cycles, branches, and unorderable snapshots are non-countable. Malformed nested
-receipt, occurrence, object-join, transaction, event, and ordering forms fail
-closed without raising.
+final receipt. `blockRef.id` is required while `height` and `timestamp` are
+optional, matching CORE's optional-height portable receipt; a present `height`
+must be a canonical unsigned-decimal string (`"0"` or `[1-9][0-9]*`), so a
+sign, plus, whitespace, leading zero, decimal point, or exponent is rejected.
+The single normative `demos-bft-final` profile (DEMOS-MAPPING §A.2) declares
+inclusion-final semantics and permits the compressed `submitted→finalized` and
+`accepted→finalized` edges that CORE allows when valid inclusion is final,
+while undeclared profiles and cross-profile/mixed histories are rejected and
+finality stays terminal. Ordered replacement chains and
+duplicate collapse pass; reversed/equal-order edges, after-finality
+transitions, reorg conflicts, cycles, branches, and unorderable snapshots are
+non-countable. Malformed nested receipt, occurrence, object-join, transaction,
+event, and ordering forms fail closed without raising.
 
 The type-boundary arms require the exclusive
 `authenticatedWindowDerivationVersion: "1"` discriminator and

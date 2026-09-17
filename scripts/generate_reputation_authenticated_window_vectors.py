@@ -152,6 +152,9 @@ def seal_receipt(item: dict) -> dict:
     return item
 
 
+_NO_HEIGHT = object()
+
+
 def receipt(
     transaction: str = "tx-window-a",
     timestamp: int | None = 7_000,
@@ -162,6 +165,8 @@ def receipt(
     native_order: int = 20,
     bundle: dict | None = None,
     preserved_receipt: dict | None = None,
+    finality_profile: str = "demos-bft-final",
+    block_height: object = None,
 ) -> dict:
     bound_bundle = BUNDLE if bundle is None else bundle
     item = {
@@ -173,7 +178,7 @@ def receipt(
                 "writer", "nonce",
             )
         },
-        "finalityProfile": "demos-bft-final",
+        "finalityProfile": finality_profile,
         "transactionRef": transaction_ref(transaction),
         "state": state,
         "observationDisposition": disposition,
@@ -181,7 +186,11 @@ def receipt(
         "nativeOrder": native_order,
     }
     if state in {"included", "finalized"}:
-        item["blockRef"] = {"id": block_id, "height": str(native_order)}
+        item["blockRef"] = {"id": block_id}
+        if block_height is not _NO_HEIGHT:
+            item["blockRef"]["height"] = (
+                str(native_order) if block_height is None else block_height
+            )
         if timestamp is not None:
             item["blockRef"]["timestamp"] = timestamp
     if disposition == "indeterminate" and preserved_receipt is not None:
@@ -527,6 +536,26 @@ def build_vectors() -> list[dict]:
             current_input([receipt(timestamp=None)]), verified,
         ),
         vector(
+            "awt-finalized-anchor-without-height-pass", "pass",
+            "CORE makes blockRef.height optional; an authenticated id-only receipt establishes provenance",
+            current_input([receipt(timestamp=None, block_height=_NO_HEIGHT)]),
+            verified,
+        ),
+        vector(
+            "awt-included-anchor-without-height-pass", "pass",
+            "an included receipt with an id-only blockRef remains well-formed for provenance",
+            current_input([
+                receipt(state="included", timestamp=None, block_height=_NO_HEIGHT),
+                receipt(native_order=21, block_id="block-21"),
+            ]),
+            verified,
+        ),
+        vector(
+            "awt-finalized-anchor-canonical-decimal-height-pass", "pass",
+            "the canonical minimal decimal form \"0\" is a valid blockRef.height",
+            current_input([receipt(block_height="0")]), verified,
+        ),
+        vector(
             "awt-missing-anchor-receipt-indeterminate", "indeterminate",
             "missing selected-bundle provenance keeps the current job non-countable",
             current_input([]), indeterminate,
@@ -727,6 +756,74 @@ def build_vectors() -> list[dict]:
             ]),
             indeterminate,
         ),
+        vector(
+            "awt-compressed-finality-submitted-to-finalized-pass", "pass",
+            "the declared demos-bft-final inclusion-final binding compresses submitted directly to finalized",
+            current_input([
+                receipt(state="submitted", timestamp=None, native_order=18),
+                receipt(native_order=20),
+            ]),
+            verified,
+        ),
+        vector(
+            "awt-compressed-finality-accepted-to-finalized-pass", "pass",
+            "the declared demos-bft-final inclusion-final binding compresses accepted directly to finalized",
+            current_input([
+                receipt(state="accepted", timestamp=None, native_order=18),
+                receipt(native_order=20),
+            ]),
+            verified,
+        ),
+        vector(
+            "awt-submitted-to-finalized-undeclared-profile-indeterminate",
+            "indeterminate",
+            "compressed finality requires the declared demos-bft-final profile, not an undeclared one",
+            current_input([
+                receipt(state="submitted", timestamp=None, native_order=18),
+                receipt(
+                    native_order=20,
+                    finality_profile="demos-bft-inclusion-final",
+                ),
+            ]),
+            indeterminate,
+        ),
+        vector(
+            "awt-accepted-to-finalized-undeclared-profile-indeterminate",
+            "indeterminate",
+            "an undeclared-profile accepted→finalized jump is not a CORE lifecycle edge",
+            current_input([
+                receipt(state="accepted", timestamp=None, native_order=18),
+                receipt(
+                    native_order=20,
+                    finality_profile="demos-bft-inclusion-final",
+                ),
+            ]),
+            indeterminate,
+        ),
+        vector(
+            "awt-cross-profile-finality-history-indeterminate",
+            "indeterminate",
+            "one transaction cannot switch finality profiles across its history",
+            current_input([
+                receipt(
+                    state="submitted", timestamp=None, native_order=18,
+                    finality_profile="demos-bft-inclusion-final",
+                ),
+                receipt(native_order=20),
+            ]),
+            indeterminate,
+        ),
+        vector(
+            "awt-compressed-finality-finalized-then-reorg-indeterminate",
+            "indeterminate",
+            "compressed finality remains terminal; a later reorg is still illegal",
+            current_input([
+                receipt(state="submitted", timestamp=None, native_order=18),
+                receipt(native_order=20),
+                receipt(state="reorged", timestamp=None, native_order=21),
+            ]),
+            indeterminate,
+        ),
     ]
 
     vectors += [
@@ -874,6 +971,14 @@ def build_vectors() -> list[dict]:
         ("transaction-kind-container", lambda item: mutate_receipt(item, lambda r: r["transactionRef"].__setitem__("kind", []))),
         ("block-ref-array", lambda item: mutate_receipt(item, lambda r: r.__setitem__("blockRef", []))),
         ("block-id-container", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("id", []))),
+        ("block-ref-missing-id", lambda item: mutate_receipt(item, lambda r: r.__setitem__("blockRef", {"height": "20", "timestamp": 7000}))),
+        ("block-height-container", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", []))),
+        ("block-height-empty", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", ""))),
+        ("block-height-non-decimal", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "not-decimal"))),
+        ("block-height-signed", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "-20"))),
+        ("block-height-plus", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "+20"))),
+        ("block-height-space", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", " 20"))),
+        ("block-height-leading-zero", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "020"))),
         ("timestamp-container", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("timestamp", []))),
         ("native-order-container", lambda item: mutate_receipt(item, lambda r: r.__setitem__("nativeOrder", []))),
         ("state-container", lambda item: mutate_receipt(item, lambda r: r.__setitem__("state", []))),

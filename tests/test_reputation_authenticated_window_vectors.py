@@ -1,8 +1,8 @@
 import copy
 import hashlib
 import json
-import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -16,10 +16,6 @@ VECTORS = (
 )
 GENERATOR = ROOT / "scripts" / "generate_reputation_authenticated_window_vectors.py"
 SPEC = ROOT / "spec" / "DACS-5-VERIFY.md"
-RUNTIME_PATH = (
-    "/Library/Frameworks/Python.framework/Versions/3.12/bin:"
-    "/usr/bin:/bin:/usr/sbin:/sbin"
-)
 
 JOB_ID = "01K4AWT0000000000000000001"
 CURRENT = {"authenticatedWindowDerivationVersion": "1"}
@@ -139,6 +135,18 @@ CORE_TRANSITIONS = {
     "replaced": set(),
 }
 
+# CORE §5.1 permits a deterministic-BFT binding to declare that valid inclusion
+# is final, collapsing one authenticated observation into both `included` and
+# `finalized`. DEMOS-MAPPING §A.2 declares inclusion-final semantics under the
+# single `demos-bft-final` profile, so that profile authorizes the compressed
+# submitted/accepted → finalized edges without weakening any other non-final,
+# late, or replacement check. Any other profile is undeclared and rejected, and
+# a history that switches profiles is a cross-profile/mixed-history attempt and
+# is likewise rejected.
+FINALITY_PROFILE_STANDARD = "demos-bft-final"
+FINALITY_PROFILES = {FINALITY_PROFILE_STANDARD}
+COMPRESSED_FINALITY_PREDECESSORS = {"submitted", "accepted"}
+
 
 def jcs_hash(value):
     return hashlib.sha256(jcs_canonicalize(value).encode("utf-8")).hexdigest()
@@ -171,6 +179,15 @@ def safe_integer(value):
 
 def nonempty_string(value):
     return isinstance(value, str) and bool(value)
+
+
+def valid_decimal_string(value):
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and all(ch in "0123456789" for ch in value)
+        and (value == "0" or value[0] != "0")
+    )
 
 
 def valid_transaction_ref(value):
@@ -217,11 +234,15 @@ def valid_block_ref(value):
         "id", "height", "timestamp"
     }:
         return False
-    if not {"id", "height"} <= set(value):
+    if "id" not in value:
         return False
-    if not nonempty_string(value.get("id")) or not nonempty_string(value.get("height")):
+    if not nonempty_string(value.get("id")):
         return False
-    return "timestamp" not in value or safe_integer(value["timestamp"])
+    if "height" in value and not valid_decimal_string(value.get("height")):
+        return False
+    if "timestamp" in value and not safe_integer(value["timestamp"]):
+        return False
+    return True
 
 
 def valid_replacement_relation(value, item):
@@ -265,7 +286,7 @@ def receipt_is_well_formed(item):
         return False
     if item.get("receiptVersion") != "1":
         return False
-    if item.get("finalityProfile") != "demos-bft-final":
+    if item.get("finalityProfile") not in FINALITY_PROFILES:
         return False
     if any(not nonempty_string(item.get(field)) for field in BINDING_FIELDS):
         return False
@@ -382,7 +403,14 @@ def resolve_anchor_history(bundle, receipts):
                 if item["nativeOrder"] <= last["nativeOrder"]:
                     return "indeterminate", None, history
                 if item["state"] not in CORE_TRANSITIONS[last["state"]]:
-                    return "indeterminate", None, history
+                    compressed_finality = (
+                        item["state"] == "finalized"
+                        and last["state"] in COMPRESSED_FINALITY_PREDECESSORS
+                        and item.get("finalityProfile")
+                        == FINALITY_PROFILE_STANDARD
+                    )
+                    if not compressed_finality:
+                        return "indeterminate", None, history
             last = item
             established.append(item)
         if last is not None:
@@ -815,6 +843,20 @@ class AuthenticatedWindowVectorTests(unittest.TestCase):
             "awt-branching-replacement-history-indeterminate",
             "awt-replay-concrete-gate-pass",
             "awt-replay-different-passing-outcome-proof",
+            "awt-finalized-anchor-without-height-pass",
+            "awt-included-anchor-without-height-pass",
+            "awt-finalized-anchor-canonical-decimal-height-pass",
+            "awt-malformed-block-height-non-decimal-indeterminate",
+            "awt-malformed-block-height-signed-indeterminate",
+            "awt-malformed-block-height-plus-indeterminate",
+            "awt-malformed-block-height-space-indeterminate",
+            "awt-malformed-block-height-leading-zero-indeterminate",
+            "awt-compressed-finality-submitted-to-finalized-pass",
+            "awt-compressed-finality-accepted-to-finalized-pass",
+            "awt-submitted-to-finalized-undeclared-profile-indeterminate",
+            "awt-accepted-to-finalized-undeclared-profile-indeterminate",
+            "awt-cross-profile-finality-history-indeterminate",
+            "awt-compressed-finality-finalized-then-reorg-indeterminate",
         }
         self.assertLessEqual(required, set(vectors))
         self.assertNotIn("historyDisposition", json.dumps(self.document))
@@ -879,21 +921,11 @@ class AuthenticatedWindowVectorTests(unittest.TestCase):
                 self.assertFalse(result["want"]["countable"])
 
     def test_generator_is_deterministic(self):
-        environment = dict(os.environ)
-        environment["PATH"] = RUNTIME_PATH
-        completed = subprocess.run(
-            [
-                "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-                str(GENERATOR),
-                "--check",
-            ],
+        subprocess.run(
+            [sys.executable, str(GENERATOR), "--check"],
             cwd=ROOT,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
+            check=True,
         )
-        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
     def test_spec_pins_outcome_clock_and_legacy_boundary(self):
         text = SPEC.read_text(encoding="utf-8")

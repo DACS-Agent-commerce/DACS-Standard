@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; and makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, makes PA-2 rail-registry discovery executable through the CORE §5.1 registry bootstrap and authenticated index references, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; and makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, makes rail-registry numeric version selection, authenticated definition matching, and no-older fallback explicit while leaving CORE registry-bootstrap activation to a future profile, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -252,11 +252,9 @@ A conforming rail author MUST:
 
 A consumer MUST resolve a rail by:
 
-1. under PA-2, authenticate the release-pinned CORE §5.1
-   `RegistryBootstrapDescriptor` for the exact
-   `(rail, dacs4:registry:v0.1, substrate, "1")` tuple, verify its finalized
-   embedded receipt, and fetch the exact immutable index snapshot at its
-   `nativeIndexAddress` with the declared `indexContentHash`;
+1. read the authenticated rail-registry snapshot identified by the existing
+   numeric `SessionContext.railRegistryVersion`; this revision does not obtain
+   that action-bearing snapshot through CORE registry-bootstrap v1;
 2. derive NFC comparison keys without changing index or definition bytes, then
    match entries whose `id` is the agreement's `terms.rail.railId`. If the
    agreement pins `railVersion`, select the one entry with that exact numeric
@@ -268,9 +266,13 @@ A consumer MUST resolve a rail by:
    NFC-derived `railId` and exact numeric `railVersion` MUST equal the selected
    entry. An unavailable, invalid, or unclassifiable selected definition cannot
    authorize an older fallback; and
-4. apply RAV-R1..RAV-R5 only after unique version selection, then pin that exact
-   definition at session start together with the accepted descriptor sequence
-   and hash.
+4. apply RAV-R1..RAV-R5 only after unique version selection, then retain the
+   authenticated snapshot's numeric version in
+   `SessionContext.railRegistryVersion`. Keep `RailDefinition.railVersion`
+   distinct: use the agreement's explicit pin when present, otherwise the
+   unique greatest version within that retained snapshot. This existing numeric
+   snapshot pin does not activate CORE descriptor-authenticated historical
+   evaluation.
 
 For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not
@@ -294,12 +296,14 @@ RAV-R1..RAV-R5.
 - **PA-3 (future)** — rails anchored under multi-signature governance, if and when a constituted body is established.
 
 PA-1 uses its disclosed signed in-code snapshot and does not use a bootstrap
-descriptor. Under PA-2, `railRegistryVersion` is the accepted immutable
-registry-bootstrap content sequence and `railRegistryDescriptorHash` is its
-exact accepted descriptor identity. Current PA-2 session context MUST carry and
-compare the pair; the numeric sequence alone cannot select historical rail
-state. Descriptor v1 is single-Ed25519-authority only; PA-3 requires a distinct
-governance-policy bootstrap type.
+descriptor. CORE registry-bootstrap v1 defines the PA-2 discovery and
+chain-validation capability, but this DACS-4 revision does not add its
+descriptor identity to the existing `SessionContext` or Settle inputs and does
+not claim descriptor-authenticated historical rail resolution. Existing
+`railRegistryVersion` behavior remains unchanged. A future coordinated profile
+and distinct versioned action-bearing contracts are required to activate that
+binding. Descriptor v1 is single-Ed25519-authority only; PA-3 requires a
+distinct governance-policy bootstrap type.
 
 Implementations MUST disclose which phase they operate in. Consumers MUST verify the rail’s anchoring phase against their own trust requirements.
 
@@ -1599,7 +1603,7 @@ than being silently upgraded to independent authority evidence.
 
 **Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Rail authors MUST specify `decimals` exactly, and phase handlers MUST validate `amount.amount` precision against `rail.asset.decimals` (excess precision is an error).
 
-**Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start by the exact `(railRegistryVersion, railRegistryDescriptorHash)` pair in `SessionContext`. Settle MUST use the definition from that predecessor-validated immutable snapshot, even if the registry has since superseded it; a numeric sequence or same-sequence descriptor from transport is not authority.
+**Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start (per `railRegistryVersion` in `SessionContext`). Settle MUST use the pinned rail definition, even if the registry has since superseded it. This existing numeric pin does not authorize CORE registry-bootstrap historical evaluation or permit a descriptor hash to be inferred from current state, transport metadata, or a sidecar.
 
 ### 9.14 Phase parameters reference card
 

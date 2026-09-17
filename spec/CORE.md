@@ -275,10 +275,12 @@ sources are an equivocation. The consumer MUST retain both for audit and return
 MUST NOT select a winner. Equal SR2-5 tuples collapse only through SR2-7's
 binding-authenticated ordering. `AnchorReceipt` v1 is unchanged.
 
-**Registry bootstrap (normative).** The recipe and rail registry indexes cannot
-discover their own write-input-derived native addresses. A conforming PA-2
-implementation therefore uses this non-SR-2 trust-root type for each supported
-registry major line:
+**Registry bootstrap (normative capability, not current-profile activation).**
+The recipe and rail registry indexes cannot discover their own
+write-input-derived native addresses. A conforming implementation of the
+standalone registry-bootstrap capability uses this non-SR-2 trust-root type for
+each supported registry major line. The activation boundary below controls
+whether a profile may use the result for session production or replay:
 
 ```
 type RegistryBootstrapSignature = {
@@ -353,8 +355,8 @@ successor links, persisted state, and replay. The discriminator is exactly
 `registryBootstrapVersion: "1"`; a missing, unsupported, or multiply-present
 `*BootstrapVersion` member MUST be rejected before signatures or use.
 
-An implementation or release supporting PA-2 MUST pin at least one, and SHOULD
-pin both, of the canonical sequence-1 descriptor hash and canonical
+An implementation or release claiming registry-bootstrap v1 support MUST pin at
+least one, and SHOULD pin both, of the canonical sequence-1 descriptor hash and canonical
 `authorityKeyId`. It MUST ship the descriptor bytes or declare a retrieval
 transport, document the out-of-band channel for replacement trust pins, and
 SHOULD state an expected distribution bound in its implementation conformance
@@ -428,10 +430,11 @@ remain byte-preserved for hash and signature verification.
 Registry-bootstrap v1 uses an immutable index snapshot per descriptor sequence.
 Every content append or other index-byte change advances `sequence` by one,
 anchors new snapshot bytes at a new native address, and retains the prior
-descriptor, receipt, address, and bytes. `recipeRegistryVersion` and
-`railRegistryVersion` under PA-2 are this content-sequence counter. Authority
-rotation is the distinguished transition where `authorityKeyId` changes; PA-3
-threshold governance requires a distinct future bootstrap type.
+descriptor, receipt, address, and bytes. This `sequence` is the bootstrap
+content-sequence counter. It is not assigned to an existing
+`recipeRegistryVersion` or `railRegistryVersion` field by this revision.
+Authority rotation is the distinguished transition where `authorityKeyId`
+changes; PA-3 threshold governance requires a distinct future bootstrap type.
 
 Sequence 1 carries only `authorizationSignature` by `authorityKeyId` and no
 successor fields. Every successor increments exactly once, binds the predecessor
@@ -461,19 +464,35 @@ Latest-mode rollback to a lower accepted sequence is rejected. When a consumer
 has persisted a latest `(sequence, descriptorHash)` pair, that exact descriptor
 MUST occur in the newly predecessor-validated chain and the selected head MUST
 descend from it; a longer sibling branch is `indeterminate`, never a valid
-upgrade. Historical replay uses the session's recorded `(sequence,
-descriptorHash)` pair. Starting at the accepted root, the consumer MUST classify
-every competing candidate through that exact target. A fork or unresolved
-competitor at or before the target leaves replay `indeterminate`. Once the exact
-target is uniquely authenticated, traversal MUST stop; a later fork does not
-invalidate that retained historical authority. The consumer then uses the
-target's retained immutable index snapshot and exact recipe or rail entry
-version.
+upgrade. Bootstrap historical evaluation takes an explicit retained `(sequence,
+descriptorHash)` target from an authority defined by the profile or versioned
+artifact type that activates that evaluation. Starting at the accepted root,
+the consumer MUST classify every competing candidate through that exact target.
+A fork or unresolved competitor at or before the target leaves evaluation
+`indeterminate`. Once the exact target is uniquely authenticated, traversal
+MUST stop; a later fork does not invalidate that retained historical authority.
+The consumer then uses the target's retained immutable index snapshot and exact
+recipe or rail entry version.
 A sequence alone, a same-sequence descriptor with another hash, or a descriptor
-outside that chain is not replay authority. Unavailable required bootstrap
-material yields `indeterminate` after invalid candidates are discarded and
-never permits fallback to an unpinned latest index. Recursive evidence that
-depends on the target registry is rejected.
+outside that chain is not bootstrap historical authority. Unavailable required
+bootstrap material yields `indeterminate` after invalid candidates are
+discarded and never permits fallback to an unpinned latest index. Recursive
+evidence that depends on the target registry is rejected.
+
+**Activation boundary.** This revision defines and tests registry-bootstrap v1
+as an SR-2 registry-discovery and chain-validation capability. It does not add a
+descriptor-hash member to the existing `SessionContext`, Vet or Settle phase
+inputs, `SessionRecord`, `AttestationBundle`, `FaultAttestationBundle`, or
+`EvidenceBoundFaultAttestationBundle`, and it does not assign descriptor-chain
+historical-replay semantics to those types' existing numeric registry-version
+members. An implementation MUST NOT infer a descriptor hash from a numeric
+version, current registry state, transport metadata, an unknown member, or a
+sidecar, and MUST NOT claim descriptor-authenticated production or replay for
+those existing types. Action-bearing integration requires a future coordinated
+profile that defines distinct versioned session, phase-input, and signed bundle
+contracts carrying the exact descriptor identity; until then the bootstrap
+historical-evaluation arm is not an authority source for existing session
+production or replay.
 
 **Substrate-coupling status in v0.1.**
 
@@ -721,9 +740,7 @@ type SessionContext = {
   jobId: string                            // canonical JID-1 ULID
   listingRef: { listingId: string; version: number; contentHash: string }
   recipeRegistryVersion: number             // DACS-2 registry pinned at session start
-  recipeRegistryDescriptorHash?: string     // REQUIRED under PA-2; 64 lower-case hex paired with recipeRegistryVersion
   railRegistryVersion: number               // DACS-4 registry pinned at session start
-  railRegistryDescriptorHash?: string       // REQUIRED under PA-2; 64 lower-case hex paired with railRegistryVersion
   parties: SessionParty[]
   priorPhaseOutputs: Record<string, unknown> // accumulated contextDelta from completed phases
   signer: SubstrateSigner                   // substrate-specific signing capability
@@ -740,13 +757,6 @@ type PhaseHandlerResult = {
   errorClass?: "permanent" | "transient" | "counterparty" | "substrate" | "settlement-atomicity"
 }
 ```
-
-For a PA-2 registry, the version and descriptor-hash members are one
-authenticated pin and MUST be populated, persisted, and compared together. A
-handler MUST NOT resolve a numeric registry version without its paired hash or
-substitute a same-sequence descriptor. PA-1 in-code registries omit the
-corresponding descriptor-hash member. A missing or unresolvable PA-2 pair cannot
-fall back to current registry state.
 
 Conformance: phase handlers MUST accept a SessionContext and return a PhaseHandlerResult. On ok: true the orchestrator merges contextDelta into the corresponding PhaseEntry and records txRefs in the session event log; on ok: false the orchestrator classifies the failure per errorClass and applies the retry policy in chapter 10.
 

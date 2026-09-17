@@ -427,9 +427,13 @@ The format used per release:
   rail index major lines, immutable content-sequenced snapshots, exact
   first-contact pins, dual-authorized key rotation, cumulative revocation,
   fork/rollback refusal, exact sequence-and-descriptor-hash historical replay,
-  and authenticated definition references. PA-2 session and signed bundle
-  shapes now carry the descriptor hash paired with the numeric registry
-  version. Registry hashes use the repository's JCS/NFC implementation;
+  and authenticated definition references. The bootstrap evaluator's explicit
+  historical target remains an exact sequence-and-descriptor-hash pair, but
+  activation in existing PA-2 `SessionContext`, Vet/Settle inputs, and signed
+  DACS-5 bundle shapes is deferred to a future coordinated profile with
+  distinct versioned action-bearing contracts; this release does not claim
+  descriptor-authenticated production or replay for the existing numeric
+  fields. Registry hashes use the repository's JCS/NFC implementation;
   invalid candidates are discarded, unresolved signed competitors prevent
   availability from selecting a branch, and equivalent receipt/reference
   carriers do not create false forks. Exact-head security hardening restricts

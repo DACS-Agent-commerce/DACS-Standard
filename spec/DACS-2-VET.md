@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 makes PA-2 recipe-registry discovery executable through the CORE §5.1 registry bootstrap and authenticated index references; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 makes recipe-family ownership, exact numeric version selection, authenticated definition matching, and no-older-live fallback executable while leaving CORE registry-bootstrap activation to a future profile; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 The same v0.6 profile evaluates presence-only `ClaimRequirement` members
 against the exact signed `IdentityBundle` under PCR-1..PCR-6 and excludes them
@@ -488,12 +488,10 @@ A conforming recipe author MUST:
 
 A verifier MUST resolve a recipe by:
 
-1. under PA-2, authenticate the release-pinned CORE §5.1
-   `RegistryBootstrapDescriptor` for the exact
-   `(recipe, dacs2:registry:v0.1, substrate, "1")` tuple, verify its finalized
-   embedded receipt, and fetch the exact immutable index snapshot at its
-   `nativeIndexAddress` with the declared `indexContentHash`;
-2. derive the exact recipe family required by the listing or authenticated
+1. reading the authenticated recipe-registry snapshot identified by the
+   existing numeric `SessionContext.recipeRegistryVersion`; this revision does
+   not obtain that action-bearing snapshot through CORE registry-bootstrap v1;
+2. deriving the exact recipe family required by the listing or authenticated
    evidence. Its identity is `(scheme, defaultMethod.kind)`. A listing selects
    the method with `ClaimRequirement.parameters.verificationMethod`, while Demos
    GCR metadata selects `demos-gcr-domain` only when no method was required;
@@ -514,18 +512,17 @@ A verifier MUST resolve a recipe by:
    NOT scan backward to an older live version. An explicit pin remains subject
    to RAV-1 through RAV-4, including the required `error` for `mocked`,
    `disabled`, or `failed`; and
-5. retain the accepted descriptor sequence as the registry snapshot pin in both
+5. retaining the selected numeric registry version as the registry snapshot pin
+   in both
    `VetCredentialsInput.recipeRegistryVersion` and
    `VetCredentialsInput.sessionContext.recipeRegistryVersion`, require
-   byte-for-byte numeric equality before live aggregation, and require the same
-   exact 64-lower-hex descriptor hash in
-   `VetCredentialsInput.recipeRegistryDescriptorHash` and
-   `sessionContext.recipeRegistryDescriptorHash`. Carry both values into the signed
-   `AttestationBundle` or `FaultAttestationBundle` for later replay; the
-   sequence plus the retained, uniquely accepted descriptor hash identifies
-   the exact immutable snapshot. A `SessionRecord` MAY retain the pin
-   operationally, but because it is off-chain, mutable, and unsigned (§10.3.2),
-   it is not replay authority.
+   byte-for-byte numeric equality before live aggregation, and carry that value
+   into the signed `AttestationBundle` or `FaultAttestationBundle` for the
+   existing bundle-authenticated replay contract. This numeric field does not
+   activate CORE registry-bootstrap historical evaluation and MUST NOT be
+   represented as descriptor-authenticated replay. A `SessionRecord` MAY retain
+   the pin operationally, but because it is off-chain, mutable, and unsigned
+   (§10.3.2), it is not replay authority.
 
 A consumer of an existing VerifyResult selects its recipe by the exact triple `(scheme, method, recipeVersion)`. It MUST reject an ambiguous or missing family and MUST NOT silently substitute a different method. For `domain`, a requirement whose `parameters.verificationMethod` is `domain-tls-control` is therefore not satisfied by `demos-gcr-domain`, and vice versa.
 
@@ -552,10 +549,13 @@ This mirrors the rail-side `railVersion` pin (§9.3) and is the mechanism that p
 | (PA-2) Single-steward | `single-signer` | The steward (currently KyneSys Labs) anchors recipes at the canonical address under a single signature, marked `anchoring: "single-signer"` and disclosing the steward’s identity. **This is the current operating phase for v0.1.** |
 | (PA-3) Constituted | `multisig` | If and when a multi-party governance body is constituted, recipes anchor under that body’s multi-signature scheme. |
 
-PA-1 uses its disclosed signed in-code snapshot and does not use a bootstrap
-descriptor. Under PA-2, `recipeRegistryVersion` is the accepted immutable
-registry-bootstrap content sequence. Descriptor v1 is single-Ed25519-authority
-only; PA-3 requires a distinct governance-policy bootstrap type.
+PA-1 uses its disclosed signed in-code snapshot. PA-2 retains the existing
+numeric `recipeRegistryVersion` behavior in this revision; it is not assigned
+to a CORE registry-bootstrap descriptor sequence and cannot activate
+descriptor-authenticated production or replay. Registry-bootstrap v1 remains a
+standalone capability pending the future coordinated profile and distinct
+versioned action-bearing contracts identified in CORE §5.1. PA-3 requires a
+distinct governance-policy bootstrap type.
 
 **Append-only re-anchoring.** Re-anchoring is append-only: prior single-signer recipeVersions MUST remain anchored, immutable, and independently re-verifiable under the steward key and content hash recorded during the single-signer phase (PA-2). The constituted body re-anchors prior recipes only as NEW recipeVersions under its multi-signature scheme; it MUST NOT mutate the signer or content hash of an already-published recipeVersion. This preserves the monotonic recipe-version pinning that §7.12 and §12.4 depend on: a VerifyResult pinned to a recipeVersion during PA-2 MUST continue to validate against the anchoring phase and signing key in force at pin time, not the current registry state.
 
@@ -822,8 +822,7 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
       return "error", ["production session context is not authoritative"]
 
-    if vetInput.recipeRegistryVersion != vetInput.sessionContext.recipeRegistryVersion or
-       vetInput.recipeRegistryDescriptorHash != vetInput.sessionContext.recipeRegistryDescriptorHash:
+    if vetInput.recipeRegistryVersion != vetInput.sessionContext.recipeRegistryVersion:
 
       return "error", ["production recipe-registry pins disagree"]
 
@@ -832,7 +831,6 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
     requirement := vetInput.requirement
 
     registryVersion := vetInput.sessionContext.recipeRegistryVersion
-    registryDescriptorHash := vetInput.sessionContext.recipeRegistryDescriptorHash
 
     exactBundle := vetInput.bundleToVet
 
@@ -861,7 +859,6 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
       return "error", ["replay claim requirement does not match record"]
 
     registryVersion := verifiedBundle.recipeRegistryVersion
-    registryDescriptorHash := verifiedBundle.recipeRegistryDescriptorHash
 
     exactBundle := authority.resolvedIdentityBundle
 
@@ -909,7 +906,7 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
   # or verified-member availability. CRQ-1 therefore precedes every reliance
   # disposition that could otherwise mask an invalid session-pinned snapshot.
 
-  registry := recipeRegistryResolver.resolve_authenticated(registryVersion, registryDescriptorHash)
+  registry := recipeRegistryResolver.resolve_authenticated(registryVersion)
 
   if registry is unavailable or invalid:
 
@@ -1206,17 +1203,7 @@ parameters_match(r, cr):
   return r.data contains every other own key in cr.parameters and each corresponding value is equal under CORE canonical JSON (§7.6 step 7); additional r.data keys do not disqualify the result
 ```
 
-**PA-2 registry-pin clarification.** Whenever PA-2 applies, every
-`recipeRegistryVersion` authority, comparison, persistence rule, and replay lookup
-in this section means the exact
-`(recipeRegistryVersion, recipeRegistryDescriptorHash)` pair. Both components MUST
-be authenticated by the same authority, and a consumer MUST compare and resolve
-both. A numeric version without its 64-character lowercase hexadecimal descriptor
-hash is not replay authority and produces `indeterminate`; a consumer MUST NOT
-select a descriptor by sequence alone or fall back to current registry state.
-Single-field references below describe the PA-1 form only.
-
-(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the composite record and registry pin to authenticated authority for the same `jobId`. During production the authority is the orchestrator-owned active `SessionContext` supplied at the CORE §B.5 phase-handler boundary, not a caller-deserialised assertion. The required `VetCredentialsInput.sessionContext` MUST be that context; `VetCredentialsInput.jobId` and `sessionContext.jobId` MUST equal `record.jobId`; and its separate `recipeRegistryVersion` MUST exactly equal `sessionContext.recipeRegistryVersion` before registry resolution. Production aggregation MUST use the exact `VetCredentialsInput.requirement` carried at that phase boundary; a separately supplied aggregation projection is not an input and cannot substitute for it. This execution binding fixes the bytes evaluated and later covered by `requirementHash`; it does not by itself authenticate who authored or accepted a complementary non-Listing requirement. A producer or ST-11 auditor MUST NOT treat the phase input, Composite signature, or `requirementHash` as proof of that requirement's cross-party provenance. During replay or later consumption the authority is a cryptographically verified, signed `AttestationBundle` or `FaultAttestationBundle`: its `jobId` MUST equal `record.jobId`, its `vetRecords` MUST contain the exact `AttestationRef` being aggregated, and that reference MUST dereference to the same hash- and signature-verified §7.7.2 record. The CORE-canonical hash of the `BundleRequirement` being aggregated MUST equal that signed record's `requirementHash`. Every projected result participating in aggregation MUST be obtained by dereferencing a `VerifyResultRef` committed by that record and validating its content hash and signature. The resolved set MUST correspond one-to-one with the complete ordered union of the record's `freshness` and `dealSpecific` references: no committed reference may be omitted, duplicated, or replaced, and no uncommitted result may be introduced. (`supplementary` contains `SupplementarySignal` values, not `VerifyResultRef` values, and remains outside this result-resolution set.) Caller-supplied requirements or result projections cannot substitute for authenticated bytes. Under PA-2, replay derives the registry pin only from the verified bundle's exact `(recipeRegistryVersion, recipeRegistryDescriptorHash)` pair; the numeric version alone is the PA-1 form and is not PA-2 replay authority. An unsigned `SessionRecord` MUST NOT supply replay authority. A standalone record, a missing or mismatched production input, a production pin mismatch, a missing/invalid/substituted replay bundle, record reference, requirement, or result projection, or a missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version or descriptor hash from the record, an unsigned session record, or current registry state. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
+(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the composite record and registry pin to authenticated authority for the same `jobId`. During production the authority is the orchestrator-owned active `SessionContext` supplied at the CORE §B.5 phase-handler boundary, not a caller-deserialised assertion. The required `VetCredentialsInput.sessionContext` MUST be that context; `VetCredentialsInput.jobId` and `sessionContext.jobId` MUST equal `record.jobId`; and its separate `recipeRegistryVersion` MUST exactly equal `sessionContext.recipeRegistryVersion` before registry resolution. Production aggregation MUST use the exact `VetCredentialsInput.requirement` carried at that phase boundary; a separately supplied aggregation projection is not an input and cannot substitute for it. This execution binding fixes the bytes evaluated and later covered by `requirementHash`; it does not by itself authenticate who authored or accepted a complementary non-Listing requirement. A producer or ST-11 auditor MUST NOT treat the phase input, Composite signature, or `requirementHash` as proof of that requirement's cross-party provenance. During replay or later consumption the authority is a cryptographically verified, signed `AttestationBundle` or `FaultAttestationBundle`: its `jobId` MUST equal `record.jobId`, its `vetRecords` MUST contain the exact `AttestationRef` being aggregated, and that reference MUST dereference to the same hash- and signature-verified §7.7.2 record. The CORE-canonical hash of the `BundleRequirement` being aggregated MUST equal that signed record's `requirementHash`. Every projected result participating in aggregation MUST be obtained by dereferencing a `VerifyResultRef` committed by that record and validating its content hash and signature. The resolved set MUST correspond one-to-one with the complete ordered union of the record's `freshness` and `dealSpecific` references: no committed reference may be omitted, duplicated, or replaced, and no uncommitted result may be introduced. (`supplementary` contains `SupplementarySignal` values, not `VerifyResultRef` values, and remains outside this result-resolution set.) Caller-supplied requirements or result projections cannot substitute for authenticated bytes. Replay derives the existing numeric registry pin only from the verified bundle's `recipeRegistryVersion`; this is bundle-authenticated version selection, not CORE descriptor-authenticated historical replay. An unsigned `SessionRecord` MUST NOT supply replay authority. A standalone record, a missing or mismatched production input, a production pin mismatch, a missing/invalid/substituted replay bundle, record reference, requirement, or result projection, or a missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version from the record, an unsigned session record, or current registry state. It also MUST NOT infer or attach a registry-bootstrap descriptor hash to this existing replay contract. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
 
 (CRQ-2) A verifier MUST derive one effective recipe family and expected version for every candidate result under a `ClaimRequirement`. The selected method is `cr.parameters.verificationMethod` when the listing selects one, otherwise `r.method` from the authenticated evidence. Under RA-6 it MUST resolve to exactly one owning family `(cr.scheme, Recipe.defaultMethod.kind)`; an alternative method retains that owning family rather than creating a separate family. If the listing selects a method, `r.method` MUST equal it. The expected version is the explicit numeric `cr.recipeVersion` when present, otherwise the unique greatest numeric version for that exact family in the authenticated registry snapshot selected by CRQ-1's production or replay authority. Entry lookup and scheme equality use derived NFC keys without changing authenticated bytes, and versions are never coerced. Every selected family and explicit or implicit version MUST resolve before any requirement is classified. Missing family metadata, an absent explicit version, an unavailable or unclassifiable possibly-latest family candidate, or an absent implicit latest version returns `error`; it MUST NOT become an empty applicable set or a counterparty `fail`. Eligibility is applied only after unique version selection. If the implicit latest entry is not `live`, aggregation returns `error` and MUST NOT fall back to an older live version. An explicit version is checked under RAV-1 through RAV-4. Once this preflight succeeds, the verifier applies method and exact-version equality plus age qualification before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable family-aware version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; `verificationMethod` is matched against `r.method`, while every other required parameter is matched against authenticated `r.data`. A missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable current-session `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced; VP-C1 separately prevents an unbound cross-session non-pass from carrying a predicate-sensitive decision into this set. A result outside the selected method family, resolved effective recipe version, or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
 
@@ -1250,7 +1237,6 @@ type VetCredentialsInput = {
   verifierIdentity: IdentityBundle
   sessionContext: SessionContext
   recipeRegistryVersion: number
-  recipeRegistryDescriptorHash?: string      // required under PA-2; omitted under PA-1
   attempt: number
 }
 type VetCredentialsOutput = PhaseHandlerResult & {

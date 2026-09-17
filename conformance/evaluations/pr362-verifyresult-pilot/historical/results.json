@@ -1,0 +1,316 @@
+{
+  "assuranceBoundary": "offline deterministic object-model evaluation; no network, chain, payment, delivery, or production effects",
+  "candidate": {
+    "base": "ff8c289d22d07e09a1733b1ae7791100bfdbd923",
+    "head": "37010daa0a7c5900afcda6e314f1ae53f3afeb7b",
+    "origin": "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
+  },
+  "casesSha256": "cc07a0f2c6ca251a7afb1540d9b61780221eeec1c3639836c32294f995640f57",
+  "completedAtUnixNs": 1789454920339600000,
+  "evaluationId": "dacs-standard-pr362-verifyresult-pilot-v1",
+  "harnessSha256": "fc86ef06701e57e13aa04391e34f596582e819b70a17eaed46f395ae301aa870",
+  "overallStatus": "pass",
+  "results": [
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": true
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "pass"
+        }
+      ],
+      "caseId": "EVAL-001",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": true,
+        "candidateConsumerDecision": "pass",
+        "oracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "oracleHashMatchesReference": true,
+        "oracleSignatureValid": true,
+        "referenceHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": false
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-002",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": false,
+        "candidateConsumerDecision": "error",
+        "intendedGuardReached": true,
+        "mutatedOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "oracleHashMatchesReference": true,
+        "oracleHashUnchanged": true,
+        "oracleSignatureValid": false,
+        "originalOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "referenceHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": false
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-003",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": false,
+        "candidateConsumerDecision": "error",
+        "intendedGuardReached": true,
+        "mutatedOracleHash": "c25b1361d603ba665fabde9b7a927385dcea6af1433b2483bff58a08e492c0f6",
+        "oracleHashChanged": true,
+        "oracleHashMatchesReference": false,
+        "oracleSignatureValid": true,
+        "originalOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "staleReferenceHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": true
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "pass"
+        }
+      ],
+      "caseId": "EVAL-004",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": true,
+        "candidateConsumerDecision": "pass",
+        "oracleHash": "a7e5950a29ae4cb94b34e1a3fa1b097bc9cdb597ce26638096fb2f0c8442a0d6",
+        "oracleHashMatchesReference": true,
+        "oracleSignatureValid": true,
+        "referenceHash": "a7e5950a29ae4cb94b34e1a3fa1b097bc9cdb597ce26638096fb2f0c8442a0d6"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.evaluate(reversed-map object)",
+          "output": "pass"
+        }
+      ],
+      "caseId": "EVAL-005",
+      "forbiddenEffectsObserved": [],
+      "notes": [
+        "Whitespace check reparses semantically identical JSON; exact raw-byte CF-5 admission is outside this object-model consumer API."
+      ],
+      "observations": {
+        "candidateConsumerDecision": "pass",
+        "minifiedByteLength": 723,
+        "oracleHashUnchanged": true,
+        "originalOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "prettyByteLength": 869,
+        "prettyReparsedOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "reorderedOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": false
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-006",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "artifactSigner": "key:bfd5a1fcf76500d60a9b5386a4568301d40e99f08bdd296206260c37e284583d",
+        "candidateAuthenticateResult": false,
+        "candidateConsumerDecision": "error",
+        "intendedGuardReached": true,
+        "oracleSignatureValidForClaimedSigner": true,
+        "trustedAuthorityMatches": false,
+        "trustedSigner": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": true
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "pass"
+        }
+      ],
+      "caseId": "EVAL-007",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": true,
+        "candidateConsumerDecision": "pass",
+        "oracleSignatureValid": true,
+        "trustedAuthorityMatches": true
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.evaluate(first, shared runtime)",
+          "output": "pass"
+        },
+        {
+          "call": "candidate.evaluate(second, shared runtime)",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-008",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "firstCandidateConsumerDecision": "pass",
+        "intendedGuardReached": true,
+        "secondCandidateConsumerDecision": "error"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": false
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-009",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": false,
+        "candidateConsumerDecision": "error",
+        "intendedGuardReached": true,
+        "oracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "oracleHashMatchesReference": true,
+        "oracleSignatureValid": false,
+        "referenceHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "signatureValidUnderInjectedWrongDomain": true
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": false
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-010",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": false,
+        "candidateConsumerDecision": "error",
+        "intendedGuardReached": true,
+        "oracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "oracleHashMatchesReference": true,
+        "oracleSignatureValid": false,
+        "referenceHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "signatureValidUnderInjectedRawDigestPreimage": true
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "candidate.authenticate_result",
+          "output": false
+        },
+        {
+          "call": "candidate.evaluate",
+          "output": "error"
+        }
+      ],
+      "caseId": "EVAL-011",
+      "forbiddenEffectsObserved": [],
+      "notes": [],
+      "observations": {
+        "candidateAuthenticateResult": false,
+        "candidateConsumerDecision": "error",
+        "intendedGuardReached": true,
+        "mutatedOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "oracleHashMatchesReference": true,
+        "oracleHashUnchanged": true,
+        "oracleSignatureValid": false,
+        "originalOracleHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "referenceHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b"
+      },
+      "status": "pass"
+    },
+    {
+      "actualCalls": [
+        {
+          "call": "test-only mutant full-object SHA-256",
+          "output": true
+        }
+      ],
+      "caseId": "CAL-001",
+      "forbiddenEffectsObserved": [],
+      "notes": [
+        "Calibration detects the historical full-signed-object hashing defect without modifying candidate code."
+      ],
+      "observations": {
+        "candidateConsumerDecision": {
+          "reason": "test-only mutant was not executed in candidate",
+          "status": "not_applicable"
+        },
+        "correctHashAfter": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "correctHashBefore": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+        "defectDetected": true,
+        "mutantFullObjectHashAfter": "c5239499f25ee35ebf2979e8aea56cf6be8ddc7feac113a1d847cd0f6ccf9517",
+        "mutantFullObjectHashBefore": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+        "mutantHashChangesOnSignatureOnlyMutation": true
+      },
+      "status": "pass"
+    }
+  ],
+  "schemaVersion": "1",
+  "scope": "Bounded offline pilot of VerifyResult signature-omitted content identity, independent signature authentication, and the PR #362 reference consumer. This is not whole-PR or whole-Standard coverage.",
+  "startedAtUnixNs": 1789454919868010000
+}

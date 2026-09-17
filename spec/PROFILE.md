@@ -34,21 +34,17 @@ composition is:
 
 The coordinated cut is identified by the annotated repository tag `v0.4`.
 
-## Unreleased JID-1 and PA-2 registry-pin corrective candidate
+## Unreleased JID-1 corrective candidate
 
 This candidate is a **breaking pre-v1 correction** under CORE §11.1.2, not an
 ordinary additive minor. It replaces the existing `jobId` meaning and every
-normalization-tolerant job-specific derivation. It also replaces numeric-only
-PA-2 registry authority with the exact signed
-`(registryVersion, registryDescriptorHash)` pair in current session and bundle
-inputs; a missing descriptor hash on a historical artifact remains readable
-but cannot authorize current PA-2 replay. Its affected document tuple is:
+normalization-tolerant job-specific derivation. Its affected document tuple is:
 
 | Document | Version | Status |
 | --- | --- | --- |
 | [CORE](CORE.md) | 0.3 | Draft corrective candidate |
 | [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate |
-| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft corrective candidate |
+| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft; current composed module |
 | [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft; current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft corrective candidate; current composed module |
 | [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.6 | Draft corrective candidate |
@@ -58,9 +54,8 @@ records an annotated tag or immutable merge commit here. At that point every
 implementation claim MUST pin that identifier and this complete tuple. A
 deployment that cannot authenticate the same exact pin for every participant
 MUST refuse before producing, signing, resolving, comparing, or acting on a
-JID-1 artifact or acting on a PA-2 registry pin. A pre-JID-1 artifact or
-numeric-only PA-2 registry pin is archival input only and cannot be silently
-promoted into this profile.
+JID-1 artifact. A pre-JID-1 artifact is archival input only and cannot be
+silently promoted into this profile.
 
 That authenticated authority MUST be verifier- or orchestrator-owned context
 outside caller-controlled artifacts and phase input, bound to the exact session
@@ -68,6 +63,20 @@ and authenticated participant identity. Caller-supplied profile objects and
 opaque labels are not authority. Missing, duplicate, unauthenticated,
 identity-mismatched, or session-mismatched evidence fails closed before any
 protocol action.
+
+This candidate tuple also carries the **DACS-3 v0.6 channel-message wire
+replacement** declared under the same CORE §11.1.2 pre-v1 corrective boundary
+(#349). The current channel message is the discriminated
+`CanonicalChannelMessage` with the exclusive
+`canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature
+envelope, and the byte-exact
+`"dacs-canonical-channel-message:v1:" || ASCII(lowercase-hex sha256(JCS(unsigned_message)))`
+signed-byte framing. The historical Demos wire is archival-only: accepted only
+by the explicitly selected `legacy-import` operation, refused on
+`current-read`, with no fallback between arms and no legacy fallback anywhere.
+This tuple does not claim ordinary cross-minor compatibility with a pre-v0.6
+channel-message profile, and mixed corrective/pre-corrective live operation
+remains unsupported for channel messages exactly as for `jobId`.
 
 ## Qualified implementation claims
 

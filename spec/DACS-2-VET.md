@@ -6,8 +6,6 @@
 
 **Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 makes PA-2 recipe-registry discovery executable through the CORE §5.1 registry bootstrap and authenticated index references; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
-**Breaking pre-v1 correction — PA-2 registry pin.** DACS-2 v0.6 participates in the exact corrective tuple `0.3/0.8/0.6/0.6/0.8/0.6`: recipe authority that previously admitted a numeric registry version alone now requires the byte-exact `(registryVersion, registryDescriptorHash)` pair. Numeric-only historical evidence cannot authorize a new current-profile verification.
-
 The same v0.6 profile evaluates presence-only `ClaimRequirement` members
 against the exact signed `IdentityBundle` under PCR-1..PCR-6 and excludes them
 from `VerifyResult` evidence.

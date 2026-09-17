@@ -258,6 +258,7 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | --- | --- | --- |
 | `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (listing) | `sellerPrimaryClaim` (a ClaimReference) | `listingId`, `v{listingVersion}` |
 | `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (revocation marker) | `sellerPrimaryClaim` | `listingId`, `v{listingVersion}` |
+| `dacs1-revocations:{sellerPrimaryClaim}` (stable revocation-state line) | `sellerPrimaryClaim` | `dacs1-revocations` |
 | `dacs3:auction:{jobId}:commit:{bidderClaim}:{bidHash}` (complete sealed commit) | `bidderClaim` | `jobId`, `commit`, `bidHash` |
 | `dacs3:auction:{jobId}:reveal:{bidderClaim}:{bidHash}` (complete sealed reveal) | `bidderClaim` | `jobId`, `reveal`, `bidHash` |
 | `dacs3:selection:{jobId}:{phaseIndex}` (complete sealed selection receipt) | none | `jobId`, `phaseIndex` |
@@ -494,6 +495,7 @@ The v0.x registry of domain separators at this revision is closed:
 | --- | --- | --- |
 | DACS-1 listing | "dacs-listing:v1:" | §6.3.4 |
 | DACS-1 listing revocation marker | "dacs-revocation:v1:" | §6.3.4 |
+| DACS-1 revocation state head | "dacs-revocation-state-head:v1:" | §6.3.4 |
 | DACS-1 identity bundle presentation | "dacs-bundle-presentation:v1:" | §6.3.2 |
 | DACS-2 VerifyResult | "dacs-verifyresult:v1:" | §7.5 |
 | DACS-2 composite verification record | "dacs-composite:v1:" | §7.7 |
@@ -720,7 +722,7 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
 5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
 
-CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.6 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; the current composed candidate tuple includes subsequently integrated module revisions, and implementations MUST authenticate that complete current tuple and exact release pin. The declaration does not authorize a different composition or imply ordinary cross-minor compatibility with a pre-JID-1 profile.
+CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.6 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. The current composed candidate tuple is recorded in `PROFILE.md` and includes subsequently integrated module revisions. Implementations MUST authenticate that complete current tuple and exact release pin; the original declaration versions above do not authorize a different composition or imply ordinary cross-minor compatibility with a pre-JID-1 profile.
 
 CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.6 declares the same boundary for the DACS-3 channel-message wire (DACS-3 §8.3.3, #349): the historical Demos `ChannelMessage` with its bare-lowercase-hex signature and raw-32-byte-digest `dacs-channelmsg:v1:` framing is replaced by the discriminated `CanonicalChannelMessage` carrying the exclusive `canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature envelope, and the byte-exact `dacs-canonical-channel-message:v1:` plus ASCII lowercase-hex-digest signed-byte framing. The historical wire is archival-only under the explicit `legacy-import` operation; `current-read` refuses it without fallback. The same complete tuple in `PROFILE.md` is the candidate profile for this replacement; these versions do not claim ordinary cross-minor compatibility with a pre-v0.6 channel-message profile.
 
@@ -769,7 +771,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `revocationStateHeadVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 
@@ -876,3 +878,9 @@ Cross-stage references for DACS-1 through DACS-5. Per-stage chapters may cite ad
 - **FAR Part 14** — *Sealed Bidding*. US Federal Acquisition Regulation.
 - **FAR Part 15** — *Contracting by Negotiation*. US Federal Acquisition Regulation.
 - **EU Directive 2014/24/EU** — *Public Procurement Directive*.
+
+### Current-value evaluation state and record capacity
+
+A registered current-value policy distinguishes an original finalized inclusion receipt from evidence that the value remains current at an authenticated evaluation state. When DACS-1 RSC admission joins two locator observations, the registered policy must provide a common state identity and compatible substrate/finality authority; independently fresh reads or matching observer timestamps are insufficient. Preserve the original receipts and recorded policy for replay. DACS-1's explicit current-admission policy governs the join and its historical/committed-session boundary.
+
+A content-size limit over a signature-omitted canonical artifact is distinct from the selected binding's complete encoded-record capacity. The latter includes signatures and required native wrapper bytes and requires trusted binding configuration; no generic canonical/native size conversion is implied.

@@ -42,7 +42,12 @@ BOOTSTRAP = (
     / "registry-bootstrap-v0.1.json"
 )
 GENERATOR = ROOT / "scripts" / "generate_sr2_resolution_vectors.py"
+CORE = ROOT / "spec" / "CORE.md"
+DACS1 = ROOT / "spec" / "DACS-1-IDENTIFY.md"
 DACS2 = ROOT / "spec" / "DACS-2-VET.md"
+DACS4 = ROOT / "spec" / "DACS-4-SETTLE.md"
+DACS5 = ROOT / "spec" / "DACS-5-VERIFY.md"
+PROFILE = ROOT / "spec" / "PROFILE.md"
 
 
 def canonical_bytes(value):
@@ -508,13 +513,45 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             "pass",
         )
 
-    def test_crq1_replay_names_the_complete_pa2_pin(self):
-        text = DACS2.read_text(encoding="utf-8")
+    def test_descriptor_hash_activation_is_deferred_from_existing_types(self):
+        core = CORE.read_text(encoding="utf-8")
+        dacs1 = DACS1.read_text(encoding="utf-8")
+        dacs2 = DACS2.read_text(encoding="utf-8")
+        dacs4 = DACS4.read_text(encoding="utf-8")
+        dacs5 = DACS5.read_text(encoding="utf-8")
+        profile = PROFILE.read_text(encoding="utf-8")
+
+        for text in (core, dacs1, dacs2, dacs4, dacs5):
+            self.assertNotIn("recipeRegistryDescriptorHash", text)
+            self.assertNotIn("railRegistryDescriptorHash", text)
+
+        for text in (dacs1, dacs2, dacs4):
+            self.assertNotIn("`RegistryBootstrapDescriptor`", text)
+
+        self.assertIn("**Activation boundary.**", core)
         self.assertIn(
-            "exact `(recipeRegistryVersion, recipeRegistryDescriptorHash)` pair",
-            text,
+            "MUST NOT claim descriptor-authenticated production or replay",
+            core,
         )
-        self.assertIn("numeric version alone is the PA-1 form", text)
+        self.assertIn(
+            "distinct versioned signed bundle contract",
+            dacs5,
+        )
+        self.assertIn(
+            "**not** activate its descriptor hash",
+            profile,
+        )
+        self.assertIn(
+            "authenticated snapshot's numeric version in\n"
+            "   `SessionContext.railRegistryVersion`",
+            dacs4,
+        )
+        self.assertIn("Keep `RailDefinition.railVersion`\n   distinct", dacs4)
+        self.assertNotIn(
+            "numeric definition version at session start under the existing\n"
+            "   `railRegistryVersion` contract",
+            dacs4,
+        )
 
     def test_reference_surface_authority_is_closed_and_class_specific(self):
         expected = {

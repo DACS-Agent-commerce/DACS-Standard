@@ -310,7 +310,8 @@ and container inputs MUST return the documented disposition without escaping
 the evaluator. The concrete set is
 `conformance/vectors/security/sr2-logical-native-resolution-v0.1.json`.
 
-PA-2 recipe and rail consumers MUST also exercise both pinned registry kinds,
+An implementation claiming the standalone registry-bootstrap capability MUST
+also exercise both pinned registry kinds,
 an independently supplied closed expected registry tuple matched in full before
 root classification,
 hash-only and key-only first contact, first-contact and successor forks,
@@ -341,3 +342,9 @@ resolution. The concrete set is
 implementation claim MUST disclose its descriptor retrieval transport,
 replacement-pin distribution channel, retained-history policy, and, when
 declared, its expected replacement-pin distribution bound.
+Passing this corpus establishes bootstrap chain evaluation only. It does not
+establish descriptor-authenticated `SessionContext`, Vet/Settle production, or
+DACS-5 bundle replay, because the current profile does not activate descriptor
+identity in those existing action-bearing types. Such a claim requires the
+future coordinated profile and distinct versioned contracts identified in
+CORE §5.1 and `PROFILE.md`.

@@ -64,6 +64,9 @@ jobs:
       - name: Verify domain-claim GCR vectors are deterministic
         run: python3 scripts/generate_domain_gcr_vectors.py --check
 
+      - name: Verify SR-2 resolution vectors are deterministic
+        run: python3 scripts/generate_sr2_resolution_vectors.py --check
+
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check
 
@@ -83,6 +86,9 @@ jobs:
 
       - name: Verify finality-resolution vectors are deterministic
         run: python3 scripts/generate_finality_resolution_context_vectors.py --check
+
+      - name: Verify current-use reputation vectors are deterministic
+        run: python3 scripts/generate_current_use_reputation_vectors.py --check
 
       - name: Verify sealed-auction completeness vectors are deterministic
         run: python3 scripts/generate_sealed_auction_completeness_vectors.py --check

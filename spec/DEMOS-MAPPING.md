@@ -63,7 +63,34 @@ does not invoke DAHR and does not claim a fresh ACME challenge.
 - **Pure mapping.** Where a substrate's native address is a pure function of the logical address, the mapping MUST be deterministic, one-to-one, and reversible, and consumers compute the native address directly from the logical pattern before reading.
 - **Write-input mapping.** Where a substrate folds write-time inputs (deployer address, storage-program name, transaction nonce, salt) into its native address — as Demos's StorageProgram derivation does (§6.3.4) — the native address is **not** recomputable from the logical address alone. The implementation MUST then publish the artifact's logical→native binding. For listings, publication is per DACS-1 §6.3.4(b)/(c): descriptive metadata on the anchored record AND the discovery surfaces (§6.3.5 well-known index, §6.3.6 catalog). Listing revocations use `RevocationBinding` and RB-1..RB-6. For DACS-5 bundles, publication is per the §10.4.2 `BundleBinding` rules (BB-1..BB-2). Consumers resolve the native address through the applicable published binding before reading.
 
+For a session artifact with no class-specific public surface, the default
+pre-bundle path on Demos is direct delivery of a verified `AnchorReceipt` to
+every entitled participant under CORE §5.1 SR2-10..SR2-12. After terminal
+bundle publication, consumers use its authenticated native content references
+under SR2-13. Listings, revocations, and bundles retain their existing public
+surfaces; Demos conformance does not require a public per-job payment-evidence
+index. The recipe and rail index roots use the release-pinned, non-recursive
+`RegistryBootstrapDescriptor`; authenticated entries in the verified immutable
+index snapshot are content references for their separately signed definitions.
+The opaque `storageProgramName` is never a consumer resolution input.
+
 In both cases implementations MUST anchor at the native address, the anchor transaction is the canonical pointer, and consumers MUST verify the content hash after dereferencing.
+
+**DACS-5 legacy-checkpoint mapping.** The unallocated current-use candidate's
+`dacs5:legacy-bundle-checkpoint:v1:{CF-4(substrate)}` address follows the same
+two mapping cases. On Demos it is a write-input mapping, so checkpoint discovery
+MUST resolve the signed `LegacyBundleCheckpointBinding`, then authenticate the
+exact Demos transaction, writer, nonce, native address, checkpoint hash and BFT-
+final receipt under CORE §5.1. The checkpoint producer's timestamp, a storage API
+read, an Indexer row, or a candidate-supplied steward list cannot establish the
+activation position. Historical bundle eligibility likewise requires the
+original signed `BundleBinding`, original BB-6 selection context and original
+finalized Demos write receipt; a current read or writer label cannot reconstruct
+that authority. The repository's current-use corpus uses independently pinned
+signed synthetic native proofs solely to execute this offline boundary. It does
+not specify a production Demos proof wire codec; until an adapter supplies the
+authenticated Demos evidence above, the production mapping is unavailable and
+the stronger consumer returns `indeterminate`.
 
 **Operational write notes (informative).** Storage Program writes have two observable completion points: broadcast acceptance and later read visibility. A DACS implementer should not publish a new SR-2 anchor to counterparties until the native address can be read back and its content hash matches the written artifact. Updates and granular writes can be stale-visible from a lagging node, so read-back checks should compare parsed canonical content (RFC 8785 / JCS for DACS JSON artifacts), not raw JSON text or byte-for-byte serialization. Because native address derivation includes the signer nonce, same-signer dependent writes and batches MUST use explicit sequential nonces or wait for observed nonce advancement before deriving and signing the next native address. An account-nonce read can lag inclusion, so deriving `nonce + 1` from a stale read can fail even after the previous transaction was accepted. Re-broadcasting an idempotent write to the same derived native address remains a safe recovery path when the failure is observable, but only when the payload and logical→native binding are unchanged; consumers still verify the content hash plus createdByTx / lastModifiedByTx provenance.
 
@@ -86,6 +113,22 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
 - 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
+**DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
+§9.5.6 AP2-2, the transaction reference MUST use the distinct `ap2-sr3` arm.
+Its `receiptAttestation` identifies the fetched provider status resource and
+commits to the exact returned bytes; the DAHR `txHash` is carried separately as
+`receiptTransactionRef = { kind: "demos-web2-request", value: txHash }`.
+Implementations MUST NOT label that transaction hash as a `storage-program`
+AttestationRef locator: a `web2Request` transaction is not a Storage Program
+record and cannot satisfy the DACS-2 §7.5.2 fetch-and-hash algorithm as one.
+Consumers authenticate the referenced transaction and response commitment by
+the same inclusion checks in (a)–(c) below. The AP2 verifier MUST obtain the
+exact returned UTF-8 body, require its SHA-256 hash to equal the authenticated
+`responseHash`, and derive the provider status, `providerRef`, amount, currency,
+and AP2-1 metadata from that body. A detached or caller-supplied projection of
+those fields cannot establish settlement, even when another response hash is
+authentic.
+
 **DAHR-backed payload attestation (normative Demos binding).** DAHR supplies
 the method-native evidence for a DACS-4 §9.6.3
 `PayloadAttestationRecord`; it does not itself supply the DACS commerce
@@ -101,7 +144,11 @@ binding. For
   transaction commits to the requested canonical URL, HTTP method, request
   body hash when present, response status, `responseHash`, and
   `responseHeadersHash`, and require those request inputs to equal the signed
-  listing's complete `verificationMethod` configuration;
+  listing's complete `verificationMethod` configuration. The consensus verifier
+  MUST obtain the authorized validator roster from an independently authenticated
+  network profile, validator-set epoch, or equivalent trust anchor; a `peerlist`
+  or signer roster carried only inside the candidate block MUST NOT authenticate
+  itself;
 - (c) it MUST obtain the returned `data` string, encode it as UTF-8 without
   reserialisation, require `sha256(UTF8(data)) == responseHash`, and deliver
   those exact bytes so

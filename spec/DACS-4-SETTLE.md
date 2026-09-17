@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; and makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; and separates an AP2 provider-status attestation from the selected SR-3 binding's native transaction reference by adding the `ap2-sr3` `ChainTxRef` arm with the frozen `ap2` arm and defining the current Demos DAHR `demos-web2-request` form; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, makes rail-registry numeric version selection, authenticated definition matching, and no-older fallback explicit while leaving CORE registry-bootstrap activation to a future profile, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 **Unallocated compatibility proposal (#392).** The finality-bound evidence type, rail profile, and FV-1..FV-10 verifier below are candidate additive contracts. They do not allocate a DACS-4 minor or reinterpret any existing `SettlementEvidence` bytes.
 
@@ -107,7 +107,9 @@ type ChainTxRef =
 
   | { kind: "storage-program"; address: string; writeTxHash: string }
 
-  | { kind: "ap2"; mandateId: string; providerRef: string; protocolVersion: string; receiptAttestation?: AttestationRef }   // receiptAttestation REQUIRED on a success-outcome record (AP2-2, §9.5.6): the SR-3 attestation of the provider payment-status response, contentHash = attested response hash; MAY be absent only on failure-outcome records
+  | { kind: "ap2"; mandateId: string; providerRef: string; protocolVersion: string; receiptAttestation?: AttestationRef }   // frozen AP2 reference shape; receiptAttestation REQUIRED on success unless the distinct ap2-sr3 arm applies (AP2-2, §9.5.6)
+  | { kind: "ap2-sr3"; mandateId: string; providerRef: string; protocolVersion: string; receiptAttestation: AttestationRef; receiptTransactionRef: { kind: string; value: string } }   // additive current shape when the selected SR-3 binding identifies an authoritative native transaction; older closed-union readers reject this arm safely
+
 
   | { kind: "x402"; httpResource: string; paymentReceiptHash: string; settlementTxHash?: string; chainId?: number; protocolVersion: string }   // paymentReceiptHash and protocolVersion follow X402-1..X402-4 (§9.5.7)
 
@@ -148,7 +150,7 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 
 ```
 type RailDefinition = {
-  railVersion: number
+  railVersion: number                  // positive JSON safe integer
   railId: string                       // canonical id; lowercase ASCII; max 64 chars
   railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
@@ -290,7 +292,7 @@ The v0.1 registry contains rail entries for the most-used settlement paths in pr
 
 > **Note (non-normative).** Further tank routes unlock as Native Bridges Phase 2–4 ship: Solana tanks, bidirectional routes, additional EVM rails, mainnet deployments, non-USDC stablecoins. HTLC is the path the reference implementation runs today — a ~929-LOC reference (Solana Anchor program + Base Sepolia EVM HTLC contract) with lock/reveal/refund implemented end-to-end.
 
-**v0.1 rail reference-backing status (honest disclosure).** A rail is *reference-backed* when a live settlement path exists **and** a reference implementation exercises it. The registered rails differ in maturity. An orchestrator MUST consult each rail's pinned `availability` (§9.4.4) rather than assume `live`. In particular, `pay-ap2` registry entries declare a non-`live` `availability` (`operator_gated` or `mocked`) in v0.1, and orchestrators MUST NOT treat them as `live` (RAV-R1).
+**v0.1 rail reference-backing status (honest disclosure).** A rail is *reference-backed* when a network-exercised settlement path exists **and** a reference implementation exercises it. Reference-backing is evidence that the protocol mechanics interoperate; it is distinct from a registry entry's production `availability`. An orchestrator MUST consult each rail's pinned `availability` (§9.4.4) rather than assume `live`. In particular, `pay-ap2` registry entries declare a non-`live` `availability` (`operator_gated` or `mocked`) in v0.1, and orchestrators MUST NOT treat them as `live` (RAV-R1).
 
 Maturity by rail:
 
@@ -299,11 +301,11 @@ Maturity by rail:
 | `pay-evm-erc20`, `pay-solana-spl`, `pay-cross-chain-htlc` | Reference-backed: exercised by the reference implementation, with §14 conformance vectors |
 | `pay-cross-chain-liquidity-tank` | Partially live: only the Phase-1 testnet route (ETH Sepolia → Polygon Amoy, USDC, unidirectional); other routes to-add |
 | `pay-x402` | Exercised by the reference implementation; §14 conformance vector present (`settlement-x402-pass`); **not** `operator_gated` (see note) |
-| `pay-ap2` | Specified, not yet reference-backed: no live settlement path, no §14 conformance vector; `operator_gated` (see note) |
+| `pay-ap2` | Reference-backed in provider test mode: official AP2 mandate verification, provider capture, DAHR-attested status, and Demos-anchored evidence are exercised by the reference SDK; §14 fixture present (`settlement-ap2-reference-pass`); still `operator_gated` (see note) |
 
 > **Note (non-normative).** *pay-x402* (§9.5.7) — x402 settles a gasless USDC transfer **on its settlement chain** (e.g. Base), so a current `pay-x402` `SettlementEvidence` record is chain-verifiable against the settlement chain through the signed `x402-event` transaction hash, chain ID, and log index, exactly like the `evm-event` rail. The reference implementation runs x402 end-to-end as a primary rail: a buyer-side x402 client signing an EIP-3009/Permit2 authorisation and settling USDC on Base. It therefore meets the live-path + reference-implementation bar, and now has parity with the rails above, including a §14 conformance vector (`settlement-x402-pass`).
 >
-> *pay-ap2* (§9.5.6) — the handler procedure, registry entries, and evidence shape are defined, but there is no live path. `pay-ap2` settles **off-chain** (a provider receipt, not chain-verifiable) and requires AP2 provider onboarding (Visa Direct / Mastercard Send / Stripe PaymentIntents); AP2 itself was donated to the FIDO Alliance only in April 2026. Bringing it to reference-backed status — a live path plus conformance vectors — is roadmap work.
+> *pay-ap2* (§9.5.6) — the reference SDK verifies separate CheckoutMandate and PaymentMandate chains with the pinned official AP2 v0.2 implementation, submits a Stripe PaymentIntent in test mode with AP2-6 idempotency, reconciles capture through a distinct read-only credential over Demos DAHR, persists the provider operation before receipt lookup, and anchors signed `SettlementEvidence` on Demos. An exact replay returns the same provider and evidence transaction references without another payment or anchor. Separately, the public §14 fixture pins the official AP2 presentations, public JWKs, replayable non-secret provider-status bytes, deterministic DAHR wire evidence, and signed DACS evidence; it is a conformance replay, not the live provider/network receipt. This establishes reference-backing, not production availability: `pay-ap2` settles **off-chain** at the provider, provider onboarding and operator policy remain required, and the registered rails therefore stay `operator_gated` or `mocked` rather than `live`.
 
 #### 9.4.3 Rail authoring and resolution
 
@@ -326,7 +328,8 @@ A conforming rail author MUST:
 
 - (RD-1) sign the rail with the registry steward’s signing key over the domain-separated payload "dacs-rail:v1:" || rail_hash per §B.7;
 - (RD-2) anchor the rail via SR-2 at the canonical address;
-- (RD-3) specify railVersion as monotonically increasing per railId;
+- (RD-3) specify `railVersion` as a positive JSON safe integer that is unique
+  and monotonically increasing per `railId`;
 - (RD-4) specify supersedes when replacing a prior rail with the same railId;
 - (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive safe integer under CORE §B.2; a malformed, non-positive, unsafe, or mismatched value MUST be rejected before the rail can participate in PB-2.
 - (RD-6) keep `phaseHandler` invariant across every version sharing a `railId`.
@@ -342,10 +345,27 @@ A conforming rail author MUST:
 
 A consumer MUST resolve a rail by:
 
-1. reading the rail-registry index from dacs4:registry:v0.1;
-2. looking up the entry for the agreement’s terms.rail.railId;
-3. fetching the rail at the indicated anchor and verifying its content hash and signature;
-4. if the agreement pins a specific railVersion, MUST use that version; otherwise MUST use the latest at session start, pinned into the session.
+1. read the authenticated rail-registry snapshot identified by the existing
+   numeric `SessionContext.railRegistryVersion`; this revision does not obtain
+   that action-bearing snapshot through CORE registry-bootstrap v1;
+2. derive NFC comparison keys without changing index or definition bytes, then
+   match entries whose `id` is the agreement's `terms.rail.railId`. If the
+   agreement pins `railVersion`, select the one entry with that exact numeric
+   version without coercion. Otherwise select the unique greatest numeric
+   version for that rail ID;
+3. treat the selected entry's locator plus content hash as an SR2-10 content
+   reference. Fetch the rail and independently verify its content hash,
+   `dacs-rail:v1:` signature, availability, governance, and RD-1..RD-6. Its
+   NFC-derived `railId` and exact numeric `railVersion` MUST equal the selected
+   entry. An unavailable, invalid, or unclassifiable selected definition cannot
+   authorize an older fallback; and
+4. apply RAV-R1..RAV-R5 only after unique version selection, then retain the
+   authenticated snapshot's numeric version in
+   `SessionContext.railRegistryVersion`. Keep `RailDefinition.railVersion`
+   distinct: use the agreement's explicit pin when present, otherwise the
+   unique greatest version within that retained snapshot. This existing numeric
+   snapshot pin does not activate CORE descriptor-authenticated historical
+   evaluation.
 
 For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not
@@ -367,6 +387,16 @@ RAV-R1..RAV-R5.
 - **PA-1 (bootstrap)** — rails shipped as in-code constants.
 - **PA-2 (current)** — rails anchored by the steward, currently KyneSys Labs, under a single signature.
 - **PA-3 (future)** — rails anchored under multi-signature governance, if and when a constituted body is established.
+
+PA-1 uses its disclosed signed in-code snapshot and does not use a bootstrap
+descriptor. CORE registry-bootstrap v1 defines the PA-2 discovery and
+chain-validation capability, but this DACS-4 revision does not add its
+descriptor identity to the existing `SessionContext` or Settle inputs and does
+not claim descriptor-authenticated historical rail resolution. Existing
+`railRegistryVersion` behavior remains unchanged. A future coordinated profile
+and distinct versioned action-bearing contracts are required to activate that
+binding. Descriptor v1 is single-Ed25519-authority only; PA-3 requires a
+distinct governance-policy bootstrap type.
 
 Implementations MUST disclose which phase they operate in. Consumers MUST verify the rail’s anchoring phase against their own trust requirements.
 
@@ -548,10 +578,10 @@ first resolve and reproduce its SAC-8 receipt.
 The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 through PB-3 do not apply, and the pay handler uses `PaymentPhaseInput.payee.payeeAddress` after the other §9.5.1 checks. `IdentityBoundAgreementDocument` preserves that destination meaning after its IBH proof passes. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
 
 **Payee-destination binding (PB-1..PB-3).** The rules below apply when
-`agreement` is a `PayeeBoundAgreementDocument` or
-`IdentityBoundPayeeAgreementDocument` or `SealedSelectionAgreementDocument`.
-The selection-bound type passes SAC-8 before PB evaluation. `payingKey` already binds the payer side
-to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing
+`agreement` is a `PayeeBoundAgreementDocument`,
+`IdentityBoundPayeeAgreementDocument`, or `SealedSelectionAgreementDocument`.
+The selection-bound type passes SAC-8 before PB evaluation. `payingKey` already
+binds the payer side to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing
 symmetry on the destination. `IdentityBoundAgreementDocument` remains a
 non-payee artifact and follows the same unbound-destination meaning as
 `AgreementDocument` after its separate identity proof passes.
@@ -768,10 +798,10 @@ Before step 1 or any rail resolution, hash derivation, provider-metadata constru
 3. The payer’s AP2-compatible wallet authorises the mandate.
 4. Submit the mandate to `rail.network.providerEndpoint`; receive a payment receipt and provider-side reference (e.g. Visa Direct payment id, Stripe PaymentIntent id).
 5. Verify the receipt per AP2-2: an SR-3 attested fetch of the provider’s payment-status endpoint for `providerRef`, using an AP2-3-conformant credential.
-6. Construct `SettlementEvidence` with `txRef` of kind `ap2` carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. Anchor via SR-2; return success.
+6. Construct SettlementEvidence with a transaction reference carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. When the selected SR-3 binding does not identify an authoritative native transaction, use the frozen `ap2` arm. When it does, use the distinct `ap2-sr3` arm and carry the native transaction in its required `receiptTransactionRef`. Anchor via SR-2; return success.
 
 - (AP2-1) **Provider-metadata session binding.** The handler MUST bind the session into the provider-side payment object at creation: metadata key `dacs_job_id` set to the session `jobId`, and SHOULD additionally set `dacs_agreement_hash` to the agreement content hash (§8.5.2). The key names are pinned so two implementations produce and check the same binding. This is the §9.5.8 SB-3 binding for `pay-ap2`: it rides the provider’s own payment record, so the AP2-2 attested status response returns it and a single attestation binds payment → session (→ agreed terms when the agreement hash is present). A verifier resolves the binding per the SB-3 four-value branches (verified match `pass`; present mismatch `fail`; absent or unavailable `indeterminate`; malformed evidence `error`). A provider whose payment object cannot carry the AP2-1 metadata, **or whose payment-status endpoint does not return it**, cannot satisfy AP2-1/AP2-2 and MUST NOT be registered as a `pay-ap2` rail — a registration-time gate, not a per-settlement silent degradation to unbound transfer evidence.
-- (AP2-2) **SR-3-bounded provider-receipt verification.** A success-outcome `pay-ap2` record MUST verify the provider receipt through the selected SR-3 binding's authenticated fetch of the provider’s payment-status endpoint for `providerRef`. Universally, a verifier MAY claim only the response-authentication property that the selected SR-3 binding establishes and MUST NOT infer a stronger observation, signature, or quorum property. In the **current Demos DAHR binding** (DEMOS-MAPPING §A.3), the authenticated on-chain `web2Request` transaction and response hash establish a consensus-anchored hash commitment: the response body is checked against that commitment, but is not itself multi-validator-observed or consensus-set-signed. A Demos verifier therefore MUST NOT read `receiptAttestation` as quorum-observed unless a later binding explicitly supplies and authenticates validator body-signatures. A stronger conforming SR-3 binding MAY establish stronger response authentication, and its verifier MAY report only those authenticated properties. Under the selected binding, the fetch checks that: the provider-reported status is the provider’s settled/captured value; the amount and currency match the agreement; and the AP2-1 binding resolves under the same SB-3 four-value boundary: verified match `pass`, verified mismatch `fail`, absent or unavailable authority `indeterminate`, and malformed or unsupported evidence `error`. The attestation MUST be recorded in `txRef.receiptAttestation` (an AttestationRef whose `contentHash` is the authenticated response hash). A bare provider reference with no attestation MUST NOT be presented as verified settlement evidence.
+- (AP2-2) **SR-3-bounded provider-receipt verification.** A success-outcome `pay-ap2` record MUST verify the provider receipt through the selected SR-3 binding's authenticated fetch of the provider’s payment-status endpoint for `providerRef`. Universally, a verifier MAY claim only the response-authentication property that the selected SR-3 binding establishes and MUST NOT infer a stronger observation, signature, or quorum property. In the **current Demos DAHR binding** (DEMOS-MAPPING §A.3), the authenticated on-chain `web2Request` transaction and response hash establish a consensus-anchored hash commitment: the response body is checked against that commitment, but is not itself multi-validator-observed or consensus-set-signed. A Demos verifier therefore MUST NOT read `receiptAttestation` as quorum-observed unless a later binding explicitly supplies and authenticates validator body-signatures. A stronger conforming SR-3 binding MAY establish stronger response authentication, and its verifier MAY report only those authenticated properties. Under the selected binding, the verifier MUST obtain the exact returned body bytes, match them to the authenticated response hash, and parse the provider-reported status, provider reference, amount, currency, and AP2-1 metadata from those same bytes. It then checks that the status is the provider's settled/captured value, the reference is the expected `providerRef`, the amount and currency match the agreement, and the AP2-1 binding resolves under the same SB-3 four-value boundary: verified match `pass`, verified mismatch `fail`, absent or unavailable authority `indeterminate`, and malformed or unsupported evidence `error`. A detached, caller-supplied, or separately stored field projection MUST NOT substitute for parsing the authenticated body. The attestation MUST be recorded in the transaction reference's `receiptAttestation`: its `anchor.locator` identifies the fetched provider-status resource and its `contentHash` is the authenticated raw-response hash, so DACS-2 §7.5.2 resolution can fetch the same resource and check the exact bytes. A substrate transaction hash is method-native authentication evidence, not a Storage Program locator, and MUST NOT be placed in `receiptAttestation.anchor.locator` under `anchor.kind == "storage-program"`. When the selected SR-3 binding identifies an authoritative native transaction, the record MUST use the distinct `ap2-sr3` arm and MUST carry it separately in `receiptTransactionRef`; for current Demos DAHR this is `{ kind: "demos-web2-request", value: txHash }`. The existing `ap2` arm is frozen and MUST NOT be extended with that field: this keeps the change additive because an older closed-union reader refuses `ap2-sr3` before AP2-specific action. A bare provider reference with no attestation MUST NOT be presented as verified settlement evidence.
 - (AP2-3) **Least-privilege provider credentials and registration gate.** The provider credential disclosed for the AP2-2 attested fetch MUST be scoped read-only to payment status; a credential capable of moving funds (charge, refund, payout, transfer) MUST NOT be disclosed to the attestation layer. The credential necessarily transits the SR-3 relay — scope containment is the defence (§9.13). The credential the handler uses to **create** the provider payment object and write the AP2-1 metadata (step 2 / AP2-1) is a distinct, more-privileged credential: it MUST NOT be the read-only status credential and MUST NOT transit the SR-3 relay. Both least-privilege scopes are normative — the create/metadata-write credential (never relayed) and the read-only status credential (relayed, scope-contained). An integration that cannot provision a distinct payment-status-only credential MUST NOT be registered as a `pay-ap2` rail; lack of portable runtime scope introspection does not weaken this registration-time eligibility gate.
 - (AP2-4) **Capture, not irreversibility.** A `pay-ap2` success record with `provider-receipt` finality (§9.7) asserts that funds were **captured at the provider** as of `finalityObservedAt`. It MUST NOT be read as asserting irreversibility: card-network rules permit post-capture reversal. Post-capture reversals are recorded through the settlement-amendment machinery (§9.7.1), not by re-opening the phase.
 - (AP2-5) **Retry safety — no double-charge.** Because the mandate is submitted (step 4) before the receipt is verified (step 5), a `transient` failure can occur after funds are already captured at the provider. On any retry of a `transient` `pay-ap2` failure the handler MUST first perform the AP2-2 attested status fetch for the **existing** `providerRef` and, if it reports captured, resume from step 6 (construct evidence) rather than constructing a new mandate — the same value-moved-verification-pending discipline the §9.5 rule already mandates for cross-chain retries. A status fetch confirming no capture permits only AP2-7 recovery of the retained operation under its existing AP2-6 key; it does not authorize a distinct mandate or payment.
@@ -1388,6 +1418,7 @@ type FinalityVerificationContext =
       providerRef: string
       responseBytes: string
       responseAttestation: AttestationRef
+      receiptTransactionObservation?: AuthenticatedChainObservation   // REQUIRED iff the signed ChainTxRef selects the ap2-sr3 arm (current Demos DAHR binding); the frozen ap2 arm MUST NOT carry it
     }
   | {
       kind: "htlc"
@@ -1407,6 +1438,11 @@ type FinalityVerificationResult = {
   decision: "pass" | "fail" | "indeterminate" | "error"
   finalityClass?: "profile-final" | "provisional-provider-capture" // present on pass; profile-final does not claim mathematical irreversibility beyond the signed profile
   reason: string
+}
+
+type SR3NativeTransactionFinalityAuthority = {
+  sr3Binding: string                      // MUST equal the selected rail profile's sr3Binding; a profile bound to a different binding is not authoritative
+  settlement: ChainFinalityProfile        // kind MUST be bft-final for the current Demos DAHR ap2-sr3 binding
 }
 ```
 
@@ -1605,8 +1641,10 @@ The FV entry point consumes exactly the signed finality-bound evidence, the
 resolved steward-signed rail, the authenticated signed Agreement, and one
 `FinalityVerificationContext`. Its separate verifier-local trust input supplies
 the current acquisition time, steward/party keys, pinned observation authorities,
-provider response attestations, validator-set checkpoints, and authenticated
-session/phase/role authority. Candidate fields cannot add or replace those trust
+provider response attestations, validator-set checkpoints, authenticated
+session/phase/role authority, and — for the `ap2-sr3` arm — an
+`SR3NativeTransactionFinalityAuthority` whose `sr3Binding` equals the selected
+rail profile's `sr3Binding`. Candidate fields cannot add or replace those trust
 anchors. Missing trusted authority is `indeterminate`; malformed trusted material
 is `error`.
 
@@ -1628,16 +1666,23 @@ is `error`.
   producer metadata only and MUST NOT supply authority, freshness, order or
   confirmation depth.
 - **(FV-3) Raw proof admission.** Before parsing, verify the context kind and
-  every conditional member required by the profile. Duplicate JSON keys,
-  invalid encodings, non-minimal/negative positions, an unknown proof kind, or
-  a context/profile kind mismatch is `error`. Consumers MUST NOT canonicalize a
-  malformed input into validity or substitute an indexer summary for proof.
+  every conditional member required by the profile. For the `provider` context,
+  `receiptTransactionObservation` is REQUIRED exactly when the signed
+  `ChainTxRef` selects the `ap2-sr3` arm and is forbidden on the frozen `ap2`
+  arm. Duplicate JSON keys, invalid encodings, non-minimal/negative positions,
+  an unknown proof kind, or a context/profile kind mismatch is `error`.
+  Consumers MUST NOT canonicalize a malformed input into validity or substitute
+  an indexer summary for proof.
 - **(FV-4) Network and authority identity.** For every chain observation,
   authenticate `networkId` and `genesisHash` against the pinned profile before
   accepting any header, receipt, log, instruction, state or certificate. For a
   provider observation, authenticate the exact `providerId`, HTTPS origin,
-  provider reference, SR-3 binding and response-body hash. A wrong identity is
-  `fail`; unavailable authentication is `indeterminate`.
+  provider reference, SR-3 binding and response-body hash. For the `ap2-sr3`
+  arm, authenticate the native `web2Request` transaction observation under the
+  verifier-local `SR3NativeTransactionFinalityAuthority` whose `sr3Binding`
+  equals the selected binding; a profile bound to any other binding is not
+  authoritative. A wrong identity is `fail`; unavailable authentication is
+  `indeterminate`.
 - **(FV-5) Transaction and selected-event inclusion.** Verify the native
   transaction/receipt inclusion proof against `inclusionBlock`. When the
   `ChainTxRef` selects an EVM log or Solana instruction, independently verify
@@ -1690,6 +1735,14 @@ is `error`.
   exact SR-3-attested response bytes, provider/session/amount/currency bindings,
   capture status and freshness; a pass has
   `finalityClass: "provisional-provider-capture"`, never `irreversible`.
+  When the signed reference selects the `ap2-sr3` arm, the verifier MUST also
+  authenticate `receiptTransactionObservation` as a native
+  `AuthenticatedChainObservation` at the selected binding's
+  `bft-final` `ChainFinalityProfile`, bound to the rail's `sr3Binding`, and
+  require its authenticated `web2-request` event to commit to the exact
+  provider response hash and status resource (the current Demos DAHR binding,
+  DEMOS-MAPPING §A.3). The frozen `ap2` arm carries no native-transaction
+  authority and MUST be rejected if one is supplied.
   Missing composite authority is `indeterminate`; a proved contradiction is
   `fail`.
 - **(FV-10) Four-value result and reuse.** Structural/encoding impossibility is
@@ -1697,7 +1750,12 @@ is `error`.
   strength or non-capture is `fail`; unavailable, conflicting or unstable
   authority is `indeterminate`; only complete verification is `pass`. Evaluate
   deterministic `error`/`fail` facts before unrelated uncertainty so an
-  attacker cannot hide a mismatch by withholding another input. PC-7 may treat
+  attacker cannot hide a mismatch by withholding another input. For the
+  `ap2-sr3` arm, a missing `receiptTransactionObservation` or a missing
+  `sr3Binding`-bound finality authority is `indeterminate`, a malformed
+  observation or malformed trusted authority is `error`, and a malformed
+  observation is `error` before an unrelated missing authority is considered.
+  PC-7 may treat
   payment as rail-final only after `pass`; a non-provider pass reports
   `finalityClass: "profile-final"`, which means the signed profile was satisfied
   and does not assert stronger mathematical irreversibility. DACS-5
@@ -2147,7 +2205,7 @@ than being silently upgraded to independent authority evidence.
 
 **Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Rail authors MUST specify `decimals` exactly, and phase handlers MUST validate `amount.amount` precision against `rail.asset.decimals` (excess precision is an error).
 
-**Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start (per railRegistryVersion in SessionContext). Settle MUST use the pinned rail definition, even if the registry has since superseded it.
+**Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start (per `railRegistryVersion` in `SessionContext`). Settle MUST use the pinned rail definition, even if the registry has since superseded it. This existing numeric pin does not authorize CORE registry-bootstrap historical evaluation or permit a descriptor hash to be inferred from current state, transport metadata, or a sidecar.
 
 ### 9.14 Phase parameters reference card
 

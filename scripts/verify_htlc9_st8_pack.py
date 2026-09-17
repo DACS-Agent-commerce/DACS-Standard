@@ -269,6 +269,10 @@ def load_case(
         return None, [fail(path, f"invalid JSON: {exc}")]
     except json.JSONDecodeError as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
+    except UnicodeError as exc:
+        return None, [
+            fail(path, f"fixture is not valid UTF-8: invalid UTF-8 bytes: {exc}")
+        ]
     except (ValueError, RecursionError) as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
     if not isinstance(data, dict):
@@ -491,7 +495,13 @@ def main(argv: list[str] | None = None) -> int:
         help="independently trusted key:<Ed25519-public-key-hex> for this phase",
     )
     args = parser.parse_args(argv)
-    errors = validate_pair(args.interim, args.resolved, args.expected_phase_orchestrator)
+    try:
+        errors = validate_pair(
+            args.interim, args.resolved, args.expected_phase_orchestrator
+        )
+    except (AttributeError, OSError, OverflowError, RecursionError, TypeError, UnicodeError, ValueError) as exc:
+        print(f"HTLC-9 ST-8 verifier failed: {exc}", file=sys.stderr)
+        return 1
     if errors:
         for e in errors:
             print(e, file=sys.stderr)

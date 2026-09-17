@@ -21,7 +21,7 @@ from dacs5_reference import (  # noqa: E402
     derive,
     derive_job_bound,
     reconcile_authenticated_finality_copies,
-    resolve_absolute_fault_pointer,
+    resolve_legacy_absolute_fault_pointer,
     validate_ebfab,
     validate_finality_bound_ebfab,
 )
@@ -132,7 +132,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(67, self.data["count"])
+        self.assertEqual(85, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -227,6 +227,190 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             del trust["providerAttestations"][response_hash][field]
             with self.subTest(scope="attestation", field=field):
                 self.assertNotEqual("pass", verify_finality(control, trust)["decision"])
+
+    def test_ap2_sr3_requires_authenticated_matching_native_transaction(self):
+        control = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+        self.assertEqual("ap2-sr3", control["evidence"]["paymentTxRefs"][0]["kind"])
+        self.assertIn("receiptTransactionObservation", control["context"])
+        self.assertEqual(
+            "pass", verify_finality(control, self.trust)["decision"]
+        )
+
+        missing = copy.deepcopy(control)
+        del missing["context"]["receiptTransactionObservation"]
+        with self.subTest(native="observation-missing"):
+            result = verify_finality(missing, self.trust)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("native transaction observation unavailable", result["reason"])
+
+        no_profile = copy.deepcopy(self.trust)
+        no_profile["sr3TransactionFinalityProfile"] = None
+        with self.subTest(native="profile-unavailable"):
+            result = verify_finality(control, no_profile)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("finality profile unavailable", result["reason"])
+
+        wrong_tx = copy.deepcopy(control)
+        wrong_tx["context"]["receiptTransactionObservation"]["transactionRef"] = {
+            "kind": "demos-web2-request", "value": "ff" * 32,
+        }
+        with self.subTest(native="transaction-substituted"):
+            self.assertEqual("fail", verify_finality(wrong_tx, self.trust)["decision"])
+
+        bad_block = copy.deepcopy(control)
+        bad_block["context"]["receiptTransactionObservation"]["inclusionBlock"]["id"] = "00" * 32
+        with self.subTest(native="inclusion-tampered"):
+            self.assertEqual("fail", verify_finality(bad_block, self.trust)["decision"])
+
+        no_bft = copy.deepcopy(control)
+        no_bft["context"]["receiptTransactionObservation"]["finalityCertificate"] = None
+        with self.subTest(native="finality-certificate-missing"):
+            self.assertEqual("indeterminate", verify_finality(no_bft, self.trust)["decision"])
+
+    def test_ap2_sr3_missing_authority_does_not_hide_deterministic_facts(self):
+        control = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+
+        malformed = copy.deepcopy(control)
+        del malformed["context"]["receiptTransactionObservation"]
+        malformed["context"]["responseBytes"] = "not-base64-json"
+        with self.subTest(precedence="malformed-response-bytes"):
+            result = verify_finality(malformed, self.trust)
+            self.assertEqual("error", result["decision"])
+            self.assertIn("response bytes are malformed", result["reason"])
+
+        mismatched = copy.deepcopy(control)
+        del mismatched["context"]["receiptTransactionObservation"]
+        mismatched["context"]["responseAttestation"]["contentHash"] = "00" * 32
+        with self.subTest(precedence="attestation-hash-mismatch"):
+            result = verify_finality(mismatched, self.trust)
+            self.assertEqual("fail", result["decision"])
+            self.assertIn("provider context differs from signed provider reference", result["reason"])
+
+        absent = copy.deepcopy(control)
+        del absent["context"]["receiptTransactionObservation"]
+        none_present = copy.deepcopy(control)
+        none_present["context"]["receiptTransactionObservation"] = None
+        with self.subTest(ordering="absent-equals-none"):
+            absent_result = verify_finality(absent, self.trust)
+            none_result = verify_finality(none_present, self.trust)
+            self.assertEqual("indeterminate", absent_result["decision"])
+            self.assertEqual("indeterminate", none_result["decision"])
+            self.assertEqual(absent_result["reason"], none_result["reason"])
+
+    def test_ap2_sr3_malformed_trust_and_decision_order(self):
+        control = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+
+        no_profile = copy.deepcopy(self.trust)
+        no_profile["sr3TransactionFinalityProfile"] = None
+        with self.subTest(native="profile-missing"):
+            self.assertEqual("indeterminate", verify_finality(control, no_profile)["decision"])
+
+        for malformed in ([], {}, {"sr3Binding": "provider-jws-v1"}):
+            trust = copy.deepcopy(self.trust)
+            trust["sr3TransactionFinalityProfile"] = malformed
+            with self.subTest(native="profile-malformed", value=malformed):
+                result = verify_finality(control, trust)
+                self.assertEqual("error", result["decision"])
+                self.assertIn("malformed trusted SR-3 native transaction finality", result["reason"])
+
+        wrong_binding = copy.deepcopy(self.trust)
+        wrong_binding["sr3TransactionFinalityProfile"] = {
+            "sr3Binding": "other-sr3-binding-v1",
+            "settlement": self.trust["sr3TransactionFinalityProfile"]["settlement"],
+        }
+        with self.subTest(native="profile-binding-mismatch"):
+            result = verify_finality(control, wrong_binding)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("bound to a different SR-3 binding", result["reason"])
+
+        malformed_observation = copy.deepcopy(control)
+        malformed_observation["context"]["receiptTransactionObservation"] = []
+        with self.subTest(native="observation-malformed-plus-profile-missing"):
+            result = verify_finality(malformed_observation, no_profile)
+            self.assertEqual("error", result["decision"])
+            self.assertIn("malformed SR-3 native transaction observation", result["reason"])
+
+    def test_frozen_ap2_arm_remains_distinct_and_unchanged(self):
+        ap2 = self.cases["fv-provider-receipt-canonical-success"]["input"]
+        sr3 = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+        self.assertEqual("ap2", ap2["evidence"]["paymentTxRefs"][0]["kind"])
+        self.assertNotIn("receiptTransactionObservation", ap2["context"])
+        self.assertNotIn("receiptTransactionRef", ap2["evidence"]["paymentTxRefs"][0])
+        self.assertEqual(
+            "pass", verify_finality(ap2, self.trust)["decision"]
+        )
+        with self.subTest(frozen="native-authority-forbidden"):
+            contaminated = copy.deepcopy(ap2)
+            contaminated["context"]["receiptTransactionObservation"] = {}
+            self.assertEqual("error", verify_finality(contaminated, self.trust)["decision"])
+        with self.subTest(distinct="sr3-shape"):
+            self.assertEqual("demos-web2-request", sr3["evidence"]["paymentTxRefs"][0]["receiptTransactionRef"]["kind"])
+
+    def test_provider_attestation_map_boundary_is_typed_on_direct_and_composed_paths(self):
+        control = self.cases["fv-provider-receipt-canonical-success"]["input"]
+        self.assertEqual(
+            "pass", verify_finality(control, self.trust)["decision"]
+        )
+        trust = copy.deepcopy(self.trust)
+        trust.pop("providerAttestations")
+        with self.subTest(direct="missing"):
+            result = verify_finality(control, trust)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("unavailable", result["reason"])
+        unavailable = (None, {}, {"00" * 32: None})
+        malformed = ([], [1, 2], "map", 7, True)
+        for value in unavailable:
+            trust = copy.deepcopy(self.trust)
+            trust["providerAttestations"] = value
+            with self.subTest(direct="unavailable", value=value):
+                result = verify_finality(control, trust)
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("unavailable", result["reason"])
+        for value in malformed:
+            trust = copy.deepcopy(self.trust)
+            trust["providerAttestations"] = value
+            with self.subTest(direct="malformed", value=value):
+                result = verify_finality(control, trust)
+                self.assertEqual("error", result["decision"])
+                self.assertIn("malformed trusted provider attestation map", result["reason"])
+
+        composed_trust = copy.deepcopy(self.trust)
+        composed = copy.deepcopy(composed_trust)
+        composed.pop("copyPresenceByJobRole", None)
+        case = self.strong["provider-receipt"]
+        response_hash = control["context"]["responseAttestation"]["contentHash"]
+        attestation = composed_trust["providerAttestations"][response_hash]
+        trust = copy.deepcopy(composed_trust)
+        trust.pop("providerAttestations")
+        with self.subTest(composed="missing"):
+            decision, reason, _ = self.strong_result(case, trust=trust)
+            self.assertEqual("indeterminate", decision)
+            self.assertIn("unavailable", reason)
+        for label, value in (
+            ("null", None),
+            ("empty", {}),
+            ("nonmatching", {"00" * 32: attestation}),
+        ):
+            trust = copy.deepcopy(composed_trust)
+            trust["providerAttestations"] = value
+            with self.subTest(composed="unavailable", value=label):
+                decision, reason, _ = self.strong_result(case, trust=trust)
+                self.assertEqual("indeterminate", decision)
+                self.assertIn("unavailable", reason)
+        for value in ([], [attestation], "map", 7, True):
+            trust = copy.deepcopy(composed_trust)
+            trust["providerAttestations"] = value
+            with self.subTest(composed="malformed", value=value):
+                decision, reason, _ = self.strong_result(case, trust=trust)
+                self.assertEqual("error", decision)
+                self.assertIn(
+                    "malformed trusted provider attestation map", reason
+                )
+        with self.subTest(composed="canonical"):
+            decision, reason, _ = self.strong_result(
+                case, trust=composed_trust
+            )
+            self.assertEqual("pass", decision, reason)
 
     def test_malformed_nested_inputs_refuse_without_exceptions(self):
         control = self.cases["fv-block-depth-canonical-success"]["input"]
@@ -339,12 +523,23 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         case = self.strong["block-depth"]
         pointer = self.data["dacs5"]["pointer"]
         authority = {**case["authority"], "finalityTrust": self.trust}
-        result = resolve_absolute_fault_pointer(
+        result = resolve_legacy_absolute_fault_pointer(
             pointer, case["bundle"], pubkeys=self.pubkeys,
             finality_bound_authority=authority,
         )
-        self.assertFalse(result["ok"])
-        self.assertEqual("current-crypto-admission", result["reason"])
+        self.assertTrue(result["ok"], result["reason"])
+        wrong_hash = copy.deepcopy(pointer)
+        wrong_hash["fullBundleContentHash"] = "00" * 32
+        self.assertFalse(resolve_legacy_absolute_fault_pointer(
+            wrong_hash, case["bundle"], pubkeys=self.pubkeys,
+            finality_bound_authority=authority,
+        )["ok"])
+        wrong_domain = copy.deepcopy(pointer)
+        wrong_domain["signature"]["value"] = "A" * 86
+        self.assertFalse(resolve_legacy_absolute_fault_pointer(
+            wrong_domain, case["bundle"], pubkeys=self.pubkeys,
+            finality_bound_authority=authority,
+        )["ok"])
 
     def test_new_new_and_all_new_older_reconciliation_paths_execute(self):
         case = self.strong["block-depth"]
@@ -502,7 +697,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
 
         pointer = copy.deepcopy(self.data["dacs5"]["pointer"])
         pointer["producerVerified"] = True
-        result = resolve_absolute_fault_pointer(
+        result = resolve_legacy_absolute_fault_pointer(
             pointer,
             case["bundle"],
             pubkeys=self.pubkeys,

@@ -18,6 +18,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CH-* | Private-channel membership, replay handling, canonical message/signature wire, and strict historical-import dispatch | §8.3.1 / §8.3.3 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
+| CUR-* | Explicit all-or-nothing current-use reputation derivation and full dependency replay | §10.5.1 | §14.5 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
 | DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
@@ -32,6 +33,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | IBH-* | Identity-bound agreement digest derivation, authenticated companion joins, and cross-stage enforcement | §B.2 | §14.3 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
+| LAB-* | Current-use admission of original legacy bundle mappings and strictly pre-checkpoint receipts | §10.4 | §14.5 |
 | JID-* | Canonical byte-exact job identifier grammar, derivation gate, and equality | §B.1 | §14.6 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
@@ -60,7 +62,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |
-| SR2-* | SR-2 write lifecycle, portable receipts, visibility separation, and stage gates | §5.1 | §14.8 |
+| SR2-* | SR-2 write lifecycle, portable receipts, logical-to-native resolution, bounded discovery, visibility separation, and stage gates | §5.1 | §14.8 / §14.11 |
 | ST-* | Session state transitions | §10.3.1 | §14.5 |
 | VP-C* | VerifyResult caching semantics | §7.6.1 | §14.2 |
 | VP-R* | VerifyResult retry semantics | §7.6.1 | §14.2 |

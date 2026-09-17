@@ -34,6 +34,33 @@
         "railVersion": 1
       }
     },
+    "sr3TransactionFinalityProfile": {
+      "settlement": {
+        "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+        "kind": "bft-final",
+        "networkId": "demos:mainnet",
+        "observation": {
+          "authorityRefs": [
+            "rpc-a",
+            "rpc-b",
+            "rpc-c"
+          ],
+          "maxHeadAgeSec": 60,
+          "method": "rpc-quorum",
+          "threshold": 2
+        },
+        "quorumDenominator": 3,
+        "quorumNumerator": 2,
+        "validatorSetRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+          },
+          "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+        }
+      },
+      "sr3Binding": "provider-jws-v1"
+    },
     "stewardKeys": {
       "did:demos:steward": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
     },

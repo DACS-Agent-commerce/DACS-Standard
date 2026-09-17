@@ -26,11 +26,13 @@ authenticated keys. The explicitly named legacy helpers retain structural-only
 fixture replay when keys are omitted.
 """
 import base64
+import copy
 import hashlib
 import json
 import math
 import re
 import unicodedata
+from decimal import Decimal, InvalidOperation
 from urllib.parse import quote, urlsplit
 
 from scripts.jcs import canonicalize as jcs_canonicalize
@@ -54,6 +56,17 @@ BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
 FINALITY_BOUND_EVIDENCE_FAULT_POINTER_DOMAIN = "dacs-finality-bound-evidence-fault-bundle-pointer:v1:"
+LEGACY_BUNDLE_CHECKPOINT_DOMAIN = "dacs-legacy-bundle-checkpoint:v1:"
+LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN = "dacs-legacy-bundle-checkpoint-binding:v1:"
+RATING_DOMAIN = "dacs-rating:v1:"
+
+# These two domains are deliberately fixture-only.  They authenticate the synthetic
+# native observations used by this offline executable reference; they are not DACS
+# artifact domains and do not claim to specify a production substrate proof codec.
+CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN = "dacs-current-use-synthetic-anchor-proof:v1:"
+CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN = (
+    "dacs-current-use-synthetic-settlement-binding-proof:v1:"
+)
 
 BB6_DEFAULT_BUDGET = 8
 
@@ -127,6 +140,19 @@ IMPLEMENTED_WINDOWING_BASES = frozenset({"finalisedAt"})
 _SIG6_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
 _CANONICAL_POSITIVE_DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 _MAX_SAFE_JSON_INTEGER = 9_007_199_254_740_991
+_BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+
+def _base58_decode(value):
+    if not isinstance(value, str) or not value:
+        raise ValueError("invalid base58")
+    number = 0
+    for char in value:
+        if char not in _BASE58_ALPHABET:
+            raise ValueError("invalid base58")
+        number = number * 58 + _BASE58_ALPHABET.index(char)
+    raw = number.to_bytes((number.bit_length() + 7) // 8, "big") if number else b""
+    return b"\x00" * (len(value) - len(value.lstrip("1"))) + raw
 
 
 def sig6_canonical(value):
@@ -1077,6 +1103,9 @@ def _chain_tx_ref_shape_valid(ref):
     elif kind == "ap2":
         string_fields = {"mandateId", "providerRef", "protocolVersion"}
         optional = {"receiptAttestation"}
+    elif kind == "ap2-sr3":
+        string_fields = {"mandateId", "providerRef", "protocolVersion"}
+        required |= {"receiptAttestation", "receiptTransactionRef"}
     elif kind == "x402":
         string_fields = {"httpResource", "paymentReceiptHash", "protocolVersion"}
         optional_strings = {"settlementTxHash"}
@@ -1123,8 +1152,21 @@ def _chain_tx_ref_shape_valid(ref):
         ref["cluster"], {"mainnet", "devnet", "testnet"}
     ):
         return False
-    if kind == "ap2" and "receiptAttestation" in ref:
-        return _attestation_ref_shape_valid(ref["receiptAttestation"])
+    if kind in {"solana", "solana-instruction"}:
+        try:
+            if len(_base58_decode(ref["signature"])) != 64:
+                return False
+        except ValueError:
+            return False
+    if kind in {"ap2", "ap2-sr3"} and "receiptAttestation" in ref:
+        if not _attestation_ref_shape_valid(ref["receiptAttestation"]):
+            return False
+    if kind == "ap2-sr3":
+        tx_ref = ref["receiptTransactionRef"]
+        if not isinstance(tx_ref, dict) or set(tx_ref) != {"kind", "value"}:
+            return False
+        if not all(_nonempty_jcs_string(tx_ref.get(field)) for field in ("kind", "value")):
+            return False
     return True
 
 
@@ -1147,7 +1189,7 @@ def _payment_tx_refs_match_phase(phase, refs, *, success):
             not success or "releaseTxHash" in refs[0]
         )
     if phase == "pay-ap2":
-        return len(kinds) == 1 and kinds[0] == "ap2" and (
+        return len(kinds) == 1 and kinds[0] in {"ap2", "ap2-sr3"} and (
             not success or "receiptAttestation" in refs[0]
         )
     if phase == "pay-x402":
@@ -1522,7 +1564,6 @@ def _validate_bound_fault_bundle(
     verified_receipt_by_canonical_ref,
     *,
     expected_kind,
-
     effective_pipeline=None,
     additional_commit_phase=None,
 ):
@@ -2029,6 +2070,9 @@ def validate_finality_bound_ebfab(
     verified_receipt_by_canonical_ref,
     finality_verification_by_canonical_ref,
     finality_trust,
+    *,
+    effective_pipeline=None,
+    additional_commit_phase=None,
 ):
     """Execute the distinct finality-bound bundle consumer and propagate FV decisions.
 
@@ -2065,6 +2109,8 @@ def validate_finality_bound_ebfab(
         session_execution_authority_by_phase_key,
         verified_receipt_by_canonical_ref,
         expected_kind="finality-bound",
+        effective_pipeline=effective_pipeline,
+        additional_commit_phase=additional_commit_phase,
     )
     if not ok:
         if reason == "missing listing, key, exact reference, or bundle-lifecycle authority":
@@ -2123,8 +2169,8 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
     and the appropriate ``authority`` for evidence-bound types. A separately trusted
     resolver can instead report ``disposition`` as ``absent`` or ``indeterminate``;
     those are consumer inputs, never producer-authored verification booleans. The
-    helper is a bounded executable consumer interface for #392; it is not the pending
-    combined #391+#392 reputation derivation.
+    helper is a bounded executable consumer interface for #392; it is not by
+    itself the combined #391+#392 reputation derivation implemented below.
     """
     if not isinstance(entries, list) or not entries:
         return {"decision": "error", "reason": "copy set must be a non-empty array", "bundle": None}
@@ -2233,6 +2279,8 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                     authority.get("verifiedReceiptByCanonicalRef"),
                     authority.get("finalityVerificationByCanonicalRef"),
                     finality_trust,
+                    effective_pipeline=authority.get("effectivePipeline"),
+                    additional_commit_phase=authority.get("additionalCommitPhase"),
                 )
             if result[0] != "pass":
                 nonpasses.append((kind, result[0], result[1]))
@@ -2249,6 +2297,8 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                 authority.get("bundleLifecycle"),
                 authority.get("sessionExecutionAuthorityByPhaseKey"),
                 authority.get("verifiedReceiptByCanonicalRef"),
+                effective_pipeline=authority.get("effectivePipeline"),
+                additional_commit_phase=authority.get("additionalCommitPhase"),
             )
             if not ok:
                 nonpasses.append((kind, "fail", reason))
@@ -2924,10 +2974,10 @@ def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
 
 def _resolve_absolute_fault_pointer_payload(
     pointer, dereferenced_bundle, binding, keys, ebfab_authority,
-    finality_bound_authority, *,
-    expected_jobid, expected_role, expected_signer, address_deriver,
+    finality_bound_authority, *, expected_jobid, expected_role,
+    expected_signer, address_deriver,
 ):
-    """Shared FAB/EBFAB type, signature, SEB, fault, and identity checks.
+    """Shared FAB/EBFAB/finality type, signature, authority, and identity checks.
 
     This is the historical verification core. Public current callers perform
     authenticated session/role/profile/JID admission before entering it; the
@@ -3025,6 +3075,8 @@ def _resolve_absolute_fault_pointer_payload(
             ebfab_authority.get("bundleLifecycle"),
             ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
             ebfab_authority.get("verifiedReceiptByCanonicalRef"),
+            effective_pipeline=ebfab_authority.get("effectivePipeline"),
+            additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
         )
         if not seb_ok:
             return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
@@ -3045,6 +3097,8 @@ def _resolve_absolute_fault_pointer_payload(
             finality_bound_authority.get("verifiedReceiptByCanonicalRef"),
             finality_bound_authority.get("finalityVerificationByCanonicalRef"),
             finality_bound_authority.get("finalityTrust"),
+            effective_pipeline=finality_bound_authority.get("effectivePipeline"),
+            additional_commit_phase=finality_bound_authority.get("additionalCommitPhase"),
         )
         if decision != "pass":
             return {
@@ -3093,10 +3147,10 @@ def _resolve_absolute_fault_pointer_payload(
 
 def resolve_absolute_fault_pointer(
     pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
-    finality_bound_authority=None, trusted_contexts=None, *,
-    expected_jobid=None, expected_role=None
+    trusted_contexts=None, *, finality_bound_authority=None,
+    expected_jobid=None, expected_role=None,
 ):
-    """Resolve a current FAB/EBFAB pointer after verifier-owned admission.
+    """Resolve a current absolute-fault pointer after verifier-owned admission.
 
     The caller supplies already-dereferenced content; this function performs no
     network I/O. Authenticated keys, canonical session identity, role/profile
@@ -3156,7 +3210,7 @@ def resolve_absolute_fault_pointer(
 
 def resolve_legacy_absolute_fault_pointer(
     pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
-    *, expected_jobid=None, expected_role=None,
+    *, finality_bound_authority=None, expected_jobid=None, expected_role=None,
 ):
     """Verify frozen pre-current pointer fixtures; never current action authority."""
     if (
@@ -3183,7 +3237,7 @@ def resolve_legacy_absolute_fault_pointer(
         binding,
         pubkeys,
         ebfab_authority,
-        None,
+        finality_bound_authority,
         expected_jobid=expected_jobid,
         expected_role=expected_role,
         expected_signer=None,
@@ -4366,6 +4420,1761 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
     return (same, replayed)
+
+
+# --------------------------------------------------------------------------- #
+# Coordinated #391 + #392 current-use replayable reputation consumer
+# --------------------------------------------------------------------------- #
+
+CURRENT_USE_REPLAYABLE_DERIVATION_VERSION = "1"
+_ALL_DERIVATION_DISCRIMINATORS = frozenset({
+    "derivationVersion",
+    "replayableDerivationVersion",
+    "jobBoundReplayableDerivationVersion",
+    "settlementVerifiedDerivationVersion",
+    "replayableSettlementVerifiedDerivationVersion",
+    "currentUseReplayableDerivationVersion",
+})
+_CURRENT_USE_PAYMENT_BINDING_REQUIRED = frozenset({"pay-ap2", "pay-x402"})
+_SYNTHETIC_PURE_MAPPING_PROFILE = "dacs-current-use-synthetic-pure-mapping-v1"
+
+
+def _current_use_result(decision, reason, derivation=None):
+    return {"decision": decision, "reason": reason, "derivation": derivation}
+
+
+def _jcs_hash(value, omitted=()):
+    omitted = {omitted} if isinstance(omitted, str) else set(omitted)
+    return hashlib.sha256(_new_type_canonical({
+        key: item for key, item in value.items() if key not in omitted
+    })).hexdigest()
+
+
+def legacy_checkpoint_hash(checkpoint):
+    return _jcs_hash(checkpoint, "signature")
+
+
+def legacy_checkpoint_binding_hash(binding):
+    return _jcs_hash(binding, "signature")
+
+
+def current_use_synthetic_proof_hash(proof):
+    return _jcs_hash(proof, "signature")
+
+
+def legacy_checkpoint_logical_address(substrate):
+    if not _nonempty_jcs_string(substrate):
+        raise ValueError("checkpoint substrate must be a non-empty JCS string")
+    return "dacs5:legacy-bundle-checkpoint:v1:" + quote(substrate, safe="-._~")
+
+
+def require_current_use_replayable_derivation(derivation):
+    """Exclusive discriminator gate for the combined stronger consumer.
+
+    This gate is intentionally independent of the existing replay dispatch.  Old
+    replay consumers continue to reject the new discriminator as unknown, while a
+    caller requesting this stronger contract cannot satisfy it by stripping or
+    relabelling the object as an older derivation.
+    """
+    if not isinstance(derivation, dict):
+        return {"ok": False, "reason": "current-use derivation is not an object"}
+    present = {
+        key for key in derivation
+        if isinstance(key, str) and key.endswith("DerivationVersion")
+    }
+    unknown = present - _ALL_DERIVATION_DISCRIMINATORS
+    if unknown:
+        return {"ok": False, "reason": "unknown derivation discriminator: "
+                + ", ".join(sorted(unknown))}
+    if present != {"currentUseReplayableDerivationVersion"}:
+        return {"ok": False, "reason": "current-use derivation discriminator is missing or non-exclusive"}
+    if derivation.get("currentUseReplayableDerivationVersion") != CURRENT_USE_REPLAYABLE_DERIVATION_VERSION:
+        return {"ok": False, "reason": "unsupported currentUseReplayableDerivationVersion"}
+    return {"ok": True, "reason": "current-use discriminator holds"}
+
+
+def _configured_party_maps(verifier_config, job_id):
+    role_maps = verifier_config.get("partyRolesByJob") if isinstance(verifier_config, dict) else None
+    role_map = role_maps.get(job_id) if isinstance(role_maps, dict) else None
+    if not isinstance(role_map, dict) or set(role_map) != {"buyer", "seller"}:
+        return (None, None)
+    if not all(_nonempty_jcs_string(role_map.get(role)) for role in ("buyer", "seller")):
+        return (None, None)
+    if role_map["buyer"] == role_map["seller"]:
+        return (None, None)
+    return (role_map, {signer: role for role, signer in role_map.items()})
+
+
+def _current_use_roster_matches_role_map(bundle, role_map):
+    """Bind every authenticated buyer/seller roster copy to verifier authority."""
+    parties = bundle.get("parties") if isinstance(bundle, dict) else None
+    if not isinstance(parties, list) or not isinstance(role_map, dict):
+        return False
+    expected_by_claim = {role_map.get(role): role for role in ("buyer", "seller")}
+    observed = {"buyer": [], "seller": []}
+    for party in parties:
+        if not isinstance(party, dict):
+            return False
+        role = party.get("role")
+        claim = party.get("primaryClaim")
+        if role in observed:
+            observed[role].append(claim)
+        if claim in expected_by_claim and role != expected_by_claim[claim]:
+            return False
+    return all(observed[role] == [role_map[role]] for role in ("buyer", "seller"))
+
+
+def _proof_signature_valid(proof, domain, keys, authorized_signer):
+    signature = proof.get("signature") if isinstance(proof, dict) else None
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"signer", "algorithm", "value"}
+        or signature.get("signer") != authorized_signer
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(keys, dict)
+        or authorized_signer not in keys
+    ):
+        return False
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    return bool(
+        canonical_ok
+        and verify_sig(
+            keys[authorized_signer], domain,
+            current_use_synthetic_proof_hash(proof), signature["value"])
+    )
+
+
+def _verify_synthetic_anchor_proof(proof, verifier_config):
+    """Verify the explicitly synthetic offline native-order proof.
+
+    Production consumers replace this bounded codec with their substrate's real
+    receipt/finality verifier.  Trust keys and authorized signers come only from
+    verifier configuration, never from the proof under test.
+    """
+    required = {
+        "syntheticAnchorProofVersion", "purpose", "substrate", "subjectId", "subjectRole",
+        "logicalAddress", "nativeAddress", "contentHash", "transactionRef",
+        "writer", "nonce", "position", "state", "observationDisposition", "signature",
+    }
+    if not isinstance(proof, dict) or set(proof) != required:
+        return ("error", "synthetic native anchor proof is malformed")
+    position = proof.get("position")
+    if (
+        proof.get("syntheticAnchorProofVersion") != "1"
+        or not _string_member(proof.get("purpose"), {"checkpoint", "historical-bundle", "current-bundle"})
+        or not all(_nonempty_jcs_string(proof.get(field)) for field in (
+            "substrate", "subjectId", "subjectRole", "logicalAddress", "nativeAddress",
+            "transactionRef", "writer",
+        ))
+        or not _sha256_hex(proof.get("contentHash"))
+        or not _safe_nonnegative_integer(proof.get("nonce"))
+        or not isinstance(position, dict)
+        or set(position) != {"orderDomain", "height", "index"}
+        or not _nonempty_jcs_string(position.get("orderDomain"))
+        or not _safe_nonnegative_integer(position.get("height"))
+        or not _safe_nonnegative_integer(position.get("index"))
+        or not _string_member(proof.get("state"), {"included", "finalized"})
+        or not _string_member(proof.get("observationDisposition"), {
+            "established", "pruned", "reorganized", "unorderable",
+        })
+    ):
+        return ("error", "synthetic native anchor proof has an invalid closed shape")
+    authority_by_substrate = verifier_config.get("nativeAuthorityBySubstrate")
+    signer = (
+        authority_by_substrate.get(proof["substrate"])
+        if isinstance(authority_by_substrate, dict) else None
+    )
+    if not _nonempty_jcs_string(signer):
+        return ("indeterminate", "native observation authority is unavailable")
+    if not _proof_signature_valid(
+        proof,
+        CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN,
+        verifier_config.get("nativeAuthorityKeys"),
+        signer,
+    ):
+        return ("fail", "synthetic native anchor proof signature does not verify")
+    pinned = verifier_config.get("pinnedSyntheticAnchorProofHashBySubject")
+    pin_key = ":".join((
+        proof["substrate"], proof["purpose"], proof["subjectId"],
+        proof["subjectRole"], proof["nativeAddress"],
+    ))
+    if not isinstance(pinned, dict) or pin_key not in pinned:
+        return ("indeterminate", "independently pinned native observation is unavailable")
+    if pinned[pin_key] != current_use_synthetic_proof_hash(proof):
+        return ("fail", "synthetic native anchor proof differs from verifier-pinned observation")
+    if proof["observationDisposition"] != "established" or proof["state"] != "finalized":
+        return ("indeterminate", "native anchor history is pruned, reorganized, unorderable, or non-final")
+    return ("pass", "synthetic finalized native anchor proof verified")
+
+
+def _checkpoint_shape_valid(checkpoint):
+    required = {
+        "legacyBundleCheckpointVersion", "substrate", "policy", "createdAt", "signature",
+    }
+    return (
+        isinstance(checkpoint, dict)
+        and set(checkpoint) == required
+        and checkpoint.get("legacyBundleCheckpointVersion") == "1"
+        and _nonempty_jcs_string(checkpoint.get("substrate"))
+        and checkpoint.get("policy") == "legacy-attestation-pre-checkpoint-only"
+        and _non_boolean_number(checkpoint.get("createdAt"))
+        and isinstance(checkpoint.get("signature"), dict)
+    )
+
+
+def _checkpoint_signature_valid(checkpoint, signer, public_keys):
+    signature = checkpoint.get("signature") if isinstance(checkpoint, dict) else None
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"signer", "algorithm", "value"}
+        or signature.get("signer") != signer
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(public_keys, dict)
+        or signer not in public_keys
+    ):
+        return False
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    return bool(canonical_ok and verify_sig(
+        public_keys[signer], LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+        legacy_checkpoint_hash(checkpoint), signature["value"]))
+
+
+def _checkpoint_binding_valid(binding, substrate, signer, public_keys):
+    required = {
+        "legacyBundleCheckpointBindingVersion", "substrate", "logicalAddress",
+        "nativeAddress", "checkpointContentHash", "anchorTx", "signer", "signature",
+    }
+    if (
+        not isinstance(binding, dict)
+        or set(binding) != required
+        or binding.get("legacyBundleCheckpointBindingVersion") != "1"
+        or binding.get("substrate") != substrate
+        or binding.get("logicalAddress") != legacy_checkpoint_logical_address(substrate)
+        or not all(_nonempty_jcs_string(binding.get(field)) for field in (
+            "nativeAddress", "anchorTx", "signer",
+        ))
+        or not _sha256_hex(binding.get("checkpointContentHash"))
+        or binding.get("signer") != signer
+    ):
+        return False
+    signature = binding.get("signature")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"signer", "algorithm", "value"}
+        or signature.get("signer") != signer
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(public_keys, dict)
+        or signer not in public_keys
+    ):
+        return False
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    return bool(canonical_ok and verify_sig(
+        public_keys[signer], LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
+        legacy_checkpoint_binding_hash(binding), signature["value"]))
+
+
+def _pure_native_address(substrate, logical, verifier_config):
+    profiles = verifier_config.get("pureMappingProfileBySubstrate")
+    profile = profiles.get(substrate) if isinstance(profiles, dict) else None
+    if profile != _SYNTHETIC_PURE_MAPPING_PROFILE:
+        return None
+    return "pure-" + hashlib.sha256(logical.encode("utf-8")).hexdigest()
+
+
+def _strictly_before(left, right):
+    left_position = left.get("position") if isinstance(left, dict) else None
+    right_position = right.get("position") if isinstance(right, dict) else None
+    if not isinstance(left_position, dict) or not isinstance(right_position, dict):
+        return None
+    if left_position.get("orderDomain") != right_position.get("orderDomain"):
+        return None
+    return (left_position["height"], left_position["index"]) < (
+        right_position["height"], right_position["index"])
+
+
+def _lookup_by_address(dependencies, collection, address):
+    values = dependencies.get(collection) if isinstance(dependencies, dict) else None
+    return values.get(address) if isinstance(values, dict) else None
+
+
+def _selection_context_shape(context):
+    return (
+        isinstance(context, dict)
+        and set(context) == {"candidateBindings", "partyMap", "budget"}
+        and isinstance(context.get("candidateBindings"), list)
+        and isinstance(context.get("partyMap"), dict)
+        and isinstance(context.get("budget"), int)
+        and not isinstance(context.get("budget"), bool)
+        and context["budget"] >= 1
+    )
+
+
+def _verify_original_binding_mapping(
+    bundle, evidence, original, historical_receipt, dependencies, verifier_config,
+    role_map, signer_map,
+):
+    if not isinstance(original, dict) or set(original) != {
+        "kind", "binding", "selectionContext", "anchorTransaction", "writer", "nonce",
+    }:
+        return ("error", "historical original BundleBinding mapping is malformed")
+    binding = original.get("binding")
+    context = original.get("selectionContext")
+    role = evidence["resolvedRole"]
+    job_id = evidence["resolvedJobId"]
+    public_keys = verifier_config.get("publicKeys")
+    if not _selection_context_shape(context):
+        return ("error", "historical original BB-6 selection context is malformed")
+    if context["partyMap"] != signer_map:
+        return ("fail", "historical original party map is not verifier-authenticated")
+    expected_budget = verifier_config.get("bb6Budget", BB6_DEFAULT_BUDGET)
+    if context["budget"] != expected_budget:
+        return ("fail", "historical original BB-6 budget differs from verifier policy")
+    selected = verify_legacy_binding(
+        binding, public_keys, expected_jobid=job_id, expected_role=role,
+        expected_content_hash=evidence["bundleContentHash"])
+    if not selected["ok"] or binding.get("signer") != role_map[role]:
+        return ("fail", "historical original BundleBinding is not the authenticated role-holder binding")
+
+    # Original BB-6 reconstruction uses the independently pinned party map.  Outsider
+    # junk is pruned before shape/signature work; an authorized malformed candidate
+    # remains a deterministic failure.
+    survivors = [candidate for candidate in context["candidateBindings"]
+                 if isinstance(candidate, dict)
+                 and context["partyMap"].get(candidate.get("signer")) == role]
+    anchored = {}
+    valid = []
+    for candidate in survivors:
+        checked = verify_legacy_binding(
+            candidate, public_keys, expected_jobid=job_id, expected_role=role)
+        if not checked["ok"]:
+            return ("fail", "authorized historical BB-6 candidate does not verify")
+        fetched = _lookup_by_address(dependencies, "bundlesByNativeAddress", candidate["nativeAddress"])
+        if not isinstance(fetched, dict):
+            return ("indeterminate", "historical BB-6 candidate cannot be dereferenced")
+        shape_ok, _ = _bundle_shape_ok(fetched)
+        if not shape_ok:
+            continue
+        post_ok, _ = _post_fetch_valid(fetched, candidate, public_keys)
+        if not post_ok:
+            continue
+        anchored[candidate["nativeAddress"]] = fetched
+        valid.append(candidate)
+    resolution = resolve_bb6(valid, context["partyMap"], context["budget"], anchored)
+    if (
+        resolution["disposition"] != "present"
+        or resolution["resolvedNativeAddress"] != binding.get("nativeAddress")
+    ):
+        return ("indeterminate", "historical original BB-6 selection is not reproducible")
+    original_bundle = anchored.get(binding["nativeAddress"])
+    if not isinstance(original_bundle, dict) or bundle_hash(original_bundle) != bundle_hash(bundle):
+        return ("fail", "historical original mapping resolves different bundle bytes")
+    if not (
+        historical_receipt.get("logicalAddress") == binding.get("logicalAddress")
+        and historical_receipt.get("nativeAddress") == binding.get("nativeAddress")
+        and historical_receipt.get("contentHash") == binding.get("bundleContentHash")
+        and historical_receipt.get("writer") == binding.get("signer") == role_map[role]
+        and historical_receipt.get("transactionRef") == original.get("anchorTransaction")
+        and historical_receipt.get("writer") == original.get("writer")
+        and historical_receipt.get("nonce") == original.get("nonce")
+    ):
+        return ("fail", "historical receipt does not join the original BundleBinding tuple")
+    return ("pass", "historical original BundleBinding and BB-6 selection verified")
+
+
+def _verify_original_pure_mapping(
+    bundle, evidence, original, historical_receipt, dependencies, verifier_config,
+    role_map,
+):
+    if not isinstance(original, dict) or set(original) != {
+        "kind", "logicalAddress", "nativeAddress", "anchorTransaction", "writer", "nonce",
+    }:
+        return ("error", "historical original pure-mapping proof is malformed")
+    job_id = evidence["resolvedJobId"]
+    role = evidence["resolvedRole"]
+    logical = legacy_logical_address(job_id, role)
+    expected_native = _pure_native_address(evidence["substrate"], logical, verifier_config)
+    if expected_native is None:
+        return ("indeterminate", "pure-mapping verifier is unavailable")
+    if original.get("logicalAddress") != logical or original.get("nativeAddress") != expected_native:
+        return ("fail", "historical pure mapping does not derive the exact role address")
+    original_bundle = _lookup_by_address(dependencies, "bundlesByNativeAddress", expected_native)
+    if not isinstance(original_bundle, dict):
+        return ("indeterminate", "historical pure-mapped bundle cannot be dereferenced")
+    post_ok, _ = _post_fetch_legacy_address_valid(
+        original_bundle, expected_native, role, evidence["bundleContentHash"],
+        verifier_config.get("publicKeys"), expected_jobid=job_id,
+        pure_mapping_resolver=lambda _job, _role: expected_native)
+    if not post_ok or bundle_hash(original_bundle) != bundle_hash(bundle):
+        return ("fail", "historical pure-mapping proof resolves different or invalid bytes")
+    if not (
+        historical_receipt.get("logicalAddress") == logical
+        and historical_receipt.get("nativeAddress") == expected_native
+        and historical_receipt.get("contentHash") == evidence["bundleContentHash"]
+        and historical_receipt.get("writer") == role_map[role]
+        and historical_receipt.get("transactionRef") == original.get("anchorTransaction")
+        and historical_receipt.get("writer") == original.get("writer")
+        and historical_receipt.get("nonce") == original.get("nonce")
+    ):
+        return ("fail", "historical receipt does not join the pure-mapping tuple")
+    return ("pass", "historical original pure mapping verified")
+
+
+def validate_legacy_bundle_admission(bundle, evidence, dependencies, verifier_config):
+    """Authenticate one legacy copy's original role mapping and pre-checkpoint order."""
+    try:
+        if bundle_type(bundle) != "legacy":
+            return ("error", "legacy admission requires an AttestationBundle")
+        if evidence is None:
+            return ("indeterminate", "legacy era evidence is unavailable")
+        required = {
+            "bundleContentHash", "resolvedJobId", "resolvedRole", "substrate",
+            "checkpointCandidates", "checkpointReceipt", "historicalAnchorReceipt",
+            "originalMapping",
+        }
+        if not isinstance(evidence, dict) or set(evidence) != required:
+            return ("error", "legacy era evidence is malformed")
+        job_id = evidence.get("resolvedJobId")
+        role = evidence.get("resolvedRole")
+        substrate = evidence.get("substrate")
+        if (
+            not _nonempty_jcs_string(job_id)
+            or not _string_member(role, {"buyer", "seller"})
+            or not _nonempty_jcs_string(substrate)
+            or evidence.get("bundleContentHash") != bundle_hash(bundle)
+            or bundle.get("jobId") != job_id
+            or bundle.get("anchoredByRole") != role
+        ):
+            return ("fail", "legacy era evidence does not bind the exact job, role, and content hash")
+        role_map, signer_map = _configured_party_maps(verifier_config, job_id)
+        if role_map is None:
+            return ("indeterminate", "historical party authority is unavailable")
+        candidates = evidence.get("checkpointCandidates")
+        if not isinstance(candidates, list):
+            return ("error", "checkpoint discovery candidates are not an array")
+        steward_map = verifier_config.get("authorizedStewardBySubstrate")
+        steward = steward_map.get(substrate) if isinstance(steward_map, dict) else None
+        public_keys = verifier_config.get("publicKeys")
+        if not _nonempty_jcs_string(steward):
+            return ("indeterminate", "checkpoint steward authority is unavailable")
+
+        checkpoint_receipt = evidence.get("checkpointReceipt")
+        checkpoint_decision, checkpoint_reason = _verify_synthetic_anchor_proof(
+            checkpoint_receipt, verifier_config)
+        if checkpoint_decision != "pass":
+            return (checkpoint_decision, checkpoint_reason)
+        pure_checkpoint_native = _pure_native_address(
+            substrate, legacy_checkpoint_logical_address(substrate), verifier_config)
+        if pure_checkpoint_native is not None:
+            if candidates:
+                return ("error", "pure-mapping checkpoint evidence must not carry write-input bindings")
+            checkpoint_binding = {
+                "logicalAddress": legacy_checkpoint_logical_address(substrate),
+                "nativeAddress": pure_checkpoint_native,
+                "checkpointContentHash": checkpoint_receipt.get("contentHash"),
+                "anchorTx": checkpoint_receipt.get("transactionRef"),
+                "signer": steward,
+            }
+        else:
+            # Authenticate, discard, and deduplicate before multiplicity.  Candidate-
+            # supplied authority flags or steward lists are never consulted.
+            survivors = {}
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                if not _checkpoint_binding_valid(candidate, substrate, steward, public_keys):
+                    continue
+                identity = legacy_checkpoint_binding_hash(candidate)
+                survivors.setdefault(identity, candidate)
+            if not survivors:
+                return ("indeterminate", "no authorized checkpoint discovery candidate survives")
+            if len(survivors) != 1:
+                return ("indeterminate", "conflicting authorized checkpoint discovery candidates survive")
+            checkpoint_binding = next(iter(survivors.values()))
+        checkpoint = _lookup_by_address(
+            dependencies, "checkpointsByNativeAddress", checkpoint_binding["nativeAddress"])
+        if not isinstance(checkpoint, dict):
+            return ("indeterminate", "checkpoint artifact cannot be dereferenced")
+        if (
+            not _checkpoint_shape_valid(checkpoint)
+            or checkpoint.get("substrate") != substrate
+            or legacy_checkpoint_hash(checkpoint) != checkpoint_binding["checkpointContentHash"]
+            or not _checkpoint_signature_valid(checkpoint, steward, public_keys)
+        ):
+            return ("fail", "resolved checkpoint shape, hash, or steward signature is invalid")
+        if not (
+            checkpoint_receipt.get("purpose") == "checkpoint"
+            and checkpoint_receipt.get("substrate") == substrate
+            and checkpoint_receipt.get("subjectId") == substrate
+            and checkpoint_receipt.get("subjectRole") == "steward"
+            and checkpoint_receipt.get("logicalAddress") == checkpoint_binding["logicalAddress"]
+            and checkpoint_receipt.get("nativeAddress") == checkpoint_binding["nativeAddress"]
+            and checkpoint_receipt.get("contentHash") == checkpoint_binding["checkpointContentHash"]
+            and checkpoint_receipt.get("transactionRef") == checkpoint_binding["anchorTx"]
+            and checkpoint_receipt.get("writer") == checkpoint_binding["signer"] == steward
+        ):
+            return ("fail", "checkpoint receipt does not join binding, artifact, transaction, and writer")
+
+        historical_receipt = evidence.get("historicalAnchorReceipt")
+        historical_decision, historical_reason = _verify_synthetic_anchor_proof(
+            historical_receipt, verifier_config)
+        if historical_decision != "pass":
+            return (historical_decision, historical_reason)
+        if not (
+            historical_receipt.get("purpose") == "historical-bundle"
+            and historical_receipt.get("substrate") == substrate
+            and historical_receipt.get("subjectId") == job_id
+            and historical_receipt.get("subjectRole") == role
+            and historical_receipt.get("contentHash") == evidence["bundleContentHash"]
+        ):
+            return ("fail", "historical receipt does not join the exact job, role, and content hash")
+        ordering = _strictly_before(historical_receipt, checkpoint_receipt)
+        if ordering is None:
+            return ("indeterminate", "historical and checkpoint receipts are not comparably ordered")
+        if not ordering:
+            return ("fail", "legacy bundle anchor is not strictly before the checkpoint")
+
+        original = evidence.get("originalMapping")
+        if isinstance(original, dict) and original.get("kind") == "binding":
+            return _verify_original_binding_mapping(
+                bundle, evidence, original, historical_receipt, dependencies,
+                verifier_config, role_map, signer_map)
+        if isinstance(original, dict) and original.get("kind") == "pure":
+            return _verify_original_pure_mapping(
+                bundle, evidence, original, historical_receipt, dependencies,
+                verifier_config, role_map)
+        return ("error", "historical original mapping kind is unsupported")
+    except (KeyError, TypeError, ValueError, UnicodeError, OverflowError, RecursionError):
+        return ("error", "legacy era evidence is malformed")
+
+
+def _settlement_binding_proof_decision(proof, record, phase_index, verifier_config):
+    required = {
+        "syntheticSettlementBindingProofVersion", "jobId", "phaseIndex", "phase",
+        "paymentTxRefsHash", "state", "observedAt", "signature",
+    }
+    if not isinstance(proof, dict) or set(proof) != required:
+        return ("error", "required settlement binding proof is malformed")
+    if (
+        proof.get("syntheticSettlementBindingProofVersion") != "1"
+        or proof.get("jobId") != record.get("jobId")
+        or proof.get("phaseIndex") != phase_index
+        or proof.get("phase") != record.get("phase")
+        or proof.get("paymentTxRefsHash") != _jcs_hash({"paymentTxRefs": record.get("paymentTxRefs")})
+        or not _non_boolean_number(proof.get("observedAt"))
+        or not _string_member(proof.get("state"), {
+            "match", "mismatch", "absent", "unavailable", "pruned", "reorganized",
+        })
+    ):
+        return ("error", "required settlement binding proof has an invalid closed shape")
+    authority_map = verifier_config.get("settlementBindingAuthorityByPhase")
+    signer = authority_map.get(record.get("phase")) if isinstance(authority_map, dict) else None
+    if not _nonempty_jcs_string(signer):
+        return ("indeterminate", "required settlement binding authority is unavailable")
+    if not _proof_signature_valid(
+        proof,
+        CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN,
+        verifier_config.get("settlementBindingAuthorityKeys"), signer,
+    ):
+        return ("fail", "required settlement binding proof signature does not verify")
+    if proof["state"] == "match":
+        return ("pass", "required settlement-side job binding verified")
+    if proof["state"] == "mismatch":
+        return ("fail", "required settlement-side job binding mismatches")
+    return ("indeterminate", "required settlement-side job binding is unavailable; no unbound fallback")
+
+
+def _authority_for_bundle(bundle, dependencies):
+    authorities = dependencies.get("bundleAuthorityByContentHash") if isinstance(dependencies, dict) else None
+    return authorities.get(bundle_hash(bundle)) if isinstance(authorities, dict) else None
+
+
+def _validate_current_use_type_authority(bundle, dependencies, verifier_config):
+    """Run all type-specific authority and current successful-payment gates."""
+    kind = bundle_type(bundle)
+    public_keys = verifier_config.get("publicKeys")
+    if kind is None:
+        return ("error", "bundle discriminator is missing, unknown, or non-exclusive", None)
+    try:
+        shape_ok = (
+            _absolute_fault_bundle_shape_valid(bundle)
+            if kind in {"fault", "evidence-bound", "finality-bound"}
+            else _bundle_shape_ok(bundle)[0]
+        )
+    except (KeyError, TypeError, ValueError, UnicodeError, RecursionError):
+        shape_ok = False
+    if not shape_ok:
+        return ("error", "bundle has a malformed closed shape", None)
+    signature_ok, signature_reason = _bundle_signatures_valid(bundle, public_keys)
+    if not signature_ok:
+        return ("fail", signature_reason, None)
+    authority = _authority_for_bundle(bundle, dependencies)
+    if kind == "evidence-bound":
+        if not isinstance(authority, dict):
+            return ("indeterminate", "EBFAB authority is unavailable", None)
+        ok, reason, _ = validate_ebfab(
+            bundle, authority.get("listing"), public_keys,
+            authority.get("referenceValidationByCanonicalRef"),
+            authority.get("bundleLifecycle"),
+            authority.get("sessionExecutionAuthorityByPhaseKey"),
+            authority.get("verifiedReceiptByCanonicalRef"),
+            effective_pipeline=authority.get("effectivePipeline"),
+            additional_commit_phase=authority.get("additionalCommitPhase"))
+        if not ok:
+            return ("fail", reason, None)
+        return ("pass", "EBFAB authority verified", {
+            "records": [], "successfulPayments": [], "finalityClasses": [],
+        })
+    if kind != "finality-bound":
+        return ("pass", "older bundle type and signatures verified", {
+            "records": [], "successfulPayments": [], "finalityClasses": [],
+        })
+    if not isinstance(authority, dict):
+        return ("indeterminate", "finality-bound bundle authority is unavailable", None)
+    finality_trust = verifier_config.get("finalityTrust")
+    decision, reason, phase_keys = validate_finality_bound_ebfab(
+        bundle, authority.get("listing"), public_keys,
+        authority.get("referenceValidationByCanonicalRef"),
+        authority.get("bundleLifecycle"),
+        authority.get("sessionExecutionAuthorityByPhaseKey"),
+        authority.get("verifiedReceiptByCanonicalRef"),
+        authority.get("finalityVerificationByCanonicalRef"), finality_trust,
+        effective_pipeline=authority.get("effectivePipeline"),
+        additional_commit_phase=authority.get("additionalCommitPhase"))
+    if decision != "pass":
+        return (decision, reason, None)
+
+    records = []
+    successful_payments = []
+    classes = []
+    references = bundle.get("settlementEvidence", [])
+    for ref in references:
+        key = canonical(ref).decode("utf-8")
+        resolution = authority["referenceValidationByCanonicalRef"].get(key)
+        record = resolution.get("record") if isinstance(resolution, dict) else None
+        if not isinstance(record, dict):
+            return ("indeterminate", "RSV record authority is unavailable", None)
+        records.append(record)
+        if record.get("phase") not in PAYMENT_PHASES or record.get("outcome") != "success":
+            continue
+        candidate = authority["finalityVerificationByCanonicalRef"].get(key)
+        if not isinstance(candidate, dict) or candidate.get("evidence") != record:
+            return ("indeterminate", "successful payment finality input is unavailable", None)
+        exact_finality = verify_finality(candidate, finality_trust)
+        if exact_finality.get("decision") != "pass":
+            return (exact_finality.get("decision", "error"), exact_finality.get("reason", "FV failed"), None)
+        classes.append(exact_finality["finalityClass"])
+        phase_entry = next((
+            entry for entry in bundle.get("phaseSummary", [])
+            if isinstance(entry, dict)
+            and entry.get("kind") == record.get("phase")
+            and canonical(entry.get("attestationRef")) == canonical(ref)
+        ), None)
+        if not isinstance(phase_entry, dict) or not _safe_nonnegative_integer(phase_entry.get("index")):
+            return ("fail", "successful payment lacks authenticated phase-index binding", None)
+        successful_payments.append({
+            "record": record,
+            "phaseIndex": phase_entry["index"],
+            "evidenceHash": settlement_evidence_hash(record),
+        })
+        if record.get("phase") in _CURRENT_USE_PAYMENT_BINDING_REQUIRED:
+            proof_map = dependencies.get("settlementBindingProofByCanonicalRef")
+            proof = proof_map.get(key) if isinstance(proof_map, dict) else None
+            if proof is None:
+                return ("indeterminate", "required settlement binding proof is unavailable; no unbound fallback", None)
+            phase_key = str(phase_entry["index"]) + ":" + record["phase"]
+            if phase_key not in phase_keys:
+                phase_key = None
+            if phase_key is None:
+                return ("fail", "successful payment lacks authenticated phase-index binding", None)
+            binding_decision, binding_reason = _settlement_binding_proof_decision(
+                proof, record, int(phase_key.split(":", 1)[0]), verifier_config)
+            if binding_decision != "pass":
+                return (binding_decision, binding_reason, None)
+    return ("pass", "finality, RSV, and applicable SB-3 checks passed", {
+        "records": records,
+        "successfulPayments": successful_payments,
+        "finalityClasses": classes,
+    })
+
+
+def _current_anchor_join(receipt, binding, bundle, substrate, verifier_config):
+    decision, reason = _verify_synthetic_anchor_proof(receipt, verifier_config)
+    if decision != "pass":
+        return (decision, reason)
+    if not (
+        receipt.get("purpose") == "current-bundle"
+        and receipt.get("substrate") == substrate
+        and receipt.get("subjectId") == binding.get("jobId")
+        and receipt.get("subjectRole") == binding.get("role")
+        and receipt.get("logicalAddress") == binding.get("logicalAddress")
+        and receipt.get("nativeAddress") == binding.get("nativeAddress")
+        and receipt.get("contentHash") == binding.get("bundleContentHash") == bundle_hash(bundle)
+        and receipt.get("writer") == binding.get("signer")
+    ):
+        return ("fail", "current anchor receipt does not join binding, role, bytes, and writer")
+    return ("pass", "current anchor receipt verified")
+
+
+def _validate_current_use_absence(
+    job_id, role, substrate, dependencies, verifier_config, role_map,
+    current_key_authority, trusted_context,
+):
+    configured = verifier_config.get("authenticatedAbsenceByJobRole")
+    authority = configured.get(job_id + ":" + role) if isinstance(configured, dict) else None
+    if not isinstance(authority, dict) or set(authority) != {
+        "disposition", "absenceEvidenceRef", "absenceBinding",
+    }:
+        return ("indeterminate", "role absence is not authenticated", None)
+    if authority.get("disposition") != "absent":
+        return ("indeterminate", "role absence authority is not established", None)
+    ref = authority.get("absenceEvidenceRef")
+    if (
+        not isinstance(ref, dict)
+        or set(ref) != {"kind", "locator", "contentHash"}
+        or not all(_nonempty_jcs_string(ref.get(field)) for field in ("kind", "locator"))
+        or not _sha256_hex(ref.get("contentHash"))
+    ):
+        return ("error", "absence evidence reference is malformed", None)
+    evidence_by_ref = dependencies.get("absenceEvidenceByCanonicalRef")
+    ref_key = canonical(ref).decode("utf-8")
+    evidence = (
+        evidence_by_ref.get(ref_key, evidence_by_ref.get(ref["contentHash"]))
+        if isinstance(evidence_by_ref, dict) else None
+    )
+    if not isinstance(evidence, dict):
+        return ("indeterminate", "absence evidence cannot be dereferenced", None)
+    if (
+        set(evidence) != {"kind", "nativeAddress", "finalizedStateRef"}
+        or evidence.get("kind") != ref["kind"]
+        or not all(_nonempty_jcs_string(evidence.get(field)) for field in (
+            "nativeAddress", "finalizedStateRef",
+        ))
+        or _canon_sha(evidence) != ref["contentHash"]
+    ):
+        return ("fail", "absence evidence shape or content hash is invalid", None)
+    binding = authority.get("absenceBinding")
+    pure_native = _pure_native_address(
+        substrate,
+        logical_address(job_id, role, trusted_contexts=trusted_context),
+        verifier_config,
+    )
+    if pure_native is not None:
+        if binding is not None or evidence["nativeAddress"] != pure_native:
+            return ("fail", "pure-mapping absence evidence binds the wrong native address", None)
+    else:
+        checked = verify_binding(
+            binding, current_key_authority,
+            expected_jobid=job_id, expected_role=role,
+            trusted_contexts=trusted_context)
+        if (
+            not checked["ok"]
+            or binding.get("signer") != role_map[role]
+            or binding.get("nativeAddress") != evidence["nativeAddress"]
+        ):
+            return ("fail", "absence binding does not authenticate the missing role address", None)
+    return ("pass", "hash-bound role absence verified", {
+        "absenceEvidenceRef": copy.deepcopy(ref),
+        "absenceBinding": copy.deepcopy(binding),
+    })
+
+
+def _resolve_current_use_role(
+    job, role, role_request, dependencies, verifier_config,
+    current_key_authority, trusted_context,
+):
+    if not isinstance(role_request, dict):
+        return {"decision": "error", "reason": "role request is not an object"}
+    disposition = role_request.get("disposition")
+    job_id = job["jobId"]
+    substrate = job["substrate"]
+    role_map, signer_map = _configured_party_maps(verifier_config, job_id)
+    if role_map is None:
+        return {"decision": "indeterminate", "reason": "party authority is unavailable"}
+    if disposition == "indeterminate":
+        if set(role_request) != {"disposition"}:
+            return {"decision": "error", "reason": "indeterminate role request has unknown members"}
+        return {"decision": "indeterminate", "reason": "role presence is indeterminate"}
+    if disposition == "absent":
+        if set(role_request) != {"disposition"}:
+            return {"decision": "error", "reason": "absent role request has unknown members"}
+        absence_decision, absence_reason, absence = _validate_current_use_absence(
+            job_id, role, substrate, dependencies, verifier_config, role_map,
+            current_key_authority, trusted_context)
+        if absence_decision != "pass":
+            return {"decision": absence_decision, "reason": absence_reason}
+        return {
+            "decision": "pass", "disposition": "absent", "reason": absence_reason,
+            **absence,
+        }
+    if disposition != "present":
+        return {"decision": "error", "reason": "role disposition is unsupported"}
+    mapping_kind = role_request.get("mappingKind")
+    public_keys = verifier_config.get("publicKeys")
+    if mapping_kind == "pure":
+        if set(role_request) - {"disposition", "mappingKind", "resolvedAddress", "anchorReceipt", "legacyEraEvidence"}:
+            return {"decision": "error", "reason": "pure role request has unknown members"}
+        logical = logical_address(
+            job_id, role, trusted_contexts=trusted_context)
+        expected_native = _pure_native_address(substrate, logical, verifier_config)
+        if expected_native is None:
+            return {"decision": "indeterminate", "reason": "pure-mapping verifier is unavailable"}
+        if role_request.get("resolvedAddress") != expected_native:
+            return {"decision": "fail", "reason": "pure role address does not match deterministic mapping"}
+        bundle = _lookup_by_address(dependencies, "bundlesByNativeAddress", expected_native)
+        if not isinstance(bundle, dict):
+            return {"decision": "indeterminate", "reason": "pure role copy cannot be dereferenced"}
+        shape_ok, _ = _bundle_shape_ok(bundle)
+        if not shape_ok:
+            return {"decision": "error", "reason": "pure role copy is malformed"}
+        post_ok, post_reason = _post_fetch_address_valid(
+            bundle, expected_native, role, bundle_hash(bundle),
+            current_key_authority, expected_jobid=job_id,
+            pure_mapping_resolver=lambda _job, _role: expected_native,
+            trusted_contexts=trusted_context)
+        if not post_ok:
+            return {"decision": "fail", "reason": post_reason}
+        if not _current_use_roster_matches_role_map(bundle, role_map):
+            return {"decision": "fail", "reason": "bundle buyer/seller roster differs from verifier authority"}
+        era = role_request.get("legacyEraEvidence")
+        if (
+            bundle_type(bundle) == "legacy"
+            and isinstance(era, dict)
+            and era.get("substrate") != substrate
+        ):
+            return {"decision": "fail", "reason": "legacy era substrate differs from requested substrate"}
+        synthetic_binding = {
+            "jobId": job_id, "role": role, "logicalAddress": logical,
+            "nativeAddress": expected_native, "bundleContentHash": bundle_hash(bundle),
+            "signer": role_map[role],
+        }
+        anchor_decision, anchor_reason = _current_anchor_join(
+            role_request.get("anchorReceipt"), synthetic_binding, bundle, substrate, verifier_config)
+        if anchor_decision != "pass":
+            return {"decision": anchor_decision, "reason": anchor_reason}
+        type_decision, type_reason, settlement = _validate_current_use_type_authority(
+            bundle, dependencies, verifier_config)
+        if type_decision != "pass":
+            return {"decision": type_decision, "reason": type_reason}
+        if bundle_type(bundle) == "legacy":
+            era_decision, era_reason = validate_legacy_bundle_admission(
+                bundle, era, dependencies, verifier_config)
+            if era_decision != "pass":
+                return {"decision": era_decision, "reason": era_reason}
+        elif era is not None:
+            return {"decision": "error", "reason": "legacy era evidence is attached to a non-legacy copy"}
+        return {
+            "decision": "pass", "reason": "pure-mapped role copy admitted", "disposition": "present",
+            "bundle": bundle,
+            "roleEvidence": {"kind": "address", "resolvedAddress": expected_native},
+            "presence": {"bundleHash": bundle_hash(bundle), "nativeAddress": expected_native,
+                         "writer": role_map[role]},
+            "legacyEraEvidence": copy.deepcopy(era), "settlement": settlement,
+        }
+    if mapping_kind != "binding":
+        return {"decision": "error", "reason": "role mapping kind is unsupported"}
+    allowed = {
+        "disposition", "mappingKind", "selectionContext", "anchorReceiptsByNativeAddress",
+        "legacyEraEvidenceByNativeAddress",
+    }
+    if set(role_request) - allowed:
+        return {"decision": "error", "reason": "binding role request has unknown members"}
+    context = role_request.get("selectionContext")
+    receipts = role_request.get("anchorReceiptsByNativeAddress")
+    era_by_address = role_request.get("legacyEraEvidenceByNativeAddress", {})
+    if not _selection_context_shape(context) or not isinstance(receipts, dict) or not isinstance(era_by_address, dict):
+        return {"decision": "error", "reason": "binding role selection context is malformed"}
+    if context["partyMap"] != signer_map:
+        return {"decision": "fail", "reason": "BB-6 party map is not verifier-authenticated"}
+    if context["budget"] != verifier_config.get("bb6Budget", BB6_DEFAULT_BUDGET):
+        return {"decision": "fail", "reason": "BB-6 budget differs from verifier policy"}
+
+    # Mandatory party-map prune before candidate validation or fetch.
+    survivors = [candidate for candidate in context["candidateBindings"]
+                 if isinstance(candidate, dict)
+                 and context["partyMap"].get(candidate.get("signer")) == role]
+    valid = []
+    anchored = {}
+    admitted_by_address = {}
+    for candidate in survivors:
+        checked = verify_binding(
+            candidate, current_key_authority, expected_jobid=job_id,
+            expected_role=role, trusted_contexts=trusted_context)
+        if not checked["ok"]:
+            return {"decision": "fail", "reason": "authorized BB-6 candidate does not verify: " + checked["reason"]}
+        native = candidate["nativeAddress"]
+        bundle = _lookup_by_address(dependencies, "bundlesByNativeAddress", native)
+        if not isinstance(bundle, dict):
+            return {"decision": "indeterminate", "reason": "authorized BB-6 candidate cannot be dereferenced"}
+        shape_ok, _ = _bundle_shape_ok(bundle)
+        if not shape_ok:
+            continue
+        post_ok, _ = _post_fetch_valid(bundle, candidate, public_keys)
+        if not post_ok:
+            continue
+        if not _current_use_roster_matches_role_map(bundle, role_map):
+            return {"decision": "fail", "reason": "bundle buyer/seller roster differs from verifier authority"}
+        era = era_by_address.get(native)
+        if (
+            bundle_type(bundle) == "legacy"
+            and isinstance(era, dict)
+            and era.get("substrate") != substrate
+        ):
+            return {"decision": "fail", "reason": "legacy era substrate differs from requested substrate"}
+        anchor_decision, anchor_reason = _current_anchor_join(
+            receipts.get(native), candidate, bundle, substrate, verifier_config)
+        if anchor_decision != "pass":
+            return {"decision": anchor_decision, "reason": anchor_reason}
+        type_decision, type_reason, settlement = _validate_current_use_type_authority(
+            bundle, dependencies, verifier_config)
+        if type_decision != "pass":
+            # A required stronger proof cannot be bypassed by a weaker candidate.
+            return {"decision": type_decision, "reason": type_reason}
+        if bundle_type(bundle) == "legacy":
+            era_decision, era_reason = validate_legacy_bundle_admission(
+                bundle, era, dependencies, verifier_config)
+            if era_decision != "pass":
+                return {"decision": era_decision, "reason": era_reason}
+        elif era is not None:
+            return {"decision": "error", "reason": "legacy era evidence is attached to a non-legacy copy"}
+        valid.append(candidate)
+        anchored[native] = bundle
+        admitted_by_address[native] = {"legacyEraEvidence": copy.deepcopy(era), "settlement": settlement}
+    selection = resolve_bb6(valid, context["partyMap"], context["budget"], anchored)
+    native = selection.get("resolvedNativeAddress")
+    if selection.get("disposition") != "present" or native not in anchored:
+        return {"decision": "indeterminate", "reason": "BB-6 did not select one authenticated role copy"}
+    binding = next(candidate for candidate in valid if candidate["nativeAddress"] == native)
+    bundle = anchored[native]
+    admitted = admitted_by_address[native]
+    return {
+        "decision": "pass", "reason": "binding-backed role copy admitted", "disposition": "present",
+        "bundle": bundle, "roleEvidence": {"kind": "binding", "binding": copy.deepcopy(binding)},
+        "bb6Context": copy.deepcopy(context),
+        "presence": {"bundleHash": bundle_hash(bundle), "nativeAddress": native,
+                     "writer": binding["signer"]},
+        "legacyEraEvidence": admitted["legacyEraEvidence"], "settlement": admitted["settlement"],
+    }
+
+
+def _current_use_execution_trace_complete(bundle, pipeline):
+    """Check the signed ordinary-listing execution prefix used by current-use only."""
+    summary = bundle.get("phaseSummary")
+    if not isinstance(pipeline, list) or not pipeline or not isinstance(summary, list):
+        return False
+    if any(
+        not isinstance(step, dict) or not _string_member(step.get("kind"), SUPPORTED_PHASES)
+        for step in pipeline
+    ):
+        return False
+    kinds = [step["kind"] for step in pipeline]
+    for expected_index, entry in enumerate(summary):
+        if (
+            not isinstance(entry, dict)
+            or entry.get("index") != expected_index
+            or expected_index >= len(kinds)
+            or entry.get("kind") != kinds[expected_index]
+            or not _string_member(entry.get("outcome"), {"ok", "fail"})
+        ):
+            return False
+    outcome = bundle.get("outcome")
+    retry_indices = [index for index, entry in enumerate(summary) if "retryExhausted" in entry]
+    retry_expected = (
+        outcome == "failed-perm"
+        and bool(summary)
+        and summary[-1].get("outcome") == "fail"
+        and summary[-1].get("errorClass") == "transient"
+    )
+    if retry_expected:
+        if retry_indices != [len(summary) - 1] or summary[-1].get("retryExhausted") is not True:
+            return False
+    elif retry_indices:
+        return False
+    if outcome == "completed":
+        return len(summary) == len(pipeline) and not any(
+            entry.get("outcome") == "fail" and entry.get("kind") != "rate"
+            for entry in summary
+        )
+    if outcome in {"failed-perm", "failed-counterparty"}:
+        allowed_errors = {
+            "failed-perm": {"permanent", "transient"},
+            "failed-counterparty": {"counterparty", "settlement-atomicity"},
+        }
+        return bool(
+            summary
+            and summary[-1].get("outcome") == "fail"
+            and all(entry.get("outcome") == "ok" for entry in summary[:-1])
+            and _string_member(summary[-1].get("errorClass"), allowed_errors[outcome])
+            and (
+                summary[-1].get("errorClass") != "transient"
+                or summary[-1].get("retryExhausted") is True
+            )
+        )
+    if outcome == "failed-substrate":
+        return bool(
+            (
+                summary
+                and summary[-1].get("outcome") == "fail"
+                and summary[-1].get("errorClass") == "substrate"
+                and all(entry.get("outcome") == "ok" for entry in summary[:-1])
+            )
+            or (
+                len(summary) == len(pipeline)
+                and all(
+                    entry.get("outcome") == "ok"
+                    or (entry.get("kind") == "rate" and entry.get("outcome") == "fail")
+                    for entry in summary
+                )
+            )
+        )
+    if outcome in _ABORT:
+        return len(summary) < len(pipeline) and all(
+            entry.get("outcome") == "ok" for entry in summary
+        )
+    return False
+
+
+def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_config):
+    """Require authenticated complete evidence before an older copy proves no payment."""
+    kind = bundle_type(bundle)
+    if kind == "finality-bound":
+        return ("pass", "finality-bound copy uses the stronger payment path")
+    authority = _authority_for_bundle(bundle, dependencies)
+    if kind == "evidence-bound":
+        # SEB was already executed for this exact copy by type admission.
+        if _job_successful_payment_without_strong_finality(bundle, dependencies):
+            return ("indeterminate", "successful historical payment lacks exact stronger finality")
+        return ("pass", "authenticated EBFAB exact-set evidence establishes nonpayment")
+    if kind not in {"legacy", "fault"}:
+        return ("error", "unsupported historical bundle type")
+    if not isinstance(authority, dict) or not isinstance(authority.get("listing"), dict):
+        return ("indeterminate", "authenticated historical listing authority is unavailable")
+    listing = authority["listing"]
+    signature = listing.get("signature")
+    role_map, _ = _configured_party_maps(verifier_config, bundle.get("jobId"))
+    public_keys = verifier_config.get("publicKeys")
+    signer = signature.get("signer") if isinstance(signature, dict) else None
+    listing_ref = bundle.get("listingRef")
+    digest = listing_hash(listing)
+    if (
+        role_map is None
+        or not isinstance(signature, dict)
+        or set(signature) != {"signer", "algorithm", "value"}
+        or signer != listing.get("sellerPrimaryClaim")
+        or signer != role_map["seller"]
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(public_keys, dict)
+        or signer not in public_keys
+        or not isinstance(listing_ref, dict)
+        or listing_ref.get("listingId") != listing.get("listingId")
+        or listing_ref.get("version") != listing.get("listingVersion")
+        or listing_ref.get("contentHash") != digest
+    ):
+        return ("fail", "historical listing identity or signer is not verifier-authenticated")
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    if not canonical_ok or not verify_sig(
+        public_keys[signer], LISTING_DOMAIN, digest, signature["value"]
+    ):
+        return ("fail", "historical listing signature does not verify")
+    pipeline = listing.get("pipeline")
+    if not _current_use_execution_trace_complete(bundle, pipeline):
+        return ("indeterminate", "historical execution trace is incomplete or outcome-inconsistent")
+    evidence_refs = bundle.get("settlementEvidence")
+    if not isinstance(evidence_refs, list):
+        return ("indeterminate", "historical settlementEvidence is unavailable")
+    summary = bundle["phaseSummary"]
+    expected_entries = [entry for entry in summary if entry.get("kind") in EVIDENCE_PHASES]
+    if not expected_entries:
+        if evidence_refs:
+            return ("indeterminate", "historical evidence cannot be matched to the complete execution trace")
+        return ("pass", "authenticated complete historical trace establishes no payment invocation")
+    if any(entry.get("kind") in PAYMENT_PHASES and entry.get("outcome") == "ok"
+           for entry in expected_entries):
+        return ("indeterminate", "successful historical payment lacks exact stronger finality")
+    resolutions = authority.get("referenceValidationByCanonicalRef")
+    execution = authority.get("sessionExecutionAuthorityByPhaseKey")
+    receipts = authority.get("verifiedReceiptByCanonicalRef")
+    if not all(isinstance(value, dict) for value in (resolutions, execution, receipts)):
+        return ("indeterminate", "authenticated historical execution evidence is unavailable")
+    raw_ids = [canonical(ref) for ref in evidence_refs if isinstance(ref, dict)]
+    if len(raw_ids) != len(evidence_refs) or len(raw_ids) != len(set(raw_ids)):
+        return ("fail", "historical settlementEvidence is malformed or duplicated")
+    actual_keys = []
+    actual_ref_by_key = {}
+    for ref in evidence_refs:
+        resolution = resolutions.get(canonical(ref).decode("utf-8"))
+        record = resolution.get("record") if isinstance(resolution, dict) else None
+        record_signature = record.get("signature") if isinstance(record, dict) else None
+        if (
+            not _attestation_ref_shape_valid(ref)
+            or not _settlement_evidence_shape_valid(record)
+            or record.get("jobId") != bundle.get("jobId")
+            or ref.get("contentHash") != settlement_evidence_hash(record)
+            or not isinstance(record_signature, dict)
+            or record_signature.get("algorithm") != "ed25519"
+            or record_signature.get("signer") not in public_keys
+        ):
+            return ("fail", "historical settlement evidence is not authenticated")
+        canonical_ok, _ = sig6_canonical(record_signature.get("value"))
+        if not canonical_ok or not verify_sig(
+            public_keys[record_signature["signer"]], SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(record), record_signature["value"]
+        ):
+            return ("fail", "historical settlement evidence signature does not verify")
+        binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
+            ref, record, record_signature["signer"], bundle, execution, receipts
+        )
+        if not binding_ok:
+            return ("indeterminate", "historical settlement evidence lacks authenticated execution binding")
+        phase_key, resolved = binding_result
+        if (
+            resolved
+            or (
+                record.get("phase") in PAYMENT_PHASES
+                and record.get("outcome") == "success"
+            )
+        ):
+            return ("indeterminate", "successful or superseding historical payment lacks exact stronger finality")
+        if record.get("phase") in {
+            "pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank",
+        }:
+            return ("indeterminate", "historical cross-chain settlement requires stronger finality")
+        summary_entry = next((
+            entry for entry in expected_entries
+            if phase_key == "%d:%s" % (entry["index"], entry["kind"])
+        ), None)
+        lifecycle = resolution.get("lifecycle")
+        if (
+            not isinstance(summary_entry, dict)
+            or record.get("phase") != summary_entry.get("kind")
+            or record.get("outcome") != ("success" if summary_entry.get("outcome") == "ok" else "failure")
+            or not isinstance(lifecycle, dict)
+            or not _string_member(lifecycle.get("state"), {"included", "finalized"})
+        ):
+            return ("fail", "historical evidence contradicts the authenticated phase result")
+        actual_keys.append(phase_key)
+        actual_ref_by_key[phase_key] = ref
+    expected_keys = ["%d:%s" % (entry["index"], entry["kind"]) for entry in expected_entries]
+    if len(actual_keys) != len(set(actual_keys)) or set(actual_keys) != set(expected_keys):
+        return ("indeterminate", "historical settlementEvidence is not the complete phase-result set")
+    for entry in expected_entries:
+        pointer = entry.get("attestationRef")
+        phase_key = "%d:%s" % (entry["index"], entry["kind"])
+        if pointer is not None and canonical(pointer) != canonical(actual_ref_by_key[phase_key]):
+            return ("fail", "historical phase pointer contradicts settlementEvidence")
+    return ("pass", "authenticated complete historical evidence establishes nonpayment")
+
+
+def _job_successful_payment_without_strong_finality(bundle, dependencies):
+    authority = _authority_for_bundle(bundle, dependencies)
+    if isinstance(authority, dict):
+        resolutions = authority.get("referenceValidationByCanonicalRef")
+        if isinstance(resolutions, dict):
+            for resolution in resolutions.values():
+                record = resolution.get("record") if isinstance(resolution, dict) else None
+                if (
+                    isinstance(record, dict)
+                    and record.get("phase") in PAYMENT_PHASES
+                    and record.get("outcome") == "success"
+                ):
+                    return True
+    return any(
+        isinstance(entry, dict)
+        and entry.get("kind") in PAYMENT_PHASES
+        and entry.get("outcome") == "ok"
+        for entry in bundle.get("phaseSummary", [])
+    )
+
+
+def _resolve_current_use_job(
+    job, dependencies, verifier_config, current_key_authority,
+    trusted_context,
+):
+    if not isinstance(job, dict) or set(job) != {"jobId", "substrate", "roles"}:
+        return {"decision": "error", "reason": "requested job has a malformed closed shape"}
+    if not _nonempty_jcs_string(job.get("jobId")) or not _nonempty_jcs_string(job.get("substrate")):
+        return {"decision": "error", "reason": "requested job identity or substrate is malformed"}
+    roles = job.get("roles")
+    if not isinstance(roles, dict) or set(roles) != {"buyer", "seller"}:
+        return {"decision": "error", "reason": "both buyer and seller role requests are required"}
+    resolved = {}
+    for role in ("buyer", "seller"):
+        result = _resolve_current_use_role(
+            job, role, roles[role], dependencies, verifier_config,
+            current_key_authority, trusted_context)
+        if result.get("decision") != "pass":
+            return result
+        resolved[role] = result
+
+    entries = []
+    local_trust = copy.deepcopy(verifier_config.get("finalityTrust"))
+    if not isinstance(local_trust, dict):
+        return {"decision": "indeterminate", "reason": "finality trust is unavailable"}
+    local_trust.setdefault("copyPresenceByJobRole", {})
+    local_trust.setdefault("copyDispositionByJobRole", {})
+    for role in ("buyer", "seller"):
+        item = resolved[role]
+        if item["disposition"] == "absent":
+            local_trust["copyDispositionByJobRole"][job["jobId"] + ":" + role] = "absent"
+            entries.append({"disposition": "absent", "expectedJobId": job["jobId"], "expectedRole": role})
+            continue
+        local_trust["copyPresenceByJobRole"][job["jobId"] + ":" + role] = copy.deepcopy(item["presence"])
+        entries.append({
+            "bundle": item["bundle"], "expectedJobId": job["jobId"], "expectedRole": role,
+            "copyPresence": item["presence"],
+            "authority": _authority_for_bundle(item["bundle"], dependencies),
+        })
+    reconciled = reconcile_authenticated_finality_copies(entries, verifier_config.get("publicKeys"), local_trust)
+    if reconciled.get("decision") != "pass":
+        return {"decision": reconciled.get("decision", "error"), "reason": reconciled.get("reason", "reconciliation failed")}
+    authoritative = reconciled["bundle"]
+    historical_decision, historical_reason = _validate_current_use_historical_nonpayment(
+        authoritative, dependencies, verifier_config)
+    if historical_decision != "pass":
+        return {"decision": historical_decision, "reason": historical_reason}
+    role_of_party = _role_of_party(authoritative, verifier_config.get("scoredParty"))
+    present_results = [resolved[role] for role in ("buyer", "seller") if resolved[role]["disposition"] == "present"]
+    selected = next((item for item in present_results
+                     if item["bundle"].get("anchoredByRole") == authoritative.get("anchoredByRole")
+                     and bundle_hash(item["bundle"]) == bundle_hash(authoritative)), present_results[0])
+    pair_faults = set()
+    if len(present_results) == 2:
+        pair_faults = common_fault_set(present_results[0]["bundle"], present_results[1]["bundle"])
+    return {
+        "decision": "pass", "reason": "requested job fully admitted", "bundle": authoritative,
+        "roleOfParty": role_of_party, "selected": selected, "roles": resolved,
+        "pairFaults": pair_faults,
+    }
+
+
+def _artifact_from_ref(dependencies, collection, ref):
+    values = dependencies.get(collection) if isinstance(dependencies, dict) else None
+    if not isinstance(values, dict) or not isinstance(ref, dict):
+        return None
+    key = canonical(ref).decode("utf-8")
+    return values.get(key, values.get(ref.get("contentHash")))
+
+
+def _rating_record(bundle, ref, dependencies, verifier_config):
+    record = _artifact_from_ref(dependencies, "ratingsByCanonicalRef", ref)
+    required = {"ratingVersion", "jobId", "rater", "target", "targetRole", "value", "ratedAt", "signature"}
+    optional = {"freeText", "dimensions"}
+    if not isinstance(record, dict) or not required <= set(record) <= required | optional:
+        return None
+    if (
+        record.get("ratingVersion") != "1"
+        or record.get("jobId") != bundle.get("jobId")
+        or not all(_nonempty_jcs_string(record.get(field)) for field in ("rater", "target"))
+        or not _string_member(record.get("targetRole"), {"buyer", "seller"})
+        or not isinstance(record.get("value"), int)
+        or isinstance(record.get("value"), bool)
+        or not 1 <= record["value"] <= 5
+        or not _non_boolean_number(record.get("ratedAt"))
+        or ("freeText" in record and (not isinstance(record["freeText"], str) or len(record["freeText"]) > 1000))
+        or not _attestation_ref_shape_valid(ref)
+        or ref.get("contentHash") != _jcs_hash(record, "signature")
+    ):
+        return None
+    signature = record.get("signature")
+    public_keys = verifier_config.get("publicKeys")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"signer", "algorithm", "value"}
+        or signature.get("signer") != record.get("rater")
+        or signature.get("algorithm") != "ed25519"
+        or record.get("rater") not in public_keys
+    ):
+        return None
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    if not canonical_ok or not verify_sig(
+        public_keys[record["rater"]], RATING_DOMAIN,
+        _jcs_hash(record, "signature"), signature["value"]):
+        return None
+    return record
+
+
+def _decimal_text(value):
+    text = format(value, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def _group_prices(terms):
+    sums = {}
+    counts = {}
+    for term in terms:
+        currency = term["currency"]
+        sums[currency] = sums.get(currency, Decimal(0)) + Decimal(term["amount"])
+        counts[currency] = counts.get(currency, 0) + 1
+    volume = [{"amount": _decimal_text(sums[currency]), "currency": currency}
+              for currency in sorted(sums)]
+    count_rows = [{"currency": currency, "count": counts[currency]} for currency in sorted(counts)]
+    return volume, count_rows
+
+
+def _current_use_settlement_tx_ids(record):
+    """Project the SB-1 settlement identities defined by DACS-4 §9.5.8.
+
+    Finality/RSV has already authenticated these signed references.  HTLC,
+    liquidity-tank, and AP2 use their separately defined session/replay bindings;
+    §9.5.8 does not define an additional string projection for those arms.
+    """
+    refs = record.get("paymentTxRefs") if isinstance(record, dict) else None
+    if not isinstance(refs, list):
+        return None
+    projected = []
+    for ref in refs:
+        if not isinstance(ref, dict):
+            return None
+        kind = ref.get("kind")
+        if kind in {"evm-event", "x402-event"}:
+            chain_id = ref.get("chainId")
+            index = ref.get("logIndex")
+            tx_hash = ref.get("txHash") if kind == "evm-event" else ref.get("settlementTxHash")
+            if (
+                not _safe_nonnegative_integer(chain_id) or chain_id == 0
+                or not _safe_nonnegative_integer(index)
+                or not _sha256_hex(tx_hash)
+            ):
+                return None
+            projected.append("evm:%d:%s:%d" % (chain_id, tx_hash, index))
+        elif kind == "solana-instruction":
+            cluster = ref.get("cluster")
+            signature = ref.get("signature")
+            index = ref.get("instructionIndex")
+            if (
+                not _nonempty_jcs_string(cluster)
+                or not _nonempty_jcs_string(signature)
+                or not _safe_nonnegative_integer(index)
+            ):
+                return None
+            try:
+                if len(_base58_decode(signature)) != 64:
+                    return None
+            except ValueError:
+                return None
+            projected.append("solana:%s:%s:%d" % (cluster, signature, index))
+        elif kind == "demos":
+            tx_hash = ref.get("txHash")
+            if not _sha256_hex(tx_hash):
+                return None
+            projected.append("demos:" + tx_hash)
+    return projected
+
+
+def _current_use_sb2_conflict(reconciled):
+    claims = {}
+    for result in reconciled:
+        settlement = result["selected"]["settlement"]
+        for payment in settlement.get("successfulPayments", []):
+            record = payment.get("record") if isinstance(payment, dict) else None
+            phase_index = payment.get("phaseIndex") if isinstance(payment, dict) else None
+            if not isinstance(record, dict) or not _safe_nonnegative_integer(phase_index):
+                return "authenticated settlement identity context is malformed"
+            keys = _current_use_settlement_tx_ids(record)
+            if keys is None:
+                return "authenticated settlement identity cannot be projected"
+            binding = (record.get("jobId"), phase_index)
+            for key in keys:
+                prior = claims.get(key)
+                if prior is not None and prior != binding:
+                    # DACS-4 rejects the later record.  CUR-2 is all-or-nothing, so
+                    # this stronger request emits no partial result from the winner.
+                    return "settlement-tx-id is rebound across requested jobs"
+                claims[key] = binding
+    return None
+
+
+def _agreement_price(bundle, selected, dependencies):
+    agreement_ref = bundle.get("agreementRef")
+    if not isinstance(agreement_ref, dict):
+        return None
+    agreement = _artifact_from_ref(dependencies, "agreementsByCanonicalRef", agreement_ref)
+    if not isinstance(agreement, dict) or agreement_ref.get("contentHash") != _jcs_hash(agreement, "signatures"):
+        return None
+    # For a finality-bound payment, verify_finality already authenticated this exact
+    # agreement against the committed session.  Require object equality here so the
+    # volume resolver cannot swap a merely hash-shaped price source.
+    authority = _authority_for_bundle(bundle, dependencies)
+    candidates = authority.get("finalityVerificationByCanonicalRef") if isinstance(authority, dict) else None
+    exact = [candidate.get("agreement") for candidate in candidates.values()
+             if isinstance(candidate, dict)] if isinstance(candidates, dict) else []
+    if not exact or any(candidate != agreement for candidate in exact):
+        return None
+    terms = agreement.get("terms")
+    price = terms.get("price") if isinstance(terms, dict) else None
+    if not _price_term_shape_valid(price):
+        return None
+    return {"amount": price["amount"], "currency": price["currency"]}
+
+
+def _resolution_context_entry(job_result):
+    bundle = job_result["bundle"]
+    selected = job_result["selected"]
+    entry = {
+        "resolvedJobId": bundle["jobId"],
+        "contentHash": bundle_hash(bundle),
+        "resolvedRole": bundle["anchoredByRole"],
+        "bundleType": bundle_type(bundle),
+        "roleEvidence": copy.deepcopy(selected["roleEvidence"]),
+        "counterpartyDisposition": "present" if all(
+            job_result["roles"][role]["disposition"] == "present" for role in ("buyer", "seller")
+        ) else "absent",
+        "finalityClasses": sorted(selected["settlement"]["finalityClasses"]),
+    }
+    if selected.get("bb6Context") is not None:
+        entry["bb6Context"] = copy.deepcopy(selected["bb6Context"])
+    if selected.get("legacyEraEvidence") is not None:
+        entry["legacyEraEvidence"] = copy.deepcopy(selected["legacyEraEvidence"])
+    other_role = _other(entry["resolvedRole"])
+    other = job_result["roles"].get(other_role)
+    if isinstance(other, dict) and other.get("disposition") == "present":
+        entry["counterpartyRef"] = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": _role_evidence_locator(other["roleEvidence"]),
+            },
+            "contentHash": bundle_hash(other["bundle"]),
+        }
+        entry["counterpartyRoleEvidence"] = copy.deepcopy(other["roleEvidence"])
+        if other.get("legacyEraEvidence") is not None:
+            entry["counterpartyLegacyEraEvidence"] = copy.deepcopy(other["legacyEraEvidence"])
+    elif isinstance(other, dict) and other.get("disposition") == "absent":
+        entry["absenceEvidenceRef"] = copy.deepcopy(other["absenceEvidenceRef"])
+        if other.get("absenceBinding") is not None:
+            entry["absenceBinding"] = copy.deepcopy(other["absenceBinding"])
+    return entry
+
+
+def _build_current_use_derivation(
+    party, requests, admitted, window_start, window_end, basis, computed_at,
+    dependencies, verifier_config,
+):
+    reconciled = []
+    for result in admitted:
+        bundle = result["bundle"]
+        timestamp = bundle.get(basis)
+        if not _non_boolean_number(timestamp):
+            return _current_use_result("error", "admitted bundle window clock is malformed")
+        if party not in _primary_claims(bundle) or result.get("roleOfParty") not in {"buyer", "seller"}:
+            return _current_use_result("fail", "requested party is not an authenticated buyer or seller")
+        if window_start <= timestamp <= window_end:
+            reconciled.append(result)
+
+    sb2_conflict = _current_use_sb2_conflict(reconciled)
+    if sb2_conflict is not None:
+        return _current_use_result("fail", sb2_conflict)
+
+    outcomes = [scored_outcome(result["bundle"], result["roleOfParty"]) for result in reconciled]
+    orchestrator_fault = {
+        result["bundle"]["jobId"] for result in reconciled
+        if ((is_fab(result["bundle"]) and result["bundle"].get("faultedParty") == "orchestrator")
+            or result["pairFaults"] == {"orchestrator"})
+    }
+    cancelled = set()
+    cancellation_authority = verifier_config.get("cancellationDecisionByJob")
+    for result in reconciled:
+        bundle = result["bundle"]
+        markers = [item["bundle"].get("cancellation") for item in result["roles"].values()
+                   if item.get("disposition") == "present" and item["bundle"].get("cancellation") is not None]
+        if not markers:
+            continue
+        decision = cancellation_authority.get(bundle["jobId"]) if isinstance(cancellation_authority, dict) else None
+        if decision is None:
+            return _current_use_result("indeterminate", "cancellation authority is unavailable")
+        if decision not in {"permitted", "forbidden"}:
+            return _current_use_result("error", "cancellation authority decision is malformed")
+        if decision == "permitted":
+            cancelled.add(bundle["jobId"])
+
+    n = len(reconciled)
+    completed_count = sum(outcome == "completed" for outcome in outcomes)
+    failed_substrate = {result["bundle"]["jobId"] for result, outcome in zip(reconciled, outcomes)
+                        if outcome == "failed-substrate"}
+    counterparty_fault = sum(
+        outcome in {"failed-counterparty", "aborted-by-other"}
+        and result["bundle"]["jobId"] not in cancelled
+        and result["bundle"]["jobId"] not in orchestrator_fault
+        for result, outcome in zip(reconciled, outcomes)
+    )
+    party_fault_denom = n - len(failed_substrate | cancelled | orchestrator_fault)
+    blame_denom = party_fault_denom - counterparty_fault
+
+    rating_winners = {}
+    for result in reconciled:
+        bundle = result["bundle"]
+        party_claims = _primary_claims(bundle)
+        for ref in bundle.get("ratingRefs", []) or []:
+            record = _rating_record(bundle, ref, dependencies, verifier_config)
+            if (
+                record is None or record["rater"] not in party_claims
+                or record["rater"] == party or record["target"] != party
+            ):
+                continue
+            key = (record["rater"], record["jobId"], record["targetRole"])
+            identity = (_non_boolean_number(record["ratedAt"]) and record["ratedAt"], _jcs_hash(record, "signature"))
+            previous = rating_winners.get(key)
+            if previous is None or identity > previous[0]:
+                rating_winners[key] = (identity, record)
+    buyer_ratings = [item[1]["value"] for item in rating_winners.values()
+                     if item[1]["targetRole"] == "buyer"]
+    seller_ratings = [item[1]["value"] for item in rating_winners.values()
+                      if item[1]["targetRole"] == "seller"]
+
+    all_terms = []
+    profile_final_terms = []
+    provider_terms = []
+    for result, outcome in zip(reconciled, outcomes):
+        if outcome != "completed" or bundle_type(result["bundle"]) != "finality-bound":
+            continue
+        classes = result["selected"]["settlement"]["finalityClasses"]
+        records = result["selected"]["settlement"]["records"]
+        has_success = any(record.get("phase") in PAYMENT_PHASES and record.get("outcome") == "success"
+                          for record in records)
+        if not has_success:
+            continue
+        price = _agreement_price(result["bundle"], result["selected"], dependencies)
+        if price is None:
+            # An agreementRef that cannot be authenticated makes the requested
+            # stronger metrics unverifiable; no fabricated zero/partial output.
+            if "agreementRef" in result["bundle"]:
+                return _current_use_result("indeterminate", "volume agreement cannot be authenticated")
+            continue
+        all_terms.append(price)
+        if "provisional-provider-capture" in classes:
+            provider_terms.append(price)
+        else:
+            profile_final_terms.append(price)
+    observed_volume, observed_counts = _group_prices(all_terms)
+    profile_volume, profile_counts = _group_prices(profile_final_terms)
+    provider_volume, provider_counts = _group_prices(provider_terms)
+
+    ordered = sorted(reconciled, key=lambda result: (bundle_hash(result["bundle"]), result["bundle"]["jobId"]))
+    resolution_context = [_resolution_context_entry(result) for result in ordered]
+    metrics = {
+        "completionRate": completed_count / party_fault_denom if party_fault_denom > 0 else None,
+        "counterpartyAdjustedCompletionRate": completed_count / blame_denom if blame_denom > 0 else None,
+        "counterpartyFaultRate": counterparty_fault / party_fault_denom if party_fault_denom > 0 else None,
+        "averageBuyerRating": (sum(buyer_ratings) / len(buyer_ratings)) if buyer_ratings else None,
+        "averageSellerRating": (sum(seller_ratings) / len(seller_ratings)) if seller_ratings else None,
+        "observedTransactionalVolume": observed_volume,
+        "transactionCountByCurrency": observed_counts,
+        "finalityClassifiedVolume": {
+            "profileFinal": {
+                "observedTransactionalVolume": profile_volume,
+                "transactionCountByCurrency": profile_counts,
+            },
+            "provisionalProviderCapture": {
+                "observedTransactionalVolume": provider_volume,
+                "transactionCountByCurrency": provider_counts,
+            },
+        },
+    }
+    derivation = {
+        "currentUseReplayableDerivationVersion": "1",
+        "partyPrimaryClaim": party,
+        "windowStart": window_start,
+        "windowEnd": window_end,
+        "bundleCount": len(ordered),
+        "metrics": metrics,
+        "computedAt": computed_at,
+        "windowingBasis": basis,
+        "bundleRefs": [
+            {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": _role_evidence_locator(result["selected"]["roleEvidence"]),
+                },
+                "contentHash": bundle_hash(result["bundle"]),
+            }
+            for result in ordered
+        ],
+        "resolutionContext": resolution_context,
+        "requestContext": copy.deepcopy(requests),
+    }
+    return _current_use_result("pass", "all requested jobs admitted and current-use metrics computed", derivation)
+
+
+def _current_use_request_admission(
+    party, requests, window_start, window_end, basis, verifier_config,
+    current_key_authority, trusted_context,
+):
+    """Authenticate current query, exact-profile roles, JIDs, and key capability.
+
+    This runs before any dependency resolution. ``partyRolesByJob`` is only a
+    verifier-configured consistency input: it cannot create role/profile or key
+    authority, which must arrive independently through ``trusted_context`` and
+    ``current_key_authority``.
+    """
+    if not _current_context_shape_valid(trusted_context):
+        return ("indeterminate", "current-profile-admission", None)
+    query = trusted_context.get("query")
+    if (
+        not isinstance(query, dict)
+        or query.get("authenticated") is not True
+        or query.get("party") != party
+        or type(query.get("windowStart")) is not type(window_start)
+        or query.get("windowStart") != window_start
+        or type(query.get("windowEnd")) is not type(window_end)
+        or query.get("windowEnd") != window_end
+        or query.get("windowingBasis") != basis
+        or not is_exact_corrective_profile(query.get("profile"))
+    ):
+        return ("fail", "current-query-admission", None)
+    keys = _authenticated_current_key_map(current_key_authority)
+    if keys is None:
+        return ("indeterminate", "current-crypto-admission", None)
+
+    job_ids = []
+    for index, job in enumerate(requests):
+        if not isinstance(job, dict):
+            return ("error", "requested job[%d] is not an object" % index, None)
+        job_id = job.get("jobId")
+        try:
+            validate_current_job_id(job_id)
+        except ValueError:
+            return ("error", "requested job[%d]: job-id-validation" % index, None)
+        job_ids.append(job_id)
+    if len(job_ids) != len(set(job_ids)):
+        return ("error", "requested jobIds must be unique", None)
+
+    configured_by_job = verifier_config.get("partyRolesByJob")
+    if not isinstance(configured_by_job, dict):
+        return ("indeterminate", "party authority is unavailable", None)
+    for job_id in job_ids:
+        authenticated_roles = {
+            role: resolve_current_profile(job_id, role, trusted_context)
+            for role in ("buyer", "seller")
+        }
+        if any(identity is None for identity in authenticated_roles.values()):
+            return (
+                "indeterminate",
+                "%s: exact-profile buyer/seller authority is unavailable" % job_id,
+                None,
+            )
+        configured_roles = configured_by_job.get(job_id)
+        if (
+            not isinstance(configured_roles, dict)
+            or set(configured_roles) != {"buyer", "seller"}
+        ):
+            return ("indeterminate", "%s: party authority is unavailable" % job_id, None)
+        if configured_roles != authenticated_roles:
+            return (
+                "fail",
+                "%s: verifier partyRolesByJob differs from authenticated role authority" % job_id,
+                None,
+            )
+        if any(identity not in keys for identity in authenticated_roles.values()):
+            return (
+                "indeterminate",
+                "%s: authenticated buyer/seller key capability is unavailable" % job_id,
+                None,
+            )
+        if party not in authenticated_roles.values():
+            return (
+                "fail",
+                "%s: query party is not an authenticated buyer or seller" % job_id,
+                None,
+            )
+    return ("pass", "current request authority admitted", keys)
+
+
+def derive_current_use_replayable(
+    party, requests, window_start, window_end, dependencies, verifier_config,
+    basis="finalisedAt", computed_at=None, *, pubkeys=None,
+    trusted_contexts=None,
+):
+    """Execute the complete current-use contract or return no derivation.
+
+    ``requests`` is the caller's explicit stronger request.  Every requested job
+    must pass the full dependency chain before any metric is emitted.  The output
+    is unsigned derivation data; all authority remains in ``verifier_config`` and
+    authenticated dependency artifacts.
+    """
+    try:
+        if not _nonempty_jcs_string(party):
+            return _current_use_result("error", "partyPrimaryClaim is malformed")
+        if not isinstance(requests, list):
+            return _current_use_result("error", "requestContext must be an array")
+        if not isinstance(dependencies, dict) or not isinstance(verifier_config, dict):
+            return _current_use_result("indeterminate", "dependency or verifier configuration is unavailable")
+        if basis not in IMPLEMENTED_WINDOWING_BASES:
+            decision = "indeterminate" if basis in SUPPORTED_WINDOWING_BASES else "error"
+            return _current_use_result(decision, "requested windowing basis is unsupported")
+        if not _non_boolean_number(window_start) or not _non_boolean_number(window_end) or window_start > window_end:
+            return _current_use_result("error", "window bounds are malformed")
+        admission, admission_reason, keys = _current_use_request_admission(
+            party, requests, window_start, window_end, basis, verifier_config,
+            pubkeys, trusted_contexts)
+        if admission != "pass":
+            return _current_use_result(admission, admission_reason)
+        if computed_at is None:
+            computed_at = verifier_config.get("verificationTimeMs")
+        if not _non_boolean_number(computed_at):
+            return _current_use_result("indeterminate", "verifier-local computation time is unavailable")
+        config = dict(verifier_config)
+        config["publicKeys"] = keys
+        config["scoredParty"] = party
+        admitted = []
+        for job in requests:
+            result = _resolve_current_use_job(
+                job, dependencies, config, pubkeys, trusted_contexts)
+            if result.get("decision") != "pass":
+                return _current_use_result(
+                    result.get("decision", "error"),
+                    "%s: %s" % (job.get("jobId", "<malformed>") if isinstance(job, dict) else "<malformed>",
+                                  result.get("reason", "admission failed")))
+            admitted.append(result)
+        return _build_current_use_derivation(
+            party, requests, admitted, window_start, window_end, basis, computed_at,
+            dependencies, config)
+    except (KeyError, TypeError, ValueError, UnicodeError, OverflowError,
+            InvalidOperation, RecursionError):
+        return _current_use_result("error", "current-use request contains malformed nested data")
+
+
+def replay_current_use_derivation(
+    derivation, dependencies, verifier_config, *, pubkeys=None,
+    trusted_contexts=None,
+):
+    """Re-run every dependency and compare the complete current-use result."""
+    gate = require_current_use_replayable_derivation(derivation)
+    if not gate["ok"]:
+        return {"ok": False, "reason": "discriminator refusal: " + gate["reason"], "replayed": None}
+    required = {
+        "currentUseReplayableDerivationVersion", "partyPrimaryClaim", "windowStart", "windowEnd",
+        "bundleCount", "metrics", "computedAt", "windowingBasis", "bundleRefs",
+        "resolutionContext", "requestContext",
+    }
+    if set(derivation) != required:
+        return {"ok": False, "reason": "current-use derivation has a malformed closed shape", "replayed": None}
+    if (
+        not isinstance(derivation.get("metrics"), dict)
+        or not isinstance(derivation.get("bundleRefs"), list)
+        or not isinstance(derivation.get("resolutionContext"), list)
+        or not isinstance(derivation.get("requestContext"), list)
+        or not isinstance(derivation.get("bundleCount"), int)
+        or isinstance(derivation.get("bundleCount"), bool)
+    ):
+        return {"ok": False, "reason": "current-use derivation containers are malformed", "replayed": None}
+    result = derive_current_use_replayable(
+        derivation["partyPrimaryClaim"], derivation["requestContext"],
+        derivation["windowStart"], derivation["windowEnd"], dependencies,
+        verifier_config, basis=derivation["windowingBasis"],
+        computed_at=derivation["computedAt"], pubkeys=pubkeys,
+        trusted_contexts=trusted_contexts)
+    if result["decision"] != "pass":
+        return {"ok": False, "reason": "full dependency replay did not pass: " + result["reason"], "replayed": None}
+    replayed = result["derivation"]
+    try:
+        same = _new_type_canonical(replayed) == _new_type_canonical(derivation)
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        return {"ok": False, "reason": "current-use derivation is not canonicalizable", "replayed": None}
+    return {
+        "ok": same,
+        "reason": "complete current-use derivation reproduced" if same else "complete current-use derivation differs",
+        "replayed": replayed,
+    }
 
 
 def replay_receipt(derivation, deref, party, window_start, window_end,

@@ -727,8 +727,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         refs = (
             {"kind": "evm", "chainId": 1, "txHash": "0x01"},
             {"kind": "evm-event", "chainId": 1, "txHash": "0x01", "logIndex": 0},
-            {"kind": "solana", "cluster": "mainnet", "signature": "sig"},
-            {"kind": "solana-instruction", "cluster": "devnet", "signature": "sig", "instructionIndex": 0},
+            {"kind": "solana", "cluster": "mainnet", "signature": "1" * 64},
+            {"kind": "solana-instruction", "cluster": "devnet", "signature": "1" * 64, "instructionIndex": 0},
             {"kind": "demos", "txHash": "tx", "blockNumber": 1},
             {"kind": "storage-program", "address": "stor", "writeTxHash": "tx"},
             {"kind": "ap2", "mandateId": "m", "providerRef": "p", "protocolVersion": "1", "receiptAttestation": attestation},

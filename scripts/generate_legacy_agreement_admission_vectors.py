@@ -24,6 +24,7 @@ OUTPUT = (
 GOVERNING_SUBSTRATE = "demos-mainnet"
 ORDER_DOMAIN = "demos-mainnet:demos-bft-final:genesis-v1"
 
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 import dacs5_reference as R  # noqa: E402
 

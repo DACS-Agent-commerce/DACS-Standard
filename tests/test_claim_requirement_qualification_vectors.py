@@ -3,6 +3,7 @@ import binascii
 import copy
 import hashlib
 import json
+import sys
 import unicodedata
 import unittest
 from pathlib import Path
@@ -12,6 +13,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from sr2_resolution_reference import _recipe_for_selected_method, _recipe_method_kinds
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "claim-requirement-qualification-v0.3.json"
 SPEC = ROOT / "spec" / "DACS-2-VET.md"
 
@@ -233,8 +236,6 @@ def resolve_authenticated_registry(
         return None
     if registry.get("recipeRegistryVersion") != registry_version:
         return None
-    if not isinstance(registry.get("latestByFamily"), dict):
-        return None
     if not isinstance(registry.get("versionsByFamily"), dict):
         return None
     return registry
@@ -290,10 +291,58 @@ def results_for_requirement(input_data, claim_requirement):
     return prepared
 
 
+
+def _owning_family(registry, scheme, method, explicit_version):
+    """Bridge selected methods using admitted Recipe projections (RA-6).
+
+    Legacy fixture snapshots contain only direct default-method families. When
+    alternatives are represented, recipeDefinitions carries the complete admitted
+    definitions for that scheme; a caller-provided alias map is not authority.
+    """
+    definitions = registry.get("recipeDefinitions")
+    if definitions is None:
+        return method
+    if not isinstance(definitions, list):
+        raise QualificationError("recipe definitions are unavailable")
+    families = registry.get("versionsByFamily", {}).get(scheme)
+    if (not isinstance(families, dict)
+            or any(not isinstance(versions, dict) for versions in families.values())):
+        raise QualificationError("recipe family inventory is malformed")
+    candidates = []
+    seen_versions = set()
+    for definition in definitions:
+        if not isinstance(definition, dict) or not isinstance(definition.get("scheme"), str):
+            raise QualificationError("recipe definitions are malformed")
+        if unicodedata.normalize("NFC", definition["scheme"]) != unicodedata.normalize("NFC", scheme):
+            continue
+        version = definition.get("recipeVersion")
+        if (type(version) is not int or not 0 < version <= 9007199254740991
+                or version in seen_versions or _recipe_method_kinds(definition) is None):
+            raise QualificationError("recipe definitions are malformed")
+        seen_versions.add(version)
+        family = definition["defaultMethod"]["kind"]
+        inventory = families.get(family, {})
+        if str(version) not in inventory:
+            raise QualificationError("recipe definition is outside the admitted inventory")
+        candidates.append(definition)
+    # Missing definition bodies cannot silently remove a competing family/version.
+    inventory_versions = {
+        (family, version)
+        for family, versions in families.items()
+        for version in versions
+    }
+    present = {(d["defaultMethod"]["kind"], str(d["recipeVersion"])) for d in candidates}
+    if present != inventory_versions:
+        raise QualificationError("recipe family cannot be resolved")
+    status, definition = _recipe_for_selected_method(candidates, method, explicit_version)
+    if status != "pass":
+        raise QualificationError("recipe family cannot be resolved")
+    return definition["defaultMethod"]["kind"]
+
+
 def qualification_context(input_data, claim_requirement, registry):
     explicit_version = claim_requirement.get("recipeVersion")
     required_method = claim_requirement.get("parameters", {}).get("verificationMethod")
-    latest_by_family = registry.get("latestByFamily", {})
     versions_by_family = registry.get("versionsByFamily", {})
     candidates = results_for_requirement(input_data, claim_requirement)
     same_scheme = [
@@ -307,20 +356,38 @@ def qualification_context(input_data, claim_requirement, registry):
         methods = {result.get("method") for result in same_scheme}
     if None in methods or any(not isinstance(method, str) or not method for method in methods):
         raise QualificationError("selected recipe family is missing or invalid")
-    if explicit_version is not None and (
-        not isinstance(explicit_version, int) or isinstance(explicit_version, bool)
+    if "recipeVersion" in claim_requirement and (
+        type(explicit_version) is not int or not 0 < explicit_version <= 9007199254740991
     ):
         raise QualificationError("explicit recipe version is invalid")
 
     expected_versions = {}
     for method in methods:
-        family_versions = versions_by_family.get(claim_requirement["scheme"], {}).get(method)
+        owner_family = _owning_family(
+            registry, claim_requirement["scheme"], method, explicit_version
+        )
+        family_versions = versions_by_family.get(claim_requirement["scheme"], {}).get(owner_family)
         if not isinstance(family_versions, dict):
             raise QualificationError("selected recipe family cannot be resolved")
         expected_version = explicit_version
+        # versionsByFamily is an authenticated fixture projection, not the
+        # signed RegistryIndexEntry wire format. JSON object keys encode its
+        # numeric inventory canonically; latestByFamily is an inert hint.
+        numeric_versions = []
+        for key in family_versions:
+            if (not isinstance(key, str) or not key.isascii() or not key.isdecimal()
+                    or key.startswith("0") or len(key) > 16):
+                raise QualificationError("recipe version inventory is invalid")
+            version = int(key)
+            if not 0 < version <= 9007199254740991:
+                raise QualificationError("recipe version inventory is invalid")
+            numeric_versions.append(version)
+        if not numeric_versions:
+            raise QualificationError("selected recipe family cannot be resolved")
         if expected_version is None:
-            expected_version = latest_by_family.get(claim_requirement["scheme"], {}).get(method)
-        if not isinstance(expected_version, int) or isinstance(expected_version, bool):
+            expected_version = max(numeric_versions)
+        if (not isinstance(expected_version, int) or isinstance(expected_version, bool)
+                or not 0 < expected_version <= 9007199254740991):
             raise QualificationError("effective recipe version cannot be resolved")
         availability = family_versions.get(str(expected_version))
         if availability not in RECIPE_AVAILABILITY_VALUES:
@@ -559,7 +626,7 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         )
         vector_set = copy.deepcopy(self.data)
         vector_set["recipeRegistries"][0].pop("latestByFamily")
-        self.assertEqual(evaluate(vector["input"], vector_set), "error")
+        self.assertEqual(evaluate(vector["input"], vector_set), "pass")
         vector_set = copy.deepcopy(self.data)
         vector_set["recipeRegistries"][0].pop("versionsByFamily")
         self.assertEqual(evaluate(vector["input"], vector_set), "error")
@@ -617,8 +684,8 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         registry["latestByFamily"]["key"]["self-signed"] = 2
         self.assertEqual(
             evaluate(disabled["input"], vector_set),
-            "pass",
-            "selecting the older live entry instead would change the decision",
+            "fail",
+            "an inert latest hint cannot select an older live entry",
         )
 
         unresolved = vectors["vet-claim-requirement-explicit-version-unresolvable-error"]

@@ -21,6 +21,15 @@ profile identifier would incorrectly create a new full-profile version.
 
 ## Validate
 
+The `registry-bootstrap-v0.1` security corpus has been regenerated for the
+ratified numeric-version contract, including dependent hashes, signatures, and
+successor links, and now also carries the forward-readable optional-evidence
+extension vectors (76 + 3 = 79 expected outcomes; all prior outcomes are
+preserved). Check local
+byte determinism with `python3 scripts/generate_sr2_resolution_vectors.py --check`;
+this bounded fixture check does not establish native proof verification or
+integrated full-suite acceptance.
+
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json
 python3 scripts/validate_artifact_shapes.py
@@ -63,7 +72,7 @@ Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`,
 - `disclosure`: 9 candidate output expectations for proposed §8.7 DACS-X arbitrator transcript disclosure (step 3, DP-1). They are not current conformance cases: disclosure grant/order/consent artifacts, exact signed bytes, transcript inputs, and resolver context are not published; #99/#351 track that work.
 - `settlement`: 36 golden vectors plus the corrected RD-5 chain-ID candidate, §14.4 SettlementEvidence verification — PC-1..7 (anchor, attestationRef→evidence hash, outcome classification, currency-resolution, settlementFinality, anchor-pending cross-chain return), per-rail success (incl. `pay-x402` gasless-USDC-on-Base, §9.5.7), HTLC finality parameters, RD-5 railType↔asset/network coherence, §9.5.1/PIPE-5 amount==agreement.terms.price, CD-1/§9.3 amount canonicalisation, and the `dacs-4-evidence` signature.
 - `candidate`: 64 candidate vectors — 29 §8.5/§8.6 `PayeeBoundAgreementDocument` / PB-1..PB-3 and corrected RD-5 cases; 14 pre-guard-(iv) reputation outputs retained for regeneration after valid resolution context is available; the 17 output-only DACS-X dispute/disclosure expectations described above; and four grouped #390 identity-bound agreement expectations whose detailed cases live in the candidate security corpus.
-- `verify`: 36 golden vectors, §14.5 DACS-5 Verify — two-sided logical-address derivation `stor-{sha256(jobId+"-bundle-"+role)}` (§10.4.2) with jobId binding; native-address resolution on a write-input substrate goes through the signed `BundleBinding` (§10.4.2 BB-1..BB-8; fail-closed + multiplicity-void + suppression-diligence resolution vectors to follow via dacs-verify); §10.4.3(a-d) consumption (one-sided→aborted-by-self per §10.11, unified, divergent — "divergent" is a **consumer verdict, NOT an `outcome` enum value**; presence-mismatched `phaseSummary` entry sets are divergent; advisory-only skew is unified; divergent copies are dispute evidence but their jobId is excluded from DACS-5 reputation), the ST-1..8 transition table + state→outcome mapping (§10.3.1, incl. the non-terminal `settle-asymmetric` HTLC-9 open state, ST-8), and reputation derivation (§10.5.1 — two-sided per-jobId reconciliation via `anchoredByRole` with `perspective_flip` of a counterparty-anchored copy per §10.11; `party_fault_denom` excludes `failed-substrate`; divergent jobIds are excluded from all metrics; null≠zero; rating aggregation with `(rater,jobId,targetRole)` de-duplication; deterministic receipt `windowingBasis` + sorted `bundleRefs`; `observedTransactionalVolume` grouped by currency). The guard-(iv) golden excludes raw one-copy inputs lacking authoritative-absence context; the 14 affected historical metric outputs are candidates, not current goldens.
+- `verify`: 49 golden vectors, §14.5 DACS-5 Verify — two-sided logical-address derivation `stor-{sha256(jobId+"-bundle-"+role)}` (§10.4.2) with jobId binding; native-address resolution on a write-input substrate goes through the signed `BundleBinding` (§10.4.2 BB-1..BB-8; fail-closed + multiplicity-void + suppression-diligence resolution vectors to follow via dacs-verify); §10.4.3(a-d) consumption (one-sided→aborted-by-self per §10.11, unified, divergent — "divergent" is a **consumer verdict, NOT an `outcome` enum value**; presence-mismatched `phaseSummary` entry sets are divergent; advisory-only skew is unified; divergent copies are dispute evidence but their jobId is excluded from DACS-5 reputation), the ST-1..8 transition table + state→outcome mapping (§10.3.1, incl. the non-terminal `settle-asymmetric` HTLC-9 open state, ST-8), and reputation derivation (§10.5.1 — two-sided per-jobId reconciliation via `anchoredByRole` with `perspective_flip` of a counterparty-anchored copy per §10.11; `party_fault_denom` excludes `failed-substrate`; divergent jobIds are excluded from all metrics; null≠zero; rating aggregation with `(rater,jobId,targetRole)` de-duplication; deterministic receipt `windowingBasis` + sorted `bundleRefs`; `observedTransactionalVolume` grouped by currency). The guard-(iv) golden excludes raw one-copy inputs lacking authoritative-absence context; the 14 affected historical metric outputs are candidates, not current goldens.
 - `vet`: 24 golden vectors, DACS-2 method contract, retry semantics, MA-1..3 resolution, freshness, oneOf/cross-accumulator precedence, and counterparty-malformed fault attribution.
 - `negotiate`: 19 golden vectors, §8.4.3 / §8.5.1 / §8.5.2 listing-conformance checks including CD-1 price validation, negotiable band math, sealed-envelope role assignment, required signer coverage, and commit rejection for SE-8.
 - `governance`: 12 golden vectors, §14.7 GOV-1..3 steward disclosure and pin-time anchoring-phase checks.
@@ -118,6 +127,21 @@ Vectors that double as executable evidence of implementation friction. Stated as
 - **DACS-VERIFY-0004** — `conformance/fixtures/attestation-bundle-0004.json` is a full completed §10.4 `AttestationBundle`, signed by buyer + seller with deterministic issuer-kit keys. `conformance/fixtures/attestation-bundle-0004-seller.json` is a same-`jobId` divergent seller-side bundle with outcome `failed-counterparty`; it also verifies and has a distinct bundle hash. Divergent-bundle dispute/disclosure vectors pin both refs. The bundle verifier accepts valid bundles, rejects a completed bundle missing a required signer, and surfaces malformed resolved keys as `error`.
 
 The published golden vectors assert the remaining observed behaviour, so the evidence is runnable.
+
+### Complete Recipe fixture follow-up
+
+The generator now constructs a registered `key` / `self-signed` Recipe with
+required age, retry and governance fields and a deterministic steward
+signature. The signature uses the test harness's `keyId` / `algorithm` / `value`
+codec under `dacs-recipe:v1:`; this does not allocate a production signature
+wire format or establish live registry-steward authorization. The selector-only
+unit projections are not complete wire artifacts.
+
+The renewed bootstrap corpus contains 79 deterministic cases, including three
+optional-evidence forward-readability controls. Its dependent hashes,
+signatures, references and security-vector index are regenerated, and the
+checked-in generator plus integrated reference tests establish byte-identical
+reproduction for this fixture profile.
 
 ### AP2 fixture-profile scope in the composed candidate
 

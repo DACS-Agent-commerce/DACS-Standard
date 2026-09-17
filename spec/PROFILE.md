@@ -78,6 +78,17 @@ This tuple does not claim ordinary cross-minor compatibility with a pre-v0.6
 channel-message profile, and mixed corrective/pre-corrective live operation
 remains unsupported for channel messages exactly as for `jobId`.
 
+CORE v0.3 also specifies registry-bootstrap v1 as an independently testable
+SR-2 registry-discovery and chain-validation capability. This candidate does
+**not** activate its descriptor hash in the existing `SessionContext`, Vet or
+Settle phase inputs, `SessionRecord`, or DACS-5 bundle types, and therefore does
+not claim descriptor-authenticated session production or historical replay.
+Those existing contracts retain their numeric registry-version fields and
+semantics. A future coordinated profile must introduce distinct versioned
+action-bearing contracts and pin their compatibility rules before descriptor
+identity can govern a session; an unknown field, sidecar, or numeric-to-current
+lookup cannot supply that authority.
+
 ## Qualified implementation claims
 
 The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning

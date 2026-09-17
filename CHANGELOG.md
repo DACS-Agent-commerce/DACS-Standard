@@ -14,6 +14,11 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — explicit current revocation admission policy
+
+- Add `rsc-current-admission-v2`: authenticate Listing and revocation current values at one common finalized evaluation state, retaining distinct earlier inclusion receipts. Preserve known-revocation precedence, committed sessions and explicit recorded-policy replay; current consumers cannot fall back to v1 evidence.
+- Separate the 16,384-octet signature-omitted canonical Listing cap from the trusted binding's complete encoded-record capacity. Add an offline adapter contract and ordinary acceptance checks without changing signed artifacts or regenerating the frozen v1 corpus.
+
 ### Added — authoritative listing-revocation completeness
 
 - **Current revocation state (RSC-1..RSC-10; #375)** — adds the

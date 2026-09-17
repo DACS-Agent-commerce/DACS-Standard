@@ -521,6 +521,23 @@ def evaluate(data, public_keys, trusted_admission=None):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
 
+def evaluate_recorded_policy(data, public_keys, trusted_admission=None, effects=None):
+    """Replay the frozen v1 fixture policy; this is not fresh admission authority.
+
+    The retained ``revocation-state-completeness-v0.8.json`` corpus records the
+    earlier v1 reference policy and is replayed here byte-for-byte. Current
+    ``rsc-current-admission-v2`` acceptance is a separate, registered policy
+    (see ``scripts/rsc_current_admission.py`` and
+    ``tests/test_rsc_current_admission_v2.py``); a historical v1 pass is never
+    promoted to current admission.
+    """
+    del effects  # the frozen v1 evaluator has no consumer-effect dispatch
+    try:
+        return _evaluate(data, public_keys, trusted_admission)
+    except Exception:
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+
+
 def _evaluate(data, public_keys, trusted_admission=None):
     listing = data.get("listing")
     if not isinstance(listing, dict):

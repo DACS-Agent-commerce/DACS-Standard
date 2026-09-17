@@ -862,3 +862,9 @@ Cross-stage references for DACS-1 through DACS-5. Per-stage chapters may cite ad
 - **FAR Part 14** — *Sealed Bidding*. US Federal Acquisition Regulation.
 - **FAR Part 15** — *Contracting by Negotiation*. US Federal Acquisition Regulation.
 - **EU Directive 2014/24/EU** — *Public Procurement Directive*.
+
+### Current-value evaluation state and record capacity
+
+A registered current-value policy distinguishes an original finalized inclusion receipt from evidence that the value remains current at an authenticated evaluation state. When DACS-1 RSC admission joins two locator observations, the registered policy must provide a common state identity and compatible substrate/finality authority; independently fresh reads or matching observer timestamps are insufficient. Preserve the original receipts and recorded policy for replay. DACS-1's explicit current-admission policy governs the join and its historical/committed-session boundary.
+
+A content-size limit over a signature-omitted canonical artifact is distinct from the selected binding's complete encoded-record capacity. The latter includes signatures and required native wrapper bytes and requires trusted binding configuration; no generic canonical/native size conversion is implied.

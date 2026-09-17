@@ -1474,3 +1474,7 @@ FS-1..FS-5 + §9.7.2 FR-1..FR-4; awaiting a second independent impl to cross-run
 
 
 The current AP2 candidate retains the complete effect-bearing provider request, including mandate, checkout, payee, amount/currency, instrument, destination and metadata, under its operation fingerprint. Same-key recovery dispatches that retained request and refuses changed semantics before provider interaction. Captured recovery must match the operation fingerprint, transaction and retained provider reference. These are local fake-provider controls; mandate cryptographic verification and authenticated status-fetch semantics remain modeled inputs. The entire trusted participant map requires unique identities.
+
+### RSC policy compatibility
+
+The retained `revocation-state-completeness-v0.8.json` corpus records the earlier v1 reference policy. Its bytes and expected historical results are unchanged. Current `rsc-current-admission-v2` acceptance is exercised separately by `tests/test_rsc_current_admission_v2.py`, including the shared finalized-state join and independent content/native capacity checks. Historical replay results are not fresh admission authority.

@@ -293,3 +293,7 @@ The normative JSON shape is
 [`conformance/implementation-manifest.schema.json`](../conformance/implementation-manifest.schema.json).
 Repository examples and dependency-free validation live under
 [`conformance/implementation-manifests/`](../conformance/implementation-manifests/).
+
+### RSC current-admission v2 acceptance
+
+`tests/test_rsc_current_admission_v2.py` covers ordinary authenticated values at one later evaluation state with distinct earlier inclusion receipts; missing/unsupported state or binding evidence with no consumer effects; all current consumer paths and retained admission; known-revocation precedence; and unchanged committed-session/recorded-v1 behavior. Capacity checks distinguish exactly 16,384 and 16,385 canonical UTF-8 octets, preserved extensions, signature/wrapper overhead and a separately trusted smaller native limit. These fixture-policy checks do not establish a production storage-provider capability. The existing v1 corpus remains byte-preserved as recorded-policy evidence.

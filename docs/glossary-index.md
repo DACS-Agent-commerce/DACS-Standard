@@ -11,6 +11,9 @@ This non-normative index maps commonly referenced DACS terms to their canonical 
 | Canonical form | [§B.7](../spec/CORE.md#b7-universal-signature-scheme-domain-separated-signing) | RFC 8785 / JCS form used for hashes and signatures. |
 | ClaimReference | [§B.1](../spec/CORE.md#b1-claim-references-and-identity) | Canonical identifier format for identity claims. |
 | CompositeVerificationRecord | [§7.7](../spec/DACS-2-VET.md#77-composite-verification-record) | DACS-2 composite output for Vet. |
+| FinalityBoundEvidenceFaultAttestationBundle | [§10.4.1](../spec/DACS-5-VERIFY.md#1041-canonical-serialisation-hash-and-domain-separated-signature) | Distinct unallocated #392 outer bundle whose successful payment evidence passes FV. |
+| FinalityBoundSettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-settlement-evidence) | Distinct unallocated #392 payment-success evidence accepted only after FV. |
+| Finality verification (FV) | [§9.7.0](../spec/DACS-4-SETTLE.md#970-consumer-verifiable-finality-fv-1fv-10) | Consumer recomputation from authenticated raw proof and verifier-local trust; four-value result. |
 | IdentityBundle | [§6.3.2](../spec/DACS-1-IDENTIFY.md#632-identity-bundle) | Ordered self-presented claim set with presentation signature. |
 | Listing | [§6.3](../spec/DACS-1-IDENTIFY.md#63-specification) | DACS-1 signed service advertisement. |
 | Listing reachability | [§6.3.4](../spec/DACS-1-IDENTIFY.md#634-service-listing) | Time-stamped operational engagement status, not cryptographic validity. |

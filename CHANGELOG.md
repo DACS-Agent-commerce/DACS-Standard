@@ -167,6 +167,79 @@ The format used per release:
   syntax, and trailing data, reproduced by both the standard-library adapter and
   an independent recursive-descent parser.
 
+### Added — unallocated #391+#392 combined current-use reputation candidate
+
+- **Distinct all-or-nothing derivation** — adds the unsigned
+  `CurrentUseReplayableReputationDerivation` with the exclusive
+  `currentUseReplayableDerivationVersion: "1"` discriminator. It validates every
+  explicitly requested job before emitting metrics, composes finality-bound FV
+  with existing RSV/SB-3 checks, preserves provider capture as provisional, and
+  replays the complete authenticated dependency chain and canonical result.
+  Existing derivation discriminators, algorithms, metrics and bytes are unchanged;
+  unsupported old readers reject the new type. No DACS-5 minor is allocated.
+- **Authenticated historical arm** — adds the steward-signed
+  `LegacyBundleActivationCheckpoint` and write-input
+  `LegacyBundleCheckpointBinding` types/domains plus LAB-1..LAB-7. Current-use
+  admission proves an original signed BundleBinding and original BB-6 context,
+  or genuine pure mapping, then joins the exact finalized native receipt and
+  strict pre-checkpoint order under verifier-configured trust. Missing,
+  conflicting, pruned, reorganized or unorderable authority remains non-passing.
+- **Offline executable coverage** — adds deterministic, independently pinned
+  synthetic proof fixtures for both historical mapping arms, all six FV models,
+  role/BB-6/reconciliation/finality/replay negatives, old-reader refusal and
+  malformed-container totality. These fixtures do not claim a production Demos
+  native cryptographic codec.
+- **Defensive current-use admission corrections** — purpose-binds the fixture-only
+  synthetic checkpoint, historical and current proofs; ties both legacy mapping arms to the caller's
+  requested substrate; requires every authenticated present copy's exact
+  buyer/seller roster to match verifier-owned job roles; and admits historical
+  nonpayment only from an authenticated signed Listing plus a complete,
+  outcome-consistent execution/evidence set. Unsupported empty or incomplete summaries and
+  omitted or incomplete settlement evidence remain `indeterminate`; an authenticated
+  abort before the first phase may establish an empty complete execution prefix. Historical
+  algorithms, artifact shapes and signature domains are unchanged; the verifier
+  never converts signed historical bytes.
+- **Executable current-use replay corpus** — the committed eight-case
+  current-use corpus now embeds, for every case, the complete executable
+  request, the full authenticated dependency set, the verifier configuration
+  with public keys and trusted query context, and the expected outcome; the set
+  hash is computed over those complete replay inputs, so each case is
+  independently executable and any authority, receipt, finality, or
+  historical-evidence mutation yields a non-pass decision.
+
+### Added — unallocated #392 consumer-verifiable settlement finality candidate
+
+- **Finality-bound evidence** (#392) — adds the structurally distinct
+  `FinalityBoundSettlementEvidence` type and
+  `dacs-finality-bound-evidence:v1:` signature domain. An explicitly selected
+  finality-bound payment-success contract binds the exact signed RailDefinition
+  revision; older readers reject the new type instead of accepting an unverified
+  scalar confirmation count. No DACS-4 minor is allocated by this proposal.
+- **FV-1..FV-10 canonicality verifier** — derives the model and required
+  strength from the authenticated rail profile, verifies network/genesis or
+  provider identity, transaction/event inclusion, authenticated head and
+  ancestry, independent depth/commitment/BFT quorum, freshness and
+  reorg/replacement state. HTLC uses four independent authenticated observations
+  for source lock/claim and destination lock/reveal, each with its own inclusion
+  and finality proof; an aggregate status cannot replace them. Tank models verify
+  every leg; provider capture remains explicitly provisional.
+- **Typed DACS-5 consumer boundary** — adds the distinct
+  `FinalityBoundEvidenceFaultAttestationBundle` and matching extended pointer
+  domains. Its successful payment members run FV and propagate every non-pass;
+  old EBFAB and every existing derivation retain their prior meanings. The
+  coordinated `CurrentUseReplayableReputationDerivation` is reserved but cannot
+  pass until #391 supplies authenticated historical-era/role admission.
+- **Producer report clarified** — `SettlementFinalityRecord` remains signed and
+  auditable but is not finality proof. Wrong or insufficient proof fails;
+  missing, conflicting, pruned or unstable authority is `indeterminate`;
+  malformed proof is `error`.
+- **Fail-closed provider attestation authority** — `_verify_provider` in the
+  executable FV reference treats a missing, null, empty, or nonmatching
+  `providerAttestations` trust map as `indeterminate` (authenticated authority
+  unavailable), and a malformed list, string, number, or Boolean map as
+  `error`, without any broad exception catch. The canonical map continues to
+  pass through both the direct FV path and the composed DACS-5 path.
+
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
 - Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.

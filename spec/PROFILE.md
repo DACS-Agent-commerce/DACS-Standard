@@ -47,7 +47,7 @@ normalization-tolerant job-specific derivation. Its affected document tuple is:
 | [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft; current composed module |
 | [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft; current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft corrective candidate; current composed module |
-| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.6 | Draft corrective candidate |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.7 | Draft corrective candidate |
 
 The candidate is not an admissible live profile until a coordinated release
 records an annotated tag or immutable merge commit here. At that point every

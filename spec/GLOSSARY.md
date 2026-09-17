@@ -80,6 +80,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **SealedSelectionReceipt.** The orchestrator-signed DACS-3 receipt whose independently verified inputs enumerate the complete current finalized commit/reveal set, account for every record, and reproduce the built-in price-rule winner. §8.4.4.
 - **Session.** A per-transaction lifecycle from Identify through Verify.
 - **SessionContext.** The context object every phase handler receives. §B.5 (front matter).
+- **SessionParticipationAdmission.** The obligor-signed DACS-5 current-profile artifact binding an exact job, Listing, globally unique roster, completed prefix, verifier-issued session challenge, and typed source-backed obligation. Admission plus deadline does not prove nonresponse; SPA-6 separately requires trusted exact outcome evidence before timeout blame. Defined in §10.3.2.
 - **SessionRecord.** The orchestrator’s mutable working-state document. §10.3.
 - **settle-asymmetric.** Non-terminal DACS-5 session state for the HTLC-9 cross-chain open case (payer claimed the destination, payee's source claim not yet final); resolves forward to settle-completed on a final htlc-claim, or to settle-failed on window expiry. §10.3.1 (ST-8).
 - **SettlementAmendment.** A post-settlement record for refunds and corrections. §9.7.1.
@@ -90,6 +91,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Substrate.** The underlying blockchain or protocol stack that hosts a DACS implementation. Demos is the v0.1 reference substrate.
 - **Substrate-validator-set claim.** A ClaimReference identifying a substrate validator-set epoch; used as the signer for consensus-backed-proxy attestations. §7.5.
 - **supersedesEvidenceRef.** SettlementEvidence field on an ST-8 `:resolved` success record pointing to the interim failure record it supersedes; a same-phase supersession, not a refund amendment. §9.7 / ST-8.
+- **TimeoutMarker.** The closed DACS-5 audit marker carrying the exact `ParticipationObligation`, deadline, policy, and clock asserted for an ST-9 timeout. It is not outcome or nonresponse authority. §10.3.2/§10.4.
 - **TxRef / ChainTxRef.** Discriminated union of on-chain transaction references. §9.3.
 - **Universal signature scheme.** The cross-stack domain-separation scheme requiring every DACS signature to bind to a per-artifact-kind separator. §B.7.
 - **ULID.** Universally Unique Lexicographically Sortable Identifier; its 26-character uppercase Crockford form is the required DACS `jobId` format (CORE JID-1).

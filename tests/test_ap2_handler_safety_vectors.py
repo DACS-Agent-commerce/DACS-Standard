@@ -856,7 +856,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
 
     def test_real_current_tuple_admits_and_caller_copy_refuses(self):
         self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs4"], "0.8")
-        self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs5"], "0.6")
+        self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs5"], "0.7")
         self.assertTrue(is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE))
         caller = self.cases["ap2-admission-caller-profile-refuses"]
         self.assertEqual(

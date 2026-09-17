@@ -23,6 +23,8 @@ RECORD_DOMAIN = "dacs-sealed-auction-record:v1:"
 RECEIPT_DOMAIN = "dacs-sealed-selection-receipt:v1:"
 AGREEMENT_DOMAIN = "dacs-sealed-selection-agreement:v1:"
 BINDING_DOMAIN = "test-candidate-set-proof:v1:"
+CONTEXT_BID_DOMAIN = "dacs-sealed-bid-context:v1:"
+HISTORICAL_BID_DOMAIN = "dacs-sealed-bid:v1:"
 JOB_ID = "01JZZZZZZZZZZZZZZZZZZZZZZZ"
 FOREIGN_JOB_ID = "01JYYYYYYYYYYYYYYYYYYYYYYYYY"
 LISTING_REF = {
@@ -58,11 +60,33 @@ CLAIMS = {
     for name in ("bidder-a", "bidder-b", "bidder-c", "publisher", "orchestrator")
 }
 BIDDER_NAMES = ("bidder-a", "bidder-b", "bidder-c")
+CHANNEL_IDS = {
+    "bidder-a": "chan-bidder-a",
+    "bidder-b": "chan-bidder-b",
+    "bidder-c": "chan-bidder-c",
+}
+NATIVE_WRITERS = {
+    "bidder-a": "test-bft-account-a",
+    "bidder-b": "test-bft-account-b",
+    "bidder-c": "test-bft-account-c",
+}
+WRITER_BINDINGS = {
+    CLAIMS[name]: NATIVE_WRITERS[name]
+    for name in BIDDER_NAMES
+}
+CHANNEL_ASSIGNMENTS = {
+    CLAIMS[name]: {
+        "authenticated": True,
+        "channelId": CHANNEL_IDS[name],
+        "members": sorted((CLAIMS["publisher"], CLAIMS[name])),
+    }
+    for name in BIDDER_NAMES
+}
 CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
 PRICE_KEYS = frozenset({"amount", "currency", "unit"})
 COMMIT_RECORD_KEYS = frozenset({
     "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
-    "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+    "phaseIndex", "bidderClaim", "channelId", "bidHash", "createdAt", "signature",
 })
 REVEAL_RECORD_KEYS = COMMIT_RECORD_KEYS | {"commitRef", "bid", "salt"}
 
@@ -123,7 +147,8 @@ def binding_definition(
             "minimumTimestampRule": "at-or-after-reveal-deadline",
         },
         "admission": {
-            "writerRule": "record-bidder-claim",
+            "writerRule": "test-native-writer-map-v1",
+            "writerBindings": copy.deepcopy(WRITER_BINDINGS),
             "addressCodec": "dacs3-sealed-auction-v1",
         },
         "limits": {
@@ -199,9 +224,24 @@ def attestation_ref(kind: str, locator: str, content_hash: str, signer: str | No
     return result
 
 
-def bid_hash(bid: dict, salt: bytes) -> str:
+def bid_hash(bid: dict, salt: bytes, *, job_id: str = JOB_ID,
+             listing_ref: dict = LISTING_REF, phase_index: int = PHASE_INDEX,
+             bidder_claim: str | None = None, channel_id: str | None = None) -> str:
+    context = {
+        "jobId": job_id,
+        "listingRef": copy.deepcopy(listing_ref),
+        "phaseIndex": phase_index,
+        "bidderClaim": bidder_claim,
+        "channelId": channel_id,
+        "bid": bid,
+    }
+    context_digest = hashlib.sha256(canonical(context)).digest()
+    return hashlib.sha256(CONTEXT_BID_DOMAIN.encode() + context_digest + salt).hexdigest()
+
+
+def historical_bid_hash(bid: dict, salt: bytes) -> str:
     bid_digest = hashlib.sha256(canonical(bid)).digest()
-    return hashlib.sha256(RECORD_DOMAIN.replace("auction-record", "bid").encode() + bid_digest + salt).hexdigest()
+    return hashlib.sha256(HISTORICAL_BID_DOMAIN.encode() + bid_digest + salt).hexdigest()
 
 
 def decimal_parts(value: object) -> tuple[str, str] | None:
@@ -274,6 +314,109 @@ def logical_address(job_id: str, kind: str, bidder_claim: str, value: str) -> st
     return f"dacs3:auction:{job_id}:{kind}:{encoded}:{value}"
 
 
+def make_entry(
+    job_id: str, record: dict, ref: dict, timestamp: int, ordinal: int, suffix: int
+) -> dict:
+    record_hash = ref["contentHash"]
+    return {
+        "recordRef": ref,
+        "anchorReceipt": {
+            "receiptVersion": "1",
+            "substrate": "test-bft",
+            "finalityProfile": "test-bft-final",
+            "logicalAddress": logical_address(
+                job_id, record["recordKind"], record["bidderClaim"], record["bidHash"]
+            ),
+            "nativeAddress": ref["anchor"]["locator"],
+            "contentHash": record_hash,
+            "transactionRef": {"kind": "test-tx", "value": "tx-" + record_hash[:20]},
+            "writer": WRITER_BINDINGS[record["bidderClaim"]],
+            "nonce": str(ordinal * 2 + suffix),
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": timestamp + 100,
+            "blockRef": {
+                "id": "block-" + str(timestamp),
+                "height": str(100 + ordinal * 2 + suffix),
+                "timestamp": timestamp,
+            },
+            "evidence": {"kind": "test-finality", "value": "proof-" + record_hash[:20]},
+        },
+        "orderKey": f"{timestamp:016d}:{ordinal:04d}:{suffix}",
+    }
+
+
+def make_record(
+    name: str,
+    kind: str,
+    bid_hash_value: str,
+    *,
+    created_time: int,
+    commit_ref: dict | None = None,
+    bid: dict | None = None,
+    salt: bytes | None = None,
+    job_id: str = JOB_ID,
+    listing_ref: dict = LISTING_REF,
+    phase_index: int = PHASE_INDEX,
+    channel_id: str | None = None,
+) -> dict:
+    claim = CLAIMS[name]
+    record = {
+        "sealedAuctionRecordVersion": "1",
+        "recordKind": kind,
+        "jobId": job_id,
+        "listingRef": copy.deepcopy(listing_ref),
+        "phaseIndex": phase_index,
+        "bidderClaim": claim,
+        "channelId": channel_id or CHANNEL_IDS[name],
+        "bidHash": bid_hash_value,
+    }
+    if kind == "reveal":
+        record["commitRef"] = copy.deepcopy(commit_ref)
+        record["bid"] = copy.deepcopy(bid)
+        record["salt"] = b64url(salt)
+    record["createdAt"] = created_time
+    return sign_artifact(record, name, RECORD_DOMAIN)
+
+
+def make_pair(
+    name: str,
+    bid_hash_value: str,
+    bid: dict,
+    salt: bytes,
+    commit_time: int,
+    reveal_time: int,
+    ordinal: int,
+    *,
+    job_id: str = JOB_ID,
+    listing_ref: dict = LISTING_REF,
+    phase_index: int = PHASE_INDEX,
+    channel_id: str | None = None,
+) -> tuple[list[dict], dict]:
+    claim = CLAIMS[name]
+    channel = channel_id or CHANNEL_IDS[name]
+    commit = make_record(
+        name, "commit", bid_hash_value, created_time=commit_time - 50,
+        job_id=job_id, listing_ref=listing_ref, phase_index=phase_index, channel_id=channel,
+    )
+    commit_hash = digest(unsigned(commit))
+    commit_locator = "stor-commit-" + commit_hash[:24]
+    commit_ref = attestation_ref("storage-program", commit_locator, commit_hash, claim)
+    reveal = make_record(
+        name, "reveal", bid_hash_value, created_time=reveal_time - 50,
+        commit_ref=commit_ref, bid=bid, salt=salt,
+        job_id=job_id, listing_ref=listing_ref, phase_index=phase_index, channel_id=channel,
+    )
+    reveal_hash = digest(unsigned(reveal))
+    reveal_locator = "stor-reveal-" + reveal_hash[:24]
+    reveal_ref = attestation_ref("storage-program", reveal_locator, reveal_hash, claim)
+    entries = [
+        make_entry(job_id, commit, commit_ref, commit_time, ordinal, 0),
+        make_entry(job_id, reveal, reveal_ref, reveal_time, ordinal, 1),
+    ]
+    return entries, {commit_hash: commit, reveal_hash: reveal}
+
+
 def make_record_pair(
     name: str,
     price: object,
@@ -284,73 +427,24 @@ def make_record_pair(
     job_id: str = JOB_ID,
     listing_ref: dict = LISTING_REF,
     phase_index: int = PHASE_INDEX,
+    channel_id: str | None = None,
 ) -> tuple[list[dict], dict]:
     claim = CLAIMS[name]
+    channel = channel_id or CHANNEL_IDS[name]
     bid = {
         "price": copy.deepcopy(price),
         "deliverable": {"deliverableType": "digital", "hash": "ab" * 32},
     }
     salt = seed("salt " + name)
-    commitment = bid_hash(bid, salt)
-    commit = sign_artifact({
-        "sealedAuctionRecordVersion": "1",
-        "recordKind": "commit",
-        "jobId": job_id,
-        "listingRef": listing_ref,
-        "phaseIndex": phase_index,
-        "bidderClaim": claim,
-        "bidHash": commitment,
-        "createdAt": commit_time - 50,
-    }, name, RECORD_DOMAIN)
-    commit_hash = digest(unsigned(commit))
-    commit_locator = "stor-commit-" + commit_hash[:24]
-    commit_ref = attestation_ref("storage-program", commit_locator, commit_hash, claim)
-    reveal = sign_artifact({
-        "sealedAuctionRecordVersion": "1",
-        "recordKind": "reveal",
-        "jobId": job_id,
-        "listingRef": listing_ref,
-        "phaseIndex": phase_index,
-        "bidderClaim": claim,
-        "bidHash": commitment,
-        "commitRef": commit_ref,
-        "bid": bid,
-        "salt": b64url(salt),
-        "createdAt": reveal_time - 50,
-    }, name, RECORD_DOMAIN)
-    reveal_hash = digest(unsigned(reveal))
-    reveal_locator = "stor-reveal-" + reveal_hash[:24]
-    reveal_ref = attestation_ref("storage-program", reveal_locator, reveal_hash, claim)
-
-    def entry(record: dict, ref: dict, timestamp: int, suffix: int) -> dict:
-        record_hash = ref["contentHash"]
-        return {
-            "recordRef": ref,
-            "anchorReceipt": {
-                "receiptVersion": "1",
-                "substrate": "test-bft",
-                "finalityProfile": "test-bft-final",
-                "logicalAddress": logical_address(job_id, record["recordKind"], claim, commitment),
-                "nativeAddress": ref["anchor"]["locator"],
-                "contentHash": record_hash,
-                "transactionRef": {"kind": "test-tx", "value": "tx-" + record_hash[:20]},
-                "writer": claim,
-                "nonce": str(ordinal * 2 + suffix),
-                "state": "finalized",
-                "observationDisposition": "established",
-                "observedAt": timestamp + 100,
-                "blockRef": {
-                    "id": "block-" + str(timestamp),
-                    "height": str(100 + ordinal * 2 + suffix),
-                    "timestamp": timestamp,
-                },
-                "evidence": {"kind": "test-finality", "value": "proof-" + record_hash[:20]},
-            },
-            "orderKey": f"{timestamp:016d}:{ordinal:04d}:{suffix}",
-        }
-
-    entries = [entry(commit, commit_ref, commit_time, 0), entry(reveal, reveal_ref, reveal_time, 1)]
-    return entries, {commit_hash: commit, reveal_hash: reveal}
+    commitment = bid_hash(
+        bid, salt, job_id=job_id, listing_ref=listing_ref, phase_index=phase_index,
+        bidder_claim=claim, channel_id=channel,
+    )
+    return make_pair(
+        name, commitment, bid, salt, commit_time, reveal_time, ordinal,
+        job_id=job_id, listing_ref=listing_ref, phase_index=phase_index,
+        channel_id=channel,
+    )
 
 
 def base_material(
@@ -378,6 +472,90 @@ def base_material(
             job_id=job_id,
             listing_ref=listing_ref,
             phase_index=phase_index,
+        )
+        entries.extend(pair_entries)
+        records.update(pair_records)
+    entries.sort(key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"]))
+    return entries, records
+
+
+def divergent_commitment_material(commit_fn) -> tuple[list[dict], dict]:
+    """Base material where bidder-b's bidHash is produced by `commit_fn`.
+
+    The record still declares the session context (jobId/listingRef/phaseIndex/
+    channelId), so a reveal recomputed over the declared context cannot open a
+    commitment bound to a different context, channel, or formula.
+    """
+    entries: list[dict] = []
+    records: dict[str, dict] = {}
+    for index, (name, amount) in enumerate(zip(BIDDER_NAMES, ("100", "80", "120")), start=1):
+        commit_time = COMMIT_DEADLINE - (30_000 - index * 2_000)
+        reveal_time = COMMIT_DEADLINE + 20_000 + index * 2_000
+        price = {"amount": amount, "currency": "USD"}
+        bid = {
+            "price": price,
+            "deliverable": {"deliverableType": "digital", "hash": "ab" * 32},
+        }
+        salt = seed("salt " + name)
+        if name == "bidder-b":
+            commitment = commit_fn(bid, salt, CLAIMS[name])
+        else:
+            commitment = bid_hash(
+                bid, salt, job_id=JOB_ID, listing_ref=LISTING_REF, phase_index=PHASE_INDEX,
+                bidder_claim=CLAIMS[name], channel_id=CHANNEL_IDS[name],
+            )
+        pair_entries, pair_records = make_pair(
+            name, commitment, bid, salt, commit_time, reveal_time, index
+        )
+        entries.extend(pair_entries)
+        records.update(pair_records)
+    entries.sort(key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"]))
+    return entries, records
+
+
+def copied_commitment_material() -> tuple[list[dict], dict]:
+    """Bidder-b copies bidder-a's commitment and opening under its own identity."""
+    a_price = {"amount": "80", "currency": "USD"}
+    c_price = {"amount": "120", "currency": "USD"}
+    a_bid = {
+        "price": a_price,
+        "deliverable": {"deliverableType": "digital", "hash": "ab" * 32},
+    }
+    a_salt = seed("salt bidder-a")
+    a_commitment = bid_hash(
+        a_bid, a_salt, job_id=JOB_ID, listing_ref=LISTING_REF, phase_index=PHASE_INDEX,
+        bidder_claim=CLAIMS["bidder-a"], channel_id=CHANNEL_IDS["bidder-a"],
+    )
+    a_entries, a_records = make_pair(
+        "bidder-a", a_commitment, a_bid, a_salt,
+        COMMIT_DEADLINE - 28_000, COMMIT_DEADLINE + 22_000, 1,
+    )
+    b_entries, b_records = make_pair(
+        "bidder-b", a_commitment, a_bid, a_salt,
+        COMMIT_DEADLINE - 26_000, COMMIT_DEADLINE + 24_000, 2,
+    )
+    c_entries, c_records = make_record_pair(
+        "bidder-c", c_price, COMMIT_DEADLINE - 24_000, COMMIT_DEADLINE + 26_000, 3,
+    )
+    entries = a_entries + b_entries + c_entries
+    records = {**a_records, **b_records, **c_records}
+    entries.sort(key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"]))
+    return entries, records
+
+
+def other_bidder_channel_material() -> tuple[list[dict], dict]:
+    """Bidder-b signs correctly recomputed records using bidder-a's assigned channel."""
+    entries: list[dict] = []
+    records: dict[str, dict] = {}
+    for index, (name, amount) in enumerate(zip(BIDDER_NAMES, ("100", "80", "120")), start=1):
+        channel = CHANNEL_IDS["bidder-a"] if name == "bidder-b" else CHANNEL_IDS[name]
+        pair_entries, pair_records = make_record_pair(
+            name,
+            {"amount": amount, "currency": "USD"},
+            COMMIT_DEADLINE - (30_000 - index * 2_000),
+            COMMIT_DEADLINE + 20_000 + index * 2_000,
+            index,
+            channel_id=channel,
         )
         entries.extend(pair_entries)
         records.update(pair_records)
@@ -475,6 +653,24 @@ def derive(
                 )
                 if reason is None and entry["anchorReceipt"].get("logicalAddress") != want_address:
                     reason = "wrong-address"
+                assignment = CHANNEL_ASSIGNMENTS.get(record["bidderClaim"])
+                if (
+                    reason is None
+                    and (
+                        not isinstance(assignment, dict)
+                        or assignment.get("authenticated") is not True
+                        or assignment.get("channelId") != record.get("channelId")
+                        or assignment.get("members")
+                        != sorted((CLAIMS["publisher"], record["bidderClaim"]))
+                    )
+                ):
+                    reason = "wrong-channel"
+                elif (
+                    reason is None
+                    and entry["anchorReceipt"].get("writer")
+                    != WRITER_BINDINGS.get(record["bidderClaim"])
+                ):
+                    reason = "wrong-address"
                 elif reason is None and entry["anchorReceipt"].get("state") != "finalized":
                     reason = "unfinalized"
                 elif reason is None:
@@ -483,6 +679,8 @@ def derive(
                         reason = "late-commit"
                     elif record["recordKind"] == "reveal" and timestamp > REVEAL_DEADLINE:
                         reason = "late-reveal"
+                    elif record["recordKind"] == "reveal" and timestamp < COMMIT_DEADLINE:
+                        reason = "early-reveal"
                     elif record["recordKind"] == "commit":
                         disposition = "admitted-commit"
                         valid_commits.setdefault(record["bidderClaim"], []).append((entry, record))
@@ -532,10 +730,22 @@ def derive(
         for candidate in bidder_reveals:
             reveal = candidate[1]
             try:
-                recomputed = bid_hash(reveal["bid"], decode_salt(reveal["salt"]))
+                recomputed = bid_hash(
+                    reveal["bid"],
+                    decode_salt(reveal["salt"]),
+                    job_id=reveal["jobId"],
+                    listing_ref=reveal["listingRef"],
+                    phase_index=reveal["phaseIndex"],
+                    bidder_claim=reveal["bidderClaim"],
+                    channel_id=reveal["channelId"],
+                )
             except Exception:
                 continue
-            if reveal.get("commitRef") == commit_ref and reveal.get("bidHash") == commit["bidHash"] == recomputed:
+            if (
+                reveal.get("commitRef") == commit_ref
+                and reveal.get("channelId") == commit.get("channelId")
+                and reveal.get("bidHash") == commit["bidHash"] == recomputed
+            ):
                 matching_reveals.append(candidate)
         reveal_pair = matching_reveals[0] if matching_reveals else None
         for candidate in bidder_reveals:
@@ -841,6 +1051,7 @@ def make_vector(
         "latestFinalizedState": copy.deepcopy(CURRENT_STATE),
         "knownConflictingStates": [],
         "recordPublicKeys": {CLAIMS[name]: public_key(name) for name in BIDDER_NAMES},
+        "authenticatedChannelAssignments": copy.deepcopy(CHANNEL_ASSIGNMENTS),
         "expectedOrchestratorClaim": CLAIMS["orchestrator"],
         "orchestratorPublicKey": public_key("orchestrator"),
         "partyPublicKeys": {
@@ -1575,16 +1786,182 @@ def build() -> dict:
     bad_count = resign_receipt(bad_count)
     vectors.append(make_vector("record-count-proof-mismatch", "fail", "signed receipt cannot contradict proof-bound exact count", entries, records, bad_count, signed_agreement(bad_count)))
 
+    copied_entries, copied_records = copied_commitment_material()
+    copied_receipt = signed_receipt(copied_entries, copied_records)
+    vectors.append(make_vector(
+        "copied-commitment-as-other-bidder-excluded",
+        "pass",
+        "a copied bidHash and opening presented under another bidder recomputes to a different context-bound commitment",
+        copied_entries,
+        copied_records,
+        copied_receipt,
+        signed_agreement(copied_receipt),
+    ))
+
+    foreign_listing_ref = {
+        "listingId": "foreign-listing",
+        "version": 7,
+        "contentHash": "77" * 32,
+    }
+    cross_cases = (
+        (
+            "cross-channel-commitment-replay-excluded",
+            lambda bid, salt, claim: bid_hash(
+                bid, salt, job_id=JOB_ID, listing_ref=LISTING_REF, phase_index=PHASE_INDEX,
+                bidder_claim=claim, channel_id="chan-foreign",
+            ),
+            "a commitment bound to a foreign channel cannot open under the bidder's own channel",
+        ),
+        (
+            "cross-job-commitment-replay-excluded",
+            lambda bid, salt, claim: bid_hash(
+                bid, salt, job_id=FOREIGN_JOB_ID, listing_ref=LISTING_REF,
+                phase_index=PHASE_INDEX, bidder_claim=claim, channel_id=CHANNEL_IDS["bidder-b"],
+            ),
+            "a commitment bound to a foreign job cannot open in this session",
+        ),
+        (
+            "cross-listing-commitment-replay-excluded",
+            lambda bid, salt, claim: bid_hash(
+                bid, salt, job_id=JOB_ID, listing_ref=foreign_listing_ref,
+                phase_index=PHASE_INDEX, bidder_claim=claim, channel_id=CHANNEL_IDS["bidder-b"],
+            ),
+            "a commitment bound to a foreign listing cannot open in this session",
+        ),
+        (
+            "cross-phase-commitment-replay-excluded",
+            lambda bid, salt, claim: bid_hash(
+                bid, salt, job_id=JOB_ID, listing_ref=LISTING_REF, phase_index=2,
+                bidder_claim=claim, channel_id=CHANNEL_IDS["bidder-b"],
+            ),
+            "a commitment bound to a foreign phase index cannot open in this phase",
+        ),
+        (
+            "historical-v1-commitment-in-complete-profile-excluded",
+            lambda bid, salt, claim: historical_bid_hash(bid, salt),
+            "the frozen historical dacs-sealed-bid:v1: commitment does not open a complete-profile record",
+        ),
+    )
+    for name, commit_fn, reason in cross_cases:
+        div_entries, div_records = divergent_commitment_material(commit_fn)
+        div_receipt = signed_receipt(div_entries, div_records)
+        vectors.append(make_vector(
+            name, "pass", reason, div_entries, div_records, div_receipt,
+            signed_agreement(div_receipt),
+        ))
+
+    wrong_channel_entries, wrong_channel_records = other_bidder_channel_material()
+    wrong_channel_receipt = signed_receipt(wrong_channel_entries, wrong_channel_records)
+    vectors.append(make_vector(
+        "other-bidder-channel-assignment-rejected",
+        "fail",
+        "correctly recomputed and signed records cannot claim the channel assigned to another bidder",
+        wrong_channel_entries,
+        wrong_channel_records,
+        wrong_channel_receipt,
+        signed_agreement(wrong_channel_receipt),
+    ))
+
+    vectors.append(make_vector(
+        "channel-assignment-unavailable",
+        "indeterminate",
+        "selection cannot proceed when the verifier-owned authenticated per-session channel assignment is unavailable",
+        entries,
+        records,
+        receipt,
+        agreement,
+        authenticatedChannelAssignments=None,
+    ))
+
+    b_commit_hash = next(
+        record_hash for record_hash, record in records.items()
+        if record["recordKind"] == "commit" and record["bidderClaim"] == CLAIMS["bidder-b"]
+    )
+    signer_mismatch_commit = unsigned(records[b_commit_hash])
+    signer_mismatch_commit = sign_artifact(signer_mismatch_commit, "bidder-a", RECORD_DOMAIN)
+    signer_mismatch_entries, signer_mismatch_records = replace_record(
+        entries, records, b_commit_hash, signer_mismatch_commit
+    )
+    signer_mismatch_receipt = signed_receipt(signer_mismatch_entries, signer_mismatch_records)
+    vectors.append(make_vector(
+        "record-signer-bidder-mismatch-rejected",
+        "fail",
+        "a valid signature by a different party does not satisfy typed bidder authority",
+        signer_mismatch_entries,
+        signer_mismatch_records,
+        signer_mismatch_receipt,
+        signed_agreement(signer_mismatch_receipt),
+    ))
+
+    writer_mismatch_entries = copy.deepcopy(entries)
+    for entry in writer_mismatch_entries:
+        if entry["recordRef"]["contentHash"] == b_commit_hash:
+            entry["anchorReceipt"]["writer"] = NATIVE_WRITERS["bidder-a"]
+    writer_mismatch_receipt = signed_receipt(writer_mismatch_entries, records)
+    vectors.append(make_vector(
+        "anchor-writer-bidder-mismatch-rejected",
+        "fail",
+        "an SR-2 anchor authored by a different writer does not establish the record's bidder authority",
+        writer_mismatch_entries,
+        records,
+        writer_mismatch_receipt,
+        signed_agreement(writer_mismatch_receipt),
+    ))
+
+    b_reveal_hash = receipt["winner"]["revealRef"]["contentHash"]
+    premature_entries = copy.deepcopy(entries)
+    for entry in premature_entries:
+        if entry["recordRef"]["contentHash"] == b_reveal_hash:
+            entry["anchorReceipt"]["blockRef"]["timestamp"] = COMMIT_DEADLINE - 1_000
+            entry["orderKey"] = f"{COMMIT_DEADLINE - 1_000:016d}:0000:1"
+    premature_entries.sort(
+        key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"])
+    )
+    premature_receipt = signed_receipt(premature_entries, records)
+    vectors.append(make_vector(
+        "premature-reveal-before-commit-deadline-excluded",
+        "pass",
+        "a reveal anchored before commitDeadline is early even when every bidder has committed",
+        premature_entries,
+        records,
+        premature_receipt,
+        signed_agreement(premature_receipt),
+    ))
+
+    boundary_entries = copy.deepcopy(entries)
+    for entry in boundary_entries:
+        if entry["recordRef"]["contentHash"] == b_reveal_hash:
+            entry["anchorReceipt"]["blockRef"]["id"] = "block-" + str(COMMIT_DEADLINE)
+            entry["anchorReceipt"]["blockRef"]["timestamp"] = COMMIT_DEADLINE
+            entry["orderKey"] = f"{COMMIT_DEADLINE:016d}:0000:1"
+    boundary_entries.sort(
+        key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"])
+    )
+    boundary_receipt = signed_receipt(boundary_entries, records)
+    vectors.append(make_vector(
+        "reveal-at-commit-deadline-admitted",
+        "pass",
+        "a reveal anchored exactly at commitDeadline is inside the inclusive reveal window",
+        boundary_entries,
+        records,
+        boundary_receipt,
+        signed_agreement(boundary_receipt),
+    ))
+
     return {
         "set": "sealed-auction-completeness-v0.6",
-        "spec": "DACS-3 §8.4.4 SAC-1..SAC-10",
+        "spec": "DACS-3 §8.4.4 SAC-1..SAC-12",
         "issue": "https://github.com/DACS-Agent-commerce/DACS-Standard/issues/376",
         "decisionModel": "pass only after exact current complete-set, receipt and agreement reproduction; deterministic contradictions fail; unavailable authority is indeterminate",
         "fixtureProfile": {
             "recordSignature": RECORD_DOMAIN + " || sha256(JCS(record without signature))",
             "receiptSignature": RECEIPT_DOMAIN + " || sha256(JCS(receipt without signature))",
             "agreementSignature": AGREEMENT_DOMAIN + " || sha256(JCS(agreement without signatures))",
+            "bidCommitment": CONTEXT_BID_DOMAIN + " || sha256(JCS(SealedBidCommitmentContext)) || salt_bytes",
+            "historicalBidCommitment": HISTORICAL_BID_DOMAIN + " || sha256(JCS(bid)) || salt_bytes (frozen §8.4.3; not accepted for complete-profile records)",
             "candidateSetProof": "authenticated test SR-2 registry resolution pins definition ref/id/version and derives deterministic Ed25519 proof verification, finality, admission, ordering, conflict and resource policy; models the SAC-3 adapter boundary, not a production Demos proof",
+            "channelAuthority": "verifier-owned authenticated per-session assignment binds one exact opaque channelId and exact {listing publisher, bidder} member set to each bidder claim",
+            "nativeWriterAuthority": "the authenticated test-native-writer-map-v1 admission policy maps each canonical bidder claim to a distinct native test-bft account identifier",
             "generator": "scripts/generate_sealed_auction_completeness_vectors.py",
         },
         "publicKeys": {name: public_key(name) for name in KEYS},

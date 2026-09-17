@@ -26,10 +26,12 @@ RECORD_DOMAIN = "dacs-sealed-auction-record:v1:"
 RECEIPT_DOMAIN = "dacs-sealed-selection-receipt:v1:"
 AGREEMENT_DOMAIN = "dacs-sealed-selection-agreement:v1:"
 BINDING_DOMAIN = "test-candidate-set-proof:v1:"
+CONTEXT_BID_DOMAIN = "dacs-sealed-bid-context:v1:"
+HISTORICAL_BID_DOMAIN = "dacs-sealed-bid:v1:"
 UNSIGNED_CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
 COMMIT_RECORD_KEYS = {
     "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
-    "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+    "phaseIndex", "bidderClaim", "channelId", "bidHash", "createdAt", "signature",
 }
 REVEAL_RECORD_KEYS = COMMIT_RECORD_KEYS | {"commitRef", "bid", "salt"}
 BINDING_DEFINITION_KEYS = {
@@ -70,10 +72,27 @@ def verify(public_key, signature, payload):
         return False
 
 
-def bid_hash(bid, salt_text):
+def bid_hash(bid, salt_text, record=None):
+    salt = decode_b64url(salt_text)
+    if record is None:
+        raise ValueError("complete-profile bidHash requires the carrying record context")
+    context = {
+        "jobId": record["jobId"],
+        "listingRef": record["listingRef"],
+        "phaseIndex": record["phaseIndex"],
+        "bidderClaim": record["bidderClaim"],
+        "channelId": record["channelId"],
+        "bid": bid,
+    }
+    return hashlib.sha256(
+        CONTEXT_BID_DOMAIN.encode() + hashlib.sha256(canonical(context)).digest() + salt
+    ).hexdigest()
+
+
+def historical_bid_hash(bid, salt_text):
     salt = decode_b64url(salt_text)
     return hashlib.sha256(
-        b"dacs-sealed-bid:v1:" + hashlib.sha256(canonical(bid)).digest() + salt
+        HISTORICAL_BID_DOMAIN.encode() + hashlib.sha256(canonical(bid)).digest() + salt
     ).hexdigest()
 
 
@@ -178,11 +197,14 @@ def fixture_record_receipt_matches(receipt, ref, bidder, definition=None):
     transaction = receipt["transactionRef"]
     block = receipt["blockRef"]
     evidence = receipt["evidence"]
+    admission = definition.get("admission", {})
+    writer_bindings = admission.get("writerBindings", {})
     return (
         receipt["receiptVersion"] == "1"
         and receipt["substrate"] == definition["substrate"]
         and receipt["finalityProfile"] == definition["finality"]["profile"]
-        and receipt["writer"] == bidder
+        and admission.get("writerRule") == "test-native-writer-map-v1"
+        and receipt["writer"] == writer_bindings.get(bidder)
         and ("signer" not in ref or ref["signer"] == bidder)
         and isinstance(transaction, dict) and set(transaction) == {"kind", "value"}
         and transaction["kind"] == "test-tx"
@@ -344,10 +366,20 @@ class Evaluator:
             or definition["finality"].get("minimumTimestampRule")
             != "at-or-after-reveal-deadline"
             or not isinstance(definition.get("admission"), dict)
-            or definition["admission"] != {
-                "writerRule": "record-bidder-claim",
-                "addressCodec": "dacs3-sealed-auction-v1",
-            }
+            or set(definition["admission"])
+            != {"writerRule", "writerBindings", "addressCodec"}
+            or definition["admission"].get("writerRule")
+            != "test-native-writer-map-v1"
+            or definition["admission"].get("addressCodec")
+            != "dacs3-sealed-auction-v1"
+            or not isinstance(definition["admission"].get("writerBindings"), dict)
+            or not definition["admission"]["writerBindings"]
+            or any(
+                not isinstance(claim, str)
+                or not isinstance(writer, str)
+                or not writer
+                for claim, writer in definition["admission"]["writerBindings"].items()
+            )
             or not isinstance(definition.get("limits"), dict)
             or set(definition["limits"]) != {"maximumRecords", "maximumBytes"}
         ):
@@ -452,6 +484,11 @@ class Evaluator:
         entries = self.receipt["entries"]
         records = self.ctx.get("resolvedRecords", {})
         public_keys = self.ctx.get("recordPublicKeys", {})
+        channel_assignments = self.ctx.get("authenticatedChannelAssignments")
+        if channel_assignments is None:
+            return "indeterminate"
+        if not isinstance(channel_assignments, dict):
+            return "fail"
         commit_deadline = self.listing["parameters"]["commitDeadline"]
         reveal_deadline = commit_deadline + self.listing["parameters"]["revealWindow"] * 1000
         record_decisions = []
@@ -485,6 +522,20 @@ class Evaluator:
                 ):
                     reason = "bad-signature"
                 else:
+                    assignment = channel_assignments.get(record["bidderClaim"])
+                    if assignment is None:
+                        return "indeterminate"
+                    expected_members = sorted((
+                        self.listing["publisherClaim"], record["bidderClaim"]
+                    ))
+                    if (
+                        not isinstance(assignment, dict)
+                        or set(assignment) != {"authenticated", "channelId", "members"}
+                        or assignment.get("authenticated") is not True
+                        or assignment.get("channelId") != record.get("channelId")
+                        or assignment.get("members") != expected_members
+                    ):
+                        reason = "wrong-channel"
                     if kind == "reveal":
                         try:
                             if len(decode_b64url(record["salt"])) < 32:
@@ -516,6 +567,8 @@ class Evaluator:
                                 reason = "late-commit"
                             elif kind == "reveal" and timestamp > reveal_deadline:
                                 reason = "late-reveal"
+                            elif kind == "reveal" and timestamp < commit_deadline:
+                                reason = "early-reveal"
                             else:
                                 disposition = "admitted-commit" if kind == "commit" else "admitted-reveal"
                                 (commits if kind == "commit" else reveals).setdefault(record["bidderClaim"], []).append((entry, record))
@@ -524,7 +577,7 @@ class Evaluator:
                 "disposition": disposition or "excluded",
                 **({"reason": reason} if reason else {}),
             })
-            if reason in {"malformed-record", "wrong-session", "bad-signature", "wrong-address", "unfinalized"}:
+            if reason in {"malformed-record", "wrong-session", "bad-signature", "wrong-address", "wrong-channel", "unfinalized"}:
                 return "fail"
 
         bidders = sorted({record.get("bidderClaim") for record in records.values() if isinstance(record, dict) and record.get("bidderClaim")})
@@ -563,10 +616,14 @@ class Evaluator:
             for candidate in bidder_reveals:
                 reveal = candidate[1]
                 try:
-                    opens = bid_hash(reveal["bid"], reveal["salt"])
+                    opens = bid_hash(reveal["bid"], reveal["salt"], reveal)
                 except (KeyError, TypeError, ValueError):
                     continue
-                if compare_ref(reveal.get("commitRef"), commit_ref) and reveal.get("bidHash") == commit["bidHash"] == opens:
+                if (
+                    compare_ref(reveal.get("commitRef"), commit_ref)
+                    and reveal.get("channelId") == commit.get("channelId")
+                    and reveal.get("bidHash") == commit["bidHash"] == opens
+                ):
                     matching_reveals.append(candidate)
             reveal_pair = matching_reveals[0] if matching_reveals else None
             for candidate in bidder_reveals:
@@ -821,6 +878,16 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "signed-reveal-wrong-version-rejected",
             "signed-commit-signature-extra-member-rejected",
             "signed-reveal-signature-extra-member-rejected",
+            "copied-commitment-as-other-bidder-excluded",
+            "cross-channel-commitment-replay-excluded",
+            "cross-job-commitment-replay-excluded",
+            "cross-listing-commitment-replay-excluded",
+            "cross-phase-commitment-replay-excluded",
+            "historical-v1-commitment-in-complete-profile-excluded",
+            "other-bidder-channel-assignment-rejected",
+            "channel-assignment-unavailable",
+            "premature-reveal-before-commit-deadline-excluded",
+            "reveal-at-commit-deadline-admitted",
         }
         self.assertEqual(set(actual), controls)
         for vector in self.data["vectors"]:
@@ -902,6 +969,18 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "signed-reveal-wrong-version-rejected",
             "signed-commit-signature-extra-member-rejected",
             "signed-reveal-signature-extra-member-rejected",
+            "copied-commitment-as-other-bidder-excluded",
+            "cross-channel-commitment-replay-excluded",
+            "cross-job-commitment-replay-excluded",
+            "cross-listing-commitment-replay-excluded",
+            "cross-phase-commitment-replay-excluded",
+            "historical-v1-commitment-in-complete-profile-excluded",
+            "other-bidder-channel-assignment-rejected",
+            "channel-assignment-unavailable",
+            "record-signer-bidder-mismatch-rejected",
+            "anchor-writer-bidder-mismatch-rejected",
+            "premature-reveal-before-commit-deadline-excluded",
+            "reveal-at-commit-deadline-admitted",
         }
         self.assertTrue(required.issubset(names))
 
@@ -995,11 +1074,110 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
     def test_spec_and_demos_mapping_pin_fail_closed_boundary(self):
         spec = SPEC.read_text(encoding="utf-8")
         mapping = MAPPING.read_text(encoding="utf-8")
-        for rule in range(1, 11):
+        for rule in range(1, 13):
             self.assertIn(f"(SAC-{rule})", spec)
         self.assertIn("MUST fail before any rule fetch or execution", spec)
         self.assertIn("does not yet supply a `CandidateSetBindingRef`", mapping)
         self.assertIn("MUST NOT treat an Indexer query", mapping)
+
+    def test_historical_v1_commitment_is_frozen_and_current_domain_is_distinct(self):
+        spec = SPEC.read_text(encoding="utf-8")
+        core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")
+        self.assertIn(
+            'sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)',
+            spec,
+        )
+        self.assertIn('dacs-sealed-bid-context:v1:', spec)
+        self.assertIn('dacs-sealed-bid-context:v1:', core)
+        self.assertIn('dacs-sealed-bid:v1:', core)
+        self.assertIn("frozen", core)
+        self.assertIn("not interchangeable", spec)
+
+    def test_context_bound_commitment_dispatches_exact_domain(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        winner_reveal = vectors["complete-lowest-price"]["receipt"]["winner"]["revealRef"]
+        records = vectors["complete-lowest-price"]["context"]["resolvedRecords"]
+        reveal = records[winner_reveal["contentHash"]]
+        self.assertIn("channelId", reveal)
+        self.assertIn("channelId", records[reveal["commitRef"]["contentHash"]])
+        self.assertEqual(reveal["bidHash"], bid_hash(reveal["bid"], reveal["salt"], reveal))
+        commit = records[reveal["commitRef"]["contentHash"]]
+        self.assertEqual(commit["bidHash"], reveal["bidHash"])
+        self.assertEqual(commit["channelId"], reveal["channelId"])
+
+    def test_record_signature_covers_channel_id(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        vector = vectors["complete-lowest-price"]
+        records = vector["context"]["resolvedRecords"]
+        reveal = records[vector["receipt"]["winner"]["revealRef"]["contentHash"]]
+        key = vector["context"]["recordPublicKeys"][reveal["bidderClaim"]]
+        original_signature = reveal["signature"]["value"]
+        original_hash = digest(unsigned(reveal))
+        self.assertTrue(
+            verify(key, original_signature, (RECORD_DOMAIN + original_hash).encode("ascii"))
+        )
+        tampered = copy.deepcopy(reveal)
+        tampered["channelId"] = "chan-tampered"
+        tampered_hash = digest(unsigned(tampered))
+        self.assertNotEqual(tampered_hash, original_hash)
+        self.assertFalse(
+            verify(key, original_signature, (RECORD_DOMAIN + tampered_hash).encode("ascii"))
+        )
+
+    def test_channel_assignment_and_native_writer_authority_are_distinct(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        valid = vectors["complete-lowest-price"]
+        assignments = valid["context"]["authenticatedChannelAssignments"]
+        admission = valid["context"]["bindingResolution"]["definition"]["admission"]
+        records = valid["context"]["resolvedRecords"]
+        for entry in valid["receipt"]["entries"]:
+            record = records[entry["recordRef"]["contentHash"]]
+            assignment = assignments[record["bidderClaim"]]
+            self.assertTrue(assignment["authenticated"])
+            self.assertEqual(assignment["channelId"], record["channelId"])
+            self.assertEqual(
+                assignment["members"],
+                sorted((valid["listing"]["publisherClaim"], record["bidderClaim"])),
+            )
+            native_writer = admission["writerBindings"][record["bidderClaim"]]
+            self.assertNotEqual(native_writer, record["bidderClaim"])
+            self.assertEqual(entry["anchorReceipt"]["writer"], native_writer)
+
+        self.assertEqual(
+            Evaluator(vectors["other-bidder-channel-assignment-rejected"]).evaluate(),
+            "fail",
+        )
+        self.assertEqual(
+            Evaluator(vectors["channel-assignment-unavailable"]).evaluate(),
+            "indeterminate",
+        )
+        boundary = vectors["reveal-at-commit-deadline-admitted"]
+        self.assertEqual(Evaluator(boundary).evaluate(), "pass")
+        self.assertIn(
+            "admitted-reveal",
+            {decision["disposition"] for decision in boundary["receipt"]["recordDecisions"]},
+        )
+
+    def test_copied_commitment_excludes_the_copier(self):
+        vector = next(
+            item for item in self.data["vectors"]
+            if item["name"] == "copied-commitment-as-other-bidder-excluded"
+        )
+        self.assertEqual(Evaluator(vector).evaluate(), "pass")
+        records = vector["context"]["resolvedRecords"]
+        mismatch_hashes = [
+            decision["recordContentHash"]
+            for decision in vector["receipt"]["recordDecisions"]
+            if decision.get("reason") == "bid-hash-mismatch"
+        ]
+        self.assertEqual(len(mismatch_hashes), 1)
+        copier_claim = records[mismatch_hashes[0]]["bidderClaim"]
+        winner = vector["receipt"]["winner"]["bidderClaim"]
+        self.assertNotEqual(copier_claim, winner)
+        copied_reveal = records[mismatch_hashes[0]]
+        winner_reveal = records[vector["receipt"]["winner"]["revealRef"]["contentHash"]]
+        self.assertEqual(copied_reveal["bid"], winner_reveal["bid"])
+        self.assertEqual(copied_reveal["bidHash"], vector["receipt"]["winner"]["bidHash"])
 
 
 if __name__ == "__main__":

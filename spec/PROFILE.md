@@ -34,11 +34,16 @@ composition is:
 
 The coordinated cut is identified by the annotated repository tag `v0.4`.
 
-## Unreleased JID-1 corrective candidate
+## Unreleased corrective candidate
 
-This candidate is a **breaking pre-v1 correction** under CORE §11.1.2, not an
-ordinary additive minor. It replaces the existing `jobId` meaning and every
-normalization-tolerant job-specific derivation. Its affected document tuple is:
+This candidate carries the **breaking pre-v1 JID-1 correction** under CORE
+§11.1.2 — it replaces the existing `jobId` meaning and every
+normalization-tolerant job-specific derivation — declared at CORE v0.3 /
+DACS-1 v0.7 / DACS-2 v0.6 / DACS-3 v0.5 / DACS-4 v0.7 / DACS-5 v0.5. On top of
+that candidate, the governed legacy-agreement activation boundary is added as
+DACS-4 v0.8 (LAA-1..LAA-7), and DACS-3 v0.6 / DACS-5 v0.6 apply that checkpoint
+to pay-bearing commitment and bundle/reputation admission. Its complete current
+document tuple is:
 
 | Document | Version | Status |
 | --- | --- | --- |

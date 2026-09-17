@@ -37,7 +37,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
-| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.8 current composed profile (JID-1 boundary declared at v0.7): §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -49,12 +49,15 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
+| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 8 | `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 11 | `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 366 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
+| [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 100 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -73,7 +76,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 79 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
-| [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
+| [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 24 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 32 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
@@ -83,6 +86,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 85 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -579,7 +583,7 @@ remains unified. `expected` is the comparison check (`pass`/`fail`);
 
 ### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
 
-17 candidate vectors for the DACS-4/DACS-5 composition edge under the
+24 candidate vectors for the DACS-4/DACS-5 composition edge under the
 structurally distinct settlement-verified derivation types: the selected
 authoritative bundle's presented SettlementEvidence must pass independent
 semantic authority before the job enters reputation, after two present copies
@@ -588,7 +592,14 @@ one verified completed job and counts the Agreement price once. One-field
 adversarial arms reject amount, payer, payee/destination, session, phase, rail,
 and finality contradictions. Transaction rejection and authority-indeterminate
 arms both exclude the job without fault. A semantically invalid `failed-perm`
-bundle pins the symmetric denominator effect.
+bundle pins the symmetric denominator effect. Legacy-agreement arms carry the
+full DACS-4 LAA-1..LAA-7 admission input in `laa` and run the shared LAA oracle
+against the successful payment rather than trusting a precomputed disposition:
+`fail`/`error` rejects, `indeterminate` stays indeterminate, and a historical
+`pass` is current-ineligible — excluded from every current numerator,
+denominator, rating, volume, `bundleCount`, and `bundleRefs`. An omitted,
+malformed, or unknown `laa` input is non-authorizing and rejects the bundle
+member, never default-accepting it.
 
 Most inputs hold the presented reference multiset at one. Two-reference arms
 prove that one invalid member rejects the entire multiset and that two valid
@@ -1012,6 +1023,71 @@ submission because an applicable binding cannot be resolved. `error` means a
 resolver/input error is surfaced as error, with no tier-3 downgrade and no
 payment. This set is candidate data only; cross-run convergence and any golden
 promotion remain pending.
+
+### `legacy-agreement-admission-v0.8.json` — §9.5.1 LAA-1..LAA-7 / §8.6 CA-10
+
+One hundred candidate cases execute the governed transition from legacy
+`AgreementDocument` payment authority to the payee-bound artifacts
+(`PayeeBoundAgreementDocument` and the stronger
+`IdentityBoundPayeeAgreementDocument`). They cover fixed-address checkpoint
+resolution, steward/domain/address/policy authentication, finalized activation
+order, binding-qualified pre-activation absence that covers the authenticated
+payment-effect head, the stale-absence race across the activation boundary, a
+caller-supplied low `paymentPosition` being inert against that authenticated
+head, immediate current-session refusal, the zero-length in-flight policy, and
+CA-10 commitment-phase selection (a commitment `pass` carrying zero payment side
+effects while the later payment re-runs LAA).
+
+Historical cases require the exact party-signed agreement, agreement-hash
+commitment, and settlement-evidence binding to carry finalized receipts on one
+authenticated substrate and one exact consensus ordering domain, strictly
+before the checkpoint. The settlement-evidence receipt MUST bind the exact
+authenticated agreement hash, job, session, and phase of the agreement whose
+commitment is being qualified; an authentic receipt for a different agreement,
+job, session, or phase is a replay and cannot qualify this agreement's history.
+Authenticated absence on another substrate is inert; cross-order-domain scalar
+positions are never compared. Backdated `generatedAt` or `observedAt`, a late
+presentation/re-anchor, ordinary not-found, non-final receipts, same-position
+ambiguity, checkpoint conflict/reorg, and unavailable proof cannot manufacture
+current payment authority. Concrete malformed inputs — a non-object agreement
+or checkpoint container, a commitment missing a required field, a missing
+`agreementBindingMatches` / `agreementHashMatches` / `contentHash` /
+`signatureValid`, a non-string receipt position, an unhashable list/dict
+operation, artifact, or position, an unknown receipt state, a malformed
+same-block native-order flag, a malformed authenticated payment-head position,
+and a conflicting checkpoint discriminator — return the four-value `error`
+disposition rather than raising, never `fail`, `indeterminate`, or an
+uncaught `TypeError`/`AttributeError`. Structural validation precedes every
+authorization early return: `operation` must be a scalar member of the closed
+LAA operation vocabulary and the agreement must carry a scalar `contentHash`
+before any payee-bound / identity-bound / zero-pay / authenticated-absence
+branch may authorize, so a payee-bound or identity-bound agreement missing
+`contentHash`, and an authenticated-absence branch carrying a malformed
+operation, are `error` (never `pass`). The session/hash identity values are
+independently verified and non-empty canonical: an empty, whitespace-only, or
+leading/trailing-whitespace `agreement.contentHash` or `sessionId` (and any
+non-NFC spelling) is malformed and rejected `error` before any payee-bound,
+identity-bound, zero-pay, absence, or checkpoint branch may otherwise
+authorize, and the `LegacyAgreementLedger` refuses a `commit` / `authorize_payment`
+keyed by such an identity. A historical LAA `pass` is
+`historical-only` (current-ineligible),
+never a generic `continue`: it is excluded from current metrics on every bundle
+type (`AttestationBundle`, `FaultAttestationBundle`,
+`EvidenceBoundFaultAttestationBundle`) and every derivation path (`derive`,
+`derive_job_bound`, `derive_settlement_verified`, replay). A bundle whose
+successful payment cites a legacy agreement MUST carry the verifier-owned full
+LAA input; a missing, malformed, unknown, or caller-only `laaDisposition`
+without that full object excludes the bundle from `bundleCount`, `bundleRefs`,
+and every metric — never default-eligible. The set carries the
+candidate corrective release pin and complete module tuple.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_legacy_agreement_admission_vectors.py --write
+python3 scripts/generate_legacy_agreement_admission_vectors.py --check
+python3 -m unittest tests.test_legacy_agreement_admission_vectors -v
+```
 
 ### `domain-claim-gcr-v0.4.json` — DACS-1 §6.3.1 DCR-1..DCR-8 / DACS-2 §7.3.10 DGCR-1..DGCR-6
 
@@ -1456,6 +1532,76 @@ Run the dependency-free executable checks from the repository root:
 
 ```sh
 python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
+```
+
+### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
+
+Sixty-seven candidate cases execute consumer-verifiable settlement finality for
+block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
+liquidity-tank profiles. The consumer derives the model and strength from the
+exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
+always treated as a producer report, never as proof.
+
+The fixture-only proof codec uses raw JCS-encoded transaction, event and header
+bodies, Merkle relations, every ancestry link, independently pinned Ed25519
+observation/provider authorities, and weighted BFT certificates. Cases cover
+network, genesis, transaction/index, proof/root/path, quorum/key, freshness,
+provider-byte/attestation, malformed-nested-input and production-codec-unavailable
+failures. Provider capture passes only as `provisional-provider-capture`.
+HTLC carries four independently verified source-lock/source-claim/
+destination-lock/destination-reveal arms and recomputes contract, per-chain
+hashlock, preimage, amount and timelock relations from authenticated bytes.
+Liquidity-tank verifies coordinator, source and destination arms and exact bridge,
+transfer, asset and amount binding.
+
+The same corpus executes the distinct DACS-5 finality-bound bundle and pointer,
+all six FV models, non-pass propagation, new/new and new/older authenticated
+reconciliation, no weaker fallback, and frozen-reader refusal. The separate
+`current-use-reputation-v1.json` corpus composes that consumer with the #391
+historical arm. Existing EBFAB and reputation contracts remain unchanged. The
+synthetic fixture policy is not a registered live substrate policy; native
+production proof-wire support remains unavailable.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_settlement_finality_verification_vectors.py --write
+python3 scripts/generate_settlement_finality_verification_vectors.py --check
+python3 -m unittest tests.test_settlement_finality_verification_vectors -v
+```
+
+### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
+
+Eight candidate fixtures drive the complete stronger DACS-5 consumer path. Six
+compose the finality-bound bundle consumer with every FV model, exact RSV and
+applicable SB-3 checks; the provider-receipt case remains classified as
+provisional capture. Two retain the complete original requests for the legacy
+write-input BundleBinding and deterministic pure-mapping arms.
+
+Every vector embeds the complete executable replay input: the exact request, its
+full authenticated dependency closure, the verifier configuration with public
+keys, the trusted query context, and the expected outcome. The set hash binds
+these complete replay inputs, so each case is independently executable from the
+committed JSON alone and any authority, receipt, finality, or
+historical-evidence mutation changes the bound payload and yields a non-pass
+decision.
+
+The focused executable tests mutate every duplicated historical join, checkpoint
+discovery and external trust, BB-6 standing/budget/admission order, role absence,
+new/older precedence, required settlement binding, metrics and replay inputs. They
+also execute old-reader refusal and malformed-container totality, and the
+JSON-only replay corpus tests re-execute the committed bytes and their mutation
+boundary directly. Native anchor
+and settlement-binding proofs are independently pinned signed synthetic fixtures
+for offline testing only; they do not define a production Demos proof codec.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_current_use_reputation_vectors.py
+python3 scripts/generate_current_use_reputation_vectors.py --check
+python3 -m unittest tests.test_current_use_reputation_vectors -v
+python3 -m unittest tests.test_current_use_replay_corpus -v
 ```
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1

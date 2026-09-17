@@ -81,6 +81,15 @@ jobs:
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
 
+      - name: Verify settlement-finality vectors are deterministic
+        run: python3 scripts/generate_settlement_finality_verification_vectors.py --check
+
+      - name: Verify finality-resolution vectors are deterministic
+        run: python3 scripts/generate_finality_resolution_context_vectors.py --check
+
+      - name: Verify current-use reputation vectors are deterministic
+        run: python3 scripts/generate_current_use_reputation_vectors.py --check
+
       - name: Verify sealed-auction completeness vectors are deterministic
         run: python3 scripts/generate_sealed_auction_completeness_vectors.py --check
 
@@ -92,6 +101,9 @@ jobs:
 
       - name: Verify SB-2 collision-authority vectors are deterministic
         run: python3 scripts/generate_sb2_collision_authority_vectors.py --check
+
+      - name: Verify legacy-agreement admission vectors are deterministic
+        run: python3 scripts/generate_legacy_agreement_admission_vectors.py --check
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check

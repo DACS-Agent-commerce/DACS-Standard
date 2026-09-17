@@ -13,6 +13,59 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — legacy agreement activation boundary
+
+- **Current pay-bearing sessions require payout binding** (#377) — adds the
+  steward-signed `LegacyAgreementActivationCheckpoint` and LAA-1..LAA-7. At
+  activation, new and in-flight pay-bearing sessions must use a payee-bound
+  artifact — `PayeeBoundAgreementDocument` or the stronger
+  `IdentityBoundPayeeAgreementDocument` with `commit-identity-bound-payee-agreement`;
+  the v0.x transition has no caller-asserted in-flight exception.
+- **Authenticated historical admission** — legacy agreement signatures remain
+  verifiable, but historical settlement authority requires exact agreement,
+  commitment, and settlement-evidence bindings with finalized receipts strictly
+  before the governed checkpoint on one authenticated substrate and one exact
+  finality/genesis ordering domain. Another substrate's checkpoint absence and
+  cross-domain scalar positions are inert. Backdated producer timestamps, local
+  flags, ordinary not-found responses, and missing era proof authorize no payment.
+- **Negotiation gate** — DACS-3 CA-10 applies the same checkpoint before a
+  pay-bearing commitment and retains legacy agreement selection only for
+  authenticated pre-activation or zero-pay flows. A commitment `pass` carries
+  zero payment side effects; the later DACS-4 payment re-runs LAA-1..LAA-7.
+- **Activation-boundary hardening** — authoritative absence must cover the
+  authenticated payment-effect head (or be reserved atomically with it), so a
+  checkpoint that finalizes after a stale absence observation cannot authorize
+  payment, and a caller-supplied top-level `paymentPosition` cannot lower that
+  head to mask a stale absence. Historical-era proof binds the
+  settlement-evidence receipt to the exact authenticated agreement hash, job,
+  session, and phase (cross-agreement, cross-job, cross-session, and cross-phase
+  replay are rejected), and untrusted non-object containers, missing required
+  fields, wrong scalars, or unhashable list/dict shapes return the four-value
+  `error` disposition instead of raising (`TypeError`/`AttributeError`). DACS-5
+  marks a historical LAA `pass` current-ineligible — `historical-only`, never a
+  generic `continue` — excluded from every current numerator, denominator,
+  rating, volume, `bundleCount`, and `bundleRefs` on every bundle type and
+  derivation path. The candidate corrective release pin and complete module
+  tuple are recorded on the affected evidence.
+
+### Fixed — legacy-payment LAA session binding and replay carrier
+
+- **Verifier-owned session binding (fail-closed)** — the derive/job-bound path
+  no longer recovers the expected session identity from an optional caller/tag
+  `sessionId`. A current-eligible legacy-payment LAA binds its authenticated
+  `sessionAuthority.sessionId` to the verifier-owned session authority for the
+  bundle's `jobId`; an absent, mismatched, or cross-session authoritative session
+  binding excludes the bundle fail-closed on every current derive, job-bound, and
+  replay path. Only the explicitly named non-authorizing historical/audit-only
+  derivation retains released pre-LAA bytes.
+- **Closed legacy-payment replay carrier** — a current legacy-payment
+  `ResolutionContextEntry` now carries `legacyPayment`, the full `laa`, and a
+  canonical `legacyPaymentCarrier` commitment binding the exact marker, job,
+  authenticated session, agreement contentHash, bundle contentHash, and full LAA.
+  Replay recomputes and byte-matches the carrier before any authorizing result;
+  marker/LAA/carrier removal, agreement/session/job substitution, or marker/LAA
+  disagreement refuses replay fail-closed.
+
 ### Fixed — DACS-4 v0.8 AP2 receipt references
 
 - **Provider resource and SR-3 transaction are now distinct** (DACS-4 §9.3,
@@ -33,7 +86,6 @@ The format used per release:
   does not claim to be the live provider/network receipt. This establishes
   provider-test reference-backing without changing the rail's operator-gated
   production availability.
-
 ### Fixed — DACS-3 sealed-auction candidate completeness
 
 - **Complete sealed-envelope profile (SAC-1..SAC-10; #376)** — adds new
@@ -205,6 +257,94 @@ The format used per release:
   invalid UTF-8, a valid literal replacement character, BOM, comments, malformed
   syntax, and trailing data, reproduced by both the standard-library adapter and
   an independent recursive-descent parser.
+
+### Added — unallocated #391+#392 combined current-use reputation candidate
+
+- **Distinct all-or-nothing derivation** — adds the unsigned
+  `CurrentUseReplayableReputationDerivation` with the exclusive
+  `currentUseReplayableDerivationVersion: "1"` discriminator. It validates every
+  explicitly requested job before emitting metrics, composes finality-bound FV
+  with existing RSV/SB-3 checks, preserves provider capture as provisional, and
+  replays the complete authenticated dependency chain and canonical result.
+  Existing derivation discriminators, algorithms, metrics and bytes are unchanged;
+  unsupported old readers reject the new type. No DACS-5 minor is allocated.
+- **Authenticated historical arm** — adds the steward-signed
+  `LegacyBundleActivationCheckpoint` and write-input
+  `LegacyBundleCheckpointBinding` types/domains plus LAB-1..LAB-7. Current-use
+  admission proves an original signed BundleBinding and original BB-6 context,
+  or genuine pure mapping, then joins the exact finalized native receipt and
+  strict pre-checkpoint order under verifier-configured trust. Missing,
+  conflicting, pruned, reorganized or unorderable authority remains non-passing.
+- **Offline executable coverage** — adds deterministic, independently pinned
+  synthetic proof fixtures for both historical mapping arms, all six FV models,
+  role/BB-6/reconciliation/finality/replay negatives, old-reader refusal and
+  malformed-container totality. These fixtures do not claim a production Demos
+  native cryptographic codec.
+- **Defensive current-use admission corrections** — purpose-binds the fixture-only
+  synthetic checkpoint, historical and current proofs; ties both legacy mapping arms to the caller's
+  requested substrate; requires every authenticated present copy's exact
+  buyer/seller roster to match verifier-owned job roles; and admits historical
+  nonpayment only from an authenticated signed Listing plus a complete,
+  outcome-consistent execution/evidence set. Unsupported empty or incomplete summaries and
+  omitted or incomplete settlement evidence remain `indeterminate`; an authenticated
+  abort before the first phase may establish an empty complete execution prefix. Historical
+  algorithms, artifact shapes and signature domains are unchanged; the verifier
+  never converts signed historical bytes.
+- **Executable current-use replay corpus** — the committed eight-case
+  current-use corpus now embeds, for every case, the complete executable
+  request, the full authenticated dependency set, the verifier configuration
+  with public keys and trusted query context, and the expected outcome; the set
+  hash is computed over those complete replay inputs, so each case is
+  independently executable and any authority, receipt, finality, or
+  historical-evidence mutation yields a non-pass decision.
+
+### Added — unallocated #392 consumer-verifiable settlement finality candidate
+
+- **Finality-bound evidence** (#392) — adds the structurally distinct
+  `FinalityBoundSettlementEvidence` type and
+  `dacs-finality-bound-evidence:v1:` signature domain. An explicitly selected
+  finality-bound payment-success contract binds the exact signed RailDefinition
+  revision; older readers reject the new type instead of accepting an unverified
+  scalar confirmation count. No DACS-4 minor is allocated by this proposal.
+- **FV-1..FV-10 canonicality verifier** — derives the model and required
+  strength from the authenticated rail profile, verifies network/genesis or
+  provider identity, transaction/event inclusion, authenticated head and
+  ancestry, independent depth/commitment/BFT quorum, freshness and
+  reorg/replacement state. HTLC uses four independent authenticated observations
+  for source lock/claim and destination lock/reveal, each with its own inclusion
+  and finality proof; an aggregate status cannot replace them. Tank models verify
+  every leg; provider capture remains explicitly provisional.
+- **Typed DACS-5 consumer boundary** — adds the distinct
+  `FinalityBoundEvidenceFaultAttestationBundle` and matching extended pointer
+  domains. Its successful payment members run FV and propagate every non-pass;
+  old EBFAB and every existing derivation retain their prior meanings. #392
+  initially reserved `CurrentUseReplayableReputationDerivation`; this combined
+  #391+#392 candidate activates it with #391's authenticated historical-era and
+  role admission under CUR-1..CUR-8 and LAB-1..LAB-7.
+- **Producer report clarified** — `SettlementFinalityRecord` remains signed and
+  auditable but is not finality proof. Wrong or insufficient proof fails;
+  missing, conflicting, pruned or unstable authority is `indeterminate`;
+  malformed proof is `error`.
+- **Finality resolution context v1** (#392 D2) — adds a separate verifier-local
+  `FinalityResolutionContextVersion1`, signed
+  `FinalityObservationResponseVersion1`, and
+  `dacs-finality-observation-response:v1:` domain. A signed rail capability
+  selects this path without fallback to the frozen historical single-view
+  input. The first registered binding remains fixture-only and requires every
+  configured authority seat.
+- **Acquisition, conflict, replay and composite gates** — binds the complete
+  authenticated query, policy-ordered authority set, checkpoint, nonce and
+  local acquisition boundary; resolves the union of transported and retained
+  responses; preserves four-value dispositions and historical replay
+  provenance; and verifies each composite leg independently. Timing evidence
+  measures verifier CPU separately from a modeled slowest-seat acquisition
+  boundary and does not create a conformance latency threshold.
+- **Fail-closed provider attestation authority** — `_verify_provider` in the
+  executable FV reference treats a missing, null, empty, or nonmatching
+  `providerAttestations` trust map as `indeterminate` (authenticated authority
+  unavailable), and a malformed list, string, number, or Boolean map as
+  `error`, without any broad exception catch. The canonical map continues to
+  pass through both the direct FV path and the composed DACS-5 path.
 
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 

@@ -18,6 +18,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CH-* | Private-channel membership, replay handling, canonical message/signature wire, and strict historical-import dispatch | §8.3.1 / §8.3.3 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
+| CUR-* | Explicit all-or-nothing current-use reputation derivation and full dependency replay | §10.5.1 | §14.5 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
 | DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
@@ -25,11 +26,15 @@ This non-normative index helps implementers locate labelled conformance rules in
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
+| FRC-* | Verifier-issued multi-authority finality resolution, retained conflict union, replay, and composite gating | §9.7.0 | §14.4 |
+| FV-* | Consumer-verifiable canonical settlement finality | §9.7.0 | §14.4 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IBH-* | Identity-bound agreement digest derivation, authenticated companion joins, and cross-stage enforcement | §B.2 | §14.3 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
+| LAA-* | Legacy agreement activation and historical-era admission | §9.5.1 | §14.4 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
+| LAB-* | Current-use admission of original legacy bundle mappings and strictly pre-checkpoint receipts | §10.4 | §14.5 |
 | JID-* | Canonical byte-exact job identifier grammar, derivation gate, and equality | §B.1 | §14.6 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
@@ -47,7 +52,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RA-* | Recipe-family authoring and resolution | §7.4.3 | §14.2 |
 | RAV-* | Recipe availability values and consumers | §7.4.5 | §14.2 |
 | RAV-R* | Rail availability values and orchestrators | §9.4.4 | §14.4 |
-| RD-* | Delivery phase required data | §9.4.3 | §14.4 |
+| RD-* | Rail definition authoring and finality-profile requirements | §9.4.3 | §14.4 |
 | RFQ-* | RFQ negotiation turns | §8.4.2 | §14.3 |
 | RB-* | Listing-revocation marker binding, retained discovery, and fail-closed resolution | §6.3.4 | §14.1 |
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |

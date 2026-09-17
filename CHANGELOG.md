@@ -66,6 +66,38 @@ The format used per release:
   Replay recomputes and byte-matches the carrier before any authorizing result;
   marker/LAA/carrier removal, agreement/session/job substitution, or marker/LAA
   disagreement refuses replay fail-closed.
+### Fixed — DACS-3 sealed-auction candidate completeness
+
+- **Complete sealed-envelope profile (SAC-1..SAC-10; #376)** — adds new
+  demand/procurement phase kinds, signed bidder commit/reveal records, an
+  authenticated current-finalized candidate-set binding, exact every-record
+  accounting, and an independently reproducible `SealedSelectionReceipt`.
+  Omitting a better reveal, selecting from a stale or partial index, or
+  continuing through unavailable/forked evidence now blocks selection.
+- **Selection-bound agreement and commitment type** — adds the structurally
+  distinct `SealedSelectionAgreementDocument` and
+  `commit-selection-bound-agreement`. The agreement parties sign the exact
+  finalized receipt reference; DACS-4 and DACS-5 reproduce it before using the
+  winner, price, payout, or reputation. Older readers reject the unknown
+  phase/type before action under CORE §11.1.2.
+- **Unspecified rule execution removed from the complete profile** — only
+  CD-1 `lowest-price` and `highest-price` plus the SE-5 tie-break are supported.
+  `first-acceptable` and `rule-ref` are refused before fetch/execution until a
+  future structurally distinct phase pins a deterministic VM, byte encodings,
+  numeric/error semantics, resource bounds, and no ambient I/O.
+- **Demos capability boundary recorded** — positive Storage Program anchors do
+  not prove complete prefix enumeration. Complete sealed phases remain
+  capability-missing on Demos until the node/binding exposes authenticated
+  latest-finalized enumeration, record-set proof, ordering, lag, and fork/reorg
+  handling. Historical sealed phases remain audit-readable under their
+  released, explicitly non-complete semantics.
+- **Complete-profile conformance coverage completed** — the deterministic SAC
+  corpus now covers demand with absent and explicit mode, both role directions,
+  authenticated SR-2 definition resolution and policy derivation, the exact
+  reveal-deadline finality boundary, listing-derived non-USD currency, an
+  independently authenticated invocation tuple, fully re-signed cross-session
+  artifacts, and exact closed commit/reveal shapes. These fixture controls do
+  not add or imply a native provider completeness capability.
 
 ### Fixed — authenticated Vet replay and reference consumers
 
@@ -162,7 +194,8 @@ The format used per release:
   `IdentityBoundAgreementDocument` and
   `IdentityBoundPayeeAgreementDocument`, each with an exclusive version
   discriminator, registered signature domain, and signed Listing commitment
-  phase. Exact four-way phase/artifact dispatch is enforced before commitment,
+  phase. In the integrated five-artifact registry, exact five-way
+  phase/artifact dispatch is enforced before commitment,
   payment, terminal admission, or reputation counting.
 - **Authenticated cross-stage identity proof** — the new nested
   `IdentityBoundAgreementParty` carries a bare recomputed IdentityBundleHash.

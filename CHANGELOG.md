@@ -1,6 +1,5 @@
 # DACS Changelog
 
-
 All notable changes to the Demos Agent Commerce Standards.
 
 This document follows the spirit of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The format is adapted for a standards document rather than a software project: the focus is on normative changes that affect implementers, not on internal editorial revisions.
@@ -149,6 +148,76 @@ The format used per release:
   hashing, or signature verification. Fixture payloads and signatures are
   byte-preserved.
 
+### Fixed — DACS-3 v0.6 channel-message wire split
+
+- **Breaking pre-v1 corrective classification** (CORE §11.1.2; DACS-3
+  §8.3.3 CH-7..CH-10; #349) — the v0.6 current-wire replacement is a breaking
+  pre-v1 correction under the CORE §11.1.2 corrective boundary, not an
+  ordinary additive minor. The replacement is defined by its exclusive
+  `canonicalChannelMessageVersion: "1"` discriminator, the version-1
+  signature envelope, and the exact CH-8 signed-byte framing
+  `"dacs-canonical-channel-message:v1:" || ASCII(lowercase-hex
+  sha256(JCS(unsigned_message)))`. It is bound to the exact coordinated profile
+  tuple recorded in `PROFILE.md` (CORE v0.3, DACS-1 v0.8, DACS-2 v0.6, DACS-3
+  v0.6, DACS-4 v0.8, DACS-5 v0.6) and does not claim ordinary cross-minor
+  compatibility with a pre-v0.6 channel-message profile. The historical Demos
+  arm is archival-only: a conforming reader accepts historical bytes only
+  through the explicitly selected `legacy-import` operation, refuses them on
+  `current-read`, and never falls back between arms; no legacy fallback is
+  added anywhere.
+- **Canonical current message** (DACS-3 §8.3.3 CH-7..CH-10; #349) — replaces
+  the undefined `ChannelMessageSignature` and contradictory bare-hex positive
+  examples with a discriminated `CanonicalChannelMessage`, a versioned
+  signature envelope, CORE SIG-6 unpadded Base64URL, canonical signer/sender
+  authority, and byte-exact `dacs-canonical-channel-message:v1:` plus ASCII
+  lowercase-hex-digest framing.
+- **Historical Demos arm frozen** — retains
+  `channel-message-replay-v0.1.json` byte-for-byte as read/import-only evidence
+  for the discriminator-free bare-lowercase-hex wire and its historical
+  `dacs-channelmsg:v1:` plus raw-32-byte-digest payload. New producers cannot
+  emit that type. A trusted caller must select `current-read` or
+  `legacy-import` before parsing message-controlled bytes; structural dispatch
+  then occurs before crypto and never retries a value decoder, domain, digest
+  framing, or alternate arm.
+- **Executable migration boundary** — adds 55 generated current and mixed-wire
+  cases plus an in-repository oracle that also executes all 15 frozen legacy
+  cases. Valid, tampered, cross-domain, and wrong-framing cases execute all
+  three advertised algorithms against independently bound public-key fixtures.
+  Coverage also includes the four partial mixtures, encoding/version/signer
+  failures, CH-6 channel/sequence replay, SIG-5 unknown-field preservation, and
+  exact legacy signature-byte retention. Current-wire Ed25519 sender/signer
+  identities are canonical registered DACS-1 `key:<64hex>` claims; the oracle's
+  current arm reuses the shared registered-scheme parser from
+  `scripts/dacs_reference.py`, refuses a correctly signed generic `cci:<64hex>`
+  sender on `current-read`, and keeps the generic spelling readable only through
+  the explicit `legacy-import` arm for frozen archival bytes. The current cases
+  also require verifier-owned exact release, module-tuple, session, and
+  participant admission before live-state issuance; exercise missing,
+  malformed, mismatched, duplicated, and unauthenticated profile authority;
+  and reject an explicitly present `refs: null` rather than treating it as an
+  absent optional member.
+  `@kynesyslabs/demosdk@4.0.16` is
+  recorded only as historical-arm evidence; no current Demos SDK producer
+  version is claimed.
+- **Authenticated channel membership** — the executable reader obtains each
+  sender's claim, key, and key type through a verifier-owned fixed CH-1
+  membership capability that is separate from message and session input.
+  Membership uniqueness and lookup use CF-3 identity without advisory
+  parameters. A correctly signed outsider, caller-supplied authority map,
+  parameter-variant key selection, and member message signed by another key
+  cannot establish admission.
+- **Atomic verifier-owned channel state** (#367) — replay, session, and terminal
+  state now comes from an issuer-retained capability rather than presented
+  vector context. Trusted fixture setup is separately reviewed, and the retained
+  registry is explicitly injected across issuer reconstruction. This in-memory
+  reference does not claim durable restart guarantees. Current negotiation state
+  and historical audit cursors are
+  separate; successful verification atomically advances arbitrary increasing
+  sequences, authenticated aborts terminate, and agreement/timeout closure is
+  recorded only through trusted lifecycle events. Known authenticated
+  algorithm mismatches fail before unavailable-key indeterminacy, and malformed
+  enum containers produce controlled errors without changing state. Signed
+  current and frozen historical wire bytes, domains, and shapes are unchanged.
 ### Added — distinct identity-bound agreement paths
 
 - **Cross-stage admission and terminal correction** (CORE SN-1..SN-4 /
@@ -292,10 +361,8 @@ The format used per release:
   An exact-tuple retry resumes with the same AP2-6 key and can never create or
   count a second payment; cross-job/cross-phase reuse rejects, and conflicting
   stored bindings fail closed.
-- **Executable AP2 handler-safety candidates** cover idempotency-key bytes,
-  JID-1 refusal before hashing, and the frozen NFC-tagged recipe as an identity
-  operation for valid current IDs; exact compact-JWS `transaction_id`
-  derivation with `_sd_alg` selection;
+- **Executable AP2 handler-safety candidates** cover idempotency-key bytes and
+  NFC; exact compact-JWS `transaction_id` derivation with `_sd_alg` selection;
   separate CheckoutMandate + PaymentMandate admission before AP2-7/provider
   side effects; exact-tuple retry/resume; cross-session/cross-phase replay;
   the DACS checkout-signature profile; and split-credential registration.
@@ -363,7 +430,7 @@ The format used per release:
   unknown phase; ordinary and repeated payment pipelines retain their prior
   meaning.
 
-### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.7 / DACS-2 v0.6 / DACS-3 v0.5 / DACS-4 v0.7 / DACS-5 v0.5
+### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.6
 
 - **Canonical byte-exact `jobId` grammar** (CORE §B.1 JID-1..JID-4;
   DACS-4 §9.5.8; DACS-5 §10.3/§10.4.2; #339) — replaces the ambiguous
@@ -373,8 +440,7 @@ The format used per release:
   assembly, job-specific hashing, discovery, lookup, comparison, signing, or
   side effects and never trim, case-fold, alias-decode, percent-decode, or
   Unicode-normalize it. Cross-artifact equality is byte-exact. The DACS-5
-  bundle address is now explicitly
-  `stor-` plus the lowercase SHA-256 hex of
+  bundle address is now explicitly `stor-` plus the lowercase SHA-256 hex of
   `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 47 deterministic
   vectors with three independent literal address known answers, Unicode/case/
   alias/overflow negatives, comparison cases, and executed zero-hash/

@@ -42,6 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
+| [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -964,42 +965,113 @@ mismatch). Models the VC Data-Integrity `challenge` discipline, not a generic jt
 Plus a top-level `keys` map (public keys) so verification is self-contained.
 Run (reference): `npx tsx conformance/security-vectors/vp-replay/run.mts` → 13/13.
 
-### `channel-message-replay-v0.1.json` — §8.3.3 + CH-6 (channel-message replay / channelId reuse)
+### `channel-message-replay-v0.1.json` — frozen historical Demos read arm
 
-15 vectors for the cross-session / in-channel offer-replay defence (threat-matrix
-row #14 — the DACS-normative replay analog of the SR-4/L2PS nonce-reuse case, which
-was correctly **declined** as a DACS vector because the crypto envelope is left to
-implementations). A `ChannelMessage` is admitted only if **all** hold, as the
-§7.5.1 4-value decision (never collapsed):
+These 15 vectors are frozen byte-for-byte as the historical
+`LegacyDemosChannelMessage` corpus. They remain executable for explicit
+read/import compatibility and MUST NOT be treated as current producer examples.
+The historical object has no message discriminator, carries a bare
+128-lowercase-hex signature, and signs the **raw 32-byte** digest under
+`"dacs-channelmsg:v1:"`. It is selected structurally before crypto and never as
+a fallback after current-message failure. Within that historical arm, admission
+requires all of:
 
 - **CH-6** — the session's `channelId` MUST NOT be one reused from a prior session
-  (`priorChannelIds`); a reused session channel → `fail` (the whole session is rejected).
+  according to the verifier-owned retained registry; a reused session channel
+  → `fail` (the whole session is rejected).
 - **channel binding** — `message.channelId == sessionChannelId`; a foreign-channel
   message (a genuine message from another session presented here) → `fail`.
-- **signature** — over `"dacs-channelmsg:v1:" || sha256(JCS(envelope − signature))`
-  by the sender's self-describing `cci:<hex>` key. An unresolvable sender key →
-  `indeterminate` (NOT `fail`); an invalid signature → `fail`.
+- **signature** — over `UTF8("dacs-channelmsg:v1:") || raw_32_byte_sha256(UTF8(JCS(envelope − signature)))`
+  by the independently authenticated channel member key. The retained historical
+  `cci:<hex>` spelling is not membership authority. A known algorithm mismatch
+  → `fail`; matching authenticated metadata with unavailable key bytes →
+  `indeterminate`; an invalid signature → `fail`.
 - **monotonic sequence** — strictly greater than the highest already seen in the
   channel (starts at 1, §8.3.3); a duplicate or decreasing `sequence` → `fail`.
 
 A cross-session replay fails **both** ways: keep the old `channelId` → channel-binding
 `fail`; rewrite it → the signature (computed over the original `channelId`) breaks.
-Malformed artifacts — a non-canonicalisable `body`, a non-integer/negative
-`ctx.lastSequence`, or a non-string `priorChannelIds` element — return `error`,
-never collapsing to `fail` (so bad context cannot bypass the replay gate).
+Malformed artifacts or malformed trusted setup return `error`. The frozen
+`ctx` field is retained test metadata, compared against independently reviewed
+setup in `tests/channel_message_fixture_authority.py`; it never initializes
+state from the presented candidate. The runtime evaluator accepts a previously
+issued state capability, not a `ctx` object.
 
 #### Vector schema
 | field      | meaning |
 |------------|---------|
 | `name`     | stable case id |
 | `expected` | §7.5.1 verdict (4-value, never collapsed) |
-| `message`  | the `ChannelMessage` under test (channelId, sequence, sender, signature, body…) |
-| `ctx`      | per-case `{ sessionChannelId, lastSequence, priorChannelIds }` |
+| `message`  | the `LegacyDemosChannelMessage` under test (channelId, sequence, sender, signature, body…) |
+| `ctx`      | frozen scenario metadata; compared with separate trusted harness configuration, never state authority |
 
-Self-contained (sender keys are self-describing `cci:<hex>`; signatures are real
-ed25519 over the §8.3.3 signed scope). Run (reference):
-`npx tsx conformance/security-vectors/channel-message-replay/run.mts` → 20/20
-(15 persisted vectors + 5 non-serialisable robustness assertions).
+Signatures are real Ed25519 over the frozen historical scope; member/key
+authority and initial state are supplied independently by the harness. Each
+fixture is an isolated verifier lifetime. Within a lifetime, a caller-supplied
+retained registry preserves identifiers, sequences and terminal status across
+issuer facade reconstruction; live and audit registries are distinct. This
+in-memory reference does not establish durable restart or distributed-storage
+guarantees. Production adapters must retain transactional state for their replay
+horizon and demonstrate continuity across restart. The shipped executable oracle is
+`python3 -m unittest tests.test_channel_message_vectors`; it replays all 15
+persisted cases and pins the complete legacy file SHA-256. The previously cited
+external TypeScript runner is not part of this repository and is not the
+conformance authority.
+
+### `canonical-channel-message-v0.6.json` — §8.3.3 CH-6..CH-10
+
+55 deterministic cases for the discriminated current
+`CanonicalChannelMessage` and its strict historical boundary. The current arm
+uses `canonicalChannelMessageVersion: "1"`, a versioned
+`ChannelMessageSignature`, SIG-6 unpadded Base64URL, and exactly:
+
+```
+UTF8("dacs-canonical-channel-message:v1:")
+  || ASCII(lowercase_hex(sha256(UTF8(JCS(message − signature)))))
+```
+
+Current-wire sender/signer identities are canonical registered DACS-1
+claims: the Ed25519 members carry `key:<64 lowercase hex>` primary-key
+references and the non-Ed25519 algorithm fixtures carry `did:` references.
+Before issuing current live state, the harness requires verifier-owned exact
+release-pin, complete module-tuple, session, and authenticated-participant
+admission. The corpus covers missing, partial, wrong-pin, duplicate-participant,
+session-mismatch, identity-mismatch, and unauthenticated authority; the frozen
+`legacy-import` arm is non-live and exempt. It also distinguishes absent
+optional `refs` from malformed explicit `refs: null`.
+The historical generic `cci:<64hex>` spelling is unregistered on the current
+wire — an otherwise correctly signed message carrying it is refused by
+`current-read` while the canonical `key:` spelling of the same key passes —
+and it remains readable only through the explicit `legacy-import` arm for
+frozen archival bytes.
+
+The caller-selected `operation` is `current-read` or `legacy-import`; it is
+trusted harness policy, not a message member or a wire-shape inference. The same
+valid frozen legacy bytes reject on `current-read` and pass only on the explicit
+`legacy-import` operation.
+
+The corpus covers valid first/next/gapped sequences; positive, tampered,
+cross-domain, and wrong-framing examples for Ed25519, ECDSA-secp256k1, and an
+authenticated `sr1-root` aggregate signature; duplicate/decreasing,
+foreign-channel and reused-channel rejection; unavailable sender authority;
+an otherwise-valid outsider signature and a member signature made by the wrong
+key against the verifier-owned authenticated member/key capability; CF-3
+matching of a parameter-qualified sender and signer to the one member identity;
+tampering; padded/standard-Base64/hex value rejection; unknown message and
+signature versions; unknown algorithm and algorithm/key confusion; closed
+signature-envelope shape and integer/member boundaries;
+signer/sender mismatch; SIG-5 unknown-field preservation; current/legacy
+cross-domain replay; raw-versus-ASCII-hex framing in both directions; and the
+four explicit mixed-wire barriers (discriminator + bare hex, no discriminator
++ current envelope, discriminator + raw-digest signature, and historical shape
++ hex-digest signature). A frozen historical positive also records the exact
+Base64URL re-encoding of its raw signature bytes without representing that
+re-encoding as a current signature.
+
+Generate/check with
+`python3 scripts/generate_channel_message_vectors.py --check`; execute every
+current, mixed, and frozen historical verdict with
+`python3 -m unittest tests.test_channel_message_vectors`.
 
 ### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
 

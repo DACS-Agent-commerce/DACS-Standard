@@ -135,6 +135,7 @@ JOB_IDS = {
     "replacement": "01KTY8ZJ00CW7KSECW3FS6PQ0F",
     "historicalSealed": "01KTY8ZJ00CW7KSECW3FS6PQ0G",
     "identityBoundSealed": "01KTY8ZJ00CW7KSECW3FS6PQ0H",
+    "identityBoundProcurement": "01KTY8ZJ00CW7KSECW3FS6PQ0I",
 }
 
 FIXTURE_REQUIREMENT = {
@@ -352,17 +353,25 @@ def listing(
     sealed: bool = False,
     alternative: bool = False,
     listing_id: str | None = None,
+    sealed_deadline: int = NOW - 7_000,
+    procurement: bool = False,
 ) -> dict[str, Any]:
     deliverable = {"kind": "storage-program", "accessModel": "public"}
     pipeline: list[dict[str, Any]] = [{"kind": "vet-credentials"}]
     if sealed:
+        sealed_parameters = {
+            "commitDeadline": sealed_deadline,
+            "revealWindow": 1_000,
+            "selectionRule": "highest-price",
+        }
+        if procurement:
+            sealed_parameters["auctionMode"] = "procurement"
         pipeline.append({
-            "kind": "negotiate-sealed-envelope",
-            "parameters": {
-                "commitDeadline": NOW - 7_000,
-                "revealWindow": 1_000,
-                "selectionRule": "highest-price",
-            },
+            "kind": (
+                "negotiate-sealed-envelope-procurement"
+                if procurement else "negotiate-sealed-envelope"
+            ),
+            "parameters": sealed_parameters,
         })
     else:
         pipeline.append({"kind": "negotiate-fixed-price"})
@@ -382,13 +391,17 @@ def listing(
             "kind": "pay-dem", "parameters": {"rail": RAIL_REF["railId"]}
         })
     pipeline.append({"kind": "deliver-storage-program"})
+    publisher_role = "buyer" if procurement else "seller"
     value: dict[str, Any] = {
         "dacsVersion": "1",
         "listingVersion": 1,
         "listingId": listing_id or f"dacs-390-{job_id}",
         "seller": {
             "identity": copy.deepcopy(seller_bundle),
-            "displayName": "DACS #390 seller",
+            "displayName": (
+                "DACS #390 procurement publisher"
+                if procurement else "DACS #390 seller"
+            ),
         },
         "offering": {
             "title": "Identity-bound fixture",
@@ -417,7 +430,7 @@ def listing(
         "terms": {"deadlineSecAfterCommit": 3600},
         "validity": {"notBefore": NOW - 100_000, "notAfter": NOW + 100_000},
     }
-    value["signature"] = component_signature(value, LISTING_DOMAIN, "seller")
+    value["signature"] = component_signature(value, LISTING_DOMAIN, publisher_role)
     return value
 
 
@@ -1236,6 +1249,8 @@ def scenario(
     alternative: bool = False,
     selection: str = "dem",
     listing_id: str | None = None,
+    sealed_deadline: int = NOW - 7_000,
+    procurement: bool = False,
 ) -> dict[str, Any]:
     if disposition is not None:
         disposition = copy.deepcopy(disposition)
@@ -1261,14 +1276,20 @@ def scenario(
         )
         for role in ("buyer", "seller", "orchestrator", *agreement_roles[2:])
     }
+    publication_role = "buyer" if procurement else "seller"
     publication_bundle = identity_bundle(
-        "seller", hashlib.sha256(b"listing-publication-only").hexdigest()
+        publication_role,
+        hashlib.sha256(
+            b"procurement-listing-publication-only" if procurement
+            else b"listing-publication-only"
+        ).hexdigest(),
     )
     publication_bundle.pop("sessionNonce")
-    resign_bundle(publication_bundle, "seller")
+    resign_bundle(publication_bundle, publication_role)
     signed_listing = listing(
         PHASES[artifact], publication_bundle, job_id,
         sealed=sealed, alternative=alternative, listing_id=listing_id,
+        sealed_deadline=sealed_deadline, procurement=procurement,
     )
     selected_ref, handler, currency = RAIL_SELECTIONS[selection]
     results = {role: verify_result(role, job_id) for role in agreement_roles}
@@ -1629,8 +1650,15 @@ def resign_context(context: dict[str, Any], action: str) -> None:
     elif action.startswith("agreement-domain:"):
         refresh_agreement_chain(context, signing_as=action.split(":", 1)[1])
     elif action == "listing-chain":
+        publisher_claim = (
+            context["listing"].get("seller", {}).get("identity", {}).get("presentedBy")
+        )
+        publisher_role = next(
+            (role for role, claim in CLAIMS.items() if claim == publisher_claim),
+            "seller",
+        )
         context["listing"]["signature"] = component_signature(
-            context["listing"], LISTING_DOMAIN, "seller"
+            context["listing"], LISTING_DOMAIN, publisher_role
         )
         ref = listing_ref(context["listing"])
         context["agreement"]["listingRef"] = copy.deepcopy(ref)
@@ -2826,6 +2854,140 @@ def build_vectors() -> list[dict[str, Any]]:
             stage=stage,
             reason="verified",
         ))
+    # SE-1 new-session deadline gate over the signed commitDeadline against the
+    # verifier-trusted session start time (identity-bound sealed scenario startedAt
+    # is NOW - 20_000, so the exact 60s boundary is NOW + 40_000).
+    sealed_deadline_path = ["listing", "pipeline", 1, "parameters", "commitDeadline"]
+    for label, deadline, expected, reason in (
+        ("exact-boundary", NOW + 40_000, "pass", "verified"),
+        ("59_999-short", NOW + 39_999, "fail", "sealed-deadline-too-soon"),
+        ("13_000-ms", NOW - 7_000, "fail", "sealed-deadline-too-soon"),
+        ("at-session-start", NOW - 20_000, "fail", "sealed-deadline-too-soon"),
+    ):
+        vectors.append(vector(
+            f"sealed-deadline-{label}", expected,
+            scenario_name="identityBoundSealed",
+            mutations=[set_mutation(sealed_deadline_path, deadline)],
+            resign=["listing-chain"],
+            reason=reason,
+        ))
+    vectors.append(vector(
+        "sealed-deadline-missing", "fail",
+        scenario_name="identityBoundSealed",
+        mutations=[delete_mutation(sealed_deadline_path)],
+        resign=["listing-chain"],
+        reason="sealed-deadline-invalid",
+    ))
+    vectors.append(vector(
+        "sealed-deadline-malformed", "fail",
+        scenario_name="identityBoundSealed",
+        mutations=[set_mutation(sealed_deadline_path, "soon")],
+        resign=["listing-chain"],
+        reason="sealed-deadline-invalid",
+    ))
+    # B9: procurement mode (SE-8) is gated before SE-1. A genuine procurement
+    # specimen assigns the listing publisher as the agreement buyer and the
+    # winning bidder as the agreement seller (DACS-3 §8.4.3/SE-8). The matrix
+    # covers the exact 60_000 ms boundary, one millisecond short, at/past
+    # deadline, and missing/malformed deadline on the real procurement specimen.
+    for label, deadline, expected, reason in (
+        ("procurement-exact-boundary", NOW + 40_000, "pass", "verified"),
+        ("procurement-59_999-short", NOW + 39_999, "fail", "sealed-deadline-too-soon"),
+        ("procurement-at-session-start", NOW - 20_000, "fail", "sealed-deadline-too-soon"),
+        ("procurement-13_000-ms", NOW - 7_000, "fail", "sealed-deadline-too-soon"),
+    ):
+        vectors.append(vector(
+            f"sealed-deadline-{label}", expected,
+            scenario_name="identityBoundProcurement",
+            mutations=[set_mutation(sealed_deadline_path, deadline)],
+            resign=["listing-chain"],
+            reason=reason,
+        ))
+    for label, mutation in (
+        ("procurement-missing", delete_mutation(sealed_deadline_path)),
+        ("procurement-malformed", set_mutation(sealed_deadline_path, "soon")),
+    ):
+        vectors.append(vector(
+            f"sealed-deadline-{label}", "fail",
+            scenario_name="identityBoundProcurement",
+            mutations=[mutation],
+            resign=["listing-chain"],
+            reason="sealed-deadline-invalid",
+        ))
+    # B9 SE-8 enforcement: a procurement phase missing or carrying an
+    # unresolvable auctionMode refuses with unresolvable-auctionMode before the
+    # SE-1 deadline gate can run, even when the deadline itself would be valid.
+    vectors.append(vector(
+        "sealed-deadline-procurement-missing-auctionMode", "fail",
+        scenario_name="identityBoundProcurement",
+        mutations=[
+            delete_mutation(["listing", "pipeline", 1, "parameters", "auctionMode"]),
+            set_mutation(sealed_deadline_path, NOW + 40_000),
+        ],
+        resign=["listing-chain"],
+        reason="unresolvable-auctionMode",
+    ))
+    vectors.append(vector(
+        "sealed-deadline-procurement-malformed-auctionMode", "fail",
+        scenario_name="identityBoundProcurement",
+        mutations=[
+            set_mutation(
+                ["listing", "pipeline", 1, "parameters", "auctionMode"], "demand"
+            ),
+            set_mutation(sealed_deadline_path, NOW + 40_000),
+        ],
+        resign=["listing-chain"],
+        reason="unresolvable-auctionMode",
+    ))
+    # B9 SE-8 role direction: the mode marker alone cannot authorize. A demand
+    # scenario whose phase kind is flipped to procurement (with a procurement
+    # auctionMode) but whose agreement roles still assign the listing publisher
+    # as the agreement seller is rejected as sealed-role-direction-invalid.
+    procurement_kind = set_mutation(
+        ["listing", "pipeline", 1, "kind"],
+        "negotiate-sealed-envelope-procurement",
+    )
+    procurement_mode = set_mutation(
+        ["listing", "pipeline", 1, "parameters", "auctionMode"], "procurement"
+    )
+    vectors.append(vector(
+        "sealed-deadline-procurement-marker-alone-no-role-swap", "fail",
+        scenario_name="identityBoundSealed",
+        mutations=[
+            procurement_kind, procurement_mode,
+            set_mutation(sealed_deadline_path, NOW + 40_000),
+        ],
+        resign=["listing-chain"],
+        reason="sealed-role-direction-invalid",
+    ))
+    # A genuine procurement specimen whose agreement buyer/seller roles are
+    # swapped (so the winning bidder is the agreement buyer and the publisher is
+    # the agreement seller) is rejected as sealed-role-direction-invalid, even
+    # with a valid marker and deadline.
+    vectors.append(vector(
+        "sealed-deadline-procurement-buyer-role-mismatched", "fail",
+        scenario_name="identityBoundProcurement",
+        mutations=[
+            set_mutation(["agreement", "parties", 0, "role"], "seller"),
+            set_mutation(["agreement", "parties", 1, "role"], "buyer"),
+        ],
+        resign=["agreement-chain"],
+        reason="sealed-role-direction-invalid",
+    ))
+    # C11: falsify the gate by mutating the PROTECTED sessionStartedAt, never a
+    # listing evaluation time.
+    vectors.append(vector(
+        "sealed-deadline-session-start-moved", "fail",
+        scenario_name="identityBoundSealed",
+        mutations=[
+            set_mutation(["commitInput", "sessionContext", "startedAt"], NOW + 200_000),
+            set_mutation(
+                ["verifierContext", "authenticatedSessionContext", "startedAt"],
+                NOW + 200_000,
+            ),
+        ],
+        reason="sealed-deadline-too-soon",
+    ))
     for artifact in ARTIFACTS:
         vectors.append(vector(
             f"modeled-old-reader-{artifact}",
@@ -2959,7 +3121,12 @@ def build() -> dict[str, Any]:
         "agreement", JOB_IDS["historicalSealed"], sealed=True
     )
     scenarios["identityBoundSealed"] = scenario(
-        "identityBoundAgreement", JOB_IDS["identityBoundSealed"], sealed=True
+        "identityBoundAgreement", JOB_IDS["identityBoundSealed"], sealed=True,
+        sealed_deadline=NOW + 100_000,
+    )
+    scenarios["identityBoundProcurement"] = scenario(
+        "identityBoundAgreement", JOB_IDS["identityBoundProcurement"], sealed=True,
+        sealed_deadline=NOW + 100_000, procurement=True,
     )
     vectors = build_vectors()
     return {

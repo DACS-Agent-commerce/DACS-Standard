@@ -10,7 +10,7 @@
     "#249 revocation marker logical-to-native binding",
     "live convention-named fixture incorporation pending contributor handoff"
   ],
-  "decisionModel": "Historical RB-only model: a valid marker yields revoked; an integrity-consistent active record without a binding yields discovery-only absent. Under DACS-1 v0.8 this absent result is partial/inert and cannot admit a new session without RSC-1..RSC-9 current-head non-membership. Missing required bindings, tuple/logical/hash/signature failures, unreachable anchors, stale records, and surface-integrity failures yield indeterminate.",
+  "decisionModel": "Historical RB-only model: a valid marker yields revoked; an integrity-consistent active record without a binding yields discovery-only absent. Under DACS-1 v0.8 this absent result is partial/inert and cannot admit a new session without RSC-1..RSC-10 current-head non-membership. Missing required bindings, tuple/logical/hash/signature failures, unreachable anchors, stale records, and surface-integrity failures yield indeterminate.",
   "publicKeys": {
     "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05": "iw64cX4_FjVt3PVtQh-2o90lEdCjSvhQfXYBIPpCOwU"
   },

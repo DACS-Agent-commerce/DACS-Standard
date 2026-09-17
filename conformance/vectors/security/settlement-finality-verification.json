@@ -212,32 +212,35 @@
       }
     },
     "sr3TransactionFinalityProfile": {
-      "kind": "bft-final",
-      "networkId": "demos:mainnet",
-      "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-      "observation": {
-        "method": "rpc-quorum",
-        "authorityRefs": [
-          "rpc-a",
-          "rpc-b",
-          "rpc-c"
-        ],
-        "threshold": 2,
-        "maxHeadAgeSec": 60
-      },
-      "validatorSetRef": {
-        "anchor": {
-          "kind": "storage-program",
-          "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+      "sr3Binding": "provider-jws-v1",
+      "settlement": {
+        "kind": "bft-final",
+        "networkId": "demos:mainnet",
+        "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+        "observation": {
+          "method": "rpc-quorum",
+          "authorityRefs": [
+            "rpc-a",
+            "rpc-b",
+            "rpc-c"
+          ],
+          "threshold": 2,
+          "maxHeadAgeSec": 60
         },
-        "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-      },
-      "quorumNumerator": 2,
-      "quorumDenominator": 3
+        "validatorSetRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+          },
+          "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+        },
+        "quorumNumerator": 2,
+        "quorumDenominator": 3
+      }
     }
   },
-  "count": 79,
-  "hash": "493ba7cb1810836d15978f2a4e8a7f8d33db9583262c87c4463519cef0c430c7",
+  "count": 83,
+  "hash": "974a363b43fefa202881e757fc84158727a26523c6539a5ed72a2a481b2905a6",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -18194,6 +18197,1205 @@
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
         "dacs5BundleDecision": "error"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-native-profile-malformed-empty-list",
+      "expected": "error",
+      "note": "a malformed trusted SR-3 finality profile is error, not indeterminate",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      },
+      "trustedOverrides": {
+        "sr3TransactionFinalityProfile": []
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-native-profile-malformed-settlement",
+      "expected": "error",
+      "note": "a malformed trusted SR-3 finality settlement profile is error, not indeterminate",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      },
+      "trustedOverrides": {
+        "sr3TransactionFinalityProfile": {
+          "settlement": []
+        }
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-native-profile-binding-mismatch",
+      "expected": "indeterminate",
+      "note": "the native transaction finality profile must be bound to the selected SR-3 binding",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "indeterminate"
+      },
+      "trustedOverrides": {
+        "sr3TransactionFinalityProfile": {
+          "sr3Binding": "other-sr3-binding-v1",
+          "settlement": {
+            "kind": "bft-final",
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "observation": {
+              "method": "rpc-quorum",
+              "authorityRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "threshold": 2,
+              "maxHeadAgeSec": 60
+            },
+            "validatorSetRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              },
+              "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+            },
+            "quorumNumerator": 2,
+            "quorumDenominator": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-malformed-observation-before-profile",
+      "expected": "error",
+      "note": "a malformed native transaction observation is error even when the trusted finality profile is missing",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": []
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      },
+      "trustedOverrides": {
+        "sr3TransactionFinalityProfile": null
       }
     },
     {

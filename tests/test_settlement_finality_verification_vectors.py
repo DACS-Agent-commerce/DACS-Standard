@@ -132,7 +132,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(79, self.data["count"])
+        self.assertEqual(83, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -266,6 +266,39 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         no_bft["context"]["receiptTransactionObservation"]["finalityCertificate"] = None
         with self.subTest(native="finality-certificate-missing"):
             self.assertEqual("indeterminate", verify_finality(no_bft, self.trust)["decision"])
+
+    def test_ap2_sr3_malformed_trust_and_decision_order(self):
+        control = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+
+        no_profile = copy.deepcopy(self.trust)
+        no_profile["sr3TransactionFinalityProfile"] = None
+        with self.subTest(native="profile-missing"):
+            self.assertEqual("indeterminate", verify_finality(control, no_profile)["decision"])
+
+        for malformed in ([], {}, {"sr3Binding": "provider-jws-v1"}):
+            trust = copy.deepcopy(self.trust)
+            trust["sr3TransactionFinalityProfile"] = malformed
+            with self.subTest(native="profile-malformed", value=malformed):
+                result = verify_finality(control, trust)
+                self.assertEqual("error", result["decision"])
+                self.assertIn("malformed trusted SR-3 native transaction finality", result["reason"])
+
+        wrong_binding = copy.deepcopy(self.trust)
+        wrong_binding["sr3TransactionFinalityProfile"] = {
+            "sr3Binding": "other-sr3-binding-v1",
+            "settlement": self.trust["sr3TransactionFinalityProfile"]["settlement"],
+        }
+        with self.subTest(native="profile-binding-mismatch"):
+            result = verify_finality(control, wrong_binding)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("bound to a different SR-3 binding", result["reason"])
+
+        malformed_observation = copy.deepcopy(control)
+        malformed_observation["context"]["receiptTransactionObservation"] = []
+        with self.subTest(native="observation-malformed-plus-profile-missing"):
+            result = verify_finality(malformed_observation, no_profile)
+            self.assertEqual("error", result["decision"])
+            self.assertIn("malformed SR-3 native transaction observation", result["reason"])
 
     def test_frozen_ap2_arm_remains_distinct_and_unchanged(self):
         ap2 = self.cases["fv-provider-receipt-canonical-success"]["input"]

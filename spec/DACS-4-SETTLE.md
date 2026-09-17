@@ -1414,6 +1414,7 @@ type FinalityVerificationContext =
       providerRef: string
       responseBytes: string
       responseAttestation: AttestationRef
+      receiptTransactionObservation?: AuthenticatedChainObservation   // REQUIRED iff the signed ChainTxRef selects the ap2-sr3 arm (current Demos DAHR binding); the frozen ap2 arm MUST NOT carry it
     }
   | {
       kind: "htlc"
@@ -1434,6 +1435,11 @@ type FinalityVerificationResult = {
   finalityClass?: "profile-final" | "provisional-provider-capture" // present on pass; profile-final does not claim mathematical irreversibility beyond the signed profile
   reason: string
 }
+
+type SR3NativeTransactionFinalityAuthority = {
+  sr3Binding: string                      // MUST equal the selected rail profile's sr3Binding; a profile bound to a different binding is not authoritative
+  settlement: ChainFinalityProfile        // kind MUST be bft-final for the current Demos DAHR ap2-sr3 binding
+}
 ```
 
 All integer-like `position` values are unsigned minimal decimal strings. This
@@ -1447,8 +1453,10 @@ The FV entry point consumes exactly the signed finality-bound evidence, the
 resolved steward-signed rail, the authenticated signed Agreement, and one
 `FinalityVerificationContext`. Its separate verifier-local trust input supplies
 the current acquisition time, steward/party keys, pinned observation authorities,
-provider response attestations, validator-set checkpoints, and authenticated
-session/phase/role authority. Candidate fields cannot add or replace those trust
+provider response attestations, validator-set checkpoints, authenticated
+session/phase/role authority, and — for the `ap2-sr3` arm — an
+`SR3NativeTransactionFinalityAuthority` whose `sr3Binding` equals the selected
+rail profile's `sr3Binding`. Candidate fields cannot add or replace those trust
 anchors. Missing trusted authority is `indeterminate`; malformed trusted material
 is `error`.
 
@@ -1470,16 +1478,23 @@ is `error`.
   producer metadata only and MUST NOT supply authority, freshness, order or
   confirmation depth.
 - **(FV-3) Raw proof admission.** Before parsing, verify the context kind and
-  every conditional member required by the profile. Duplicate JSON keys,
-  invalid encodings, non-minimal/negative positions, an unknown proof kind, or
-  a context/profile kind mismatch is `error`. Consumers MUST NOT canonicalize a
-  malformed input into validity or substitute an indexer summary for proof.
+  every conditional member required by the profile. For the `provider` context,
+  `receiptTransactionObservation` is REQUIRED exactly when the signed
+  `ChainTxRef` selects the `ap2-sr3` arm and is forbidden on the frozen `ap2`
+  arm. Duplicate JSON keys, invalid encodings, non-minimal/negative positions,
+  an unknown proof kind, or a context/profile kind mismatch is `error`.
+  Consumers MUST NOT canonicalize a malformed input into validity or substitute
+  an indexer summary for proof.
 - **(FV-4) Network and authority identity.** For every chain observation,
   authenticate `networkId` and `genesisHash` against the pinned profile before
   accepting any header, receipt, log, instruction, state or certificate. For a
   provider observation, authenticate the exact `providerId`, HTTPS origin,
-  provider reference, SR-3 binding and response-body hash. A wrong identity is
-  `fail`; unavailable authentication is `indeterminate`.
+  provider reference, SR-3 binding and response-body hash. For the `ap2-sr3`
+  arm, authenticate the native `web2Request` transaction observation under the
+  verifier-local `SR3NativeTransactionFinalityAuthority` whose `sr3Binding`
+  equals the selected binding; a profile bound to any other binding is not
+  authoritative. A wrong identity is `fail`; unavailable authentication is
+  `indeterminate`.
 - **(FV-5) Transaction and selected-event inclusion.** Verify the native
   transaction/receipt inclusion proof against `inclusionBlock`. When the
   `ChainTxRef` selects an EVM log or Solana instruction, independently verify
@@ -1532,6 +1547,14 @@ is `error`.
   exact SR-3-attested response bytes, provider/session/amount/currency bindings,
   capture status and freshness; a pass has
   `finalityClass: "provisional-provider-capture"`, never `irreversible`.
+  When the signed reference selects the `ap2-sr3` arm, the verifier MUST also
+  authenticate `receiptTransactionObservation` as a native
+  `AuthenticatedChainObservation` at the selected binding's
+  `bft-final` `ChainFinalityProfile`, bound to the rail's `sr3Binding`, and
+  require its authenticated `web2-request` event to commit to the exact
+  provider response hash and status resource (the current Demos DAHR binding,
+  DEMOS-MAPPING §A.3). The frozen `ap2` arm carries no native-transaction
+  authority and MUST be rejected if one is supplied.
   Missing composite authority is `indeterminate`; a proved contradiction is
   `fail`.
 - **(FV-10) Four-value result and reuse.** Structural/encoding impossibility is
@@ -1539,7 +1562,12 @@ is `error`.
   strength or non-capture is `fail`; unavailable, conflicting or unstable
   authority is `indeterminate`; only complete verification is `pass`. Evaluate
   deterministic `error`/`fail` facts before unrelated uncertainty so an
-  attacker cannot hide a mismatch by withholding another input. PC-7 may treat
+  attacker cannot hide a mismatch by withholding another input. For the
+  `ap2-sr3` arm, a missing `receiptTransactionObservation` or a missing
+  `sr3Binding`-bound finality authority is `indeterminate`, a malformed
+  observation or malformed trusted authority is `error`, and a malformed
+  observation is `error` before an unrelated missing authority is considered.
+  PC-7 may treat
   payment as rail-final only after `pass`; a non-provider pass reports
   `finalityClass: "profile-final"`, which means the signed profile was satisfied
   and does not assert stronger mathematical irreversibility. DACS-5

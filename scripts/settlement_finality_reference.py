@@ -1037,6 +1037,7 @@ def _verify_sr3_native_transaction(
     reference: dict,
     response_hash: str,
     receipt_attestation: dict,
+    sr3_binding: str,
     trusted: dict,
 ) -> tuple[str, str]:
     """Authenticate the SR-3 native ``web2Request`` transaction inclusion at
@@ -1045,21 +1046,30 @@ def _verify_sr3_native_transaction(
     The DAHR binding (DEMOS-MAPPING §A.3) exposes a consensus-anchored hash
     commitment, so the reference authenticates the on-chain transaction and the
     response commitment it carries; it does not claim multi-validator body
-    observation.
+    observation.  The candidate observation shape is checked before the
+    verifier-local trusted finality authority so a malformed observation is
+    ``error`` even when the trusted authority is also missing (FV-10).
     """
-    if observation is None:
-        return "indeterminate", "authenticated SR-3 native transaction observation unavailable"
-    profile = trusted.get("sr3TransactionFinalityProfile")
-    if not isinstance(profile, dict) or not _chain_profile_shape(profile) or profile.get("kind") != "bft-final":
-        return "indeterminate", "authenticated SR-3 native transaction finality profile unavailable"
     required = {
         "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
         "selectedEventProof", "inclusionBlock", "authenticatedHead", "ancestryProof",
         "authorityEvidence",
     }
     optional = {"finalityCertificate"}
+    if observation is None:
+        return "indeterminate", "authenticated SR-3 native transaction observation unavailable"
     if not _exact_object(observation, required, optional):
         return "error", "malformed SR-3 native transaction observation"
+    authority = trusted.get("sr3TransactionFinalityProfile")
+    if authority is None:
+        return "indeterminate", "authenticated SR-3 native transaction finality profile unavailable"
+    if not _exact_object(authority, {"sr3Binding", "settlement"}):
+        return "error", "malformed trusted SR-3 native transaction finality authority"
+    if authority.get("sr3Binding") != sr3_binding:
+        return "indeterminate", "authenticated SR-3 native transaction finality profile is bound to a different SR-3 binding"
+    profile = authority.get("settlement")
+    if not _chain_profile_shape(profile, "bft-final"):
+        return "error", "malformed trusted SR-3 native transaction finality profile"
     if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
         return "fail", "SR-3 native transaction network or genesis differs from signed profile"
     if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
@@ -1425,6 +1435,7 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
             ref.get("receiptTransactionRef"),
             response_hash,
             ref.get("receiptAttestation"),
+            profile.get("sr3Binding"),
             trusted,
         )
         if sr3_decision != "pass":

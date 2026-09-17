@@ -150,7 +150,10 @@ class FixtureFactory:
             "validatorSets": {validator_set_hash: validator_set},
             "providerAttestations": {},
             "sessionAuthorityByJob": {},
-            "sr3TransactionFinalityProfile": self.chain_profile("bft-final", network="demos:mainnet"),
+            "sr3TransactionFinalityProfile": {
+                "sr3Binding": "provider-jws-v1",
+                "settlement": self.chain_profile("bft-final", network="demos:mainnet"),
+            },
         }
         self.controls = {}
 
@@ -836,7 +839,7 @@ class FixtureFactory:
         context["responseAttestation"] = copy.deepcopy(receipt_attestation)
         self.trusted["providerAttestations"][response_hash] = attestation
 
-        sr3_profile = self.trusted["sr3TransactionFinalityProfile"]
+        sr3_profile = self.trusted["sr3TransactionFinalityProfile"]["settlement"]
         web2_ref = {"kind": "demos-web2-request", "value": tx_hash}
         web2_event = {
             "eventType": "web2-request",
@@ -1181,6 +1184,10 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-ap2-sr3-bft-certificate-missing", "indeterminate", "the native transaction finality certificate is independently required", changed_sr3(lambda v: v["context"]["receiptTransactionObservation"].__setitem__("finalityCertificate", None))),
         case("fv-ap2-sr3-malformed-receipt-transaction-ref", "error", "the ap2-sr3 receipt transaction reference is closed over kind and value", changed_sr3(lambda v: (v["evidence"]["paymentTxRefs"][0]["receiptTransactionRef"].__setitem__("value", 12345), factory.resign_evidence(v["evidence"])))),
         case("fv-ap2-sr3-frozen-arm-native-authority-forbidden", "error", "the frozen ap2 arm must not carry SR-3 native transaction authority", changed("provider-receipt", lambda v: v["context"].__setitem__("receiptTransactionObservation", {}))),
+        case("fv-ap2-sr3-native-profile-malformed-empty-list", "error", "a malformed trusted SR-3 finality profile is error, not indeterminate", factory.provider_sr3_value(), trusted_overrides={"sr3TransactionFinalityProfile": []}),
+        case("fv-ap2-sr3-native-profile-malformed-settlement", "error", "a malformed trusted SR-3 finality settlement profile is error, not indeterminate", factory.provider_sr3_value(), trusted_overrides={"sr3TransactionFinalityProfile": {"settlement": []}}),
+        case("fv-ap2-sr3-native-profile-binding-mismatch", "indeterminate", "the native transaction finality profile must be bound to the selected SR-3 binding", factory.provider_sr3_value(), trusted_overrides={"sr3TransactionFinalityProfile": {"sr3Binding": "other-sr3-binding-v1", "settlement": copy.deepcopy(factory.trusted["sr3TransactionFinalityProfile"]["settlement"])}}),
+        case("fv-ap2-sr3-malformed-observation-before-profile", "error", "a malformed native transaction observation is error even when the trusted finality profile is missing", changed_sr3(lambda v: v["context"].__setitem__("receiptTransactionObservation", [])), trusted_overrides={"sr3TransactionFinalityProfile": None}),
     ])
 
     sr3_bad_response = factory.provider_sr3_value()
@@ -1189,7 +1196,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     sr3_event = json.loads(base64.urlsafe_b64decode(sr3_encoded + "=" * (-len(sr3_encoded) % 4)))
     sr3_event["responseHash"] = "00" * 32
     sr3_bad_response["context"]["receiptTransactionObservation"] = factory.chain_observation(
-        factory.trusted["sr3TransactionFinalityProfile"],
+        factory.trusted["sr3TransactionFinalityProfile"]["settlement"],
         sr3_observation["transactionRef"], sr3_event, "ap2-sr3:bad-response",
     )
     vectors.append(case("fv-ap2-sr3-response-hash-contradiction", "fail", "the native transaction must commit the exact provider response hash", sr3_bad_response))

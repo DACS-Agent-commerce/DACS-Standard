@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 8,
-  "hash": "2dc02de4082a2f2950a5b2fce18366c98709438979ab4bc32c34ec7cdc9481ab",
+  "hash": "38c33875c3725942376993cc1124b00249d094b29f7f3730bd925b355a340e37",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -921,28 +921,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -1933,28 +1936,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -2962,28 +2968,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -4025,28 +4034,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -5485,28 +5497,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -6817,28 +6832,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -7686,28 +7704,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {
@@ -8324,28 +8345,31 @@
               }
             },
             "sr3TransactionFinalityProfile": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+              "sr3Binding": "provider-jws-v1",
+              "settlement": {
+                "kind": "bft-final",
+                "networkId": "demos:mainnet",
+                "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+                "observation": {
+                  "method": "rpc-quorum",
+                  "authorityRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "threshold": 2,
+                  "maxHeadAgeSec": 60
                 },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
+                "validatorSetRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                  },
+                  "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+                },
+                "quorumNumerator": 2,
+                "quorumDenominator": 3
+              }
             }
           },
           "partyRolesByJob": {

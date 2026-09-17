@@ -486,28 +486,52 @@ side effect:
   an unavailable/pruned proof, an unresolved reorganisation, or an unorderable
   receipt is `indeterminate`. Before first activation, only binding-qualified
   authoritative absence at an authenticated head establishes that no
-  checkpoint yet exists; ordinary `not found` does not.
+  checkpoint yet exists; ordinary `not found` does not. That absence proof MUST
+  cover the payment effect: it must establish absence as of a position at or
+  after the authenticated head at which the payment is submitted, or the
+  authorization MUST be durably reserved and consumed atomically with that
+  payment effect. That head position is authenticated payment-submission state —
+  the verifier-owned session/commitment authority — never a caller-supplied
+  top-level `paymentPosition`; a caller cannot lower a self-asserted position to
+  make a stale absence look current. An absence proven only up to an earlier
+  head is stale — a checkpoint that finalizes after that observation and before
+  the payment is not masked by it — and is `indeterminate`, not `pass`.
 - **(LAA-2) Current pay-bearing sessions.** At or after activation, every new
-  session whose effective pipeline contains a `PaymentPhaseType` MUST use
-  `PayeeBoundAgreementDocument` and `commit-payee-bound-agreement`. A legacy
-  `AgreementDocument`, a `commit-agreement` phase, or a legacy-shaped artifact
-  hidden behind `pay-alternative` MUST be rejected before payment. A pre-existing
-  Listing does not grandfather a newly started session.
+  session whose effective pipeline contains a `PaymentPhaseType` MUST use a
+  payee-bound artifact — `PayeeBoundAgreementDocument` with
+  `commit-payee-bound-agreement`, or the stronger
+  `IdentityBoundPayeeAgreementDocument` with
+  `commit-identity-bound-payee-agreement`. A legacy `AgreementDocument`, a
+  non-payee `IdentityBoundAgreementDocument`, a `commit-agreement` phase, or a
+  legacy-shaped artifact hidden behind `pay-alternative` MUST be rejected before
+  payment. A pre-existing Listing does not grandfather a newly started session.
 - **(LAA-3) No in-flight payment transition.** The v0.x policy has a zero-length
   transition: once the checkpoint is finalized, even a pre-checkpoint session
   that has not completed payment MUST NOT initiate or resume a payment from a
   legacy agreement. It must terminate without another payment side effect and,
   if commerce is still wanted, start a fresh job whose parties sign a
   payee-bound agreement. CA-3 immutability forbids replacing the committed
-  artifact inside the old job. This explicit refusal avoids a caller-supplied
-  “in flight” label becoming an exception.
+  artifact inside the old job. An authentically committed pre-checkpoint deal
+  continues only under its original signed terms — the already-finalized
+  commitment and any already-finalized payment are reconciled idempotently with
+  exact ordering and no expanded or new payment authority; a commitment
+  finalized before the checkpoint does not grant a post-checkpoint payment
+  effect. Completed pre-checkpoint settlements are historical audit under
+  LAA-4, never a current payment. This explicit refusal avoids a
+  caller-supplied “in flight” label becoming an exception.
 - **(LAA-4) Historical era proof.** A legacy agreement may support historical
   settlement audit only when the consumer verifies (a) its required party
   signatures, (b) an exact `AgreementCommitmentRecord` whose `agreementHash`
   recomputes from those bytes, (c) that commitment's finalized receipt, and
   (d) the legacy settlement-evidence record's finalized receipt, with both
   receipts on the same substrate and in the same exact LAA ordering domain as
-  the checkpoint, strictly ordered before it. Same-block/round evidence
+  the checkpoint, strictly ordered before it, and (e) an authenticated
+  session/agreement relation that binds that settlement-evidence receipt to
+  this exact legacy agreement — its recomputed agreement hash, job, session,
+  and phase — not merely a finalized receipt of matching bytes. A
+  settlement-evidence receipt bound to a different agreement, job, session, or
+  phase is a cross-agreement / cross-job / cross-session / cross-phase replay
+  and MUST NOT qualify this agreement's history. Same-block/round evidence
   counts as earlier only when the binding authenticates a strict transaction
   order. A later presentation or re-anchor does not change the original era.
 - **(LAA-5) Timestamps are not era proof.** `AgreementDocument.generatedAt`,
@@ -519,7 +543,19 @@ side effect:
   reference, agreement, commitment, or receipt is `error`; a bad signature,
   hash/address/policy mismatch, or authenticated at/after-checkpoint legacy
   attempt is `fail`; missing, unavailable, conflicting or unorderable authority
-  is `indeterminate`; only a complete pre-checkpoint proof is `pass`. Evaluate
+  is `indeterminate`; only a complete pre-checkpoint proof is `pass`. A
+  non-object container where an object is required, a missing required field
+  (including a missing `agreementBindingMatches` or `agreementHashMatches`), a
+  non-string receipt position, an unhashable list/dict in an enum or position
+  field, or a conflicting discriminator is a malformed input and MUST return
+  the `error` disposition — an implementation MUST NOT raise or crash
+  (`TypeError`/`AttributeError`) on untrusted container shape. The independently
+  verified session and agreement-hash identity values (`sessionId` and
+  `agreement.contentHash`) MUST be non-empty canonical strings: an empty,
+  whitespace-only, or leading/trailing-whitespace spelling, and any non-NFC
+  value, is malformed and MUST return `error` before any payee-bound,
+  identity-bound, zero-pay, authenticated-absence, or checkpoint branch may
+  otherwise authorize. Evaluate
   deterministic mismatch before unrelated uncertainty. `fail`, `indeterminate`
   and `error` authorize zero payment side effects and cannot be downgraded by
   local policy.

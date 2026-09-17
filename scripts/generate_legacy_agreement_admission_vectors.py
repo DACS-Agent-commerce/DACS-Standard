@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Generate deterministic DACS-4 LAA-1..LAA-7 / DACS-3 CA-10 vectors."""
+"""Generate deterministic DACS-4 LAA-1..LAA-7 / DACS-3 CA-10 vectors.
+
+The expected verdict and declared effects are computed by the single shared
+verifier-owned LAA oracle (``tests/dacs5_reference.laa_admission`` /
+``laa_want``) rather than hand-asserted per case, so the corpus cannot drift
+from the executable reference.
+"""
 from __future__ import annotations
 
 import argparse
 import copy
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 
@@ -16,6 +23,9 @@ OUTPUT = (
 )
 GOVERNING_SUBSTRATE = "demos-mainnet"
 ORDER_DOMAIN = "demos-mainnet:demos-bft-final:genesis-v1"
+
+sys.path.insert(0, str(ROOT / "tests"))
+import dacs5_reference as R  # noqa: E402
 
 
 def merge(base: dict, changes: dict | None) -> dict:
@@ -37,14 +47,20 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "state": "verified",
             "substrate": GOVERNING_SUBSTRATE,
             "orderDomain": ORDER_DOMAIN,
+            "jobId": "job-a",
+            "sessionId": "session-a",
+            "paymentHeadPosition": "150",
         },
         "agreement": {
             "artifact": artifact,
             "shape": "valid",
             "partySignaturesValid": True,
             "contentHash": "agreement-hash-a",
+            "jobId": "job-a",
+            "phase": "pay-dem",
             "generatedAt": 10,
-            "pbVerified": artifact == "payee-bound",
+            "pbVerified": artifact in R.LAA_PAYEE_BOUND_ARTIFACTS,
+            "ibhVerified": artifact in {"identity-bound", "identity-bound-payee"},
         },
         "checkpoint": {
             "resolution": "verified",
@@ -58,6 +74,7 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "receiptState": "finalized",
             "position": "100",
             "authenticatedAbsence": False,
+            "absenceCoverPosition": "200",
             "createdAt": 1,
             "substrate": GOVERNING_SUBSTRATE,
             "orderDomain": ORDER_DOMAIN,
@@ -77,6 +94,10 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "resolution": "verified",
             "shape": "valid",
             "agreementBindingMatches": True,
+            "agreementHash": "agreement-hash-a",
+            "job": "job-a",
+            "session": "session-a",
+            "phase": "pay-dem",
             "signatureValid": True,
             "receiptState": "finalized",
             "position": "90",
@@ -86,6 +107,7 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "orderDomain": ORDER_DOMAIN,
         },
         "presentationPosition": "150",
+        "paymentPosition": "150",
     }
 
 
@@ -97,33 +119,23 @@ def case(
     operation: str = "historical-audit",
     artifact: str = "legacy",
     changes: dict | None = None,
+    drops: list[tuple[str, str]] | None = None,
 ) -> dict:
     value = merge(base_input(operation=operation, artifact=artifact), changes)
-    agreement = value["agreement"]
-    current_eligible = (
-        expected == "pass"
-        and value["pipelineHasPayment"] is True
-        and operation in {"authorize-payment", "commit-pay-bearing"}
-    )
-    historical_eligible = expected == "pass" and operation == "historical-audit"
-    inspectable = agreement.get("shape") == "valid" and agreement.get("partySignaturesValid") is True
+    for container, key in (drops or []):
+        if isinstance(value.get(container), dict):
+            value[container].pop(key, None)
+    verdict = R.laa_admission(value)
+    if verdict != expected:
+        raise AssertionError(
+            f"{name}: shared LAA oracle returns {verdict!r}, declared {expected!r}"
+        )
     return {
         "name": name,
-        "expected": expected,
+        "expected": verdict,
         "note": note,
         "input": value,
-        "want": {
-            "currentPaymentEligible": current_eligible,
-            "historicalAuditEligible": historical_eligible,
-            "paymentSideEffects": current_eligible,
-            "legacyBytesCryptographicallyInspectable": inspectable and artifact == "legacy",
-            "dacs5Admission": {
-                "pass": "continue",
-                "fail": "rejected",
-                "error": "rejected",
-                "indeterminate": "indeterminate",
-            }[expected],
-        },
+        "want": R.laa_want(value),
     }
 
 
@@ -141,6 +153,28 @@ def vectors() -> list[dict]:
             changes={"checkpoint": {"resolution": "unavailable"}},
         ),
         case(
+            "laa-identity-bound-payee-success", "pass",
+            "the stronger identity-bound payee artifact is accepted wherever payee-bound is",
+            operation="authorize-payment", artifact="identity-bound-payee",
+        ),
+        case(
+            "laa-identity-bound-non-payee-rejected", "fail",
+            "a non-payee identity-bound agreement cannot authorize a current pay-bearing payment",
+            operation="authorize-payment", artifact="identity-bound",
+        ),
+        case(
+            "laa-identity-bound-payee-ibh-not-verified", "fail",
+            "an identity-bound payee artifact whose identity binding fails does not authorize payment",
+            operation="authorize-payment", artifact="identity-bound-payee",
+            changes={"agreement": {"ibhVerified": False}},
+        ),
+        case(
+            "laa-ca10-identity-bound-payee-commit", "pass",
+            "commit-identity-bound-payee-agreement is available pre-activation without payment side effects",
+            operation="commit-pay-bearing", artifact="identity-bound-payee",
+            changes={"surface": "dacs3-ca10"},
+        ),
+        case(
             "laa-zero-pay-legacy-outside-gate", "pass",
             "a pipeline with no payment introduces no runtime payout destination",
             operation="commit-pay-bearing",
@@ -148,15 +182,51 @@ def vectors() -> list[dict]:
         ),
         case(
             "laa-preactivation-authoritative-absence-allows-legacy", "pass",
-            "binding-qualified absence at an authenticated head proves activation has not occurred",
+            "binding-qualified absence covering the payment position proves activation has not occurred",
             operation="authorize-payment",
             changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True}},
         ),
         case(
+            "laa-stale-absence-across-activation-boundary", "indeterminate",
+            "an authenticated absence proven only up to an earlier head does not cover a later payment submission",
+            operation="authorize-payment",
+            changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True, "absenceCoverPosition": "50"}},
+        ),
+        case(
+            "laa-absence-cover-position-malformed", "error",
+            "a non-string absence-cover position is a structural error before the payment effect",
+            operation="authorize-payment",
+            changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True, "absenceCoverPosition": 200}},
+        ),
+        case(
+            "laa-caller-lowered-payment-position-cannot-mask-stale-absence", "indeterminate",
+            "a caller-supplied low payment position cannot convert a stale absence proof into a pass",
+            operation="authorize-payment",
+            changes={
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True, "absenceCoverPosition": "50"},
+                "paymentPosition": "40",
+            },
+        ),
+        case(
+            "laa-authenticated-head-position-non-string", "error",
+            "a non-string authenticated payment-head position is a structural error",
+            operation="authorize-payment",
+            changes={
+                "sessionAuthority": {"paymentHeadPosition": 150},
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True},
+            },
+        ),
+        case(
             "laa-ca10-preactivation-legacy-commit", "pass",
-            "CA-10 permits legacy commitment only under authenticated preactivation absence",
+            "CA-10 permits legacy commitment only under authenticated preactivation absence covering the commit position",
             operation="commit-pay-bearing",
             changes={"surface": "dacs3-ca10", "checkpoint": {"resolution": "absent", "authenticatedAbsence": True}},
+        ),
+        case(
+            "laa-ca10-stale-absence-across-activation-boundary", "indeterminate",
+            "CA-10 cannot rely on a stale authenticated absence for a later commit",
+            operation="commit-pay-bearing",
+            changes={"surface": "dacs3-ca10", "checkpoint": {"resolution": "absent", "authenticatedAbsence": True, "absenceCoverPosition": "50"}},
         ),
         case(
             "laa-fresh-legacy-after-checkpoint", "fail",
@@ -346,7 +416,303 @@ def vectors() -> list[dict]:
             operation="authorize-payment",
             changes={"agreement": {"shape": "malformed"}, "checkpoint": {"resolution": "unavailable"}},
         ),
+        case(
+            "laa-cross-agreement-replay", "fail",
+            "authentic settlement evidence bound to a different agreement cannot qualify this agreement's history",
+            changes={"settlementEvidence": {"agreementHash": "agreement-hash-other"}},
+        ),
+        case(
+            "laa-cross-job-replay", "fail",
+            "settlement evidence bound to a different job cannot qualify this agreement's history",
+            changes={"settlementEvidence": {"job": "job-other"}},
+        ),
+        case(
+            "laa-cross-session-replay", "fail",
+            "settlement evidence bound to a different session cannot qualify this agreement's history",
+            changes={"settlementEvidence": {"session": "session-other"}},
+        ),
+        case(
+            "laa-cross-phase-replay", "fail",
+            "settlement evidence bound to a different phase cannot qualify this agreement's history",
+            changes={"settlementEvidence": {"phase": "pay-evm-erc20"}},
+        ),
+        case(
+            "laa-agreement-job-session-mismatch", "fail",
+            "an agreement whose jobId does not match the authenticated session jobId cannot qualify",
+            changes={"agreement": {"jobId": "job-other"}},
+        ),
+        case(
+            "laa-malformed-agreement-wrong-container", "error",
+            "a non-object agreement container is a structural error before field access",
+            operation="authorize-payment",
+            changes={"agreement": []},
+        ),
+        case(
+            "laa-malformed-checkpoint-wrong-container", "error",
+            "a non-object checkpoint container is a structural error before field access",
+            operation="authorize-payment",
+            changes={"checkpoint": []},
+        ),
+        case(
+            "laa-malformed-commitment-missing-field", "error",
+            "a commitment missing a required structural field is a structural error",
+            drops=[("commitment", "shape")],
+        ),
+        case(
+            "laa-malformed-settlement-position-scalar", "error",
+            "a non-string receipt position is a structural error before ordering",
+            changes={"settlementEvidence": {"position": 90}},
+        ),
+        case(
+            "laa-malformed-checkpoint-conflicting-shape", "error",
+            "a checkpoint whose discriminator is not the exact literal is a structural error",
+            operation="authorize-payment",
+            changes={"checkpoint": {"shape": "valid", "discriminator": ["a", "b"]}},
+        ),
+        case(
+            "laa-malformed-agreement-artifact-unhashable", "error",
+            "an unhashable agreement artifact is a structural error before membership tests",
+            operation="authorize-payment",
+            changes={"agreement": {"artifact": ["legacy"]}},
+        ),
+        case(
+            "laa-malformed-settlement-position-unhashable-list", "error",
+            "an unhashable list receipt position returns error, never a crash",
+            changes={"settlementEvidence": {"position": ["90"]}},
+        ),
+        case(
+            "laa-malformed-settlement-position-unhashable-dict", "error",
+            "an unhashable dict receipt position returns error, never a crash",
+            changes={"settlementEvidence": {"position": {"block": 90}}},
+        ),
+        case(
+            "laa-malformed-commitment-position-unhashable", "error",
+            "an unhashable commitment receipt position returns error, never a crash",
+            changes={"commitment": {"position": ["80"]}},
+        ),
+        case(
+            "laa-malformed-settlement-missing-agreement-binding", "error",
+            "a settlement-evidence record missing agreementBindingMatches is a structural error, not a fail",
+            drops=[("settlementEvidence", "agreementBindingMatches")],
+        ),
+        case(
+            "laa-malformed-commitment-missing-hash-binding", "error",
+            "a commitment missing agreementHashMatches is a structural error, not a fail",
+            drops=[("commitment", "agreementHashMatches")],
+        ),
+        case(
+            "laa-malformed-operation-unhashable-list", "error",
+            "an unhashable list operation returns error, never a TypeError",
+            changes={"operation": ["historical-audit"]},
+        ),
+        case(
+            "laa-malformed-operation-unhashable-dict", "error",
+            "an unhashable dict operation returns error, never a TypeError",
+            changes={"operation": {"kind": "historical-audit"}},
+        ),
+        case(
+            "laa-malformed-agreement-contentHash-missing", "error",
+            "a legacy agreement missing contentHash is a structural error, not a hash fail",
+            drops=[("agreement", "contentHash")],
+        ),
+        case(
+            "laa-malformed-checkpoint-signatureValid-missing", "error",
+            "a checkpoint missing signatureValid is a structural error, not a signature fail",
+            drops=[("checkpoint", "signatureValid")],
+        ),
+        case(
+            "laa-malformed-checkpoint-receiptState-nonstring", "error",
+            "a non-string checkpoint receiptState is a structural error, not indeterminate",
+            changes={"checkpoint": {"receiptState": ["finalized"]}},
+        ),
+        case(
+            "laa-malformed-checkpoint-receiptState-unknown", "error",
+            "an unknown checkpoint receiptState spelling is a structural error, not indeterminate",
+            changes={"checkpoint": {"receiptState": "bogus"}},
+        ),
+        case(
+            "laa-malformed-commitment-receiptState-missing", "error",
+            "a commitment missing receiptState is a structural error, not indeterminate",
+            drops=[("commitment", "receiptState")],
+        ),
+        case(
+            "laa-malformed-settlement-receiptState-unknown", "error",
+            "an unknown settlement receiptState spelling is a structural error, not indeterminate",
+            changes={"settlementEvidence": {"receiptState": "bogus"}},
+        ),
+        case(
+            "laa-malformed-commitment-signatureValid-missing", "error",
+            "a commitment missing signatureValid is a structural error, not a signature fail",
+            drops=[("commitment", "signatureValid")],
+        ),
+        case(
+            "laa-malformed-settlement-signatureValid-missing", "error",
+            "a settlement-evidence record missing signatureValid is a structural error",
+            drops=[("settlementEvidence", "signatureValid")],
+        ),
+        case(
+            "laa-malformed-native-order-unhashable", "error",
+            "an unhashable same-block native-order flag is a structural error, not a silent fall-through",
+            changes={
+                "commitment": {"position": "100", "strictlyBeforeAtSamePosition": ["x"]},
+                "settlementEvidence": {"position": "100", "strictlyBeforeAtSamePosition": True},
+            },
+        ),
+        case(
+            "laa-malformed-payment-head-dict", "error",
+            "a non-string authenticated payment-head position is a structural error",
+            operation="authorize-payment",
+            changes={
+                "sessionAuthority": {"paymentHeadPosition": {"block": 150}},
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True},
+            },
+        ),
+        case(
+            "laa-malformed-session-jobId-nonstring", "error",
+            "a non-string authenticated session jobId is a structural error",
+            changes={"sessionAuthority": {"jobId": ["job-a"]}},
+        ),
+        case(
+            "laa-malformed-settlement-agreementHash-missing", "error",
+            "a settlement-evidence record missing agreementHash is a structural error, not a binding fail",
+            drops=[("settlementEvidence", "agreementHash")],
+        ),
+        case(
+            "laa-malformed-settlement-job-missing", "error",
+            "a settlement-evidence record missing the bound job is a structural error, not a replay fail",
+            drops=[("settlementEvidence", "job")],
+        ),
+        case(
+            "laa-malformed-payee-bound-contentHash-missing", "error",
+            "a payee-bound agreement missing contentHash is a structural error before the current-payment pass",
+            operation="authorize-payment", artifact="payee-bound",
+            drops=[("agreement", "contentHash")],
+        ),
+        case(
+            "laa-malformed-identity-bound-contentHash-missing", "error",
+            "an identity-bound agreement missing contentHash is a structural error before the artifact branch",
+            operation="authorize-payment", artifact="identity-bound",
+            drops=[("agreement", "contentHash")],
+        ),
+        case(
+            "laa-absence-with-malformed-operation", "error",
+            "an authenticated absence branch cannot authorize before operation is validated as a scalar known value",
+            operation="authorize-payment",
+            changes={
+                "operation": ["authorize-payment"],
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True},
+            },
+        ),
+        # --- Identity values: empty / whitespace / non-canonical session or hash
+        # identity is malformed and rejected before any payee-bound / identity-bound /
+        # zero-pay / absence / checkpoint branch may otherwise authorize. ---
+        case(
+            "laa-payee-bound-empty-content-hash", "error",
+            "an empty payee-bound contentHash is malformed identity, rejected before the current-payment pass",
+            operation="authorize-payment", artifact="payee-bound",
+            changes={"agreement": {"contentHash": ""}},
+        ),
+        case(
+            "laa-payee-bound-whitespace-content-hash", "error",
+            "a whitespace-only payee-bound contentHash is malformed identity",
+            operation="authorize-payment", artifact="payee-bound",
+            changes={"agreement": {"contentHash": "   "}},
+        ),
+        case(
+            "laa-identity-bound-payee-padded-content-hash", "error",
+            "a leading/trailing-whitespace identity-bound-payee contentHash is non-canonical",
+            operation="authorize-payment", artifact="identity-bound-payee",
+            changes={"agreement": {"contentHash": " agreement-hash-a "}},
+        ),
+        case(
+            "laa-zero-pay-legacy-whitespace-content-hash", "error",
+            "a whitespace-only contentHash cannot authorize the legacy zero-pay branch",
+            operation="commit-pay-bearing",
+            changes={"pipelineHasPayment": False, "agreement": {"contentHash": "   "}},
+        ),
+        case(
+            "laa-empty-session-id", "error",
+            "an empty authenticated sessionId is malformed identity, rejected before the checkpoint branch",
+            changes={"sessionAuthority": {"sessionId": ""}},
+        ),
+        case(
+            "laa-whitespace-session-id", "error",
+            "a whitespace-only authenticated sessionId is malformed identity",
+            changes={"sessionAuthority": {"sessionId": "   "}},
+        ),
+        case(
+            "laa-padded-session-id", "error",
+            "a leading/trailing-whitespace authenticated sessionId is non-canonical",
+            changes={"sessionAuthority": {"sessionId": " session-a "}},
+        ),
+        case(
+            "laa-padded-content-hash", "error",
+            "a leading/trailing-whitespace agreement contentHash is non-canonical identity",
+            changes={"agreement": {"contentHash": " agreement-hash-a "}},
+        ),
+        # --- Session identity is validated AHEAD of the payee-bound /
+        # identity-bound-payee pass, so an empty / blank / padded / non-NFC
+        # sessionId can never authorize a current payment on either artifact. ---
+        case(
+            "laa-payee-bound-empty-session-id", "error",
+            "an empty payee-bound sessionId is malformed identity, rejected before the current-payment pass",
+            operation="authorize-payment", artifact="payee-bound",
+            changes={"sessionAuthority": {"sessionId": ""}},
+        ),
+        case(
+            "laa-payee-bound-whitespace-session-id", "error",
+            "a whitespace-only payee-bound sessionId is malformed identity",
+            operation="authorize-payment", artifact="payee-bound",
+            changes={"sessionAuthority": {"sessionId": "   "}},
+        ),
+        case(
+            "laa-payee-bound-padded-session-id", "error",
+            "a leading/trailing-whitespace payee-bound sessionId is non-canonical",
+            operation="authorize-payment", artifact="payee-bound",
+            changes={"sessionAuthority": {"sessionId": " session-a "}},
+        ),
+        case(
+            "laa-payee-bound-noncanonical-session-id", "error",
+            "a non-NFC payee-bound sessionId is malformed identity",
+            operation="authorize-payment", artifact="payee-bound",
+            changes={"sessionAuthority": {"sessionId": "session-a\u0301"}},
+        ),
+        case(
+            "laa-identity-bound-payee-empty-session-id", "error",
+            "an empty identity-bound-payee sessionId is malformed identity, rejected before the pass",
+            operation="authorize-payment", artifact="identity-bound-payee",
+            changes={"sessionAuthority": {"sessionId": ""}},
+        ),
+        case(
+            "laa-identity-bound-payee-whitespace-session-id", "error",
+            "a whitespace-only identity-bound-payee sessionId is malformed identity",
+            operation="authorize-payment", artifact="identity-bound-payee",
+            changes={"sessionAuthority": {"sessionId": "   "}},
+        ),
+        case(
+            "laa-identity-bound-payee-padded-session-id", "error",
+            "a leading/trailing-whitespace identity-bound-payee sessionId is non-canonical",
+            operation="authorize-payment", artifact="identity-bound-payee",
+            changes={"sessionAuthority": {"sessionId": " session-a "}},
+        ),
+        case(
+            "laa-identity-bound-payee-noncanonical-session-id", "error",
+            "a non-NFC identity-bound-payee sessionId is malformed identity",
+            operation="authorize-payment", artifact="identity-bound-payee",
+            changes={"sessionAuthority": {"sessionId": "session-a\u0301"}},
+        ),
     ]
+
+
+RELEASE_PIN = "0000000000000000000000000000000000000001"
+CURRENT_MODULE_TUPLE = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.6",
+    "dacs3": "0.6",
+    "dacs4": "0.8",
+    "dacs5": "0.6",
+}
 
 
 def document() -> dict:
@@ -356,6 +722,10 @@ def document() -> dict:
         "set": OUTPUT.stem,
         "spec": "DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10",
         "tier": "candidate",
+        "profile": {
+            "releasePin": RELEASE_PIN,
+            "moduleVersions": CURRENT_MODULE_TUPLE,
+        },
         "description": "Governed legacy-agreement activation and authenticated historical settlement admission.",
         "provenance": {
             "issue": "DACS-Agent-commerce/DACS-Standard#377",

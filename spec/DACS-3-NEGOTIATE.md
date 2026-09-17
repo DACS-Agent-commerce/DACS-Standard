@@ -873,13 +873,17 @@ type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
   pipeline contains a DACS-4 `PaymentPhaseType`, the commitment handler MUST
   resolve the DACS-4 §9.5.1 `LegacyAgreementActivationCheckpoint` under LAA-1
   before selecting an agreement artifact. At or after activation it MUST reject
-  `commit-agreement` and require `commit-payee-bound-agreement`; authenticated
-  pre-activation absence permits the historical phase only before activation.
-  Unavailable, conflicting, pruned, reorged or otherwise indeterminate
-  checkpoint authority MUST NOT authorize a legacy pay-bearing commitment.
-  Payee-bound commitment remains available without using uncertainty as a
-  legacy fallback. A zero-pay pipeline is outside LAA and may retain
-  `commit-agreement`.
+  `commit-agreement` and require a payee-bound commitment —
+  `commit-payee-bound-agreement` or the stronger
+  `commit-identity-bound-payee-agreement`; authenticated pre-activation absence
+  permits the historical phase only before activation. Unavailable, conflicting,
+  pruned, reorged or otherwise indeterminate checkpoint authority MUST NOT
+  authorize a legacy pay-bearing commitment. A commitment `pass` carries zero
+  payment side effects: it selects and anchors an agreement, and the later
+  DACS-4 payment re-runs LAA-1..LAA-7 against the payment effect before any
+  irreversible settlement. Payee-bound commitment remains available without
+  using uncertainty as a legacy fallback. A zero-pay pipeline is outside LAA and
+  may retain `commit-agreement`.
 
 **Identity-bound outer-type inventory.** The stronger contract changes only
 where a distinct type or phase makes the action-bearing meaning visible:

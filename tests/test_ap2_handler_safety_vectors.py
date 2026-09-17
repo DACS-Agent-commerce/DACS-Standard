@@ -33,9 +33,9 @@ AUTHORITATIVE_MODULE_VERSIONS = {
     "core": "0.3",
     "dacs1": "0.7",
     "dacs2": "0.6",
-    "dacs3": "0.5",
-    "dacs4": "0.7",
-    "dacs5": "0.5",
+    "dacs3": "0.6",
+    "dacs4": "0.8",
+    "dacs5": "0.6",
 }
 AUTHORITATIVE_LOCAL_PROFILE = {
     "releasePin": AUTHORITATIVE_RELEASE_PIN,
@@ -896,6 +896,23 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                         "idempotencyKeys": [],
                     },
                 )
+
+    def test_current_consumer_accepts_current_composed_tuple(self):
+        self.assertEqual(
+            AUTHORITATIVE_MODULE_VERSIONS,
+            {
+                "core": "0.3",
+                "dacs1": "0.7",
+                "dacs2": "0.6",
+                "dacs3": "0.6",
+                "dacs4": "0.8",
+                "dacs5": "0.6",
+            },
+        )
+        self.assertTrue(is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE))
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        self.assertTrue(admits_current_profile(case, context))
 
     def test_complete_chain_admission_composes_atomic_ap2_7_decision(self):
         for name in (

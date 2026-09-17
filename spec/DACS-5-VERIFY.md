@@ -624,10 +624,12 @@ signature is not evidence and cannot repair a missing dependency.
 - **Legacy agreement qualification inside SEB-3.** When a bundle claims a
   successful payment under legacy `AgreementDocument`, the consumer MUST also
   execute DACS-4 LAA-1..LAA-7 against the exact agreement commitment and that
-  settlement-evidence receipt. Only a historical `pass` may satisfy the phase;
-  LAA `fail` or `error` rejects the bundle member, while unavailable or
-  unorderable era authority remains `indeterminate`. An outer bundle signature,
-  later presentation, or `finalisedAt` cannot upgrade it.
+  settlement-evidence receipt. A historical `pass` proves the settlement
+  predates activation but is **current-ineligible**: the phase is recorded only
+  as historical audit and MUST NOT satisfy a current bundle or reputation
+  admission. LAA `fail` or `error` rejects the bundle member, while unavailable
+  or unorderable era authority remains `indeterminate`. An outer bundle
+  signature, later presentation, or `finalisedAt` cannot upgrade it.
 - (SEB-4) After SEB-2 and SEB-3, the mapping `P → settlementEvidence[]` MUST be a bijection: every key in `P` has exactly one top-level member and every top-level member maps to exactly one key in `P`. Two canonically distinct references resolving to the same phase key violate injectivity. Missing, extra, duplicated, aliased, or reused members are rejected; cardinality equality alone is insufficient.
 - (SEB-5) A `phaseSummary[].attestationRef` remains OPTIONAL. Omission alone MUST NOT reject a bundle. When present for a phase in `P`, it MUST be full-canonical-value equal to that phase's unique top-level member. Two distinct phase entries MUST NOT reuse one member, and a pointer outside the top-level array or to another phase's member is rejected.
 - (SEB-6) Deterministic contradictions visible in the signed listing/EBFAB authority, signed raw array, authenticated phase keys, lifecycle receipts, or present optional pointers — including authority mismatch, multiplicity, cardinality, forbidden ST-8 representation, lifecycle failure, exact-mapping failure, and SEB-5 pointer disagreement — are `rejected` before unrelated reference-resolution uncertainty is considered. When SEB-1 through SEB-5 pass and an otherwise required unrelated authority remains unavailable, the overall consumer result MUST be `indeterminate`; uncertainty MUST NOT downgrade an already established SEB rejection.
@@ -764,12 +766,25 @@ type ResolutionContextEntry = {
     | { kind: "address"; resolvedAddress: string } // pure-mapping substrate: the counterparty anchor address whose role segment MUST equal the counterparty's role
   absenceEvidenceRef?: { kind: string; locator: string; contentHash: string }   // REQUIRED iff counterpartyDisposition == "absent": a hash-bound reference to the AbsenceEvidence object; contentHash MUST equal sha256(canonical(AbsenceEvidence)) and the object MUST be dereferenceable at replay
   absenceBinding?: BundleBinding                   // REQUIRED iff counterpartyDisposition == "absent" on a write-input substrate: the BB-4-valid binding resolving the MISSING side's nativeAddress (role == the missing side's role, jobId == the entry's jobId); its nativeAddress MUST equal the dereferenced AbsenceEvidence.nativeAddress
+  legacyPayment?: boolean                         // REQUIRED iff this entry is a legacy-payment bundle (§10.5.1 terminal-agreement-admission): the exact legacy-payment marker semantics. A current deriver MUST set `true`; a consumer MUST refuse a legacy-payment entry that omits the marker, the full LAA, or the carrier below.
+  laa?: object                                    // REQUIRED iff `legacyPayment === true` on a current authorizing derivation: the verifier-owned full DACS-4 LAA admission input (LAA-1..LAA-7, DACS-4 §9.5.1). Replay MUST re-execute the shared `laa_admission` oracle and refuse any non-current-eligible, cross-job, or cross-session result.
+  legacyPaymentCarrier?: string                   // REQUIRED iff `legacyPayment === true` on a current authorizing derivation: `sha256(canonical(LegacyPaymentCarrier))` — the closed commitment below. A consumer MUST recompute and byte-match it before any authorizing result; a stripped, substituted, or non-committed carrier refuses replay.
 }
 
 type AbsenceEvidence = {
   kind: string                                    // the substrate absence-evidence mechanism (e.g. "non-membership-proof"); CORE §5 owns policy semantics, DACS-5 defines only the binding relation
   nativeAddress: string                           // the missing side's native address the authoritative-absence read was performed against
   finalizedStateRef: string                       // the finalized state / finality anchor the CORE §5 policy evaluated absence against
+}
+
+type LegacyPaymentCarrier = {
+  legacyPayment: true                             // the exact marker semantics; no optional omission/downgrade
+  jobId: string                                   // the exact bundle jobId (== agreement.jobId == sessionAuthority.jobId)
+  sessionId: string                               // the verifier-owned authenticated session identity for jobId (never a caller/tag value)
+  agreementHash: string                           // the agreement contentHash identity
+  agreementJobId: string                          // the agreement jobId
+  bundleContentHash: string                       // the entry's contentHash (binds the exact parties/roles/completion evidence)
+  laa: object                                     // the full LAA input (completion/era evidence + agreement/session identity)
 }
 ```
 
@@ -818,6 +833,7 @@ Before any current-profile BB-5 check, logical-address derivation, resolution-co
 - **re-run reconciliation** — dereference `counterpartyRef`, verify `counterpartyRoleEvidence` per the counterparty-authentication relation, and require the applicable type's divergence predicate against the authoritative copy to be false; the settlement-verified type additionally requires exact `settlementEvidence[]` reference-multiset agreement;
 - **re-run RSV admission (settlement-verified type only)** — resolve and independently verify every presented SettlementEvidence under RSV-1/RSV-2 from immutable, hash-bound or finalized-state-bound authority; require `verified` before comparing metrics. `rejected` or `indeterminate` makes the receipt unverifiable and MUST NOT produce an alternative metric set;
 - **re-check absence** — dereference `AbsenceEvidence`, require `absenceEvidenceRef.contentHash` to equal its `sha256(canonical)`, verify `absenceBinding` per the absence relation, and require `absenceBinding.nativeAddress` to equal `AbsenceEvidence.nativeAddress`.
+- **re-verify the legacy-payment LAA carrier (legacy-payment entries only)** — a legacy-payment entry (`legacyPayment === true`) MUST carry the exact marker, the full LAA, and the `legacyPaymentCarrier` commitment. The consumer MUST recompute `sha256(canonical(LegacyPaymentCarrier))` from the carried marker, full LAA, dereferenced bundle `jobId`, and verifier-owned authenticated session authority, and require byte-equality with the stored carrier; it MUST also re-execute the shared `laa_admission` oracle and bind the LAA `sessionAuthority.sessionId` to the verifier-owned authenticated session for that `jobId` (never to an optional caller/tag `sessionId`). A removed marker, removed LAA, removed carrier, substituted agreement contentHash/session/job, marker/LAA disagreement, cross-job, cross-session, or absent/mismatched authoritative session binding refuses replay fail-closed. Only an explicitly named archival path may reproduce released pre-LAA bytes without this carrier, and that path is non-authorizing.
 - **job-bound types only** — require each non-empty `resolvedJobId` to equal the dereferenced authoritative copy's `jobId` and use that trusted value, rather than returned content, in every job-binding check. The released v1 type performs its historical checks against the authenticated copy's `jobId` and makes no stronger claim.
 - **EBFAB in either job-bound type** — resolve and re-verify the signed listing, exact SettlementEvidence resolutions including authenticated phase-orchestrator authority, transitive ST-8 evidence, and bundle/evidence lifecycle state referenced by the EBFAB. A replay implementation whose configured authority resolvers cannot recover that material MUST refuse; it MUST NOT rederive while silently dropping SEB validation.
 
@@ -841,8 +857,16 @@ derive_settlement_verified(party, bundles, windowStart, windowEnd):
   # Resolve each copy's signed Listing, agreement, and commitment before it can
   # enter scope. Exact DACS-3 four-way dispatch applies for every agreementRef.
   # For either identity-bound phase, run §10.4 identity-bound terminal
-  # verification against actual bundle/CVR companions. Rejected, unsupported,
-  # or indeterminate copies are not admitted and therefore cannot be counted.
+  # verification against actual bundle/CVR companions. terminal_agreement_admission
+  # is not a generic pass-through: a successful payment citing legacy
+  # AgreementDocument executes DACS-4 LAA-1..LAA-7, and a historical LAA pass is
+  # current-ineligible (excluded here), never a "verified" continue. Rejected,
+  # unsupported, or indeterminate copies are not admitted and therefore cannot
+  # be counted. A current-eligible legacy-payment copy MUST also bind to the
+  # verifier-owned authenticated session for its jobId: the LAA
+  # sessionAuthority.sessionId is compared against verifier-owned session
+  # authority, never an optional caller/tag sessionId, and an absent or
+  # mismatched authoritative session binding excludes the copy fail-closed.
   bundles := [b for b in bundles where terminal_agreement_admission(b) == verified]
 
   scoped := [b for b in bundles
@@ -1069,10 +1093,10 @@ A fourth normative guard applies to any one-copy jobId:
 **Presented SettlementEvidence admission (RSV-1..RSV-4; settlement-verified types only).** This guard runs on the selected `authoritative` copy before it enters `reconciled`. When both buyer and seller copies exist, the settlement-verified divergence limb first requires their canonical `settlementEvidence[]` reference multisets to agree; comparison uses each full canonical `AttestationRef`, including multiplicity, while array order alone is immaterial. A producer therefore cannot make its own semantically contradictory reference silently control the other copy's settlement-verified reputation input:
 
 - (RSV-1) `verify_presented_settlement_evidence` MUST resolve every `AttestationRef` in `authoritative.settlementEvidence`, verify its content hash and SettlementEvidence signature, and return exactly `verified`, `rejected`, or `indeterminate`. Whether the presented multiset is complete is the separate §10.4.3 production rule, not this guard.
-- (RSV-2) Each resolved artifact MUST pass the applicable DACS-4 consumer rules against authority independent of the evidence under test: the authenticated Agreement and session, executed phase index, pinned rail/asset/network, resolved transaction parties/destination/amount, finality, SB-1 through SB-3, and LAA-1 through LAA-7 whenever a successful payment cites legacy `AgreementDocument`. An LAA `fail` or `error` yields RSV `rejected`; LAA `indeterminate` yields RSV `indeterminate`. When that rail requires SB-3 binding, an absent or unavailable binding is `indeterminate` and the job is excluded under RSV-3; unbound transfer evidence cannot make it reputation-eligible. The deriver MUST NOT infer expected economics or agreement era from the SettlementEvidence itself, from the outer bundle's signatures, from producer timestamps, or from `fetch_and_verify_agreement` alone.
+- (RSV-2) Each resolved artifact MUST pass the applicable DACS-4 consumer rules against authority independent of the evidence under test: the authenticated Agreement and session, executed phase index, pinned rail/asset/network, resolved transaction parties/destination/amount, finality, SB-1 through SB-3, and LAA-1 through LAA-7 whenever a successful payment cites legacy `AgreementDocument`. An LAA `fail` or `error` yields RSV `rejected`; LAA `indeterminate` yields RSV `indeterminate`; an LAA historical `pass` proves pre-activation settlement but is **current-ineligible** — the job is excluded from current metrics as historical-only and can never be counted as current volume, completion, or reputation. When that rail requires SB-3 binding, an absent or unavailable binding is `indeterminate` and the job is excluded under RSV-3; unbound transfer evidence cannot make it reputation-eligible. The deriver MUST NOT infer expected economics or agreement era from the SettlementEvidence itself, from the outer bundle's signatures, from producer timestamps, or from `fetch_and_verify_agreement` alone.
 - (RSV-3) If any presented artifact is `rejected` or `indeterminate`, the deriver MUST exclude the entire jobId from every metric for that derivation. It MUST NOT convert the semantic contradiction or unavailable authority into a new outcome or fault attribution; exclusion removes the job from numerator, denominators, volume, ratings, `bundleCount`, and `bundleRefs` alike.
 - **Conservative-attribution residual.** RSV-3 can remove an otherwise fault-bearing job from a denominator when its evidence is invalid. That is an accepted conservative cost: a rejected artifact proves that the job is unsafe as a settlement-verified reputation input, but its phase-orchestrator signature and the outer bundle signatures do not by themselves adjudicate which buyer/seller caused the semantic contradiction. A one-sided reference-multiset change is excluded by the settlement-verified divergence limb; a jointly presented invalid reference remains non-attributive. Resolving either case into party fault requires the out-of-band dispute/adjudication layer, not inference by `derive_settlement_verified()`.
-- (RSV-4) A `verified` result admits the job to the unchanged reconciliation and non-volume metric formulas below. This rule verifies only the evidence multiset presented by the authoritative copy; it neither proves that the multiset is complete nor makes an optional `phaseSummary[].attestationRef` mandatory. An empty multiset is vacuously verified for this presented-evidence guard, but supplies no verified payment record and therefore contributes no `observedTransactionalVolume` or `transactionCountByCurrency` under the Volume rule below.
+- (RSV-4) A `verified` result admits the job to the unchanged reconciliation and non-volume metric formulas below, **except** that a `verified` job whose successful payment cites legacy `AgreementDocument` is current-ineligible: its LAA historical `pass` admits historical audit only and excludes the job from every current metric below. This rule verifies only the evidence multiset presented by the authoritative copy; it neither proves that the multiset is complete nor makes an optional `phaseSummary[].attestationRef` mandatory. An empty multiset is vacuously verified for this presented-evidence guard, but supplies no verified payment record and therefore contributes no `observedTransactionalVolume` or `transactionCountByCurrency` under the Volume rule below.
 
 For `ReplayableSettlementVerifiedReputationDerivation`, RSV is re-executed from the hash-bound `settlementEvidence[]`, Agreement/session/phase/rail authority, and finalized transaction evidence before metric comparison. `rejected` or `indeterminate` at replay makes the receipt unverifiable; a replayer MUST NOT silently recompute a different metric set. The RSV verdict is derived evidence, not a trusted disposition to copy into `resolutionContext`. An authority input that is not immutable or bound to the finalized state used by the original verification cannot produce `verified`.
 
@@ -1092,7 +1116,7 @@ For `ReplayableSettlementVerifiedReputationDerivation`, RSV is re-executed from 
 
 Only the remaining records’ values, whose target matches the scored party, are aggregated; the metric is null when no qualifying ratings exist.
 
-**Settlement-verified volume metric.** For the settlement-verified types, observedTransactionalVolume is computed after RSV-1 through RSV-4 have admitted the job's presented SettlementEvidence. A successful **payment** record is a DACS-4 §9.7 `SettlementEvidence` whose `outcome == "success"` and whose `phase` is a member of the closed `PaymentPhaseType` set defined there; a `DeliveryPhaseType` record is not payment evidence. For each reconciled bundle whose `outcome` is `completed`, whose `agreementRef` is present, and whose RSV-verified multiset contains at least one such successful payment record, the deriver MUST resolve the AttestationRef to its AgreementArtifact via fetch_and_verify_agreement(agreementRef), then sum agreement.terms.price grouped by currency. The Agreement establishes the agreed price; by itself it does not establish that the price settled. A completed bundle with no presented payment evidence contributes no volume, even if it remains eligible for non-volume metrics; §10.4.3 completeness is evaluated separately. Non-completed bundles (failed, aborted) contribute no volume: the metric reports value transacted, not value agreed. Resolution follows the §7.5.2 attestation resolution algorithm:
+**Settlement-verified volume metric.** For the settlement-verified types, observedTransactionalVolume is computed after RSV-1 through RSV-4 have admitted the job's presented SettlementEvidence. A successful **payment** record is a DACS-4 §9.7 `SettlementEvidence` whose `outcome == "success"` and whose `phase` is a member of the closed `PaymentPhaseType` set defined there; a `DeliveryPhaseType` record is not payment evidence. A successful payment whose agreement is a legacy `AgreementDocument` is **current-ineligible** and contributes no volume even when its LAA historical-era proof passes: post-activation volume is defined only over current-profile (payee-bound or identity-bound) agreements. For each reconciled bundle whose `outcome` is `completed`, whose `agreementRef` is present, and whose RSV-verified multiset contains at least one such successful current-eligible payment record, the deriver MUST resolve the AttestationRef to its AgreementArtifact via fetch_and_verify_agreement(agreementRef), then sum agreement.terms.price grouped by currency. The Agreement establishes the agreed price; by itself it does not establish that the price settled. A completed bundle with no presented payment evidence contributes no volume, even if it remains eligible for non-volume metrics; §10.4.3 completeness is evaluated separately. Non-completed bundles (failed, aborted) contribute no volume: the metric reports value transacted, not value agreed. Resolution follows the §7.5.2 attestation resolution algorithm:
 
 - fetch the anchor at agreementRef.anchor.locator;
 - compare the hashed bytes to agreementRef.contentHash — a mismatch MUST cause that bundle to be excluded;
@@ -1227,8 +1251,8 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
 | Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection, including LAA-1..LAA-7 historical-era qualification for successful legacy-agreement payments; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
-| Reputation deriver | Select the output type before derivation; apply RSV-1 through RSV-4 only for a settlement-verified discriminator, apply LAA to successful payment evidence under legacy AgreementDocument, require a job-bound replay type for EBFAB, and preserve released v1 semantics otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection; apply LAA-1..LAA-7 historical-era qualification to successful legacy-agreement payments for every bundle type, a historical pass being current-ineligible; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
+| Reputation deriver | Select the output type before derivation; apply RSV-1 through RSV-4 only for a settlement-verified discriminator; apply LAA to successful payment evidence under legacy AgreementDocument for every derivation type, a historical pass being current-ineligible and excluded from current metrics; require a job-bound replay type for EBFAB, and preserve released v1 semantics otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
 
@@ -1273,11 +1297,18 @@ artifact's protocol validity.
 **Operator-marketplace ratings.** A marketplace migrating to DACS-5 MAY backfill historical ratings as operator-signed RatingRecord-equivalents; new DACS-5 ratings stand alone and are clearly distinguishable from the operator-signed history.
 
 **Legacy agreement era.** DACS-5 v0.6 does not rewrite either agreement type or
-the released bundle/derivation shapes. Current consumers apply the separately
-governed DACS-4 LAA checkpoint when a successful payment cites legacy
-`AgreementDocument`. Older readers can still authenticate the bytes they know,
-but they do not establish the current historical-era qualification and MUST NOT
-claim this profile.
+the released bundle/derivation shapes. Every current bundle and reputation
+consumer — `EvidenceBoundFaultAttestationBundle` via SEB-3, released
+`AttestationBundle` / `FaultAttestationBundle` via the bundle-consumption gate,
+and every derivation type via its settlement-admission gate — applies the
+separately governed DACS-4 LAA checkpoint when a successful payment cites
+legacy `AgreementDocument`. A historical LAA `pass` is **current-ineligible**:
+it preserves historical audit but cannot satisfy a current bundle or contribute
+current reputation or volume. A consumer or derivation path that cannot execute
+LAA-era qualification MUST treat a legacy-payment bundle as historical-only and
+grant it no current reputation authority after activation. Older readers can
+still authenticate the bytes they know, but they do not establish the current
+historical-era qualification and MUST NOT claim this profile.
 
 **Audit-log standards.** A consumer MAY convert a DACS-5 bundle to RFC 5424 / OpenTelemetry at read time; DACS-5 defines only the bundle.
 
@@ -1296,9 +1327,12 @@ claim this profile.
 **Legacy-agreement reputation upgrade.** *Threat:* a current bundle wraps a
 fresh or backdated legacy agreement and valid payment evidence, then relies on
 the bundle signatures or agreement `generatedAt` to make it look historical.
-*Mitigation:* SEB-3 and RSV-2 re-run DACS-4 LAA against the exact commitment and
-settlement-evidence receipts; fail/error rejects and indeterminate authority is
-non-counting. Bundle `finalisedAt` and later presentation are not era proof.
+*Mitigation:* every current bundle and derivation consumer re-runs DACS-4 LAA
+against the exact commitment and settlement-evidence receipts — EBFAB via SEB-3,
+released bundles via the consumption gate, and every derivation via its
+settlement-admission gate; fail/error rejects, indeterminate authority is
+non-counting, and a historical pass is current-ineligible and excluded from
+current metrics. Bundle `finalisedAt` and later presentation are not era proof.
 
 **Sybil reputation farming.** *Threat:* an attacker creates many cheap primary claims (key:…) and farms self-deal reputation between them. *Mitigation:* DACS-5 metrics are partitioned by primary claim and do not inherit; Sybil farming over key:… claims accumulates reputation only against those claims, not against higher-tier presentations. The DACS-2 supplementary signals (counterparty being a known Sybil cluster) feed back into Vet for any party who cares.
 

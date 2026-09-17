@@ -132,7 +132,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(69, self.data["count"])
+        self.assertEqual(79, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -227,6 +227,61 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             del trust["providerAttestations"][response_hash][field]
             with self.subTest(scope="attestation", field=field):
                 self.assertNotEqual("pass", verify_finality(control, trust)["decision"])
+
+    def test_ap2_sr3_requires_authenticated_matching_native_transaction(self):
+        control = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+        self.assertEqual("ap2-sr3", control["evidence"]["paymentTxRefs"][0]["kind"])
+        self.assertIn("receiptTransactionObservation", control["context"])
+        self.assertEqual(
+            "pass", verify_finality(control, self.trust)["decision"]
+        )
+
+        missing = copy.deepcopy(control)
+        del missing["context"]["receiptTransactionObservation"]
+        with self.subTest(native="observation-missing"):
+            result = verify_finality(missing, self.trust)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("native transaction authority unavailable", result["reason"])
+
+        no_profile = copy.deepcopy(self.trust)
+        no_profile["sr3TransactionFinalityProfile"] = None
+        with self.subTest(native="profile-unavailable"):
+            result = verify_finality(control, no_profile)
+            self.assertEqual("indeterminate", result["decision"])
+            self.assertIn("finality profile unavailable", result["reason"])
+
+        wrong_tx = copy.deepcopy(control)
+        wrong_tx["context"]["receiptTransactionObservation"]["transactionRef"] = {
+            "kind": "demos-web2-request", "value": "ff" * 32,
+        }
+        with self.subTest(native="transaction-substituted"):
+            self.assertEqual("fail", verify_finality(wrong_tx, self.trust)["decision"])
+
+        bad_block = copy.deepcopy(control)
+        bad_block["context"]["receiptTransactionObservation"]["inclusionBlock"]["id"] = "00" * 32
+        with self.subTest(native="inclusion-tampered"):
+            self.assertEqual("fail", verify_finality(bad_block, self.trust)["decision"])
+
+        no_bft = copy.deepcopy(control)
+        no_bft["context"]["receiptTransactionObservation"]["finalityCertificate"] = None
+        with self.subTest(native="finality-certificate-missing"):
+            self.assertEqual("indeterminate", verify_finality(no_bft, self.trust)["decision"])
+
+    def test_frozen_ap2_arm_remains_distinct_and_unchanged(self):
+        ap2 = self.cases["fv-provider-receipt-canonical-success"]["input"]
+        sr3 = self.cases["fv-ap2-sr3-canonical-success"]["input"]
+        self.assertEqual("ap2", ap2["evidence"]["paymentTxRefs"][0]["kind"])
+        self.assertNotIn("receiptTransactionObservation", ap2["context"])
+        self.assertNotIn("receiptTransactionRef", ap2["evidence"]["paymentTxRefs"][0])
+        self.assertEqual(
+            "pass", verify_finality(ap2, self.trust)["decision"]
+        )
+        with self.subTest(frozen="native-authority-forbidden"):
+            contaminated = copy.deepcopy(ap2)
+            contaminated["context"]["receiptTransactionObservation"] = {}
+            self.assertEqual("error", verify_finality(contaminated, self.trust)["decision"])
+        with self.subTest(distinct="sr3-shape"):
+            self.assertEqual("demos-web2-request", sr3["evidence"]["paymentTxRefs"][0]["receiptTransactionRef"]["kind"])
 
     def test_provider_attestation_map_boundary_is_typed_on_direct_and_composed_paths(self):
         control = self.cases["fv-provider-receipt-canonical-success"]["input"]

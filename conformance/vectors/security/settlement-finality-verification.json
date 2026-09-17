@@ -81,6 +81,20 @@
           "algorithm": "ed25519",
           "value": "n-aOy07SQ54NQ3RacNrnYtCddybfkVNlPHe8AaQTILFAjXZjPjnujhI2pKPydc9diA1mrz0k0BUaAxAUeAZYDA"
         }
+      },
+      "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3": {
+        "responseAttestationVersion": "1",
+        "providerId": "provider:example",
+        "sr3Binding": "provider-jws-v1",
+        "endpointOrigin": "https://payments.example",
+        "providerRef": "provider-charge-392",
+        "responseHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3",
+        "observedAt": 1900000000000,
+        "signature": {
+          "signer": "provider:example",
+          "algorithm": "ed25519",
+          "value": "mgaXDyrQV6HK2rcmGqi4lldqCzNs4jERAVkHK18qJhX_LiFBzY655_lHdsvrRIdAlYncKRLWT0fhCVemM_xABQ"
+        }
       }
     },
     "sessionAuthorityByJob": {
@@ -179,11 +193,51 @@
         "payer": "did:demos:buyer",
         "payee": "did:demos:seller",
         "asset": "USDC"
+      },
+      "FV-392-ap2-sr3": {
+        "jobId": "FV-392-ap2-sr3",
+        "phaseIndex": 0,
+        "phaseKind": "pay-ap2",
+        "phaseOrchestrator": "did:demos:orchestrator",
+        "railId": "fixture:provider-sr3",
+        "railVersion": 1,
+        "agreementHash": "1cefe72982540a972cd6ecc61431b2ee659fbd059fb0d9d02cef485f99e89bc9",
+        "partyClaims": {
+          "buyer": "did:demos:buyer",
+          "seller": "did:demos:seller"
+        },
+        "payer": "did:demos:buyer",
+        "payee": "did:demos:seller",
+        "asset": "USD"
       }
+    },
+    "sr3TransactionFinalityProfile": {
+      "kind": "bft-final",
+      "networkId": "demos:mainnet",
+      "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+      "observation": {
+        "method": "rpc-quorum",
+        "authorityRefs": [
+          "rpc-a",
+          "rpc-b",
+          "rpc-c"
+        ],
+        "threshold": 2,
+        "maxHeadAgeSec": 60
+      },
+      "validatorSetRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+        },
+        "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+      },
+      "quorumNumerator": 2,
+      "quorumDenominator": 3
     }
   },
-  "count": 69,
-  "hash": "bb39b103b61f9d9c960af72e3c42f234a6601107b393291472ce2c70df0a6841",
+  "count": 79,
+  "hash": "493ba7cb1810836d15978f2a4e8a7f8d33db9583262c87c4463519cef0c430c7",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -15506,6 +15560,2958 @@
               "locator": "stor-bc8ab6cb8b4254de9ae8c47e7815237dd76f397c65c8f9e31a691d91787b8284"
             },
             "contentHash": "01e7f500c5da3280affa1c7df4e38dd7deb5c8500d81e38349a4224938593bca"
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "fail"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-canonical-success",
+      "expected": "pass",
+      "note": "current Demos DAHR ap2-sr3 arm authenticates the native web2Request transaction and response commitment",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "provisional-provider-capture",
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "pass"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-native-observation-missing",
+      "expected": "indeterminate",
+      "note": "a missing SR-3 native transaction observation cannot pass",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-native-profile-unavailable",
+      "expected": "indeterminate",
+      "note": "the independently authenticated SR-3 finality profile is required",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "indeterminate"
+      },
+      "trustedOverrides": {
+        "sr3TransactionFinalityProfile": null
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-receipt-transaction-ref-substitution",
+      "expected": "fail",
+      "note": "the signed receipt transaction hash must match the authenticated native transaction",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "G-nnUPG2UA5xPAQena_6tbEZrxms5ooaYzqjOuUWVPrabjeWYw2CxSq9AvR2uV5MulxNhijm915IsC64Gn6-AQ"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "fail"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-native-transaction-reference-substitution",
+      "expected": "fail",
+      "note": "the observed native transaction must bind the signed receipt transaction reference",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "fail"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-inclusion-block-substitution",
+      "expected": "fail",
+      "note": "the native transaction inclusion block must verify against its header",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "0000000000000000000000000000000000000000000000000000000000000000",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "fail"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-bft-certificate-missing",
+      "expected": "indeterminate",
+      "note": "the native transaction finality certificate is independently required",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": null
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-malformed-receipt-transaction-ref",
+      "expected": "error",
+      "note": "the ap2-sr3 receipt transaction reference is closed over kind and value",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": 12345
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "OjH60zaM5qw-x--AHVyxYOAH4wfJf5SL9GogIMOdwsEbhR9X_VM_NJGumpTXTaK72-GU2yLVua59ICH4EcvzCg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOGIwMzRhMWI4NTZlM2QyOTQ1MzU0Yzc4NGJjNzRlYTFlZDhjZGUxYjA1NTA1OWM3MWMzMWY0OTM0YmRiNTY3YSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "fceaf3fe5a822d79904d4c5b8c0ec064c06e5bb3e9971d97318208b692017782",
+              "siblingHash": "76ee9ffa372a518a88b3ced3115387004b226c42967088c6d6d12a0dbc9eca82",
+              "leafIndex": 0,
+              "root": "c43b4afaafb71b3798909a8d518a1e3f751c86f65e3b0e3d82b5457cbf23dec7"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiJlMGFlNmFiNTRiYWYwMGJhYWExMjNhYTVlNDEzNmYwNDEwZTI2MGU5MzQ0YzEyZjU3YzQyMGE3YTBjZjA1NGMzIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "a77cecbf46e15b87e39bfde781f2238f5a4795f50d796c3d5f57a477f16ed75d",
+              "siblingHash": "256f4baf184d78c8fabefec2f0b4af0b258eb4289a57d9c158782a0bc9e83321",
+              "leafIndex": 0,
+              "root": "8b034a1b856e3d2945354c784bc74ea1ed8cde1b055059c71c31f4934bdb567a"
+            },
+            "inclusionBlock": {
+              "id": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "parentId": "f3a1d8322e4efa3f866d51230471c7a6f1e578b946e81e9c9595505cd95b80c7",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmM2ExZDgzMjJlNGVmYTNmODY2ZDUxMjMwNDcxYzdhNmYxZTU3OGI5NDZlODFlOWM5NTk1NTA1Y2Q5NWI4MGM3IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzQzYjRhZmFhZmI3MWIzNzk4OTA5YThkNTE4YTFlM2Y3NTFjODZmNjVlM2IwZTNkODJiNTQ1N2NiZjIzZGVjNyJ9"
+            },
+            "authenticatedHead": {
+              "id": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "parentId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGJiNWMxNzIzZjk1Mjg0OTg3ZWQ2NTU5MjRlMjk2OWRhYjAyN2U0NzAwYWRiY2M1NTVhY2RiODE1NDc5OTc4IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "parentId": "ea7eb40e9a57913ab6db57c42731a588505bf87d1379d08d047b7c4cfe276826",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlYTdlYjQwZTlhNTc5MTNhYjZkYjU3YzQyNzMxYTU4ODUwNWJmODdkMTM3OWQwOGQwNDdiN2M0Y2ZlMjc2ODI2IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "parentId": "d1e4fe4c8bf42d460cb58310406450af2fcb780fc02091443d451f4828f79ccc",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkMWU0ZmU0YzhiZjQyZDQ2MGNiNTgzMTA0MDY0NTBhZjJmY2I3ODBmYzAyMDkxNDQzZDQ1MWY0ODI4Zjc5Y2NjIiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "parentId": "fb67ee340a356aa794a0f29b2912ec7b99716daafacf219e49edeec6b6a73ee3",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYjY3ZWUzNDBhMzU2YWE3OTRhMGYyOWIyOTEyZWM3Yjk5NzE2ZGFhZmFjZjIxOWU0OWVkZWVjNmI2YTczZWUzIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "parentId": "a15d217f9272fdc739d4a9bd7e078f041654a62b0f688749450e8299f4d192d3",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhMTVkMjE3ZjkyNzJmZGM3MzlkNGE5YmQ3ZTA3OGYwNDE2NTRhNjJiMGY2ODg3NDk0NTBlODI5OWY0ZDE5MmQzIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "parentId": "b0eb17b9eae78bb3ee235e855e3023e31b6b8f719831bd5189b3a20200f80f61",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiMGViMTdiOWVhZTc4YmIzZWUyMzVlODU1ZTMwMjNlMzFiNmI4ZjcxOTgzMWJkNTE4OWIzYTIwMjAwZjgwZjYxIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "parentId": "7cae7ac809b0f76e9a5e6e0e89957f4a67788b3781300a61bddf4d5c8880df6b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3Y2FlN2FjODA5YjBmNzZlOWE1ZTZlMGU4OTk1N2Y0YTY3Nzg4YjM3ODEzMDBhNjFiZGRmNGQ1Yzg4ODBkZjZiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "parentId": "20f08751a754e6c9cd570e3db98728434f1751a12fbc2ad5b36cd941f4b7a574",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMGYwODc1MWE3NTRlNmM5Y2Q1NzBlM2RiOTg3Mjg0MzRmMTc1MWExMmZiYzJhZDViMzZjZDk0MWY0YjdhNTc0IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "parentId": "2c268d219233d89f3195bce903f91e0fdb00df4cb84a71de91a7968e0e67e3dc",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyYzI2OGQyMTkyMzNkODlmMzE5NWJjZTkwM2Y5MWUwZmRiMDBkZjRjYjg0YTcxZGU5MWE3OTY4ZTBlNjdlM2RjIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "parentId": "fa34642f2585e204587e1e9ad44f56646c6bf977c9f81b3455a946aaaaf51820",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmYTM0NjQyZjI1ODVlMjA0NTg3ZTFlOWFkNDRmNTY2NDZjNmJmOTc3YzlmODFiMzQ1NWE5NDZhYWFhZjUxODIwIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              },
+              {
+                "childId": "f8a89afd06dd3e93b794978e0cadd79bb47034720c4206c380d91ba358228ece",
+                "parentId": "d7dbaea1e6905aa0253d6943d18291f70e994cb0d6bafcbe76f27765c120cf2d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkN2RiYWVhMWU2OTA1YWEwMjUzZDY5NDNkMTgyOTFmNzBlOTk0Y2IwZDZiYWZjYmU3NmYyNzc2NWMxMjBjZjJkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiMDJhNjdhZjczNmJhZjY3NGEwMzY4NGFjOWRmZTQ3OWEyMjBkZDY3NmM2M2EyNTk0NjAyOWRkYjc0MDEwNDYzNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "dxK3u4B_KejHL6taUj5ueXxDoEPwdu6Lam8CIhDXo5g7c6HKIGe2Ft6Q1Vim5R2GLcQrncAMDuq8jAvFptCdAQ"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "gISa7TfspY9iz5Ymd7-Jpxo_hsX9jmieOZp2kRuvjzwuucsbzmzcmL7cPGnMk00aVKJ6BnTkHf0hCh5JmtTqAA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "U1KSS_2LyesxVGK9HOPAXBEyRHXLy15qdWFZTPknWh6hxxJx9VJ6Bl2M4exseMR-cz_3-2-t0xmbnrA5KKxmAQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "20bb5c1723f95284987ed655924e2969dab027e4700adbcc555acdb815479978",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "wSiMyJuwROLwkdZRD44jGZM7edKX092azw1adz_PfkzWJhliAi7QOY7MPke6uzfWHbACivl5QjWi4cjJ420gDg"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "k1LNGelbQ0jC9ZrDXmIIGpKJklIJoqWn09KC1FxjpguJj7vNgiM9-5SW9OxgW-KS-hF7NtTsYEQRyA9USxKrBQ"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-frozen-arm-native-authority-forbidden",
+      "expected": "error",
+      "note": "the frozen ap2 arm must not carry SR-3 native transaction authority",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-provider-receipt",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-bc8ab6cb8b4254de9ae8c47e7815237dd76f397c65c8f9e31a691d91787b8284"
+                },
+                "contentHash": "01e7f500c5da3280affa1c7df4e38dd7deb5c8500d81e38349a4224938593bca"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-e41ebe85c520eecab5af3ca63bba25b4149129791572e4c3f7eebf4f633016c5"
+            },
+            "contentHash": "c285a357f349fdba3941ceca2dd6d1d164beeb2863f4bc6a4b11a88b3b4e0cbf",
+            "railId": "fixture:provider-receipt",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "qC7wWwcrSLG7L_N2c8b9GLil7U-rRZiXUez80SGskXkIVDWbD2IYmGB2qG_jPzvmG0PUp4OlNiseVKAiTzWRAQ"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-receipt",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "lyro4KBAr11qQLQ-0W58V0uAlktj_8cEUzdVIQqBq9emmpqxZ6sBrHezj2qiAj3vV_382xP6FCAqoCbCNmtuAA"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-provider-receipt",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-receipt",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "IhPbbekh4gtnfSCvo9gZNFa5v0tgt7c8kgI4iTP240Jv3a6VsdO_W548-vMrLUhxcOEoA1C6AFYmIUs9wnBKBA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "wygMMZQKtgt_fgXfSWRmIIJpOJz6f0VYzVL_grQk5SeJoiw2K5CEdHarrU4vBwXcV-j4ep4YATi-fO1sUcr6CA"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLXByb3ZpZGVyLXJlY2VpcHQiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-bc8ab6cb8b4254de9ae8c47e7815237dd76f397c65c8f9e31a691d91787b8284"
+            },
+            "contentHash": "01e7f500c5da3280affa1c7df4e38dd7deb5c8500d81e38349a4224938593bca"
+          },
+          "receiptTransactionObservation": {}
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      }
+    },
+    {
+      "name": "fv-ap2-sr3-response-hash-contradiction",
+      "expected": "fail",
+      "note": "the native transaction must commit the exact provider response hash",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "phase": "pay-ap2",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "ap2-sr3",
+              "mandateId": "97862a8fa1becff357ee4cd6f24915cc311180c6ad7c8828af8b45917532fac8",
+              "providerRef": "provider-charge-392",
+              "protocolVersion": "1",
+              "receiptAttestation": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://payments.example/status"
+                },
+                "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+              },
+              "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+              }
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USD"
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+            },
+            "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+            "railId": "fixture:provider-sr3",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "Fs0hhwZOQJ_55e6mvwY-8B4xlLLQQK4LT0i5QWgZNgi-qJ01OcharDM5nj-7zroEjUNUldx-QFbnisIiWqMRDg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "asset": {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "provider:example"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "phaseHandler": "pay-ap2",
+          "parameters": {
+            "assetId": "USD"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-ap2-sr3",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USD"
+            },
+            "rail": {
+              "railId": "fixture:provider-sr3",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "oZnHYz2MRecC4RlL4EVPSytWxDkorFw13bD5at51Pw0-EHFhVJXGlsigaENFfFA2BS0K0v0yqZPxIbV7ptv_Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ggqWsiJ0TpAQifYQ3qtweDq-juNVF2j1DRlQnGbTAyssQywIwFpBB-CtUr9Z8kRfdd0MmRTJQRhOhh0fMFo4CQ"
+            }
+          ]
+        },
+        "context": {
+          "kind": "provider",
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example",
+          "providerRef": "provider-charge-392",
+          "responseBytes": "eyJhbW91bnQiOiI1IiwiY3VycmVuY3kiOiJVU0QiLCJlbmRwb2ludE9yaWdpbiI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZSIsImpvYklkIjoiRlYtMzkyLWFwMi1zcjMiLCJwYXllZSI6ImRpZDpkZW1vczpzZWxsZXIiLCJwYXllciI6ImRpZDpkZW1vczpidXllciIsInBoYXNlSW5kZXgiOjAsInByb3ZpZGVyUmVmIjoicHJvdmlkZXItY2hhcmdlLTM5MiIsInN0YXR1cyI6ImNhcHR1cmVkIn0",
+          "responseAttestation": {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://payments.example/status"
+            },
+            "contentHash": "e0ae6ab54baf00baaa123aa5e4136f0410e260e9344c12f57c420a7a0cf054c3"
+          },
+          "receiptTransactionObservation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f3d672bc08e43b2343ca0a0d2403b3f0c183a8662fe4470846e59dba7c64bd57"
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiNTJiMzg4MWI0YmExM2U4ZGYxYmI0Yjc4OWJjYjQzMTc3MTVkZTIwYmM5MDllMWMxZTgyOGFlMGRkNWNhZTUwNiIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXdlYjItcmVxdWVzdCIsInZhbHVlIjoiZjNkNjcyYmMwOGU0M2IyMzQzY2EwYTBkMjQwM2IzZjBjMTgzYTg2NjJmZTQ0NzA4NDZlNTlkYmE3YzY0YmQ1NyJ9fQ",
+              "leafHash": "b73057633d8b49d1743f9eda02c4baebb73284597b8b5d2484f9104e5e27f7db",
+              "siblingHash": "d5f2c9058ae6bfdfab10909f08b577f49a00e3fa0979105f8bf6d7c965dba2ae",
+              "leafIndex": 0,
+              "root": "23c1a5187fe855e1fef837c54ace5aa84bf9b9c033a4becda08ebe6ca72736ac"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJldmVudFR5cGUiOiJ3ZWIyLXJlcXVlc3QiLCJyZXF1ZXN0TWV0aG9kIjoiR0VUIiwicmVxdWVzdFVybCI6Imh0dHBzOi8vcGF5bWVudHMuZXhhbXBsZS9zdGF0dXMiLCJyZXNwb25zZUhhc2giOiIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwicmVzcG9uc2VTdGF0dXMiOjIwMCwidHJhbnNhY3Rpb25JZCI6ImYzZDY3MmJjMDhlNDNiMjM0M2NhMGEwZDI0MDNiM2YwYzE4M2E4NjYyZmU0NDcwODQ2ZTU5ZGJhN2M2NGJkNTciLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3Mtd2ViMi1yZXF1ZXN0IiwidmFsdWUiOiJmM2Q2NzJiYzA4ZTQzYjIzNDNjYTBhMGQyNDAzYjNmMGMxODNhODY2MmZlNDQ3MDg0NmU1OWRiYTdjNjRiZDU3In19",
+              "leafHash": "bb4693440c7a2bdc4f911bb2e7061ed6704ba8127cfc6d8e3fadddb6624dad62",
+              "siblingHash": "963d1457c5d418f93be77538277ab5264320d81ecc2d9e46b3f2d575076544df",
+              "leafIndex": 0,
+              "root": "52b3881b4ba13e8df1bb4b789bcb4317715de20bc909e1c1e828ae0dd5cae506"
+            },
+            "inclusionBlock": {
+              "id": "6b38008f9317fd47bc942794368341194555484faefff85d5a7810f93abbcb7d",
+              "parentId": "1e741b36788ff594d2d5ae33fd4e9253dfe1da18ebdee16c866c65b9a5774972",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxZTc0MWIzNjc4OGZmNTk0ZDJkNWFlMzNmZDRlOTI1M2RmZTFkYTE4ZWJkZWUxNmM4NjZjNjViOWE1Nzc0OTcyIiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiMjNjMWE1MTg3ZmU4NTVlMWZlZjgzN2M1NGFjZTVhYTg0YmY5YjljMDMzYTRiZWNkYTA4ZWJlNmNhNzI3MzZhYyJ9"
+            },
+            "authenticatedHead": {
+              "id": "249a17781d5136b233013fb5e4400da40e8be162e063e6fa770ed88d8f290f9c",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YTNiZjU3ZGYwOTNlZGNlMmNjNDNjMGU5ODBiMTU0YTY3YjkxMjcxOTcyZTRmODdjNWVhYmI0YmJjNmZhOTFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "e5f73d4cf78de6d573e805efcadbfe94fb6613ed0c4243e7207ab01e88b63eef",
+                "parentId": "6b38008f9317fd47bc942794368341194555484faefff85d5a7810f93abbcb7d",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YjM4MDA4ZjkzMTdmZDQ3YmM5NDI3OTQzNjgzNDExOTQ1NTU0ODRmYWVmZmY4NWQ1YTc4MTBmOTNhYmJjYjdkIiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "833638261f1e45b4b124e40da3e2725c58503165a6df1243c26cc493f27ff738",
+                "parentId": "e5f73d4cf78de6d573e805efcadbfe94fb6613ed0c4243e7207ab01e88b63eef",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJlNWY3M2Q0Y2Y3OGRlNmQ1NzNlODA1ZWZjYWRiZmU5NGZiNjYxM2VkMGM0MjQzZTcyMDdhYjAxZTg4YjYzZWVmIiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "b7bd64ddbf2c17e23c04231adfeb773f5a89a402684d881f2e36f2e576926126",
+                "parentId": "833638261f1e45b4b124e40da3e2725c58503165a6df1243c26cc493f27ff738",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4MzM2MzgyNjFmMWU0NWI0YjEyNGU0MGRhM2UyNzI1YzU4NTAzMTY1YTZkZjEyNDNjMjZjYzQ5M2YyN2ZmNzM4IiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "df969387be1f6a38e827ed95b27d9bb9db70379d507c5b82ef78c5c1890a7130",
+                "parentId": "b7bd64ddbf2c17e23c04231adfeb773f5a89a402684d881f2e36f2e576926126",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiN2JkNjRkZGJmMmMxN2UyM2MwNDIzMWFkZmViNzczZjVhODlhNDAyNjg0ZDg4MWYyZTM2ZjJlNTc2OTI2MTI2IiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "abad0f8aa8cc2578af458a6a59de0eee764d94ff345a981d50dd1337f51f4802",
+                "parentId": "df969387be1f6a38e827ed95b27d9bb9db70379d507c5b82ef78c5c1890a7130",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkZjk2OTM4N2JlMWY2YTM4ZTgyN2VkOTViMjdkOWJiOWRiNzAzNzlkNTA3YzViODJlZjc4YzVjMTg5MGE3MTMwIiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "3689d3dd801dd105e157c030f250f20a570c003019da63a48c367420c4b11ba6",
+                "parentId": "abad0f8aa8cc2578af458a6a59de0eee764d94ff345a981d50dd1337f51f4802",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhYmFkMGY4YWE4Y2MyNTc4YWY0NThhNmE1OWRlMGVlZTc2NGQ5NGZmMzQ1YTk4MWQ1MGRkMTMzN2Y1MWY0ODAyIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "8834ba94db4d64117565e298dd942941b13dc1fc147f5f7129110d14d299c5d7",
+                "parentId": "3689d3dd801dd105e157c030f250f20a570c003019da63a48c367420c4b11ba6",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNjg5ZDNkZDgwMWRkMTA1ZTE1N2MwMzBmMjUwZjIwYTU3MGMwMDMwMTlkYTYzYTQ4YzM2NzQyMGM0YjExYmE2IiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "435e1ee4b6e2662735b98e851a18442fc25bc7ca30cfb97f40681fb1c1182a8f",
+                "parentId": "8834ba94db4d64117565e298dd942941b13dc1fc147f5f7129110d14d299c5d7",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4ODM0YmE5NGRiNGQ2NDExNzU2NWUyOThkZDk0Mjk0MWIxM2RjMWZjMTQ3ZjVmNzEyOTExMGQxNGQyOTljNWQ3IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "a89f20d714a5148b2229652586ed96135d52711d02df74f37840f52582b97fd8",
+                "parentId": "435e1ee4b6e2662735b98e851a18442fc25bc7ca30cfb97f40681fb1c1182a8f",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0MzVlMWVlNGI2ZTI2NjI3MzViOThlODUxYTE4NDQyZmMyNWJjN2NhMzBjZmI5N2Y0MDY4MWZiMWMxMTgyYThmIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "6a3bf57df093edce2cc43c0e980b154a67b91271972e4f87c5eabb4bbc6fa91d",
+                "parentId": "a89f20d714a5148b2229652586ed96135d52711d02df74f37840f52582b97fd8",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhODlmMjBkNzE0YTUxNDhiMjIyOTY1MjU4NmVkOTYxMzVkNTI3MTFkMDJkZjc0ZjM3ODQwZjUyNTgyYjk3ZmQ4IiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              },
+              {
+                "childId": "249a17781d5136b233013fb5e4400da40e8be162e063e6fa770ed88d8f290f9c",
+                "parentId": "6a3bf57df093edce2cc43c0e980b154a67b91271972e4f87c5eabb4bbc6fa91d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YTNiZjU3ZGYwOTNlZGNlMmNjNDNjMGU5ODBiMTU0YTY3YjkxMjcxOTcyZTRmODdjNWVhYmI0YmJjNmZhOTFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiNTA0OWExZDY5NDkyNjZiMDYwNGMxNGQwZmYzYTVjZGM5OWIwYWNlZmY4Mjg0NzFhNGZiNzFjNWIzNmE5ODNiZSJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "mLEga24m-_TWHzbIPuA84-vQYo9k7rzs8YNc9pEJNFZWM3yfb971nh-mlvgd_IDxus8Z1Rdvd1I48PGV0RXtDw"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "YLBEp3DHLebbsruVEkTp4yLR7nU33H3XJC6Tp-5Aa5K4XD6y_xQbZknjAHHBGobjSAKnUF_Hi14EY1bFKaMVBg"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "erqSA9yKm1wKmnbc8Y_BIn4bm3KTBHaZt9oCsN6dRO47cpSZX7TbTqreAcjFOqpSjRAz35hcjApeFIwY3JIYCA"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "6b38008f9317fd47bc942794368341194555484faefff85d5a7810f93abbcb7d",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "dSbeLyswLlsF0mRpVcQVHYlDlq2HkWbEPtFRVRsKyjbRL6oLH7Qiu71gYfuCDClSGZufjW_2dA_nHuW4nAVICw"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "EzIgpv5AJ1oOpWMmvkJqprGPCw0qnCefZNVPRJ4_81qPLTTO9moEs_NJSj_fja_ChGo_FAtSOuXopWv_PwPRCg"
+                }
+              ]
+            }
           }
         }
       },

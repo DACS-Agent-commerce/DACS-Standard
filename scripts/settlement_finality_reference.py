@@ -505,6 +505,10 @@ def _transaction_ref_shape(reference: Any) -> bool:
             {"sourceChainId", "destChainId"},
         ),
         "ap2": ({"kind", "mandateId", "providerRef", "protocolVersion", "receiptAttestation"}, set()),
+        "ap2-sr3": (
+            {"kind", "mandateId", "providerRef", "protocolVersion", "receiptAttestation", "receiptTransactionRef"},
+            set(),
+        ),
     }
     selected = shapes.get(kind)
     if selected is None or set(reference) != selected[0]:
@@ -512,7 +516,7 @@ def _transaction_ref_shape(reference: Any) -> bool:
     if any(not _safe_integer(reference.get(field)) for field in selected[1]):
         return False
     for field, value in reference.items():
-        if field in {"kind", *selected[1], "receiptAttestation"}:
+        if field in {"kind", *selected[1], "receiptAttestation", "receiptTransactionRef"}:
             continue
         if not _nonempty_string(value):
             return False
@@ -521,6 +525,15 @@ def _transaction_ref_shape(reference: Any) -> bool:
             if len(base58_decode(reference["signature"])) != 64:
                 return False
         except ValueError:
+            return False
+    if kind == "ap2-sr3":
+        tx_ref = reference.get("receiptTransactionRef")
+        if not (
+            isinstance(tx_ref, dict)
+            and set(tx_ref) == {"kind", "value"}
+            and _nonempty_string(tx_ref.get("kind"))
+            and _nonempty_string(tx_ref.get("value"))
+        ):
             return False
     return "receiptAttestation" not in reference or _attestation_ref(reference["receiptAttestation"])
 
@@ -640,7 +653,7 @@ def _chain_ref_matches_profile(reference: Any, profile: dict) -> bool:
     if reference.get("kind") == "solana-instruction":
         expected = network.split(":", 1)[1] if network.startswith("solana:") else None
         return reference.get("cluster") == expected
-    if reference.get("kind") == "demos":
+    if reference.get("kind") in {"demos", "demos-web2-request"}:
         return network.startswith("demos:")
     if reference.get("kind") in {"htlc-lock", "htlc-reveal", "htlc-claim"}:
         expected = network.split(":", 1)[1] if network.startswith("eip155:") else None
@@ -993,6 +1006,197 @@ def _verify_chain_observation(
     return _result("pass", "chain observation verified"), event
 
 
+def _verify_web2_request_event(event: Any, reference: dict, response_hash: str, status_resource: str) -> tuple[str, str]:
+    required = {
+        "eventType", "transactionRef", "transactionId", "requestUrl",
+        "requestMethod", "responseStatus", "responseHash",
+    }
+    if not _exact_object(event, required) or event.get("eventType") != "web2-request":
+        return "error", "malformed web2-request event body"
+    if (
+        not _nonempty_string(event.get("transactionId"))
+        or not _nonempty_string(event.get("requestUrl"))
+        or not _nonempty_string(event.get("requestMethod"))
+        or not _safe_integer(event.get("responseStatus"), positive=True)
+        or not _sha256(event.get("responseHash"))
+    ):
+        return "error", "malformed web2-request event member"
+    if (
+        canonical_bytes(event.get("transactionRef")) != canonical_bytes(reference)
+        or event.get("transactionId") != reference.get("value")
+        or event.get("responseHash") != response_hash
+        or event.get("requestUrl") != status_resource
+        or event.get("requestMethod") != "GET"
+    ):
+        return "fail", "web2-request event does not bind the signed native transaction, request, and response commitment"
+    return "pass", "web2-request event verified"
+
+
+def _verify_sr3_native_transaction(
+    observation: Any,
+    reference: dict,
+    response_hash: str,
+    receipt_attestation: dict,
+    trusted: dict,
+) -> tuple[str, str]:
+    """Authenticate the SR-3 native ``web2Request`` transaction inclusion at
+    Demos BFT finality and its commitment to the exact provider response hash.
+
+    The DAHR binding (DEMOS-MAPPING §A.3) exposes a consensus-anchored hash
+    commitment, so the reference authenticates the on-chain transaction and the
+    response commitment it carries; it does not claim multi-validator body
+    observation.
+    """
+    if observation is None:
+        return "indeterminate", "authenticated SR-3 native transaction observation unavailable"
+    profile = trusted.get("sr3TransactionFinalityProfile")
+    if not isinstance(profile, dict) or not _chain_profile_shape(profile) or profile.get("kind") != "bft-final":
+        return "indeterminate", "authenticated SR-3 native transaction finality profile unavailable"
+    required = {
+        "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
+        "selectedEventProof", "inclusionBlock", "authenticatedHead", "ancestryProof",
+        "authorityEvidence",
+    }
+    optional = {"finalityCertificate"}
+    if not _exact_object(observation, required, optional):
+        return "error", "malformed SR-3 native transaction observation"
+    if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
+        return "fail", "SR-3 native transaction network or genesis differs from signed profile"
+    if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
+        return "fail", "SR-3 native transaction reference differs from signed evidence"
+    if not _chain_ref_matches_profile(reference, profile):
+        return "fail", "signed SR-3 native transaction reference is on the wrong profile network"
+    anchor = receipt_attestation.get("anchor") if isinstance(receipt_attestation, dict) else None
+    status_resource = anchor.get("locator") if isinstance(anchor, dict) else None
+    if not isinstance(anchor, dict) or anchor.get("kind") != "https" or not _nonempty_string(status_resource):
+        return "error", "malformed SR-3 receipt attestation locator"
+
+    event_decision, event_reason, event = _verify_merkle_proof(
+        observation.get("selectedEventProof"), kind="fixture-event-merkle-v1", bytes_field="eventBytes"
+    )
+    transaction_decision, transaction_reason, transaction = _verify_merkle_proof(
+        observation.get("transactionInclusionProof"), kind="fixture-transaction-merkle-v1", bytes_field="transactionBytes"
+    )
+    if event_decision != "pass":
+        return event_decision, event_reason
+    if transaction_decision != "pass":
+        return transaction_decision, transaction_reason
+    if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", "status"}):
+        return "error", "malformed raw SR-3 native transaction body"
+    if (
+        transaction.get("networkId") != profile["networkId"]
+        or transaction.get("genesisHash") != profile["genesisHash"]
+        or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
+        or transaction.get("eventsRoot") != observation["selectedEventProof"]["root"]
+        or transaction.get("status") != "success"
+    ):
+        return "fail", "raw SR-3 native transaction does not bind selected event, network, or reference"
+    web2_decision, web2_reason = _verify_web2_request_event(event, reference, response_hash, status_resource)
+    if web2_decision != "pass":
+        return web2_decision, web2_reason
+
+    inclusion = observation.get("inclusionBlock")
+    head = observation.get("authenticatedHead")
+    if not (
+        _exact_object(inclusion, {"id", "parentId", "position", "header"})
+        and _exact_object(head, {"id", "position", "observedAt", "header"})
+        and _sha256(inclusion.get("id"))
+        and _sha256(inclusion.get("parentId"))
+        and _sha256(head.get("id"))
+        and isinstance(inclusion.get("position"), str)
+        and POSITION_RE.fullmatch(inclusion["position"])
+        and isinstance(head.get("position"), str)
+        and POSITION_RE.fullmatch(head["position"])
+        and _finite_time(head.get("observedAt"))
+    ):
+        return "error", "malformed SR-3 inclusion block or authenticated head"
+    try:
+        _inclusion_raw, inclusion_header = decode_json_bytes(inclusion["header"])
+        _head_raw, head_header = decode_json_bytes(head["header"])
+    except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
+        return "error", "malformed SR-3 raw block header bytes"
+    required_header = {"networkId", "genesisHash", "position", "parentId", "transactionsRoot"}
+    if not _exact_object(inclusion_header, required_header, {"commitment"}) or not _exact_object(head_header, required_header, {"commitment"}):
+        return "error", "malformed SR-3 fixture block header"
+    if (
+        hash_value(inclusion_header) != inclusion["id"]
+        or inclusion_header.get("parentId") != inclusion["parentId"]
+        or inclusion_header.get("position") != inclusion["position"]
+        or inclusion_header.get("transactionsRoot") != observation["transactionInclusionProof"]["root"]
+        or inclusion_header.get("networkId") != profile["networkId"]
+        or inclusion_header.get("genesisHash") != profile["genesisHash"]
+        or hash_value(head_header) != head["id"]
+        or head_header.get("position") != head["position"]
+        or head_header.get("networkId") != profile["networkId"]
+        or head_header.get("genesisHash") != profile["genesisHash"]
+    ):
+        return "fail", "SR-3 block header identity or transaction root does not verify"
+
+    ancestry = observation.get("ancestryProof")
+    if not isinstance(ancestry, list):
+        return "error", "SR-3 ancestryProof is not an array"
+    inclusion_position = int(inclusion["position"])
+    head_position = int(head["position"])
+    if head_position < inclusion_position:
+        return "fail", "SR-3 authenticated head precedes inclusion block"
+    if len(ancestry) != head_position - inclusion_position:
+        return "fail", "SR-3 ancestry proof is incomplete or contains an extra link"
+    previous_id = inclusion["id"]
+    path_ids = [previous_id]
+    previous_position = inclusion_position
+    for link in ancestry:
+        if not _exact_object(link, {"childId", "parentId", "position", "header"}):
+            return "error", "malformed SR-3 ancestry link"
+        if (
+            not _sha256(link.get("childId"))
+            or not _sha256(link.get("parentId"))
+            or not isinstance(link.get("position"), str)
+            or POSITION_RE.fullmatch(link["position"]) is None
+        ):
+            return "error", "malformed SR-3 ancestry identity or position"
+        try:
+            _raw, header = decode_json_bytes(link["header"])
+        except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
+            return "error", "malformed SR-3 ancestry header bytes"
+        position = int(link["position"])
+        if not _exact_object(header, required_header, {"commitment"}):
+            return "error", "malformed SR-3 ancestry header body"
+        if (
+            position != previous_position + 1
+            or link["parentId"] != previous_id
+            or link["childId"] != hash_value(header)
+            or header.get("parentId") != previous_id
+            or header.get("position") != link["position"]
+            or header.get("networkId") != profile["networkId"]
+            or header.get("genesisHash") != profile["genesisHash"]
+        ):
+            return "fail", "SR-3 ancestry link does not extend the authenticated path"
+        previous_id = link["childId"]
+        previous_position = position
+        path_ids.append(previous_id)
+    if previous_id != head["id"] or canonical_bytes(head_header) != canonical_bytes(
+        inclusion_header if not ancestry else header
+    ):
+        return "fail", "SR-3 ancestry terminus differs from authenticated head"
+
+    authority_decision, authority_reason = _verify_authority(observation, profile, path_ids, trusted)
+    if authority_decision != "pass":
+        return authority_decision, authority_reason
+    verification_time = trusted.get("verificationTimeMs")
+    if not _finite_time(verification_time):
+        return "error", "trusted verifier-local clock is malformed"
+    if head["observedAt"] > verification_time:
+        return "fail", "SR-3 authenticated head observation is from the future"
+    age_ms = verification_time - head["observedAt"]
+    if age_ms > profile["observation"]["maxHeadAgeSec"] * 1000:
+        return "indeterminate", "SR-3 authenticated head observation is stale"
+
+    bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
+    if bft_decision != "pass":
+        return bft_decision, bft_reason
+    return "pass", "authenticated SR-3 native transaction inclusion and response commitment verified"
+
+
 def _combine(results: list[dict]) -> dict | None:
     for decision in ("error", "fail", "indeterminate"):
         for result in results:
@@ -1187,7 +1391,8 @@ def _verify_tank(input_value: dict, profile: dict, rail: dict, expected: dict, t
 def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: dict) -> dict:
     context = input_value.get("context")
     required = {"kind", "providerId", "endpointOrigin", "providerRef", "responseBytes", "responseAttestation"}
-    if not _exact_object(context, required) or context.get("kind") != "provider":
+    optional = {"receiptTransactionObservation"}
+    if not _exact_object(context, required, optional) or context.get("kind") != "provider":
         return _result("error", "malformed provider finality context")
     if (
         context.get("providerId") != profile.get("providerId")
@@ -1198,12 +1403,13 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     if not isinstance(refs, list) or len(refs) != 1:
         return _result("error", "provider evidence requires one signed AP2 reference")
     ref = refs[0]
-    if not (
-        _exact_object(ref, {"kind", "mandateId", "providerRef", "protocolVersion", "receiptAttestation"})
-        and ref.get("kind") == "ap2"
-        and _attestation_ref(ref.get("receiptAttestation"))
-    ):
+    if not _transaction_ref_shape(ref) or ref.get("kind") not in {"ap2", "ap2-sr3"}:
         return _result("error", "malformed signed AP2 reference")
+    sr3 = ref.get("kind") == "ap2-sr3"
+    if not sr3 and "receiptTransactionObservation" in context:
+        return _result("error", "frozen AP2 reference must not carry SR-3 native transaction authority")
+    if sr3 and "receiptTransactionObservation" not in context:
+        return _result("indeterminate", "authenticated SR-3 native transaction authority unavailable")
     if context.get("providerRef") != ref.get("providerRef") or canonical_bytes(context.get("responseAttestation")) != canonical_bytes(ref.get("receiptAttestation")):
         return _result("fail", "provider context differs from signed provider reference")
     try:
@@ -1213,6 +1419,16 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     response_hash = hashlib.sha256(response_raw).hexdigest()
     if context["responseAttestation"].get("contentHash") != response_hash:
         return _result("fail", "provider response hash differs from signed attestation reference")
+    if sr3:
+        sr3_decision, sr3_reason = _verify_sr3_native_transaction(
+            context.get("receiptTransactionObservation"),
+            ref.get("receiptTransactionRef"),
+            response_hash,
+            ref.get("receiptAttestation"),
+            trusted,
+        )
+        if sr3_decision != "pass":
+            return _result(sr3_decision, sr3_reason)
     attestation_map = trusted.get("providerAttestations")
     if attestation_map is None:
         return _result("indeterminate", "authenticated SR-3 provider attestation unavailable")

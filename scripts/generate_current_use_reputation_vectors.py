@@ -598,9 +598,14 @@ class CurrentUseFixtureFactory:
         self.dependencies["settlementBindingProofByCanonicalRef"][ref_key] = proof
 
     def current_finality_job(self, model: str, index: int) -> tuple[dict, dict]:
-        case = self.finality.strong_bundle_case(
-            model, job_id=CURRENT_FINALITY_JOB_IDS[model]
-        )
+        if model == "provider-receipt":
+            case = self.finality.strong_bundle_case_sr3(
+                job_id=CURRENT_FINALITY_JOB_IDS[model]
+            )
+        else:
+            case = self.finality.strong_bundle_case(
+                model, job_id=CURRENT_FINALITY_JOB_IDS[model]
+            )
         bundle = case["bundle"]
         authority = case["authority"]
         candidate = next(iter(authority["finalityVerificationByCanonicalRef"].values()))

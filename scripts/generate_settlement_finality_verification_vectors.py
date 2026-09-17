@@ -150,6 +150,7 @@ class FixtureFactory:
             "validatorSets": {validator_set_hash: validator_set},
             "providerAttestations": {},
             "sessionAuthorityByJob": {},
+            "sr3TransactionFinalityProfile": self.chain_profile("bft-final", network="demos:mainnet"),
         }
         self.controls = {}
 
@@ -802,6 +803,76 @@ class FixtureFactory:
         self.resign_evidence(value["evidence"])
         return value, {attestation["responseHash"]: attestation}
 
+    def provider_sr3_value(self, *, job_id: str | None = None) -> dict:
+        """Build the current Demos DAHR ``ap2-sr3`` provider input, with the
+        native ``web2Request`` transaction and its Demos BFT inclusion proof."""
+        job_id = "FV-392-ap2-sr3" if job_id is None else job_id
+        phase = MODEL_PHASE["provider-receipt"]
+        rail_id = "fixture:provider-sr3"
+        rail_version = 1
+        currency = "USD"
+        listing = self.listing(phase)
+        agreement = self.agreement(job_id, rail_id, rail_version, currency, listing)
+        session = self.session("provider-receipt", agreement, phase, rail_id, rail_version)
+        self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
+        rail = self.rail("provider-receipt", phase, rail_id, rail_version)
+
+        provider_ref = {
+            "kind": "ap2-sr3",
+            "mandateId": hashlib.sha256(b"fixture-mandate").hexdigest(),
+            "providerRef": "provider-charge-392",
+            "protocolVersion": "1",
+        }
+        context, attestation = self.provider_context(session, provider_ref)
+        response_hash = attestation["responseHash"]
+        status_resource = "https://payments.example/status"
+        receipt_attestation = {
+            "anchor": {"kind": "https", "locator": status_resource},
+            "contentHash": response_hash,
+        }
+        provider_ref["receiptAttestation"] = copy.deepcopy(receipt_attestation)
+        tx_hash = self.tx_id("ap2-sr3-web2-request")
+        provider_ref["receiptTransactionRef"] = {"kind": "demos-web2-request", "value": tx_hash}
+        context["responseAttestation"] = copy.deepcopy(receipt_attestation)
+        self.trusted["providerAttestations"][response_hash] = attestation
+
+        sr3_profile = self.trusted["sr3TransactionFinalityProfile"]
+        web2_ref = {"kind": "demos-web2-request", "value": tx_hash}
+        web2_event = {
+            "eventType": "web2-request",
+            "transactionRef": copy.deepcopy(web2_ref),
+            "transactionId": tx_hash,
+            "requestUrl": status_resource,
+            "requestMethod": "GET",
+            "responseStatus": 200,
+            "responseHash": response_hash,
+        }
+        observation = self.chain_observation(
+            sr3_profile, web2_ref, web2_event, "ap2-sr3:web2-request"
+        )
+        context["receiptTransactionObservation"] = observation
+
+        report = {"model": "provider-receipt", "finalityObservedAt": OBSERVED_AT}
+        rail_digest = artifact_hash(rail, "signature")
+        evidence = {
+            "finalityBoundEvidenceVersion": "1",
+            "jobId": job_id,
+            "phase": phase,
+            "outcome": "success",
+            "paymentTxRefs": [provider_ref],
+            "paymentAmount": {"amount": "5", "currency": session["asset"]},
+            "settlementFinality": report,
+            "railDefinitionRef": {
+                **self.reference("rail:" + rail_id, rail_digest),
+                "railId": rail_id,
+                "railVersion": rail_version,
+            },
+            "observedAt": OBSERVED_AT,
+            "signature": {},
+        }
+        self.resign_evidence(evidence)
+        return {"evidence": evidence, "rail": rail, "agreement": agreement, "context": context}
+
     def listing(self, phase: str) -> dict:
         listing = {
             "listingId": "listing-finality-fixture",
@@ -833,7 +904,12 @@ class FixtureFactory:
         ]
 
     def strong_bundle_case(self, model: str, *, job_id: str | None = None) -> dict:
-        value = self.model_input(model, job_id=job_id)
+        return self._strong_bundle_case(model, self.model_input(model, job_id=job_id))
+
+    def strong_bundle_case_sr3(self, *, job_id: str | None = None) -> dict:
+        return self._strong_bundle_case("provider-receipt", self.provider_sr3_value(job_id=job_id))
+
+    def _strong_bundle_case(self, model: str, value: dict) -> dict:
         evidence = value["evidence"]
         phase = evidence["phase"]
         listing = self.listing(phase)
@@ -1088,6 +1164,35 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-provider-reference-substitution", "fail", "providerRef is exact across evidence, response, and attestation", changed("provider-receipt", lambda v: v["context"].__setitem__("providerRef", "provider-charge-other"))),
         case("fv-provider-endpoint-substitution", "fail", "provider endpoint is selected by the signed rail profile", changed("provider-receipt", lambda v: v["context"].__setitem__("endpointOrigin", "https://attacker.example"))),
     ])
+
+    def changed_sr3(mutation):
+        value = factory.provider_sr3_value()
+        mutation(value)
+        return value
+
+    vectors.append(case("fv-ap2-sr3-canonical-success", "pass", "current Demos DAHR ap2-sr3 arm authenticates the native web2Request transaction and response commitment", factory.provider_sr3_value()))
+
+    vectors.extend([
+        case("fv-ap2-sr3-native-observation-missing", "indeterminate", "a missing SR-3 native transaction observation cannot pass", changed_sr3(lambda v: v["context"].pop("receiptTransactionObservation"))),
+        case("fv-ap2-sr3-native-profile-unavailable", "indeterminate", "the independently authenticated SR-3 finality profile is required", factory.provider_sr3_value(), trusted_overrides={"sr3TransactionFinalityProfile": None}),
+        case("fv-ap2-sr3-receipt-transaction-ref-substitution", "fail", "the signed receipt transaction hash must match the authenticated native transaction", changed_sr3(lambda v: (v["evidence"]["paymentTxRefs"][0]["receiptTransactionRef"].__setitem__("value", "ff" * 32), factory.resign_evidence(v["evidence"])))),
+        case("fv-ap2-sr3-native-transaction-reference-substitution", "fail", "the observed native transaction must bind the signed receipt transaction reference", changed_sr3(lambda v: v["context"]["receiptTransactionObservation"].__setitem__("transactionRef", {"kind": "demos-web2-request", "value": "ff" * 32}))),
+        case("fv-ap2-sr3-inclusion-block-substitution", "fail", "the native transaction inclusion block must verify against its header", changed_sr3(lambda v: v["context"]["receiptTransactionObservation"]["inclusionBlock"].__setitem__("id", "00" * 32))),
+        case("fv-ap2-sr3-bft-certificate-missing", "indeterminate", "the native transaction finality certificate is independently required", changed_sr3(lambda v: v["context"]["receiptTransactionObservation"].__setitem__("finalityCertificate", None))),
+        case("fv-ap2-sr3-malformed-receipt-transaction-ref", "error", "the ap2-sr3 receipt transaction reference is closed over kind and value", changed_sr3(lambda v: (v["evidence"]["paymentTxRefs"][0]["receiptTransactionRef"].__setitem__("value", 12345), factory.resign_evidence(v["evidence"])))),
+        case("fv-ap2-sr3-frozen-arm-native-authority-forbidden", "error", "the frozen ap2 arm must not carry SR-3 native transaction authority", changed("provider-receipt", lambda v: v["context"].__setitem__("receiptTransactionObservation", {}))),
+    ])
+
+    sr3_bad_response = factory.provider_sr3_value()
+    sr3_observation = sr3_bad_response["context"]["receiptTransactionObservation"]
+    sr3_encoded = sr3_observation["selectedEventProof"]["eventBytes"]
+    sr3_event = json.loads(base64.urlsafe_b64decode(sr3_encoded + "=" * (-len(sr3_encoded) % 4)))
+    sr3_event["responseHash"] = "00" * 32
+    sr3_bad_response["context"]["receiptTransactionObservation"] = factory.chain_observation(
+        factory.trusted["sr3TransactionFinalityProfile"],
+        sr3_observation["transactionRef"], sr3_event, "ap2-sr3:bad-response",
+    )
+    vectors.append(case("fv-ap2-sr3-response-hash-contradiction", "fail", "the native transaction must commit the exact provider response hash", sr3_bad_response))
 
     vectors.extend([
         case("fv-htlc-source-lock-missing", "indeterminate", "source lock proof is independently required", changed("htlc-reveal", lambda v: v["context"].__setitem__("sourceLock", None))),

@@ -64,6 +64,31 @@ opaque labels are not authority. Missing, duplicate, unauthenticated,
 identity-mismatched, or session-mismatched evidence fails closed before any
 protocol action.
 
+This candidate tuple also carries the **DACS-3 v0.6 channel-message wire
+replacement** declared under the same CORE §11.1.2 pre-v1 corrective boundary
+(#349). The current channel message is the discriminated
+`CanonicalChannelMessage` with the exclusive
+`canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature
+envelope, and the byte-exact
+`"dacs-canonical-channel-message:v1:" || ASCII(lowercase-hex sha256(JCS(unsigned_message)))`
+signed-byte framing. The historical Demos wire is archival-only: accepted only
+by the explicitly selected `legacy-import` operation, refused on
+`current-read`, with no fallback between arms and no legacy fallback anywhere.
+This tuple does not claim ordinary cross-minor compatibility with a pre-v0.6
+channel-message profile, and mixed corrective/pre-corrective live operation
+remains unsupported for channel messages exactly as for `jobId`.
+
+CORE v0.3 also specifies registry-bootstrap v1 as an independently testable
+SR-2 registry-discovery and chain-validation capability. This candidate does
+**not** activate its descriptor hash in the existing `SessionContext`, Vet or
+Settle phase inputs, `SessionRecord`, or DACS-5 bundle types, and therefore does
+not claim descriptor-authenticated session production or historical replay.
+Those existing contracts retain their numeric registry-version fields and
+semantics. A future coordinated profile must introduce distinct versioned
+action-bearing contracts and pin their compatibility rules before descriptor
+identity can govern a session; an unknown field, sidecar, or numeric-to-current
+lookup cannot supply that authority.
+
 ## Qualified implementation claims
 
 The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning

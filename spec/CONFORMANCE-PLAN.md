@@ -53,7 +53,7 @@ Exercise each rule at its normative home; full text is not restated (define-once
 
 | Rules | Home | Exercise (intent) | Vectors |
 | --- | --- | --- | --- |
-| Channel envelope + failure | §8.3.3, §8.12 | channelmsg domain-sep sig; sequence monotonicity; signature scope; liveness-exceeded → channel-failed; abort round-trip | `conformance/` |
+| CH-6..CH-10 channel envelope + failure | §8.3.3, §8.12 | current discriminator + signature-envelope closure; exact verifier-owned corrective-profile release pin, complete module tuple, session and authenticated participant admission before live-state issuance, with missing/partial/wrong/duplicate/session/identity/unauthenticated negatives and legacy-import exemption; canonical Base64URL acceptance and padding/hex/standard-Base64 rejection; absent optional `refs` versus malformed explicit null; current ASCII lowercase-hex digest framing; strict historical raw-digest/bare-hex read arm; no decoder/domain/framing fallback; both/neither selector mixtures; unknown versions/algorithm and signer mismatch; SIG-5 unknown-field preservation; channel binding/reuse + sequence monotonicity; liveness-exceeded → channel-failed; abort round-trip | `conformance/vectors/security/canonical-channel-message-v0.6.json`; frozen historical `conformance/vectors/security/channel-message-replay-v0.1.json`; `tests/test_channel_message_vectors.py` |
 | negotiate-fixed-price | §8.4.1 | live signature path; auto-accept commitment + instance-signature path; reject pre-issued per-instance signatures | `conformance/` |
 | RFQ-1..RFQ-4 | §8.4.2 | maxTurns; turn-timeout; out-of-band-terms rejection at the agreement commitment phase | `conformance/` |
 | SE-1..SE-9 | §8.4.3 | historical-profile record integrity (not discovery completeness); commitDeadline (chain-timestamped); reveal-window vs SR-2 anchor (SE-3); mismatch exclusion; anchored reveal rather than channel-inbox authority; exclusion ordering (currency/non-positive before reserve); reserve floor/ceiling inclusive; tie-break (SE-5); empty-set → negotiate-failed; legacy rule-ref content-hash binding (SE-6); bidHash domain-sep + salt floor (SE-7); sealed-envelope role assignment (SE-8); earliest same-bidder commit authority and later-commit reveal exclusion (SE-9) | `conformance/` |
@@ -168,9 +168,9 @@ A cross-cutting test category that every conforming implementation runs once:
 For substrates other than Demos that claim conformance, additional capability tests apply:
 
 - **SR-1.** Sub-identity binding test: a root key binds N sub-identities, presents under a single SR-1 signature, verifier resolves each to its claim scheme.
-- **SR-2 (SR2-1..SR2-9).** Exercise the lifecycle graph (`submitted → accepted|rejected`; `accepted → included|dropped|replaced|expired`; `included → finalized|reorged`; authenticated `dropped|expired|reorged` re-entry), and reject illegal promotion. Exercise `observationDisposition: indeterminate` after intermediate and terminal states without adding a graph edge: it hash-links and preserves the last established receipt, never demotes/promotes state, and never permits resubmission. Order conflicting snapshots by binding-authenticated evidence, never `observedAt`; independently verify carrying-transaction replacements. Verify durable-admission evidence before `accepted`; require block evidence for `included`/`finalized`; bind logical/native address, content hash, transaction, writer, nonce, and finality profile in each receipt; treat `indexed` as orthogonal and never gating. Exercise reversible Vet progression on qualifying `accepted`, finalized commitment before irreversible effects, rail-final payment with asynchronous evidence catch-up/no resubmission, and completed-bundle `audit-pending` until all dependencies and the bundle are finalized/resolvable. Also run anchor-write → retrieve → content-hash round-trip and size-cap enforcement. A binding claiming authoritative absence exercises its declared finalized non-membership proof or authenticated independent quorum; unqualified `not found`, transport failure, stale response, and inconsistent state views remain `indeterminate`. Concrete lifecycle cases: `conformance/vectors/security/sr2-anchor-lifecycle-v0.1.json`.
+- **SR-2 (SR2-1..SR2-13).** Exercise the lifecycle graph (`submitted → accepted|rejected`; `accepted → included|dropped|replaced|expired`; `included → finalized|reorged`; authenticated `dropped|expired|reorged` re-entry), and reject illegal promotion. Exercise `observationDisposition: indeterminate` after intermediate and terminal states without adding a graph edge: it hash-links and preserves the last established receipt, never demotes/promotes state, and never permits resubmission. Order conflicting snapshots by binding-authenticated evidence, never `observedAt`; independently verify carrying-transaction replacements. Verify durable-admission evidence before `accepted`; require block evidence for `included`/`finalized`; bind logical/native address, content hash, transaction, writer, nonce, and finality profile in each receipt; treat `indexed` as orthogonal and never gating. Exercise reversible Vet progression on qualifying `accepted`, finalized commitment before irreversible effects, rail-final payment with asynchronous evidence catch-up/no resubmission, and completed-bundle `audit-pending` until all dependencies and the bundle are finalized/resolvable. Also run anchor-write → retrieve → content-hash round-trip and size-cap enforcement. A binding claiming authoritative absence exercises its declared finalized non-membership proof or authenticated independent quorum; unqualified `not found`, transport failure, stale response, and inconsistent state views remain `indeterminate`. Run the logical-to-native and registry-bootstrap cases in §14.11 on every write-input-mapping binding. Concrete lifecycle cases: `conformance/vectors/security/sr2-anchor-lifecycle-v0.1.json`.
 - **SR-3.** Fetch-specification → consensus-signed commitment → anchor; body-hash verification by independent consumer. (v0.1 conformance bar is trust-property; v2 will add wire-protocol tests.)
-- **SR-4.** Channel-establish → member-only-message-delivery → non-member-cannot-read; CH-1..CH-6 each as a test (CH-6: channelId unique per session — cross-session offer-replay rejected). (v0.1 trust-property; v2 wire-protocol.)
+- **SR-4.** Channel-establish → member-only-message-delivery → non-member-cannot-read; CH-1..CH-10 each as a test (CH-6: channelId unique per session — cross-session offer-replay rejected; CH-7..CH-10: the signed DACS message is discriminated and byte-exact even though transport/confidentiality remain substrate-defined). (SR-4 confidentiality is a v0.1 trust property; the current DACS message wire is normative; a substrate transport wire remains deferred.)
 - **SR-5.** Cross-chain lock → release with bounded-time atomicity; refund path on counterparty timeout.
 
 ### 14.9 Out of scope for v0.1 conformance
@@ -296,3 +296,59 @@ The normative JSON shape is
 [`conformance/implementation-manifest.schema.json`](../conformance/implementation-manifest.schema.json).
 Repository examples and dependency-free validation live under
 [`conformance/implementation-manifests/`](../conformance/implementation-manifests/).
+
+### 14.11 Logical-to-native resolution and registry bootstrap
+
+Every write-input-mapping consumer MUST execute CORE SR2-10..SR2-13. The test
+surface includes direct verified-receipt resolution; every SR2-5 tuple
+substitution; missing, unverified, bare-locator, and unauthenticated-index
+candidates; absent artifact-specific authority; pre-gate versus late delivery;
+aborted-session retention; authenticated bundle/index references; conflicting
+authenticated presence/absence; equivalent carrier-class collapse;
+unregistered reference-surface and missing class-specific-check refusal;
+fractional/unsafe-number receipt-tuple handling; unsupported absence claims;
+immutable-address equivocation; canonical identity of receipt snapshots sharing
+an SR2-5 tuple; conservative refusal to order unequal lifecycle snapshots; and
+earliest finite delivery only after identical-copy grouping. Malformed scalar
+and container inputs MUST return the documented disposition without escaping
+the evaluator. The concrete set is
+`conformance/vectors/security/sr2-logical-native-resolution-v0.1.json`.
+
+An implementation claiming the standalone registry-bootstrap capability MUST
+also exercise both pinned registry kinds,
+an independently supplied closed expected registry tuple matched in full before
+root classification,
+hash-only and key-only first contact, first-contact and successor forks,
+same-key content successors, dual-authorized rotation, cumulative revocation,
+candidate classification before chain advance, latest rollback, exact
+sequence/hash historical replay that classifies competitors through the target
+but ignores later forks, persisted-branch
+ancestry for latest upgrades, transport-copy classification before descriptor-
+hash collapse and fork counting, invalid-root filtering before fork counting,
+registry-index v1 shape/kind/revision validation, positive-safe-integer entry
+versions, exact numeric pins without coercion, fetched definition
+identity/version equality, derived-NFC lookup/equality/duplicate detection
+without signed-byte rewriting, unique numeric latest selection within the exact
+recipe family or rail ID before eligibility, no older fallback, and
+unknown/unclassifiable latest refusal, JCS/NFC/fractional known answers and
+unsafe-number disposition, immutable snapshot enforcement,
+signature-domain and discriminator refusal, recursive-evidence refusal,
+complete receipt-shape and descriptor binding before nested access, independent
+non-recursive evidence-verifier output, forward-readable optional evidence
+members admitted only through complete canonical equality of the extended
+record, and runtime-controlled nesting depth normalized at copy/canonicalisation/
+hashing boundaries into the stage's documented disposition rather than a host
+exception, descriptor-to-receipt tuple binding,
+closed stored-latest state in both modes, omitted-mode latest default, explicit
+null/unsupported-mode refusal, and authenticated definition-reference
+resolution. The concrete set is
+`conformance/vectors/security/registry-bootstrap-v0.1.json`. A supported
+implementation claim MUST disclose its descriptor retrieval transport,
+replacement-pin distribution channel, retained-history policy, and, when
+declared, its expected replacement-pin distribution bound.
+Passing this corpus establishes bootstrap chain evaluation only. It does not
+establish descriptor-authenticated `SessionContext`, Vet/Settle production, or
+DACS-5 bundle replay, because the current profile does not activate descriptor
+identity in those existing action-bearing types. Such a claim requires the
+future coordinated profile and distinct versioned contracts identified in
+CORE §5.1 and `PROFILE.md`.

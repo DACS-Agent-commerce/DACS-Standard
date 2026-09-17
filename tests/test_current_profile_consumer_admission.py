@@ -3,6 +3,8 @@
 import copy
 import base64
 import hashlib
+import json
+import re
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -573,6 +575,158 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
         self.assertIn("even when `bundleRefs` and `resolutionContext` are legitimately empty", spec)
         self.assertIn("explicitly selected archival/legacy replay path", spec)
         self.assertIn("explicitly selected legacy replay", spec)
+
+    def test_core_profile_and_admission_tuple_are_identical(self):
+        """CORE §11.1.2, PROFILE.md, CHANGELOG, and executable constants
+        pin one identical corrective-profile tuple (PR #367 review row 2).
+
+        The full six-stage tuple — CORE plus DACS-1 through DACS-5 — is
+        parsed independently from each CORE §11.1.2 boundary sentence and
+        again from the PROFILE.md candidate tables and the channel-wire
+        CHANGELOG declaration, so a drift in any single stage fails; it is never
+        sufficient for CORE to restate only its own version."""
+        core_text = (ROOT / "spec/CORE.md").read_text(encoding="utf-8")
+        profile_text = (ROOT / "spec/PROFILE.md").read_text(encoding="utf-8")
+        changelog_text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        stage_keys = ("core", "dacs1", "dacs2", "dacs3", "dacs4", "dacs5")
+
+        # Independent parse 1: the complete candidate tuple as declared by
+        # every CORE §11.1.2 boundary sentence (jobId and channel wire).
+        # Each match alternates major/minor captures; preserve both parts so
+        # a major-version drift cannot be hidden by an unchanged minor.
+        core_sentences = re.findall(
+            r"CORE v(\d+)\.(\d+) together with DACS-1 v(\d+)\.(\d+), "
+            r"DACS-2 v(\d+)\.(\d+), DACS-3 v(\d+)\.(\d+), "
+            r"DACS-4 v(\d+)\.(\d+), and DACS-5 v(\d+)\.(\d+) declares",
+            core_text,
+        )
+        self.assertTrue(
+            core_sentences, "CORE §11.1.2 declares no candidate tuple"
+        )
+        core_tuples = {
+            tuple(
+                ".".join(sentence[index:index + 2])
+                for index in range(0, len(sentence), 2)
+            )
+            for sentence in core_sentences
+        }
+        self.assertEqual(
+            1,
+            len(core_tuples),
+            "CORE §11.1.2 boundary sentences declare different tuples",
+        )
+        core_tuple = dict(zip(stage_keys, core_tuples.pop()))
+
+        # Independent parse 2: the same complete tuple from the PROFILE.md
+        # candidate section tables (the last table row of each module — the
+        # corrective candidate section appears after the v0.1 and v0.4
+        # tables).
+        module_patterns = [
+            (r"\[CORE\]\(CORE\.md\) \| (\d+)\.(\d+) \|", "core"),
+            (r"\[DACS-1-IDENTIFY\]\(DACS-1-IDENTIFY\.md\) \| (\d+)\.(\d+) \|", "dacs1"),
+            (r"\[DACS-2-VET\]\(DACS-2-VET\.md\) \| (\d+)\.(\d+) \|", "dacs2"),
+            (r"\[DACS-3-NEGOTIATE\]\(DACS-3-NEGOTIATE\.md\) \| (\d+)\.(\d+) \|", "dacs3"),
+            (r"\[DACS-4-SETTLE\]\(DACS-4-SETTLE\.md\) \| (\d+)\.(\d+) \|", "dacs4"),
+            (r"\[DACS-5-VERIFY\]\(DACS-5-VERIFY\.md\) \| (\d+)\.(\d+) \|", "dacs5"),
+        ]
+        profile_tuple = {}
+        for pattern, key in module_patterns:
+            matches = re.findall(pattern, profile_text)
+            self.assertTrue(matches, pattern)
+            profile_tuple[key] = ".".join(matches[-1])
+        self.assertEqual(
+            set(profile_tuple),
+            set(stage_keys),
+            "PROFILE.md candidate tables do not cover the complete module set",
+        )
+
+        # The two independent parses must be the same tuple, stage by stage.
+        self.assertEqual(
+            core_tuple,
+            profile_tuple,
+            "CORE §11.1.2 and PROFILE.md declare different corrective tuples",
+        )
+
+        # Independent parse 3: the channel-wire corrective declaration in the
+        # CHANGELOG is a required CORE §11.1.2 version inventory, not prose that
+        # may retain a superseded composed tuple after integration.
+        changelog_match = re.search(
+            r"tuple recorded in `PROFILE\.md` \(CORE v(\d+)\.(\d+), "
+            r"DACS-1 v(\d+)\.(\d+), DACS-2 v(\d+)\.(\d+), DACS-3\s+"
+            r"v(\d+)\.(\d+), DACS-4 v(\d+)\.(\d+), DACS-5 v(\d+)\.(\d+)\)",
+            changelog_text,
+        )
+        self.assertIsNotNone(
+            changelog_match,
+            "CHANGELOG channel-wire correction declares no complete tuple",
+        )
+        changelog_values = changelog_match.groups()
+        changelog_tuple = dict(
+            zip(
+                stage_keys,
+                (
+                    ".".join(changelog_values[index:index + 2])
+                    for index in range(0, len(changelog_values), 2)
+                ),
+            )
+        )
+        self.assertEqual(
+            core_tuple,
+            changelog_tuple,
+            "CHANGELOG channel-wire tuple differs from CORE/PROFILE",
+        )
+        self.assertEqual(
+            core_tuple,
+            {
+                "core": "0.3",
+                "dacs1": "0.8",
+                "dacs2": "0.6",
+                "dacs3": "0.6",
+                "dacs4": "0.8",
+                "dacs5": "0.6",
+            },
+            "the authoritative tuple drifted",
+        )
+
+        # Every executable admission constant set must be this exact tuple.
+        import importlib.util
+
+        def load_module(name, path):
+            spec = importlib.util.spec_from_file_location(name, path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        ap2 = load_module(
+            "ap2_admission_constants", ROOT / "tests/test_ap2_handler_safety_vectors.py"
+        )
+        jid = load_module(
+            "jid_admission_constants", ROOT / "tests/test_job_id_grammar_vectors.py"
+        )
+        for label, module_versions in (
+            ("dacs5_reference", R.AUTHORITATIVE_MODULE_VERSIONS),
+            ("test_ap2_handler_safety_vectors", ap2.AUTHORITATIVE_MODULE_VERSIONS),
+            ("test_job_id_grammar_vectors", jid.AUTHORITATIVE_MODULE_VERSIONS),
+        ):
+            self.assertEqual(
+                module_versions,
+                core_tuple,
+                f"{label} admission constants diverge from the authoritative tuple",
+            )
+            self.assertEqual(
+                set(module_versions),
+                set(core_tuple),
+                f"{label} admission tuple is not the complete closed module set",
+            )
+
+        # The generated AP2 vectors must carry the same current tuple bytes.
+        ap2_vectors = json.loads(
+            (ROOT / "conformance/vectors/security/ap2-handler-safety-v0.6.json")
+            .read_text(encoding="utf-8")
+        )
+        serialized = json.dumps(ap2_vectors)
+        self.assertNotIn('"dacs3": "0.5"', serialized)
+        self.assertNotIn('"dacs4": "0.7"', serialized)
 
 
 if __name__ == "__main__":

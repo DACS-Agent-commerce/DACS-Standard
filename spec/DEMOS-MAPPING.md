@@ -63,6 +63,17 @@ does not invoke DAHR and does not claim a fresh ACME challenge.
 - **Pure mapping.** Where a substrate's native address is a pure function of the logical address, the mapping MUST be deterministic, one-to-one, and reversible, and consumers compute the native address directly from the logical pattern before reading.
 - **Write-input mapping.** Where a substrate folds write-time inputs (deployer address, storage-program name, transaction nonce, salt) into its native address — as Demos's StorageProgram derivation does (§6.3.4) — the native address is **not** recomputable from the logical address alone. The implementation MUST then publish the artifact's logical→native binding. For listings, publication is per DACS-1 §6.3.4(b)/(c): descriptive metadata on the anchored record AND the discovery surfaces (§6.3.5 well-known index, §6.3.6 catalog). Listing revocations use `RevocationBinding` and RB-1..RB-6. For DACS-5 bundles, publication is per the §10.4.2 `BundleBinding` rules (BB-1..BB-2). Consumers resolve the native address through the applicable published binding before reading.
 
+For a session artifact with no class-specific public surface, the default
+pre-bundle path on Demos is direct delivery of a verified `AnchorReceipt` to
+every entitled participant under CORE §5.1 SR2-10..SR2-12. After terminal
+bundle publication, consumers use its authenticated native content references
+under SR2-13. Listings, revocations, and bundles retain their existing public
+surfaces; Demos conformance does not require a public per-job payment-evidence
+index. The recipe and rail index roots use the release-pinned, non-recursive
+`RegistryBootstrapDescriptor`; authenticated entries in the verified immutable
+index snapshot are content references for their separately signed definitions.
+The opaque `storageProgramName` is never a consumer resolution input.
+
 In both cases implementations MUST anchor at the native address, the anchor transaction is the canonical pointer, and consumers MUST verify the content hash after dereferencing.
 
 **DACS-5 legacy-checkpoint mapping.** The unallocated current-use candidate's
@@ -102,6 +113,22 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
 - 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
+**DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
+§9.5.6 AP2-2, the transaction reference MUST use the distinct `ap2-sr3` arm.
+Its `receiptAttestation` identifies the fetched provider status resource and
+commits to the exact returned bytes; the DAHR `txHash` is carried separately as
+`receiptTransactionRef = { kind: "demos-web2-request", value: txHash }`.
+Implementations MUST NOT label that transaction hash as a `storage-program`
+AttestationRef locator: a `web2Request` transaction is not a Storage Program
+record and cannot satisfy the DACS-2 §7.5.2 fetch-and-hash algorithm as one.
+Consumers authenticate the referenced transaction and response commitment by
+the same inclusion checks in (a)–(c) below. The AP2 verifier MUST obtain the
+exact returned UTF-8 body, require its SHA-256 hash to equal the authenticated
+`responseHash`, and derive the provider status, `providerRef`, amount, currency,
+and AP2-1 metadata from that body. A detached or caller-supplied projection of
+those fields cannot establish settlement, even when another response hash is
+authentic.
+
 **DAHR-backed payload attestation (normative Demos binding).** DAHR supplies
 the method-native evidence for a DACS-4 §9.6.3
 `PayloadAttestationRecord`; it does not itself supply the DACS commerce
@@ -117,7 +144,11 @@ binding. For
   transaction commits to the requested canonical URL, HTTP method, request
   body hash when present, response status, `responseHash`, and
   `responseHeadersHash`, and require those request inputs to equal the signed
-  listing's complete `verificationMethod` configuration;
+  listing's complete `verificationMethod` configuration. The consensus verifier
+  MUST obtain the authorized validator roster from an independently authenticated
+  network profile, validator-set epoch, or equivalent trust anchor; a `peerlist`
+  or signer roster carried only inside the candidate block MUST NOT authenticate
+  itself;
 - (c) it MUST obtain the returned `data` string, encode it as UTF-8 without
   reserialisation, require `sha256(UTF8(data)) == responseHash`, and deliver
   those exact bytes so
@@ -142,7 +173,7 @@ validator-body-signed.
 
 - 🟢 new l2ps.L2PS() / new l2ps.L2PS(rsaPrivateKey). DemosWork orchestration with WorkStep (id, context, content, output, depends_on, critical), BaseOperation, ConditionalOperation (SDK module @kynesyslabs/demosdk/demoswork). Storage Programs for agreement-hash anchoring and sealed-envelope commitments.
 - 🟡 CCI-keyed L2PS membership — bind subnet membership to CCI primary claim so channel signatures map to the same identity that holds value on-chain. The interim §8.3.2 binding-proof path is shipped as l2ps.binding: createMembershipBinding (attestation signed by the CCI primary key), anchorMembershipBinding (Storage Program at a deterministic collision-safe name), resolveMember (signature check + SP-owner check against impostor programs). Native CCI-keyed subnet membership (node-side enforcement) remains pending; the current native subnet API is RSA-key-based.
-- 🟢 L2PS channel message envelope API shipped as l2ps.channel.ChannelSession — implements the §8.3.3 envelope: closed message-type union, CCI-keyed ed25519 signing over the dacs-channelmsg:v1: domain tag, monotonic per-channel sequence with anti-replay validation, CH-6 channelId-reuse registry, and transcript accumulation (ChannelTranscript, §8.7 shape).
+- 🟡 L2PS channel message envelope API shipped as `l2ps.channel.ChannelSession` in `@kynesyslabs/demosdk@4.0.16` — evidence for the §8.3.3 `LegacyDemosChannelMessage` historical read/import arm only (bare lowercase-hex signature and `dacs-channelmsg:v1:` raw-digest framing), plus monotonic sequence and CH-6 channel reuse handling. That evidence does not establish verifier-owned durable replay-state continuity across issuer reconstruction or restart; adapters must verify that requirement independently and keep historical audit state separate from live state. An adapter MUST expose those bytes only through the explicitly selected `legacy-import` operation; ordinary `current-read` rejects them without shape-based fallback. It is not the discriminated current DACS type. No Demos SDK version is recorded as a conforming `CanonicalChannelMessage` producer until a released version emits only the CH-7/CH-8 wire and passes the mixed-wire corpus; adapters MUST NOT claim current SR-4 message conformance in advance.
 - 🟢 Encrypted transcript anchoring helper shipped as l2ps.anchor.anchorEncryptedTranscript — encrypts a ChannelTranscript to the subnet member set (AES-GCM via the L2PS key), anchors ciphertext + public content hash via SR-2 under a deterministic per-channel SP name, signs the plaintext hash with the Demos key, and implements all three terms.transcriptDisclosurePolicy behaviours (none → throw, recommended → consent-gated, required → propagate failure). decryptAnchoredTranscript / verifyAnchorIntegrity included.
 - 🔵 ERC-8183 escrow primitive (Ethereum, draft); institutional RFQ desks’ off-chain systems composed as L2PS-equivalent transport.
 

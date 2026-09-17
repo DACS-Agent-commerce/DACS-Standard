@@ -62,7 +62,17 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             {
                 "count": len(separators),
                 "separators": separators,
+                "historicalImport": {
+                    "operation": "legacy-import",
+                    "separator": "dacs-channelmsg:v1:",
+                    "digestFraming": "raw-sha256-bytes",
+                },
             },
+        )
+        self.assertNotIn("dacs-channelmsg:v1:", separators)
+        self.assertEqual(
+            validator.load_historical_channel_domain(ROOT),
+            "dacs-channelmsg:v1:",
         )
 
     def test_registry_golden_rejects_same_count_substitution(self):
@@ -107,7 +117,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                 self.assertEqual("candidate", case["status"])
                 self.assertIn("output-only expectation", case["reason"])
                 self.assertIn("not published", case["reason"])
-        self.assertEqual(175, sum(
+        self.assertEqual(176, sum(
             case["status"] == "golden" for case in data["cases"]
         ))
         self.assertEqual(64, sum(
@@ -180,7 +190,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         conformance = base / "conformance"
         (conformance / "fixtures").mkdir(parents=True)
         (conformance / "vectors").mkdir()
-        for fixture in ["bundle.json", "divergent-seller.json", "htlc9.json", "settlement.json", "delivery.json"]:
+        for fixture in ["bundle.json", "divergent-seller.json", "htlc9.json", "settlement.json", "delivery.json", "ap2.json"]:
             (conformance / "fixtures" / fixture).write_text("{}\n", encoding="utf-8")
         (conformance / "MANIFEST.json").write_text(
             json.dumps(
@@ -224,6 +234,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                     "settlement": {
                         "fixture": "conformance/fixtures/settlement.json",
                         "deliveryFixture": "conformance/fixtures/delivery.json",
+                        "ap2Fixture": "conformance/fixtures/ap2.json",
                         "decisions": {"timeout": "indeterminate"},
                     },
                     "dispute": {"decisions": {"opened": "pass"}},

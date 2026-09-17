@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import unittest
+import unicodedata
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -86,6 +87,14 @@ def compose_listing_validation(
     raise ValueError("unsupported validation input")
 
 
+def _positive_version(value):
+    return type(value) is int and 0 < value <= 9007199254740991
+
+
+def _registry_identity(value):
+    return unicodedata.normalize("NFC", value) if isinstance(value, str) else None
+
+
 def evaluate(data):
     pay_phases = data["payPhases"]
     accepted = data["acceptedRails"]
@@ -116,6 +125,8 @@ def evaluate(data):
         resolved_handlers = {}
         for ref in accepted:
             version = ref.get("railVersion")
+            if "railVersion" in ref and not _positive_version(version):
+                return "fail", "ambiguous-pa1-rail-version"
             rail_candidates = [
                 definition for definition in definitions
                 if definition.get("railId") == ref["railId"]
@@ -129,14 +140,10 @@ def evaluate(data):
                 return "indeterminate", "pa1-definition-unverifiable"
             if len(set(candidate_handlers)) != 1:
                 return "fail", "pa1-handler-version-drift"
-            if version is None:
-                versions = [
-                    definition.get("railVersion")
-                    for definition in rail_candidates
-                    if isinstance(definition.get("railVersion"), int)
-                ]
-                if not versions:
-                    return "fail", "ambiguous-pa1-rail-version"
+            versions = [definition.get("railVersion") for definition in rail_candidates]
+            if any(not _positive_version(value) for value in versions):
+                return "fail", "ambiguous-pa1-rail-version"
+            if "railVersion" not in ref:
                 version = max(versions)
             candidates = [
                 definition
@@ -166,10 +173,22 @@ def evaluate(data):
     if state != "verified-finalized":
         return "indeterminate", "registry-unavailable"
 
-    entries = {entry["railId"]: entry for entry in registry["entries"]}
+    # This fixture projection summarizes an authenticated index. Derive latest
+    # from its complete numeric inventory; latestVersion is only an inert hint.
+    entries = {}
+    for entry in registry["entries"]:
+        identifier = _registry_identity(entry.get("railId"))
+        versions = entry.get("versions")
+        if (not identifier or identifier in entries or not isinstance(versions, list)
+                or not versions or any(not _positive_version(v) for v in versions)
+                or len(versions) != len(set(versions))):
+            return "indeterminate", "registry-internally-inconsistent"
+        entries[identifier] = entry
     definitions = {}
     for definition in registry["definitions"]:
-        key = (definition["railId"], definition["railVersion"])
+        if not _positive_version(definition.get("railVersion")):
+            return "indeterminate", "registry-internally-inconsistent"
+        key = (_registry_identity(definition["railId"]), definition["railVersion"])
         if key in definitions:
             return "indeterminate", "registry-internally-inconsistent"
         definitions[key] = definition
@@ -178,15 +197,18 @@ def evaluate(data):
     resolved_handlers = {}
 
     for ref in accepted:
-        entry = entries.get(ref["railId"])
+        entry = entries.get(_registry_identity(ref["railId"]))
         if entry is None:
             rejected_reason = rejected_reason or "unknown-rail"
             continue
-        version = ref.get("railVersion", entry["latestVersion"])
+        version = ref["railVersion"] if "railVersion" in ref else max(entry["versions"])
+        if not _positive_version(version):
+            rejected_reason = rejected_reason or "unknown-rail-version"
+            continue
         if version not in entry["versions"]:
             rejected_reason = rejected_reason or "unknown-rail-version"
             continue
-        definition = definitions.get((ref["railId"], version))
+        definition = definitions.get((_registry_identity(ref["railId"]), version))
         if definition is None or definition.get("state") != "verified-finalized":
             indeterminate_reason = indeterminate_reason or "rail-definition-unavailable"
             continue

@@ -1,0 +1,2832 @@
+{
+  "set": "canonical-channel-message-v0.6",
+  "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
+  "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
+  "authenticatedKeyFixtures": [
+    {
+      "claim": "did:example:dacs-349-ecdsa",
+      "algorithm": "ecdsa-secp256k1",
+      "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+      "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b",
+      "signatureEncoding": "canonical-DER-low-S"
+    },
+    {
+      "claim": "did:example:dacs-349-sr1-root",
+      "algorithm": "sr1-aggregate",
+      "presentation": "sr1-root",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+    }
+  ],
+  "historicalCorpus": {
+    "path": "channel-message-replay-v0.1.json",
+    "vectorsHash": "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc03803b",
+    "status": "frozen read/import-only; new producers MUST NOT emit",
+    "operation": "legacy-import"
+  },
+  "correctiveProfileFixture": {
+    "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+    "moduleVersions": {
+      "core": "0.3",
+      "dacs1": "0.8",
+      "dacs2": "0.6",
+      "dacs3": "0.6",
+      "dacs4": "0.8",
+      "dacs5": "0.6"
+    },
+    "authority": "verifier-owned and bound to exact session plus participant identities",
+    "legacyImportExempt": true
+  },
+  "count": 55,
+  "hash": "35bf78ef68087267d711d1a238b2e509ff9bc96726fe080665b8dad09b93ed38",
+  "vectors": [
+    {
+      "name": "canonical-valid-first",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "current discriminator, SIG-6 value, hex-digest framing and fresh sequence",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-valid-next",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "strictly increasing sequence",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "JHrA-br74p2st4c2BEHy25LzGoqfZnMnn-XOisTNZVMMnQRYX6S7dzzzZGEuotw_654e_7LzXlgig-1ES6zHBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-valid-sequence-gap",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "CH-6 requires monotonicity, not contiguity",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 5,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "eOyov5it8DOJGuDbG0J0Lv_P35_p9TxqzD8pF0ww8kZ5IqvUcVaGbbSxPHj39GIGPVkFkROC1hgm0hpQtwNbCg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-missing-authority",
+      "expected": "indeterminate",
+      "operation": "current-read",
+      "note": "missing verifier-owned exact-profile authority refuses before live state issuance",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "current-profile-partial-module-tuple",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "a partial module tuple is malformed before current channel processing",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8"
+        }
+      }
+    },
+    {
+      "name": "current-profile-wrong-release-pin",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "an authenticated different release pin refuses the session",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "ffffffffffffffffffffffffffffffffffffffff",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-duplicate-participant",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "duplicate participant identities make profile authority malformed",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-session-mismatch",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "profile authority for a different session cannot issue live state",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-other",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-identity-mismatch",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "profile authority must bind the exact authenticated participants",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "current-profile-unauthenticated",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unauthenticated profile material cannot issue live state",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": false,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-duplicate-sequence",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "duplicate sequence is a replay",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "d0VZ7BITdCvLtw6YpAqa7OrOHR0pkjmbbML2uaZG13zs3GrsS8T7MQRHwUjPUgxs7YgxziuSpsRrvZn-qQbfCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 3,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-decreasing-sequence",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "decreasing sequence is a replay",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "d0VZ7BITdCvLtw6YpAqa7OrOHR0pkjmbbML2uaZG13zs3GrsS8T7MQRHwUjPUgxs7YgxziuSpsRrvZn-qQbfCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 4,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-foreign-channel",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "valid signature cannot cross the active channel binding",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-foreign",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "ooZMbfbB4jYJu6y0_TG_1E1Hr3zLBjxj2c8ybyoRcqLcRJEvgkiljFMNjUDWMM5D0vkZLhvliGqHwdmGkgGJAA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-reused-session-channel",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "CH-6 refuses a reused session channel identifier",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-reused",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "G4PLDl0iLRFo9LtFNby_MW0ipTg-IF-8W0Bf0oi1A1mssfrDfLEo-yQNQhUizwWHDwhRfiGaxlCvzYdH3JQnDg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-reused",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-reused"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-reused",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-unresolved-sender",
+      "expected": "indeterminate",
+      "operation": "current-read",
+      "note": "well-formed but unavailable signer authority is indeterminate",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "did:example:unresolved",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:unresolved",
+          "algorithm": "ed25519",
+          "value": "XuNLW-jpkSvQj9jaI5bbt-hdxCVpWGQGIimlZnQAi7vXR68c6JzaAaHI8mEyMzhWVxUvwtz0bC1A5vse-YIqDA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-outsider-valid-signature",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "a valid signature cannot admit a sender outside the authenticated fixed member set",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+          "algorithm": "ed25519",
+          "value": "4si2bZ5hYllv2GDKly53qZVTjU3gwTQaLc1U0neAq61ZLCRmY0-K3bI2ARw0tKs83m5K9Oak5cINp_u3FfwMDg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-member-wrong-key",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "member equality cannot replace verification against the independently bound member key",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "rj9uKb2AQFNqpAcNj8mZGasfrjpWKzZAAwmnL2T5Wc2LIIPIxQUGSzO1pOh_iUCNKz80hVe6HioolH_PVkjdAQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-qualified-member-identity",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "CF-3 ignores advisory qualifiers when sender, signer and authenticated membership identities are matched",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57?role=buyer",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57?role=author",
+          "algorithm": "ed25519",
+          "value": "kZ6AxgHtCkB6DSlUyMVcaRP0o15VoypQD_UYfxByENZa1DzITsKCHRVRbWR651kLByv_FTHy7lPBDol0cXKUBg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-generic-cci-sender-refused",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "DACS-1 registers key:, did:, and specific cci-* schemes; the historical generic cci spelling of the same key is malformed on current-read while canonical key: passes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "message-body mutation breaks the signature",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-padded-base64url",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "SIG-6 rejects padding before cryptographic verification",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA=="
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-standard-base64-character",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "SIG-6 rejects standard-Base64 alphabet characters",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "+JmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-hex-signature-value",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "hex characters form a Base64URL spelling but decode to the wrong Ed25519 length",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "74999718582fa99eeb632c9bb7239b2841c08bce1cf9e0ae2b50d73f531e084a8feaafbd10bc4007836d0b311dc6acce9d9ea88e893d2c3dd6547b4182e56504"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-unknown-signature-version",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unknown signature-envelope versions are not retried",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "2",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-unknown-algorithm",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unknown algorithm identifiers are malformed",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "rsa-pss",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-algorithm-key-confusion",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "a CCI Ed25519 key cannot be relabelled as ECDSA",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-valid",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "authenticated secp256k1 fixture verifies canonical DER low-S bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIgBdBdCwenhrY_Ail5KwAcVUt09pQdBaXhTLEVvht-G5k"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA covers the complete received message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIgBdBdCwenhrY_Ail5KwAcVUt09pQdBaXhTLEVvht-G5k"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-cross-domain",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA cannot authenticate the historical domain",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEQCIFwZLz-MaQhUnd6-kOduuQeCdfwqL9DJaLtWhE8kNv-AAiALpMB0A_joDcdA49NGeuMqBxH7LffM0C-OJPaLwz-juw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA signs ASCII lowercase hex, not raw digest bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQCZ9uyN-YpLGMHxPDsX7s8fD2GS7JNNRgz_H_L7SvRyqwIgNAI2xa1LTls7jT2zRZ7rAO43lJrReMoKJpVltr2OwUk"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-valid",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "authenticated SR-1 root fixture verifies the canonical current payload",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "hSLWgu0VSudiobHne2RDUNgBPtBJfxg1Ip2HN_ayoU35B-vkAk8K9qwMvKoZA7yCkM761I7KzJhOYPl0y1psCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signature covers the complete received message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "hSLWgu0VSudiobHne2RDUNgBPtBJfxg1Ip2HN_ayoU35B-vkAk8K9qwMvKoZA7yCkM761I7KzJhOYPl0y1psCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-cross-domain",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signature cannot authenticate the historical domain",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "2JSjk3S_ZxCczXUt6zzTO1sD7xLU_KczO9MKCw4yDHZFxzQ-B1tntz1BQn579kM2Gvt_crAx0y23I9x7sLHDCQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signs ASCII lowercase hex, not raw digest bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "-uMfwm32_V2dWwAUO94f3FKntoPgU_NtfH9-iupjkJq3tOpG2caWYBb7Kf0FIELRN3QQshXhfvYw0TOiZTenAQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-signer-sender-mismatch",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "signature.signer must canonically equal sender",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "algorithm": "ed25519",
+          "value": "48AcM7OsVoPiWfwfb_GO8s9BeybLGtGKADX1Ge7FykwXJdspjLM44FlAHgiYCfLiqPhEkd-dxbi5GgQwr4VXDw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-empty-refs-object",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "the optional refs object may omit its optional repliesTo member",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "refs": {},
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "si9vK1S35zDAlHuBKcZo5oietWskngq75sBjN7wLib5MQrxdE0I3AA336WjZm-zEajivDid9Ai1ZROsIYjAICw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-null-refs",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "a present refs member must be an object; JSON null is not absence",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "refs": null,
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "SKAeJGXaL6vehtYi8NrtF_i2uMwEjTUFez7vyTyo8jqGGblEdnm66w7oBnsUQWm-LeTkrRMdryF2PI2RmVQuDA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-boolean-replies-to",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "repliesTo is a positive integer and excludes JSON booleans",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "refs": {
+          "repliesTo": true
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "als5L1cQRIyv3zfippccda1xRzQebfRqZLEd37DTqH3iY78b5K7l5chfvdXwroN1lP0Tuvv-GkwNoDXei7xMCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-boolean-sequence",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "sequence is a positive integer and excludes JSON booleans",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": true,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "Ic4U2AmclCUZnreaaetzdg-XwsuYD_3plpknr_o2sJP5-76d98oyiHIzs31I0OO78hOOWorpC6Sr-v1GAOmCBg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-empty-channel-id",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the active channel binding cannot be empty",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "Kyt7kygznHPXBaBwLi5qqzCmefNDZVNVaop5avWLWJCoFLSl8u0gY9VApjiZVTcgK6Cn5mvyAAWQK7ELT_z0Cg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-open-signature-envelope",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the version-1 signature envelope has an exact member set",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA",
+          "keyHint": "must-not-be-ignored"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "neither-selector-no-discriminator-current-envelope",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "a current envelope without its discriminator is not legacy",
+      "message": {
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "mixed-current-discriminator-legacy-signature",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the current discriminator selects current parsing before crypto",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "74999718582fa99eeb632c9bb7239b2841c08bce1cf9e0ae2b50d73f531e084a8feaafbd10bc4007836d0b311dc6acce9d9ea88e893d2c3dd6547b4182e56504"
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-unknown-message-version",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unknown current message versions do not fall back to legacy",
+      "message": {
+        "canonicalChannelMessageVersion": "2",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-missing-signature",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "neither current nor historical structural selector matches",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "mixed-current-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "current type signs the ASCII lowercase-hex digest, not raw bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "ZGrws30AjWdl5QWLfuG1ucDJKpM8diL-HwODgoo2yYT8WfhmvLPYA2VO5FeqUTACkqxRWneiTyzqnI9BcQSADw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "cross-domain-legacy-to-current",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the historical domain cannot authenticate a current message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "Ogs0zs5D-JWYNrR0mlyTKk3rQ75IiujPUesJN-nkhmmTtuOUBZEeQ0yuyU773DonCh_AE8u4Dq-XOvbbJMinDA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "mixed-legacy-hex-digest-framing",
+      "expected": "fail",
+      "operation": "legacy-import",
+      "note": "historical type signs the raw digest, not ASCII lowercase hex",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "0a323f2723389947ce3a133f23de6509c6ff40415e66e66313f90ad142527a9fbc072b328ba6393f96288a9419f9c941efbff2038cef278330e0450071eb2106"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "cross-domain-current-to-legacy",
+      "expected": "fail",
+      "operation": "legacy-import",
+      "note": "the current domain cannot authenticate a historical message",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "c92d7302de27828fc95d06bf47d911818d62d53eda7f194b60951343bef0a78f4258feea3dcea4ec6b49d79b2dc70aa931962802309631e42663ed788141cb07"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "legacy-byte-preserving-read-only-import",
+      "expected": "pass",
+      "operation": "legacy-import",
+      "note": "the frozen historical bytes verify only on the explicit import arm",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23efcd16e7c72ba7596e9e7920cf54003379bdc044fbdfbd05a17b575da2ed39b149a7b99604cc41476ab14d881a782e0496ed6f64a98a8e229c80760cb14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      },
+      "expectedSignatureBytesBase64Url": "I-_NFufHK6dZbp55IM9UADN5vcBE-9-9BaF7V12i7TmxSae5lgTMQUdqsU2IGnguBJbtb2Spio4inIB2DLFCBA"
+    },
+    {
+      "name": "legacy-uppercase-hex-rejected",
+      "expected": "error",
+      "operation": "legacy-import",
+      "note": "the historical selector is exact lowercase hex, never auto-detected",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23EFCD16E7C72BA7596E9E7920CF54003379BDC044FBDFBD05A17B575DA2ED39B149A7B99604CC41476AB14D881A782E0496ED6F64A98A8E229C80760CB14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "canonical-preserve-unknown-signed-field",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "SIG-5 includes an unknown field in the signed scope",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "experimentalHint": {
+          "future": true
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "6VowazRxFlB8w4EJyjxfXTye5ZaoNWmMBdnV9HLF3JzCU1ss-LJgCNVoi9TJefDbU7F5MgvxtX8uPa1dBByNAg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "canonical-stripped-unknown-field",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "a reader cannot strip an unknown signed field before verification",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "6VowazRxFlB8w4EJyjxfXTye5ZaoNWmMBdnV9HLF3JzCU1ss-LJgCNVoi9TJefDbU7F5MgvxtX8uPa1dBByNAg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "malformed-context-boolean-sequence",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "context integers exclude JSON booleans",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": true,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
+      "name": "untrusted-context-membership-injection",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "message-adjacent session input cannot supply or replace authenticated CH-1 authority",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          }
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    }
+  ]
+}

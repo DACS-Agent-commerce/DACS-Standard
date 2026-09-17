@@ -15,7 +15,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CA-* | Agreement commitment phase validation | §8.6 | §14.3 |
 | CD-* | Canonical decimal handling | §8.5.1 | §14.6 |
 | CF-* | Canonical form, raw JSON admission, and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
-| CH-* | Private-channel message handling | §8.3.1 | §14.3 |
+| CH-* | Private-channel membership, replay handling, canonical message/signature wire, and strict historical-import dispatch | §8.3.1 / §8.3.3 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
 | CUR-* | Explicit all-or-nothing current-use reputation derivation and full dependency replay | §10.5.1 | §14.5 |
@@ -61,7 +61,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |
-| SR2-* | SR-2 write lifecycle, portable receipts, visibility separation, and stage gates | §5.1 | §14.8 |
+| SR2-* | SR-2 write lifecycle, portable receipts, logical-to-native resolution, bounded discovery, visibility separation, and stage gates | §5.1 | §14.8 / §14.11 |
 | ST-* | Session state transitions | §10.3.1 | §14.5 |
 | VP-C* | VerifyResult caching semantics | §7.6.1 | §14.2 |
 | VP-R* | VerifyResult retry semantics | §7.6.1 | §14.2 |

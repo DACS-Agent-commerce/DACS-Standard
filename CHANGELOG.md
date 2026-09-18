@@ -226,13 +226,28 @@ The format used per release:
 - **Typed DACS-5 consumer boundary** — adds the distinct
   `FinalityBoundEvidenceFaultAttestationBundle` and matching extended pointer
   domains. Its successful payment members run FV and propagate every non-pass;
-  old EBFAB and every existing derivation retain their prior meanings. The
-  coordinated `CurrentUseReplayableReputationDerivation` is reserved but cannot
-  pass until #391 supplies authenticated historical-era/role admission.
+  old EBFAB and every existing derivation retain their prior meanings. #392
+  initially reserved `CurrentUseReplayableReputationDerivation`; this combined
+  #391+#392 candidate activates it with #391's authenticated historical-era and
+  role admission under CUR-1..CUR-8 and LAB-1..LAB-7.
 - **Producer report clarified** — `SettlementFinalityRecord` remains signed and
   auditable but is not finality proof. Wrong or insufficient proof fails;
   missing, conflicting, pruned or unstable authority is `indeterminate`;
   malformed proof is `error`.
+- **Finality resolution context v1** (#392 D2) — adds a separate verifier-local
+  `FinalityResolutionContextVersion1`, signed
+  `FinalityObservationResponseVersion1`, and
+  `dacs-finality-observation-response:v1:` domain. A signed rail capability
+  selects this path without fallback to the frozen historical single-view
+  input. The first registered binding remains fixture-only and requires every
+  configured authority seat.
+- **Acquisition, conflict, replay and composite gates** — binds the complete
+  authenticated query, policy-ordered authority set, checkpoint, nonce and
+  local acquisition boundary; resolves the union of transported and retained
+  responses; preserves four-value dispositions and historical replay
+  provenance; and verifies each composite leg independently. Timing evidence
+  measures verifier CPU separately from a modeled slowest-seat acquisition
+  boundary and does not create a conformance latency threshold.
 - **Fail-closed provider attestation authority** — `_verify_provider` in the
   executable FV reference treats a missing, null, empty, or nonmatching
   `providerAttestations` trust map as `indeterminate` (authenticated authority

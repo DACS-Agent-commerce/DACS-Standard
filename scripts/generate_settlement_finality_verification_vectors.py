@@ -906,8 +906,14 @@ class FixtureFactory:
             for role in ("buyer", "seller")
         ]
 
-    def strong_bundle_case(self, model: str, *, job_id: str | None = None) -> dict:
-        return self._strong_bundle_case(model, self.model_input(model, job_id=job_id))
+    def strong_bundle_case(
+        self, model: str, *, job_id: str | None = None, value: dict | None = None
+    ) -> dict:
+        if value is None:
+            value = self.model_input(model, job_id=job_id)
+        else:
+            value = copy.deepcopy(value)
+        return self._strong_bundle_case(model, value)
 
     def strong_bundle_case_sr3(self, *, job_id: str | None = None) -> dict:
         return self._strong_bundle_case("provider-receipt", self.provider_sr3_value(job_id=job_id))

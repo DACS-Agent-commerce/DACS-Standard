@@ -84,6 +84,9 @@ jobs:
       - name: Verify settlement-finality vectors are deterministic
         run: python3 scripts/generate_settlement_finality_verification_vectors.py --check
 
+      - name: Verify finality-resolution vectors are deterministic
+        run: python3 scripts/generate_finality_resolution_context_vectors.py --check
+
       - name: Verify current-use reputation vectors are deterministic
         run: python3 scripts/generate_current_use_reputation_vectors.py --check
 

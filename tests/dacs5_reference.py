@@ -2079,6 +2079,11 @@ def validate_finality_bound_ebfab(
     Returns ``(decision, reason, phase_keys)`` where decision is one of pass,
     fail, indeterminate, or error. A strong signed object is never rewritten as
     legacy evidence to enter the older validator.
+
+    This bounded reference does not implement finality-bound bundles combined
+    with identity-bound agreement phases or APR projection. Such combinations
+    remain unsupported and cannot establish terminal or reputation authority
+    here; a refusal is not proof that a valid unsupported artifact is invalid.
     """
     if bundle_type(bundle) != "finality-bound":
         return ("error", "not a FinalityBoundEvidenceFaultAttestationBundle", None)

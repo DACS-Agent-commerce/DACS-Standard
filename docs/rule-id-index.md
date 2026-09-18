@@ -26,6 +26,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
+| FRC-* | Verifier-issued multi-authority finality resolution, retained conflict union, replay, and composite gating | §9.7.0 | §14.4 |
 | FV-* | Consumer-verifiable canonical settlement finality | §9.7.0 | §14.4 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |

@@ -237,6 +237,7 @@ type ConsumerFinalityProfile =
       finalityProfileVersion: "1"
       model: "block-depth" | "commitment-level" | "bft-final"
       settlement: ChainFinalityProfile // kind MUST equal model
+      finalityResolutionCapability?: "finality-resolution-context-v1"
     }
   | {
       finalityProfileVersion: "1"
@@ -247,12 +248,14 @@ type ConsumerFinalityProfile =
       sr3Binding: string               // exact configured SR-3 response-authentication profile
       maxObservationAgeSec: number
       reversibility: "provisional-provider-capture"
+      finalityResolutionCapability?: "finality-resolution-context-v1"
     }
   | {
       finalityProfileVersion: "1"
       model: "htlc-reveal"
       source: ChainFinalityProfile
       destination: ChainFinalityProfile
+      finalityResolutionCapability?: "finality-resolution-context-v1"
     }
   | {
       finalityProfileVersion: "1"
@@ -261,6 +264,7 @@ type ConsumerFinalityProfile =
       coordinator: ChainFinalityProfile
       source: ChainFinalityProfile
       destination: ChainFinalityProfile
+      finalityResolutionCapability?: "finality-resolution-context-v1"
     }
 ```
 
@@ -1442,6 +1446,190 @@ type SR3NativeTransactionFinalityAuthority = {
 }
 ```
 
+**Finality resolution context version 1.** A signed rail profile selects this
+new contract only by carrying
+`finalityResolutionCapability: "finality-resolution-context-v1"`. The
+historical `FinalityVerificationContext` above remains a separate single-view
+input with unchanged bytes and meaning.
+
+```
+type FinalityResolutionQueryVersion1 = {
+  agreement: {
+    contentRef: AuthenticatedAuthoritySourceRef
+    contentHash: string
+  }
+  session: {
+    jobId: string
+    sessionIdentityHash: string
+    phaseIndex: number
+    phaseKind: PaymentPhaseType
+    roleBindings: {
+      buyer: ClaimReference
+      seller: ClaimReference
+      orchestrator: ClaimReference
+      payer: ClaimReference
+      payee: ClaimReference
+    }
+    evaluationPurpose: string
+  }
+  subject: {
+    settlementEvidenceHash: string
+    transactionSubject: ChainTxRef[]
+    compositeLegId: string | null
+    compositeRelationshipHash: string | null
+  }
+  rail: {
+    railDefinitionHash: string
+    consumerFinalityProfileHash: string
+    networkIdentity: { networkId: string; genesisHash: string }
+  }
+  binding: { codec: string; codecVersion: string }
+  resolutionPolicy: {
+    policyId: string
+    policyVersion: string
+    authorityEpoch: string
+  }
+  authoritySetHash: string
+  checkpoint: {
+    checkpointId: string
+    networkId: string
+    genesisHash: string
+    position: string
+  }
+  nonce: string
+  acquisitionBoundary: {
+    issuedAt: number
+    expiresAt: number
+    maxObservationAgeMs: number
+    clockDomain: string
+  }
+}
+
+type FinalityObservationResponseVersion1 = {
+  finalityObservationResponseVersion: "1"
+  authorityId: string
+  queryHash: string
+  policy: {
+    policyId: string
+    policyVersion: string
+    authorityEpoch: string
+  }
+  checkpoint: {
+    checkpointId: string
+    networkId: string
+    genesisHash: string
+    position: string
+  }
+  signedObservationTime: number
+  response:
+    | { status: "observed"; observation: FinalityVerificationContext }
+    | { status: "unavailable"; reason: string }
+  transportMetadata?: object
+  signature: {
+    keyId: string
+    algorithm: "ed25519"
+    value: string
+  }
+}
+
+type VerifierAcquisitionRecordVersion1 = {
+  responseHash: string
+  authorityId: string
+  queryNonce: string
+  acquiredAt: number
+  status: "obtained"
+}
+
+type AuthenticatedAuthoritySourceRef = {
+  kind: string
+  contentHash: string
+}
+
+type FinalityResolutionContextVersion1 = {
+  finalityResolutionContextVersion: "1"
+  capability: "finality-resolution-context-v1"
+  query: FinalityResolutionQueryVersion1
+  responseArtifacts: FinalityObservationResponseVersion1[]
+  replay: {
+    policySource: AuthenticatedAuthoritySourceRef
+    authoritySetSource: AuthenticatedAuthoritySourceRef
+    checkpointSource: AuthenticatedAuthoritySourceRef
+    acquisitionRecords: VerifierAcquisitionRecordVersion1[]
+  }
+}
+```
+
+The response signature hash is
+`sha256(CORE-B.2-canonical(response minus exactly top-level signature))`.
+The signature preimage is UTF-8
+`"dacs-finality-observation-response:v1:"` followed by the lowercase ASCII
+hex response signature hash. In the registered fixture, each
+`AuthenticatedAuthoritySourceRef.contentHash` is the SHA-256 of the CORE B.2
+canonical exact policy, policy-ordered authority set, or checkpoint object that
+the reference authenticates.
+
+- **(FRC-1) Explicit selection.** A supporting consumer MUST require the signed
+  rail profile to select `finality-resolution-context-v1`. It MUST NOT fall
+  back to the historical single-view context when that capability is selected.
+- **(FRC-2) Verifier-issued query.** Before acquisition, the verifier MUST
+  derive and retain the exact query from authenticated Agreement, session,
+  phase, role, settlement subject, signed rail, policy, checkpoint, nonce and
+  acquisition-boundary authority. A transported object MUST NOT select them.
+- **(FRC-3) Complete hashes.** `consumerFinalityProfileHash` MUST cover the
+  complete canonical embedded profile without omitting any member.
+  `authoritySetHash` MUST cover policy-ordered authority identities and all
+  permitted verification keys; arrival order MUST NOT affect that hash.
+- **(FRC-4) Signed response authority.** A verifier MUST verify each response
+  under the registered response domain and a permitted key for its configured
+  authority seat at the pinned epoch. It MUST require the exact query hash,
+  policy and checkpoint. An arbitrary signer or response for another query
+  MUST NOT fill a configured seat.
+- **(FRC-5) Local acquisition authority.** Every used response MUST have a
+  verifier-local acquisition record for the issued nonce and accepted boundary.
+  `signedObservationTime` MUST NOT create or replace that record. The policy
+  independently constrains signed observation age, query expiry, clock domain
+  and acquisition failure treatment. `acquiredAt` MUST be no later than the
+  verifier-owned decision time; equality is valid.
+- **(FRC-6) Complete configured coverage.** The first registered policy requires
+  every configured authority seat. A missing, expired or explicitly unavailable
+  response is `indeterminate`. This revision defines no quorum threshold.
+- **(FRC-7) Retained conflict union.** The verifier MUST union transported
+  responses with independently retained relevant responses before resolution.
+  Exact duplicate authenticated response bytes MAY coalesce. Multiple
+  inconsistent authenticated responses from one authority or inconsistent
+  configured views are `indeterminate` unless the registered policy supplies
+  a deterministic winner.
+- **(FRC-8) Native projection and disposition.** The registered codec MUST
+  project each response to canonical finality meaning before consistency
+  comparison. Irrelevant transport differences MUST NOT create an economic
+  conflict. A malformed known-binding artifact is `error`; an independently
+  established contract contradiction is `fail`; unsupported mapping,
+  incomplete coverage or unresolved conflict is `indeterminate`; only
+  complete consistent coverage plus every FV gate is `pass`. The verifier
+  evaluates all applicable authenticated responses and applies deterministic
+  `error > fail > indeterminate > pass` precedence independent of response
+  arrival or array order.
+- **(FRC-9) Replay.** Replay MUST retain the issued query, authenticated policy,
+  ordered authority set, checkpoint, exact response artifacts, native
+  observations, local acquisition records, consumed conflicts and resolution.
+  It MUST use that recorded policy and MUST NOT present the historical result
+  as a new current-finality decision. Recorded replay authority is accepted
+  only by the replay entry point and MUST NOT authorize current consumption.
+- **(FRC-10) Composite independence.** Each composite leg MUST repeat FRC-1
+  through FRC-9 under its own profile, authority set and checkpoint. Every leg
+  MUST bind the common Agreement, session, phase and composite transaction
+  relationship. Leg identifiers MUST be non-empty and unique. A parent success
+  flag, another leg's subject/profile/checkpoint, or cross-leg response MUST NOT
+  replace a leg gate.
+- **(FRC-11) Registered scope.** This revision registers only the
+  `dacs-finality-synthetic-fixture-v1` codec and its fixed conformance policy.
+  Its supported observation is a `chain` fixture whose network/genesis equal
+  the selected rail and whose authenticated-head position equals the pinned
+  checkpoint position. Its checkpoint ID is
+  `fixture-{networkId with ':' replaced by '-'}-height-{minimal position}`.
+  Production networks and providers are unsupported until their exact native
+  codecs, authority coverage, checkpoint and freshness mappings are registered.
+
 All integer-like `position` values are unsigned minimal decimal strings. This
 avoids JSON safe-integer ambiguity; verifiers compare them as arbitrary-
 precision integers. Proof encodings are owned by the selected network/SR-3
@@ -1931,8 +2119,19 @@ exclusive `finalityBoundEvidenceVersion` discriminator and distinct signature
 domain. An older reader rejects this type before settlement action. The new
 `consumerFinalityProfile` is required only when producing/consuming that new
 type, so ignoring it cannot weaken an old artifact path. Historical
-`SettlementEvidence` remains byte-verifiable but makes no FV claim and is not
-silently upgraded to current finality-verified evidence.
+`SettlementEvidence` and the historical single-view `FinalityVerificationContext`
+remain byte-verifiable with their frozen meaning; neither is silently upgraded
+to current finality-verified evidence.
+
+| Signed rail profile / verifier input | Historical reader | Resolution-context-v1 reader |
+| --- | --- | --- |
+| No `finalityResolutionCapability`; historical single-view context | Uses the frozen FV single-view contract | Uses the same frozen FV single-view contract |
+| Signed `finalityResolutionCapability: "finality-resolution-context-v1"`; `FinalityResolutionContextVersion1` | Refuses the unsupported capability before finality action | Requires FRC-1..FRC-11, including a verifier-issued query and every configured authority seat |
+| Signed v1 capability; absent, malformed or unsupported context | Refuses the unsupported capability before finality action | Returns a non-authorizing disposition; it MUST NOT fall back to the historical single-view contract |
+
+The new capability is therefore an explicit reader boundary. It does not alter
+any historical signed bytes or authorize a legacy reader to ignore a finality
+resolution context that it cannot verify.
 
 **ERC-20.** pay-evm-erc20 uses the standard ERC-20 transfer interface; any compliant ERC-20 token works. The rail registry pins specific tokens (e.g. USDC) per chain to avoid scam-token substitution.
 

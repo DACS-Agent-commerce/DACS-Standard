@@ -519,7 +519,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 decision, _, _ = self.strong_result(case, authority=authority)
                 self.assertEqual(expected, decision)
 
-    def test_strong_pointer_executes_exact_type_domain_hash_and_consumer(self):
+    def test_historical_pointer_fixture_cannot_bypass_current_profile_admission(self):
         case = self.strong["block-depth"]
         pointer = self.data["dacs5"]["pointer"]
         authority = {**case["authority"], "finalityTrust": self.trust}

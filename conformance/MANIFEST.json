@@ -168,16 +168,11 @@
       "id": "sig-registry-closed",
       "area": "signing",
       "spec": "§B.7",
-      "summary": "the current producer domain-separator registry is exactly the published closed set, including the finality-bound settlement-evidence domain and the frozen legacy-bundle checkpoints; the frozen historical channel import domain is pinned separately",
+      "summary": "the current producer domain-separator registry is exactly the published closed set, including the finality-bound settlement-evidence and finality-observation-response domains, the registry-bootstrap descriptor, and the frozen legacy-bundle checkpoints; the frozen historical channel import domain is pinned separately",
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 39,
-        "historicalImport": {
-          "operation": "legacy-import",
-          "separator": "dacs-channelmsg:v1:",
-          "digestFraming": "raw-sha256-bytes"
-        },
+        "count": 40,
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -199,6 +194,7 @@
           "dacs-finality-bound-evidence-fault-bundle:v1:",
           "dacs-finality-bound-evidence:v1:",
           "dacs-finality-commitment:v1:",
+          "dacs-finality-observation-response:v1:",
           "dacs-identity-bound-agreement:v1:",
           "dacs-identity-bound-payee-agreement:v1:",
           "dacs-legacy-bundle-checkpoint-binding:v1:",
@@ -218,7 +214,12 @@
           "dacs-session-binding:v1:",
           "dacs-transcript:v1:",
           "dacs-verifyresult:v1:"
-        ]
+        ],
+        "historicalImport": {
+          "operation": "legacy-import",
+          "separator": "dacs-channelmsg:v1:",
+          "digestFraming": "raw-sha256-bytes"
+        }
       }
     },
     {

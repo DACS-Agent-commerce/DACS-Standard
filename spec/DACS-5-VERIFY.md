@@ -376,6 +376,8 @@ For this type only, every successful payment member in the exact `settlementEvid
 
 **Authenticated-copy reconciliation for the new type.** Before precedence, verify each copy's authorized role, exact requested `jobId`, binding/content hash, matching signature domain, and complete type-specific validity. Compatible valid copies rank `FinalityBoundEvidenceFaultAttestationBundle` > `EvidenceBoundFaultAttestationBundle` > `FaultAttestationBundle` > `AttestationBundle`; new/new pairs use the same signed outcome/fault/phase checks and exact settlement-reference multiset comparison. A present new copy whose required FV or authority is `error`, `fail`, or `indeterminate` MUST NOT fall back to an older copy. Divergence rejects the pair. These rules apply only when this new consumer contract is explicitly selected and do not change any old-only pair.
 
+**Bounded reference implementation (informative).** The reference consumer does not implement finality-bound bundles combined with identity-bound agreement phases or APR projection. These combinations remain unsupported and cannot establish terminal or reputation authority through this reference. A reference refusal is not a normative determination that an otherwise valid combined artifact is invalid. Implementations supporting a combination must enforce all applicable finality, identity, and payment-projection obligations; this limitation does not waive them.
+
 **LegacyBundleActivationCheckpoint (unallocated current-use candidate).** The
 combined current-use consumer uses a per-substrate governed order boundary. The
 stage minor carrying this addition is deliberately unallocated; the artifact's
@@ -1600,7 +1602,7 @@ artifact's protocol validity.
 
 **Operator-marketplace ratings.** A marketplace migrating to DACS-5 MAY backfill historical ratings as operator-signed RatingRecord-equivalents; new DACS-5 ratings stand alone and are clearly distinguishable from the operator-signed history.
 
-**Finality-bound bundle compatibility.** The frozen DACS-5 v0.5 reader does not know `finalityBoundEvidenceFaultBundleVersion` and rejects the new bundle and pointer before action. A supporting consumer verifies the distinct bundle/pointer domains and invokes DACS-4 FV. Historical `SettlementEvidence`, EBFAB, and all derivations retain their original meaning; none is relabelled as carrying the new independently verified finality claim.
+**Finality-bound bundle compatibility.** The frozen DACS-5 v0.5 reader does not know `finalityBoundEvidenceFaultBundleVersion` and rejects the new bundle and pointer before action. A supporting consumer verifies the distinct bundle/pointer domains and invokes DACS-4 FV. When the signed rail selects `finality-resolution-context-v1`, both direct-bundle and extended-pointer consumption revalidate the same FRC-1..FRC-11 verifier-issued query, authenticated authority policy, retained-response union, checkpoint and local acquisition boundary; pointer resolution does not create a second or weaker finality decision. A consumer that does not implement that capability refuses it before finality-dependent bundle action. Historical `SettlementEvidence`, EBFAB, and all derivations retain their original meaning; none is relabelled as carrying the new independently verified finality claim.
 
 **Audit-log standards.** A consumer MAY convert a DACS-5 bundle to RFC 5424 / OpenTelemetry at read time; DACS-5 defines only the bundle.
 

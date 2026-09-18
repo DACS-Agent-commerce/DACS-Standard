@@ -7,6 +7,11 @@ import sys
 import unittest
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = str(ROOT / "scripts")
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import dacs5_reference as D5
@@ -25,8 +30,6 @@ from settlement_finality_reference import (
 )
 from jcs import canonicalize
 
-
-ROOT = Path(__file__).resolve().parents[1]
 VECTOR = (
     ROOT / "conformance" / "vectors" / "security"
     / "finality-resolution-context-v1.json"

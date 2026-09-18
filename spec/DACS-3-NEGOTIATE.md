@@ -1256,7 +1256,16 @@ type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
   authorize a legacy pay-bearing commitment. A commitment `pass` carries zero
   payment side effects: it selects and anchors an agreement, and the later
   DACS-4 payment re-runs LAA-1..LAA-7 against the payment effect before any
-  irreversible settlement. Payee-bound commitment remains available without
+  irreversible settlement. If that exact commitment finalizes strictly before
+  activation, it still carries zero post-checkpoint payment authority by
+  itself. LAA-3 MAY later return `transition-only` only when the actual
+  `PaymentPhaseInput` was also projected into the distinct role-bound DACS-4
+  `LegacyPaymentReservation` (buyer and seller, plus the authenticated session
+  orchestrator iff distinct) and that reservation's
+  verified finalized receipt is strictly before activation. The commitment and
+  reservation create no authority to substitute, expand, reprice, repeat, or
+  add payment. A legacy commitment or reservation first finalized at or after
+  activation is rejected. Payee-bound commitment remains available without
   using uncertainty to fall back to the legacy path. A zero-pay pipeline is outside LAA and
   may retain `commit-agreement`.
 

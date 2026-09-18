@@ -168,11 +168,11 @@
       "id": "sig-registry-closed",
       "area": "signing",
       "spec": "§B.7",
-      "summary": "the current producer domain-separator registry is exactly the published closed set, including the finality-bound settlement-evidence and finality-observation-response domains, the registry-bootstrap descriptor, the frozen legacy-bundle checkpoints, and the legacy-agreement activation checkpoint; the frozen historical channel import domain is pinned separately",
+      "summary": "the current producer domain-separator registry is exactly the published closed set, including the finality-bound settlement-evidence and finality-observation-response domains, the registry-bootstrap descriptor, the frozen legacy-bundle checkpoints, the legacy-agreement activation checkpoint, the signed legacy-payment reservation, and the exclusive legacy-transition evidence; the frozen historical channel import domain is pinned separately",
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 41,
+        "count": 43,
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -200,6 +200,8 @@
           "dacs-legacy-agreement-checkpoint:v1:",
           "dacs-legacy-bundle-checkpoint-binding:v1:",
           "dacs-legacy-bundle-checkpoint:v1:",
+          "dacs-legacy-payment-reservation:v1:",
+          "dacs-legacy-transition-evidence:v1:",
           "dacs-listing:v1:",
           "dacs-payee-bound-agreement:v1:",
           "dacs-payload-attestation:v1:",

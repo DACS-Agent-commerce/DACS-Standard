@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 defines portable logical-to-native resolution and the non-recursive registry bootstrap, adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification, and registers the DACS-4 finality-bound settlement-evidence, finality-observation-response, and legacy-agreement activation-checkpoint signature domains; it is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 defines portable logical-to-native resolution and the non-recursive registry bootstrap, adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification, and registers the DACS-4 finality-bound settlement-evidence, finality-observation-response, legacy-agreement activation-checkpoint, legacy-payment-reservation, and legacy-transition-evidence signature domains; it is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -805,6 +805,8 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
 | DACS-4 legacy-agreement activation checkpoint | "dacs-legacy-agreement-checkpoint:v1:" | §9.5.1 |
+| DACS-4 legacy payment reservation | "dacs-legacy-payment-reservation:v1:" | §9.5.1 |
+| DACS-4 legacy transition settlement evidence | "dacs-legacy-transition-evidence:v1:" | §9.7 |
 | DACS-4 finality-bound settlement evidence | "dacs-finality-bound-evidence:v1:" | §9.7 |
 | DACS-4 finality observation response | "dacs-finality-observation-response:v1:" | §9.7.0 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
@@ -845,13 +847,14 @@ SIG-6 encoding.
 
 For composite-payload separators each appended value MUST be a fixed-length hex sha256 digest (or, for `session_key`, the fixed-length hex public key) so the concatenation is unambiguously parseable. This is the sanctioned exception to the single-`artifact_hash` shape; these separators are first-class registry entries, not `dacs-x-` extensions.
 
-**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Three further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
+**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Four further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
 
 - `dacs-sealed-bid:v1:` — the sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3);
 - `dacs-sb3:v1:` — after JID-1 validation, the EIP-3009 session-binding nonce preimage `sha256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is therefore an identity operation for current input and remains written only to freeze the already-published recipe (§9.5.8);
 - `dacs-ap2-idem:v1:` — after JID-1 validation, the AP2 provider idempotency-key preimage `sha256(UTF8("dacs-ap2-idem:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is likewise an identity operation for current input (§9.5.6 AP2-6).
+- `dacs-laa-reservation-idem:v1:` — after JID-1 validation, the bounded legacy-payment reservation idempotency-key preimage `sha256(UTF8("dacs-laa-reservation-idem:v1:") || UTF8(jobId) || 0x3a || ASCII(bare_integer(phaseIndex)))` (§9.5.1 LAA-3).
 
-All three follow the same domain-separation discipline, preventing cross-use of the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
+All four follow the same domain-separation discipline, preventing cross-use of the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
 
 **Signature-value wire encoding.** This rule covers every DACS-owned signature
 envelope whose cryptographic result is carried in a string field named `value`.

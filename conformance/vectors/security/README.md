@@ -49,7 +49,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
-| [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 13 | `indeterminate` / `pass` |
+| [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 15 | `indeterminate` / `pass` |
 | [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 8 | `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
@@ -1689,16 +1689,19 @@ python3 -m unittest tests.test_current_use_replay_corpus -v
 
 ### `current-use-authenticated-window-v1.json` — CUAW-1..CUAW-6
 
-Thirteen executable fixture-only cases compose all-jobs CUR admission and
+Fifteen executable fixture-only cases compose all-jobs CUR admission and
 reconciliation with independently signed business-outcome occurrence. They
 cover all six finality models, both historical mapping arms, a signed two-phase
 payment-then-rate session whose payment evidence is inside the query window
 while the terminal outcome is outside, retention and mutation of outside-window
 replay context, missing proof for one requested job, and fail-closed sealed
-selection without independently reproduced SAC-8 authority. The reference
-does not implement a positive SAC-8 adapter or a production native outcome
-proof codec; those remain separate conformance work and cannot be inferred
-from a fixture-only pass.
+selection without independently reproduced SAC-8 authority. Two signed-Listing
+`pay-alternative` cases exercise structurally valid projected and wrong-rail
+effective pipelines, both refused before outcome-proof lookup because this
+bounded reference does not independently reproduce APR-1..APR-4 authority.
+It does not implement a positive APR or SAC-8 adapter or a production native
+outcome proof codec; those remain separate conformance work and cannot be
+inferred from a fixture-only pass.
 
 ```sh
 python3 scripts/generate_current_use_authenticated_window_vectors.py --check

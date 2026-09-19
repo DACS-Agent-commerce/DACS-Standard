@@ -619,7 +619,7 @@ class CurrentUseFixtureFactory:
 
     def current_finality_job(
         self, model: str, index: int, *, job_id: str | None = None,
-        extra_rate_phase: bool = False,
+        extra_rate_phase: bool = False, projected_alternative: bool = False,
     ) -> tuple[dict, dict]:
         actual_job_id = job_id or CURRENT_FINALITY_JOB_IDS[model]
         if model == "provider-receipt":
@@ -634,6 +634,41 @@ class CurrentUseFixtureFactory:
         authority = case["authority"]
         candidate = next(iter(authority["finalityVerificationByCanonicalRef"].values()))
         agreement = candidate["agreement"]
+        if projected_alternative:
+            listing = authority["listing"]
+            selected_rail = copy.deepcopy(agreement["terms"]["rail"])
+            alternate_rail = {"railId": "fixture:unselected-apr-rail", "railVersion": 1}
+            listing["pipeline"] = [{
+                "kind": "pay-alternative",
+                "parameters": {"alternatives": [selected_rail, alternate_rail]},
+            }]
+            listing["acceptedRails"] = [selected_rail, alternate_rail]
+            listing["signature"] = {
+                "signer": CLAIMS["seller"], "algorithm": "ed25519",
+                "value": self._sign(self.finality.keys["seller"], LISTING_DOMAIN,
+                                    listing_hash(listing)),
+            }
+            new_listing_ref = {
+                "listingId": listing["listingId"],
+                "version": listing["listingVersion"],
+                "contentHash": listing_hash(listing),
+            }
+            bundle["listingRef"] = copy.deepcopy(new_listing_ref)
+            agreement["listingRef"] = copy.deepcopy(new_listing_ref)
+            agreement_digest = artifact_hash(agreement, "signatures")
+            self.finality.trusted["sessionAuthorityByJob"][actual_job_id]["agreementHash"] = agreement_digest
+            agreement["signatures"] = [
+                {
+                    "party": CLAIMS[role], "algorithm": "ed25519",
+                    "value": self._sign(self.finality.keys[role], AGREEMENT_DOMAIN,
+                                        agreement_digest),
+                }
+                for role in ("buyer", "seller")
+            ]
+            authority["effectivePipeline"] = [{
+                "kind": candidate["evidence"]["phase"],
+                "parameters": {"rail": selected_rail["railId"]},
+            }]
         if extra_rate_phase:
             listing = authority["listing"]
             listing["pipeline"].append({"kind": "rate"})
@@ -664,7 +699,10 @@ class CurrentUseFixtureFactory:
             ]
             bundle["phaseSummary"].append({"index": 1, "kind": "rate", "outcome": "ok"})
         agreement_digest = artifact_hash(agreement, "signatures")
-        agreement_ref = reference("agreement:" + model, agreement_digest)
+        agreement_ref = reference(
+            "agreement:" + model + (":apr" if projected_alternative else ""),
+            agreement_digest,
+        )
         bundle["agreementRef"] = agreement_ref
         if model == "block-depth":
             rating, rating_ref = self._rating(bundle["jobId"])
@@ -677,8 +715,17 @@ class CurrentUseFixtureFactory:
         self.config["partyRolesByJob"][bundle["jobId"]] = {
             "buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"],
         }
-        current_context = self.current_authority(
-            CLAIMS["buyer"], FIXTURE_QUERY_WINDOW
+        current_context = (
+            trusted_current_context(
+                [trusted_role_authority(actual_job_id, role, CLAIMS[role])
+                 for role in ("buyer", "seller")],
+                query=trusted_query_authority(
+                    CLAIMS["buyer"], FIXTURE_QUERY_WINDOW[0],
+                    FIXTURE_QUERY_WINDOW[1], "finalisedAt",
+                ),
+            ) if projected_alternative else self.current_authority(
+                CLAIMS["buyer"], FIXTURE_QUERY_WINDOW
+            )
         )
         roles = {}
         for role_index, role in enumerate(("buyer", "seller")):
@@ -688,7 +735,7 @@ class CurrentUseFixtureFactory:
                 anchored,
                 role,
                 "current:" + model + ":" + role + (
-                    ":" + actual_job_id if extra_rate_phase else ""
+                    ":" + actual_job_id if extra_rate_phase or projected_alternative else ""
                 ),
                 trusted_contexts=current_context,
             )

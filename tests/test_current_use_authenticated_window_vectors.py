@@ -15,6 +15,8 @@ for path in (str(ROOT), str(ROOT / "tests")):
         sys.path.insert(0, path)
 
 from dacs5_reference import (  # noqa: E402
+    _resolve_current_use_job,
+    _verify_current_use_outcome_occurrence,
     derive_current_use_authenticated_window,
     replay_current_use_authenticated_window,
     require_current_use_authenticated_window_derivation,
@@ -156,6 +158,53 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
         self.assertEqual("indeterminate", result["decision"])
         self.assertIn("SAC-8", result["reason"])
         self.assertIsNone(result["derivation"])
+
+    def test_signed_alternative_and_wrong_projection_refuse_before_outcome_proof(self):
+        for name in (
+            "combined-signed-alternative-projection-unsupported",
+            "combined-wrong-apr-projection-refused",
+        ):
+            with self.subTest(name=name):
+                replay = self.cases[name]["replay"]
+                request = replay["requests"][0]
+                native = request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+                bundle = replay["dependencies"]["bundlesByNativeAddress"][native]
+                authority = replay["dependencies"]["bundleAuthorityByContentHash"][
+                    request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]["bundleContentHash"]
+                ]
+                self.assertEqual("pay-alternative", authority["listing"]["pipeline"][0]["kind"])
+                self.assertEqual(2, len(authority["listing"]["pipeline"][0]["parameters"]["alternatives"]))
+                self.assertEqual(bundle["phaseSummary"][0]["kind"], authority["effectivePipeline"][0]["kind"])
+                self.assertNotEqual(authority["listing"]["pipeline"], authority["effectivePipeline"])
+                # A missing proof must not be the first reason for refusal: the
+                # unsupported APR authority is rejected before proof lookup.
+                no_proof = copy.deepcopy(replay)
+                no_proof["dependencies"]["outcomeTimeEvidenceByJobId"].clear()
+                result, _, _, _ = execute(no_proof)
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("APR effective pipeline is unsupported", result["reason"])
+                self.assertIsNone(result["derivation"])
+
+    def test_distinct_unverified_pipeline_refuses_after_cur_admission(self):
+        case = self.cases["combined-block-depth"]
+        result, deps, config, keys = execute(case["replay"])
+        self.assertEqual("pass", result["decision"])
+        admitted = _resolve_current_use_job(
+            case["replay"]["requests"][0], deps, config, keys,
+            case["replay"]["trustedContext"],
+        )
+        self.assertEqual("pass", admitted["decision"], admitted["reason"])
+        authority = deps["bundleAuthorityByContentHash"][
+            admitted["selected"]["roleEvidence"]["binding"]["bundleContentHash"]
+        ]
+        authority["effectivePipeline"] = [{"kind": "pay-x402"}]
+        deps["outcomeTimeEvidenceByJobId"].clear()
+        decision, reason, occurrence = _verify_current_use_outcome_occurrence(
+            admitted, deps, config,
+        )
+        self.assertEqual("indeterminate", decision)
+        self.assertIn("differs from signed listing", reason)
+        self.assertIsNone(occurrence)
 
     def test_older_or_standalone_discriminator_cannot_satisfy_combined_request(self):
         for name in (

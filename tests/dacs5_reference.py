@@ -6008,7 +6008,7 @@ def _verify_current_use_outcome_occurrence(result, dependencies, verifier_config
     """Fixture-only AWT adapter, invoked only after complete CUR reconciliation.
 
     Its signer and policy come from verifier configuration. The selected bundle,
-    signed Listing pipeline, phase summary, and terminal evidence set are exact
+    authenticated effective pipeline, phase summary, and terminal evidence set are exact
     hash-bound inputs; neither bundle/anchor publication time nor a producer flag
     can supply the occurrence clock.
     """
@@ -6026,6 +6026,16 @@ def _verify_current_use_outcome_occurrence(result, dependencies, verifier_config
     pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
     if not isinstance(pipeline, list) or not pipeline:
         return ("indeterminate", "authenticated effective pipeline is unavailable", None)
+    if any(isinstance(step, dict) and step.get("kind") == "pay-alternative"
+           for step in pipeline):
+        # CUR-v1's bounded FV/SEB fixture accepts a supplied projection but
+        # does not independently reproduce APR's Agreement/registry choice.
+        # The stronger CUAW outcome join cannot hash the raw listing placeholder
+        # or promote that supplied projection into authenticated authority.
+        return ("indeterminate", "authenticated APR effective pipeline is unsupported", None)
+    if ("effectivePipeline" in authority
+            and authority["effectivePipeline"] != pipeline):
+        return ("indeterminate", "effective pipeline differs from signed listing without authenticated APR", None)
     evidence_by_job = dependencies.get("outcomeTimeEvidenceByJobId")
     history = evidence_by_job.get(job_id) if isinstance(evidence_by_job, dict) else None
     if not isinstance(history, list) or not history:

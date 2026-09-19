@@ -21,6 +21,7 @@ from generate_current_use_reputation_vectors import (
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/current-use-authenticated-window-v1.json"
 BASIS = "verified-business-outcome-occurrence"
+PROJECTED_JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB4"
 
 
 def _case(factory, fixture, name, requests, expected, *, dependencies=None,
@@ -122,6 +123,26 @@ def document():
         factory, fixture, "combined-sealed-selection-without-SAC8",
         [sealed_request], "indeterminate", dependencies=sealed_deps,
         verifier_config=sealed_config,
+    ))
+    projected_request, _ = factory.current_finality_job(
+        "block-depth", len(MODELS) + 1, job_id=PROJECTED_JOB_ID,
+        projected_alternative=True,
+    )
+    factory.outcome_time_proof(projected_request)
+    projected_deps = factory.replay_dependencies(projected_request, include_combined=True)
+    projected_config = factory.replay_config(projected_request, include_combined=True)
+    vectors.append(_case(
+        factory, fixture, "combined-signed-alternative-projection-unsupported",
+        [projected_request], "indeterminate", dependencies=projected_deps,
+        verifier_config=projected_config,
+    ))
+    wrong_projection = copy.deepcopy(projected_deps)
+    for authority in wrong_projection["bundleAuthorityByContentHash"].values():
+        authority["effectivePipeline"][0]["parameters"]["rail"] = "fixture:unselected-apr-rail"
+    vectors.append(_case(
+        factory, fixture, "combined-wrong-apr-projection-refused",
+        [projected_request], "indeterminate", dependencies=wrong_projection,
+        verifier_config=projected_config,
     ))
     return {
         "set": "current-use-authenticated-window-v1",

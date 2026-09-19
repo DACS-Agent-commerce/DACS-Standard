@@ -683,7 +683,7 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6",
+                "dacs5": "0.7",
             },
             "the authoritative tuple drifted",
         )

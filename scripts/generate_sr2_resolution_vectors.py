@@ -1431,7 +1431,7 @@ def document(set_name: str, spec: str, model: str, vectors: list[dict[str, Any]]
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6",
+                "dacs5": "0.7",
             },
             "peerEvidence": "verifier-owned context, separate from vector input, binds the exact session and expected peer identity",
         },

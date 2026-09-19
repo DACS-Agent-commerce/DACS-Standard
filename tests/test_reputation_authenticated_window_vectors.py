@@ -7,6 +7,11 @@ import unittest
 from pathlib import Path
 
 from scripts.jcs import canonicalize as jcs_canonicalize
+from scripts.reputation_evidence import (
+    decode_canonical_object,
+    inspect_anchor_receipt,
+    resolve_anchor_history as resolve_shared_anchor_history,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +58,11 @@ TRUSTED_OUTCOME_POLICY = {
     "proofProfile": "exact-job-pipeline-terminal-evidence-native-event",
     "historyOrder": "native-order-then-sha256-jcs-ascending",
 }
+ANCHOR_ADAPTER_DOMAIN = "dacs-test-window-anchor-adapter:v1:"
+ANCHOR_POLICY = "dacs-test-window-anchor-v1"
+TRUSTED_ANCHOR_ADAPTER = (
+    "key:786f8b3089d787d6a8946c841dfe728be88632597d6e5f9ae9d3a1bf2e78e0ba"
+)
 
 BUNDLE = {
     "substrate": "demos:testnet",
@@ -203,273 +213,49 @@ def transaction_key(value):
     return (value["kind"], value["value"])
 
 
-def receipt_projection_hash(item):
-    try:
-        scope = {key: value for key, value in item.items() if key != "evidence"}
-        return jcs_hash(scope)
-    except (AttributeError, TypeError, ValueError):
-        return None
-
-
-def receipt_is_authenticated(item):
-    if not isinstance(item, dict):
-        return False
-    evidence = item.get("evidence")
-    return (
-        isinstance(evidence, dict)
-        and set(evidence) == {"kind", "value"}
-        and evidence.get("kind")
-        == "fixture-only-anchor-binding-adapter-projection"
-        and nonempty_string(evidence.get("value"))
-        and evidence["value"] == receipt_projection_hash(item)
-    )
-
-
-def receipt_binds_bundle(item, bundle):
-    return all(item.get(field) == bundle.get(field) for field in BINDING_FIELDS)
-
-
-def valid_block_ref(value):
-    if not isinstance(value, dict) or not set(value) <= {
-        "id", "height", "timestamp"
-    }:
-        return False
-    if "id" not in value:
-        return False
-    if not nonempty_string(value.get("id")):
-        return False
-    if "height" in value and not valid_decimal_string(value.get("height")):
-        return False
-    if "timestamp" in value and not safe_integer(value["timestamp"]):
-        return False
-    return True
-
-
-def valid_replacement_relation(value, item):
-    return (
-        isinstance(value, dict)
-        and set(value) == {
-            "kind", "predecessor", "replacement", "proofRef"
-        }
-        and value.get("kind")
-        == "fixture-only-authenticated-replacement-projection"
-        and valid_transaction_ref(value.get("predecessor"))
-        and valid_transaction_ref(value.get("replacement"))
-        and nonempty_string(value.get("proofRef"))
-        and value["predecessor"] == item.get("transactionRef")
-        and value["replacement"] == item.get("replacementTransactionRef")
-    )
-
-
-def receipt_is_well_formed(item):
-    if not isinstance(item, dict):
-        return False
-    state = item.get("state")
-    disposition = item.get("observationDisposition")
-    if not isinstance(state, str) or state not in CORE_TRANSITIONS:
-        return False
-    if not isinstance(disposition, str) or disposition not in {
-        "established", "indeterminate"
-    }:
-        return False
-    required = {
-        "receiptVersion", *BINDING_FIELDS, "finalityProfile", "transactionRef",
-        "state", "observationDisposition", "observedAt", "nativeOrder", "evidence",
-    }
-    if state in {"included", "finalized"}:
-        required.add("blockRef")
-    if state == "replaced":
-        required.update({"replacementTransactionRef", "replacementRelation"})
-    if disposition == "indeterminate":
-        required.add("preservedReceiptHash")
-    if set(item) != required:
-        return False
-    if item.get("receiptVersion") != "1":
-        return False
-    if item.get("finalityProfile") not in FINALITY_PROFILES:
-        return False
-    if any(not nonempty_string(item.get(field)) for field in BINDING_FIELDS):
-        return False
-    if not valid_transaction_ref(item.get("transactionRef")):
-        return False
-    if not safe_integer(item.get("observedAt")) or not safe_integer(item.get("nativeOrder")):
-        return False
-    if state in {"included", "finalized"} and not valid_block_ref(item.get("blockRef")):
-        return False
-    if disposition == "indeterminate" and not (
-        isinstance(item.get("preservedReceiptHash"), str)
-        and len(item["preservedReceiptHash"]) == 64
+# The AWT consumer delegates portable receipt authentication and lifecycle
+# reconciliation to the same signed fixture adapter used by SPA.  Current
+# admission may infer the unique finalized successor; replay supplies it exactly.
+def resolve_anchor_history(bundle, receipts, selected=None):
+    if not isinstance(bundle, dict) or not valid_transaction_ref(
+        bundle.get("transactionRef")
     ):
-        return False
-    if state == "replaced" and not (
-        disposition == "established"
-        and valid_transaction_ref(item.get("replacementTransactionRef"))
-        and valid_replacement_relation(item.get("replacementRelation"), item)
-    ):
-        return False
-    return True
-
-
-def receipt_hash(value):
-    return jcs_hash(value)
-
-
-def canonical_receipt_history(items):
-    unique = {receipt_hash(item): item for item in items}
-    return [
-        copy.deepcopy(item)
-        for digest, item in sorted(
-            unique.items(), key=lambda pair: (pair[1]["nativeOrder"], pair[0])
-        )
-    ]
-
-
-def relation_proof_ref(predecessor, replacement, native_order):
-    return "fixture-only-replacement:" + jcs_hash({
-        "predecessor": predecessor,
-        "replacement": replacement,
-        "nativeOrder": native_order,
-    })
-
-
-def replacement_relation_is_verified(item):
-    relation = item["replacementRelation"]
-    return relation["proofRef"] == relation_proof_ref(
-        relation["predecessor"], relation["replacement"], item["nativeOrder"]
-    )
-
-
-def replacement_graph_has_cycle(edges):
-    visiting = set()
-    visited = set()
-
-    def walk(node):
-        if node in visiting:
-            return True
-        if node in visited or node not in edges:
-            return False
-        visiting.add(node)
-        if walk(edges[node][0]):
-            return True
-        visiting.remove(node)
-        visited.add(node)
-        return False
-
-    return any(walk(node) for node in edges)
-
-
-def resolve_anchor_history(bundle, receipts):
-    if not isinstance(bundle, dict) or not isinstance(receipts, list):
         return "error", None, []
-    if not valid_transaction_ref(bundle.get("transactionRef")):
-        return "error", None, []
-
-    authenticated = [
-        item for item in receipts
-        if receipt_is_authenticated(item) and receipt_binds_bundle(item, bundle)
-    ]
-    if any(not receipt_is_well_formed(item) for item in authenticated):
+    if not isinstance(receipts, list):
         return "indeterminate", None, []
-    history = canonical_receipt_history(authenticated)
-    if not history:
-        return "indeterminate", None, history
-
-    positions = {}
-    for item in history:
-        key = (transaction_key(item["transactionRef"]), item["nativeOrder"])
-        positions.setdefault(key, set()).add(receipt_hash(item))
-    if any(len(digests) > 1 for digests in positions.values()):
-        return "indeterminate", None, history
-
-    by_transaction = {}
-    for item in history:
-        by_transaction.setdefault(transaction_key(item["transactionRef"]), []).append(item)
-
-    last_established = {}
-    established_by_transaction = {}
-    for key, snapshots in by_transaction.items():
-        last = None
-        established = []
-        for item in snapshots:
-            if item["observationDisposition"] == "indeterminate":
-                if not (
-                    last is not None
-                    and item["state"] == last["state"]
-                    and item["preservedReceiptHash"] == receipt_hash(last)
-                ):
-                    return "indeterminate", None, history
-                continue
-            if last is not None:
-                if item["nativeOrder"] <= last["nativeOrder"]:
-                    return "indeterminate", None, history
-                if item["state"] not in CORE_TRANSITIONS[last["state"]]:
-                    compressed_finality = (
-                        item["state"] == "finalized"
-                        and last["state"] in COMPRESSED_FINALITY_PREDECESSORS
-                        and item.get("finalityProfile")
-                        == FINALITY_PROFILE_STANDARD
-                    )
-                    if not compressed_finality:
-                        return "indeterminate", None, history
-            last = item
-            established.append(item)
-        if last is not None:
-            last_established[key] = last
-            established_by_transaction[key] = established
-
-    edges_by_predecessor = {}
-    for key, snapshots in established_by_transaction.items():
-        states = {item["state"] for item in snapshots}
-        if "finalized" in states and "replaced" in states:
-            return "indeterminate", None, history
-        for item in snapshots:
-            if item["state"] != "replaced" or not replacement_relation_is_verified(item):
-                continue
-            successor = transaction_key(item["replacementTransactionRef"])
-            edges_by_predecessor.setdefault(key, []).append(
-                (successor, item["nativeOrder"])
-            )
-
-    if any(
-        len({successor for successor, _ in edges}) > 1
-        for edges in edges_by_predecessor.values()
-    ):
-        return "indeterminate", None, history
-    edges = {
-        predecessor: values[0]
-        for predecessor, values in edges_by_predecessor.items()
+    expected_binding = {
+        field: copy.deepcopy(bundle[field])
+        for field in BINDING_FIELDS
+        if field in bundle
     }
-    if replacement_graph_has_cycle(edges):
-        return "indeterminate", None, history
 
-    for predecessor, (successor, edge_order) in edges.items():
-        successor_snapshots = established_by_transaction.get(successor, [])
-        successor_final = [
-            item for item in successor_snapshots if item["state"] == "finalized"
-        ]
-        successor_replacement = [
-            item for item in successor_snapshots if item["state"] == "replaced"
-        ]
-        if any(
-            item["nativeOrder"] <= edge_order
-            for item in successor_final + successor_replacement
-        ):
-            return "indeterminate", None, history
+    def belongs_to_selected_bundle(item):
+        if not isinstance(item, dict):
+            return False
+        if any(item.get(field) != value for field, value in expected_binding.items()):
+            return False
+        return "nonce" in expected_binding or "nonce" not in item
 
-    expected = transaction_key(bundle["transactionRef"])
-    authorized = {expected}
-    cursor = expected
-    while cursor in edges:
-        cursor = edges[cursor][0]
-        authorized.add(cursor)
+    candidates = [item for item in receipts if belongs_to_selected_bundle(item)]
 
-    finalized = [
-        item for key, item in last_established.items()
-        if key in authorized and item["state"] == "finalized"
-    ]
-    if len(finalized) != 1:
-        return "indeterminate", None, history
-    return "pass", copy.deepcopy(finalized[0]), history
+    def receipt_verifier(item):
+        return inspect_anchor_receipt(
+            item,
+            expected_binding=expected_binding,
+            adapter_domain=ANCHOR_ADAPTER_DOMAIN,
+            adapter_policy=ANCHOR_POLICY,
+            trusted_adapter=TRUSTED_ANCHOR_ADAPTER,
+            authorized_signer=bundle.get("writer"),
+        )
+
+    return resolve_shared_anchor_history(
+        selected,
+        candidates,
+        expected_binding=expected_binding,
+        receipt_verifier=receipt_verifier,
+        expected_lineage_root=bundle["transactionRef"],
+        allow_implicit_selection=selected is None,
+    )
 
 
 def outcome_object_hashes(objects):
@@ -622,7 +408,7 @@ def resolve_outcome_time(data, bundle, evidence_items):
     return "pass", copy.deepcopy(selected), history
 
 
-def resolve_current(data, receipts, outcome_evidence):
+def resolve_current(data, receipts, outcome_evidence, *, selected_anchor=None):
     bundle = data.get("bundle")
     if not isinstance(bundle, dict):
         return "error", indeterminate_want(), None, [], None, []
@@ -637,7 +423,9 @@ def resolve_current(data, receipts, outcome_evidence):
     if data["windowStart"] > data["windowEnd"]:
         return "error", indeterminate_want(), None, [], None, []
 
-    anchor_status, anchor, anchor_history = resolve_anchor_history(bundle, receipts)
+    anchor_status, anchor, anchor_history = resolve_anchor_history(
+        bundle, receipts, selected=selected_anchor
+    )
     if anchor_status != "pass":
         return anchor_status, indeterminate_want(), None, anchor_history, None, []
     outcome_status, outcome, outcome_history = resolve_outcome_time(
@@ -794,6 +582,7 @@ def evaluate(vector):
             data,
             replay.get("anchorReceiptHistory"),
             replay.get("outcomeTimeEvidenceHistory"),
+            selected_anchor=replay.get("anchorReceipt"),
         )
         (
             replay_expected, replay_want, replay_anchor, replay_anchor_history,
@@ -846,11 +635,18 @@ class AuthenticatedWindowVectorTests(unittest.TestCase):
             "awt-finalized-anchor-without-height-pass",
             "awt-included-anchor-without-height-pass",
             "awt-finalized-anchor-canonical-decimal-height-pass",
+            "awt-malformed-block-ref-missing-id-indeterminate",
+            "awt-malformed-block-height-empty-indeterminate",
             "awt-malformed-block-height-non-decimal-indeterminate",
             "awt-malformed-block-height-signed-indeterminate",
             "awt-malformed-block-height-plus-indeterminate",
             "awt-malformed-block-height-space-indeterminate",
+            "awt-malformed-block-height-unicode-digit-indeterminate",
             "awt-malformed-block-height-leading-zero-indeterminate",
+            "awt-malformed-block-height-decimal-indeterminate",
+            "awt-malformed-block-height-exponent-indeterminate",
+            "awt-malformed-replacement-proof-container-indeterminate",
+            "awt-malformed-replacement-kind-container-indeterminate",
             "awt-compressed-finality-submitted-to-finalized-pass",
             "awt-compressed-finality-accepted-to-finalized-pass",
             "awt-submitted-to-finalized-undeclared-profile-indeterminate",
@@ -920,16 +716,99 @@ class AuthenticatedWindowVectorTests(unittest.TestCase):
                 self.assertEqual(result["expected"], "indeterminate")
                 self.assertFalse(result["want"]["countable"])
 
+    def test_height_grammar_and_compressed_finality_vectors(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        for name in (
+            "awt-finalized-anchor-without-height-pass",
+            "awt-included-anchor-without-height-pass",
+            "awt-finalized-anchor-canonical-decimal-height-pass",
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(vectors[name])["expected"], "pass")
+        for name in (
+            "awt-malformed-block-ref-missing-id-indeterminate",
+            "awt-malformed-block-height-container-indeterminate",
+            "awt-malformed-block-height-empty-indeterminate",
+            "awt-malformed-block-height-non-decimal-indeterminate",
+            "awt-malformed-block-height-signed-indeterminate",
+            "awt-malformed-block-height-plus-indeterminate",
+            "awt-malformed-block-height-space-indeterminate",
+            "awt-malformed-block-height-unicode-digit-indeterminate",
+            "awt-malformed-block-height-leading-zero-indeterminate",
+            "awt-malformed-block-height-decimal-indeterminate",
+            "awt-malformed-block-height-exponent-indeterminate",
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(vectors[name])["expected"], "indeterminate")
+        for name in (
+            "awt-compressed-finality-submitted-to-finalized-pass",
+            "awt-compressed-finality-accepted-to-finalized-pass",
+        ):
+            with self.subTest(vector=name):
+                result = evaluate(vectors[name])
+                self.assertEqual(result["expected"], "pass")
+                self.assertTrue(result["want"]["countable"])
+        for name in (
+            "awt-submitted-to-finalized-undeclared-profile-indeterminate",
+            "awt-accepted-to-finalized-undeclared-profile-indeterminate",
+            "awt-cross-profile-finality-history-indeterminate",
+            "awt-compressed-finality-finalized-then-reorg-indeterminate",
+        ):
+            with self.subTest(vector=name):
+                result = evaluate(vectors[name])
+                self.assertEqual(result["expected"], "indeterminate")
+                self.assertFalse(result["want"]["countable"])
+
+    def test_awt_uses_shared_signed_portable_receipt_adapter(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        data = vectors["awt-finalized-exact-replacement-pass"]["input"]
+        expected_binding = {
+            field: copy.deepcopy(data["bundle"][field]) for field in BINDING_FIELDS
+        }
+        for receipt in data["knownReceipts"]:
+            with self.subTest(transaction=receipt["transactionRef"]):
+                self.assertNotIn("nativeOrder", receipt)
+                self.assertNotIn("replacementRelation", receipt)
+                adapter = decode_canonical_object(receipt["evidence"]["value"])
+                self.assertIsInstance(adapter, dict)
+                self.assertEqual(
+                    adapter["lineageRootTransactionRef"],
+                    data["bundle"]["transactionRef"],
+                )
+                self.assertEqual(
+                    inspect_anchor_receipt(
+                        receipt,
+                        expected_binding=expected_binding,
+                        adapter_domain=ANCHOR_ADAPTER_DOMAIN,
+                        adapter_policy=ANCHOR_POLICY,
+                        trusted_adapter=TRUSTED_ANCHOR_ADAPTER,
+                        authorized_signer=data["bundle"]["writer"],
+                    )[0],
+                    "pass",
+                )
+
+        replay = vectors["awt-replay-concrete-gate-pass"]["input"]["replayContext"]
+        self.assertIn(replay["anchorReceipt"], replay["anchorReceiptHistory"])
+        self.assertEqual(
+            replay["anchorReceipt"]["transactionRef"]["value"], "tx-window-b"
+        )
+
     def test_generator_is_deterministic(self):
-        subprocess.run(
-            [sys.executable, str(GENERATOR), "--check"],
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(GENERATOR),
+                "--check",
+            ],
             cwd=ROOT,
-            check=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
     def test_spec_pins_outcome_clock_and_legacy_boundary(self):
         text = SPEC.read_text(encoding="utf-8")
-        self.assertIn("**DACS-5 v0.6**", text)
+        self.assertIn("**DACS-5 v0.7**", text)
         self.assertIn('authenticatedWindowDerivationVersion: "1"', text)
         self.assertIn('windowingBasis: "verified-business-outcome-occurrence"', text)
         self.assertIn("(AWT-1)", text)

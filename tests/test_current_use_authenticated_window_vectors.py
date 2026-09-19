@@ -7,6 +7,7 @@ import hashlib
 import json
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,6 +86,27 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
                     self.assertTrue(replayed["ok"], replayed["reason"])
                 else:
                     self.assertIsNone(result["derivation"])
+
+    def test_one_sided_fault_without_spa_refuses_before_occurrence(self):
+        one_sided = {
+            "decision": "pass",
+            "bundle": {"outcome": "aborted-by-other"},
+            "roles": {
+                "buyer": {"disposition": "present"},
+                "seller": {"disposition": "absent"},
+            },
+        }
+        with patch("dacs5_reference._current_use_request_admission", return_value=("pass", "admitted", {})), \
+             patch("dacs5_reference._resolve_current_use_job", return_value=one_sided), \
+             patch("dacs5_reference._verify_current_use_outcome_occurrence") as occurrence:
+            result = derive_current_use_authenticated_window(
+                "key:test", [{"jobId": "01J00000000000000000000000"}],
+                0, 100, {}, {"verificationTimeMs": 50},
+            )
+        self.assertEqual("indeterminate", result["decision"])
+        self.assertIn("SPA one-sided outcome authority", result["reason"])
+        self.assertIsNone(result["derivation"])
+        occurrence.assert_not_called()
 
     def test_outside_window_job_is_retained_and_replay_mutation_fails(self):
         case = self.cases["combined-verified-outside-window-retained"]

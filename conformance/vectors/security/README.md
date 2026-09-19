@@ -76,7 +76,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 79 | `fail` / `indeterminate` / `pass` |
-| [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window | 181 | `error` / `fail` / `indeterminate` / `pass` |
+| [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window | 185 | `error` / `fail` / `indeterminate` / `pass` |
+| [`reputation-participation-admission-v0.7.json`](reputation-participation-admission-v0.7.json) | DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8 exact participation and rating admission | 168 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 24 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -585,7 +586,7 @@ remains unified. `expected` is the comparison check (`pass`/`fail`);
 
 ### `reputation-authenticated-window-v0.6.json` — DACS-5 v0.6 §10.5 AWT-1..AWT-8
 
-181 candidate vectors pin standalone AWT-v1's business-occurrence clock and
+185 candidate vectors pin standalone AWT-v1's business-occurrence clock and
 fail-closed boundary. This corpus starts from a disclosed post-reconciliation,
 post-RSV authoritative-copy precondition; it does not establish the combined
 LAB/CUR/FV admission contract. It covers delayed and early bundle anchoring,
@@ -614,6 +615,14 @@ transitions, reorg conflicts, cycles, branches, and unorderable snapshots are
 non-countable. Malformed nested receipt, occurrence, object-join, transaction,
 event, and ordering forms fail closed without raising.
 
+`blockRef.id` is required while `blockRef.height` is optional and, when present,
+is the canonical ASCII unsigned-decimal string `"0"` or `[1-9][0-9]*`; id-only
+and `"0"`/positive heights pass while signs, whitespace, Unicode digits,
+leading zeros, decimal points, exponents, and container/empty forms fail
+closed. The declared `demos-bft-final` inclusion-final binding compresses
+`submitted`/`accepted` directly to `finalized`; undeclared profiles,
+cross-profile histories, and post-finality reorg remain non-countable.
+
 The type-boundary arms require the exclusive
 `authenticatedWindowDerivationVersion: "1"` discriminator and
 `verified-business-outcome-occurrence` basis. Released derivation shapes never
@@ -635,6 +644,89 @@ the verifier; they are not wire fields, registered authorities, native proof
 verification, or a production adapter. The set does not independently execute
 two-copy reconciliation, RSV, or the full `tests/dacs5_reference.py` reputation
 engine, and remains candidate pending an external cross-run.
+
+### `reputation-participation-admission-v0.7.json` — DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8
+
+168 candidate vectors exercise the current one-sided-blame and rating consumers.
+Both consumers admit only through verifier-owned `trustedContext` outside caller
+input, which binds the exact session and authenticated participant identities to
+the immutable corrective-profile release pin and complete module tuple
+CORE 0.3 / DACS-1 0.8 / DACS-2 0.6 / DACS-3 0.6 / DACS-4 0.8 / DACS-5 0.7. The
+caller `currentProfile` boolean and any copied profile object are inert; an
+omitted `trustedContext` field fails closed exactly like an explicit `null`, as
+do unauthenticated, duplicated, or pin/tuple/session/identity-mismatched
+authority, all before blame or rating countability, with dedicated negatives for
+each condition in both modes.
+
+Positive participation arms cover source-backed vet, fixed-price, exact signed
+RFQ turn/derived responder, exact authenticated pre-cosign Agreement commit, payment, and
+delivery obligations. The admission and `TimeoutMarker` carry the same closed
+typed obligation, and the separate admission address ends in
+`sha256(JCS(exact obligation))`. Signature payload, `AttestationRef.contentHash`,
+and receipt `contentHash` all use the same unsigned RFC 8785 JCS artifact hash.
+
+The shared evaluator applies one unsigned-JCS signature and global-unique-roster
+gate while preserving each artifact's actual schema: participation remains
+closed and ratings permit signed `freeText`/`dimensions`. Re-signed negatives reach semantic checks
+for unknown members, duplicate roles/claims, cross-job/Listing substitution,
+RFQ message hash/sequence/responder mismatch, commit-proposal mismatch, typed
+timeout mismatch, outsider challenge issuance, and invalid phase/action/prefix
+bindings. Producer nonce freshness/reuse claims and issuer-role/delegation flags
+are inert. The fixture-only challenge adapter authenticates direct counterparty
+issuance or, for an in-roster orchestrator, an exact signed `actingFor` relation
+to that counterparty; missing delegation is indeterminate and contradictory
+delegation rejects. This models CORE SN-1/SN-3 without inventing a global nonce
+index or adding a portable admission field.
+
+Admission receipts retain portable CORE `evidence: {kind, value}` wire shape;
+its canonical value contains an Ed25519 fixture-adapter signature binding every
+receipt field, native order/replacement/root metadata, and the obligor-authorized
+writer relation. Because the exact signed `receiptHash` covers `writer`, a
+different nonempty delegated native writer remains valid when that trusted
+adapter authorizes it for the obligor; it is not required to equal the DACS
+signer. `nonce` retains its portable CORE optional-string shape, including no
+global nonempty requirement. Non-selected receipts likewise preserve optional
+`blockRef.height`/`timestamp`, while the selected finalized participation receipt
+still needs `timestamp` for its deadline comparison. Negatives substitute
+transaction, writer, nonce, native order, and unsigned artifact hash; provide
+marker-only, absent-selected, conflicting-finalized, and illegal-post-finality
+histories; and demonstrate that `evidenceValid`, `writerAuthorized`, and
+`historyDisposition` booleans authorize nothing. The evaluator collapses
+byte-identical snapshots, requires the exact selected receipt in canonical
+history, and requires one complete unique authenticated root-to-selected lineage
+under CORE lifecycle/native ordering before countability. Incoming-predecessor
+positive and missing/disconnected/branched/cyclic/late/final-predecessor
+counterexamples prevent selection from treating the final transaction as its
+own origin.
+
+The DACS-3 source verifier hashes unknown signed envelope members rather than
+stripping or closing them. A source-pinned synthetic pre-cosign Agreement uses
+the actual required DACS-3 structure and an exact opposite-party
+`AgreementSignature` over the `signatures`-omitted hash. Job, Listing, party
+claims/bundle hashes, artifact/commit kind, negotiation pattern, and the fact
+that the obligor has not already validly co-signed are checked before the
+obligation is admitted. Missing source/key support is indeterminate; malformed,
+contradictory, substituted, or invalidly signed source authority rejects.
+Fixture cryptography is explicitly dispatched:
+Ed25519/raw-key fixtures execute, registered algorithms or key resolution not
+modeled here are indeterminate, and unknown/invalid algorithms reject. Signed
+list/object malformed forms exercise total failure/indeterminate handling.
+
+`RatingRecord.ratedAt` is checked as a CORE finite safe-magnitude JSON number;
+booleans and container/string forms reject, while fractional and negative values
+remain compatible because the current contract does not narrow the field to a
+nonnegative integer timestamp.
+
+Timeout and rating positives use the explicitly fixture-only
+`dacs-test-exact-session-outcome-v1` adapter signature over exact
+job/bundle/Listing/roster/phase/obligation projections. Missing, forged,
+unsupported, or conflicting outcome proof propagates to excluded,
+`currentWindowCountable: false` with no alternate blame. Elapsed deadlines and
+publication never establish nonresponse or abort causality. This corpus does
+not verify native proof bytes, authoritative absence, two-copy reconciliation,
+RSV, or a production outcome adapter; production Demos nonresponse authority is
+unavailable and is modeled only by the non-countable arms. The set remains
+candidate pending an external cross-run.
 
 ### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
 

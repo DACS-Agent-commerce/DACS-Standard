@@ -265,7 +265,7 @@ AUTHORITATIVE_MODULE_VERSIONS = {
     "dacs2": "0.6",
     "dacs3": "0.6",
     "dacs4": "0.8",
-    "dacs5": "0.6",
+    "dacs5": "0.7",
 }
 AUTHORITATIVE_LOCAL_PROFILE = {
     "releasePin": AUTHORITATIVE_RELEASE_PIN,
@@ -6375,6 +6375,11 @@ def _build_current_use_derivation(
     rating_winners = {}
     for result in reconciled:
         bundle = result["bundle"]
+        if basis == "verified-business-outcome-occurrence":
+            # This bounded CUAW fixture does not resolve SPA-7's signed rate
+            # phase and global roster. An ordinary valid signature alone must
+            # not promote a rating into the current-window metric.
+            continue
         party_claims = _primary_claims(bundle)
         for ref in bundle.get("ratingRefs", []) or []:
             record = _rating_record(bundle, ref, dependencies, verifier_config)
@@ -6610,6 +6615,14 @@ def derive_current_use_replayable(
                     result.get("decision", "error"),
                     "%s: %s" % (job.get("jobId", "<malformed>") if isinstance(job, dict) else "<malformed>",
                                   result.get("reason", "admission failed")))
+            if _combined and result["bundle"].get("outcome") in {"aborted-by-other", "failed-counterparty"}:
+                if any(side.get("disposition") == "absent" for side in result["roles"].values()):
+                    # AWT occurrence plus authoritative copy absence cannot
+                    # establish target-signed SPA participation or the exact
+                    # nonresponse cause. This fixture has no SPA adapter for
+                    # this combined path, so refuse the entire current query.
+                    return _current_use_result(
+                        "indeterminate", "%s: SPA one-sided outcome authority is unavailable" % job["jobId"])
             admitted.append(result)
         if _combined:
             sb2_conflict = _current_use_sb2_conflict(admitted)

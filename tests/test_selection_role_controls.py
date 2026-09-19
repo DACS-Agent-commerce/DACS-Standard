@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from tests.test_sealed_auction_completeness_vectors import Evaluator, VECTORS, fixture_record_receipt_matches
-from scripts.generate_sealed_auction_completeness_vectors import base_material, signed_receipt, signed_agreement, make_vector, resign_agreement
+from scripts.generate_sealed_auction_completeness_vectors import base_material, binding_definition, signed_receipt, signed_agreement, make_vector, resign_agreement
 
 class SelectionRoleControls(unittest.TestCase):
     def test_existing_success_vectors_preserved(self):
@@ -31,4 +31,8 @@ class SelectionRoleControls(unittest.TestCase):
         ref = copy.deepcopy(entry["recordRef"])
         ref.pop("signer", None)
         bidder = records[ref["contentHash"]]["bidderClaim"]
-        self.assertTrue(fixture_record_receipt_matches(entry["anchorReceipt"], ref, bidder))
+        self.assertTrue(
+            fixture_record_receipt_matches(
+                entry["anchorReceipt"], ref, bidder, binding_definition()
+            )
+        )

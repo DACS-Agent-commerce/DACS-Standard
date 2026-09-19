@@ -144,6 +144,45 @@ The format used per release:
   not add or imply a native provider completeness capability.
 
 
+### Fixed — DACS-3 context-bound sealed commitment (SAC-11/SAC-12)
+
+- **Complete-profile bid commitment is now context-bound** (CORE §B.7; DACS-3
+  §8.4.4 SAC-1..SAC-12). The structurally distinct, unreleased complete profile
+  inherits a commitment over `bid` + `salt` alone, which let another participant
+  copy a commitment and later open the original reveal under its own identity.
+  The complete-profile `bidHash` is now the byte-exact
+  `sha256("dacs-sealed-bid-context:v1:" || sha256(JCS(SealedBidCommitmentContext)) || salt)`,
+  binding the exact `jobId`, complete `listingRef` (including `contentHash`),
+  `phaseIndex`, CF-2-canonical `bidderClaim`, the bidder's own `channelId`, the
+  exact `SealedBid`, and the raw decoded salt bytes. Each `SealedAuctionRecord`
+  carries `channelId` and every context member needed for standalone
+  recomputation. `bidderClaim`/`signature.signer`, the verifier-owned
+  per-session channel assignment, exact pairwise membership, and the binding's
+  native-writer admission mapping are made explicit without conflating a native
+  writer account with a DACS ClaimReference.
+- **Historical `dacs-sealed-bid:v1:` remains frozen.** The released §8.4.3
+  preimage, its bytes, and its audit semantics are unchanged and are not
+  accepted for a complete-profile record; the two commitment domains are
+  distinct, non-interchangeable, and dispatched fail-closed (unknown/legacy
+  readers reject under CORE §11.1.2). This repairs only the unreleased complete
+  profile in place, since no released bytes exist for it on `next`.
+- **Deadline behavior made explicit.** A complete-profile reveal anchored before
+  `commitDeadline` is `early-reveal` and is not eligible even when every bidder
+  has committed; only the SR-2 anchor timestamp/finality decides window
+  membership, and local close/wall clocks are not authority. Pairwise
+  seller↔bidder channels remain the topology; no shared local close signal is
+  introduced.
+- **Coverage added** — copied commitment/opening under another bidder,
+  cross-channel/cross-job/cross-listing/cross-phase commitment replay, the
+  historical commitment refused in the complete profile, another bidder's
+  authenticated channel assignment, unavailable channel authority, record
+  signer and native anchor-writer mismatches, the inclusive commit-deadline
+  reveal boundary, premature reveal despite all commits, and full recomputation
+  after record-byte changes (including `channelId` signature binding). The
+  corpus grows 70 → 82 vectors; the Node.js evaluator now independently
+  reproduces 59 named controls.
+
+
 ### Fixed — CORE v0.3 SR-2 registry authority and receipt copies
 
 - **Optional evidence extension is forward-readable** (#338 review) — the

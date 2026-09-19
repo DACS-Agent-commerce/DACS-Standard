@@ -41,12 +41,20 @@ function equal(left, right) {
 }
 
 
-function bidHash(bid, saltText) {
+function bidHash(bid, saltText, record) {
   const salt = Buffer.from(saltText, "base64url");
-  const bidDigest = createHash("sha256").update(Buffer.from(canonical(bid), "utf8")).digest();
+  const context = {
+    jobId: record.jobId,
+    listingRef: record.listingRef,
+    phaseIndex: record.phaseIndex,
+    bidderClaim: record.bidderClaim,
+    channelId: record.channelId,
+    bid,
+  };
+  const contextDigest = createHash("sha256").update(Buffer.from(canonical(context), "utf8")).digest();
   return createHash("sha256")
-    .update(Buffer.from("dacs-sealed-bid:v1:", "ascii"))
-    .update(bidDigest)
+    .update(Buffer.from("dacs-sealed-bid-context:v1:", "ascii"))
+    .update(contextDigest)
     .update(salt)
     .digest("hex");
 }
@@ -91,7 +99,7 @@ function recordShapeValid(record) {
   if (record === null || typeof record !== "object" || Array.isArray(record)) return false;
   const commonKeys = [
     "sealedAuctionRecordVersion", "recordKind", "jobId", "listingRef",
-    "phaseIndex", "bidderClaim", "bidHash", "createdAt", "signature",
+    "phaseIndex", "bidderClaim", "channelId", "bidHash", "createdAt", "signature",
   ];
   const expectedKeys = record.recordKind === "commit"
     ? commonKeys
@@ -178,6 +186,21 @@ function reproduce(vector) {
       > Number(resolution.definition.limits.maximumBytes)) {
     return { ...result, verdict: "fail" };
   }
+  const admission = resolution.definition.admission;
+  if (admission?.writerRule !== "test-native-writer-map-v1"
+      || admission.addressCodec !== "dacs3-sealed-auction-v1"
+      || admission.writerBindings === null
+      || typeof admission.writerBindings !== "object"
+      || Array.isArray(admission.writerBindings)) {
+    return { ...result, verdict: "fail" };
+  }
+  const channelAssignments = context.authenticatedChannelAssignments;
+  if (channelAssignments === null || channelAssignments === undefined) {
+    return { ...result, verdict: "indeterminate" };
+  }
+  if (typeof channelAssignments !== "object" || Array.isArray(channelAssignments)) {
+    return { ...result, verdict: "fail" };
+  }
   const revealDeadline = listing.parameters.commitDeadline + listing.parameters.revealWindow * 1000;
   if (receipt.completenessEvidence.finalizedState.timestamp < revealDeadline) {
     return { ...result, verdict: "fail" };
@@ -208,13 +231,24 @@ function reproduce(vector) {
     if (!recordShapeValid(record)) {
       return { ...result, verdict: "fail" };
     }
+    const assignment = channelAssignments[record.bidderClaim];
+    if (assignment === null || assignment === undefined) {
+      return { ...result, verdict: "indeterminate" };
+    }
+    const expectedMembers = [listing.publisherClaim, record.bidderClaim].sort();
+    if (assignment.authenticated !== true
+        || assignment.channelId !== record.channelId
+        || !equal(assignment.members, expectedMembers)
+        || entry.anchorReceipt.writer !== admission.writerBindings[record.bidderClaim]) {
+      return { ...result, verdict: "fail" };
+    }
     const timestamp = entry.anchorReceipt.blockRef.timestamp;
     if (record.recordKind === "commit" && timestamp <= commitDeadline) {
       const values = commits.get(record.bidderClaim) ?? [];
       values.push({ entry, record });
       commits.set(record.bidderClaim, values);
     }
-    if (record.recordKind === "reveal" && timestamp <= recordRevealDeadline) {
+    if (record.recordKind === "reveal" && timestamp <= recordRevealDeadline && timestamp >= commitDeadline) {
       const values = reveals.get(record.bidderClaim) ?? [];
       values.push({ entry, record });
       reveals.set(record.bidderClaim, values);
@@ -230,8 +264,9 @@ function reproduce(vector) {
     const authoritative = values[0];
     const reveal = (reveals.get(bidder) ?? []).find((candidate) =>
       equal(candidate.record.commitRef, authoritative.entry.recordRef)
+      && candidate.record.channelId === authoritative.record.channelId
       && candidate.record.bidHash === authoritative.record.bidHash
-      && bidHash(candidate.record.bid, candidate.record.salt) === authoritative.record.bidHash
+      && bidHash(candidate.record.bid, candidate.record.salt, candidate.record) === authoritative.record.bidHash
     );
     if (reveal) {
       const price = reveal.record.bid?.price;
@@ -332,6 +367,16 @@ const controls = new Set([
   "signed-reveal-wrong-version-rejected",
   "signed-commit-signature-extra-member-rejected",
   "signed-reveal-signature-extra-member-rejected",
+  "copied-commitment-as-other-bidder-excluded",
+  "cross-channel-commitment-replay-excluded",
+  "cross-job-commitment-replay-excluded",
+  "cross-listing-commitment-replay-excluded",
+  "cross-phase-commitment-replay-excluded",
+  "historical-v1-commitment-in-complete-profile-excluded",
+  "other-bidder-channel-assignment-rejected",
+  "channel-assignment-unavailable",
+  "premature-reveal-before-commit-deadline-excluded",
+  "reveal-at-commit-deadline-admitted",
 ]);
 const output = data.vectors.filter((vector) => controls.has(vector.name)).map(reproduce);
 process.stdout.write(`${JSON.stringify(output)}\n`);

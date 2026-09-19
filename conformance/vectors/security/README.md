@@ -82,7 +82,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
-| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-10 | 70 | `fail` / `indeterminate` / `pass` |
+| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-12 | 82 | `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -103,28 +103,35 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 
 ## Included sets
 
-### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-10
+### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-12
 
-70 deterministic cases exercise the structurally distinct complete
+82 deterministic cases exercise the structurally distinct complete
 sealed-envelope profile. Real Ed25519 signatures cover bidder commit/reveal
 records, the selection receipt, its modeled candidate-set binding proof, and
-the publisher/winner agreement. Demand controls cover absent and explicit
-`"demand"` mode plus buyer/seller direction; procurement retains its inverse
-role direction. The independent evaluator derives exact closed record shapes,
-record authority, deadlines, listing currency, bidder eligibility, CD-1 price
-ordering, the SE-5 tie-break, receipt contents, and agreement closure from the
-signed inputs.
+the publisher/winner agreement. Each commit/reveal record carries a
+`channelId` and a context-bound `bidHash` computed as
+`sha256("dacs-sealed-bid-context:v1:" || sha256(JCS(SealedBidCommitmentContext)) || salt)`
+binding the exact `jobId`, `listingRef` (including `contentHash`), `phaseIndex`,
+CF-2 `bidderClaim`, `channelId`, `bid`, and raw decoded salt (SAC-11). The
+frozen historical `dacs-sealed-bid:v1:` commitment is not accepted for a
+complete-profile record and its released bytes remain unchanged. Demand
+controls cover absent and explicit `"demand"` mode plus buyer/seller direction;
+procurement retains its inverse role direction. The independent evaluator
+derives exact closed record shapes, record authority, deadlines, listing
+currency, bidder eligibility, CD-1 price ordering, the SE-5 tie-break, receipt
+contents, and agreement closure from the signed inputs.
 `listing.pricingCurrency` and the matching
 `authenticatedInvocation.pricingCurrency` are this fixture's authenticated
 verifier projection of the listing-derived currency. They are not a new
 `PricingSpec` wire member, a full signed reserve-free Listing fixture, or a
 native listing-resolution claim.
 
-An independent Node.js evaluator separately executes 49 named controls from the
-70-case corpus and reproduces the exact candidate-set
+An independent Node.js evaluator separately executes 59 named controls from the
+82-case corpus and reproduces the exact candidate-set
 root, receipt content hash, demand/mode/role checks, reveal-deadline boundary,
 non-USD filtering, exact record-shape refusal, exact arbitrary-length ordering,
-inclusive reserve result, and winner for the selected controls,
+inclusive reserve result, context-bound commitment recomputation, early-reveal
+refusal, and winner for the selected controls,
 providing a second-runtime byte check rather than two calls through the Python
 oracle.
 
@@ -137,7 +144,16 @@ proof-count disagreement, non-finite/exponent/non-string amounts, malformed
 PriceTerm shapes, noncanonical decimal strings, fully re-signed cross-job,
 cross-listing and cross-phase artifacts, canonical binding-version rejection,
 literal record-version checks, and signed extra/missing outer and nested
-commit/reveal members. The exact reveal-deadline state passes while a valid proof one
+commit/reveal members. The context-bound commitment adds a copied commitment
+opened under another bidder, cross-channel/cross-job/cross-listing/cross-phase
+commitment replay, the frozen historical `dacs-sealed-bid:v1:` commitment
+refused for a complete-profile record, correctly recomputed records claiming
+another bidder's authenticated pairwise channel, unavailable channel authority,
+a record signed by a different party than its `bidderClaim`, and a native SR-2
+writer that the pinned admission map assigns to another bidder. They also cover
+a premature reveal despite every bidder having committed and admission at the
+exact inclusive `commitDeadline` boundary. The exact reveal-deadline state
+passes while a valid proof one
 millisecond earlier rejects. A matching EUR listing succeeds, USD bids are
 excluded from it, and a third-currency reserve rejects the listing. Malformed signatures,
 prices, or anchor/address

@@ -967,6 +967,7 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             ("missing", lambda value: value.pop("currentUseReplayableDerivationVersion")),
             ("unknown", lambda value: value.__setitem__("futureDerivationVersion", "1")),
             ("dual", lambda value: value.__setitem__("replayableDerivationVersion", "1")),
+            ("dual-released", lambda value: value.__setitem__("derivationVersion", "1")),
             ("wrong-version", lambda value: value.__setitem__("currentUseReplayableDerivationVersion", "2")),
         ):
             with self.subTest(name=name):

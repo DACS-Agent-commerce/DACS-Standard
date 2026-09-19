@@ -854,6 +854,22 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                 else:
                     self.assertIsNone(derived)
 
+    def test_real_current_tuple_admits_and_caller_copy_refuses(self):
+        self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs4"], "0.8")
+        self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs5"], "0.6")
+        self.assertTrue(is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE))
+        caller = self.cases["ap2-admission-caller-profile-refuses"]
+        self.assertEqual(
+            caller["peerProfile"]["moduleVersions"], AUTHORITATIVE_MODULE_VERSIONS
+        )
+        verdict, _, effects = evaluate_checkout_payment_admission(
+            caller,
+            trusted_context_for_ap2_case(caller),
+            authoritative_binding_store_for_ap2_case(caller),
+        )
+        self.assertEqual(verdict, "fail")
+        self.assertEqual(effects["bindingStoreCalls"], 0)
+
     def test_profile_and_session_gates_precede_every_modeled_effect(self):
         for name in (
             "ap2-admission-noncanonical-job-errors",

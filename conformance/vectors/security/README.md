@@ -49,6 +49,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
+| [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 15 | `indeterminate` / `pass` |
 | [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 8 | `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
@@ -75,6 +76,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 79 | `fail` / `indeterminate` / `pass` |
+| [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window | 181 | `error` / `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 24 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -580,6 +582,59 @@ removed, duplicated, or substituted references make the two copies divergent,
 as does the same content hash under a different anchor. A pure array reorder
 remains unified. `expected` is the comparison check (`pass`/`fail`);
 `want.lookupDisposition` carries the protocol result (`unified`/`divergent`).
+
+### `reputation-authenticated-window-v0.6.json` — DACS-5 v0.6 §10.5 AWT-1..AWT-8
+
+181 candidate vectors pin standalone AWT-v1's business-occurrence clock and
+fail-closed boundary. This corpus starts from a disclosed post-reconciliation,
+post-RSV authoritative-copy precondition; it does not establish the combined
+LAB/CUR/FV admission contract. It covers delayed and early bundle anchoring,
+different buyer/seller copy-publication dates, producer and observer clocks,
+both inclusive outcome boundaries, unavailable/unsupported/conflicting
+occurrence proof, and exact bundle, job, outcome, effective-pipeline, phase,
+terminal-evidence, and native-event joins. A completed payment alone does not
+prove a multi-phase job, and failed or aborted outcomes cannot inherit payment
+or publication time.
+
+Finalized SR-2 receipts remain exact-bundle provenance. Their shared current
+and replay lifecycle path enforces CORE §5.1 before replacement authorization:
+an established `replaced` predecessor never finalized, its authenticated edge
+strictly precedes successor finalization, and the successor carries its own
+final receipt. `blockRef.id` is required while `height` and `timestamp` are
+optional, matching CORE's optional-height portable receipt; a present `height`
+must be a canonical unsigned-decimal string (`"0"` or `[1-9][0-9]*`), so a
+sign, plus, whitespace, leading zero, decimal point, or exponent is rejected.
+The single normative `demos-bft-final` profile (DEMOS-MAPPING §A.2) declares
+inclusion-final semantics and permits the compressed `submitted→finalized` and
+`accepted→finalized` edges that CORE allows when valid inclusion is final,
+while undeclared profiles and cross-profile/mixed histories are rejected and
+finality stays terminal. Ordered replacement chains and
+duplicate collapse pass; reversed/equal-order edges, after-finality
+transitions, reorg conflicts, cycles, branches, and unorderable snapshots are
+non-countable. Malformed nested receipt, occurrence, object-join, transaction,
+event, and ordering forms fail closed without raising.
+
+The type-boundary arms require the exclusive
+`authenticatedWindowDerivationVersion: "1"` discriminator and
+`verified-business-outcome-occurrence` basis. Released derivation shapes never
+satisfy a current-profile request. Every one of the five released
+discriminators has a current-rejection case and an exact historical object.
+The historical positive uses an explicit verified adapter projection bound to
+the trusted policy, authority, producer, session, exact profile/commit,
+pre-current revision, and `sha256(JCS(exact unsigned derivation object))`.
+Independent discriminator, party, lower/upper window, bundleRefs, metrics, and
+applicable resolutionContext mutations reject. Era evidence authenticates era,
+not metric correctness.
+
+`input` models one authoritative bundle after external reconciliation and RSV,
+plus all known anchor and outcome evidence histories. The independent test
+evaluator executes the actual `evaluate` → `resolve_current` and replay
+countability/membership path. Its exact-object binding-adapter records and
+`nativeOrder` are fixture-only projections with trust supplied separately by
+the verifier; they are not wire fields, registered authorities, native proof
+verification, or a production adapter. The set does not independently execute
+two-copy reconciliation, RSV, or the full `tests/dacs5_reference.py` reputation
+engine, and remains candidate pending an external cross-run.
 
 ### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
 
@@ -1630,6 +1685,27 @@ python3 scripts/generate_current_use_reputation_vectors.py
 python3 scripts/generate_current_use_reputation_vectors.py --check
 python3 -m unittest tests.test_current_use_reputation_vectors -v
 python3 -m unittest tests.test_current_use_replay_corpus -v
+```
+
+### `current-use-authenticated-window-v1.json` — CUAW-1..CUAW-6
+
+Fifteen executable fixture-only cases compose all-jobs CUR admission and
+reconciliation with independently signed business-outcome occurrence. They
+cover all six finality models, both historical mapping arms, a signed two-phase
+payment-then-rate session whose payment evidence is inside the query window
+while the terminal outcome is outside, retention and mutation of outside-window
+replay context, missing proof for one requested job, and fail-closed sealed
+selection without independently reproduced SAC-8 authority. Two signed-Listing
+`pay-alternative` cases exercise structurally valid projected and wrong-rail
+effective pipelines, both refused before outcome-proof lookup because this
+bounded reference does not independently reproduce APR-1..APR-4 authority.
+It does not implement a positive APR or SAC-8 adapter or a production native
+outcome proof codec; those remain separate conformance work and cannot be
+inferred from a fixture-only pass.
+
+```sh
+python3 scripts/generate_current_use_authenticated_window_vectors.py --check
+python3 -m unittest tests.test_current_use_authenticated_window_vectors -v
 ```
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1

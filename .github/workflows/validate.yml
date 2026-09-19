@@ -90,6 +90,9 @@ jobs:
       - name: Verify current-use reputation vectors are deterministic
         run: python3 scripts/generate_current_use_reputation_vectors.py --check
 
+      - name: Verify combined current-use authenticated-window vectors are deterministic
+        run: python3 scripts/generate_current_use_authenticated_window_vectors.py --check
+
       - name: Verify sealed-auction completeness vectors are deterministic
         run: python3 scripts/generate_sealed_auction_completeness_vectors.py --check
 
@@ -104,6 +107,9 @@ jobs:
 
       - name: Verify legacy-agreement admission vectors are deterministic
         run: python3 scripts/generate_legacy_agreement_admission_vectors.py --check
+
+      - name: Verify authenticated reputation-window vectors are deterministic
+        run: python3 scripts/generate_reputation_authenticated_window_vectors.py --check
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check

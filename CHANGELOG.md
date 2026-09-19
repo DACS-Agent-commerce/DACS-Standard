@@ -110,6 +110,38 @@ The format used per release:
   does not claim to be the live provider/network receipt. This establishes
   provider-test reference-backing without changing the rail's operator-gated
   production availability.
+### Added — authenticated reputation-outcome time
+
+- **Outcome-window contract (AWT-1..AWT-8; #384)** — retains the structurally
+  distinct `AuthenticatedWindowReputationDerivation` as a narrower standalone
+  signal over its post-reconciliation/RSV precondition. Its window clock is
+  verifier-policy-proven business-outcome occurrence, never producer, audit,
+  or publication time.
+- **Combined current-use contract (CUAW-1..CUAW-6)** — adds the exclusive
+  `CurrentUseAuthenticatedWindowReputationDerivation`. It composes the complete
+  LAB/CUR/FV/RSV/SB/LAA/SAC admission path with AWT occurrence for every
+  requested job. Any indeterminate occurrence fails the whole request; verified
+  outside-window jobs remain in complete replay context. Provider capture
+  remains provisional in `finalityClassifiedVolume`.
+- **Older shapes preserved** — the five released derivations, CUR-v1, and
+  standalone AWT-v1 retain their distinct meanings as historical/partial
+  signals and cannot claim the combined current-use contract. Replay binds
+  exact anchor and outcome evidence histories. A pre-current era claim requires
+  authenticated profile-revision evidence bound to the RFC 8785 hash of the
+  exact unsigned derivation object.
+- **Recent-outcome and lifecycle repair (#394)** — keeps finalized bundle
+  receipts as provenance rather than occurrence clocks, so delayed publication
+  cannot refresh an old outcome and role-copy publication dates cannot split a
+  session's membership. The shared current/replay gate now enforces CORE §5.1
+  replacement causality before successor authorization, including terminal
+  finality, strict native order, cycle/branch/conflict refusal, and independent
+  successor finality. The candidate harness uses a clearly fixture-only adapter
+  projection; no universal terminal artifact, authority, signing domain, or
+  production proof mechanism is introduced.
+- **Replay conformance alignment** — requires the accepted outcome-policy ID in
+  replay, makes policy-defined equal-order serialization explicit without adding
+  causal authority, and exercises an old outcome with publication inside the
+  requested recent window.
 ### Fixed — DACS-3 sealed-auction candidate completeness
 
 - **Complete sealed-envelope profile (SAC-1..SAC-10; #376)** — adds new

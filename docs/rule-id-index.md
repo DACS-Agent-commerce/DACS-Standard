@@ -9,6 +9,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | AMEND-* | Settlement amendment validation | §9.7.1 | §14.4 |
 | AP2-* | `pay-ap2` provider-receipt verification, session binding, split credential scope, capture semantics, idempotency-key derivation, and `transaction_id` tuple binding / replay-safe retry | §9.5.6 | §14.4 |
 | APR-* | Signed alternative-payment selection, projection, retry, and audit recomputation | §9.9.1 | §14.4 |
+| AWT-* | Standalone independently verified business-outcome occurrence window (narrower than combined current-use) | §10.5 | §14.5 |
 | BB-* | Bundle logical→native binding (publication, carriage, verification, resolution, multiplicity-void, fail-closed, suppression diligence) | §10.4.2 | §14.5 |
 | BP-* | Bundle producers for IdentityBundle | §6.3.2 | §14.1 |
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
@@ -18,7 +19,8 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CH-* | Private-channel membership, replay handling, canonical message/signature wire, and strict historical-import dispatch | §8.3.1 / §8.3.3 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
-| CUR-* | Explicit all-or-nothing current-use reputation derivation and full dependency replay | §10.5.1 | §14.5 |
+| CUR-* | Explicit all-or-nothing current-use dependency derivation and replay with its original window clock | §10.5.1 | §14.5 |
+| CUAW-* | Exclusive composed current-use authenticated-window admission, all-job occurrence, and complete replay | §10.5.1 | §14.5 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
 | DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |

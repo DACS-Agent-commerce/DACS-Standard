@@ -4,14 +4,14 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.6** on the common DACS v0.1 baseline. v0.6 applies DACS-4 legacy-agreement era admission, including exclusive legacy-transition evidence, to successful payment evidence before bundle or reputation acceptance, consumes the structurally distinct DACS-3 `SealedSelectionAgreementDocument`, and requires SAC-8 receipt reproduction before its winner or price can enter audit or settlement-verified reputation. v0.5 participates in the declared CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 added the non-terminal `audit-pending` gate, required every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, added the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and added structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.6** on the common DACS v0.1 baseline. v0.6 applies DACS-4 legacy-agreement era admission, including exclusive legacy-transition evidence, to successful payment evidence before bundle or reputation acceptance; consumes the structurally distinct DACS-3 `SealedSelectionAgreementDocument` and requires SAC-8 receipt reproduction before its winner or price enters audit or reputation; and adds authenticated business-outcome occurrence for reputation windows. v0.5 participates in the declared CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 added the non-terminal `audit-pending` gate, required every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, added the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and added structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 **Unallocated compatibility proposals (#391/#392).** The finality-bound bundle,
 pointer, legacy activation artifacts, and coordinated current-use derivation below
 are candidate additive types. They do not allocate a DACS-5 minor or alter any
-existing bundle or derivation discriminator. The combined current-use consumer is
-complete only under CUR-1..CUR-8 and LAB-1..LAB-7; none of its guarantees attach to
-an older output label.
+existing bundle or derivation discriminator. CUR and standalone AWT retain their
+distinct partial meanings. Only the explicitly selected combined contract below
+composes LAB/CUR with AWT for current-use authenticated-window reputation.
 
 ### 10.1 Abstract
 
@@ -1052,26 +1052,71 @@ type JobBoundReplayableReputationDerivation = Omit<ReplayableReputationDerivatio
 type JobBoundResolutionContextEntry = ResolutionContextEntry & {
   resolvedJobId: string                         // REQUIRED trusted requested session identity from the role address or verified BundleBinding; MUST equal the dereferenced copy's jobId
 }
+
+type AuthenticatedWindowReputationDerivation =
+  Omit<ReplayableSettlementVerifiedReputationDerivation,
+    "replayableSettlementVerifiedDerivationVersion" | "windowingBasis" | "resolutionContext"> & {
+    authenticatedWindowDerivationVersion: "1"   // exclusive structural discriminator for the DACS-5 v0.6 current profile
+    windowingBasis: "verified-business-outcome-occurrence"
+    resolutionContext: AuthenticatedWindowResolutionContextEntry[]
+  }
+
+type AuthenticatedWindowResolutionContextEntry = JobBoundResolutionContextEntry & {
+  anchorReceipt: AnchorReceipt                  // exact authoritative bundle anchor's surviving finalized receipt; provenance/finality only, never the outcome clock
+  anchorReceiptHistory: AnchorReceipt[]         // every verified anchor snapshot consumed by AWT-4, including anchorReceipt, in binding-native order
+  outcomeTimePolicy: string                     // stable identifier of the verifier-selected binding/rail policy; identifier alone grants no trust
+  outcomeTimeEvidence: object                   // exact policy-defined proof object selected by the shared AWT gate
+  outcomeTimeEvidenceHistory: object[]          // complete policy-defined evidence/history consumed by that gate, in its authenticated native order
+}
+
+type CurrentUseAuthenticatedWindowReputationDerivation =
+  Omit<CurrentUseReplayableReputationDerivation,
+    "currentUseReplayableDerivationVersion" | "windowingBasis" | "resolutionContext"> & {
+    currentUseAuthenticatedWindowDerivationVersion: "1" // exclusive combined contract
+    windowingBasis: "verified-business-outcome-occurrence"
+    resolutionContext: CurrentUseAuthenticatedWindowContextEntry[] // metric-bearing jobs only
+    allJobResolutionContext: (CurrentUseAuthenticatedWindowContextEntry & {
+      windowMember: boolean
+    })[] // every requested job, including verified outside-window jobs, in request order
+  }
+
+type CurrentUseAuthenticatedWindowContextEntry = CurrentUseResolutionContextEntry & {
+  anchorReceipt: AnchorReceipt
+  anchorReceiptHistory: AnchorReceipt[]
+  outcomeTimePolicy: string
+  outcomeTimeEvidence: object
+  outcomeTimeEvidenceHistory: object[]
+}
 ```
 
 The released v1 path neither requires nor acts on `resolvedJobId`; adding, removing, or changing such an unknown extension cannot strengthen or alter its semantics. A job-bound consumer instead verifies `resolvedJobId` against the dereferenced authoritative copy and uses it for every role, counterparty, candidate-binding, and absence-binding job relation before reconciliation. EBFAB is not admissible to the released v1 derivation path. A producer replaying EBFAB with released metric semantics uses `JobBoundReplayableReputationDerivation`; a producer also claiming RSV-1 through RSV-4 uses `ReplayableSettlementVerifiedReputationDerivation`, whose context is job-bound by definition.
 
 **Settlement-verified type boundary (normative).** The two existing
-`*SettlementVerified*` types apply their frozen RSV-1 through RSV-4,
-settlement-reference multiset, and successful-payment volume rules. The distinct
-current-use type separately composes those checks with LAB and exact FV under
-CUR-1..CUR-8; it does not change either existing algorithm. A producer claiming
-the existing settlement-verified semantics MUST emit exactly one matching
-settlement-verified discriminator and MUST NOT emit `derivationVersion`,
-`replayableDerivationVersion`, `jobBoundReplayableDerivationVersion`,
-`currentUseReplayableDerivationVersion`, or the sibling settlement-verified
-discriminator. A consumer that does not support the encountered discriminator
-MUST reject the object as unsupported before type-specific action; it MUST NOT
-discard or rename the discriminator and reinterpret the object as either released
-version-1 type. Conversely, `ReputationDerivation` and
-`ReplayableReputationDerivation` retain their DACS-5 v0.3 meanings and MUST NOT be
-evaluated under RSV. The discriminator therefore distinguishes pre-RSV from
-RSV-enforced output using object bytes alone, without repository-revision knowledge.
+`*SettlementVerified*` types retain their frozen RSV-1..RSV-4,
+settlement-reference multiset, and successful-payment volume rules. Standalone
+AWT applies the same RSV limb with independently verified window occurrence;
+CUR separately composes LAB/FV/RSV/SB. The new combined type composes both.
+Each emits exactly one matching discriminator; an unsupported reader MUST reject
+before type-specific action and MUST NOT strip or relabel it as a released v1
+type. `ReputationDerivation` and `ReplayableReputationDerivation` retain their
+DACS-5 v0.3 meanings and MUST NOT be evaluated under RSV. Existing
+discriminators retain their released meaning. Object bytes distinguish these
+contracts without repository-revision knowledge.
+
+**Standalone authenticated-window contract (AWT-1..AWT-8; normative).** `AuthenticatedWindowReputationDerivation` is a narrower outcome-window signal over its disclosed post-reconciliation/post-RSV precondition. It is settlement-verified, job-bound, and replayable, but it does not establish LAB/FV/CUR admission over every requested job and cannot satisfy a combined current-use request. The five previously released derivation shapes remain frozen for compatibility.
+
+- (AWT-1) A standalone AWT object MUST carry exactly `authenticatedWindowDerivationVersion: "1"` and `windowingBasis: "verified-business-outcome-occurrence"`. It MUST NOT carry another derivation discriminator. Unknown, missing, or multiply-present discriminators are rejected before metrics are used. This label alone grants no combined current-use authority.
+- (AWT-2) Derivation and replay MUST invoke one shared outcome-window gate after two-sided reconciliation, authoritative-copy selection, and RSV admission. The gate performs AWT-3 through AWT-7 before any membership or metric use.
+- (AWT-3) The verifier MUST select an explicit binding or rail policy for business-outcome occurrence. That policy MUST independently verify applicable native event or transaction evidence. It MUST bind the exact selected bundle's `jobId`, outcome, authenticated effective pipeline, phase relations, and terminal evidence. A completed payment alone cannot establish completion of a multi-phase job. A failure or abort cannot inherit payment or bundle-publication time. Unsupported or unavailable proof produces no occurrence time.
+- (AWT-4) The gate MUST independently verify `anchorReceipt` under the applicable CORE §5.1 binding. Its bindings MUST match the exact selected authoritative bundle and verified resolution context. The consumer MUST reconcile every verified `anchorReceiptHistory` snapshot under authenticated native ordering and the CORE lifecycle graph. Byte-identical snapshots collapse. Different snapshots at one native order are unorderable. A replacement edge requires an established `state == "replaced"` predecessor that never finalized. The binding MUST independently authenticate its exact predecessor-successor relation. The edge MUST strictly precede successor finalization in authenticated native order. Cycles, branching, unorderable conflicts, or illegal finality transitions make the gate `indeterminate`. A successor qualifies only through its own independently verified finalized receipt. Bundle-anchor finality establishes provenance and audit finality, not business occurrence time.
+- (AWT-5) Missing, unavailable, malformed, mismatched, non-final, or conflicting required gate evidence makes that `jobId` `indeterminate` and non-countable. It is excluded from every metric, `bundleCount`, and `bundleRefs` without attributing fault. `finalisedAt`, `SessionRecord.endedAt`, `observedAt`, an `evidenceValid` flag, an indexer time, and any bundle-anchor timestamp MUST NOT substitute.
+- (AWT-6) A verified job is counted iff `windowStart <= outcomeOccurrenceTime <= windowEnd`; both boundaries are inclusive. Occurrence membership is session-wide. Different buyer and seller copy-publication dates MUST NOT change it.
+- (AWT-7) Every included `bundleRefs` member MUST have exactly one current context entry. It carries the selected `anchorReceipt`, complete `anchorReceiptHistory`, accepted `outcomeTimePolicy`, selected `outcomeTimeEvidence`, and complete `outcomeTimeEvidenceHistory`. Replay MUST re-verify those supplied dependencies through the same gate before metrics are compared. Changed, omitted, substituted, misordered, or unverifiable evidence makes replay non-conforming. Replay MUST NOT substitute publication time or recompute through a different passing proof. No disclosed history proves that an unavailable source exposed every extant observation; known verified conflicts remain load-bearing.
+- (AWT-8) A consumer MAY use an older derivation only under an explicitly historical/partial policy. A claimed pre-current era requires independent trusted-adapter evidence for the producer/session and exact DACS profile revision. That evidence MUST bind the sha256 of the shared RFC 8785 JCS serialization of the exact unsigned derivation object. The exact object includes its discriminator, party, windows, `bundleRefs`, `resolutionContext` where present, and metrics. Producer assertions and object clocks are not era evidence. Era evidence does not prove metric correctness. Without the required evidence, the object remains an untrusted partial signal. Neither an older derivation, CUR-v1, nor standalone AWT-v1 is the combined current-use contract.
+
+> **Note (non-normative).** DACS defines no universal outcome event, terminal artifact, signing domain, observer authority, or production proof adapter. `outcomeTimeEvidence` is policy-specific replay material, and `outcomeTimePolicy` identifies rather than authorizes that policy. A conforming verifier can establish occurrence only where its independently trusted policy proves the exact session outcome. The fail-closed result preserves historical computation while withholding unsupported recent-outcome claims.
+
+**Outcome-history serialization (normative).** The verifier-selected outcome policy MUST define a deterministic total serialization order for its evidence history, preserving authenticated native order and specifying how identical observations collapse and equal-order observations are represented or tie-broken. A serialization tie-break MUST NOT establish occurrence, finality, or causality and MUST NOT resolve conflicting native events. Derivation and replay MUST use the same accepted policy and ordering rule. The fixture-only `dacs-test-outcome-binding-v1` policy collapses byte-identical evidence, sorts by `nativeEvent.nativeOrder` ascending, then sorts equal-order observations by the lower-case hexadecimal sha256 of the RFC 8785 JCS serialization of the exact evidence object ascending. This fixture rule is not a universal production binding policy.
 
 A supported replay receipt's `resolutionContext`:
 
@@ -1087,22 +1132,23 @@ Three relations make each authenticated copy independently checkable at replay:
 - **BB-6 reproduction.** A binding-backed entry MUST carry the `bb6Context` multiplicity inputs that reproduce why the authoritative copy won BB-6 selection. A replay that re-runs BB-6 over `candidateBindings` under `partyMap` and `budget` and reaches a `resolvedNativeAddress` other than `roleEvidence.binding.nativeAddress` is non-conforming.
 - **Absence relation.** `absenceBinding.nativeAddress` MUST equal the dereferenced `AbsenceEvidence.nativeAddress`. `absenceBinding` MUST itself be BB-4-valid, with `role` equal to the missing side's role and `jobId` equal to the entry's jobId. BB-5 check 8 (`bundleContentHash` byte-equality with fetched content) is inapplicable to `absenceBinding` — the missing side's bundle never anchored, so no fetched content exists to match; the binding is verified per BB-4 with `jobId` and `role` equality and the `nativeAddress` relation above.
 
-A deriver publishing a released-semantics replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. A deriver making the stronger requested-session binding claim while retaining released metric semantics emits `jobBoundReplayableDerivationVersion: "1"`. A settlement-verified replayable receipt emits `replayableSettlementVerifiedDerivationVersion: "1"` and no other derivation discriminator. Both job-bound forms include `resolvedJobId` in every context entry. All three set `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`.
+A deriver publishing a released-semantics replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. A deriver making the stronger requested-session binding claim while retaining released metric semantics emits `jobBoundReplayableDerivationVersion: "1"`. A settlement-verified replayable receipt emits `replayableSettlementVerifiedDerivationVersion: "1"` and no other derivation discriminator. Standalone AWT emits `authenticatedWindowDerivationVersion: "1"`; CUR-v1 emits `currentUseReplayableDerivationVersion: "1"`; the combined current-use authenticated-window receipt emits only `currentUseAuthenticatedWindowDerivationVersion: "1"`. Every job-bound form includes `resolvedJobId` in every context entry. Outcome-window forms carry exact anchor and outcome proof histories. The combined form additionally retains every requested job, including verified outside-window jobs, in `allJobResolutionContext`; its metric-bearing `resolutionContext` remains in canonical ascending-`contentHash` order with `bundleRefs`.
 
-**Replay (normative, extends the §10.5.3 determinism receipt).** All three replayable types MUST satisfy the common checks below and are non-conforming if their context is missing, mis-keyed, lacks any member REQUIRED for their type or an entry's disposition, or fails any check. The RSV-labelled checks apply only to `ReplayableSettlementVerifiedReputationDerivation`; the job-bound checks apply to both `JobBoundReplayableReputationDerivation` and `ReplayableSettlementVerifiedReputationDerivation`:
+**Replay (normative, extends the §10.5.3 determinism receipt).** Every replayable type—released v1, job-bound v1, settlement-verified v1, standalone AWT-v1, CUR-v1, and combined CUAW-v1—MUST satisfy the applicable common checks below and is non-conforming if its context is missing, mis-keyed, lacks any member REQUIRED for its type or an entry's disposition, or fails any check. The RSV-labelled checks apply to settlement-verified v1, standalone AWT-v1, CUR-v1, and combined CUAW-v1 when settlement evidence is present; the job-bound checks apply to all but released v1. The AWT outcome-window checks apply to standalone AWT-v1 and combined CUAW-v1, with CUAW's all-requested-job rule prevailing over standalone AWT's narrower non-countability rule:
 
 Before any current-profile BB-5 check, logical-address derivation, resolution-context validation, or reputation replay, the consumer MUST admit the public operation as a whole. Verifier- or orchestrator-owned query authority, independent of the received receipt, MUST authenticate the exact corrective profile and expected querying party, window bounds, and `windowingBasis`; this gate runs even when `bundleRefs` and `resolutionContext` are legitimately empty. For every non-empty entry, ordered authority keyed to its `contentHash` MUST provide the expected job, role, participant, counterparty disposition, and counterparty role/participant (plus the expected counterparty content hash when present). Each role is then resolved through the verifier-owned `(jobId, role) → participant` map. The complete query, entry, role-map, and independently authenticated verification-key authorities MUST be validated before any anchor dereference, logical/native address mapping, store access, or resolver callback. Receipt-carried profile assertions, roles, signers, participant identities, query parameters, or copied local reference labels cannot initialize those authorities; post-fetch roster/job/role/hash and signature checks remain a second control. Missing, partial, malformed, unauthenticated, duplicate-for-role, or mismatched authority refuses the entire current operation. An explicitly selected legacy replay may instead preserve the released receipt bytes and frozen historical address semantics, but it makes no current-profile claim and cannot authorize a current lookup, signature, or effect.
 
 - it MUST satisfy the §10.5.3 (1)–(3) determinism-receipt contract;
-- re-running the algorithm selected by the receipt discriminator (`derive` for released v1, `derive_job_bound` for job-bound released metrics, or `derive_settlement_verified` for settlement-verified v1) under the recorded `windowingBasis`, each copy's `resolutionContext` entry supplied as its §10.5.1 tag, MUST reproduce byte-identical `metrics` and `bundleCount`;
+- re-running the algorithm selected by the exact receipt discriminator (`derive` for released v1, `derive_job_bound` for job-bound released metrics, `derive_settlement_verified` for settlement-verified v1, `derive_authenticated_window` for standalone AWT, `derive_current_use_replayable` for CUR-v1, or `derive_current_use_authenticated_window` for the combined current-use contract) under the recorded `windowingBasis` and complete applicable context MUST reproduce byte-identical `metrics` and `bundleCount`;
 - **re-verify `roleEvidence`** — a binding-backed entry's binding MUST pass BB-4, with `jobId` equal to the authoritative copy's jobId, `role` equal to `resolvedRole`, and `bundleContentHash` equal to the entry's `contentHash`;
 - **reproduce BB-6 selection** — re-run BB-6 over `bb6Context.candidateBindings` under `partyMap` and `budget`, requiring disposition `present` with `resolvedNativeAddress` equal to `roleEvidence.binding.nativeAddress`;
-- **re-run reconciliation** — dereference `counterpartyRef`, verify `counterpartyRoleEvidence` per the counterparty-authentication relation, and require the applicable type's divergence predicate against the authoritative copy to be false; the settlement-verified type additionally requires exact `settlementEvidence[]` reference-multiset agreement;
-- **re-run RSV admission (settlement-verified type only)** — resolve and independently verify every presented SettlementEvidence under RSV-1/RSV-2 from immutable, hash-bound or finalized-state-bound authority; require `verified` before comparing metrics. `rejected` or `indeterminate` makes the receipt unverifiable and MUST NOT produce an alternative metric set;
+- **re-run reconciliation** — dereference `counterpartyRef`, verify `counterpartyRoleEvidence` per the counterparty-authentication relation, and require the applicable type's divergence predicate against the authoritative copy to be false; settlement-verified types additionally require exact `settlementEvidence[]` reference-multiset agreement;
+- **re-run RSV admission (settlement-verified types only)** — resolve and independently verify every presented SettlementEvidence under RSV-1/RSV-2 from immutable, hash-bound or finalized-state-bound authority; require `verified` before comparing metrics. `rejected` or `indeterminate` makes the receipt unverifiable and MUST NOT produce an alternative metric set;
 - **re-check absence** — dereference `AbsenceEvidence`, require `absenceEvidenceRef.contentHash` to equal its `sha256(canonical)`, verify `absenceBinding` per the absence relation, and require `absenceBinding.nativeAddress` to equal `AbsenceEvidence.nativeAddress`.
 - **re-verify the legacy-payment LAA carrier (legacy-payment entries only)** — a legacy-payment entry (`legacyPayment === true`) MUST carry the exact marker, the full LAA, and the `legacyPaymentCarrier` commitment. The consumer MUST recompute `sha256(canonical(LegacyPaymentCarrier))` from the carried marker, full LAA, dereferenced bundle `jobId`, and verifier-owned authenticated session authority, and require byte-equality with the stored carrier; it MUST also re-execute the shared `laa_admission` oracle and bind the LAA `sessionAuthority.sessionId` to the verifier-owned authenticated session for that `jobId` (never to an optional caller/tag `sessionId`). A removed marker, removed LAA, removed carrier, substituted agreement contentHash/session/job, marker/LAA disagreement, cross-job, cross-session, or absent/mismatched authoritative session binding refuses replay fail-closed. Only an explicitly named archival path may reproduce released pre-LAA bytes without this carrier, and that path is non-authorizing.
 - **job-bound types only** — require each non-empty `resolvedJobId` to equal the dereferenced authoritative copy's `jobId` and use that trusted value, rather than returned content, in every job-binding check. The released v1 type performs its historical checks against the authenticated copy's `jobId` and makes no stronger claim.
-- **EBFAB in either job-bound type** — resolve and re-verify the signed listing, exact SettlementEvidence resolutions including authenticated phase-orchestrator authority, transitive ST-8 evidence, and bundle/evidence lifecycle state referenced by the EBFAB. A replay implementation whose configured authority resolvers cannot recover that material MUST refuse; it MUST NOT rederive while silently dropping SEB validation.
+- **EBFAB in any job-bound type** — resolve and re-verify the signed listing, exact SettlementEvidence resolutions including authenticated phase-orchestrator authority, transitive ST-8 evidence, and bundle/evidence lifecycle state referenced by the EBFAB. A replay implementation whose configured authority resolvers cannot recover that material MUST refuse; it MUST NOT rederive while silently dropping SEB validation.
+- **outcome-window types only** — perform the shared AWT-2 through AWT-7 gate before metric comparison. Standalone AWT applies its per-job non-countability rule; the combined type applies CUAW's all-requested-job fail-closed rule and retains verified outside-window jobs in complete replay context.
 
 The discriminators are unsigned but type-authoritative. A consumer MUST reject any receipt carrying no recognized derivation discriminator, multiple derivation discriminators, or a discriminator inconsistent with its claimed type. In particular it MUST NOT strip a settlement-verified discriminator and process the remaining fields under released v1 semantics.
 
@@ -1110,11 +1156,52 @@ The discriminators are unsigned but type-authoritative. A consumer MUST reject a
 
 #### 10.5.1 Derivation algorithm
 
-The algorithm below is `derive_settlement_verified` and emits `SettlementVerifiedReputationDerivation` or its replayable counterpart. The released `derive` algorithm and its two version-1 output types retain the DACS-5 v0.3 semantics; implementations MUST NOT label output from this algorithm with either released discriminator. For an executable current definition, released `derive` is the algorithm below with exactly three settlement-verified limbs disabled: it uses only the §10.4.3 divergence predicate, does not call `verify_presented_settlement_evidence`, and applies the released volume rule (a completed bundle with a valid `agreementRef` contributes its Agreement price without requiring presented successful-payment evidence). All other reconciliation, denominator, rating, ordering, windowing, and receipt rules are shared.
+The algorithm below is `derive_settlement_verified` and emits `SettlementVerifiedReputationDerivation` or its replayable counterpart. The released `derive` algorithm and its two version-1 output types retain the DACS-5 v0.3 semantics; implementations MUST NOT label output from this algorithm with either released discriminator. For an executable definition of released `derive`, use the algorithm below with exactly three settlement-verified limbs disabled: it uses only the §10.4.3 divergence predicate, does not call `verify_presented_settlement_evidence`, and applies the released volume rule (a completed bundle with a valid `agreementRef` contributes its Agreement price without requiring presented successful-payment evidence). All other reconciliation, denominator, rating, ordering, windowing, and receipt rules are shared.
 
 The job-bound `derive_job_bound` path retains the released metric semantics but emits `JobBoundReplayableReputationDerivation`; it is the minimum replayable path for EBFAB. A replayable settlement-verified derivation applies both the job-bound and RSV requirements and emits `ReplayableSettlementVerifiedReputationDerivation`.
 
-*Input precondition: each admitted input copy is resolution-context-tagged with the role under which it resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate). A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback. EBFAB requires this job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
+`derive_authenticated_window` is the standalone AWT path. It applies the same validation, two-sided reconciliation, authoritative-copy selection, RSV admission, outcome formulas, and canonical ordering as `derive_settlement_verified`. It changes the order and source of window admission as follows:
+
+```
+derive_authenticated_window(party, bundles, windowStart, windowEnd):
+
+  candidates := [b for b in bundles
+                  where party in {p.primaryClaim for p in b.parties}]
+
+  # Run the §10.5.1 settlement-verified validation/reconciliation loop over all
+  # candidates first; do NOT pre-filter on b.finalisedAt or any receipt assertion.
+  selected := settlement_verified_reconcile(party, candidates)
+
+  reconciled := []
+  outcomes := []
+  for authoritative, outcome, context in selected:
+    gate := verify_current_outcome_window(authoritative, outcome, context)
+    if gate.verdict != "verified":
+      continue                                      # AWT-5: indeterminate/non-countable; no fault
+    if windowStart <= gate.outcomeOccurrenceTime <= windowEnd:
+      context.anchorReceipt := gate.anchorReceipt
+      context.anchorReceiptHistory := gate.anchorReceiptHistory
+      context.outcomeTimePolicy := gate.outcomeTimePolicy
+      context.outcomeTimeEvidence := gate.outcomeTimeEvidence
+      context.outcomeTimeEvidenceHistory := gate.outcomeTimeEvidenceHistory
+      reconciled.append(authoritative)
+      outcomes.append(outcome)
+
+  # Apply the unchanged settlement-verified metric, rating, cancellation,
+  # uniqueness, null/empty, bundleRefs, and resolutionContext rules below.
+  return AuthenticatedWindowReputationDerivation(
+    authenticatedWindowDerivationVersion="1",
+    windowingBasis="verified-business-outcome-occurrence",
+    ...settlement_verified_metrics(reconciled, outcomes),
+    resolutionContext=sort([context(b) for b in reconciled], by contentHash)
+  )
+```
+
+`verify_current_outcome_window` is exactly the shared AWT-2 through AWT-7 gate. It verifies anchor provenance and lifecycle separately from policy-proven outcome occurrence. It is not a lookup for whichever anchor or occurrence proof gives a favourable timestamp. `settlement_verified_reconcile` denotes the existing inner loop below, beginning with type/signature validation and ending with authoritative-copy selection plus RSV admission. Moving the window gate after that loop is load-bearing. Two copies must be reconciled before the session-wide occurrence time can affect inclusion. The occurrence proof must bind the exact copy and outcome that feed the metrics.
+
+*Input precondition: each admitted input copy is resolution-context-tagged with the role under which it resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate). A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback.*
+
+*The authenticated-window path additionally receives all known SR-2 anchor snapshots and the policy-specific outcome evidence/history for the selected session. It applies AWT-2 through AWT-7. EBFAB requires a job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
 
 *Settlement uniqueness (SB-2, §9.5.8): before metrics, group the complete presented evidence set by canonical `settlement-tx-id`. If a group claims multiple `(jobId, phaseIndex)` tuples, count only the tuple selected by independently verified finalized settlement-side authority bound to the exact settlement, rail/profile, job, and phase, and reject its competitors. Authority for another settlement or profile, or job-only authority that leaves a same-job phase collision unresolved, selects nothing; without one authoritative exact relation, exclude every member of the collision group as `indeterminate`. `observedAt`, evidence/hash order, arrival order, and first SR-2 publication never choose a winner. Discovery of a later collision requires recomputation and removal of any provisional count, including its contribution to `bundleCount`, every numerator and denominator, ratings, `observedTransactionalVolume`, `transactionCountByCurrency`, and `bundleRefs`. This exclusion is not a party-fault outcome. This is consumer-view uniqueness, not proof of global evidence-set completeness.*
 
@@ -1359,7 +1446,7 @@ Three normative guards apply during reconciliation:
 
 A fourth normative guard applies to any one-copy jobId:
 
-- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. In the job-bound path, each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer binds returned content and every rejection to that requested identity, never to returned content's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to any signed bundle type. EBFAB or any stronger job-binding claim is published only as `JobBoundReplayableReputationDerivation` or, when RSV semantics are also claimed, `ReplayableSettlementVerifiedReputationDerivation`; the released `ReplayableReputationDerivation` v1 remains unchanged and makes no such claim. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
+- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. In the job-bound path, each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer binds returned content and every rejection to that requested identity, never to returned content's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to any signed bundle type. EBFAB or any stronger job-binding claim is published only as `JobBoundReplayableReputationDerivation`, `ReplayableSettlementVerifiedReputationDerivation`, or the stronger current `AuthenticatedWindowReputationDerivation`, according to the semantics claimed; the released `ReplayableReputationDerivation` v1 remains unchanged and makes no such claim. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
 
 **Presented SettlementEvidence admission (RSV-1..RSV-4; settlement-verified types only).** This guard runs on the selected `authoritative` copy before it enters `reconciled`. When both buyer and seller copies exist, the settlement-verified divergence limb first requires their canonical `settlementEvidence[]` reference multisets to agree; comparison uses each full canonical `AttestationRef`, including multiplicity, while array order alone is immaterial. A producer therefore cannot make its own semantically contradictory reference silently control the other copy's settlement-verified reputation input:
 
@@ -1369,15 +1456,18 @@ A fourth normative guard applies to any one-copy jobId:
 - **Conservative-attribution residual.** RSV-3 can remove an otherwise fault-bearing job from a denominator when its evidence is invalid. That is an accepted conservative cost: a rejected artifact proves that the job is unsafe as a settlement-verified reputation input, but its phase-orchestrator signature and the outer bundle signatures do not by themselves adjudicate which buyer/seller caused the semantic contradiction. A one-sided reference-multiset change is excluded by the settlement-verified divergence limb; a jointly presented invalid reference remains non-attributive. Resolving either case into party fault requires the out-of-band dispute/adjudication layer, not inference by `derive_settlement_verified()`.
 - (RSV-4) A `verified` result admits the job to the unchanged reconciliation and non-volume metric formulas below, **except** that a `verified` job whose successful payment cites legacy `AgreementDocument` is current-ineligible when LAA returns `historical-only` or `transition-only`; either disposition excludes the job from every current metric below. This rule verifies only the evidence multiset presented by the authoritative copy; it neither proves that the multiset is complete nor makes an optional `phaseSummary[].attestationRef` mandatory. An empty multiset is vacuously verified for this presented-evidence guard, but supplies no verified payment record and therefore contributes no `observedTransactionalVolume` or `transactionCountByCurrency` under the Volume rule below.
 
-For `ReplayableSettlementVerifiedReputationDerivation`, RSV is re-executed from the hash-bound `settlementEvidence[]`, Agreement/session/phase/rail authority, and finalized transaction evidence before metric comparison. `rejected` or `indeterminate` at replay makes the receipt unverifiable; a replayer MUST NOT silently recompute a different metric set. The RSV verdict is derived evidence, not a trusted disposition to copy into `resolutionContext`. An authority input that is not immutable or bound to the finalized state used by the original verification cannot produce `verified`.
+For `ReplayableSettlementVerifiedReputationDerivation` and `AuthenticatedWindowReputationDerivation`, RSV is re-executed from the hash-bound `settlementEvidence[]`, Agreement/session/phase/rail authority, and finalized transaction evidence before metric comparison. `rejected` or `indeterminate` at replay makes the receipt unverifiable; a replayer MUST NOT silently recompute a different metric set. The RSV verdict is derived evidence, not a trusted disposition to copy into `resolutionContext`. An authority input that is not immutable or bound to the finalized state used by the original verification cannot produce `verified`.
 
-**Versioning.** DACS-5 v0.3 and both existing version-1 derivation types were released in the DACS v0.4 profile at `4bb9e48a1095ab32c06c25b7c0b52018d3ce4091`. RSV changes which bundles enter metrics and therefore ships additively in DACS-5 v0.4 only through `settlementVerifiedDerivationVersion: "1"` and `replayableSettlementVerifiedDerivationVersion: "1"`. Existing discriminators retain their released meaning. Any future action-bearing change to either settlement-verified type requires another structurally distinguishable type or a major compatibility path under CORE §11.1.2.
+**Versioning.** DACS-5 v0.3 and both original version-1 derivation types were released in the DACS v0.4 profile at `4bb9e48a1095ab32c06c25b7c0b52018d3ce4091`. RSV changed which bundles enter metrics and therefore shipped additively in DACS-5 v0.4 only through `settlementVerifiedDerivationVersion: "1"` and `replayableSettlementVerifiedDerivationVersion: "1"`; the job-bound replay type was likewise additive. AWT changes window admission and replay evidence, so DACS-5 v0.6 adds `authenticatedWindowDerivationVersion: "1"` rather than changing any of those five shapes. Existing discriminators retain their released meaning. Any future action-bearing change to any derivation type requires another structurally distinguishable type or a major compatibility path under CORE §11.1.2.
 
 **Combined current-use derivation (CUR-1..CUR-8; stage minor unallocated).**
 `CurrentUseReplayableReputationDerivation` is the one coordinated #391+#392
 output. Its type version is `"1"`, but this candidate text does not allocate a
 DACS-5 minor number. It is unsigned derivation data, like the existing
-derivations; no signature domain exists or is implied for it.
+derivations; no signature domain exists or is implied for it. This CUR-v1
+contract retains its `finalisedAt` window and is a narrower historical/partial
+signal after the combined contract below is introduced; it MUST NOT be
+presented as current-use authenticated-window reputation.
 
 - **(CUR-1) Explicit, exclusive selection.** The caller MUST explicitly request
   this consumer contract. The output carries exactly
@@ -1452,6 +1542,75 @@ Those fixtures are labelled synthetic and do not define or claim a production
 Demos native cryptographic codec; a production implementation supplies its real
 substrate verifier at the same trust boundary.
 
+**Current-use authenticated-window composition (CUAW-1..CUAW-6; stage minor
+unallocated).** `CurrentUseAuthenticatedWindowReputationDerivation` is the sole
+strongest current-use reputation contract. Its exclusive
+`currentUseAuthenticatedWindowDerivationVersion: "1"` discriminator is neither
+CUR-v1 nor standalone AWT-v1. A consumer explicitly requesting this contract
+MUST reject absent, unknown, multiple, stripped, or relabelled discriminators
+before dereference. None of the five released derivations, CUR-v1, or standalone
+AWT-v1 satisfies this request. The combined type is unsigned derivation data;
+no new signature domain is implied.
+
+- **(CUAW-1) Complete admission first.** For every distinct requested job and
+  both role addresses, authenticate the query, verifier-owned buyer/seller
+  roster and keys, current presence or authoritative absence, exact bundle
+  type/domain and signed bytes, LAB when applicable, BB-6, two-sided
+  reconciliation, authoritative-copy selection, and all applicable FV,
+  RSV, SB-2/SB-3, LAA, and SAC gates under CUR-1..CUR-8. A stronger proof
+  that is unavailable or non-passing MUST NOT fall back to a weaker copy.
+- **(CUAW-2) Occurrence after reconciliation.** For every selected
+  authoritative job, invoke the same AWT-2..AWT-7 outcome-window gate only
+  after CUAW-1 has passed. It independently verifies the exact bundle anchor
+  and complete known lifecycle history for provenance, then verifies a
+  policy-authorized native business-outcome event bound to the selected
+  job, outcome, authenticated effective pipeline, phase relations, and
+  terminal evidence. For a sealed-selection session, the effective pipeline
+  and terminal authority include the SAC-8-reproduced selection/Agreement
+  context; an unverified receipt, bidder set, winner, price, or payout cannot
+  establish occurrence. Payment success in one phase alone never establishes
+  completed-session occurrence in a later phase. No anchor timestamp,
+  `finalisedAt`, producer time, or off-chain session clock is a fallback.
+- **(CUAW-3) All-or-nothing proof.** A missing, unsupported, malformed,
+  conflicting, unfinalized, mismatched, or otherwise indeterminate occurrence
+  for *any* requested job makes the entire combined request non-passing: no
+  derivation, partial metric, fabricated zero, or blame is emitted. This
+  strengthens standalone AWT's per-job non-countability rule; it does not
+  alter the standalone type.
+- **(CUAW-4) Membership and metrics.** Only after every job passes CUAW-1..3,
+  apply inclusive `windowStart <= outcomeOccurrenceTime <= windowEnd` to the
+  session-wide verified occurrence. A verified outside-window job contributes
+  no scalar, denominator, rating, volume, `bundleCount`, or `bundleRefs` member,
+  but remains in `requestContext` and `allJobResolutionContext`. Compute
+  CUR-6 metrics over the admitted in-window set, preserving
+  `finalityClassifiedVolume.profileFinal` and
+  `.provisionalProviderCapture` as distinct classes.
+- **(CUAW-5) Complete context and replay.** `resolutionContext` contains one
+  entry for each included `bundleRefs` member in canonical hash order.
+  `allJobResolutionContext` has exactly one entry per `requestContext` job in
+  request order, including outside-window jobs, with the selected anchor,
+  complete known anchor history, accepted outcome policy, selected proof,
+  complete accepted outcome history, and `windowMember`. Replay starts at the
+  exclusive discriminator gate, re-runs all CUAW-1..4 dependencies and
+  histories, then byte-compares the complete canonical object. Mutation or
+  omission of an outside-window proof or context fails replay even if metrics
+  would be unchanged. Known verified conflicts cannot be hidden by presenting
+  a favorable subset of observations.
+- **(CUAW-6) Trust boundary.** The fixture-only signed native observation
+  adapter in the executable corpus proves the ordering and exact joins of this
+  reference, not a universal Demos native proof codec. A production verifier
+  MUST supply and independently authenticate its own binding/rail policy,
+  native event, finality, and complete-history authority before claiming this
+  combined contract. The bounded executable CUAW reference does not implement
+  APR-1..APR-4's signed Agreement/registry projection or SAC-8's reproduced
+  sealed selection. After CUR admission, it returns `indeterminate` for a
+  signed Listing containing `pay-alternative`, or for a supplied
+  `effectivePipeline` differing from the signed Listing pipeline; hashing
+  either the raw alternative placeholder or
+  an unverified supplied projection would not establish AWT-3's session join.
+  A conforming production adapter may support these cases only after it
+  independently reproduces and authenticates the effective pipeline.
+
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
 **Neutral exclusions from the fault denominator.** Three classes are excluded from the party-fault denominator — `party_fault_denom = |outcomes| − |failed_substrate| − |cancelled_neutral| − |orchestrator_fault_neutral|`: **`failed-substrate`** sessions (substrate-induced, nobody's fault) and **established §10.3.1 ST-10 policy-permitted cancellations** (an advertised, signed cancellation right, neutral for *both* parties — resolved across both non-divergent copies, so the exclusion applies whether the scored-party outcome is `aborted-by-self` or `aborted-by-other`), and **orchestrator-fault sessions** (either absolute-fault type naming `faultedParty: "orchestrator"`, or a non-divergent legacy pair whose per-copy implied-fault sets intersect only at `orchestrator`). In the latter case the singleton intersection, not the scored party's selected legacy spelling, is the established absolute attribution. A distinct orchestrator, not the scored buyer or seller, was responsible; orchestrator reputation is out of scope in v0.1 (§10.5.1 guard (iii)). None of the three classes damages either party's reputation; all remain in `bundleCount` as observable, non-fault sessions.
@@ -1478,9 +1637,9 @@ agreementRef is an AttestationRef, not an inline AgreementArtifact, so the volum
 
 **`completionRate` denominator scope.** `party_fault_denom` excludes `failed-substrate` and established §10.3.1 ST-10 policy cancellations; it retains counterparty-fault and ordinary (non-cancelled) abort sessions. This is intentional: `completionRate` measures completed-vs-attempted, not blame. It leaves a residual griefing surface, however — a counterparty that repeatedly opens and aborts sessions depresses the target's `completionRate` through `aborted-by-other`. `counterpartyFaultRate` partially offsets this (it rises in step over the same denominator), and consumers SHOULD read the two metrics together rather than `completionRate` alone. A blame-weighted completion metric is a roadmap candidate.
 
-The windowing predicate above bounds against `b.finalisedAt`, which is a producer-set wall-clock value (§10.4) with no anchoring-time cross-check. Because the bundle is anchored via SR-2, a consensus-attested write time is also available. Consumers performing high-stakes derivation SHOULD bound the window against the bundle’s SR-2 anchor timestamp — the substrate’s consensus-attested write time — rather than, or in addition to, the self-asserted `finalisedAt`. They SHOULD flag a `finalisedAt` that diverges materially from the anchor time. `finalisedAt` is otherwise advisory; the anchor time is authoritative for windowing.
+The legacy algorithm above bounds against `b.finalisedAt`, a producer-set wall-clock value (§10.4), because changing that released behavior would reinterpret existing receipts. It remains available for the five released historical/partial shapes and distinct CUR-v1 candidate under their own meanings. Standalone AWT proves occurrence over its narrower precondition. A current-use authenticated-window request MUST use the combined derivation and shared outcome-window gate. No anchor-publication or producer clock is authoritative for business occurrence.
 
-> **Note (non-normative).** This parallels the chain-timestamp discipline already required for sealed-envelope commits in §8.4.3 (SE-2), where the substrate anchor — not the producer’s clock — decides the timestamp.
+> **Note (non-normative).** Bundle anchoring can lag commercial performance because ST-11 waits for audit finalization. Treating that publication timestamp as occurrence would let delayed anchoring refresh an old outcome.
 
 #### 10.5.2 Per-primary-claim keying
 
@@ -1500,9 +1659,9 @@ Each surface is a different point on the trust / performance trade-off; for a gi
 
 - (1) `bundleRefs` MUST be exactly the applicable algorithm's `reconciled` set — the post-window-filter, two-sided-reconciled authoritative bundles it actually aggregated (one per jobId) — neither a superset nor a subset;
 - (2) `bundleRefs` MUST be serialised in **canonical order: ascending lexicographic by `AttestationRef.contentHash`** (the same tie-break discipline as SE-5). Because `contentHash` is a sha256 digest the ordering is total; two refs sharing a `contentHash` reference byte-identical content and collapse to one entry. Two derivers that computed identical metrics over the same set therefore cannot disagree on `bundleRefs` byte-order;
-- (3) a consumer that re-runs `derive` for a released v1 discriminator or `derive_settlement_verified` for a settlement-verified discriminator under the recorded `windowingBasis` MUST obtain byte-identical `metrics` and `bundleCount`.
+- (3) a consumer that re-runs the algorithm named by the exact discriminator under its recorded `windowingBasis` and complete context—including CUR-v1 or the combined current-use authenticated-window algorithm when selected—MUST obtain byte-identical `metrics` and `bundleCount`.
 
-Because §10.5.1 lets high-stakes consumers window against the SR-2 anchor timestamp rather than the producer-set `finalisedAt`, two derivers using different windowing bases legitimately compute different sets. The receipt is therefore defined **relative to the declared `windowingBasis`**, which a conforming derivation MUST record. This makes any published derivation auditable against its declared inputs. It does NOT establish *completeness*: whether `bundleRefs` contains every relevant bundle is out of scope — no authoritative "which bundles exist" oracle is defined, and catalogs are best-effort per (b). Conformance: given a fixed discriminator, `bundleRefs` set, window, and `windowingBasis`, the selected algorithm's output is byte-identical across implementations.
+Historical/partial receipts remain reproducible relative to their declared `windowingBasis`; that fact does not make their membership suitable for a combined current-use request. Standalone AWT carries policy-specific evidence/history for its counted bundles. The combined receipt additionally binds complete requested-job context, including verified outside-window jobs, and uses only `verified-business-outcome-occurrence`. This makes published membership auditable against declared inputs. It does NOT establish global *completeness*: whether every relevant job was requested remains outside this derivation—no universal "which bundles exist" oracle is defined, and catalogs are best-effort per (b).
 
 #### 10.5.4 Category-scoped derivation
 
@@ -1524,6 +1683,8 @@ derive_category_scoped(party, bundles, windowStart, windowEnd, categoryScope):
 
 `derive_settlement_verified_category_scoped` applies the identical category filter and then calls `derive_settlement_verified`; it emits only a settlement-verified discriminator. The released `derive_category_scoped` continues to call released `derive` and MUST NOT emit a settlement-verified discriminator.
 
+`derive_authenticated_window_category_scoped` applies the identical category filter and then calls standalone `derive_authenticated_window`; it remains a narrower outcome-window signal. An action-bearing current-use category request MUST apply the same category filter to the explicit requested job set, then invoke the combined derivation with CUAW-1..CUAW-6 for every retained job. Category lookup does not supply or modify outcome occurrence.
+
 `fetch_category` performs the full two-step resolution:
 
 - (1) resolve the bundle's `agreementRef` to its `AgreementArtifact`, per the §7.5.2 attestation resolution algorithm;
@@ -1533,7 +1694,7 @@ Bundles whose `agreementRef` **or** `listingRef` cannot be resolved, or whose li
 
 **`categoryScope` matching rule.** Let `cat = fetch_category(b.agreementRef)` (the resolved listing's `offering.category`). A bundle's category matches `categoryScope` if and only if `cat == categoryScope` OR `cat` starts with `categoryScope + "."`. Examples: scope `"data.finance"` matches `"data.finance"`, `"data.finance.fx"`, `"data.finance.equities"` but NOT `"data.financetools"`.
 
-**Use in `ReputationHint` (§6.3.6).** The `ReputationHint` attached to a `ListingSummary` is computed by applying `derive_category_scoped` with `categoryScope` equal to the listing's `offering.category`, or a prefix thereof. Catalogs MAY broaden the scope when the listing category has fewer than a minimum number of qualifying bundles, provided the `reputationHint.categoryScope` field accurately reflects which scope was used. Consumers MUST read `reputationHint.categoryScope` to understand what population is reflected. The hint is only a fast-path pre-filter and MUST be verified against underlying bundles for high-stakes decisions.
+**Use in `ReputationHint` (§6.3.6).** The `ReputationHint` attached to a `ListingSummary` is computed by applying `derive_category_scoped` with `categoryScope` equal to the listing's `offering.category`, or a prefix thereof. Catalogs MAY broaden the scope when the listing category has fewer than a minimum number of qualifying bundles, provided the `reputationHint.categoryScope` field accurately reflects which scope was used. Consumers MUST read `reputationHint.categoryScope` to understand what population is reflected. Because the lightweight hint carries neither a derivation discriminator nor complete replay context, it is always a historical/partial fast-path pre-filter. An action-bearing current-use consumer re-derives through the combined category-scoped contract from the underlying bundles, complete request and role authority, anchor provenance, and policy-specific outcome evidence.
 
 **Relationship to §10.5.2 per-primary-claim keying.** Category scoping is an orthogonal filter applied after the per-primary-claim scope; it does not change the identity keying rule.
 
@@ -1603,7 +1764,7 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Checkpoint producer | For each activated substrate, publish one steward-signed `LegacyBundleActivationCheckpoint`; on a write-input substrate also publish `LegacyBundleCheckpointBinding`. Preserve the exact finalized native receipt and transaction/nonce/order evidence. A producer timestamp or advertised steward list is not activation authority. |
 | Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3. A producer explicitly claiming the unallocated #392 completion contract instead emits the distinct `FinalityBoundEvidenceFaultAttestationBundle`; it does not modify an EBFAB. |
 | Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run the unchanged SEB-1..SEB-6 contract on EBFAB before pair selection; apply LAA-1..LAA-7 era qualification to successful legacy-agreement payments for every bundle type, with historical-only and transition-only passes current-ineligible; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile old-only copies by EBFAB > FAB > legacy only after validity and non-divergence. Under the explicitly selected current-use contract, additionally require purpose-specific receipts and an exact verifier-owned buyer/seller roster, run LAB against the caller-requested substrate before BB-6 for each legacy candidate, require authenticated complete historical execution/evidence before treating a job as non-payment, run FV plus RSV/SB-3 for every successful payment, and apply finality-bound > EBFAB > FAB > legacy without weaker fallback. |
-| Reputation deriver | Select the output type before derivation and preserve every existing discriminator's algorithm and metrics. Apply LAA to successful payment evidence under legacy `AgreementDocument` for every derivation type, with historical-only and transition-only passes current-ineligible and excluded from current metrics. For the explicit current-use contract, require exclusive `currentUseReplayableDerivationVersion: "1"`, validate every requested job under CUR-1..CUR-8 and LAB-1..LAB-7 before computing any metric, classify provider capture as provisional, emit no partial result, and replay the complete dependency chain and result. Otherwise apply RSV-1 through RSV-4 only for an existing settlement-verified discriminator and require a job-bound replay type for EBFAB. |
+| Reputation deriver | Select the exclusive output type before derivation and preserve every existing discriminator's algorithm and metrics. Apply LAA to successful legacy-agreement payments, with historical-only and transition-only current-ineligible. CUR-v1 keeps its original finalisedAt meaning; standalone AWT-v1 is a narrower post-reconciliation occurrence-window signal. For a current-use authenticated-window request, emit only `CurrentUseAuthenticatedWindowReputationDerivation`: validate every requested job under LAB/CUR, FV/RSV/SB/LAA/SAC as applicable, then AWT outcome occurrence, fail the whole request on any indeterminate job, retain outside-window jobs in complete replay context, and preserve finality classes. |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
 
@@ -1724,17 +1885,16 @@ released bundles via the consumption gate, and every derivation via its
 
 **Bundle anchor unavailability.** *Threat:* the SR-2 anchor becomes unreadable after the session ends (e.g. storage program purged, IPFS unpinned). *Mitigation:* on-substrate anchoring (Demos Storage Programs) provides indefinite availability under substrate operation. Off-substrate anchoring (IPFS, HTTPS) is best-effort. Listings concerned with long-term auditability SHOULD use on-substrate anchoring for bundles regardless of which surface the rest of the session uses.
 
-**Time-bound reputation windows.** *Threat:* an old, no-longer-representative reputation is presented as current; or a producer backdates or forward-dates the self-asserted `finalisedAt` to move a session out of a scrutinised window or to cluster volume into a favourable one. *Mitigation:* derivations are window-bounded; consumers querying reputation MUST specify a window and SHOULD weight recent windows more heavily. The algorithm does not specify weighting (consumers choose); it does require explicit window bounds in every derivation. Against producer-chosen `finalisedAt`, consumers performing high-stakes derivation SHOULD window against the SR-2 anchor timestamp per §10.5.1, so that the substrate — not the bundle producer — decides window membership.
+**Time-bound reputation windows.** *Threat:* an old, no-longer-representative outcome is presented as current; delayed bundle publication refreshes it; or a producer cherry-picks occurrence or replacement history across a boundary. *Mitigation:* the combined current-use contract runs LAB/CUR/FV/RSV/SB/LAA/SAC as applicable, then AWT-1..AWT-8 after reconciliation for every requested job. The shared gate verifies CORE-valid anchor provenance and independently policy-proven business occurrence for the exact session outcome. It uses inclusive boundaries and makes unavailable or conflicting evidence fail the whole combined request without a producer, audit, or publication-clock fallback. The older and narrower shapes cannot satisfy a combined current-use query.
 
 **ERC-8004 write spamming.** *Threat:* an attacker writes many fake ERC-8004 entries pointing at fabricated bundles. *Mitigation:* ERC-8004 entries are pointers; consumers MUST fetch and validate the bundle. Fake bundles fail at validation. The cost of writing many ERC-8004 entries (gas) is a natural rate limit; DACS-5 publishers SHOULD additionally enforce per-session rate limits.
 
-**Current-use candidate scope.** The unallocated #391/#392 combined derivation
-proves the selected historical-admission and finality contract. It does not
-satisfy a request for the separate recent-outcome reputation profile: its
-window clock is not independently verified business-outcome occurrence. The
-approved #394/#395 recent-outcomes policy requires that separate authenticated
-outcome-time gate; neither producer finalisation time nor anchor publication
-time is a substitute.
+**Current-use candidate scope.** CUR-v1 proves the selected historical-admission
+and finality contract but retains its original window clock. Standalone AWT-v1
+proves independently verified occurrence over its narrower input precondition.
+Neither satisfies a combined current-use authenticated-window request; only
+the explicit CUAW derivation composes both gates for every requested job.
+Neither producer finalisation time nor anchor publication time is a substitute.
 
 **Offline reference boundary.** The current-use reference and its vectors use
 the existing bounded signed Listing projection (`sellerPrimaryClaim` and
@@ -1744,5 +1904,8 @@ procurement conformance. Production consumers must authenticate a full Listing
 under DACS-1, including its normal/procurement publisher-role rules, before
 supplying execution authority. Native substrate proof codecs and this full
 Listing integration remain outside the fixture implementation. The reference
+also fails closed on sealed selection because it does not execute a positive
+SAC-8 receipt-reproduction adapter; its negative fixture is not proof that a
+valid sealed selection can be positively admitted. The reference
 also leaves historical HTLC/liquidity-tank evidence indeterminate; it does not
 claim terminal cross-chain nonpayment availability.

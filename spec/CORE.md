@@ -154,7 +154,7 @@ type AnchorReceipt = {
   observedAt: number                   // unix ms; observer time, not consensus time
   blockRef?: {
     id: string                         // canonical block/state identifier
-    height?: string                    // decimal string; avoids JSON safe-integer ambiguity
+    height?: string                    // canonical ASCII unsigned decimal: "0" or [1-9][0-9]*
     timestamp?: number                 // consensus timestamp, unix ms
   }
   replacementTransactionRef?: {              // REQUIRED for state == "replaced" when known
@@ -172,7 +172,13 @@ type AnchorReceipt = {
 
 - (SR2-4) Every receipt MUST carry binding-defined evidence for its claimed observation. An `established` receipt claiming `accepted`, `included`, or `finalized` MUST carry enough authenticated evidence for an independent consumer to verify that state. An `indeterminate` receipt MUST carry evidence of the observation failure or unorderable conflict and MUST satisfy the preserved-receipt rules above; it cannot establish a lifecycle state on its own. The receipt fields alone are assertions, not proof.
 - (SR2-5) Every receipt MUST bind one canonical logical address, its actual native address, the artifact content hash, transaction reference, writer, and applicable nonce. On a mismatch in any available binding, a consumer MUST reject the receipt as invalid; the mismatch is not an `indeterminate` observation and does not identify a different artifact.
-- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. A `finalized` receipt MUST identify the finality profile under which finality was established. Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT substitute for it.
+- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. When
+  `blockRef.height` is present, it MUST be the canonical ASCII unsigned-decimal
+  string `"0"` or `[1-9][0-9]*`; readers MUST reject signs, whitespace, Unicode
+  digits, leading zeros, decimal points, and exponents. A `finalized` receipt
+  MUST identify the finality profile under which finality was established.
+  Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT
+  substitute for it.
 - (SR2-7) Consumers MUST validate each `established` lifecycle transition against the graph above. In particular, `dropped`, `expired`, or `reorged` cannot themselves satisfy a success gate, but a later authenticated `accepted`/`included`/`finalized` snapshot MAY do so through the defined re-entry path. A `replaced` transaction cannot satisfy a gate unless the consumer separately verifies a qualifying receipt for the replacement. Each SR-2 binding MUST define how authenticated native evidence orders and reconciles snapshots for one transaction; `observedAt` MUST NOT determine precedence. Conflicting snapshots that the binding cannot order produce an `indeterminate` observation disposition over the unchanged last established state, including when that state is `included` or `finalized`.
 
 **Cross-stage gates.** DACS distinguishes reversible progression, irreversible effects, and terminal audit publication:
@@ -1074,7 +1080,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `finalityObservationResponseVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Verifier-local orchestration inputs such as `finalityResolutionContextVersion` use their own closed discriminator before acquisition or action. Unsigned derivation-data types use the same distinct-type rule; the unallocated current-use candidate carries only `currentUseReplayableDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `finalityObservationResponseVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Verifier-local orchestration inputs such as `finalityResolutionContextVersion` use their own closed discriminator before acquisition or action. Unsigned derivation-data types use the same distinct-type rule: CUR-v1 carries only `currentUseReplayableDerivationVersion: "1"`, standalone AWT-v1 only `authenticatedWindowDerivationVersion: "1"`, and the composed current-use authenticated-window candidate only `currentUseAuthenticatedWindowDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 

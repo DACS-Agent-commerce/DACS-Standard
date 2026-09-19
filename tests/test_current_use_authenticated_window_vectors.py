@@ -218,6 +218,14 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
             "currentUseAuthenticatedWindowDerivationVersion": "1",
             "authenticatedWindowDerivationVersion": "1",
         })["ok"])
+        self.assertFalse(require_current_use_authenticated_window_derivation({
+            "currentUseAuthenticatedWindowDerivationVersion": "1",
+            "derivationVersion": "1",
+        })["ok"])
+        self.assertFalse(require_current_use_authenticated_window_derivation({
+            "currentUseAuthenticatedWindowDerivationVersion": "1",
+            "futureDerivationVersion": "1",
+        })["ok"])
 
     def test_provider_capture_remains_provisional(self):
         case = self.cases["combined-provider-receipt"]

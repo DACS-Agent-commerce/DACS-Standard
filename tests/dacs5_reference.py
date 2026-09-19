@@ -4769,7 +4769,8 @@ def require_current_use_authenticated_window_derivation(derivation):
     if not isinstance(derivation, dict):
         return {"ok": False, "reason": "combined derivation is not an object"}
     present = {key for key in derivation
-               if isinstance(key, str) and key.endswith("DerivationVersion")}
+               if isinstance(key, str) and (
+                   key == "derivationVersion" or key.endswith("DerivationVersion"))}
     if present != {"currentUseAuthenticatedWindowDerivationVersion"}:
         return {"ok": False, "reason": "combined discriminator is missing, unknown, or non-exclusive"}
     if derivation.get("currentUseAuthenticatedWindowDerivationVersion") != CURRENT_USE_AUTHENTICATED_WINDOW_DERIVATION_VERSION:
@@ -4818,7 +4819,8 @@ def require_current_use_replayable_derivation(derivation):
         return {"ok": False, "reason": "current-use derivation is not an object"}
     present = {
         key for key in derivation
-        if isinstance(key, str) and key.endswith("DerivationVersion")
+        if isinstance(key, str) and (
+            key == "derivationVersion" or key.endswith("DerivationVersion"))
     }
     unknown = present - _ALL_DERIVATION_DISCRIMINATORS
     if unknown:

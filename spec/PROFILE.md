@@ -42,7 +42,10 @@ normalization-tolerant job-specific derivation — declared at CORE v0.3 /
 DACS-1 v0.7 / DACS-2 v0.6 / DACS-3 v0.5 / DACS-4 v0.7 / DACS-5 v0.5. On top of
 that candidate, the governed legacy-agreement activation boundary is added as
 DACS-4 v0.8 (LAA-1..LAA-7), and DACS-3 v0.6 / DACS-5 v0.6 apply that checkpoint
-to pay-bearing commitment and bundle/reputation admission. Its complete current
+to pay-bearing commitment and bundle/reputation admission, including the exact
+pre-checkpoint commitment plus co-signed `LegacyPaymentReservation` and
+exclusive `LegacyTransitionSettlementEvidence` transition and its current-profile-ineligible
+`transition-only` audit classification. Its complete current
 document tuple is:
 
 | Document | Version | Status |

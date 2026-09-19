@@ -7,8 +7,6 @@ import sys
 import unittest
 from pathlib import Path
 
-import dacs5_reference as R
-
 try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -18,6 +16,12 @@ except ImportError:  # pragma: no cover - environment-dependent
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TESTS = ROOT / "tests"
+if str(TESTS) not in sys.path:
+    sys.path.insert(0, str(TESTS))
+
+import dacs5_reference as R  # noqa: E402
+
 VECTORS = (
     ROOT / "conformance" / "vectors" / "security"
     / "legacy-agreement-admission-v0.8.json"
@@ -45,7 +49,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
 
     def test_hash_count_and_names_are_exact(self):
         vectors = self.data["vectors"]
-        self.assertEqual(self.data["count"], 100)
+        self.assertEqual(self.data["count"], 166)
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(len({case["name"] for case in vectors}), len(vectors))
         self.assertEqual(
@@ -88,6 +92,98 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
                     self.assertFalse(case["want"]["paymentSideEffects"])
                     self.assertTrue(case["want"]["historicalAuditEligible"])
 
+    def test_transition_audit_is_valid_but_current_profile_ineligible(self):
+        case = self.cases["laa-transition-completion-audit"]
+        self.assertEqual(R.laa_admission(case["input"]), "pass")
+        self.assertNotIn("reservationHash", case["input"]["settlementEvidence"])
+        transition = case["input"]["transitionEvidence"]
+        self.assertEqual(
+            transition["discriminator"], "legacyTransitionEvidenceVersion:1"
+        )
+        self.assertNotIn("evidenceVersion", transition)
+        self.assertEqual(
+            transition["reservationRef"]["contentHash"],
+            case["input"]["reservation"]["contentHash"],
+        )
+        self.assertEqual(
+            transition["reservationRef"]["anchor"]["locator"],
+            "dacs4:legacy-payment-reservation:job-a:2",
+        )
+        self.assertEqual(
+            transition["signature"]["signer"],
+            case["input"]["sessionAuthority"]["orchestratorPrimaryClaim"],
+        )
+        self.assertEqual(
+            transition["receiptWriter"],
+            case["input"]["sessionAuthority"]["orchestratorPrimaryClaim"],
+        )
+        self.assertEqual(
+            case["input"]["paymentAuthority"]["idempotencyResolution"],
+            "consumed",
+        )
+        self.assertEqual(
+            case["input"]["paymentAuthority"]["idempotencyKey"],
+            case["input"]["reservation"]["projection"]["idempotencyKey"],
+        )
+        self.assertEqual(case["want"]["dacs5Admission"], "transition-only")
+        self.assertFalse(case["want"]["historicalAuditEligible"])
+        self.assertTrue(case["want"]["transitionAuditEligible"])
+        self.assertFalse(case["want"]["currentPaymentEligible"])
+        self.assertFalse(case["want"]["paymentSideEffects"])
+        self.assertFalse(case["want"]["currentMetricEligible"])
+
+    def test_nested_signature_algorithm_containers_return_error(self):
+        for operation, case_name in (
+            ("authorize-payment", "laa-exact-precheckpoint-commitment-transition"),
+            ("transition-audit", "laa-transition-completion-audit"),
+        ):
+            control = self.cases[case_name]["input"]
+            self.assertEqual(R.laa_admission(control), "pass")
+            for malformed in (["ed25519"], {"name": "ed25519"}):
+                slots = range(3) if operation == "authorize-payment" else (None,)
+                for slot in slots:
+                    with self.subTest(operation=operation, malformed=malformed, slot=slot):
+                        value = copy.deepcopy(control)
+                        if slot is None:
+                            value["transitionEvidence"]["signature"]["algorithm"] = malformed
+                        else:
+                            value["reservation"]["signatures"][slot]["algorithm"] = malformed
+                        self.assertEqual(R.laa_admission(value), "error")
+                        self.assertFalse(R.laa_want(value)["paymentSideEffects"])
+
+    def test_preactivation_payment_remains_current_eligible(self):
+        case = self.cases["laa-preactivation-authoritative-absence-allows-legacy"]
+        self.assertEqual(R.laa_admission(case["input"]), "pass")
+        self.assertEqual(case["want"]["dacs5Admission"], "current-eligible")
+        self.assertTrue(case["want"]["currentPaymentEligible"])
+        self.assertTrue(case["want"]["currentMetricEligible"])
+
+    def test_transition_evidence_phase_and_txref_shape_are_strict(self):
+        malformed = (
+            "laa-transition-audit-txrefs-empty-object",
+            "laa-transition-audit-txrefs-boolean",
+            "laa-transition-audit-txrefs-string",
+            "laa-transition-audit-phase-index-negative",
+            "laa-transition-audit-phase-index-noninteger",
+        )
+        for name in malformed:
+            with self.subTest(case=name):
+                self.assertEqual(R.laa_admission(self.cases[name]["input"]), "error")
+
+        bool_case = self.cases[
+            "laa-transition-audit-phase-index-boolean-equals-one"
+        ]["input"]
+        self.assertIs(bool_case["transitionEvidence"]["phaseIndex"], True)
+        self.assertEqual(bool_case["reservation"]["projection"]["phaseIndex"], 1)
+        self.assertEqual(R.laa_admission(bool_case), "error")
+
+        for name in (
+            "laa-transition-audit-txrefs-duplicate",
+            "laa-transition-audit-txrefs-rail-substitution",
+        ):
+            with self.subTest(case=name):
+                self.assertEqual(R.laa_admission(self.cases[name]["input"]), "fail")
+
     def test_generic_bundle_and_derive_paths_share_one_admission(self):
         for case in self.data["vectors"]:
             with self.subTest(case=case["name"]):
@@ -105,7 +201,17 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertFalse(commit_pass["want"]["currentPaymentEligible"])
         self.assertEqual(commit_pass["want"]["dacs5Admission"], "commit-permitted")
         self.assertFalse(commit_pass["want"]["currentMetricEligible"])
-        # A later pay-bearing payment re-runs LAA and is refused after activation.
+        # A later payment re-runs LAA. Only the exact pre-checkpoint bounded
+        # commitment is transition-only; a post-checkpoint commitment is refused.
+        transition = self.cases["laa-exact-precheckpoint-commitment-transition"]
+        self.assertEqual(R.laa_admission(transition["input"]), "pass")
+        self.assertEqual(transition["want"]["dacs5Admission"], "transition-only")
+        self.assertTrue(transition["want"]["paymentSideEffects"])
+        self.assertFalse(transition["want"]["currentMetricEligible"])
+        self.assertEqual(
+            transition["input"]["paymentAuthority"]["idempotencyResolution"],
+            "unused",
+        )
         post = self.cases["laa-fresh-legacy-after-checkpoint"]
         self.assertEqual(R.laa_admission(post["input"]), "fail")
         self.assertFalse(post["want"]["paymentSideEffects"])
@@ -114,7 +220,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         case = self.cases["laa-caller-lowered-payment-position-cannot-mask-stale-absence"]
         value = case["input"]
         self.assertEqual(value["paymentPosition"], "40")
-        self.assertEqual(value["sessionAuthority"]["paymentHeadPosition"], "150")
+        self.assertEqual(value["sessionAuthority"]["paymentHeadPosition"], "80")
         self.assertEqual(value["checkpoint"]["absenceCoverPosition"], "50")
         self.assertEqual(R.laa_admission(value), "indeterminate")
         self.assertFalse(case["want"]["paymentSideEffects"])
@@ -126,7 +232,73 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             "laa-backdated-generated-at",
             "laa-authentic-historical-settlement",
             "laa-missing-commitment-era-proof",
-            "laa-no-in-flight-transition",
+            "laa-exact-precheckpoint-commitment-transition",
+            "laa-precheckpoint-payment-reservation",
+            "laa-precheckpoint-reservation-writer-missing",
+            "laa-precheckpoint-reservation-wrong-writer",
+            "laa-postcheckpoint-payment-reservation",
+            "laa-transition-reservation-signature-algorithm-list",
+            "laa-transition-reservation-signature-algorithm-object",
+            "laa-transition-audit-signature-algorithm-list",
+            "laa-transition-audit-signature-algorithm-object",
+            "laa-transition-reservation-writer-missing",
+            "laa-transition-reservation-wrong-writer",
+            "laa-transition-audit-reservation-writer-missing",
+            "laa-transition-audit-reservation-wrong-writer",
+            "laa-transition-completion-audit",
+            "laa-transition-payee-substitution",
+            "laa-transition-job-substitution",
+            "laa-transition-agreement-substitution",
+            "laa-transition-amount-substitution",
+            "laa-transition-rail-substitution",
+            "laa-transition-terms-substitution",
+            "laa-transition-cross-session-request",
+            "laa-transition-cross-phase-request",
+            "laa-transition-reservation-unavailable",
+            "laa-transition-reservation-signature-invalid",
+            "laa-transition-reservation-missing-seller-signature",
+            "laa-transition-reservation-duplicate-signer",
+            "laa-transition-reservation-swapped-party-signers",
+            "laa-transition-reservation-unauthorized-extra-signer",
+            "laa-transition-reservation-changed-orchestrator",
+            "laa-transition-reservation-orchestrator-coincident",
+            "laa-transition-attacker-paying-key",
+            "laa-transition-payer-bundle-substitution",
+            "laa-transition-payee-bundle-substitution",
+            "laa-transition-deadline-expired",
+            "laa-transition-deadline-authority-unavailable",
+            "laa-transition-missing-payment-authority",
+            "laa-transition-clock-domain-incomparable",
+            "laa-transition-idempotency-consumed",
+            "laa-transition-idempotency-authority-unavailable",
+            "laa-transition-audit-without-checkpoint",
+            "laa-transition-audit-missing-commitment",
+            "laa-transition-audit-missing-settlement",
+            "laa-transition-audit-reservation-mismatch",
+            "laa-transition-audit-missing-distinct-evidence",
+            "laa-transition-audit-unknown-evidence-type",
+            "laa-transition-audit-ordinary-evidence-coercion",
+            "laa-transition-audit-evidence-signature-invalid",
+            "laa-transition-audit-reservation-ref-malformed",
+            "laa-transition-audit-reservation-ref-hash-only",
+            "laa-transition-audit-reservation-ref-foreign-anchor",
+            "laa-transition-audit-evidence-signature-missing",
+            "laa-transition-audit-evidence-wrong-signer",
+            "laa-transition-audit-evidence-writer-missing",
+            "laa-transition-audit-evidence-wrong-writer",
+            "laa-transition-audit-evidence-swapped-signer-writer",
+            "laa-transition-audit-idempotency-key-missing",
+            "laa-transition-audit-idempotency-authority-unavailable",
+            "laa-transition-audit-idempotency-wrong-key",
+            "laa-transition-audit-idempotency-unused",
+            "laa-transition-audit-txrefs-empty-object",
+            "laa-transition-audit-txrefs-boolean",
+            "laa-transition-audit-txrefs-string",
+            "laa-transition-audit-phase-index-boolean-equals-one",
+            "laa-transition-audit-phase-index-negative",
+            "laa-transition-audit-phase-index-noninteger",
+            "laa-transition-audit-txrefs-duplicate",
+            "laa-transition-audit-txrefs-rail-substitution",
             "laa-same-position-unorderable",
             "laa-deterministic-mismatch-precedes-outage",
             "laa-ca10-postactivation-legacy-commit",
@@ -206,9 +378,15 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertIn("(CA-10)", spec3)
         self.assertIn("LAA-1..LAA-7", spec5)
         self.assertIn("LAA `fail` or `error` yields RSV `rejected`", spec5)
-        self.assertIn("inFlightTransition: \"none\"", spec4)
+        self.assertIn("inFlightTransition: \"signed-payment-reservation\"", spec4)
+        self.assertIn("transition-only", spec4)
+        self.assertIn("transition-only", spec5)
+        self.assertIn("LegacyTransitionSettlementEvidence", spec4)
+        self.assertIn("LegacyTransitionSettlementEvidence", spec5)
         self.assertIn("generatedAt", spec4)
         self.assertIn('"dacs-legacy-agreement-checkpoint:v1:"', core)
+        self.assertIn('"dacs-legacy-payment-reservation:v1:"', core)
+        self.assertIn('"dacs-legacy-transition-evidence:v1:"', core)
         self.assertIn(VECTORS.name, plan)
         self.assertIn(VECTORS.name, readme)
         self.assertIn("generate_legacy_agreement_admission_vectors.py --check", workflow)
@@ -432,6 +610,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             "laa-checkpoint-unavailable",               # indeterminate
             "laa-ca10-preactivation-legacy-commit",     # commit-permitted
             "laa-zero-pay-legacy-outside-gate",         # admitted-non-payment
+            "laa-exact-precheckpoint-commitment-transition",  # transition-only
         ):
             with self.subTest(disposition=name):
                 d = R.derive(
@@ -1199,6 +1378,16 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             self.cases["laa-ca10-preactivation-legacy-commit"]["input"]
         )
 
+    def _reservation_input(self):
+        return copy.deepcopy(
+            self.cases["laa-precheckpoint-payment-reservation"]["input"]
+        )
+
+    def _record_reservation(self, ledger):
+        reservation = self._reservation_input()
+        self.assertEqual(ledger.reserve(reservation), "reservation-recorded")
+        return reservation
+
     def test_ledger_commit_records_bounded_commitment_without_payment(self):
         ledger = R.LegacyAgreementLedger()
         commit = self._commit_input()
@@ -1207,9 +1396,39 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         session_id = commit["sessionAuthority"]["sessionId"]
         content_hash = commit["agreement"]["contentHash"]
         self.assertTrue(ledger.commitment_recorded(session_id, content_hash))
-        self.assertEqual(ledger.retained_head(session_id, content_hash), "150")
+        self.assertEqual(ledger.retained_head(session_id, content_hash), "80")
         # The commit itself has zero payment side effects.
         self.assertFalse(R.laa_want(commit)["paymentSideEffects"])
+
+    def test_ledger_reservation_rejects_session_storage_poisoning(self):
+        """Reservation storage is keyed by the immutable committed session.
+
+        Caller changes to identities, bundle authority, payer keys,
+        orchestrator, or authenticated head are rejected before any reservation
+        can be retained.
+        """
+        mutations = (
+            ("sessionId", "session-other"),
+            ("jobId", "job-other"),
+            ("payerPrimaryClaim", "did:demos:attacker"),
+            ("payeePrimaryClaim", "did:demos:attacker"),
+            ("payerBundleHash", "buyer-bundle-hash-other"),
+            ("payeeBundleHash", "seller-bundle-hash-other"),
+            ("payerAuthorizedKeys", ["key:demos:attacker"]),
+            ("orchestratorPrimaryClaim", "did:demos:orchestrator-other"),
+            ("paymentHeadPosition", "81"),
+        )
+        for field, replacement in mutations:
+            with self.subTest(field=field):
+                ledger = R.LegacyAgreementLedger()
+                commit = self._commit_input()
+                self.assertEqual(ledger.commit(commit), "commit-permitted")
+                reservation = self._reservation_input()
+                reservation["sessionAuthority"][field] = replacement
+                self.assertEqual(ledger.reserve(reservation), "rejected")
+                self.assertFalse(
+                    ledger.reservation_recorded("session-a", "agreement-hash-a")
+                )
 
     def test_ledger_payment_uses_retained_head_not_caller_nested_copy(self):
         """Lowering the caller-supplied nested payment-head cannot turn a stale
@@ -1217,8 +1436,9 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         ledger = R.LegacyAgreementLedger()
         commit = self._commit_input()
         ledger.commit(commit)
+        reservation = self._record_reservation(ledger)
 
-        payment = copy.deepcopy(commit)
+        payment = copy.deepcopy(reservation)
         payment["operation"] = "authorize-payment"
         payment["sessionAuthority"]["paymentHeadPosition"] = "40"
         payment["checkpoint"]["resolution"] = "absent"
@@ -1228,10 +1448,10 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         # Without the retained head the caller's lowered assertion passes.
         self.assertEqual(R.laa_admission(payment), "pass")
         # The verifier-owned ledger refuses because absence (<=50) is stale
-        # against the retained authenticated head (150).
+        # against the retained authenticated head (80).
         self.assertEqual(ledger.authorize_payment(payment), "indeterminate")
         # The nested caller mutation did not leak into retained state.
-        self.assertEqual(ledger.retained_head("session-a", "agreement-hash-a"), "150")
+        self.assertEqual(ledger.retained_head("session-a", "agreement-hash-a"), "80")
 
     def test_ledger_rejects_payment_without_prior_commitment(self):
         ledger = R.LegacyAgreementLedger()
@@ -1245,8 +1465,9 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         ledger = R.LegacyAgreementLedger()
         commit = self._commit_input()
         ledger.commit(commit)
+        reservation = self._record_reservation(ledger)
 
-        payment = copy.deepcopy(commit)
+        payment = copy.deepcopy(reservation)
         payment["operation"] = "authorize-payment"
 
         wrong_session = copy.deepcopy(payment)
@@ -1270,12 +1491,12 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         nested_lowered = copy.deepcopy(commit)
         nested_lowered["sessionAuthority"]["paymentHeadPosition"] = "40"
         self.assertEqual(ledger.commit(nested_lowered), "commit-permitted")
-        self.assertEqual(ledger.retained_head(session_id, content_hash), "150")
+        self.assertEqual(ledger.retained_head(session_id, content_hash), "80")
 
         top_lowered = copy.deepcopy(commit)
         top_lowered["paymentPosition"] = "40"
         self.assertEqual(ledger.commit(top_lowered), "commit-permitted")
-        self.assertEqual(ledger.retained_head(session_id, content_hash), "150")
+        self.assertEqual(ledger.retained_head(session_id, content_hash), "80")
 
     def test_ledger_idempotent_commit_and_no_expanded_payment_authority(self):
         ledger = R.LegacyAgreementLedger()
@@ -1285,14 +1506,114 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertEqual(ledger.commit(copy.deepcopy(commit)), "commit-permitted")
         session_id = commit["sessionAuthority"]["sessionId"]
         content_hash = commit["agreement"]["contentHash"]
-        self.assertEqual(ledger.retained_head(session_id, content_hash), "150")
+        self.assertEqual(ledger.retained_head(session_id, content_hash), "80")
 
-        # A post-activation payment on the committed session re-runs LAA and is
-        # refused; the finalized commitment granted no expanded payment authority.
-        payment = copy.deepcopy(commit)
+        reservation = self._record_reservation(ledger)
+        self.assertTrue(ledger.reservation_recorded(session_id, content_hash))
+
+        # An exact post-activation completion may use the original bounded
+        # authority, but it grants no expanded or repeat payment authority.
+        payment = copy.deepcopy(reservation)
         payment["operation"] = "authorize-payment"
         payment["checkpoint"]["resolution"] = "verified"
-        self.assertEqual(ledger.authorize_payment(payment), "rejected")
+        payment["checkpoint"]["authenticatedAbsence"] = False
+        payment["settlementEvidence"]["resolution"] = "absent"
+        self.assertEqual(ledger.authorize_payment(payment), "transition-only")
+
+    def test_adapter_effect_is_called_once_only_for_exact_transition(self):
+        """The adapter boundary, not merely ``laa_want``, gates a fake payment.
+
+        One exact pre-checkpoint commitment and signed reservation may call the
+        effect once. Every
+        substitution, unavailable authority, post-checkpoint commitment,
+        expired deadline, and duplicate/retry leaves the call count unchanged.
+        This fixture demonstrates in-process call ordering and idempotency only;
+        it does not claim crash-durable atomicity or provider reconciliation.
+        """
+        calls = []
+
+        def effect(request):
+            calls.append(request)
+
+        def merge(target, changes):
+            for key, replacement in changes.items():
+                if isinstance(replacement, dict) and isinstance(target.get(key), dict):
+                    merge(target[key], replacement)
+                else:
+                    target[key] = replacement
+
+        def prepared(payment_changes=None):
+            ledger = R.LegacyAgreementLedger()
+            commit = self._commit_input()
+            self.assertEqual(ledger.commit(commit), "commit-permitted")
+            reservation = self._record_reservation(ledger)
+            payment = copy.deepcopy(reservation)
+            payment["operation"] = "authorize-payment"
+            payment["checkpoint"]["resolution"] = "verified"
+            payment["checkpoint"]["authenticatedAbsence"] = False
+            payment["settlementEvidence"]["resolution"] = "absent"
+            merge(payment, payment_changes or {})
+            return ledger, payment
+
+        # Substitutions and unavailable/expired authority never reach the effect.
+        rejected = (
+            {"paymentEffect": {"payeeAddress": "demos1attackeraddress"}},
+            {"paymentEffect": {"payingKey": "key:demos:attacker"}},
+            {"paymentEffect": {"payerBundleHash": "buyer-bundle-hash-other"}},
+            {"paymentEffect": {"payeeBundleHash": "seller-bundle-hash-other"}},
+            {"paymentEffect": {"jobId": "job-other"}},
+            {"agreement": {"contentHash": "agreement-hash-other"}},
+            {"paymentEffect": {"amount": {"amount": "11.00"}}},
+            {"railAuthority": {"railId": "evm-erc20"}},
+            {"agreement": {"listingRef": {"contentHash": "listing-hash-other"}}},
+            {"paymentEffect": {"sessionId": "session-other"}},
+            {"paymentEffect": {"phase": "pay-evm-erc20"}},
+            {"paymentAuthority": {"resolution": "unavailable"}},
+            {"paymentAuthority": {"authenticatedNowMs": 2001}},
+        )
+        for payment_changes in rejected:
+            with self.subTest(payment=payment_changes):
+                ledger, payment = prepared(payment_changes)
+                before = len(calls)
+                self.assertNotIn(
+                    ledger.execute_payment(payment, effect),
+                    {"transition-only", "current-eligible"},
+                )
+                self.assertEqual(len(calls), before)
+
+        # Missing verifier authority is indeterminate and side-effect free.
+        ledger, payment = prepared()
+        payment.pop("paymentAuthority")
+        before = len(calls)
+        self.assertEqual(ledger.execute_payment(payment, effect), "indeterminate")
+        self.assertEqual(len(calls), before)
+
+        # The exact original transition calls once; identical retry calls zero.
+        ledger, payment = prepared()
+        self.assertEqual(ledger.execute_payment(payment, effect), "transition-only")
+        self.assertEqual(len(calls), before + 1)
+        self.assertEqual(calls[-1]["payerBundleHash"], "buyer-bundle-hash-a")
+        self.assertEqual(calls[-1]["payeeBundleHash"], "seller-bundle-hash-a")
+        self.assertEqual(calls[-1]["payingKey"], "key:demos:buyer-paying")
+        self.assertEqual(calls[-1]["payeeAddress"], "demos1selleraddress")
+        self.assertEqual(ledger.execute_payment(copy.deepcopy(payment), effect), "rejected")
+        self.assertEqual(len(calls), before + 1)
+
+        # A commitment attempted directly against the verified activation
+        # checkpoint is rejected and never stored, so no later payment can call
+        # the adapter. This avoids a causally impossible absence proof.
+        ledger = R.LegacyAgreementLedger()
+        post = self._commit_input()
+        post["checkpoint"]["resolution"] = "verified"
+        post["checkpoint"]["authenticatedAbsence"] = False
+        post["commitment"]["position"] = "110"
+        self.assertEqual(ledger.commit(post), "rejected")
+        self.assertFalse(ledger.commitment_recorded("session-a", "agreement-hash-a"))
+        payment = copy.deepcopy(post)
+        payment["operation"] = "authorize-payment"
+        before = len(calls)
+        self.assertEqual(ledger.execute_payment(payment, effect), "rejected")
+        self.assertEqual(len(calls), before)
 
     def test_ledger_completed_precheckpoint_historical_audit_still_passes(self):
         """A finalized pre-checkpoint settlement remains an authentic historical

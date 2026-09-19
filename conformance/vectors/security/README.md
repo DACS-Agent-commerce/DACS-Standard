@@ -57,7 +57,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 11 | `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 366 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
-| [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 100 | `error` / `fail` / `indeterminate` / `pass` |
+| [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -1026,7 +1026,7 @@ promotion remain pending.
 
 ### `legacy-agreement-admission-v0.8.json` — §9.5.1 LAA-1..LAA-7 / §8.6 CA-10
 
-One hundred candidate cases execute the governed transition from legacy
+One hundred sixty-six candidate cases execute the governed transition from legacy
 `AgreementDocument` payment authority to the payee-bound artifacts
 (`PayeeBoundAgreementDocument` and the stronger
 `IdentityBoundPayeeAgreementDocument`). They cover fixed-address checkpoint
@@ -1034,9 +1034,30 @@ resolution, steward/domain/address/policy authentication, finalized activation
 order, binding-qualified pre-activation absence that covers the authenticated
 payment-effect head, the stale-absence race across the activation boundary, a
 caller-supplied low `paymentPosition` being inert against that authenticated
-head, immediate current-session refusal, the zero-length in-flight policy, and
-CA-10 commitment-phase selection (a commitment `pass` carrying zero payment side
-effects while the later payment re-runs LAA).
+head, current-session refusal except for the exact finalized pre-checkpoint
+commitment plus signed/anchored payment-reservation transition, and CA-10 commitment-phase selection (a commitment
+`pass` carrying zero payment side effects while the later payment re-runs LAA).
+The transition vectors derive a `LegacyPaymentReservation` from the real
+Agreement, signed Listing phase, authenticated session, pinned signed rail, and
+actual `PaymentPhaseInput`. Its unique role-bound buyer/seller signatures plus
+distinct orchestrator signature when required, and pre-checkpoint receipt with
+an authenticated writer equal to the retained orchestrator bind
+the runtime `payeeAddress`, job, session, phase/index, authenticated payer/payee
+bundle hashes, authorized paying key, amount, currency, rail, terms hash,
+deadline, and idempotency key. The exclusive signed
+`LegacyTransitionSettlementEvidence` references the exact reservation without
+adding an ignorable field to ordinary `SettlementEvidence`; missing, unknown,
+coerced, or substituted transition evidence is non-authorizing. Its full
+canonical reservation reference must resolve the exact expected logical address
+and receipt, its signer and SR-2 writer must equal the retained orchestrator,
+and audit authority must prove the exact reservation idempotency key consumed.
+Its phase index is a strict non-boolean non-negative integer, and every
+transaction reference must be a valid closed-union `ChainTxRef` member in the
+duplicate-free exact success set for the authenticated payment phase.
+The stateful ledger rejects altered retained session identities, bundles, keys,
+or head before storing any reservation;
+substitution, repricing, expired/incomparable time, unavailable authority, and
+consumed idempotency all remain side-effect free.
 
 Historical cases require the exact party-signed agreement, agreement-hash
 commitment, and settlement-evidence binding to carry finalized receipts on one
@@ -1070,7 +1091,9 @@ non-NFC spelling) is malformed and rejected `error` before any payee-bound,
 identity-bound, zero-pay, absence, or checkpoint branch may otherwise
 authorize, and the `LegacyAgreementLedger` refuses a `commit` / `authorize_payment`
 keyed by such an identity. A historical LAA `pass` is
-`historical-only` (current-ineligible),
+`historical-only` (current-ineligible); an exact post-checkpoint completion is
+`transition-only` (payment/audit valid but equally excluded from current
+reputation, volume, `bundleCount`, and `bundleRefs`),
 never a generic `continue`: it is excluded from current metrics on every bundle
 type (`AttestationBundle`, `FaultAttestationBundle`,
 `EvidenceBoundFaultAttestationBundle`) and every derivation path (`derive`,
@@ -1080,6 +1103,11 @@ LAA input; a missing, malformed, unknown, or caller-only `laaDisposition`
 without that full object excludes the bundle from `bundleCount`, `bundleRefs`,
 and every metric — never default-eligible. The set carries the
 candidate corrective release pin and complete module tuple.
+
+The fake adapter exercises deterministic offline authority fixtures and proves
+in-process call ordering and idempotency. It does not claim crash-durable
+transactionality, native proof codecs, live-provider reconciliation, or
+production conformance.
 
 Regenerate and execute from the repository root:
 

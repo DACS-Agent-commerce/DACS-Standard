@@ -17,10 +17,16 @@ The format used per release:
 
 - **Current pay-bearing sessions require payout binding** (#377) — adds the
   steward-signed `LegacyAgreementActivationCheckpoint` and LAA-1..LAA-7. At
-  activation, new and in-flight pay-bearing sessions must use a payee-bound
-  artifact — `PayeeBoundAgreementDocument` or the stronger
+  activation, new pay-bearing commitments must use a payee-bound artifact —
+  `PayeeBoundAgreementDocument` or the stronger
   `IdentityBoundPayeeAgreementDocument` with `commit-identity-bound-payee-agreement`;
-  the v0.x transition has no caller-asserted in-flight exception.
+  the only transition is an exact legacy commitment plus distinct buyer/seller/
+  signed `LegacyPaymentReservation`, both finalized
+  strictly before the checkpoint. The reservation is derived from the real
+  Agreement, Listing, session, pinned rail, and `PaymentPhaseInput`, and binds
+  its actual destination, payer/payee bundle identities, authorized paying key,
+  economics, deadline, and idempotency key. Its exact signer set is the unique
+  buyer and seller plus the session orchestrator only when distinct.
 - **Authenticated historical admission** — legacy agreement signatures remain
   verifiable, but historical settlement authority requires exact agreement,
   commitment, and settlement-evidence bindings with finalized receipts strictly
@@ -45,8 +51,26 @@ The format used per release:
   marks a historical LAA `pass` current-ineligible — `historical-only`, never a
   generic `continue` — excluded from every current numerator, denominator,
   rating, volume, `bundleCount`, and `bundleRefs` on every bundle type and
-  derivation path. The candidate corrective release pin and complete module
-  tuple are recorded on the affected evidence.
+  derivation path. A permitted post-checkpoint completion is
+  `transition-only`: its payment and audit remain valid, but it contributes no
+  current-profile reputation, volume, `bundleCount`, or `bundleRefs`. It emits
+  the exclusive signed `LegacyTransitionSettlementEvidence` with an exact
+  full canonical reservation `AttestationRef`; its signature signer and SR-2
+  receipt writer both bind to the retained session orchestrator, and audit
+  authority proves the exact reservation idempotency key is consumed. Its
+  signed phase index is a strict non-boolean non-negative integer, while its
+  transaction references validate against the closed `ChainTxRef` union and
+  the duplicate-free exact success set for the authenticated phase. Ordinary
+  `SettlementEvidence` remains unchanged and cannot be coerced into the
+  transition type. Unsupported readers reject
+  the new discriminator instead of silently counting it. An
+  adapter-level fake-effect harness proves exactly one original transition can
+  call the effect; substitutions, missing authority, post-checkpoint
+  commitments/reservations, deadline failures, and duplicates cannot. This is
+  deterministic in-process call-order/idempotency evidence, not a claim of
+  crash-durable atomicity or native-provider conformance. The candidate
+  corrective release pin and complete module tuple are recorded on the affected
+  evidence.
 
 ### Fixed — legacy-payment LAA session binding and replay carrier
 

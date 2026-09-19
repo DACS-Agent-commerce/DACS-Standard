@@ -40,7 +40,7 @@ def merge(base: dict, changes: dict | None) -> dict:
 
 
 def base_input(*, operation: str = "historical-audit", artifact: str = "legacy") -> dict:
-    return {
+    value = {
         "surface": "dacs4-laa",
         "operation": operation,
         "pipelineHasPayment": True,
@@ -50,7 +50,13 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "orderDomain": ORDER_DOMAIN,
             "jobId": "job-a",
             "sessionId": "session-a",
-            "paymentHeadPosition": "150",
+            "paymentHeadPosition": "80",
+            "payerPrimaryClaim": "did:demos:buyer",
+            "payerBundleHash": "buyer-bundle-hash-a",
+            "payerAuthorizedKeys": ["key:demos:buyer-paying"],
+            "payeePrimaryClaim": "did:demos:seller",
+            "payeeBundleHash": "seller-bundle-hash-a",
+            "orchestratorPrimaryClaim": "did:demos:orchestrator",
         },
         "agreement": {
             "artifact": artifact,
@@ -62,6 +68,15 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "generatedAt": 10,
             "pbVerified": artifact in R.LAA_PAYEE_BOUND_ARTIFACTS,
             "ibhVerified": artifact in {"identity-bound", "identity-bound-payee"},
+            "listingRef": {
+                "listingId": "listing-a", "version": 1,
+                "contentHash": "listing-hash-a",
+            },
+            "terms": {
+                "price": {"amount": "10.00", "currency": "DEM"},
+                "rail": {"railId": "demos-native:DEM", "version": 1},
+                "deadline": 2000,
+            },
         },
         "checkpoint": {
             "resolution": "verified",
@@ -75,7 +90,7 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "receiptState": "finalized",
             "position": "100",
             "authenticatedAbsence": False,
-            "absenceCoverPosition": "200",
+            "absenceCoverPosition": "80",
             "createdAt": 1,
             "substrate": GOVERNING_SUBSTRATE,
             "orderDomain": ORDER_DOMAIN,
@@ -107,9 +122,122 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "substrate": GOVERNING_SUBSTRATE,
             "orderDomain": ORDER_DOMAIN,
         },
+        "transitionEvidence": {
+            "resolution": "verified",
+            "shape": "valid",
+            "discriminator": "legacyTransitionEvidenceVersion:1",
+            "signatureDomain": "dacs-legacy-transition-evidence:v1:",
+            "agreementBindingMatches": True,
+            "agreementHash": "agreement-hash-a",
+            "job": "job-a",
+            "session": "session-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+            "outcome": "success",
+            "paymentTxRefs": [{
+                "kind": "demos", "txHash": "transition-tx-a", "blockNumber": 42,
+            }],
+            "paymentAmount": {"amount": "10.00", "currency": "DEM"},
+            "settlementFinalityValid": True,
+            "reservationRef": {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": "dacs4:legacy-payment-reservation:job-a:2",
+                },
+                "contentHash": "",
+            },
+            "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "fixture-transition-evidence-signature",
+                "signatureValid": True,
+            },
+            "receiptWriter": "did:demos:orchestrator",
+            "receiptState": "finalized",
+            "position": "120",
+            "strictlyBeforeAtSamePosition": None,
+            "observedAt": 30,
+            "substrate": GOVERNING_SUBSTRATE,
+            "orderDomain": ORDER_DOMAIN,
+        },
+        "listingAuthority": {
+            "resolution": "verified",
+            "signatureValid": True,
+            "contentHash": "listing-hash-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+        },
+        "railAuthority": {
+            "resolution": "verified",
+            "signatureValid": True,
+            "railId": "demos-native:DEM",
+            "version": 1,
+            "contentHash": "rail-hash-a",
+            "phaseHandler": "pay-dem",
+        },
         "presentationPosition": "150",
         "paymentPosition": "150",
+        "paymentEffect": {
+            "jobId": "job-a",
+            "sessionId": "session-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+            "payerPrimaryClaim": "did:demos:buyer",
+            "payerBundleHash": "buyer-bundle-hash-a",
+            "payingKey": "key:demos:buyer-paying",
+            "payeePrimaryClaim": "did:demos:seller",
+            "payeeBundleHash": "seller-bundle-hash-a",
+            "payeeAddress": "demos1selleraddress",
+            "amount": {"amount": "10.00", "currency": "DEM"},
+        },
+        "reservation": {
+            "resolution": "verified",
+            "shape": "valid",
+            "discriminator": "legacyPaymentReservationVersion:1",
+            "signatureDomain": "dacs-legacy-payment-reservation:v1:",
+            "signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ],
+            "addressMatches": True,
+            "logicalAddress": "dacs4:legacy-payment-reservation:job-a:2",
+            "receiptWriter": "did:demos:orchestrator",
+            "receiptState": "finalized",
+            "position": "85",
+            "strictlyBeforeAtSamePosition": None,
+            "substrate": GOVERNING_SUBSTRATE,
+            "orderDomain": ORDER_DOMAIN,
+            "projection": {},
+            "contentHash": "",
+        },
+        "paymentAuthority": {
+            "resolution": "verified",
+            "clockDomain": ORDER_DOMAIN,
+            "authenticatedNowMs": 1500,
+            "idempotencyResolution": "unused",
+            "idempotencyKey": "",
+        },
     }
+    for signature in value["reservation"]["signatures"]:
+        signature["algorithm"] = "ed25519"
+    projection_verdict, projection = R.laa_transition_projection(value)
+    if projection_verdict != "pass":
+        raise AssertionError(f"base transition projection: {projection_verdict}")
+    value["reservation"]["projection"] = projection
+    value["reservation"]["contentHash"] = hashlib.sha256(
+        json.dumps(
+            projection, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    value["paymentAuthority"]["idempotencyKey"] = projection["idempotencyKey"]
+    if operation == "transition-audit":
+        value["paymentAuthority"]["idempotencyResolution"] = "consumed"
+    value["transitionEvidence"]["reservationRef"]["contentHash"] = value["reservation"]["contentHash"]
+    return value
 
 
 def case(
@@ -121,11 +249,38 @@ def case(
     artifact: str = "legacy",
     changes: dict | None = None,
     drops: list[tuple[str, str]] | None = None,
+    rederive_reservation: bool = False,
 ) -> dict:
     value = merge(base_input(operation=operation, artifact=artifact), changes)
+    signatures = value.get("reservation", {}).get("signatures")
+    if isinstance(signatures, list):
+        for signature in signatures:
+            if isinstance(signature, dict):
+                signature.setdefault("algorithm", "ed25519")
+    if rederive_reservation:
+        projection_verdict, projection = R.laa_transition_projection(value)
+        if projection_verdict != "pass":
+            raise AssertionError(f"{name}: cannot rederive reservation: {projection_verdict}")
+        value["reservation"]["projection"] = projection
+        value["reservation"]["contentHash"] = hashlib.sha256(
+            json.dumps(
+                projection, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        value["paymentAuthority"]["idempotencyKey"] = projection["idempotencyKey"]
+        value["transitionEvidence"]["reservationRef"]["contentHash"] = value["reservation"]["contentHash"]
+        logical_address = (
+            "dacs4:legacy-payment-reservation:"
+            f"{projection['jobId']}:{projection['phaseIndex']}"
+        )
+        value["reservation"]["logicalAddress"] = logical_address
+        value["transitionEvidence"]["reservationRef"]["anchor"]["locator"] = logical_address
     for container, key in (drops or []):
-        if isinstance(value.get(container), dict):
-            value[container].pop(key, None)
+        target = value
+        for segment in container.split("."):
+            target = target.get(segment) if isinstance(target, dict) else None
+        if isinstance(target, dict):
+            target.pop(key, None)
     verdict = R.laa_admission(value)
     if verdict != expected:
         raise AssertionError(
@@ -247,10 +402,490 @@ def vectors() -> list[dict]:
             changes={"agreement": {"generatedAt": -1000}, "commitment": {"position": "110"}},
         ),
         case(
-            "laa-no-in-flight-transition", "fail",
-            "a pre-checkpoint commitment cannot initiate payment after immediate activation",
+            "laa-exact-precheckpoint-commitment-transition", "pass",
+            "the exact finalized pre-checkpoint commitment and signed reservation may complete one original effect",
             operation="authorize-payment",
             changes={"commitment": {"position": "80"}, "settlementEvidence": {"resolution": "absent"}},
+        ),
+        case(
+            "laa-precheckpoint-payment-reservation", "pass",
+            "the exact party- and orchestrator-signed payment effect is reserved before activation",
+            operation="reserve-transition-payment",
+            changes={
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True,
+                               "absenceCoverPosition": "85"},
+            },
+        ),
+        case(
+            "laa-precheckpoint-reservation-writer-missing", "error",
+            "reservation creation requires an authenticated finalized receipt writer",
+            operation="reserve-transition-payment",
+            changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True,
+                                    "absenceCoverPosition": "85"}},
+            drops=[("reservation", "receiptWriter")],
+        ),
+        case(
+            "laa-precheckpoint-reservation-wrong-writer", "fail",
+            "reservation creation rejects a receipt written by another identity",
+            operation="reserve-transition-payment",
+            changes={
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True,
+                               "absenceCoverPosition": "85"},
+                "reservation": {"receiptWriter": "did:demos:attacker"},
+            },
+        ),
+        case(
+            "laa-postcheckpoint-payment-reservation", "fail",
+            "a reservation cannot be created after activation",
+            operation="reserve-transition-payment",
+        ),
+        case(
+            "laa-transition-completion-audit", "pass",
+            "a bounded post-checkpoint completion remains auditable but current-profile ineligible",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"position": "120"}},
+        ),
+        case(
+            "laa-transition-payee-substitution", "fail",
+            "the actual rail destination cannot differ from the signed reservation",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"payeeAddress": "demos1attackeraddress"}},
+        ),
+        case(
+            "laa-transition-job-substitution", "fail",
+            "a pre-checkpoint commitment cannot be replayed into another job",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"jobId": "job-other"}},
+        ),
+        case(
+            "laa-transition-agreement-substitution", "fail",
+            "a pre-checkpoint commitment cannot authorize another agreement hash",
+            operation="authorize-payment",
+            changes={"agreement": {"contentHash": "agreement-hash-other"}},
+        ),
+        case(
+            "laa-transition-amount-substitution", "fail",
+            "a pre-checkpoint commitment cannot be repriced",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"amount": {"amount": "11.00"}}},
+        ),
+        case(
+            "laa-transition-rail-substitution", "fail",
+            "a pre-checkpoint commitment cannot select another rail",
+            operation="authorize-payment",
+            changes={"railAuthority": {"railId": "evm-erc20:1:USDC"}},
+        ),
+        case(
+            "laa-transition-terms-substitution", "fail",
+            "a pre-checkpoint commitment cannot alter its signed payment terms",
+            operation="authorize-payment",
+            changes={"agreement": {"listingRef": {"contentHash": "listing-hash-other"}}},
+        ),
+        case(
+            "laa-transition-cross-session-request", "fail",
+            "a pre-checkpoint commitment cannot be replayed into another session",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"sessionId": "session-other"}},
+        ),
+        case(
+            "laa-transition-cross-phase-request", "fail",
+            "a pre-checkpoint commitment cannot be replayed into another phase",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"phase": "pay-evm-erc20"}},
+        ),
+        case(
+            "laa-transition-reservation-unavailable", "indeterminate",
+            "unavailable pre-checkpoint reservation authority cannot authorize payment",
+            operation="authorize-payment",
+            changes={"reservation": {"resolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-reservation-writer-missing", "error",
+            "a finalized reservation receipt must authenticate its writer before payment",
+            operation="authorize-payment",
+            drops=[("reservation", "receiptWriter")],
+        ),
+        case(
+            "laa-transition-reservation-wrong-writer", "fail",
+            "the reservation receipt writer must be the retained orchestrator",
+            operation="authorize-payment",
+            changes={"reservation": {"receiptWriter": "did:demos:attacker"}},
+        ),
+        case(
+            "laa-transition-audit-reservation-writer-missing", "error",
+            "transition audit cannot rely on a reservation with no authenticated writer",
+            operation="transition-audit",
+            drops=[("reservation", "receiptWriter")],
+        ),
+        case(
+            "laa-transition-audit-reservation-wrong-writer", "fail",
+            "transition audit rejects a foreign reservation receipt writer",
+            operation="transition-audit",
+            changes={"reservation": {"receiptWriter": "did:demos:attacker"}},
+        ),
+        case(
+            "laa-transition-reservation-signature-invalid", "fail",
+            "a reservation without the required valid party signatures cannot authorize payment",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-buyer", "signatureValid": False},
+                {"role": "seller", "signer": "did:demos:seller",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-signature-algorithm-list", "error",
+            "a list-valued reservation signature algorithm is malformed, never an exception",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer", "algorithm": ["ed25519"],
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller", "algorithm": "ed25519",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator", "algorithm": "ed25519",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-signature-algorithm-object", "error",
+            "an object-valued reservation signature algorithm is malformed, never an exception",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer", "algorithm": {"name": "ed25519"},
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller", "algorithm": "ed25519",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator", "algorithm": "ed25519",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-missing-seller-signature", "fail",
+            "the exact authenticated seller must sign the reservation",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-duplicate-signer", "fail",
+            "one signer cannot occupy two required reservation roles",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-duplicate", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-swapped-party-signers", "fail",
+            "buyer and seller signature roles bind their authenticated identities",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:seller",
+                 "value": "fixture-signature-swapped-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-swapped-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-unauthorized-extra-signer", "fail",
+            "an extra unauthenticated signer cannot expand the closed signer set",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer",
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+                {"role": "observer", "signer": "did:demos:attacker",
+                 "value": "fixture-signature-attacker", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-changed-orchestrator", "fail",
+            "the reservation binds the verifier-owned authenticated session orchestrator",
+            operation="authorize-payment",
+            changes={"sessionAuthority": {"orchestratorPrimaryClaim": "did:demos:orchestrator-other"}},
+        ),
+        case(
+            "laa-transition-reservation-orchestrator-coincident", "pass",
+            "no third signature is required when the authenticated orchestrator is the buyer",
+            operation="authorize-payment",
+            changes={
+                "sessionAuthority": {"orchestratorPrimaryClaim": "did:demos:buyer"},
+                "reservation": {"receiptWriter": "did:demos:buyer", "signatures": [
+                    {"role": "buyer", "signer": "did:demos:buyer",
+                     "value": "fixture-signature-buyer", "signatureValid": True},
+                    {"role": "seller", "signer": "did:demos:seller",
+                     "value": "fixture-signature-seller", "signatureValid": True},
+                ]},
+            },
+            rederive_reservation=True,
+        ),
+        case(
+            "laa-transition-attacker-paying-key", "fail",
+            "the payer key must be in verifier-owned authenticated payer authority",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"payingKey": "key:demos:attacker"}},
+        ),
+        case(
+            "laa-transition-payer-bundle-substitution", "fail",
+            "the actual payer bundle must match authenticated session authority",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"payerBundleHash": "buyer-bundle-hash-other"}},
+        ),
+        case(
+            "laa-transition-payee-bundle-substitution", "fail",
+            "the actual payee bundle must match authenticated session authority",
+            operation="authorize-payment",
+            changes={"paymentEffect": {"payeeBundleHash": "seller-bundle-hash-other"}},
+        ),
+        case(
+            "laa-transition-deadline-expired", "fail",
+            "an exact transition payment after its signed deadline is refused",
+            operation="authorize-payment",
+            changes={"paymentAuthority": {"authenticatedNowMs": 2001}},
+        ),
+        case(
+            "laa-transition-deadline-authority-unavailable", "indeterminate",
+            "unavailable authenticated deadline authority cannot authorize payment",
+            operation="authorize-payment",
+            changes={"paymentAuthority": {"resolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-missing-payment-authority", "indeterminate",
+            "missing verifier-owned deadline and idempotency authority cannot authorize payment",
+            operation="authorize-payment",
+            changes={"paymentAuthority": None},
+        ),
+        case(
+            "laa-transition-clock-domain-incomparable", "indeterminate",
+            "a deadline clock outside the authenticated ordering domain is incomparable",
+            operation="authorize-payment",
+            changes={"paymentAuthority": {"clockDomain": "other:clock"}},
+        ),
+        case(
+            "laa-transition-idempotency-consumed", "fail",
+            "a consumed original idempotency key cannot cause another payment",
+            operation="authorize-payment",
+            changes={"paymentAuthority": {"idempotencyResolution": "consumed"}},
+        ),
+        case(
+            "laa-transition-idempotency-authority-unavailable", "indeterminate",
+            "unavailable idempotency authority cannot authorize payment",
+            operation="authorize-payment",
+            changes={"paymentAuthority": {"idempotencyResolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-audit-without-checkpoint", "fail",
+            "checkpoint absence cannot be relabelled as a transition-era audit",
+            operation="transition-audit",
+            changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True}},
+        ),
+        case(
+            "laa-transition-audit-missing-commitment", "indeterminate",
+            "transition audit requires the finalized pre-checkpoint commitment",
+            operation="transition-audit",
+            changes={"commitment": {"resolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-audit-missing-settlement", "indeterminate",
+            "transition audit requires finalized distinct transition evidence",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"resolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-audit-reservation-mismatch", "fail",
+            "transition evidence must bind the exact signed reservation reference",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"reservationRef": {"contentHash": "0" * 64}}},
+        ),
+        case(
+            "laa-transition-audit-reservation-ref-malformed", "error",
+            "a scalar reservation reference is malformed, never transition authority",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"reservationRef": "reservation-a"}},
+        ),
+        case(
+            "laa-transition-audit-reservation-ref-hash-only", "error",
+            "a hash without the canonical reservation anchor is not an AttestationRef",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"reservationRef": {
+                "contentHash": "0" * 64,
+            }}},
+            drops=[("transitionEvidence.reservationRef", "anchor")],
+        ),
+        case(
+            "laa-transition-audit-reservation-ref-foreign-anchor", "fail",
+            "a well-formed reference at another logical address cannot bind the reservation",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"reservationRef": {"anchor": {
+                "kind": "storage-program", "locator": "dacs4:legacy-payment-reservation:job-other:2",
+            }}}},
+        ),
+        case(
+            "laa-transition-audit-missing-distinct-evidence", "indeterminate",
+            "ordinary settlement evidence cannot substitute for missing transition evidence",
+            operation="transition-audit",
+            changes={"transitionEvidence": None, "settlementEvidence": {"position": "120"}},
+        ),
+        case(
+            "laa-transition-audit-unknown-evidence-type", "error",
+            "an unknown transition-evidence discriminator is not interpreted",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"discriminator": "legacyTransitionEvidenceVersion:99"}},
+        ),
+        case(
+            "laa-transition-audit-ordinary-evidence-coercion", "error",
+            "the distinct transition type cannot also claim ordinary SettlementEvidence",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"evidenceVersion": "1"}},
+        ),
+        case(
+            "laa-transition-audit-evidence-signature-invalid", "fail",
+            "transition evidence requires its own valid domain-separated signature",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": {"signatureValid": False}}},
+        ),
+        case(
+            "laa-transition-audit-signature-algorithm-list", "error",
+            "a list-valued transition-evidence signature algorithm is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": {"algorithm": ["ed25519"]}}},
+        ),
+        case(
+            "laa-transition-audit-signature-algorithm-object", "error",
+            "an object-valued transition-evidence signature algorithm is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": {"algorithm": {"name": "ed25519"}}}},
+        ),
+        case(
+            "laa-transition-audit-evidence-signature-missing", "error",
+            "transition evidence without its signature envelope is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": None}},
+        ),
+        case(
+            "laa-transition-audit-evidence-wrong-signer", "fail",
+            "the transition-evidence signer must be the retained session orchestrator",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": {"signer": "did:demos:seller"}}},
+        ),
+        case(
+            "laa-transition-audit-evidence-writer-missing", "error",
+            "the finalized transition-evidence receipt must authenticate its writer",
+            operation="transition-audit",
+            drops=[("transitionEvidence", "receiptWriter")],
+        ),
+        case(
+            "laa-transition-audit-evidence-wrong-writer", "fail",
+            "the transition-evidence receipt writer must be the retained orchestrator",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"receiptWriter": "did:demos:seller"}},
+        ),
+        case(
+            "laa-transition-audit-evidence-swapped-signer-writer", "fail",
+            "party identities cannot replace the orchestrator as evidence signer/writer",
+            operation="transition-audit",
+            changes={"transitionEvidence": {
+                "signature": {"signer": "did:demos:buyer"},
+                "receiptWriter": "did:demos:seller",
+            }},
+        ),
+        case(
+            "laa-transition-audit-idempotency-key-missing", "error",
+            "transition audit requires the exact consumed reservation idempotency key",
+            operation="transition-audit",
+            drops=[("paymentAuthority", "idempotencyKey")],
+        ),
+        case(
+            "laa-transition-audit-idempotency-authority-unavailable", "indeterminate",
+            "unavailable consumption authority cannot prove a completed transition",
+            operation="transition-audit",
+            changes={"paymentAuthority": {"idempotencyResolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-audit-idempotency-wrong-key", "fail",
+            "consumption of another key cannot prove this reservation executed",
+            operation="transition-audit",
+            changes={"paymentAuthority": {"idempotencyKey": "0" * 64}},
+        ),
+        case(
+            "laa-transition-audit-idempotency-unused", "fail",
+            "an unused reservation key proves no transition payment completed",
+            operation="transition-audit",
+            changes={"paymentAuthority": {"idempotencyResolution": "unused"}},
+        ),
+        case(
+            "laa-transition-audit-txrefs-empty-object", "error",
+            "an empty object is not a member of the closed ChainTxRef union",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"paymentTxRefs": [{}]}},
+        ),
+        case(
+            "laa-transition-audit-txrefs-boolean", "error",
+            "a boolean is not a member of the closed ChainTxRef union",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"paymentTxRefs": [True]}},
+        ),
+        case(
+            "laa-transition-audit-txrefs-string", "error",
+            "a string is not a member of the closed ChainTxRef union",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"paymentTxRefs": ["bogus"]}},
+        ),
+        case(
+            "laa-transition-audit-phase-index-boolean-equals-one", "error",
+            "boolean true cannot exploit host-language equality with phase index one",
+            operation="transition-audit",
+            changes={
+                "listingAuthority": {"phaseIndex": 1},
+                "paymentEffect": {"phaseIndex": 1},
+                "transitionEvidence": {"phaseIndex": True},
+            },
+            rederive_reservation=True,
+        ),
+        case(
+            "laa-transition-audit-phase-index-negative", "error",
+            "a negative transition-evidence phase index is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"phaseIndex": -1}},
+        ),
+        case(
+            "laa-transition-audit-phase-index-noninteger", "error",
+            "a numerically equal floating point phase index is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"phaseIndex": 2.0}},
+        ),
+        case(
+            "laa-transition-audit-txrefs-duplicate", "fail",
+            "duplicate canonical transaction references are not an exact settlement set",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"paymentTxRefs": [
+                {"kind": "demos", "txHash": "transition-tx-a", "blockNumber": 42},
+                {"kind": "demos", "txHash": "transition-tx-a", "blockNumber": 42},
+            ]}},
+        ),
+        case(
+            "laa-transition-audit-txrefs-rail-substitution", "fail",
+            "a well-formed reference for another rail cannot replace the exact pay-dem set",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"paymentTxRefs": [{
+                "kind": "evm", "chainId": 1, "txHash": "0x01",
+            }]}},
         ),
         case(
             "laa-authentic-historical-settlement", "pass",
@@ -727,7 +1362,7 @@ def document() -> dict:
             "releasePin": RELEASE_PIN,
             "moduleVersions": CURRENT_MODULE_TUPLE,
         },
-        "description": "Governed legacy-agreement activation and authenticated historical settlement admission.",
+        "description": "Governed legacy-agreement activation, bounded transition completion, and authenticated settlement audit admission.",
         "provenance": {
             "issue": "DACS-Agent-commerce/DACS-Standard#377",
             "generator": "scripts/generate_legacy_agreement_admission_vectors.py",

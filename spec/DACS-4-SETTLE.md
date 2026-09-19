@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; and adds the governed legacy-agreement activation checkpoint and LAA-1..LAA-7, requiring payee-bound agreements for current pay-bearing sessions while retaining authenticated historical legacy audit; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; and adds the governed legacy-agreement activation checkpoint and LAA-1..LAA-7, including the distinct signed reservation and transition-evidence types, requiring payee-bound agreements for current pay-bearing sessions while retaining authenticated historical legacy audit; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 **Unallocated compatibility proposal (#392).** The finality-bound evidence type, rail profile, and FV-1..FV-10 verifier below are candidate additive contracts. They do not allocate a DACS-4 minor or reinterpret any existing `SettlementEvidence` bytes.
 
 The current composed v0.8 candidate also separates the AP2 provider-status attestation from the selected SR-3 binding's native transaction reference through the `ap2-sr3` `ChainTxRef` arm, freezes the existing `ap2` arm, defines the Demos DAHR `demos-web2-request` form, and requires numeric rail-registry selection with authenticated definition matching and no older-version fallback.
@@ -559,7 +559,7 @@ type LegacyAgreementActivationCheckpoint = {
   legacyAgreementCheckpointVersion: "1"
   substrate: string                    // exact CORE §5.1 substrate identifier
   policy: "payee-bound-for-pay-bearing-sessions"
-  inFlightTransition: "none"           // zero-length transition; see LAA-3
+  inFlightTransition: "signed-payment-reservation" // bounded completion; see LAA-3
   createdAt: number                    // signed metadata; never the activation clock
   signature: ComponentSignature        // authorized DACS registry steward
 }
@@ -600,6 +600,75 @@ only support historical audit. PB-1..PB-3 never apply to the legacy shape, and
 no checkpoint rule retroactively describes its runtime destination as
 agreement-bound.
 
+The bounded transition uses a distinct pre-checkpoint artifact because the
+legacy `AgreementDocument` authenticates the price and rail but does **not**
+authenticate the runtime `PaymentPhaseInput.payee.payeeAddress`:
+
+```
+type LegacyPaymentReservation = {
+  legacyPaymentReservationVersion: "1"
+  jobId: string
+  sessionId: string
+  agreementHash: string
+  listingContentHash: string
+  phase: PaymentPhaseType
+  phaseIndex: number
+  payerPrimaryClaim: ClaimReference
+  payerBundleHash: string
+  payingKey: ClaimReference
+  payeePrimaryClaim: ClaimReference
+  payeeBundleHash: string
+  orchestratorPrimaryClaim: ClaimReference
+  payeeAddress: string
+  amount: PriceTerm
+  agreementTermsHash: string
+  railId: string
+  railVersion: number
+  railDefinitionHash: string
+  deadline: number
+  idempotencyKey: string
+  signatures: LegacyPaymentReservationSignature[]
+}
+
+type LegacyPaymentReservationSignature = ComponentSignature & {
+  role: "buyer" | "seller" | "orchestrator"
+}
+```
+
+The reservation projection is derived, never copied from a caller-authored
+authorization object: the consumer joins the committed legacy agreement and
+its signed Listing reference, the signed Listing phase and phase index, the
+authenticated session roster, the pinned signed `RailDefinition`, and the
+actual `PaymentPhaseInput` including payer and payee bundle hashes, payer key,
+and rail-specific `payeeAddress`. The payer/payee bundle hashes MUST equal the
+verifier-owned authenticated session roster and `payingKey` MUST be a real
+authorized claim in that retained payer bundle; copying those strings from the
+effect is not authority. `amount` MUST equal `agreement.terms.price`; `railId` and
+`railVersion` MUST equal both the agreement reference and pinned definition;
+`phase` MUST equal the agreement, Listing phase, and rail handler; and every
+identity, job, session, agreement, Listing, terms, and rail hash MUST match the
+independently resolved source. `idempotencyKey` is
+`sha256(UTF8("dacs-laa-reservation-idem:v1:" || jobId || ":" || bare_integer(phaseIndex)))`.
+
+The canonical form omits `signatures`. Each required signer signs
+`"dacs-legacy-payment-reservation:v1:" || sha256(canonical_form)`. The exact
+reservation is anchored via SR-2 at
+`dacs4:legacy-payment-reservation:{jobId}:{phaseIndex}`; the receipt MUST bind
+its canonical hash and authorized orchestrator writer and MUST be finalized
+strictly before the activation checkpoint. The signature set MUST contain
+exactly one `buyer` signature by the authenticated payer and exactly one
+`seller` signature by the authenticated payee. It MUST additionally contain
+exactly one `orchestrator` signature iff the authenticated session orchestrator
+is distinct from both parties; when the orchestrator is co-located with either
+party, that already-required party signature also exercises orchestrator
+authority and a duplicate signer is forbidden. Roles and signers are matched
+to verifier-owned session identities, not caller labels. The buyer and seller
+signatures authenticate the actual destination and economics that the legacy
+agreement could not bind; distinct orchestrator authorization and the receipt
+bind the retained session/execution projection. A missing role, swapped role,
+duplicate signer/role, unauthorized extra signer, changed session orchestrator,
+or invalid signature does not create transition authority.
+
 **Legacy agreement admission (LAA-1..LAA-7).** Apply these rules before PB and
 before any wallet, provider, bridge, idempotency reservation, or other payment
 side effect:
@@ -633,22 +702,28 @@ side effect:
   non-payee `IdentityBoundAgreementDocument`, a `commit-agreement` phase, or a
   legacy-shaped artifact hidden behind `pay-alternative` MUST be rejected before
   payment. A pre-existing Listing does not grandfather a newly started session.
-- **(LAA-3) No in-flight payment transition.** The v0.x policy has a zero-length
-  transition: once the checkpoint is finalized, even a pre-checkpoint session
-  that has not completed payment MUST NOT initiate or resume a payment from a
-  legacy agreement. It must terminate without another payment side effect and,
-  if commerce is still wanted, start a fresh job whose parties sign a
-  payee-bound agreement. CA-3 immutability forbids replacing the committed
-  artifact inside the old job. An authentically committed pre-checkpoint deal
-  continues only under its original signed terms — the already-finalized
-  commitment and any already-finalized payment are reconciled idempotently with
-  exact ordering and no expanded or new payment authority; a commitment
-  finalized before the checkpoint does not grant a post-checkpoint payment
-  effect. Completed pre-checkpoint settlements are historical audit under
-  LAA-4, never a current payment. This explicit refusal avoids a
-  caller-supplied “in flight” label becoming an exception.
-- **(LAA-4) Historical era proof.** A legacy agreement may support historical
-  settlement audit only when the consumer verifies (a) its required party
+- **(LAA-3) Exact pre-checkpoint reserved transition.** Finalization of the
+  checkpoint closes creation of legacy payment authority, but it does not
+  cancel one exact payment whose legacy commitment **and**
+  `LegacyPaymentReservation` both have verified finalized receipts strictly
+  before the checkpoint under LAA-4's ordering rules. Before the rail call the
+  handler MUST re-resolve every source above, recompute the reservation
+  projection, hash, signatures, address and receipt, and match the actual
+  payment effect byte-for-byte to it. It MUST use the original pinned rail and
+  ordinary payment-handler gates. The deadline is evaluated from authenticated
+  authority in its signed clock domain, and the reservation's idempotency key
+  MUST be consumed atomically with the effect.
+  Missing, unavailable, conflicting, pruned, reorged, or incomparable
+  commitment/reservation/deadline/idempotency authority is `indeterminate` and authorizes
+  no side effect. Any substitution, repricing, deadline failure, consumed key,
+  at/after-checkpoint commitment, or attempt to add another payment is `fail`.
+  CA-3 continues to forbid replacing the agreement within the old job. A
+  caller-supplied “in flight” label is never authority: the finalized
+  commitment plus finalized co-signed reservation are the whole exception. A successful
+  completion is classified `transition-only`; it remains auditable under
+  LAA-4 but grants no current-profile reputation, volume, or bundle authority.
+- **(LAA-4) Historical and transition era proof.** A legacy agreement may
+  support settlement audit only when the consumer verifies (a) its required party
   signatures, (b) an exact `AgreementCommitmentRecord` whose `agreementHash`
   recomputes from those bytes, (c) that commitment's finalized receipt, and
   (d) the legacy settlement-evidence record's finalized receipt, with both
@@ -661,7 +736,26 @@ side effect:
   phase is a cross-agreement / cross-job / cross-session / cross-phase replay
   and MUST NOT qualify this agreement's history. Same-block/round evidence
   counts as earlier only when the binding authenticates a strict transaction
-  order. A later presentation or re-anchor does not change the original era.
+  order. A settlement receipt strictly before the checkpoint is
+  `historical-only`. A settlement at or after the checkpoint is valid only as
+  the exclusive signed `LegacyTransitionSettlementEvidence` type, whose
+  `reservationRef` resolves to the exact LAA-3 reservation and whose execution
+  authority establishes that the exact idempotency key recomputed from that
+  reservation is `consumed` for the finalized effect. Missing, unavailable,
+  conflicting, differently keyed, or merely `unused` consumption authority is
+  non-authorizing. Its signed `phaseIndex` MUST be a non-negative safe integer
+  (a boolean or numerically equal non-integer is malformed) and MUST equal the
+  reservation phase index exactly. Every `paymentTxRefs` member MUST validate
+  as one arm of the closed `ChainTxRef` union, and the list MUST be the
+  non-empty, duplicate-free exact success set for the authenticated payment
+  phase under the ordinary rail rules; a well-formed reference for another
+  rail, a duplicate, or a substituted set does not prove this completion.
+  This audit proof is distinct from pre-effect authorization,
+  where that same exact key MUST still be `unused`. The completion must arise
+  from a strictly pre-checkpoint commitment and reservation; it is
+  `transition-only`. Unavailable or incomparable transition authority is
+  `indeterminate`, not historical proof. A later presentation or re-anchor does
+  not change the original era.
 - **(LAA-5) Timestamps are not era proof.** `AgreementDocument.generatedAt`,
   `CommitmentRecord.committedAt`, evidence `observedAt`, signature time,
   catalog time, and wall-clock time are ignored for checkpoint ordering. A
@@ -671,7 +765,8 @@ side effect:
   reference, agreement, commitment, or receipt is `error`; a bad signature,
   hash/address/policy mismatch, or authenticated at/after-checkpoint legacy
   attempt is `fail`; missing, unavailable, conflicting or unorderable authority
-  is `indeterminate`; only a complete pre-checkpoint proof is `pass`. A
+  is `indeterminate`; only complete authority for the requested closed
+  disposition is `pass`. A
   non-object container where an object is required, a missing required field
   (including a missing `agreementBindingMatches` or `agreementHashMatches`), a
   non-string receipt position, an unhashable list/dict in an enum or position
@@ -686,12 +781,20 @@ side effect:
   otherwise authorize. Evaluate
   deterministic mismatch before unrelated uncertainty. `fail`, `indeterminate`
   and `error` authorize zero payment side effects and cannot be downgraded by
-  local policy.
-- **(LAA-7) Audit without authority upgrade.** Historical signatures and exact
+  local policy. A `pass` authorizes only its closed disposition:
+  `current-eligible`, `transition-only`, `historical-only`,
+  `reservation-recorded`, `commit-permitted`, or `admitted-non-payment`.
+  `reservation-recorded` has zero payment side effects. `transition-only` authorizes
+  exactly one LAA-3 completion and is current-metric-ineligible.
+- **(LAA-7) Audit without authority upgrade.** Historical and transition
+  signatures and exact
   bytes remain inspectable even when LAA is non-pass. Such an artifact MUST be
   labelled current-ineligible and MUST NOT authorize a new payment, satisfy a
   current PB claim, or be rewritten/re-signed as
-  `PayeeBoundAgreementDocument`. A zero-pay pipeline is outside this payment-
+  `PayeeBoundAgreementDocument`. A `transition-only` result likewise MUST NOT
+  enter any current numerator, denominator, rating, observed volume,
+  `bundleCount`, or `bundleRefs`; it records completion only for audit and
+  idempotent reconciliation. A zero-pay pipeline is outside this payment-
   authorization gate and retains ordinary agreement-validation semantics.
 
 Before any authorization or irreversible payment effect, every handler MUST
@@ -721,7 +824,7 @@ discriminator, payout binding, selection receipt, companion, or phase and retry
 a weaker path. A payer implementing `SealedSelectionAgreementDocument` MUST
 first resolve and reproduce its SAC-8 receipt.
 
-The legacy `AgreementDocument` remains byte-verifiable with its pre-PB meaning: PB-1 through PB-3 do not apply, and no checkpoint rule retroactively describes its runtime destination as agreement-bound. LAA-1..LAA-7 govern whether a legacy agreement can authorize a current payment or only support historical audit; the pay handler uses `PaymentPhaseInput.payee.payeeAddress` only after those rules pass. `IdentityBoundAgreementDocument` preserves that destination meaning after its IBH proof passes. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
+The legacy `AgreementDocument` remains byte-verifiable with its pre-PB meaning: PB-1 through PB-3 do not apply, and no checkpoint rule retroactively describes its runtime destination as agreement-bound. LAA-1..LAA-7 govern whether a legacy agreement can authorize a pre-activation payment, one exact separately co-signed and anchored `transition-only` completion, or historical audit; the pay handler uses `PaymentPhaseInput.payee.payeeAddress` only after those rules pass. For the transition only, `LegacyPaymentReservation` authenticates that actual effect destination without changing the old agreement bytes or claiming PB conformance. `IdentityBoundAgreementDocument` preserves its historical destination meaning after its IBH proof passes. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
 
 **Payee-destination binding (PB-1..PB-3).** The rules below apply when
 `agreement` is a `PayeeBoundAgreementDocument`,
@@ -1346,7 +1449,10 @@ meaning remain unchanged. A producer explicitly claiming the unallocated #392
 consumer-finality contract uses the structurally distinct
 `FinalityBoundSettlementEvidence`, so an older reader rejects the unknown
 action-bearing type instead of accepting a producer confirmation count without
-FV verification. Failure and delivery evidence remain `SettlementEvidence`.
+FV verification. An LAA-3 post-checkpoint completion uses the structurally
+distinct `LegacyTransitionSettlementEvidence`; the ordinary
+`SettlementEvidence` shape is not extended with an optional reservation field.
+Failure and delivery evidence remain `SettlementEvidence`.
 
 ```
 type SettlementEvidence = {
@@ -1393,6 +1499,25 @@ type SettlementEvidence = {
 
 }
 
+type LegacyTransitionSettlementEvidence = {
+  legacyTransitionEvidenceVersion: "1"        // exclusive; MUST NOT carry evidenceVersion or finalityBoundEvidenceVersion
+  jobId: string
+  sessionId: string
+  agreementHash: string
+  phase: PaymentPhaseType
+  phaseIndex: number                          // non-negative safe integer; booleans/non-integers are malformed
+  outcome: "success"
+  paymentTxRefs: ChainTxRef[]                  // non-empty duplicate-free exact success set for phase; every member validates against the closed union
+  paymentAmount: PriceTerm
+  paymentFee?: PriceTerm
+  settlementFinality: SettlementFinalityRecord
+  reservationRef: AttestationRef              // full canonical ref: exact LegacyPaymentReservation hash plus dacs4:legacy-payment-reservation:{jobId}:{phaseIndex} anchor
+  amendmentRefs?: AttestationRef[]
+  supersedesEvidenceRef?: AttestationRef       // same ST-8 resolved-success meaning as ordinary evidence
+  observedAt: number
+  signature: ComponentSignature                // authenticated phase orchestrator
+}
+
 type RailDefinitionRef = AttestationRef & {
   railId: string
   railVersion: number
@@ -1416,6 +1541,7 @@ type FinalityBoundSettlementEvidence = {
 
 type SettlementEvidenceRecord =
   | SettlementEvidence
+  | LegacyTransitionSettlementEvidence
   | FinalityBoundSettlementEvidence
 
 The finality-bound shape is closed. A #392 producer MUST first authenticate the
@@ -1482,6 +1608,36 @@ Every anchored record that carries a `signature: ComponentSignature` field MUST 
 - `signer` MUST be a ClaimReference whose role is fixed by the artifact's inline comment;
 - `value` MUST be the unpadded Base64URL signature over that artifact's domain-separated payload, validated per CORE §B.7 SIG-6.
 
+For `LegacyTransitionSettlementEvidence`, canonical form omits `signature` and
+the phase orchestrator signs
+`"dacs-legacy-transition-evidence:v1:" || sha256(canonical_form)`. The producer
+MUST dereference `reservationRef`, verify the exact
+`LegacyPaymentReservation`, and require the evidence's job, session, agreement,
+phase/index, amount, orchestrator and finalized rail effect to equal that signed
+reservation and independently authenticated execution authority. The reference
+MUST be a complete canonical `AttestationRef`, resolve to the reservation's
+exact signed content hash, and carry the exact storage-program anchor
+`dacs4:legacy-payment-reservation:{jobId}:{phaseIndex}`. A hash-only object,
+foreign anchor, malformed reference, or reference to another reservation fails
+closed. The evidence signature envelope's `signer` and the independently
+verified SR-2 receipt writer for the evidence MUST both equal the retained
+authenticated session orchestrator; neither the envelope nor an outer bundle
+can supply or replace that authority. The reservation reference's resolved
+receipt MUST satisfy LAA-3's finalized strict-precheckpoint check;
+an untyped hash field on ordinary `SettlementEvidence` is not a substitute.
+
+A consumer MUST select the evidence type from exactly one supported
+discriminator before interpreting shared-looking fields.
+`LegacyTransitionSettlementEvidence` MUST NOT carry `evidenceVersion`,
+`finalityBoundEvidenceVersion`, or be coerced into ordinary
+`SettlementEvidence`; ordinary evidence MUST NOT acquire or imply a transition
+reservation binding. Missing/unknown/conflicting discriminators, an absent or
+substituted reservation reference, invalid transition signature, or unavailable
+otherwise-consistent reference authority authorizes no current metric or
+payment. An unsupported reader rejects the unknown exclusive discriminator
+under CORE §11.1.2 and therefore cannot silently count the completion as an
+ordinary current settlement.
+
 `RailSignature.value` and every other DACS-4 signature-envelope `value` use the
 same SIG-6 encoding. Protocol-specific transaction references retain their own
 encodings, including the base58 Solana `ChainTxRef.signature`.
@@ -1493,13 +1649,15 @@ the signature payload from the exclusive discriminator:
 
 ```
 signed_bytes := "dacs-evidence:v1:" || evidence_hash                 // SettlementEvidence
+signed_bytes := "dacs-legacy-transition-evidence:v1:" || evidence_hash // LegacyTransitionSettlementEvidence
 signed_bytes := "dacs-finality-bound-evidence:v1:" || evidence_hash  // FinalityBoundSettlementEvidence
 ```
 
-A consumer MUST reject a record carrying neither discriminator, both
+A consumer MUST reject a record carrying none or more than one of the three
 discriminators, an unsupported discriminator, or a signature made under the
-other type's domain. It MUST NOT remove `finalityBoundEvidenceVersion` or
-`railDefinitionRef` and retry the object as legacy `SettlementEvidence`.
+other type's domain. It MUST NOT remove `finalityBoundEvidenceVersion`,
+`legacyTransitionEvidenceVersion`, `railDefinitionRef`, or `reservationRef`
+and retry the object as legacy `SettlementEvidence`.
 
 #### 9.7.0 Consumer-verifiable finality (FV-1..FV-10)
 
@@ -2204,7 +2362,7 @@ not a caller-supplied identity.
 | Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |
 | Alternative-payment producer / reader / auditor | APR-1 through APR-8 |
 | Pipeline executor | PIPE-1 through PIPE-6 |
-| Settlement-evidence consumer | Classify the exclusive evidence discriminator and verify its matching domain; for `FinalityBoundSettlementEvidence`, execute FV-1 through FV-10 from the exact signed rail profile and raw authenticated proof context; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
+| Settlement-evidence consumer | Classify the exclusive evidence discriminator and verify its matching domain; for `LegacyTransitionSettlementEvidence`, verify the exact reservation reference and LAA-3/LAA-4 authority and retain `transition-only`; for `FinalityBoundSettlementEvidence`, execute FV-1 through FV-10 from the exact signed rail profile and raw authenticated proof context; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
 
 ### 9.11 Rationale
 
@@ -2233,7 +2391,7 @@ the same method-native DAHR/TLSNotary/zkTLS evidence.
 
 ### 9.12 Backwards compatibility
 
-**Agreement artifacts across minor versions.** A legacy DACS-4 v0.2 payer continues to accept `AgreementDocument` and use the runtime `payeeAddress` under its existing semantics, but cannot claim the LAA current-payment profile. It rejects `PayeeBoundAgreementDocument` at the required `agreementVersion` schema gate and therefore cannot ignore PB and pay anyway. A DACS-4 v0.3 payer recognises both earlier artifacts and preserves their meanings. Readers without identity-bound additions reject the two identity commitment phases and discriminators; readers without complete-selection support reject `commit-selection-bound-agreement` and `sealedSelectionAgreementVersion` before payment. Current readers apply IBH only to the two identity paths, SAC-8 only to the independent selection path, PB/APR to all three payout-bearing types, and LAA-1..LAA-7 before any legacy pay-bearing action. The checkpoint does not change the bytes, signature domain, or historical meaning of `AgreementDocument`; it governs whether that old type can authorize a current payment. This is additive new-type refusal under CORE §11.1.2, not a semantic change to an earlier artifact or a combined selection-and-identity type.
+**Agreement artifacts across minor versions.** A legacy DACS-4 v0.2 payer continues to accept `AgreementDocument` and use the runtime `payeeAddress` under its existing semantics, but cannot claim the LAA current-payment profile. It rejects `PayeeBoundAgreementDocument` at the required `agreementVersion` schema gate and therefore cannot ignore PB and pay anyway. A DACS-4 v0.3 payer recognises both earlier artifacts and preserves their meanings. Readers without identity-bound additions reject the two identity commitment phases and discriminators; readers without complete-selection support reject `commit-selection-bound-agreement` and `sealedSelectionAgreementVersion` before payment. Current readers apply IBH only to the two identity paths, SAC-8 only to the independent selection path, PB/APR to all three payout-bearing types, and LAA-1..LAA-7 before any legacy pay-bearing action. The checkpoint and distinct `LegacyPaymentReservation` do not change the bytes, signature domain, or historical meaning of `AgreementDocument`; the reservation is new-type authority that an older reader rejects and is required only for a bounded post-checkpoint completion. This is additive new-type refusal under CORE §11.1.2, not a semantic change to an earlier artifact or a combined selection-and-identity type.
 
 **Payload attestations across minor versions.** `PayloadAttestationRecord` is a
 new DACS-4 v0.5 artifact with its own `payloadAttestationVersion` discriminator
@@ -2258,6 +2416,15 @@ before counting or settlement verification; it MUST NOT erase the discriminator
 and reinterpret the record as a legacy arm. A current reader continues to
 verify historical `dacs-evidence:v1:` bytes unchanged and applies SB-1's
 exactly-one-authenticated-match rule without rewriting the signed artifact.
+
+**Legacy-transition evidence compatibility.** DACS-4 v0.8 does not add
+`reservationHash`, `reservationRef`, or any other action-bearing optional field
+to ordinary `SettlementEvidence`. A bounded post-checkpoint completion emits
+the exclusive `legacyTransitionEvidenceVersion: "1"` type under its own domain.
+An older reader rejects that unknown discriminator before bundle counting or
+settlement verification. A current reader MUST NOT erase it or treat the
+shared payment fields as `evidenceVersion: "1"`; historical ordinary evidence
+retains its frozen meaning and cannot prove a transition reservation binding.
 
 **Finality-bound evidence compatibility.** The unallocated #392 proposal does
 not add an action-bearing optional member to `SettlementEvidence`. It introduces the
@@ -2331,7 +2498,7 @@ strength fails. Provider capture is explicitly provisional, not irreversible.
 
 **Provider-credential disclosure to the attestation layer (AP2-2/AP2-3).** *Threat:* the AP2-2 attested status fetch necessarily carries a provider API credential through the SR-3 relay; a compromised relay or validator observes it. *Mitigation:* AP2-3 confines the disclosed credential to read-only payment-status scope, so observation yields the ability to read payment statuses on that account — never to charge, refund, or move funds. Operators SHOULD rotate the disclosed credential periodically and MAY scope it per-integration. The residual read exposure (payment metadata on the merchant account) is bounded by the same SR-3 trust floor as every consensus-backed-proxy fetch (§7.3.5) — and includes, specifically, the session↔fiat-payment linkage this rail's own AP2-1 binding creates: a compromised read credential exposes the `dacs_job_id` correlation for every DACS deal on that account until rotation. AP2-3 is an operational MUST that no conformance vector can exercise (it constrains the credential an operator discloses, not an artifact); this threat row is its enforcement surface. *Second residual (disclosure-completeness, not a defence gap):* the AP2-2 status body carries the settlement **amount and currency**, which the SR-3 relay and validators observe; where the agreement is otherwise confidential (an encrypted-anchored mode, roadmap), this discloses amount/currency in cleartext at the same SR-3 floor (§7.3.5), which an operator pricing a private deal should weigh.
 
-**Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes, including by manufacturing or backdating a fresh legacy `AgreementDocument` that has no payout binding. *Mitigation:* for all three payout-bearing agreement types, PB-1 carries the destination inside the co-signed artifact, PB-2 binds it to the vetted identity by the strongest applicable tier, and applicable-but-unresolvable pauses rather than paying (§9.5.1). LAA-1..LAA-7 make the governed checkpoint and finalized commitment/evidence order—not `generatedAt`—the legacy-era test, prohibit every legacy payment at or after activation with no caller-asserted in-flight exception, and keep non-pass history audit-only. The distinct artifacts and phases make unsupported readers reject before settlement rather than ignore PB, IBH, or SAC-8; the sealed-selection type additionally gates on SAC-8. *Residual:* an old reader does not enforce LAA and must not claim the current profile; either non-payee agreement type has no PB guarantee; an authentically pre-checkpoint legacy settlement has no PB guarantee and its runtime destination is historical unbound evidence; a payee asserting a tier-3 address it does not control bears the payee-side risk.
+**Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes, including by manufacturing or backdating a fresh legacy `AgreementDocument` that has no payout binding. *Mitigation:* for all three payout-bearing agreement types, PB-1 carries the destination inside the co-signed artifact, PB-2 binds it to the vetted identity by the strongest applicable tier, and applicable-but-unresolvable pauses rather than paying (§9.5.1). LAA-1..LAA-7 make the governed checkpoint and finalized commitment/reservation/evidence order—not `generatedAt`—the legacy-era test, reject every new legacy commitment or reservation at or after activation, and permit only an exact strictly pre-checkpoint commitment with an exact strictly pre-checkpoint buyer/seller/orchestrator-signed `LegacyPaymentReservation` to complete the effect destination and economics that artifact binds under the LAA-3 deadline and idempotency bounds. The distinct artifacts and phases make unsupported readers reject before settlement rather than ignore PB, IBH, SAC-8, or the reservation; the sealed-selection type additionally gates on SAC-8. *Residual:* an old reader does not enforce LAA and must not claim the current profile; either non-payee agreement type has no PB guarantee; historical legacy settlement predating this reservation contract has no destination-binding guarantee; the reservation authenticates its exact transition destination but does not retroactively make the agreement PB-bound; a payee asserting a tier-3 address it does not control bears the payee-side risk.
 
 **x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* current x402 success evidence signs an `x402-event` and independently verifies the selected transfer against the settlement chain — like the `evm-event` rail, not server- or facilitator-forgeable (§9.5.7). A facilitator receipt remains supplementary and must bind the same transaction/network under X402-1..X402-4. Historical receipt-only evidence remains replayable under its signed bytes but cannot establish an event-level SB-1 identity without a uniquely matching authenticated chain event. Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
 

@@ -939,9 +939,17 @@ def evaluate_rating(data):
     role_to_claim, claim_to_role = party_maps(bundle.get("parties"))
     if role_to_claim is None:
         return "fail", result()
+    verified_roles = bundle.get("verifiedSignerRoles")
+    required_roles = set(role_to_claim)
+    fully_signed = (
+        isinstance(verified_roles, list)
+        and len(verified_roles) == len(required_roles)
+        and all(isinstance(role, str) for role in verified_roles)
+        and set(verified_roles) == required_roles
+    )
     if not (
         bundle.get("outcome") == "completed"
-        and bundle.get("verifiedSignerRoles") == ["buyer", "seller"]
+        and fully_signed
         and listing.get("listingRef") == bundle.get("listingRef")
     ):
         return "fail", result()

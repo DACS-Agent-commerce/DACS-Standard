@@ -1542,9 +1542,23 @@ def build_vectors() -> list[dict]:
         vectors.append(vector(name, "fail", note, data, excluded, trusted_context=context))
 
     rate = rating_input()
+    three_party_rate = copy.deepcopy(rate)
+    three_party_rate["bundle"]["parties"].append({
+        "role": "orchestrator", "primaryClaim": ORCHESTRATOR,
+        "bundleHash": "88" * 32,
+    })
+    three_party_rate["bundle"]["parties"].sort(
+        key=lambda party: (party["role"], party["primaryClaim"], party["bundleHash"])
+    )
+    three_party_rate["bundle"]["verifiedSignerRoles"] = [
+        "buyer", "orchestrator", "seller",
+    ]
+    refresh_outcome(three_party_rate)
     counted = want(admitted=True, rating=True)
     rating_vectors = [
         vector("spa-rating-valid-buyer-to-seller", "pass", "a completed exact-outcome rate phase admits the exact unsigned-hash rating reference", rate, counted),
+        vector("spa-rating-valid-three-party", "pass", "a completed three-party bundle includes the distinct orchestrator's required signature", three_party_rate, counted),
+        vector("spa-rating-missing-orchestrator-signature", "fail", "a three-party completed bundle missing the orchestrator signature cannot admit an ordinary rating", changed(three_party_rate, lambda x: x["bundle"].__setitem__("verifiedSignerRoles", ["buyer", "seller"])), excluded),
         vector("spa-rating-valid-seller-to-buyer", "pass", "the inverse direction uses the same closed artifact and global roster gate", rating_changed(rate, lambda x: x["rating"].update({"rater": SELLER, "target": BUYER, "targetRole": "buyer"}), resign=True, key=SELLER_KEY, signer=SELLER), counted),
         vector("spa-rating-valid-free-text", "pass", "the normative optional freeText member is preserved in the signed bytes and exact reference hash", rating_changed(rate, lambda x: x["rating"].__setitem__("freeText", "Clear and timely delivery."), resign=True), counted),
         vector("spa-rating-valid-dimensions", "pass", "the normative opaque dimensions object is preserved without assigning conformance semantics to its scores", rating_changed(rate, lambda x: x["rating"].__setitem__("dimensions", {"communication": 4.5, "timeliness": 5}), resign=True), counted),

@@ -61,6 +61,13 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
 
+    def test_corpus_documents_spa_composition_limit(self):
+        readme = (ROOT / "conformance/vectors/security/README.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("no positive SPA evidence adapter", readme)
+        self.assertIn("CUAW+SPA conformance", readme)
+
     def test_corpus_hash_and_all_cases(self):
         encoded = json.dumps(
             self.data["vectors"], sort_keys=True, separators=(",", ":"),
@@ -88,25 +95,27 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
                     self.assertIsNone(result["derivation"])
 
     def test_one_sided_fault_without_spa_refuses_before_occurrence(self):
-        one_sided = {
-            "decision": "pass",
-            "bundle": {"outcome": "aborted-by-other"},
-            "roles": {
-                "buyer": {"disposition": "present"},
-                "seller": {"disposition": "absent"},
-            },
-        }
-        with patch("dacs5_reference._current_use_request_admission", return_value=("pass", "admitted", {})), \
-             patch("dacs5_reference._resolve_current_use_job", return_value=one_sided), \
-             patch("dacs5_reference._verify_current_use_outcome_occurrence") as occurrence:
-            result = derive_current_use_authenticated_window(
-                "key:test", [{"jobId": "01J00000000000000000000000"}],
-                0, 100, {}, {"verificationTimeMs": 50},
-            )
-        self.assertEqual("indeterminate", result["decision"])
-        self.assertIn("SPA one-sided outcome authority", result["reason"])
-        self.assertIsNone(result["derivation"])
-        occurrence.assert_not_called()
+        for outcome in ("aborted-by-other", "failed-counterparty"):
+            with self.subTest(outcome=outcome):
+                one_sided = {
+                    "decision": "pass",
+                    "bundle": {"outcome": outcome},
+                    "roles": {
+                        "buyer": {"disposition": "present"},
+                        "seller": {"disposition": "absent"},
+                    },
+                }
+                with patch("dacs5_reference._current_use_request_admission", return_value=("pass", "admitted", {})), \
+                     patch("dacs5_reference._resolve_current_use_job", return_value=one_sided), \
+                     patch("dacs5_reference._verify_current_use_outcome_occurrence") as occurrence:
+                    result = derive_current_use_authenticated_window(
+                        "key:test", [{"jobId": "01J00000000000000000000000"}],
+                        0, 100, {}, {"verificationTimeMs": 50},
+                    )
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("SPA one-sided outcome authority", result["reason"])
+                self.assertIsNone(result["derivation"])
+                occurrence.assert_not_called()
 
     def test_outside_window_job_is_retained_and_replay_mutation_fails(self):
         case = self.cases["combined-verified-outside-window-retained"]

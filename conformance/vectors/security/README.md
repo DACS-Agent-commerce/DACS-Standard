@@ -77,7 +77,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 79 | `fail` / `indeterminate` / `pass` |
 | [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window | 185 | `error` / `fail` / `indeterminate` / `pass` |
-| [`reputation-participation-admission-v0.7.json`](reputation-participation-admission-v0.7.json) | DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8 exact participation and rating admission | 168 | `fail` / `indeterminate` / `pass` |
+| [`reputation-participation-admission-v0.7.json`](reputation-participation-admission-v0.7.json) | DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8 exact participation and rating admission | 170 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 24 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -647,7 +647,7 @@ engine, and remains candidate pending an external cross-run.
 
 ### `reputation-participation-admission-v0.7.json` — DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8
 
-168 candidate vectors exercise the current one-sided-blame and rating consumers.
+170 candidate vectors exercise the current one-sided-blame and rating consumers.
 Both consumers admit only through verifier-owned `trustedContext` outside caller
 input, which binds the exact session and authenticated participant identities to
 the immutable corrective-profile release pin and complete module tuple
@@ -1794,6 +1794,11 @@ bounded reference does not independently reproduce APR-1..APR-4 authority.
 It does not implement a positive APR or SAC-8 adapter or a production native
 outcome proof codec; those remain separate conformance work and cannot be
 inferred from a fixture-only pass.
+The bounded CUAW reference also has no positive SPA evidence adapter: it
+refuses one-sided fault attribution without SPA authority and leaves ordinary
+ratings uncounted without SPA-7. The separate participation corpus exercises
+positive admission; this CUAW set does not establish combined positive
+CUAW+SPA conformance or production nonresponse authority.
 
 ```sh
 python3 scripts/generate_current_use_authenticated_window_vectors.py --check

@@ -6948,6 +6948,10 @@ def _laa_validate_reservation(value, substrate, order_domain, checkpoint_positio
     if reservation.get("logicalAddress") != _laa_reservation_address(
             derived["jobId"], derived["phaseIndex"]):
         return "fail"
+    if not _canonical_identity_string(reservation.get("receiptWriter")):
+        return "error"
+    if reservation["receiptWriter"] != orchestrator:
+        return "fail"
     state_verdict = _laa_receipt_state(reservation)
     if state_verdict != "pass":
         return state_verdict

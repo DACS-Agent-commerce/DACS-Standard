@@ -205,6 +205,7 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             ],
             "addressMatches": True,
             "logicalAddress": "dacs4:legacy-payment-reservation:job-a:2",
+            "receiptWriter": "did:demos:orchestrator",
             "receiptState": "finalized",
             "position": "85",
             "strictlyBeforeAtSamePosition": None,
@@ -416,6 +417,24 @@ def vectors() -> list[dict]:
             },
         ),
         case(
+            "laa-precheckpoint-reservation-writer-missing", "error",
+            "reservation creation requires an authenticated finalized receipt writer",
+            operation="reserve-transition-payment",
+            changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True,
+                                    "absenceCoverPosition": "85"}},
+            drops=[("reservation", "receiptWriter")],
+        ),
+        case(
+            "laa-precheckpoint-reservation-wrong-writer", "fail",
+            "reservation creation rejects a receipt written by another identity",
+            operation="reserve-transition-payment",
+            changes={
+                "checkpoint": {"resolution": "absent", "authenticatedAbsence": True,
+                               "absenceCoverPosition": "85"},
+                "reservation": {"receiptWriter": "did:demos:attacker"},
+            },
+        ),
+        case(
             "laa-postcheckpoint-payment-reservation", "fail",
             "a reservation cannot be created after activation",
             operation="reserve-transition-payment",
@@ -479,6 +498,30 @@ def vectors() -> list[dict]:
             "unavailable pre-checkpoint reservation authority cannot authorize payment",
             operation="authorize-payment",
             changes={"reservation": {"resolution": "unavailable"}},
+        ),
+        case(
+            "laa-transition-reservation-writer-missing", "error",
+            "a finalized reservation receipt must authenticate its writer before payment",
+            operation="authorize-payment",
+            drops=[("reservation", "receiptWriter")],
+        ),
+        case(
+            "laa-transition-reservation-wrong-writer", "fail",
+            "the reservation receipt writer must be the retained orchestrator",
+            operation="authorize-payment",
+            changes={"reservation": {"receiptWriter": "did:demos:attacker"}},
+        ),
+        case(
+            "laa-transition-audit-reservation-writer-missing", "error",
+            "transition audit cannot rely on a reservation with no authenticated writer",
+            operation="transition-audit",
+            drops=[("reservation", "receiptWriter")],
+        ),
+        case(
+            "laa-transition-audit-reservation-wrong-writer", "fail",
+            "transition audit rejects a foreign reservation receipt writer",
+            operation="transition-audit",
+            changes={"reservation": {"receiptWriter": "did:demos:attacker"}},
         ),
         case(
             "laa-transition-reservation-signature-invalid", "fail",
@@ -557,7 +600,7 @@ def vectors() -> list[dict]:
             operation="authorize-payment",
             changes={
                 "sessionAuthority": {"orchestratorPrimaryClaim": "did:demos:buyer"},
-                "reservation": {"signatures": [
+                "reservation": {"receiptWriter": "did:demos:buyer", "signatures": [
                     {"role": "buyer", "signer": "did:demos:buyer",
                      "value": "fixture-signature-buyer", "signatureValid": True},
                     {"role": "seller", "signer": "did:demos:seller",

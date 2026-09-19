@@ -49,7 +49,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
 
     def test_hash_count_and_names_are_exact(self):
         vectors = self.data["vectors"]
-        self.assertEqual(self.data["count"], 156)
+        self.assertEqual(self.data["count"], 162)
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(len({case["name"] for case in vectors}), len(vectors))
         self.assertEqual(
@@ -215,7 +215,13 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             "laa-missing-commitment-era-proof",
             "laa-exact-precheckpoint-commitment-transition",
             "laa-precheckpoint-payment-reservation",
+            "laa-precheckpoint-reservation-writer-missing",
+            "laa-precheckpoint-reservation-wrong-writer",
             "laa-postcheckpoint-payment-reservation",
+            "laa-transition-reservation-writer-missing",
+            "laa-transition-reservation-wrong-writer",
+            "laa-transition-audit-reservation-writer-missing",
+            "laa-transition-audit-reservation-wrong-writer",
             "laa-transition-completion-audit",
             "laa-transition-payee-substitution",
             "laa-transition-job-substitution",

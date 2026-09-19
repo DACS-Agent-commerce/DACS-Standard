@@ -49,7 +49,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
 
     def test_hash_count_and_names_are_exact(self):
         vectors = self.data["vectors"]
-        self.assertEqual(self.data["count"], 162)
+        self.assertEqual(self.data["count"], 166)
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(len({case["name"] for case in vectors}), len(vectors))
         self.assertEqual(
@@ -131,6 +131,25 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertFalse(case["want"]["currentPaymentEligible"])
         self.assertFalse(case["want"]["paymentSideEffects"])
         self.assertFalse(case["want"]["currentMetricEligible"])
+
+    def test_nested_signature_algorithm_containers_return_error(self):
+        for operation, case_name in (
+            ("authorize-payment", "laa-exact-precheckpoint-commitment-transition"),
+            ("transition-audit", "laa-transition-completion-audit"),
+        ):
+            control = self.cases[case_name]["input"]
+            self.assertEqual(R.laa_admission(control), "pass")
+            for malformed in (["ed25519"], {"name": "ed25519"}):
+                slots = range(3) if operation == "authorize-payment" else (None,)
+                for slot in slots:
+                    with self.subTest(operation=operation, malformed=malformed, slot=slot):
+                        value = copy.deepcopy(control)
+                        if slot is None:
+                            value["transitionEvidence"]["signature"]["algorithm"] = malformed
+                        else:
+                            value["reservation"]["signatures"][slot]["algorithm"] = malformed
+                        self.assertEqual(R.laa_admission(value), "error")
+                        self.assertFalse(R.laa_want(value)["paymentSideEffects"])
 
     def test_preactivation_payment_remains_current_eligible(self):
         case = self.cases["laa-preactivation-authoritative-absence-allows-legacy"]
@@ -218,6 +237,10 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             "laa-precheckpoint-reservation-writer-missing",
             "laa-precheckpoint-reservation-wrong-writer",
             "laa-postcheckpoint-payment-reservation",
+            "laa-transition-reservation-signature-algorithm-list",
+            "laa-transition-reservation-signature-algorithm-object",
+            "laa-transition-audit-signature-algorithm-list",
+            "laa-transition-audit-signature-algorithm-object",
             "laa-transition-reservation-writer-missing",
             "laa-transition-reservation-wrong-writer",
             "laa-transition-audit-reservation-writer-missing",

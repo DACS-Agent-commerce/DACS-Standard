@@ -537,6 +537,32 @@ def vectors() -> list[dict]:
             ]}},
         ),
         case(
+            "laa-transition-reservation-signature-algorithm-list", "error",
+            "a list-valued reservation signature algorithm is malformed, never an exception",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer", "algorithm": ["ed25519"],
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller", "algorithm": "ed25519",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator", "algorithm": "ed25519",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
+            "laa-transition-reservation-signature-algorithm-object", "error",
+            "an object-valued reservation signature algorithm is malformed, never an exception",
+            operation="authorize-payment",
+            changes={"reservation": {"signatures": [
+                {"role": "buyer", "signer": "did:demos:buyer", "algorithm": {"name": "ed25519"},
+                 "value": "fixture-signature-buyer", "signatureValid": True},
+                {"role": "seller", "signer": "did:demos:seller", "algorithm": "ed25519",
+                 "value": "fixture-signature-seller", "signatureValid": True},
+                {"role": "orchestrator", "signer": "did:demos:orchestrator", "algorithm": "ed25519",
+                 "value": "fixture-signature-orchestrator", "signatureValid": True},
+            ]}},
+        ),
+        case(
             "laa-transition-reservation-missing-seller-signature", "fail",
             "the exact authenticated seller must sign the reservation",
             operation="authorize-payment",
@@ -733,6 +759,18 @@ def vectors() -> list[dict]:
             "transition evidence requires its own valid domain-separated signature",
             operation="transition-audit",
             changes={"transitionEvidence": {"signature": {"signatureValid": False}}},
+        ),
+        case(
+            "laa-transition-audit-signature-algorithm-list", "error",
+            "a list-valued transition-evidence signature algorithm is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": {"algorithm": ["ed25519"]}}},
+        ),
+        case(
+            "laa-transition-audit-signature-algorithm-object", "error",
+            "an object-valued transition-evidence signature algorithm is malformed",
+            operation="transition-audit",
+            changes={"transitionEvidence": {"signature": {"algorithm": {"name": "ed25519"}}}},
         ),
         case(
             "laa-transition-audit-evidence-signature-missing", "error",

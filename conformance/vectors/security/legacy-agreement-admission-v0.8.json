@@ -18,8 +18,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#377",
     "generator": "scripts/generate_legacy_agreement_admission_vectors.py"
   },
-  "count": 162,
-  "hash": "53916fd98cb1000a7e6cde06f56cd4d00dbea6362002421d85008eac7865f7bd",
+  "count": 166,
+  "hash": "c2b7fbe28b9e7573d30c5251c26b8f71a76c1daa8e6defbae9e4de0c400e3668",
   "vectors": [
     {
       "name": "laa-current-payee-bound-success",
@@ -9898,6 +9898,544 @@
       }
     },
     {
+      "name": "laa-transition-reservation-signature-algorithm-list",
+      "expected": "error",
+      "note": "a list-valued reservation signature algorithm is malformed, never an exception",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "paymentHeadPosition": "80",
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payerAuthorizedKeys": [
+            "key:demos:buyer-paying"
+          ],
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "orchestratorPrimaryClaim": "did:demos:orchestrator"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "jobId": "job-a",
+          "phase": "pay-dem",
+          "generatedAt": 10,
+          "pbVerified": false,
+          "ibhVerified": false,
+          "listingRef": {
+            "listingId": "listing-a",
+            "version": 1,
+            "contentHash": "listing-hash-a"
+          },
+          "terms": {
+            "price": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "demos-native:DEM",
+              "version": 1
+            },
+            "deadline": 2000
+          }
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "absenceCoverPosition": "80",
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "transitionEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyTransitionEvidenceVersion:1",
+          "signatureDomain": "dacs-legacy-transition-evidence:v1:",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "transition-tx-a",
+              "blockNumber": 42
+            }
+          ],
+          "paymentAmount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          },
+          "settlementFinalityValid": true,
+          "reservationRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:legacy-payment-reservation:job-a:2"
+            },
+            "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+          },
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "fixture-transition-evidence-signature",
+            "signatureValid": true
+          },
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "120",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 30,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "listingAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "contentHash": "listing-hash-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2
+        },
+        "railAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "railId": "demos-native:DEM",
+          "version": 1,
+          "contentHash": "rail-hash-a",
+          "phaseHandler": "pay-dem"
+        },
+        "presentationPosition": "150",
+        "paymentPosition": "150",
+        "paymentEffect": {
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payingKey": "key:demos:buyer-paying",
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "payeeAddress": "demos1selleraddress",
+          "amount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          }
+        },
+        "reservation": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyPaymentReservationVersion:1",
+          "signatureDomain": "dacs-legacy-payment-reservation:v1:",
+          "signatures": [
+            {
+              "role": "buyer",
+              "signer": "did:demos:buyer",
+              "algorithm": [
+                "ed25519"
+              ],
+              "value": "fixture-signature-buyer",
+              "signatureValid": true
+            },
+            {
+              "role": "seller",
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "fixture-signature-seller",
+              "signatureValid": true
+            },
+            {
+              "role": "orchestrator",
+              "signer": "did:demos:orchestrator",
+              "algorithm": "ed25519",
+              "value": "fixture-signature-orchestrator",
+              "signatureValid": true
+            }
+          ],
+          "addressMatches": true,
+          "logicalAddress": "dacs4:legacy-payment-reservation:job-a:2",
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "85",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "projection": {
+            "legacyPaymentReservationVersion": "1",
+            "jobId": "job-a",
+            "sessionId": "session-a",
+            "agreementHash": "agreement-hash-a",
+            "listingContentHash": "listing-hash-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+            "payerPrimaryClaim": "did:demos:buyer",
+            "payerBundleHash": "buyer-bundle-hash-a",
+            "payingKey": "key:demos:buyer-paying",
+            "payeePrimaryClaim": "did:demos:seller",
+            "payeeBundleHash": "seller-bundle-hash-a",
+            "orchestratorPrimaryClaim": "did:demos:orchestrator",
+            "payeeAddress": "demos1selleraddress",
+            "amount": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "agreementTermsHash": "89d3ad4cce995512b122513a6e72425ec24d90cb284503755a40aa538df94860",
+            "railId": "demos-native:DEM",
+            "railVersion": 1,
+            "railDefinitionHash": "rail-hash-a",
+            "deadline": 2000,
+            "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+          },
+          "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+        },
+        "paymentAuthority": {
+          "resolution": "verified",
+          "clockDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "authenticatedNowMs": 1500,
+          "idempotencyResolution": "unused",
+          "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+        }
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "transitionAuditEligible": false,
+        "paymentSideEffects": false,
+        "commitmentPermitted": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected",
+        "bundleAdmission": {
+          "attestationBundle": "rejected",
+          "faultAttestationBundle": "rejected",
+          "evidenceBoundFaultAttestationBundle": "rejected"
+        },
+        "derivationAdmission": {
+          "derive": "rejected",
+          "deriveJobBound": "rejected",
+          "deriveSettlementVerified": "rejected",
+          "replay": "rejected"
+        },
+        "currentMetricEligible": false
+      }
+    },
+    {
+      "name": "laa-transition-reservation-signature-algorithm-object",
+      "expected": "error",
+      "note": "an object-valued reservation signature algorithm is malformed, never an exception",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "paymentHeadPosition": "80",
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payerAuthorizedKeys": [
+            "key:demos:buyer-paying"
+          ],
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "orchestratorPrimaryClaim": "did:demos:orchestrator"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "jobId": "job-a",
+          "phase": "pay-dem",
+          "generatedAt": 10,
+          "pbVerified": false,
+          "ibhVerified": false,
+          "listingRef": {
+            "listingId": "listing-a",
+            "version": 1,
+            "contentHash": "listing-hash-a"
+          },
+          "terms": {
+            "price": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "demos-native:DEM",
+              "version": 1
+            },
+            "deadline": 2000
+          }
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "absenceCoverPosition": "80",
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "transitionEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyTransitionEvidenceVersion:1",
+          "signatureDomain": "dacs-legacy-transition-evidence:v1:",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "transition-tx-a",
+              "blockNumber": 42
+            }
+          ],
+          "paymentAmount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          },
+          "settlementFinalityValid": true,
+          "reservationRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:legacy-payment-reservation:job-a:2"
+            },
+            "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+          },
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "fixture-transition-evidence-signature",
+            "signatureValid": true
+          },
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "120",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 30,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "listingAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "contentHash": "listing-hash-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2
+        },
+        "railAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "railId": "demos-native:DEM",
+          "version": 1,
+          "contentHash": "rail-hash-a",
+          "phaseHandler": "pay-dem"
+        },
+        "presentationPosition": "150",
+        "paymentPosition": "150",
+        "paymentEffect": {
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payingKey": "key:demos:buyer-paying",
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "payeeAddress": "demos1selleraddress",
+          "amount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          }
+        },
+        "reservation": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyPaymentReservationVersion:1",
+          "signatureDomain": "dacs-legacy-payment-reservation:v1:",
+          "signatures": [
+            {
+              "role": "buyer",
+              "signer": "did:demos:buyer",
+              "algorithm": {
+                "name": "ed25519"
+              },
+              "value": "fixture-signature-buyer",
+              "signatureValid": true
+            },
+            {
+              "role": "seller",
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "fixture-signature-seller",
+              "signatureValid": true
+            },
+            {
+              "role": "orchestrator",
+              "signer": "did:demos:orchestrator",
+              "algorithm": "ed25519",
+              "value": "fixture-signature-orchestrator",
+              "signatureValid": true
+            }
+          ],
+          "addressMatches": true,
+          "logicalAddress": "dacs4:legacy-payment-reservation:job-a:2",
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "85",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "projection": {
+            "legacyPaymentReservationVersion": "1",
+            "jobId": "job-a",
+            "sessionId": "session-a",
+            "agreementHash": "agreement-hash-a",
+            "listingContentHash": "listing-hash-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+            "payerPrimaryClaim": "did:demos:buyer",
+            "payerBundleHash": "buyer-bundle-hash-a",
+            "payingKey": "key:demos:buyer-paying",
+            "payeePrimaryClaim": "did:demos:seller",
+            "payeeBundleHash": "seller-bundle-hash-a",
+            "orchestratorPrimaryClaim": "did:demos:orchestrator",
+            "payeeAddress": "demos1selleraddress",
+            "amount": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "agreementTermsHash": "89d3ad4cce995512b122513a6e72425ec24d90cb284503755a40aa538df94860",
+            "railId": "demos-native:DEM",
+            "railVersion": 1,
+            "railDefinitionHash": "rail-hash-a",
+            "deadline": 2000,
+            "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+          },
+          "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+        },
+        "paymentAuthority": {
+          "resolution": "verified",
+          "clockDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "authenticatedNowMs": 1500,
+          "idempotencyResolution": "unused",
+          "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+        }
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "transitionAuditEligible": false,
+        "paymentSideEffects": false,
+        "commitmentPermitted": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected",
+        "bundleAdmission": {
+          "attestationBundle": "rejected",
+          "faultAttestationBundle": "rejected",
+          "evidenceBoundFaultAttestationBundle": "rejected"
+        },
+        "derivationAdmission": {
+          "derive": "rejected",
+          "deriveJobBound": "rejected",
+          "deriveSettlementVerified": "rejected",
+          "replay": "rejected"
+        },
+        "currentMetricEligible": false
+      }
+    },
+    {
       "name": "laa-transition-reservation-missing-seller-signature",
       "expected": "fail",
       "note": "the exact authenticated seller must sign the reservation",
@@ -16637,6 +17175,544 @@
             "algorithm": "ed25519",
             "value": "fixture-transition-evidence-signature",
             "signatureValid": false
+          },
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "120",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 30,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "listingAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "contentHash": "listing-hash-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2
+        },
+        "railAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "railId": "demos-native:DEM",
+          "version": 1,
+          "contentHash": "rail-hash-a",
+          "phaseHandler": "pay-dem"
+        },
+        "presentationPosition": "150",
+        "paymentPosition": "150",
+        "paymentEffect": {
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payingKey": "key:demos:buyer-paying",
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "payeeAddress": "demos1selleraddress",
+          "amount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          }
+        },
+        "reservation": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyPaymentReservationVersion:1",
+          "signatureDomain": "dacs-legacy-payment-reservation:v1:",
+          "signatures": [
+            {
+              "role": "buyer",
+              "signer": "did:demos:buyer",
+              "value": "fixture-signature-buyer",
+              "signatureValid": true,
+              "algorithm": "ed25519"
+            },
+            {
+              "role": "seller",
+              "signer": "did:demos:seller",
+              "value": "fixture-signature-seller",
+              "signatureValid": true,
+              "algorithm": "ed25519"
+            },
+            {
+              "role": "orchestrator",
+              "signer": "did:demos:orchestrator",
+              "value": "fixture-signature-orchestrator",
+              "signatureValid": true,
+              "algorithm": "ed25519"
+            }
+          ],
+          "addressMatches": true,
+          "logicalAddress": "dacs4:legacy-payment-reservation:job-a:2",
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "85",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "projection": {
+            "legacyPaymentReservationVersion": "1",
+            "jobId": "job-a",
+            "sessionId": "session-a",
+            "agreementHash": "agreement-hash-a",
+            "listingContentHash": "listing-hash-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+            "payerPrimaryClaim": "did:demos:buyer",
+            "payerBundleHash": "buyer-bundle-hash-a",
+            "payingKey": "key:demos:buyer-paying",
+            "payeePrimaryClaim": "did:demos:seller",
+            "payeeBundleHash": "seller-bundle-hash-a",
+            "orchestratorPrimaryClaim": "did:demos:orchestrator",
+            "payeeAddress": "demos1selleraddress",
+            "amount": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "agreementTermsHash": "89d3ad4cce995512b122513a6e72425ec24d90cb284503755a40aa538df94860",
+            "railId": "demos-native:DEM",
+            "railVersion": 1,
+            "railDefinitionHash": "rail-hash-a",
+            "deadline": 2000,
+            "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+          },
+          "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+        },
+        "paymentAuthority": {
+          "resolution": "verified",
+          "clockDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "authenticatedNowMs": 1500,
+          "idempotencyResolution": "consumed",
+          "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+        }
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "transitionAuditEligible": false,
+        "paymentSideEffects": false,
+        "commitmentPermitted": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected",
+        "bundleAdmission": {
+          "attestationBundle": "rejected",
+          "faultAttestationBundle": "rejected",
+          "evidenceBoundFaultAttestationBundle": "rejected"
+        },
+        "derivationAdmission": {
+          "derive": "rejected",
+          "deriveJobBound": "rejected",
+          "deriveSettlementVerified": "rejected",
+          "replay": "rejected"
+        },
+        "currentMetricEligible": false
+      }
+    },
+    {
+      "name": "laa-transition-audit-signature-algorithm-list",
+      "expected": "error",
+      "note": "a list-valued transition-evidence signature algorithm is malformed",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "transition-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "paymentHeadPosition": "80",
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payerAuthorizedKeys": [
+            "key:demos:buyer-paying"
+          ],
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "orchestratorPrimaryClaim": "did:demos:orchestrator"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "jobId": "job-a",
+          "phase": "pay-dem",
+          "generatedAt": 10,
+          "pbVerified": false,
+          "ibhVerified": false,
+          "listingRef": {
+            "listingId": "listing-a",
+            "version": 1,
+            "contentHash": "listing-hash-a"
+          },
+          "terms": {
+            "price": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "demos-native:DEM",
+              "version": 1
+            },
+            "deadline": 2000
+          }
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "absenceCoverPosition": "80",
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "transitionEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyTransitionEvidenceVersion:1",
+          "signatureDomain": "dacs-legacy-transition-evidence:v1:",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "transition-tx-a",
+              "blockNumber": 42
+            }
+          ],
+          "paymentAmount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          },
+          "settlementFinalityValid": true,
+          "reservationRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:legacy-payment-reservation:job-a:2"
+            },
+            "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+          },
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": [
+              "ed25519"
+            ],
+            "value": "fixture-transition-evidence-signature",
+            "signatureValid": true
+          },
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "120",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 30,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "listingAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "contentHash": "listing-hash-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2
+        },
+        "railAuthority": {
+          "resolution": "verified",
+          "signatureValid": true,
+          "railId": "demos-native:DEM",
+          "version": 1,
+          "contentHash": "rail-hash-a",
+          "phaseHandler": "pay-dem"
+        },
+        "presentationPosition": "150",
+        "paymentPosition": "150",
+        "paymentEffect": {
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payingKey": "key:demos:buyer-paying",
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "payeeAddress": "demos1selleraddress",
+          "amount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          }
+        },
+        "reservation": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyPaymentReservationVersion:1",
+          "signatureDomain": "dacs-legacy-payment-reservation:v1:",
+          "signatures": [
+            {
+              "role": "buyer",
+              "signer": "did:demos:buyer",
+              "value": "fixture-signature-buyer",
+              "signatureValid": true,
+              "algorithm": "ed25519"
+            },
+            {
+              "role": "seller",
+              "signer": "did:demos:seller",
+              "value": "fixture-signature-seller",
+              "signatureValid": true,
+              "algorithm": "ed25519"
+            },
+            {
+              "role": "orchestrator",
+              "signer": "did:demos:orchestrator",
+              "value": "fixture-signature-orchestrator",
+              "signatureValid": true,
+              "algorithm": "ed25519"
+            }
+          ],
+          "addressMatches": true,
+          "logicalAddress": "dacs4:legacy-payment-reservation:job-a:2",
+          "receiptWriter": "did:demos:orchestrator",
+          "receiptState": "finalized",
+          "position": "85",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "projection": {
+            "legacyPaymentReservationVersion": "1",
+            "jobId": "job-a",
+            "sessionId": "session-a",
+            "agreementHash": "agreement-hash-a",
+            "listingContentHash": "listing-hash-a",
+            "phase": "pay-dem",
+            "phaseIndex": 2,
+            "payerPrimaryClaim": "did:demos:buyer",
+            "payerBundleHash": "buyer-bundle-hash-a",
+            "payingKey": "key:demos:buyer-paying",
+            "payeePrimaryClaim": "did:demos:seller",
+            "payeeBundleHash": "seller-bundle-hash-a",
+            "orchestratorPrimaryClaim": "did:demos:orchestrator",
+            "payeeAddress": "demos1selleraddress",
+            "amount": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "agreementTermsHash": "89d3ad4cce995512b122513a6e72425ec24d90cb284503755a40aa538df94860",
+            "railId": "demos-native:DEM",
+            "railVersion": 1,
+            "railDefinitionHash": "rail-hash-a",
+            "deadline": 2000,
+            "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+          },
+          "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+        },
+        "paymentAuthority": {
+          "resolution": "verified",
+          "clockDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "authenticatedNowMs": 1500,
+          "idempotencyResolution": "consumed",
+          "idempotencyKey": "1a904bd67ff9a5f7ecc1b282eacf52f9579a184ec728504d9a1c2821e64c8466"
+        }
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "transitionAuditEligible": false,
+        "paymentSideEffects": false,
+        "commitmentPermitted": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected",
+        "bundleAdmission": {
+          "attestationBundle": "rejected",
+          "faultAttestationBundle": "rejected",
+          "evidenceBoundFaultAttestationBundle": "rejected"
+        },
+        "derivationAdmission": {
+          "derive": "rejected",
+          "deriveJobBound": "rejected",
+          "deriveSettlementVerified": "rejected",
+          "replay": "rejected"
+        },
+        "currentMetricEligible": false
+      }
+    },
+    {
+      "name": "laa-transition-audit-signature-algorithm-object",
+      "expected": "error",
+      "note": "an object-valued transition-evidence signature algorithm is malformed",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "transition-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1",
+          "jobId": "job-a",
+          "sessionId": "session-a",
+          "paymentHeadPosition": "80",
+          "payerPrimaryClaim": "did:demos:buyer",
+          "payerBundleHash": "buyer-bundle-hash-a",
+          "payerAuthorizedKeys": [
+            "key:demos:buyer-paying"
+          ],
+          "payeePrimaryClaim": "did:demos:seller",
+          "payeeBundleHash": "seller-bundle-hash-a",
+          "orchestratorPrimaryClaim": "did:demos:orchestrator"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "jobId": "job-a",
+          "phase": "pay-dem",
+          "generatedAt": 10,
+          "pbVerified": false,
+          "ibhVerified": false,
+          "listingRef": {
+            "listingId": "listing-a",
+            "version": 1,
+            "contentHash": "listing-hash-a"
+          },
+          "terms": {
+            "price": {
+              "amount": "10.00",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "demos-native:DEM",
+              "version": 1
+            },
+            "deadline": 2000
+          }
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "absenceCoverPosition": "80",
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "transitionEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "discriminator": "legacyTransitionEvidenceVersion:1",
+          "signatureDomain": "dacs-legacy-transition-evidence:v1:",
+          "agreementBindingMatches": true,
+          "agreementHash": "agreement-hash-a",
+          "job": "job-a",
+          "session": "session-a",
+          "phase": "pay-dem",
+          "phaseIndex": 2,
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "transition-tx-a",
+              "blockNumber": 42
+            }
+          ],
+          "paymentAmount": {
+            "amount": "10.00",
+            "currency": "DEM"
+          },
+          "settlementFinalityValid": true,
+          "reservationRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:legacy-payment-reservation:job-a:2"
+            },
+            "contentHash": "52444145a06779e3ea3b2e42a8bfb19105f057144fa5d793d6e5ef67369fbab9"
+          },
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": {
+              "name": "ed25519"
+            },
+            "value": "fixture-transition-evidence-signature",
+            "signatureValid": true
           },
           "receiptWriter": "did:demos:orchestrator",
           "receiptState": "finalized",

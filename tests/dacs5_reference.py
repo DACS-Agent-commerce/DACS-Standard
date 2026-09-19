@@ -6928,6 +6928,7 @@ def _laa_validate_reservation(value, substrate, order_domain, checkpoint_positio
         algorithm = signature.get("algorithm")
         value_bytes = signature.get("value")
         if (not isinstance(role, str) or not _canonical_identity_string(signer)
+                or not isinstance(algorithm, str)
                 or algorithm not in {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"}
                 or not _canonical_identity_string(value_bytes)
                 or "signatureValid" not in signature):
@@ -6999,6 +7000,7 @@ def _laa_validate_transition_evidence(value, substrate, order_domain,
         if field not in signature:
             return "error"
     if (not _canonical_identity_string(signature.get("signer"))
+            or not isinstance(signature.get("algorithm"), str)
             or signature.get("algorithm") not in {
                 "ed25519", "ecdsa-secp256k1", "sr1-aggregate",
             }

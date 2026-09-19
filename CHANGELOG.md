@@ -13,6 +13,83 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — legacy agreement activation boundary
+
+- **Current pay-bearing sessions require payout binding** (#377) — adds the
+  steward-signed `LegacyAgreementActivationCheckpoint` and LAA-1..LAA-7. At
+  activation, new pay-bearing commitments must use a payee-bound artifact —
+  `PayeeBoundAgreementDocument` or the stronger
+  `IdentityBoundPayeeAgreementDocument` with `commit-identity-bound-payee-agreement`;
+  the only transition is an exact legacy commitment plus distinct buyer/seller/
+  signed `LegacyPaymentReservation`, both finalized
+  strictly before the checkpoint. The reservation is derived from the real
+  Agreement, Listing, session, pinned rail, and `PaymentPhaseInput`, and binds
+  its actual destination, payer/payee bundle identities, authorized paying key,
+  economics, deadline, and idempotency key. Its exact signer set is the unique
+  buyer and seller plus the session orchestrator only when distinct.
+- **Authenticated historical admission** — legacy agreement signatures remain
+  verifiable, but historical settlement authority requires exact agreement,
+  commitment, and settlement-evidence bindings with finalized receipts strictly
+  before the governed checkpoint on one authenticated substrate and one exact
+  finality/genesis ordering domain. Another substrate's checkpoint absence and
+  cross-domain scalar positions are inert. Backdated producer timestamps, local
+  flags, ordinary not-found responses, and missing era proof authorize no payment.
+- **Negotiation gate** — DACS-3 CA-10 applies the same checkpoint before a
+  pay-bearing commitment and retains legacy agreement selection only for
+  authenticated pre-activation or zero-pay flows. A commitment `pass` carries
+  zero payment side effects; the later DACS-4 payment re-runs LAA-1..LAA-7.
+- **Activation-boundary hardening** — authoritative absence must cover the
+  authenticated payment-effect head (or be reserved atomically with it), so a
+  checkpoint that finalizes after a stale absence observation cannot authorize
+  payment, and a caller-supplied top-level `paymentPosition` cannot lower that
+  head to mask a stale absence. Historical-era proof binds the
+  settlement-evidence receipt to the exact authenticated agreement hash, job,
+  session, and phase (cross-agreement, cross-job, cross-session, and cross-phase
+  replay are rejected), and untrusted non-object containers, missing required
+  fields, wrong scalars, or unhashable list/dict shapes return the four-value
+  `error` disposition instead of raising (`TypeError`/`AttributeError`). DACS-5
+  marks a historical LAA `pass` current-ineligible — `historical-only`, never a
+  generic `continue` — excluded from every current numerator, denominator,
+  rating, volume, `bundleCount`, and `bundleRefs` on every bundle type and
+  derivation path. A permitted post-checkpoint completion is
+  `transition-only`: its payment and audit remain valid, but it contributes no
+  current-profile reputation, volume, `bundleCount`, or `bundleRefs`. It emits
+  the exclusive signed `LegacyTransitionSettlementEvidence` with an exact
+  full canonical reservation `AttestationRef`; its signature signer and SR-2
+  receipt writer both bind to the retained session orchestrator, and audit
+  authority proves the exact reservation idempotency key is consumed. Its
+  signed phase index is a strict non-boolean non-negative integer, while its
+  transaction references validate against the closed `ChainTxRef` union and
+  the duplicate-free exact success set for the authenticated phase. Ordinary
+  `SettlementEvidence` remains unchanged and cannot be coerced into the
+  transition type. Unsupported readers reject
+  the new discriminator instead of silently counting it. An
+  adapter-level fake-effect harness proves exactly one original transition can
+  call the effect; substitutions, missing authority, post-checkpoint
+  commitments/reservations, deadline failures, and duplicates cannot. This is
+  deterministic in-process call-order/idempotency evidence, not a claim of
+  crash-durable atomicity or native-provider conformance. The candidate
+  corrective release pin and complete module tuple are recorded on the affected
+  evidence.
+
+### Fixed — legacy-payment LAA session binding and replay carrier
+
+- **Verifier-owned session binding (fail-closed)** — the derive/job-bound path
+  no longer recovers the expected session identity from an optional caller/tag
+  `sessionId`. A current-eligible legacy-payment LAA binds its authenticated
+  `sessionAuthority.sessionId` to the verifier-owned session authority for the
+  bundle's `jobId`; an absent, mismatched, or cross-session authoritative session
+  binding excludes the bundle fail-closed on every current derive, job-bound, and
+  replay path. Only the explicitly named non-authorizing historical/audit-only
+  derivation retains released pre-LAA bytes.
+- **Closed legacy-payment replay carrier** — a current legacy-payment
+  `ResolutionContextEntry` now carries `legacyPayment`, the full `laa`, and a
+  canonical `legacyPaymentCarrier` commitment binding the exact marker, job,
+  authenticated session, agreement contentHash, bundle contentHash, and full LAA.
+  Replay recomputes and byte-matches the carrier before any authorizing result;
+  marker/LAA/carrier removal, agreement/session/job substitution, or marker/LAA
+  disagreement refuses replay fail-closed.
+
 ### Fixed — DACS-4 v0.8 AP2 receipt references
 
 - **Provider resource and SR-3 transaction are now distinct** (DACS-4 §9.3,
@@ -33,7 +110,6 @@ The format used per release:
   does not claim to be the live provider/network receipt. This establishes
   provider-test reference-backing without changing the rail's operator-gated
   production availability.
-
 ### Fixed — DACS-3 sealed-auction candidate completeness
 
 - **Complete sealed-envelope profile (SAC-1..SAC-10; #376)** — adds new

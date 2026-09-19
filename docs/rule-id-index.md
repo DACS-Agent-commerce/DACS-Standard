@@ -32,6 +32,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IBH-* | Identity-bound agreement digest derivation, authenticated companion joins, and cross-stage enforcement | §B.2 | §14.3 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
+| LAA-* | Legacy agreement activation and historical-era admission | §9.5.1 | §14.4 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
 | LAB-* | Current-use admission of original legacy bundle mappings and strictly pre-checkpoint receipts | §10.4 | §14.5 |
 | JID-* | Canonical byte-exact job identifier grammar, derivation gate, and equality | §B.1 | §14.6 |

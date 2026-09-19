@@ -3260,7 +3260,179 @@ def _role_of_party(bundle, party):
     return None
 
 
-def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt", *, job_bound=False):
+def _tag_is_legacy_payment(tag):
+    """Whether a tagged bundle is a legacy-payment bundle (its successful payment
+    cites a legacy ``AgreementDocument``) and is therefore LAA-gated.
+
+    A bundle is LAA-gated when it carries any LAA admission marker — a full
+    verifier-owned ``laa`` object, a bare caller ``laaDisposition``, or an
+    explicit ``legacyPayment`` / ``legacyAgreement`` flag — or when it is a
+    completed legacy ``AttestationBundle`` (a successful payment, per §10.5
+    settlement-admission, must be LAA-qualified). A fault/evidence-bound bundle,
+    or a non-completed legacy bundle (failed / aborted, no successful payment),
+    is not LAA-gated and retains released v1 behaviour.
+    """
+    if not isinstance(tag, dict):
+        return False
+    if "laa" in tag or "laaDisposition" in tag:
+        return True
+    if tag.get("legacyPayment") is True or tag.get("legacyAgreement") is True:
+        return True
+    bundle = tag.get("bundle")
+    return (
+        isinstance(bundle, dict)
+        and bundle_type(bundle) == "legacy"
+        and bundle.get("outcome") == "completed"
+    )
+
+
+def _resolve_authenticated_session(session_authority, job_id):
+    """Resolve the verifier-owned authenticated session identity for a job.
+
+    ``session_authority`` is verifier-owned context that maps a ``jobId`` to its
+    authenticated ``sessionId`` (a callable ``jobId -> sessionId | None`` or a
+    dict). The current model's session identity is the job ``jobId``; the legacy
+    LAA ``sessionAuthority.sessionId`` is an independently verified session label
+    that MUST be recovered from this verifier-owned authority — never from an
+    optional caller/tag value. Returns the authenticated sessionId, or ``None``
+    when the authority is absent, does not cover the job, or yields a
+    non-canonical identity (fail-closed).
+    """
+    if not _canonical_identity_string(job_id):
+        return None
+    if callable(session_authority):
+        resolved = session_authority(job_id)
+    elif isinstance(session_authority, dict):
+        resolved = session_authority.get(job_id)
+    else:
+        return None
+    return resolved if _canonical_identity_string(resolved) else None
+
+
+def _laa_carrier(tag, session_authority):
+    """Build the closed normative LAA carrier for a legacy-payment bundle.
+
+    Binds the exact job, the verifier-owned authenticated session, the agreement
+    ref/contentHash, the parties/roles/completion evidence (via the bundle content
+    hash), the full LAA input (completion/era evidence), and the legacy-payment
+    marker semantics. The carrier is the single canonical commitment a replay
+    consumer re-verifies before any authorizing result; any substituted or omitted
+    member makes the recomputed carrier differ. Returns ``None`` when the carrier
+    inputs are incomplete (never a partial carrier).
+    """
+    bundle = tag.get("bundle") if isinstance(tag, dict) else None
+    laa = tag.get("laa") if isinstance(tag, dict) else None
+    if not isinstance(bundle, dict) or not isinstance(laa, dict):
+        return None
+    job_id = bundle.get("jobId")
+    agreement = laa.get("agreement")
+    session = laa.get("sessionAuthority")
+    if not isinstance(agreement, dict) or not isinstance(session, dict):
+        return None
+    session_id = _resolve_authenticated_session(session_authority, job_id)
+    if session_id is None:
+        return None
+    return {
+        "legacyPayment": True,
+        "jobId": job_id,
+        "sessionId": session_id,
+        "agreementHash": agreement.get("contentHash"),
+        "agreementJobId": agreement.get("jobId"),
+        "bundleContentHash": bundle_hash(bundle),
+        "laa": copy.deepcopy(laa),
+    }
+
+
+def _laa_carrier_commitment(tag, session_authority):
+    """Canonical sha256 commitment of the closed LAA carrier (or ``None``)."""
+    carrier = _laa_carrier(tag, session_authority)
+    if carrier is None:
+        return None
+    return hashlib.sha256(canonical(carrier)).hexdigest()
+
+
+def _laa_bound_to_tag(laa, tag, session_authority):
+    """The full LAA input must bind to the same job AND authenticated session as
+    the tagged bundle, through verifier-owned session authority.
+
+    The authenticated ``agreement.jobId`` and ``sessionAuthority.jobId`` must equal
+    the bundle ``jobId`` (a cross-job LAA can never authorize). The verifier-owned
+    session authority MUST resolve the bundle ``jobId`` to an authenticated
+    ``sessionId`` and the LAA ``sessionAuthority.sessionId`` MUST equal it — an
+    absent or mismatched authoritative session binding is fail-closed, so a
+    cross-session LAA can never authorize. A caller/tag ``sessionId`` is never the
+    source of the expected session: if the tag or bundle carries one it MUST equal
+    the authenticated LAA ``sessionId``, but its absence never waives the binding.
+    """
+    if not isinstance(laa, dict):
+        return False
+    bundle = tag.get("bundle") if isinstance(tag, dict) else None
+    if not isinstance(bundle, dict):
+        return False
+    job_id = bundle.get("jobId")
+    if not _canonical_identity_string(job_id):
+        return False
+    agreement = laa.get("agreement")
+    session = laa.get("sessionAuthority")
+    if not isinstance(agreement, dict) or not isinstance(session, dict):
+        return False
+    if agreement.get("jobId") != job_id:
+        return False
+    if session.get("jobId") != job_id:
+        return False
+    # The verifier-owned session authority must be authenticated and present.
+    if session.get("state") != "verified":
+        return False
+    session_id = session.get("sessionId")
+    if not _canonical_identity_string(session_id):
+        return False
+    expected_session = _resolve_authenticated_session(session_authority, job_id)
+    if expected_session is None or expected_session != session_id:
+        return False
+    for container in (tag, bundle):
+        if isinstance(container, dict) and container.get("sessionId") is not None:
+            if container.get("sessionId") != session_id:
+                return False
+    return True
+
+
+def _laa_derivation_eligible(tag, session_authority):
+    """Whether a tagged bundle may enter current-metric reconciliation under LAA admission.
+
+    A caller-supplied disposition is NEVER authority. A legacy-payment bundle
+    (a completed legacy ``AttestationBundle`` or any tag carrying an LAA marker)
+    is gated by LAA and the tag MUST carry the verifier-owned full LAA admission
+    input in ``tag["laa"]``; the shared ``laa_admission`` oracle (via
+    ``laa_want``) is executed and only a ``current-eligible`` result bound to the
+    SAME job AND the verifier-owned authenticated session may be counted. A
+    missing, malformed, unknown, or caller-only disposition — including a bare
+    ``laaDisposition`` string — is never trusted: a legacy agreement can never be
+    ``current-eligible`` (historical and transition LAA passes are
+    ``historical-only`` / ``transition-only`` and current-ineligible), and a
+    malformed/unknown/cross-job/cross-session ``laa``
+    input, or an absent verifier-owned session authority, is non-authorizing
+    (excluded).
+
+    Absence of an LAA marker does NOT authorize a legacy-payment bundle: a
+    completed legacy bundle with no full ``laa`` object is excluded from
+    bundleCount, refs, metrics, rating, volume, and payment. Only a bundle that is
+    not LAA-gated (a fault/evidence-bound bundle or a non-completed legacy bundle)
+    retains released v1 behaviour.
+    """
+    if not isinstance(tag, dict):
+        return False
+    if not _tag_is_legacy_payment(tag):
+        return True
+    laa = tag.get("laa")
+    if not isinstance(laa, dict):
+        return False
+    if laa_want(laa)["dacs5Admission"] != "current-eligible":
+        return False
+    return _laa_bound_to_tag(laa, tag, session_authority)
+
+
+def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt", *, job_bound=False,
+            laa_gate=True, session_authority=None):
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
 
@@ -3340,6 +3512,14 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
             tagged for tagged in candidates
             if tagged["bundle"]["jobId"] not in rejected_selected_jobs
         ]
+
+    # LAA admission gate (DACS-4 LAA-1..LAA-7 / RSV-2..RSV-4): a legacy
+    # agreement whose successful payment is not current-eligible is excluded
+    # from every metric before grouping/reconciliation. ``laa_gate`` is True for
+    # every current public entry point; only the explicitly named historical/
+    # audit-only compatibility path disables it.
+    if laa_gate:
+        scoped = [t for t in scoped if _laa_derivation_eligible(t, session_authority)]
 
     # group by jobId
     by_job = {}
@@ -3421,6 +3601,25 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
     for h, t in refs:
         entry = {"contentHash": h, "resolvedRole": t["resolvedRole"],
                  "counterpartyDisposition": t.get("counterpartyDisposition")}
+        if _tag_is_legacy_payment(t):
+            # The receipt records that this entry is a legacy-payment bundle and
+            # carries the verifier-owned full LAA admission input so replay can
+            # re-execute the shared laa_admission oracle (a caller-supplied
+            # disposition is never authority). The ``legacyPayment`` marker is
+            # present even when ``laa`` is absent, so a stripped LAA cannot be
+            # replayed as a non-gated bundle.
+            entry["legacyPayment"] = True
+            if isinstance(t.get("laa"), dict):
+                entry["laa"] = copy.deepcopy(t.get("laa"))
+                if laa_gate:
+                    # (round-16) Closed normative LAA carrier: commit the exact
+                    # marker + full LAA + job + authenticated session + agreement
+                    # contentHash + bundle contentHash so replay can re-verify the
+                    # exact binding before any authorizing result. Only the
+                    # current authorizing path emits the carrier; the explicit
+                    # historical/audit-only path is non-authorizing and does not.
+                    entry["legacyPaymentCarrier"] = _laa_carrier_commitment(
+                        t, session_authority)
         if job_bound:
             entry["resolvedJobId"] = t["resolvedJobId"]
         if t.get("counterpartyDisposition") == "present":
@@ -3475,14 +3674,42 @@ def _unknown_replay_derivation_discriminators(d):
     }
 
 
-def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
-    """Emit the released ReplayableReputationDerivation v1 shape and semantics."""
-    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False)
+def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt",
+           session_authority=None):
+    """Emit the released ReplayableReputationDerivation v1 shape and semantics.
+
+    The current derivation path applies the LAA admission gate: a legacy-payment
+    bundle MUST carry a full verifier-owned ``laa`` input that is current-eligible
+    and bound to the same job AND to the verifier-owned authenticated session
+    (``session_authority`` maps ``jobId`` to the authenticated ``sessionId``; its
+    absence is fail-closed for any legacy-payment bundle).
+    """
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False,
+                   session_authority=session_authority)
 
 
-def derive_job_bound(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
-    """Emit the distinct job-bound replay receipt used by strengthened EBFAB replay."""
-    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=True)
+def derive_job_bound(party, tagged_bundles, window_start, window_end, basis="finalisedAt",
+                     session_authority=None):
+    """Emit the distinct job-bound replay receipt used by strengthened EBFAB replay.
+
+    The current job-bound derivation path applies the same LAA admission gate.
+    """
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=True,
+                   session_authority=session_authority)
+
+
+def derive_legacy_audit_only(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+    """Explicit pre-LAA historical/audit-only compatibility derivation.
+
+    Reproduces released pre-LAA semantics WITHOUT the LAA admission gate, solely
+    for frozen historical fixtures that predate LAA-1..LAA-7. This path can never
+    be reached by current metrics/payment/replay defaults (``derive`` /
+    ``derive_job_bound`` / replay) and MUST NOT be used to establish current
+    reputation, volume, or payment authority: a legacy-payment bundle counted here
+    is historical audit only.
+    """
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False,
+                   laa_gate=False)
 
 
 def is_replayable_derivation(d):
@@ -3762,6 +3989,24 @@ def _entry_structural_gate(entry, index, *, require_resolved_job=False):
                     if sv is not None and not isinstance(sv, str):
                         return (False, "%s: bb6Context.candidateBindings[%d].%s must be a string (got %s)"
                                 % (ch, k, sf, type(sv).__name__))
+    # (round-16) Legacy-payment LAA carrier: the marker, full LAA, and canonical
+    # carrier commitment form a CLOSED set. Any one present forces all three (no
+    # optional omission), and each is type-pinned, so a stripped or half-carried
+    # legacy-payment entry refuses deterministically instead of failing open or
+    # downgrading to released-v1 reconciliation.
+    has_marker = "legacyPayment" in entry
+    has_laa = "laa" in entry
+    has_carrier = "legacyPaymentCarrier" in entry
+    if has_marker or has_laa or has_carrier:
+        if not has_marker or entry.get("legacyPayment") is not True:
+            return (False, "%s: legacy-payment entry must carry legacyPayment: true (got %r)"
+                    % (ch, entry.get("legacyPayment")))
+        if not has_laa or not isinstance(entry.get("laa"), dict):
+            return (False, "%s: legacy-payment entry must carry the full laa object (got %s)"
+                    % (ch, type(entry.get("laa")).__name__))
+        if not has_carrier or not _sha256_hex(entry.get("legacyPaymentCarrier")):
+            return (False, "%s: legacy-payment entry must carry the legacyPaymentCarrier commitment "
+                            "(got %r)" % (ch, entry.get("legacyPaymentCarrier")))
     return (True, None)
 
 
@@ -4313,11 +4558,62 @@ def validate_legacy_resolution_context(derivation, deref, evidence_deref=None,
     )
 
 
+def _bundle_is_legacy_payment(bundle):
+    """Verifier-derived legacy-payment classification from the dereferenced
+    authenticated copy alone.
+
+    A completed legacy ``AttestationBundle`` is a successful payment citing a
+    legacy ``AgreementDocument`` and is therefore a legacy-payment bundle
+    (spec DACS-5 §10.5.1 terminal-agreement-admission; §10.5.3 :769). The
+    classification NEVER comes from optional receipt fields (``legacyPayment`` /
+    ``laa`` / ``legacyPaymentCarrier``): removing those fields cannot downgrade a
+    completed legacy bundle to released-v1 reconciliation, and carrying them on a
+    non-legacy bundle cannot upgrade it to LAA-gated.
+    """
+    return (
+        isinstance(bundle, dict)
+        and bundle_type(bundle) == "legacy"
+        and bundle.get("outcome") == "completed"
+    )
+
+
+def _entry_laa_carrier_ok(entry, bundle, session_authority):
+    """Re-verify the closed normative LAA carrier for one legacy-payment entry.
+
+    Legacy-payment classification is verifier-derived from the dereferenced
+    authenticated copy (``_bundle_is_legacy_payment``) — a completed legacy
+    ``AttestationBundle`` — NEVER from optional receipt fields. A legacy-payment
+    entry MUST then carry the exact CLOSED triad: ``legacyPayment === true``, the
+    full ``laa`` object, and a canonical ``legacyPaymentCarrier`` that recomputes
+    exactly from those members plus the dereferenced bundle and the verifier-owned
+    session authority. Removing all three, omitting any one, carrying an extra
+    admission marker, substituting agreement/session/job, or an absent/mismatched
+    authoritative session binding fails closed (no authorizing result, before any
+    metrics comparison).
+    """
+    if not _bundle_is_legacy_payment(bundle):
+        return True
+    if entry.get("legacyPayment") is not True:
+        return False
+    laa = entry.get("laa")
+    if not isinstance(laa, dict):
+        return False
+    stored = entry.get("legacyPaymentCarrier")
+    if not _sha256_hex(stored):
+        return False
+    # The closed triad is EXACT: no extra caller-supplied admission marker.
+    if entry.get("laaDisposition") is not None or entry.get("legacyAgreement") is not None:
+        return False
+    recomputed = _laa_carrier_commitment({"bundle": bundle, "laa": laa},
+                                         session_authority)
+    return recomputed is not None and recomputed == stored
+
+
 def _replay_receipt(derivation, deref, party, window_start, window_end,
                     evidence_deref=None, pubkeys=None, anchor_deref=None,
                     pure_mapping_resolver=None, ebfab_authority_resolver=None,
                     *, binding_verifier, address_validator,
-                    entry_authorities=None):
+                    entry_authorities=None, session_authority=None):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
     full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
     reproduction, §10.4.3 divergence against the dereferenced counterparty, and the absence
@@ -4348,6 +4644,12 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
     tagged = []
     for entry in derivation["resolutionContext"]:
         b = _deref_role_copy(anchor_deref, entry["roleEvidence"])
+        # (round-16) Closed LAA carrier: a legacy-payment entry MUST carry and
+        # re-verify the exact marker + full LAA + job + authenticated session +
+        # agreement/bundle content hashes BEFORE any authorizing result. A
+        # substituted or omitted carrier refuses replay fail-closed.
+        if not _entry_laa_carrier_ok(entry, b, session_authority):
+            return (False, None)
         if bundle_type(b) == "finality-bound":
             # No existing receipt discriminator claims the coordinated #391+#392
             # contract. Refuse instead of silently dropping the stronger copy.
@@ -4360,6 +4662,16 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
                "absenceBinding": entry.get("absenceBinding"),
                "roleEvidence": entry.get("roleEvidence"),
                "bb6Context": entry.get("bb6Context")}
+        if _bundle_is_legacy_payment(b):
+            # The dereferenced copy is a completed legacy-payment bundle, so the
+            # receipt entry MUST have been classified as such on the derive side.
+            # Replay tags it from the dereferenced copy (never from optional
+            # receipt fields) and re-executes the shared laa_admission oracle on
+            # the full LAA input. _entry_laa_carrier_ok above already refused any
+            # stripped/omitted/substituted/extra triad, so the marker and full LAA
+            # are guaranteed present and consistent here.
+            tag["legacyPayment"] = True
+            tag["laa"] = copy.deepcopy(entry.get("laa"))
         if job_bound:
             tag["resolvedJobId"] = entry["resolvedJobId"]
             tag["selectedByRoleResolution"] = True
@@ -4416,7 +4728,8 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
     if basis not in IMPLEMENTED_WINDOWING_BASES:
         return (False, None)   # declared basis valid but unimplemented -> no honest replay claim
     replayed = (derive_job_bound if job_bound else derive)(
-        party, tagged, window_start, window_end, basis)
+        party, tagged, window_start, window_end, basis,
+        session_authority=session_authority)
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
     return (same, replayed)
@@ -6180,8 +6493,14 @@ def replay_current_use_derivation(
 def replay_receipt(derivation, deref, party, window_start, window_end,
                    evidence_deref=None, pubkeys=None, anchor_deref=None,
                    pure_mapping_resolver=None, ebfab_authority_resolver=None,
-                   trusted_contexts=None, *, windowing_basis=None):
-    """Replay current receipt after query, entry, role, and key admission."""
+                   trusted_contexts=None, *, windowing_basis=None,
+                   session_authority=None):
+    """Replay current receipt after query, entry, role, and key admission.
+
+    A legacy-payment entry additionally requires the verifier-owned
+    ``session_authority`` to re-verify the closed LAA carrier and re-bind the
+    authenticated session; its absence is fail-closed.
+    """
     admitted, _reason, keys, entry_authorities = _current_operation_admission(
         derivation,
         pubkeys,
@@ -6225,14 +6544,20 @@ def replay_receipt(derivation, deref, party, window_start, window_end,
         binding_verifier=current_binding_verifier,
         address_validator=current_address_validator,
         entry_authorities=entry_authorities,
+        session_authority=session_authority,
     )
 
 
 def replay_legacy_receipt(derivation, deref, party, window_start, window_end,
                           evidence_deref=None, pubkeys=None, anchor_deref=None,
                           pure_mapping_resolver=None,
-                          ebfab_authority_resolver=None):
-    """Replay only a frozen pre-JID-1 receipt through an explicit archival API."""
+                          ebfab_authority_resolver=None,
+                          session_authority=None):
+    """Replay only a frozen pre-JID-1 receipt through an explicit archival API.
+
+    The named legacy replay re-verifies the closed LAA carrier and re-binds the
+    authenticated session via ``session_authority`` (fail-closed when absent).
+    """
     resolver = (
         pure_mapping_resolver
         if pure_mapping_resolver is not None
@@ -6259,4 +6584,1054 @@ def replay_legacy_receipt(derivation, deref, party, window_start, window_end,
         ebfab_authority_resolver,
         binding_verifier=legacy_binding_verifier,
         address_validator=legacy_address_validator,
+        session_authority=session_authority,
     )
+
+
+# ======================================================================
+# DACS-4 LAA-1..LAA-7 / DACS-3 CA-10 legacy-agreement admission oracle.
+#
+# A single, verifier-owned, TOTAL evaluator. It maps any untrusted input to
+# the four-value disposition ``pass`` / ``fail`` / ``indeterminate`` /
+# ``error`` and MUST NEVER raise (``TypeError``/``AttributeError``) on a
+# malformed container, missing required field, wrong scalar, or unhashable
+# list/dict. LAA-6: a non-object container where an object is required, a
+# missing required field, a non-string receipt position, an unhashable
+# list/dict in an enum or position field, or a conflicting discriminator is
+# ``error``; a bad signature / hash / address / policy mismatch or an
+# authenticated at/after-checkpoint legacy attempt is ``fail``; missing,
+# unavailable, conflicting or unorderable authority is ``indeterminate``;
+# only a complete pre-checkpoint proof is ``pass``. Deterministic mismatch is
+# evaluated before unrelated uncertainty, and non-pass authorizes zero
+# payment side effects.
+# ======================================================================
+
+LAA_CHECKPOINT_DOMAIN = "dacs-legacy-agreement-checkpoint:v1:"
+LAA_CHECKPOINT_DISCRIMINATOR = "legacyAgreementCheckpointVersion:1"
+LAA_RESERVATION_DOMAIN = "dacs-legacy-payment-reservation:v1:"
+LAA_RESERVATION_DISCRIMINATOR = "legacyPaymentReservationVersion:1"
+LAA_TRANSITION_EVIDENCE_DOMAIN = "dacs-legacy-transition-evidence:v1:"
+LAA_TRANSITION_EVIDENCE_DISCRIMINATOR = "legacyTransitionEvidenceVersion:1"
+LAA_POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
+LAA_ARTIFACTS = frozenset({
+    "legacy", "payee-bound", "identity-bound", "identity-bound-payee",
+})
+LAA_PAYEE_BOUND_ARTIFACTS = frozenset({"payee-bound", "identity-bound-payee"})
+LAA_BUNDLE_TYPES = (
+    "attestationBundle",
+    "faultAttestationBundle",
+    "evidenceBoundFaultAttestationBundle",
+)
+LAA_DERIVATION_PATHS = (
+    "derive",
+    "deriveJobBound",
+    "deriveSettlementVerified",
+    "replay",
+)
+LAA_ABSENT_RESOLUTIONS = frozenset({"unavailable", "conflicting", "reorged", "pruned"})
+LAA_UNAVAILABLE_RECORD_RESOLUTIONS = frozenset({"unavailable", "absent", "pruned", "reorged"})
+# Closed LAA operation vocabulary. ``operation`` must be a scalar member of this
+# set; anything else (including an unhashable list/dict) is malformed input.
+LAA_OPERATIONS = frozenset({
+    "authorize-payment",
+    "commit-pay-bearing",
+    "historical-audit",
+    "reserve-transition-payment",
+    "transition-audit",
+})
+# Closed SR-2 receipt lifecycle-state vocabulary (CORE §5.1). A receiptState
+# outside this set is malformed input (LAA-6 ``error``), while a valid non-final
+# state is not yet authority (``indeterminate``).
+LAA_RECEIPT_STATES = frozenset({
+    "submitted", "accepted", "included", "finalized",
+    "dropped", "replaced", "expired", "reorged", "rejected",
+})
+
+
+def _canonical_identity_string(value):
+    """A non-empty, non-blank, NFC-canonical, surrogate-free identity string.
+
+    The independently verified session/hash identity values that key LAA
+    admission and the LegacyAgreementLedger commitment ``(sessionId,
+    contentHash)`` MUST be non-empty canonical strings. Empty, whitespace-only,
+    or leading/trailing-whitespace spellings and non-canonical (non-NFC /
+    surrogate) values are malformed and are rejected before any effect.
+    """
+    if not isinstance(value, str):
+        return False
+    if not value or value != value.strip():
+        return False
+    if unicodedata.normalize("NFC", value) != value:
+        return False
+    return not any(0xD800 <= ord(character) <= 0xDFFF for character in value)
+
+
+def _laa_receipt_state(record, field="receiptState"):
+    """Return the receiptState verdict for one record.
+
+    Missing or non-string is ``error``; an unknown state string is ``error``;
+    a valid non-final state is ``indeterminate``; ``finalized`` continues.
+    """
+    if not isinstance(record, dict):
+        return "error"
+    state = record.get(field)
+    if not isinstance(state, str):
+        return "error"
+    if state not in LAA_RECEIPT_STATES:
+        return "error"
+    return "pass" if state == "finalized" else "indeterminate"
+
+
+def _laa_position(value):
+    """Return (int, None) for a canonical non-negative decimal position, else (None, verdict)."""
+    if not isinstance(value, str) or LAA_POSITION_RE.fullmatch(value) is None:
+        return None, "error"
+    return int(value), None
+
+
+def _laa_before_checkpoint(record, checkpoint_position):
+    """Order one receipt strictly before the checkpoint (LAA-4 same-block rule).
+
+    A non-string position is ``error``; a lower position is earlier (``pass``),
+    a higher position is later (``fail``); an equal position is ``pass`` /
+    ``fail`` / ``indeterminate`` from the binding-authenticated native order
+    flag, and any malformed flag value is ``error`` (LAA-6), never a silent
+    fall-through.
+    """
+    if not isinstance(record, dict):
+        return "error"
+    position, verdict = _laa_position(record.get("position"))
+    if verdict is not None:
+        return verdict
+    if position < checkpoint_position:
+        return "pass"
+    if position > checkpoint_position:
+        return "fail"
+    strict = record.get("strictlyBeforeAtSamePosition")
+    if strict is True:
+        return "pass"
+    if strict is False:
+        return "fail"
+    if strict is None:
+        return "indeterminate"
+    return "error"
+
+
+def _laa_validate_record(record, binding_field, substrate, order_domain):
+    """Validate one commitment/settlement receipt body; total (never raises)."""
+    if not isinstance(record, dict):
+        return "error"
+    if record.get("shape") != "valid":
+        return "error"
+    if binding_field not in record:
+        return "error"
+    if record.get(binding_field) is not True:
+        return "fail"
+    if "signatureValid" not in record or record.get("signatureValid") is not True:
+        # LAA-6: a missing signature flag is malformed, not a signature failure.
+        return "error" if "signatureValid" not in record else "fail"
+    state_verdict = _laa_receipt_state(record)
+    if state_verdict != "pass":
+        return state_verdict
+    if "substrate" not in record or not isinstance(record["substrate"], str):
+        return "error"
+    if record["substrate"] != substrate:
+        return "fail"
+    if "orderDomain" not in record or not isinstance(record["orderDomain"], str):
+        return "error"
+    if record["orderDomain"] != order_domain:
+        return "indeterminate"
+    return "pass"
+
+
+def _laa_authority_record(record, required_fields):
+    """Validate one independently resolved signed authority projection."""
+    if record is None:
+        return "indeterminate"
+    if not isinstance(record, dict):
+        return "error"
+    resolution = record.get("resolution")
+    if not isinstance(resolution, str):
+        return "error"
+    if resolution in {"unavailable", "conflicting", "pruned", "reorged"}:
+        return "indeterminate"
+    if resolution != "verified":
+        return "error"
+    if record.get("signatureValid") is not True:
+        return "fail" if "signatureValid" in record else "error"
+    for field in required_fields:
+        if field not in record:
+            return "error"
+    return "pass"
+
+
+def _laa_idempotency_key(job_id, phase_index):
+    return hashlib.sha256(
+        ("dacs-laa-reservation-idem:v1:" + job_id + ":" + str(phase_index)).encode("utf-8")
+    ).hexdigest()
+
+
+def _laa_reservation_address(job_id, phase_index):
+    return "dacs4:legacy-payment-reservation:%s:%s" % (job_id, phase_index)
+
+
+def laa_transition_projection(value):
+    """Derive the canonical reservation projection from real authenticated inputs.
+
+    No caller-authored duplicate is accepted. The projection joins the committed
+    legacy AgreementDocument, signed Listing phase, authenticated session, pinned
+    signed RailDefinition, and the actual PaymentPhaseInput effect destination.
+    """
+    if not isinstance(value, dict):
+        return "error", None
+    agreement = value.get("agreement")
+    session = value.get("sessionAuthority")
+    effect = value.get("paymentEffect")
+    listing = value.get("listingAuthority")
+    rail = value.get("railAuthority")
+    if not all(isinstance(item, dict) for item in (agreement, session, effect)):
+        return "error", None
+    listing_verdict = _laa_authority_record(
+        listing, ("contentHash", "phase", "phaseIndex"),
+    )
+    if listing_verdict != "pass":
+        return listing_verdict, None
+    rail_verdict = _laa_authority_record(
+        rail, ("railId", "version", "contentHash", "phaseHandler"),
+    )
+    if rail_verdict != "pass":
+        return rail_verdict, None
+
+    terms = agreement.get("terms")
+    listing_ref = agreement.get("listingRef")
+    if not isinstance(terms, dict) or not isinstance(listing_ref, dict):
+        return "error", None
+    price = terms.get("price")
+    rail_ref = terms.get("rail")
+    if not isinstance(price, dict) or not isinstance(rail_ref, dict):
+        return "error", None
+    deadline = terms.get("deadline")
+    phase_index = effect.get("phaseIndex")
+    if (not isinstance(deadline, int) or isinstance(deadline, bool) or deadline < 0
+            or not isinstance(phase_index, int) or isinstance(phase_index, bool)
+            or phase_index < 0):
+        return "error", None
+    authorized_keys = session.get("payerAuthorizedKeys")
+    if (not isinstance(authorized_keys, list) or not authorized_keys
+            or any(not _canonical_identity_string(key) for key in authorized_keys)
+            or len(set(authorized_keys)) != len(authorized_keys)):
+        return "error", None
+
+    scalar_fields = (
+        effect.get("jobId"), effect.get("sessionId"), effect.get("phase"),
+        effect.get("payerPrimaryClaim"), effect.get("payerBundleHash"),
+        effect.get("payingKey"),
+        effect.get("payeePrimaryClaim"), effect.get("payeeBundleHash"),
+        effect.get("payeeAddress"), agreement.get("contentHash"),
+        listing_ref.get("contentHash"), rail_ref.get("railId"),
+        rail.get("contentHash"), session.get("payerBundleHash"),
+        session.get("payeeBundleHash"), session.get("orchestratorPrimaryClaim"),
+    )
+    if not all(_canonical_identity_string(item) for item in scalar_fields):
+        return "error", None
+    if not isinstance(rail_ref.get("version"), int) or isinstance(rail_ref.get("version"), bool):
+        return "error", None
+
+    deterministic_mismatches = (
+        effect["jobId"] != agreement.get("jobId"),
+        effect["jobId"] != session.get("jobId"),
+        effect["sessionId"] != session.get("sessionId"),
+        effect["phase"] != agreement.get("phase"),
+        effect["phase"] != listing.get("phase"),
+        effect["phase"] != rail.get("phaseHandler"),
+        phase_index != listing.get("phaseIndex"),
+        effect["payerPrimaryClaim"] != session.get("payerPrimaryClaim"),
+        effect["payerBundleHash"] != session.get("payerBundleHash"),
+        effect["payingKey"] not in authorized_keys,
+        effect["payeePrimaryClaim"] != session.get("payeePrimaryClaim"),
+        effect["payeeBundleHash"] != session.get("payeeBundleHash"),
+        effect.get("amount") != price,
+        listing_ref.get("contentHash") != listing.get("contentHash"),
+        rail_ref.get("railId") != rail.get("railId"),
+        rail_ref.get("version") != rail.get("version"),
+    )
+    if any(deterministic_mismatches):
+        return "fail", None
+
+    projection = {
+        "legacyPaymentReservationVersion": "1",
+        "jobId": effect["jobId"],
+        "sessionId": effect["sessionId"],
+        "agreementHash": agreement["contentHash"],
+        "listingContentHash": listing_ref["contentHash"],
+        "phase": effect["phase"],
+        "phaseIndex": phase_index,
+        "payerPrimaryClaim": effect["payerPrimaryClaim"],
+        "payerBundleHash": effect["payerBundleHash"],
+        "payingKey": effect["payingKey"],
+        "payeePrimaryClaim": effect["payeePrimaryClaim"],
+        "payeeBundleHash": effect["payeeBundleHash"],
+        "orchestratorPrimaryClaim": session["orchestratorPrimaryClaim"],
+        "payeeAddress": effect["payeeAddress"],
+        "amount": copy.deepcopy(price),
+        "agreementTermsHash": _canon_sha(terms),
+        "railId": rail["railId"],
+        "railVersion": rail["version"],
+        "railDefinitionHash": rail["contentHash"],
+        "deadline": deadline,
+        "idempotencyKey": _laa_idempotency_key(effect["jobId"], phase_index),
+    }
+    return "pass", projection
+
+
+def _laa_validate_reservation(value, substrate, order_domain, checkpoint_position=None):
+    projection_verdict, derived = laa_transition_projection(value)
+    if projection_verdict != "pass":
+        return projection_verdict
+    reservation = value.get("reservation")
+    if reservation is None:
+        return "indeterminate"
+    if not isinstance(reservation, dict):
+        return "error"
+    resolution = reservation.get("resolution")
+    if not isinstance(resolution, str):
+        return "error"
+    if resolution in LAA_UNAVAILABLE_RECORD_RESOLUTIONS | {"conflicting"}:
+        return "indeterminate"
+    if resolution != "verified":
+        return "error"
+    if (reservation.get("shape") != "valid"
+            or reservation.get("discriminator") != LAA_RESERVATION_DISCRIMINATOR):
+        return "error"
+    if reservation.get("signatureDomain") != LAA_RESERVATION_DOMAIN:
+        return "fail"
+    if reservation.get("addressMatches") is not True:
+        return "fail" if "addressMatches" in reservation else "error"
+    signatures = reservation.get("signatures")
+    if not isinstance(signatures, list):
+        return "error"
+    payer = derived["payerPrimaryClaim"]
+    payee = derived["payeePrimaryClaim"]
+    orchestrator = derived["orchestratorPrimaryClaim"]
+    if payer == payee:
+        return "fail"
+    expected_roles = {"buyer": payer, "seller": payee}
+    if orchestrator not in {payer, payee}:
+        expected_roles["orchestrator"] = orchestrator
+    actual_roles = {}
+    actual_signers = set()
+    for signature in signatures:
+        if not isinstance(signature, dict):
+            return "error"
+        role = signature.get("role")
+        signer = signature.get("signer")
+        algorithm = signature.get("algorithm")
+        value_bytes = signature.get("value")
+        if (not isinstance(role, str) or not _canonical_identity_string(signer)
+                or not isinstance(algorithm, str)
+                or algorithm not in {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"}
+                or not _canonical_identity_string(value_bytes)
+                or "signatureValid" not in signature):
+            return "error"
+        if role in actual_roles or signer in actual_signers:
+            return "fail"
+        if signature.get("signatureValid") is not True:
+            return "fail"
+        actual_roles[role] = signer
+        actual_signers.add(signer)
+    if actual_roles != expected_roles:
+        return "fail"
+    if reservation.get("projection") != derived:
+        return "fail"
+    expected_hash = _canon_sha(derived)
+    if reservation.get("contentHash") != expected_hash:
+        return "fail"
+    if reservation.get("logicalAddress") != _laa_reservation_address(
+            derived["jobId"], derived["phaseIndex"]):
+        return "fail"
+    if not _canonical_identity_string(reservation.get("receiptWriter")):
+        return "error"
+    if reservation["receiptWriter"] != orchestrator:
+        return "fail"
+    state_verdict = _laa_receipt_state(reservation)
+    if state_verdict != "pass":
+        return state_verdict
+    if reservation.get("substrate") != substrate:
+        return "fail"
+    if reservation.get("orderDomain") != order_domain:
+        return "indeterminate"
+    position, position_verdict = _laa_position(reservation.get("position"))
+    if position_verdict is not None:
+        return position_verdict
+    if checkpoint_position is not None:
+        return _laa_before_checkpoint(reservation, checkpoint_position)
+    return "pass"
+
+
+def _laa_validate_transition_evidence(value, substrate, order_domain,
+                                      checkpoint_position):
+    """Validate the distinct signed transition-evidence wire type."""
+    evidence = value.get("transitionEvidence")
+    if evidence is None:
+        return "indeterminate"
+    if not isinstance(evidence, dict):
+        return "error"
+    resolution = evidence.get("resolution")
+    if not isinstance(resolution, str):
+        return "error"
+    if resolution in LAA_UNAVAILABLE_RECORD_RESOLUTIONS | {"conflicting"}:
+        return "indeterminate"
+    if resolution != "verified":
+        return "error"
+    if (evidence.get("shape") != "valid"
+            or evidence.get("discriminator") != LAA_TRANSITION_EVIDENCE_DISCRIMINATOR):
+        return "error"
+    # Structurally exclusive: never coerce ordinary or finality-bound evidence.
+    if "evidenceVersion" in evidence or "finalityBoundEvidenceVersion" in evidence:
+        return "error"
+    if evidence.get("signatureDomain") != LAA_TRANSITION_EVIDENCE_DOMAIN:
+        return "fail"
+    if evidence.get("agreementBindingMatches") is not True:
+        return "fail" if "agreementBindingMatches" in evidence else "error"
+    signature = evidence.get("signature")
+    if not isinstance(signature, dict):
+        return "error"
+    for field in ("signer", "algorithm", "value", "signatureValid"):
+        if field not in signature:
+            return "error"
+    if (not _canonical_identity_string(signature.get("signer"))
+            or not isinstance(signature.get("algorithm"), str)
+            or signature.get("algorithm") not in {
+                "ed25519", "ecdsa-secp256k1", "sr1-aggregate",
+            }
+            or not _canonical_identity_string(signature.get("value"))):
+        return "error"
+    session = value.get("sessionAuthority")
+    orchestrator = session.get("orchestratorPrimaryClaim") if isinstance(session, dict) else None
+    if signature.get("signatureValid") is not True:
+        return "fail"
+    if signature.get("signer") != orchestrator:
+        return "fail"
+    if not _canonical_identity_string(evidence.get("receiptWriter")):
+        return "error"
+    if evidence.get("receiptWriter") != orchestrator:
+        return "fail"
+    state_verdict = _laa_receipt_state(evidence)
+    if state_verdict != "pass":
+        return state_verdict
+    if evidence.get("substrate") != substrate:
+        return "fail"
+    if evidence.get("orderDomain") != order_domain:
+        return "indeterminate"
+    reservation = value.get("reservation")
+    projection = reservation.get("projection") if isinstance(reservation, dict) else None
+    reservation_ref = evidence.get("reservationRef")
+    required_strings = ("agreementHash", "job", "session", "phase")
+    if any(not isinstance(evidence.get(field), str) for field in required_strings):
+        return "error"
+    if not _attestation_ref_shape_valid(reservation_ref):
+        return "error"
+    if not isinstance(projection, dict):
+        return "indeterminate"
+    if evidence.get("outcome") != "success":
+        return "fail"
+    phase_index = evidence.get("phaseIndex")
+    if not _safe_nonnegative_integer(phase_index):
+        return "error"
+    payment_tx_refs = evidence.get("paymentTxRefs")
+    if not isinstance(payment_tx_refs, list) or not payment_tx_refs:
+        return "error"
+    if any(not _chain_tx_ref_shape_valid(ref) for ref in payment_tx_refs):
+        return "error"
+    if len({_canon_sha(ref) for ref in payment_tx_refs}) != len(payment_tx_refs):
+        return "fail"
+    if not _payment_tx_refs_match_phase(
+            evidence.get("phase"), payment_tx_refs, success=True):
+        return "fail"
+    if evidence.get("settlementFinalityValid") is not True:
+        return "fail" if "settlementFinalityValid" in evidence else "error"
+    expected_address = _laa_reservation_address(
+        projection.get("jobId"), projection.get("phaseIndex"),
+    )
+    expected = (
+        evidence["agreementHash"] == projection.get("agreementHash"),
+        evidence["job"] == projection.get("jobId"),
+        evidence["session"] == projection.get("sessionId"),
+        evidence["phase"] == projection.get("phase"),
+        phase_index == projection.get("phaseIndex"),
+        evidence.get("paymentAmount") == projection.get("amount"),
+        reservation_ref["contentHash"] == reservation.get("contentHash"),
+        reservation_ref["anchor"].get("kind") == "storage-program",
+        reservation_ref["anchor"].get("locator") == expected_address,
+        reservation.get("logicalAddress") == expected_address,
+    )
+    if not all(expected):
+        return "fail"
+    settlement_order = _laa_before_checkpoint(evidence, checkpoint_position)
+    if settlement_order in {"error", "indeterminate"}:
+        return settlement_order
+    # This type is specifically the at/after-checkpoint completion evidence.
+    return "fail" if settlement_order == "pass" else "pass"
+
+
+def _laa_validate_transition_consumption(value):
+    """Require verifier-owned proof that the reservation key was consumed."""
+    authority = value.get("paymentAuthority")
+    if authority is None:
+        return "indeterminate"
+    if not isinstance(authority, dict):
+        return "error"
+    resolution = authority.get("resolution")
+    if not isinstance(resolution, str):
+        return "error"
+    if resolution in {"unavailable", "conflicting", "pruned", "reorged"}:
+        return "indeterminate"
+    if resolution != "verified":
+        return "error"
+    reservation = value.get("reservation")
+    projection = reservation.get("projection") if isinstance(reservation, dict) else None
+    if not isinstance(projection, dict):
+        return "indeterminate"
+    key = authority.get("idempotencyKey")
+    state = authority.get("idempotencyResolution")
+    if not isinstance(key, str) or not isinstance(state, str):
+        return "error"
+    if key != projection.get("idempotencyKey"):
+        return "fail"
+    if state in {"unavailable", "conflicting"}:
+        return "indeterminate"
+    return "pass" if state == "consumed" else "fail"
+
+
+def _laa_transition_authorization(value, agreement, session, substrate, order_domain, checkpoint_position):
+    reservation_verdict = _laa_validate_reservation(
+        value, substrate, order_domain, checkpoint_position,
+    )
+    if reservation_verdict != "pass":
+        return reservation_verdict
+    authority = value.get("paymentAuthority")
+    if authority is None:
+        return "indeterminate"
+    if not isinstance(authority, dict):
+        return "error"
+    resolution = authority.get("resolution")
+    if not isinstance(resolution, str):
+        return "error"
+    if resolution in {"unavailable", "conflicting", "pruned", "reorged"}:
+        return "indeterminate"
+    if resolution != "verified":
+        return "error"
+    if authority.get("clockDomain") != order_domain:
+        return "indeterminate"
+    now_ms = authority.get("authenticatedNowMs")
+    deadline = agreement.get("terms", {}).get("deadline")
+    if not isinstance(now_ms, int) or isinstance(now_ms, bool) or now_ms < 0:
+        return "error"
+    if now_ms > deadline:
+        return "fail"
+    idempotency = authority.get("idempotencyResolution")
+    idempotency_key = authority.get("idempotencyKey")
+    expected_key = value.get("reservation", {}).get("projection", {}).get("idempotencyKey")
+    if not isinstance(idempotency_key, str):
+        return "error"
+    if idempotency_key != expected_key:
+        return "fail"
+    if not isinstance(idempotency, str):
+        return "error"
+    if idempotency in {"unavailable", "conflicting"}:
+        return "indeterminate"
+    if idempotency == "consumed":
+        return "fail"
+    if idempotency != "unused":
+        return "error"
+    return "pass"
+
+
+def laa_admission(value):
+    """Total DACS-4 LAA-1..LAA-7 / DACS-3 CA-10 admission oracle.
+
+    Returns exactly one of ``pass`` / ``fail`` / ``indeterminate`` / ``error``
+    for ANY input, never raising on untrusted container shape.
+    """
+    if not isinstance(value, dict):
+        return "error"
+
+    agreement = value.get("agreement")
+    if not isinstance(agreement, dict):
+        return "error"
+    if agreement.get("shape") != "valid":
+        return "error"
+    if agreement.get("partySignaturesValid") is not True:
+        return "fail"
+
+    artifact = agreement.get("artifact")
+    if not isinstance(artifact, str) or artifact not in LAA_ARTIFACTS:
+        return "error"
+
+    # (round-14) Complete structural validation runs BEFORE every authorization
+    # early return, for every agreement artifact and the absence/payee branches.
+    # ``operation`` must be a scalar member of the closed LAA operation
+    # vocabulary, and the agreement must carry a scalar ``contentHash`` — a
+    # missing/forged/malformed operation or contentHash is ``error`` even when
+    # the agreement is otherwise current-eligible (payee-bound / identity-bound)
+    # or a zero-pay / absence branch would otherwise authorize.
+    operation = value.get("operation")
+    if not isinstance(operation, str) or operation not in LAA_OPERATIONS:
+        return "error"
+    # (identity) The agreement contentHash is the independently verified hash
+    # identity key; empty, whitespace, or non-canonical spellings are malformed
+    # and rejected BEFORE any payee-bound / identity-bound / absence branch may
+    # otherwise authorize.
+    if not _canonical_identity_string(agreement.get("contentHash")):
+        return "error"
+
+    # (identity, round-15) The authenticated sessionId is the independently
+    # verified session identity key and is validated AHEAD of every authorizing
+    # / side-effecting branch. A payee-bound or identity-bound-payee artifact
+    # can never return ``pass`` (with paymentSideEffects) on an empty,
+    # whitespace-only, padded, non-NFC, or surrogate sessionId, and neither can
+    # a zero-pay / absence / checkpoint branch. A missing or non-verified
+    # session authority is non-authorizing ``indeterminate``; a present-but-
+    # non-canonical sessionId is malformed ``error``.
+    session = value.get("sessionAuthority")
+    if not isinstance(session, dict) or session.get("state") != "verified":
+        return "indeterminate"
+    session_id = session.get("sessionId")
+    if not _canonical_identity_string(session_id):
+        return "error"
+
+    if artifact in LAA_PAYEE_BOUND_ARTIFACTS:
+        if artifact == "identity-bound-payee" and agreement.get("ibhVerified") is not True:
+            return "fail"
+        return "pass" if agreement.get("pbVerified") is True else "fail"
+    if artifact == "identity-bound":
+        return "pass" if value.get("pipelineHasPayment") is False else "fail"
+
+    # legacy AgreementDocument
+    if value.get("pipelineHasPayment") is False:
+        return "pass"
+
+    substrate = session.get("substrate")
+    order_domain = session.get("orderDomain")
+    job_id = session.get("jobId")
+    head = session.get("paymentHeadPosition")
+    if not all(isinstance(x, str) for x in (substrate, order_domain, job_id)):
+        return "error"
+
+    checkpoint = value.get("checkpoint")
+    if not isinstance(checkpoint, dict):
+        return "error"
+    resolution = checkpoint.get("resolution")
+    if not isinstance(resolution, str):
+        return "error"
+    if checkpoint.get("substrate") != substrate:
+        return "fail"
+    if checkpoint.get("orderDomain") != order_domain:
+        return "indeterminate"
+    if resolution == "absent":
+        if checkpoint.get("authenticatedAbsence") is not True:
+            return "indeterminate"
+        absence_cover, verdict = _laa_position(checkpoint.get("absenceCoverPosition"))
+        if verdict is not None:
+            return verdict
+        head_position, head_verdict = _laa_position(head)
+        if head_verdict is not None:
+            return head_verdict
+        if absence_cover < head_position:
+            return "indeterminate"
+        if operation == "transition-audit":
+            # Without an established activation checkpoint there is no
+            # transition era to audit.
+            return "fail"
+        if operation == "reserve-transition-payment":
+            commitment = value.get("commitment")
+            if not isinstance(commitment, dict):
+                return "error"
+            commitment_resolution = commitment.get("resolution")
+            if not isinstance(commitment_resolution, str):
+                return "error"
+            if commitment_resolution in LAA_UNAVAILABLE_RECORD_RESOLUTIONS:
+                return "indeterminate"
+            if commitment_resolution != "verified":
+                return "error"
+            commitment_verdict = _laa_validate_record(
+                commitment, "agreementHashMatches", substrate, order_domain,
+            )
+            if commitment_verdict != "pass":
+                return commitment_verdict
+            reservation_verdict = _laa_validate_reservation(value, substrate, order_domain)
+            if reservation_verdict != "pass":
+                return reservation_verdict
+            reservation_position, reservation_position_verdict = _laa_position(
+                value["reservation"].get("position")
+            )
+            if reservation_position_verdict is not None:
+                return reservation_position_verdict
+            if absence_cover < reservation_position:
+                return "indeterminate"
+            commitment_before_reservation = _laa_before_checkpoint(
+                commitment, reservation_position,
+            )
+            return commitment_before_reservation
+        return "pass"
+    if resolution in LAA_ABSENT_RESOLUTIONS:
+        return "indeterminate"
+    if resolution != "verified":
+        return "error"
+    if checkpoint.get("shape") != "valid" or checkpoint.get("discriminator") != LAA_CHECKPOINT_DISCRIMINATOR:
+        return "error"
+    for field in ("signatureValid", "stewardAuthorized", "addressMatches", "policyMatches"):
+        if field not in checkpoint:
+            return "error"
+        if checkpoint[field] is not True:
+            return "fail"
+    if checkpoint.get("signatureDomain") != LAA_CHECKPOINT_DOMAIN:
+        return "fail"
+    state_verdict = _laa_receipt_state(checkpoint)
+    if state_verdict != "pass":
+        return state_verdict
+    checkpoint_position, position_verdict = _laa_position(checkpoint.get("position"))
+    if position_verdict is not None:
+        return position_verdict
+
+    # CA-10 still forbids creating a new legacy commitment after activation.
+    # A payment may continue only from the exact finalized legacy commitment
+    # that precedes the checkpoint and only under its original signed bounds.
+    if operation in {"commit-pay-bearing", "reserve-transition-payment"}:
+        return "fail"
+    if operation not in {"authorize-payment", "historical-audit", "transition-audit"}:
+        return "error"
+
+    commitment = value.get("commitment")
+    if not isinstance(commitment, dict):
+        return "error"
+    resolution_r = commitment.get("resolution")
+    if not isinstance(resolution_r, str):
+        return "error"
+    if resolution_r in LAA_UNAVAILABLE_RECORD_RESOLUTIONS:
+        return "indeterminate"
+    if resolution_r != "verified":
+        return "error"
+    result = _laa_validate_record(commitment, "agreementHashMatches", substrate, order_domain)
+    if result != "pass":
+        return result
+    commitment_order = _laa_before_checkpoint(commitment, checkpoint_position)
+    if commitment_order != "pass":
+        return commitment_order
+
+    if agreement.get("jobId") != job_id:
+        return "fail"
+
+    if operation == "authorize-payment":
+        return _laa_transition_authorization(
+            value, agreement, session, substrate, order_domain, checkpoint_position,
+        )
+
+    if operation == "transition-audit":
+        reservation_verdict = _laa_validate_reservation(
+            value, substrate, order_domain, checkpoint_position,
+        )
+        if reservation_verdict != "pass":
+            return reservation_verdict
+        evidence_verdict = _laa_validate_transition_evidence(
+            value, substrate, order_domain, checkpoint_position,
+        )
+        if evidence_verdict != "pass":
+            return evidence_verdict
+        return _laa_validate_transition_consumption(value)
+
+    settlement = value.get("settlementEvidence")
+    if not isinstance(settlement, dict):
+        return "error"
+    for record in (settlement,):
+        resolution_r = record.get("resolution")
+        if not isinstance(resolution_r, str):
+            return "error"
+        if resolution_r in LAA_UNAVAILABLE_RECORD_RESOLUTIONS:
+            return "indeterminate"
+        if resolution_r != "verified":
+            return "error"
+
+    result = _laa_validate_record(settlement, "agreementBindingMatches", substrate, order_domain)
+    if result != "pass":
+        return result
+
+    for field in ("agreementHash", "job", "session", "phase"):
+        if field not in settlement or not isinstance(settlement[field], str):
+            return "error"
+    agreement_hash = agreement["contentHash"]
+    if settlement["agreementHash"] != agreement_hash:
+        return "fail"
+    if settlement["job"] != agreement.get("jobId"):
+        return "fail"
+    if settlement["session"] != session_id:
+        return "fail"
+    if settlement["phase"] != agreement.get("phase"):
+        return "fail"
+
+    results = [
+        _laa_before_checkpoint(settlement, checkpoint_position),
+    ]
+    if "error" in results:
+        return "error"
+    if "fail" in results:
+        return "fail"
+    if "indeterminate" in results:
+        return "indeterminate"
+    return "pass"
+
+
+def laa_disposition(verdict, operation, pipeline_has_payment, artifact,
+                    checkpoint_resolution=None):
+    """Map one LAA verdict to the DACS-5 bundle/derive admission disposition.
+
+    Never a generic ``continue``: a historical LAA pass is ``historical-only``
+    (current-ineligible), a payee-bound pass is ``current-eligible``, a CA-10
+    commitment pass carries zero payment authority (``commit-permitted``), and
+    a zero-pay pass is outside the gate (``admitted-non-payment``).
+    """
+    if verdict in {"fail", "error"}:
+        return "rejected"
+    if verdict == "indeterminate":
+        return "indeterminate"
+    if isinstance(artifact, str) and artifact in LAA_PAYEE_BOUND_ARTIFACTS:
+        return "current-eligible"
+    if operation == "historical-audit":
+        return "historical-only"
+    if operation == "transition-audit" and artifact == "legacy":
+        return "transition-only"
+    if operation == "authorize-payment" and artifact == "legacy":
+        return "transition-only" if checkpoint_resolution == "verified" else "current-eligible"
+    if operation == "reserve-transition-payment":
+        return "reservation-recorded"
+    if operation == "commit-pay-bearing":
+        return "commit-permitted" if pipeline_has_payment is True else "admitted-non-payment"
+    return "current-eligible" if pipeline_has_payment is True else "admitted-non-payment"
+
+
+def laa_want(value):
+    """Compute the full declared-effect projection for one LAA input.
+
+    This is the single shared verifier-owned result: every bundle type and
+    derivation path shares one ``dacs5Admission``, and only ``current-eligible``
+    is current-metric-eligible. Historical and transition passes are explicitly
+    excluded from every current metric.
+    """
+    verdict = laa_admission(value)
+    agreement = value.get("agreement") if isinstance(value, dict) else None
+    agreement_is_dict = isinstance(agreement, dict)
+    artifact_value = agreement.get("artifact") if agreement_is_dict else None
+    pipeline_has_payment = value.get("pipelineHasPayment") is True if isinstance(value, dict) else False
+    operation = value.get("operation") if isinstance(value, dict) else None
+    checkpoint = value.get("checkpoint") if isinstance(value, dict) else None
+    checkpoint_resolution = checkpoint.get("resolution") if isinstance(checkpoint, dict) else None
+    payment_authorized = (
+        verdict == "pass" and pipeline_has_payment and operation == "authorize-payment"
+    )
+    commitment_permitted = verdict == "pass" and operation == "commit-pay-bearing"
+    historical_eligible = verdict == "pass" and operation == "historical-audit"
+    transition_audit_eligible = verdict == "pass" and operation == "transition-audit"
+    inspectable = (
+        agreement_is_dict
+        and agreement.get("shape") == "valid"
+        and agreement.get("partySignaturesValid") is True
+    )
+    admission = laa_disposition(
+        verdict, operation, pipeline_has_payment, artifact_value,
+        checkpoint_resolution,
+    )
+    return {
+        "currentPaymentEligible": payment_authorized,
+        "historicalAuditEligible": historical_eligible,
+        "transitionAuditEligible": transition_audit_eligible,
+        "paymentSideEffects": payment_authorized,
+        "commitmentPermitted": commitment_permitted,
+        "legacyBytesCryptographicallyInspectable": inspectable and artifact_value == "legacy",
+        "dacs5Admission": admission,
+        "bundleAdmission": {kind: admission for kind in LAA_BUNDLE_TYPES},
+        "derivationAdmission": {path: admission for path in LAA_DERIVATION_PATHS},
+        "currentMetricEligible": admission == "current-eligible",
+    }
+
+
+class LegacyAgreementLedger:
+    """Verifier-owned mutable session/commitment store for CA-10 -> LAA.
+
+    Commitment identity is exactly ``(sessionId, agreement.contentHash)``; both
+    the bounded commitment and the authenticated session/head authority are
+    keyed by that pair. A ``commit-pay-bearing`` pass records only the bounded
+    commitment (zero payment side effects) and retains the FIRST
+    verifier-owned session/head authority immutably — a later retry, identical
+    or not, never overwrites it. A later payment on the same session/commitment
+    re-runs LAA against that independently retained head, never a caller-
+    supplied top-level ``paymentPosition`` or a mutable nested
+    ``sessionAuthority`` copy, and is refused unless the exact commitment
+    ``(sessionId, contentHash)`` was previously recorded. This models the
+    LAA-1/LAA-3 trust boundary: a caller cannot lower its own assertion to turn
+    a stale absence into a pass, and a finalized commitment never grants
+    expanded payment authority.
+    """
+
+    def __init__(self):
+        self._sessions = {}
+        self._commitments = {}
+        self._agreements = {}
+        self._reservations = {}
+        self._consumed = set()
+
+    def commit(self, value):
+        """Evaluate a CA-10 commit-pay-bearing request and record its commitment."""
+        verdict = laa_admission(value)
+        if verdict != "pass" or value.get("operation") != "commit-pay-bearing":
+            agreement = value.get("agreement") if isinstance(value, dict) else None
+            artifact = agreement.get("artifact") if isinstance(agreement, dict) else None
+            return laa_disposition(
+                verdict,
+                value.get("operation") if isinstance(value, dict) else None,
+                value.get("pipelineHasPayment") is True if isinstance(value, dict) else False,
+                artifact,
+                value.get("checkpoint", {}).get("resolution")
+                if isinstance(value.get("checkpoint") if isinstance(value, dict) else None, dict)
+                else None,
+            )
+        session = value.get("sessionAuthority")
+        agreement = value.get("agreement")
+        if not isinstance(session, dict) or not isinstance(agreement, dict):
+            return "rejected"
+        session_id = session.get("sessionId")
+        content_hash = agreement.get("contentHash")
+        if (not _canonical_identity_string(session_id)
+                or not _canonical_identity_string(content_hash)):
+            return "rejected"
+        key = (session_id, content_hash)
+        if key not in self._commitments:
+            self._commitments[key] = copy.deepcopy(value.get("commitment"))
+            self._agreements[key] = copy.deepcopy(agreement)
+            # Preserve the first verifier-owned session/head record immutably.
+            self._sessions[key] = copy.deepcopy(session)
+        return "commit-permitted"
+
+    def reserve(self, value):
+        """Verify and retain one signed/finalized pre-checkpoint reservation."""
+        if not isinstance(value, dict):
+            return "rejected"
+        session = value.get("sessionAuthority")
+        agreement = value.get("agreement")
+        if not isinstance(session, dict) or not isinstance(agreement, dict):
+            return "rejected"
+        key = (session.get("sessionId"), agreement.get("contentHash"))
+        retained_agreement = self._agreements.get(key)
+        retained_commitment = self._commitments.get(key)
+        retained_session = self._sessions.get(key)
+        if not all(isinstance(item, dict) for item in (
+                retained_agreement, retained_commitment, retained_session)):
+            return "rejected"
+        # Reservation creation consumes only the immutable verifier-owned
+        # session snapshot retained at commit. Caller changes to a role, bundle,
+        # key authority, orchestrator, or even the authenticated head are
+        # storage-poisoning attempts and are rejected before validation/storage.
+        if (agreement != retained_agreement
+                or value.get("commitment") != retained_commitment
+                or session != retained_session):
+            return "rejected"
+        verdict = laa_admission(value)
+        if verdict != "pass" or value.get("operation") != "reserve-transition-payment":
+            return laa_disposition(
+                verdict, value.get("operation"), value.get("pipelineHasPayment") is True,
+                agreement.get("artifact"),
+                value.get("checkpoint", {}).get("resolution")
+                if isinstance(value.get("checkpoint"), dict) else None,
+            )
+        if key not in self._reservations:
+            self._reservations[key] = copy.deepcopy(value.get("reservation"))
+        elif self._reservations[key] != value.get("reservation"):
+            return "rejected"
+        return "reservation-recorded"
+
+    def authorize_payment(self, value):
+        """Re-run LAA for a pay-bearing effect using the retained authenticated head.
+
+        The payment must cite the exact recorded commitment ``(sessionId,
+        agreement.contentHash)``; an uncommitted agreement, a different session,
+        or a different agreement hash is refused without ever trusting a
+        caller-supplied head.
+        """
+        if not isinstance(value, dict):
+            return "rejected"
+        session = value.get("sessionAuthority")
+        agreement = value.get("agreement")
+        session_id = session.get("sessionId") if isinstance(session, dict) else None
+        content_hash = agreement.get("contentHash") if isinstance(agreement, dict) else None
+        if (not _canonical_identity_string(session_id)
+                or not _canonical_identity_string(content_hash)):
+            return "rejected"
+        key = (session_id, content_hash)
+        if key not in self._commitments:
+            # No verifier-committed commitment for this exact session/agreement:
+            # a caller-supplied head is never trusted for a pay-bearing effect.
+            return "rejected"
+        retained = self._sessions.get(key)
+        retained_agreement = self._agreements.get(key)
+        retained_commitment = self._commitments.get(key)
+        retained_reservation = self._reservations.get(key)
+        if not all(isinstance(item, dict) for item in (
+                retained, retained_agreement, retained_commitment, retained_reservation)):
+            return "rejected"
+        replayed = copy.deepcopy(value)
+        # The first committed agreement, receipt, and session authority are
+        # immutable. A caller cannot substitute signed terms while retaining a
+        # claimed contentHash or lower the verifier-owned effect head.
+        if agreement != retained_agreement:
+            return "rejected"
+        replayed["agreement"] = copy.deepcopy(retained_agreement)
+        replayed["commitment"] = copy.deepcopy(retained_commitment)
+        replayed["reservation"] = copy.deepcopy(retained_reservation)
+        replayed["sessionAuthority"] = copy.deepcopy(retained)
+        projection = retained_reservation.get("projection")
+        idempotency_key = projection.get("idempotencyKey") if isinstance(projection, dict) else None
+        if idempotency_key in self._consumed:
+            return "rejected"
+        verdict = laa_admission(replayed)
+        artifact = agreement.get("artifact") if isinstance(agreement, dict) else None
+        return laa_disposition(
+            verdict, replayed.get("operation"), replayed.get("pipelineHasPayment") is True,
+            artifact,
+            replayed.get("checkpoint", {}).get("resolution")
+            if isinstance(replayed.get("checkpoint"), dict) else None,
+        )
+
+    def execute_payment(self, value, payment_effect):
+        """Gate a concrete in-process fake payment adapter.
+
+        Exactly a ``transition-only`` decision can call the supplied effect.
+        The local idempotency key is consumed before the call; retries and every
+        non-authorizing decision have zero additional calls. This is call-order
+        evidence, not crash-durable transaction or provider reconciliation.
+        """
+        disposition = self.authorize_payment(value)
+        if disposition != "transition-only":
+            return disposition
+        session = value.get("sessionAuthority") if isinstance(value, dict) else None
+        agreement = value.get("agreement") if isinstance(value, dict) else None
+        lookup = (
+            session.get("sessionId") if isinstance(session, dict) else None,
+            agreement.get("contentHash") if isinstance(agreement, dict) else None,
+        )
+        reservation = self._reservations.get(lookup)
+        projection = reservation.get("projection") if isinstance(reservation, dict) else None
+        key = projection.get("idempotencyKey") if isinstance(projection, dict) else None
+        if not _canonical_identity_string(key) or key in self._consumed:
+            return "rejected"
+        self._consumed.add(key)
+        payment_effect(copy.deepcopy(value.get("paymentEffect")))
+        return disposition
+
+    def commitment_recorded(self, session_id, content_hash):
+        return (session_id, content_hash) in self._commitments
+
+    def retained_head(self, session_id, content_hash):
+        session = self._sessions.get((session_id, content_hash))
+        return session.get("paymentHeadPosition") if isinstance(session, dict) else None
+
+    def reservation_recorded(self, session_id, content_hash):
+        return (session_id, content_hash) in self._reservations

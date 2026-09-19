@@ -64,6 +64,7 @@ RATING_DOMAIN = "dacs-rating:v1:"
 # native observations used by this offline executable reference; they are not DACS
 # artifact domains and do not claim to specify a production substrate proof codec.
 CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN = "dacs-current-use-synthetic-anchor-proof:v1:"
+CURRENT_USE_SYNTHETIC_OUTCOME_PROOF_DOMAIN = "dacs-current-use-synthetic-outcome-proof:v1:"
 CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN = (
     "dacs-current-use-synthetic-settlement-binding-proof:v1:"
 )
@@ -133,6 +134,7 @@ SUPPORTED_SETTLEMENT_FINALITY_MODELS = frozenset({
 # but FAILS CLOSED at compute time (derive() refuses it; replay refuses an sr2-declared receipt),
 # rather than silently windowing on finalisedAt and mislabelling the receipt.
 SUPPORTED_WINDOWING_BASES = frozenset({"finalisedAt", "sr2-anchor-timestamp"})
+COMBINED_WINDOWING_BASIS = "verified-business-outcome-occurrence"
 IMPLEMENTED_WINDOWING_BASES = frozenset({"finalisedAt"})
 
 # CORE §B.7 SIG-6 canonical unpadded Base64URL alphabet (spec lines 320-321): the canonical value is
@@ -415,7 +417,10 @@ def _current_context_shape_valid(trusted_context):
         or not query["party"]
         or not _non_boolean_number(query.get("windowStart"))
         or not _non_boolean_number(query.get("windowEnd"))
-        or not _string_member(query.get("windowingBasis"), SUPPORTED_WINDOWING_BASES)
+        or not _string_member(
+            query.get("windowingBasis"),
+            SUPPORTED_WINDOWING_BASES | {COMBINED_WINDOWING_BASIS},
+        )
         or type(query.get("authenticated")) is not bool
         or not is_exact_corrective_profile(query.get("profile"))
     ):
@@ -4747,7 +4752,10 @@ _ALL_DERIVATION_DISCRIMINATORS = frozenset({
     "settlementVerifiedDerivationVersion",
     "replayableSettlementVerifiedDerivationVersion",
     "currentUseReplayableDerivationVersion",
+    "authenticatedWindowDerivationVersion",
+    "currentUseAuthenticatedWindowDerivationVersion",
 })
+CURRENT_USE_AUTHENTICATED_WINDOW_DERIVATION_VERSION = "1"
 _CURRENT_USE_PAYMENT_BINDING_REQUIRED = frozenset({"pay-ap2", "pay-x402"})
 _SYNTHETIC_PURE_MAPPING_PROFILE = "dacs-current-use-synthetic-pure-mapping-v1"
 
@@ -4756,11 +4764,28 @@ def _current_use_result(decision, reason, derivation=None):
     return {"decision": decision, "reason": reason, "derivation": derivation}
 
 
+def require_current_use_authenticated_window_derivation(derivation):
+    """Select the composed contract before any receipt-carried dependency is read."""
+    if not isinstance(derivation, dict):
+        return {"ok": False, "reason": "combined derivation is not an object"}
+    present = {key for key in derivation
+               if isinstance(key, str) and key.endswith("DerivationVersion")}
+    if present != {"currentUseAuthenticatedWindowDerivationVersion"}:
+        return {"ok": False, "reason": "combined discriminator is missing, unknown, or non-exclusive"}
+    if derivation.get("currentUseAuthenticatedWindowDerivationVersion") != CURRENT_USE_AUTHENTICATED_WINDOW_DERIVATION_VERSION:
+        return {"ok": False, "reason": "combined discriminator version is unsupported"}
+    return {"ok": True, "reason": "combined discriminator holds"}
+
+
 def _jcs_hash(value, omitted=()):
     omitted = {omitted} if isinstance(omitted, str) else set(omitted)
     return hashlib.sha256(_new_type_canonical({
         key: item for key, item in value.items() if key not in omitted
     })).hexdigest()
+
+
+def _jcs_value_hash(value):
+    return hashlib.sha256(_new_type_canonical(value)).hexdigest()
 
 
 def legacy_checkpoint_hash(checkpoint):
@@ -5321,6 +5346,23 @@ def _validate_current_use_type_authority(bundle, dependencies, verifier_config):
     if not signature_ok:
         return ("fail", signature_reason, None)
     authority = _authority_for_bundle(bundle, dependencies)
+    listing = authority.get("listing") if isinstance(authority, dict) else None
+    pipeline = (
+        authority.get("effectivePipeline", listing.get("pipeline"))
+        if isinstance(authority, dict) and isinstance(listing, dict) else None
+    )
+    agreement_ref = bundle.get("agreementRef")
+    agreement = (_artifact_from_ref(dependencies, "agreementsByCanonicalRef", agreement_ref)
+                 if isinstance(agreement_ref, dict) else None)
+    if (
+        isinstance(pipeline, list)
+        and any(isinstance(step, dict) and step.get("kind") == "negotiate-sealed-envelope"
+                for step in pipeline)
+    ) or (isinstance(agreement, dict) and "sealedSelectionAgreementVersion" in agreement):
+        # The fixture reference does not implement SAC-2..SAC-8. A signed
+        # selection receipt or producer assertion cannot stand in for the
+        # independently reproduced sealed candidate set and winner.
+        return ("indeterminate", "sealed-selection SAC-8 authority is unsupported by this reference", None)
     if kind == "evidence-bound":
         if not isinstance(authority, dict):
             return ("indeterminate", "EBFAB authority is unavailable", None)
@@ -5578,6 +5620,7 @@ def _resolve_current_use_role(
         return {
             "decision": "pass", "reason": "pure-mapped role copy admitted", "disposition": "present",
             "bundle": bundle,
+            "anchorReceipt": copy.deepcopy(role_request["anchorReceipt"]),
             "roleEvidence": {"kind": "address", "resolvedAddress": expected_native},
             "presence": {"bundleHash": bundle_hash(bundle), "nativeAddress": expected_native,
                          "writer": role_map[role]},
@@ -5662,6 +5705,7 @@ def _resolve_current_use_role(
     return {
         "decision": "pass", "reason": "binding-backed role copy admitted", "disposition": "present",
         "bundle": bundle, "roleEvidence": {"kind": "binding", "binding": copy.deepcopy(binding)},
+        "anchorReceipt": copy.deepcopy(receipts[native]),
         "bb6Context": copy.deepcopy(context),
         "presence": {"bundleHash": bundle_hash(bundle), "nativeAddress": native,
                      "writer": binding["signer"]},
@@ -5954,9 +5998,107 @@ def _resolve_current_use_job(
         pair_faults = common_fault_set(present_results[0]["bundle"], present_results[1]["bundle"])
     return {
         "decision": "pass", "reason": "requested job fully admitted", "bundle": authoritative,
+        "requestSubstrate": job["substrate"],
         "roleOfParty": role_of_party, "selected": selected, "roles": resolved,
         "pairFaults": pair_faults,
     }
+
+
+def _verify_current_use_outcome_occurrence(result, dependencies, verifier_config):
+    """Fixture-only AWT adapter, invoked only after complete CUR reconciliation.
+
+    Its signer and policy come from verifier configuration. The selected bundle,
+    signed Listing pipeline, phase summary, and terminal evidence set are exact
+    hash-bound inputs; neither bundle/anchor publication time nor a producer flag
+    can supply the occurrence clock.
+    """
+    bundle = result["bundle"]
+    job_id = bundle["jobId"]
+    substrate = result["requestSubstrate"]
+    policies = verifier_config.get("outcomeTimePolicyBySubstrate")
+    policy = policies.get(substrate) if isinstance(policies, dict) else None
+    if not isinstance(policy, dict) or set(policy) != {"policyId", "authority"}:
+        return ("indeterminate", "outcome policy is unavailable", None)
+    if not all(_nonempty_jcs_string(policy.get(key)) for key in policy):
+        return ("indeterminate", "outcome policy is malformed", None)
+    authority = _authority_for_bundle(bundle, dependencies)
+    listing = authority.get("listing") if isinstance(authority, dict) else None
+    pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
+    if not isinstance(pipeline, list) or not pipeline:
+        return ("indeterminate", "authenticated effective pipeline is unavailable", None)
+    evidence_by_job = dependencies.get("outcomeTimeEvidenceByJobId")
+    history = evidence_by_job.get(job_id) if isinstance(evidence_by_job, dict) else None
+    if not isinstance(history, list) or not history:
+        return ("indeterminate", "business-outcome occurrence proof is unavailable", None)
+    pinned_outcome = verifier_config.get("pinnedOutcomeHistoryHashByJob")
+    if (not isinstance(pinned_outcome, dict)
+            or pinned_outcome.get(job_id) != _jcs_value_hash(history)):
+        return ("indeterminate", "outcome history is not complete under verifier authority", None)
+    anchor_histories = dependencies.get("anchorReceiptHistoryByJobId")
+    anchor_history = anchor_histories.get(job_id) if isinstance(anchor_histories, dict) else None
+    pinned_anchors = verifier_config.get("pinnedAnchorHistoryHashByJob")
+    if (not isinstance(anchor_history, list) or not anchor_history
+            or not isinstance(pinned_anchors, dict)
+            or pinned_anchors.get(job_id) != _jcs_value_hash(anchor_history)):
+        return ("indeterminate", "bundle-anchor history is not complete under verifier authority", None)
+    selected_anchor = result["selected"].get("anchorReceipt")
+    if (len(anchor_history) != 1 or anchor_history[0] != selected_anchor):
+        # This fixture binding has no replacement relation codec. A nontrivial
+        # history must wait for an independently authenticated lifecycle adapter.
+        return ("indeterminate", "bundle-anchor lifecycle history is unsupported or conflicting", None)
+    expected = {
+        "jobId": job_id,
+        "bundleContentHash": bundle_hash(bundle),
+        "outcome": bundle.get("outcome"),
+        "effectivePipelineHash": _jcs_value_hash(pipeline),
+        "phaseSummaryHash": _jcs_value_hash(bundle.get("phaseSummary")),
+        "terminalEvidenceHash": _jcs_value_hash(bundle.get("settlementEvidence", [])),
+    }
+    canonical_history = []
+    seen = set()
+    event_keys = set()
+    native_orders = set()
+    for proof in history:
+        required = {"syntheticOutcomeProofVersion", "policyId", *expected,
+                    "nativeEvent", "signature"}
+        event = proof.get("nativeEvent") if isinstance(proof, dict) else None
+        if (
+            not isinstance(proof, dict) or set(proof) != required
+            or proof.get("syntheticOutcomeProofVersion") != "1"
+            or proof.get("policyId") != policy["policyId"]
+            or any(proof.get(key) != value for key, value in expected.items())
+            or not isinstance(event, dict)
+            or set(event) != {"eventId", "nativeOrder", "timestamp", "state"}
+            or not _nonempty_jcs_string(event.get("eventId"))
+            or not _safe_nonnegative_integer(event.get("nativeOrder"))
+            or not _safe_nonnegative_integer(event.get("timestamp"))
+            or event.get("state") != "finalized"
+            or not _proof_signature_valid(
+                proof, CURRENT_USE_SYNTHETIC_OUTCOME_PROOF_DOMAIN,
+                verifier_config.get("outcomeTimeAuthorityKeys"), policy["authority"])
+        ):
+            return ("indeterminate", "business-outcome proof is unverified or contradicts the selected session", None)
+        digest = _jcs_hash(proof)
+        if digest in seen:
+            continue
+        seen.add(digest)
+        if event["nativeOrder"] in native_orders:
+            return ("indeterminate", "outcome observations conflict at one native order", None)
+        native_orders.add(event["nativeOrder"])
+        event_keys.add((event["eventId"], event["timestamp"]))
+        canonical_history.append(copy.deepcopy(proof))
+    if len(event_keys) != 1:
+        return ("indeterminate", "outcome history contains conflicting native events", None)
+    canonical_history.sort(key=lambda proof: (proof["nativeEvent"]["nativeOrder"], _jcs_hash(proof)))
+    selected = canonical_history[0]
+    return ("pass", "business-outcome occurrence independently verified", {
+        "outcomeTimePolicy": policy["policyId"],
+        "outcomeTimeEvidence": copy.deepcopy(selected),
+        "outcomeTimeEvidenceHistory": canonical_history,
+        "outcomeOccurrenceTime": selected["nativeEvent"]["timestamp"],
+        "anchorReceipt": copy.deepcopy(selected_anchor),
+        "anchorReceiptHistory": copy.deepcopy(anchor_history),
+    })
 
 
 def _artifact_from_ref(dependencies, collection, ref):
@@ -6163,10 +6305,15 @@ def _build_current_use_derivation(
     party, requests, admitted, window_start, window_end, basis, computed_at,
     dependencies, verifier_config,
 ):
+    combined = basis == "verified-business-outcome-occurrence"
+    if combined:
+        all_job_sb2_conflict = _current_use_sb2_conflict(admitted)
+        if all_job_sb2_conflict is not None:
+            return _current_use_result("fail", all_job_sb2_conflict)
     reconciled = []
     for result in admitted:
         bundle = result["bundle"]
-        timestamp = bundle.get(basis)
+        timestamp = result.get("outcomeOccurrenceTime") if combined else bundle.get(basis)
         if not _non_boolean_number(timestamp):
             return _current_use_result("error", "admitted bundle window clock is malformed")
         if party not in _primary_claims(bundle) or result.get("roleOfParty") not in {"buyer", "seller"}:
@@ -6264,6 +6411,9 @@ def _build_current_use_derivation(
 
     ordered = sorted(reconciled, key=lambda result: (bundle_hash(result["bundle"]), result["bundle"]["jobId"]))
     resolution_context = [_resolution_context_entry(result) for result in ordered]
+    if combined:
+        for entry, result in zip(resolution_context, ordered):
+            entry.update(copy.deepcopy(result["outcomeWindowContext"]))
     metrics = {
         "completionRate": completed_count / party_fault_denom if party_fault_denom > 0 else None,
         "counterpartyAdjustedCompletionRate": completed_count / blame_denom if blame_denom > 0 else None,
@@ -6284,7 +6434,7 @@ def _build_current_use_derivation(
         },
     }
     derivation = {
-        "currentUseReplayableDerivationVersion": "1",
+        ("currentUseAuthenticatedWindowDerivationVersion" if combined else "currentUseReplayableDerivationVersion"): "1",
         "partyPrimaryClaim": party,
         "windowStart": window_start,
         "windowEnd": window_end,
@@ -6305,6 +6455,15 @@ def _build_current_use_derivation(
         "resolutionContext": resolution_context,
         "requestContext": copy.deepcopy(requests),
     }
+    if combined:
+        derivation["allJobResolutionContext"] = [
+            {
+                **_resolution_context_entry(result),
+                **copy.deepcopy(result["outcomeWindowContext"]),
+                "windowMember": window_start <= result["outcomeOccurrenceTime"] <= window_end,
+            }
+            for result in admitted
+        ]
     return _current_use_result("pass", "all requested jobs admitted and current-use metrics computed", derivation)
 
 
@@ -6395,7 +6554,7 @@ def _current_use_request_admission(
 def derive_current_use_replayable(
     party, requests, window_start, window_end, dependencies, verifier_config,
     basis="finalisedAt", computed_at=None, *, pubkeys=None,
-    trusted_contexts=None,
+    trusted_contexts=None, _combined=False,
 ):
     """Execute the complete current-use contract or return no derivation.
 
@@ -6411,7 +6570,9 @@ def derive_current_use_replayable(
             return _current_use_result("error", "requestContext must be an array")
         if not isinstance(dependencies, dict) or not isinstance(verifier_config, dict):
             return _current_use_result("indeterminate", "dependency or verifier configuration is unavailable")
-        if basis not in IMPLEMENTED_WINDOWING_BASES:
+        if _combined and basis != "verified-business-outcome-occurrence":
+            return _current_use_result("error", "combined contract requires verified business-outcome occurrence")
+        if not _combined and basis not in IMPLEMENTED_WINDOWING_BASES:
             decision = "indeterminate" if basis in SUPPORTED_WINDOWING_BASES else "error"
             return _current_use_result(decision, "requested windowing basis is unsupported")
         if not _non_boolean_number(window_start) or not _non_boolean_number(window_end) or window_start > window_end:
@@ -6438,12 +6599,38 @@ def derive_current_use_replayable(
                     "%s: %s" % (job.get("jobId", "<malformed>") if isinstance(job, dict) else "<malformed>",
                                   result.get("reason", "admission failed")))
             admitted.append(result)
+        if _combined:
+            sb2_conflict = _current_use_sb2_conflict(admitted)
+            if sb2_conflict is not None:
+                return _current_use_result("fail", sb2_conflict)
+            for job, result in zip(requests, admitted):
+                occurrence, occurrence_reason, context = _verify_current_use_outcome_occurrence(
+                    result, dependencies, config)
+                if occurrence != "pass":
+                    return _current_use_result(
+                        occurrence, "%s: %s" % (job["jobId"], occurrence_reason))
+                result["outcomeOccurrenceTime"] = context["outcomeOccurrenceTime"]
+                result["outcomeWindowContext"] = {
+                    key: value for key, value in context.items()
+                    if key != "outcomeOccurrenceTime"
+                }
         return _build_current_use_derivation(
             party, requests, admitted, window_start, window_end, basis, computed_at,
             dependencies, config)
     except (KeyError, TypeError, ValueError, UnicodeError, OverflowError,
             InvalidOperation, RecursionError):
         return _current_use_result("error", "current-use request contains malformed nested data")
+
+
+def derive_current_use_authenticated_window(
+    party, requests, window_start, window_end, dependencies, verifier_config,
+    computed_at=None, *, pubkeys=None, trusted_contexts=None,
+):
+    """Compose CUR admission and AWT occurrence as the sole strongest contract."""
+    return derive_current_use_replayable(
+        party, requests, window_start, window_end, dependencies, verifier_config,
+        basis="verified-business-outcome-occurrence", computed_at=computed_at,
+        pubkeys=pubkeys, trusted_contexts=trusted_contexts, _combined=True)
 
 
 def replay_current_use_derivation(
@@ -6488,6 +6675,50 @@ def replay_current_use_derivation(
         "reason": "complete current-use derivation reproduced" if same else "complete current-use derivation differs",
         "replayed": replayed,
     }
+
+
+def replay_current_use_authenticated_window(
+    derivation, dependencies, verifier_config, *, pubkeys=None,
+    trusted_contexts=None,
+):
+    """Reverify every requested job, including outside-window replay context."""
+    gate = require_current_use_authenticated_window_derivation(derivation)
+    if not gate["ok"]:
+        return {"ok": False, "reason": "discriminator refusal: " + gate["reason"], "replayed": None}
+    required = {
+        "currentUseAuthenticatedWindowDerivationVersion", "partyPrimaryClaim",
+        "windowStart", "windowEnd", "bundleCount", "metrics", "computedAt",
+        "windowingBasis", "bundleRefs", "resolutionContext", "requestContext",
+        "allJobResolutionContext",
+    }
+    if set(derivation) != required:
+        return {"ok": False, "reason": "combined derivation has a malformed closed shape", "replayed": None}
+    if (
+        derivation.get("windowingBasis") != "verified-business-outcome-occurrence"
+        or not isinstance(derivation.get("metrics"), dict)
+        or not isinstance(derivation.get("bundleRefs"), list)
+        or not isinstance(derivation.get("resolutionContext"), list)
+        or not isinstance(derivation.get("requestContext"), list)
+        or not isinstance(derivation.get("allJobResolutionContext"), list)
+        or len(derivation["allJobResolutionContext"]) != len(derivation["requestContext"])
+        or type(derivation.get("bundleCount")) is not int
+    ):
+        return {"ok": False, "reason": "combined derivation containers are malformed", "replayed": None}
+    result = derive_current_use_authenticated_window(
+        derivation["partyPrimaryClaim"], derivation["requestContext"],
+        derivation["windowStart"], derivation["windowEnd"], dependencies,
+        verifier_config, computed_at=derivation["computedAt"],
+        pubkeys=pubkeys, trusted_contexts=trusted_contexts)
+    if result["decision"] != "pass":
+        return {"ok": False, "reason": "full dependency replay did not pass: " + result["reason"], "replayed": None}
+    replayed = result["derivation"]
+    try:
+        same = _new_type_canonical(replayed) == _new_type_canonical(derivation)
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        return {"ok": False, "reason": "combined derivation is not canonicalizable", "replayed": None}
+    return {"ok": same,
+            "reason": "complete combined derivation reproduced" if same else "complete combined derivation differs",
+            "replayed": replayed}
 
 
 def replay_receipt(derivation, deref, party, window_start, window_end,

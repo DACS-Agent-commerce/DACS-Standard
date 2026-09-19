@@ -26,6 +26,7 @@ for path in (str(ROOT), str(ROOT / "tests")):
 
 try:
     from scripts.generate_settlement_finality_verification_vectors import (
+        AGREEMENT_DOMAIN,
         CLAIMS,
         FINALITY_BUNDLE_DOMAIN,
         FixtureFactory,
@@ -35,6 +36,7 @@ try:
         BINDING_DOMAIN,
         BUNDLE_DOMAIN,
         CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN,
+        CURRENT_USE_SYNTHETIC_OUTCOME_PROOF_DOMAIN,
         CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
@@ -42,6 +44,7 @@ try:
         RATING_DOMAIN,
         bundle_hash,
         current_use_synthetic_proof_hash,
+        _jcs_value_hash,
         legacy_checkpoint_binding_hash,
         legacy_checkpoint_hash,
         legacy_checkpoint_logical_address,
@@ -55,6 +58,7 @@ try:
     )
 except ImportError:
     from generate_settlement_finality_verification_vectors import (  # type: ignore
+        AGREEMENT_DOMAIN,
         CLAIMS,
         FINALITY_BUNDLE_DOMAIN,
         FixtureFactory,
@@ -64,6 +68,7 @@ except ImportError:
         BINDING_DOMAIN,
         BUNDLE_DOMAIN,
         CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN,
+        CURRENT_USE_SYNTHETIC_OUTCOME_PROOF_DOMAIN,
         CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
@@ -71,6 +76,7 @@ except ImportError:
         RATING_DOMAIN,
         bundle_hash,
         current_use_synthetic_proof_hash,
+        _jcs_value_hash,
         legacy_checkpoint_binding_hash,
         legacy_checkpoint_hash,
         legacy_checkpoint_logical_address,
@@ -113,7 +119,9 @@ CURRENT_USE_JOB_IDS = (
     HISTORICAL_BINDING_JOB_ID,
     HISTORICAL_PURE_JOB_ID,
     *(CURRENT_FINALITY_JOB_IDS[model] for model in MODELS),
+    "01ARZ3NDEKTSV4RRFFQ69G5FB3",
 )
+MULTIPHASE_JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FB3"
 FIXTURE_QUERY_WINDOW = (0, 2_000_000_000_000)
 
 
@@ -155,6 +163,8 @@ class CurrentUseFixtureFactory:
             "agreementsByCanonicalRef": {},
             "ratingsByCanonicalRef": {},
             "absenceEvidenceByCanonicalRef": {},
+            "outcomeTimeEvidenceByJobId": {},
+            "anchorReceiptHistoryByJobId": {},
         }
         public_keys = {
             CLAIMS[role]: self.finality.keys[role].public_key().public_bytes_raw()
@@ -188,11 +198,21 @@ class CurrentUseFixtureFactory:
             },
             "authenticatedAbsenceByJobRole": {},
             "pinnedSyntheticAnchorProofHashBySubject": {},
+            "outcomeTimePolicyBySubstrate": {
+                WRITE_SUBSTRATE: {"policyId": "fixture-current-outcome-v1", "authority": NATIVE_AUTHORITY},
+                PURE_SUBSTRATE: {"policyId": "fixture-current-outcome-v1", "authority": NATIVE_AUTHORITY},
+            },
+            "outcomeTimeAuthorityKeys": {
+                NATIVE_AUTHORITY: self.native_key.public_key().public_bytes_raw(),
+            },
+            "pinnedOutcomeHistoryHashByJob": {},
+            "pinnedAnchorHistoryHashByJob": {},
         }
         self.checkpoints: dict[str, dict] = {}
 
     def current_authority(
-        self, query_party: str, window: tuple[int | float, int | float]
+        self, query_party: str, window: tuple[int | float, int | float],
+        basis: str = "finalisedAt",
     ) -> dict:
         window_start, window_end = window
         role_map = [
@@ -203,11 +223,11 @@ class CurrentUseFixtureFactory:
         return trusted_current_context(
             role_map,
             query=trusted_query_authority(
-                query_party, window_start, window_end, "finalisedAt"
+                query_party, window_start, window_end, basis
             ),
         )
 
-    def replay_context(self, request: dict) -> dict:
+    def replay_context(self, request: dict, basis: str = "finalisedAt") -> dict:
         """Return the per-case trusted query context and role authority."""
         return trusted_current_context(
             [
@@ -216,7 +236,7 @@ class CurrentUseFixtureFactory:
             ],
             query=trusted_query_authority(
                 CLAIMS["buyer"], FIXTURE_QUERY_WINDOW[0], FIXTURE_QUERY_WINDOW[1],
-                "finalisedAt",
+                basis,
             ),
         )
 
@@ -597,19 +617,52 @@ class CurrentUseFixtureFactory:
         }
         self.dependencies["settlementBindingProofByCanonicalRef"][ref_key] = proof
 
-    def current_finality_job(self, model: str, index: int) -> tuple[dict, dict]:
+    def current_finality_job(
+        self, model: str, index: int, *, job_id: str | None = None,
+        extra_rate_phase: bool = False,
+    ) -> tuple[dict, dict]:
+        actual_job_id = job_id or CURRENT_FINALITY_JOB_IDS[model]
         if model == "provider-receipt":
             case = self.finality.strong_bundle_case_sr3(
-                job_id=CURRENT_FINALITY_JOB_IDS[model]
+                job_id=actual_job_id
             )
         else:
             case = self.finality.strong_bundle_case(
-                model, job_id=CURRENT_FINALITY_JOB_IDS[model]
+                model, job_id=actual_job_id
             )
         bundle = case["bundle"]
         authority = case["authority"]
         candidate = next(iter(authority["finalityVerificationByCanonicalRef"].values()))
         agreement = candidate["agreement"]
+        if extra_rate_phase:
+            listing = authority["listing"]
+            listing["pipeline"].append({"kind": "rate"})
+            listing["signature"] = {
+                "signer": CLAIMS["seller"], "algorithm": "ed25519",
+                "value": self._sign(
+                    self.finality.keys["seller"], LISTING_DOMAIN,
+                    listing_hash(listing),
+                ),
+            }
+            new_listing_ref = {
+                "listingId": listing["listingId"],
+                "version": listing["listingVersion"],
+                "contentHash": listing_hash(listing),
+            }
+            bundle["listingRef"] = copy.deepcopy(new_listing_ref)
+            agreement["listingRef"] = copy.deepcopy(new_listing_ref)
+            digest = artifact_hash(agreement, "signatures")
+            self.finality.trusted["sessionAuthorityByJob"][actual_job_id]["agreementHash"] = digest
+            agreement["signatures"] = [
+                {
+                    "party": CLAIMS[role], "algorithm": "ed25519",
+                    "value": self._sign(
+                        self.finality.keys[role], AGREEMENT_DOMAIN, digest,
+                    ),
+                }
+                for role in ("buyer", "seller")
+            ]
+            bundle["phaseSummary"].append({"index": 1, "kind": "rate", "outcome": "ok"})
         agreement_digest = artifact_hash(agreement, "signatures")
         agreement_ref = reference("agreement:" + model, agreement_digest)
         bundle["agreementRef"] = agreement_ref
@@ -634,7 +687,9 @@ class CurrentUseFixtureFactory:
             binding = self.bundle_binding(
                 anchored,
                 role,
-                "current:" + model + ":" + role,
+                "current:" + model + ":" + role + (
+                    ":" + actual_job_id if extra_rate_phase else ""
+                ),
                 trusted_contexts=current_context,
             )
             native = binding["nativeAddress"]
@@ -676,6 +731,68 @@ class CurrentUseFixtureFactory:
             {"model": model, "currency": expected_currency, "finalityClass": expected_class},
         )
 
+    def outcome_time_proof(self, request: dict, *, timestamp: int = OBSERVED_AT + 1000) -> dict:
+        """Sign a fixture-only independently observed terminal native event."""
+        candidates = []
+        for role in ("buyer", "seller"):
+            role_request = request["roles"][role]
+            native = (
+                role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+                if role_request["mappingKind"] == "binding"
+                else role_request["resolvedAddress"]
+            )
+            candidates.append(self.dependencies["bundlesByNativeAddress"][native])
+        # The fixture's two copies have one type rank; the shared CUR resolver
+        # selects the greatest canonical content hash after non-divergence.
+        bundle = max(candidates, key=bundle_hash)
+        authority = self.dependencies["bundleAuthorityByContentHash"][bundle_hash(bundle)]
+        proof = {
+            "syntheticOutcomeProofVersion": "1",
+            "policyId": "fixture-current-outcome-v1",
+            "jobId": bundle["jobId"],
+            "bundleContentHash": bundle_hash(bundle),
+            "outcome": bundle["outcome"],
+            "effectivePipelineHash": _jcs_value_hash(authority["listing"]["pipeline"]),
+            "phaseSummaryHash": _jcs_value_hash(bundle["phaseSummary"]),
+            "terminalEvidenceHash": _jcs_value_hash(bundle.get("settlementEvidence", [])),
+            "nativeEvent": {
+                "eventId": "fixture-terminal:" + bundle["jobId"],
+                "nativeOrder": 500,
+                "timestamp": timestamp,
+                "state": "finalized",
+            },
+            "signature": {},
+        }
+        proof["signature"] = {
+            "signer": NATIVE_AUTHORITY,
+            "algorithm": "ed25519",
+            "value": self._sign(
+                self.native_key, CURRENT_USE_SYNTHETIC_OUTCOME_PROOF_DOMAIN,
+                current_use_synthetic_proof_hash(proof),
+            ),
+        }
+        self.dependencies["outcomeTimeEvidenceByJobId"][bundle["jobId"]] = [proof]
+        self.config["pinnedOutcomeHistoryHashByJob"][bundle["jobId"]] = _jcs_value_hash([proof])
+        selected_role = bundle["anchoredByRole"]
+        selected_request = request["roles"][selected_role]
+        selected_native = (
+            selected_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+            if selected_request["mappingKind"] == "binding"
+            else selected_request["resolvedAddress"]
+        )
+        selected_anchor = (
+            selected_request["anchorReceiptsByNativeAddress"][selected_native]
+            if selected_request["mappingKind"] == "binding"
+            else selected_request["anchorReceipt"]
+        )
+        self.dependencies["anchorReceiptHistoryByJobId"][bundle["jobId"]] = [
+            copy.deepcopy(selected_anchor)
+        ]
+        self.config["pinnedAnchorHistoryHashByJob"][bundle["jobId"]] = _jcs_value_hash(
+            self.dependencies["anchorReceiptHistoryByJobId"][bundle["jobId"]]
+        )
+        return proof
+
     def build(self) -> dict:
         historical = [
             self.historical_job(HISTORICAL_BINDING_JOB_ID, pure=False),
@@ -687,15 +804,22 @@ class CurrentUseFixtureFactory:
             request, expectation = self.current_finality_job(model, index)
             current.append(request)
             expectations.append(expectation)
+        multiphase, _ = self.current_finality_job(
+            "block-depth", len(MODELS), job_id=MULTIPHASE_JOB_ID,
+            extra_rate_phase=True,
+        )
+        for request in [*historical, *current, multiphase]:
+            self.outcome_time_proof(request)
         return {
             "historicalRequests": historical,
             "currentRequestsByModel": dict(zip(MODELS, current)),
+            "multiPhaseRequest": multiphase,
             "expectations": expectations,
             "dependencies": self.dependencies,
             "verifierConfig": self.config,
         }
 
-    def replay_dependencies(self, request: dict) -> dict:
+    def replay_dependencies(self, request: dict, *, include_combined: bool = False) -> dict:
         """Return the per-case authenticated dependency closure."""
         deps = self.dependencies
         closure = {
@@ -706,6 +830,8 @@ class CurrentUseFixtureFactory:
             "agreementsByCanonicalRef": {},
             "ratingsByCanonicalRef": {},
             "absenceEvidenceByCanonicalRef": {},
+            "outcomeTimeEvidenceByJobId": {},
+            "anchorReceiptHistoryByJobId": {},
         }
         native_addresses: list[str] = []
         eras: list[dict] = []
@@ -752,6 +878,15 @@ class CurrentUseFixtureFactory:
                                 deps["settlementBindingProofByCanonicalRef"][ref_key]
                             )
                         )
+        job_id = request["jobId"]
+        if include_combined and job_id in deps["outcomeTimeEvidenceByJobId"]:
+            closure["outcomeTimeEvidenceByJobId"][job_id] = copy.deepcopy(
+                deps["outcomeTimeEvidenceByJobId"][job_id]
+            )
+        if include_combined and job_id in deps["anchorReceiptHistoryByJobId"]:
+            closure["anchorReceiptHistoryByJobId"][job_id] = copy.deepcopy(
+                deps["anchorReceiptHistoryByJobId"][job_id]
+            )
         for era in eras:
             for receipt_name in ("checkpointReceipt", "historicalAnchorReceipt"):
                 receipt = era[receipt_name]
@@ -773,9 +908,12 @@ class CurrentUseFixtureFactory:
                     authority = deps["bundleAuthorityByContentHash"].get(digest)
                     if authority is not None:
                         closure["bundleAuthorityByContentHash"][digest] = copy.deepcopy(authority)
+        if not include_combined:
+            closure.pop("outcomeTimeEvidenceByJobId")
+            closure.pop("anchorReceiptHistoryByJobId")
         return closure
 
-    def replay_config(self, request: dict) -> dict:
+    def replay_config(self, request: dict, *, include_combined: bool = False) -> dict:
         """Return the per-case verifier configuration and pinned receipts."""
         config = copy.deepcopy(self.config)
         job_id = request["jobId"]
@@ -807,6 +945,20 @@ class CurrentUseFixtureFactory:
             ))
             pins[key] = self.config["pinnedSyntheticAnchorProofHashBySubject"][key]
         config["pinnedSyntheticAnchorProofHashBySubject"] = pins
+        if include_combined:
+            config["pinnedOutcomeHistoryHashByJob"] = {
+                job_id: self.config["pinnedOutcomeHistoryHashByJob"][job_id]
+            }
+            config["pinnedAnchorHistoryHashByJob"] = {
+                job_id: self.config["pinnedAnchorHistoryHashByJob"][job_id]
+            }
+        else:
+            for field in (
+                "outcomeTimePolicyBySubstrate", "outcomeTimeAuthorityKeys",
+                "pinnedOutcomeHistoryHashByJob", "pinnedAnchorHistoryHashByJob",
+            ):
+                config.pop(field)
+            config["finalityTrust"]["sessionAuthorityByJob"].pop(MULTIPHASE_JOB_ID, None)
         return config
 
 

@@ -414,7 +414,7 @@ The `bid` over which `bidHash` is computed in step (2) is exactly this `SealedBi
 
 **Conformance.**
 
-- (SE-1) commitDeadline MUST be at least 60 seconds in the future at session start.
+- (SE-1) commitDeadline MUST be at least 60 seconds in the future at session start. This is a new-session gate enforced before any commit, payment, or terminal effect: `signed commitDeadline >= trusted sessionStartedAt + 60_000` ms. `sessionStartedAt` is the verifier- or orchestrator-owned authenticated session start time retained in the trusted context — never a listing evaluation time, a producer timestamp, or any caller-supplied clock. Missing or malformed `commitDeadline` or session start time refuses the session. Both `negotiate-sealed-envelope` (demand) and `negotiate-sealed-envelope-procurement` (procurement) are gated identically. The comparison is time-invariant (both operands are fixed at session start), so a session already past its authenticated commitment is never re-gated.
 - (SE-2) Every bidder commit MUST be anchored before commitDeadline; commits whose anchor timestamp is after commitDeadline MUST be excluded.
 - (SE-3) Every revealed bid MUST be anchored via SR-2 before revealWindow expiry; reveals whose anchor timestamp is after revealWindow expiry MUST be excluded. This mirrors SE-2: the substrate anchor timestamp — not a channel message's self-reported sentAt or the orchestrator's wall clock — is the authoritative clock that decides whether a reveal occurred in-window.
 - (SE-4) Bidders failing reveal MUST be excluded from selection and MAY be marked with a failure-to-reveal reputation event (DACS-5).

@@ -56,7 +56,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 11 | `fail` / `indeterminate` / `pass` |
-| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 366 | `error` / `fail` / `indeterminate` / `pass` |
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 383 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
@@ -80,7 +80,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`reputation-participation-admission-v0.7.json`](reputation-participation-admission-v0.7.json) | DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8 exact participation and rating admission | 170 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 24 | `accept` / `indeterminate` / `reject` |
-| [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
+| [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 v0.3 §6.3.4 RB-1..RB-6 historical revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
+| [`revocation-state-completeness-v0.8.json`](revocation-state-completeness-v0.8.json) | DACS-1 v0.8 §6.3.4 RSC-1..RSC-10 authoritative revocation completeness | 101 | `fail` / `indeterminate` / `pass` |
 | [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 32 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
@@ -778,10 +779,10 @@ fixture provenance and are not resolution inputs.
 Coverage includes logical-address derivation, marker content-hash and signature
 checks, the exact listing-tuple match, the retained `status: "revoked"`
 condition, unreachable anchors, stale or hash-inconsistent discovery state, and
-the current-model successful `absent` path. The expected top-level verdict is
-the new-session admission result: a verified revocation is `fail`, a completed
-active/no-binding check is `pass`, and any incomplete or inconsistent check is
-`indeterminate`.
+the historical RB-6 discovery-only `absent` path. This set predates RSC and
+does not establish v0.8 current new-session eligibility: its active/no-binding
+`pass` is only the frozen RB discovery result consumed as inert input by the
+current profile.
 
 Two multi-surface cases pin RB-6 precedence: a verified marker wins over an
 active mirror, while an indeterminate revoked record prevents another active
@@ -792,6 +793,56 @@ signature overrides, and `want` with the exact `RevocationCheck`, session
 effect, and failing step. The common `fixtures` block holds the listing context,
 signed markers, bindings, and producer-only Demos write inputs. Cross-running
 against the offered producer and reader fixtures remains pending.
+
+### `revocation-state-completeness-v0.8.json` — §6.3.4 RSC-1..RSC-10
+
+101 candidate vectors make current non-revocation independently reproducible.
+They bind a stable state-line locator and checkpoint into the signed Listing,
+verify genuine deterministic Ed25519 signatures on every Listing, state head,
+and marker, authenticate the selected head as the latest finalized native value,
+replay the checkpoint chain, and recompute compact 256-level sparse-Merkle
+append and query proofs byte-for-byte. Head and marker `authority.evidence` is a
+signed `(claim, key, validAt)` key-lifecycle attestation verified against each
+artifact's finalized inclusion state; omission, wrong container, attacker
+substitution, or nested malformation is `indeterminate`, never `absent` or
+`revoked`.
+
+Admission is verifier-owned corrective-profile admission (CORE §11.1.2): the
+exact release pin and complete module tuple are session- and identity-bound, and
+a caller-supplied `currentProfile` boolean or profile copy has no authority.
+Missing, mismatched, incomplete, session- or identity-mismatched, or
+unauthenticated admission fails closed before any listing interpretation.
+
+Positive controls cover current non-membership in a tree containing another
+listing's revocation and a revocation signed after an authenticated key
+rotation. Adversarial cases cover a censored tombstone, stale but valid signed
+head, two valid children of one head, a higher-known authenticated head that
+revokes the target, corrupted non-membership, unavailable latest-state evidence,
+cross-tuple replay, unresolved marker, rollback below the Listing checkpoint,
+unauthorized and corrupted rotation keys, wrong signer key, wrong signature
+algorithm, missing state reference, history gap, missing profile admission,
+producer time substituted for current-state authority, omitted or substituted
+conflict-observation sets, later conflict-set rewrites and removal transitions,
+list- or scalar-valued `blockRef`/authority containers, and a missing, stale, or
+hash-mismatched finalized listing receipt. Malformed nested proof containers,
+independently re-signed Listings whose `revocationState.anchor` is a list/string/
+locator-less object, list- or null-valued authority keys, list-valued
+Listing/head/marker signature values, and non-object root inputs are all
+non-authorizing `indeterminate`, never an evaluator exception.
+
+The Listing is a signed artifact (there is no bare `authenticated` boolean), and
+the authority/current-state dispositions remain projections from the pre-existing
+key-lifecycle and substrate-proof validators. The current-state signature binds
+the exact Listing content hash, its finalized receipt, and the complete
+known-conflicting-head set, so the Listing and its revocation non-membership are
+evaluated in one authenticated finalized state. Every historical head receipt is
+self-binding: writer, transactionRef, nonce, blockRef, evidence, finalityProfile,
+and native ordering are recomputed, so a provenance mutation is `indeterminate`,
+never `pass`. The independent evaluator recomputes all corpus signatures, artifact
+hashes, receipt bindings, transition roots, current inclusion/non-membership roots,
+and exact tuple relations. Missing or conflicting proof is always `indeterminate`;
+only verified inclusion returns revoked and only verified current non-membership
+permits the session.
 
 ### `x402-receipt-hash-v0.1.json` — §9.5.7 X402-1..X402-4
 
@@ -1904,9 +1955,13 @@ negotiate→commit ordering, precommit payout coverage, genuine APR projection a
 the exact slot, signed/finalized replacement disposition including
 closed-cannot-settle evidence, complete EBFAB payment/delivery evidence, and
 finalized agreement/CVR/commitment/bundle dependency joins. It also preserves
-old and identity-bound sealed-envelope losing-bidder controls, independently
-authorized fixture-receipt tamper cases, and malformed nested values that must
-never escape as language exceptions.
+old and identity-bound sealed-envelope losing-bidder controls, the SE-1
+new-session deadline gate over the verifier-trusted session start, and the SE-8
+sealed-envelope role-direction assignment (a genuine procurement specimen
+assigns the listing publisher as the agreement buyer and the winning bidder as
+the agreement seller; a mode marker without the role swap is rejected),
+independently authorized fixture-receipt tamper cases, and malformed nested
+values that must never escape as language exceptions.
 
 Additional executable regressions preserve non-session Listing publication
 without a session nonce across all four agreement types; action-bearing
@@ -1976,3 +2031,6 @@ optional-evidence forward-readability controls. Its dependent hashes,
 signatures, references and security-vector index are regenerated, and the
 checked-in generator plus integrated reference tests establish byte-identical
 reproduction for this fixture profile.
+### RSC policy compatibility
+
+The retained `revocation-state-completeness-v0.8.json` corpus records the earlier v1 reference policy. Its bytes and expected historical results are unchanged. Current `rsc-current-admission-v2` acceptance is exercised separately by `tests/test_rsc_current_admission_v2.py`, including the shared finalized-state join and independent content/native capacity checks. Historical replay results are not fresh admission authority.

@@ -569,6 +569,7 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs3:auction:{jobId}:commit:{bidderClaim}:{bidHash}` (complete sealed commit) | `bidderClaim` | `jobId`, `commit`, `bidHash` |
 | `dacs3:auction:{jobId}:reveal:{bidderClaim}:{bidHash}` (complete sealed reveal) | `bidderClaim` | `jobId`, `reveal`, `bidHash` |
 | `dacs3:selection:{jobId}:{phaseIndex}` (complete sealed selection receipt) | none | `jobId`, `phaseIndex` |
+| `dacs1-revocations:{sellerPrimaryClaim}` (stable revocation-state line) | `sellerPrimaryClaim` | `dacs1-revocations` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
 | `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}` (§9.9.1 APR-6) | none | `priorJobId`, `priorPhaseIndex`, `dispositionId` |
 | `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
@@ -802,6 +803,7 @@ The v0.x registry of domain separators at this revision is closed:
 | --- | --- | --- |
 | DACS-1 listing | "dacs-listing:v1:" | §6.3.4 |
 | DACS-1 listing revocation marker | "dacs-revocation:v1:" | §6.3.4 |
+| DACS-1 revocation state head | "dacs-revocation-state-head:v1:" | §6.3.4 |
 | DACS-1 identity bundle presentation | "dacs-bundle-presentation:v1:" | §6.3.2 |
 | DACS-2 VerifyResult | "dacs-verifyresult:v1:" | §7.5 |
 | DACS-2 composite verification record | "dacs-composite:v1:" | §7.7 |
@@ -1090,7 +1092,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `finalityObservationResponseVersion`, `participationAdmissionVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Verifier-local orchestration inputs such as `finalityResolutionContextVersion` use their own closed discriminator before acquisition or action. Unsigned derivation-data types use the same distinct-type rule: CUR-v1 carries only `currentUseReplayableDerivationVersion: "1"`, standalone AWT-v1 only `authenticatedWindowDerivationVersion: "1"`, and the composed current-use authenticated-window candidate only `currentUseAuthenticatedWindowDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `revocationStateHeadVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `finalityObservationResponseVersion`, `participationAdmissionVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Verifier-local orchestration inputs such as `finalityResolutionContextVersion` use their own closed discriminator before acquisition or action. Unsigned derivation-data types use the same distinct-type rule: CUR-v1 carries only `currentUseReplayableDerivationVersion: "1"`, standalone AWT-v1 only `authenticatedWindowDerivationVersion: "1"`, and the composed current-use authenticated-window candidate only `currentUseAuthenticatedWindowDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 
@@ -1197,3 +1199,9 @@ Cross-stage references for DACS-1 through DACS-5. Per-stage chapters may cite ad
 - **FAR Part 14** — *Sealed Bidding*. US Federal Acquisition Regulation.
 - **FAR Part 15** — *Contracting by Negotiation*. US Federal Acquisition Regulation.
 - **EU Directive 2014/24/EU** — *Public Procurement Directive*.
+
+### Current-value evaluation state and record capacity
+
+A registered current-value policy distinguishes an original finalized inclusion receipt from evidence that the value remains current at an authenticated evaluation state. When DACS-1 RSC admission joins two locator observations, the registered policy must provide a common state identity and compatible substrate/finality authority; independently fresh reads or matching observer timestamps are insufficient. Preserve the original receipts and recorded policy for replay. DACS-1's explicit current-admission policy governs the join and its historical/committed-session boundary.
+
+A content-size limit over a signature-omitted canonical artifact is distinct from the selected binding's complete encoded-record capacity. The latter includes signatures and required native wrapper bytes and requires trusted binding configuration; no generic canonical/native size conversion is implied.

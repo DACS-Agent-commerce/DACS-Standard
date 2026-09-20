@@ -738,17 +738,6 @@ def _evaluate(data, public_keys, trusted_admission=None):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
     if listing.get("signature", {}).get("signer") != listing.get("sellerPrimaryClaim"):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    state_ref = listing.get("revocationState")
-    if not isinstance(state_ref, dict):
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    if set(state_ref) != {"revocationStateRefVersion", "logicalAddress", "anchor", "checkpointSequence", "checkpointHeadHash"}:
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    if state_ref.get("revocationStateRefVersion") != "1" or not canonical_decimal(state_ref.get("checkpointSequence")):
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    expected_logical = f"dacs1-revocations:{cf4(listing.get('sellerPrimaryClaim', ''))}"
-    if state_ref.get("logicalAddress") != expected_logical:
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-
     context = data.get("resolutionContext")
     target = {
         "sellerPrimaryClaim": listing.get("sellerPrimaryClaim"),
@@ -761,6 +750,16 @@ def _evaluate(data, public_keys, trusted_admission=None):
     # Missing RSC join fields cannot demote a proven revocation to unknown.
     if verified_discovered_marker(data.get("discovery"), context, target, public_keys):
         return "fail", {"revocationCheck": "revoked", "session": "refuse"}
+    state_ref = listing.get("revocationState")
+    if not isinstance(state_ref, dict):
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+    if set(state_ref) != {"revocationStateRefVersion", "logicalAddress", "anchor", "checkpointSequence", "checkpointHeadHash"}:
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+    if state_ref.get("revocationStateRefVersion") != "1" or not canonical_decimal(state_ref.get("checkpointSequence")):
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+    expected_logical = f"dacs1-revocations:{cf4(listing.get('sellerPrimaryClaim', ''))}"
+    if state_ref.get("logicalAddress") != expected_logical:
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
     if not validate_resolution_context_shape(context):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
     rb_disposition = discovery_disposition(data.get("discovery"), context, target, public_keys)
@@ -1337,6 +1336,39 @@ class RevocationStateCompletenessTests(unittest.TestCase):
                 data = json.loads(json.dumps(active["input"]))
                 data["resolutionContext"].pop(field)
                 self.assertNotEqual(evaluate(data, self.document["publicKeys"], active["trustedProfileAdmission"])[1]["revocationCheck"], "absent")
+
+    def test_rb4_signed_historical_listing_without_state_ref(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        historical = vectors["rsc-rb4-historical-listing-without-state-ref"]
+        revoked = ("fail", {"revocationCheck": "revoked", "session": "refuse"})
+        self.assertNotIn("revocationState", historical["input"]["listing"])
+        self.assertEqual(
+            evaluate(historical["input"], self.document["publicKeys"],
+                     historical["trustedProfileAdmission"]), revoked,
+        )
+        for mutation in ("missing", "malformed", "duplicate", "unauthenticated"):
+            with self.subTest(mutation=mutation):
+                data = json.loads(json.dumps(historical["input"]))
+                markers = data["resolutionContext"]["resolvedMarkers"]
+                if mutation == "missing":
+                    markers.clear()
+                elif mutation == "malformed":
+                    markers[-1] = {}
+                elif mutation == "duplicate":
+                    markers.append(json.loads(json.dumps(markers[-1])))
+                else:
+                    markers[-1]["marker"]["signature"]["value"] = "not-a-signature"
+                self.assertEqual(
+                    evaluate(data, self.document["publicKeys"],
+                             historical["trustedProfileAdmission"])[1]["revocationCheck"],
+                    "indeterminate",
+                )
+        active = vectors["rsc-historical-listing-without-state-ref"]
+        self.assertEqual(
+            evaluate(active["input"], self.document["publicKeys"],
+                     active["trustedProfileAdmission"])[1]["revocationCheck"],
+            "indeterminate",
+        )
 
     def test_named_negative_current_state_envelopes_are_authentic_and_sensitive(self):
         vectors = {item["name"]: item for item in self.document["vectors"]}

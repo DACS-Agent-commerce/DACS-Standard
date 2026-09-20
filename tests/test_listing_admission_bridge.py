@@ -12,6 +12,7 @@ import base64
 import copy
 import hashlib
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -158,6 +159,64 @@ class AdmitListingLegacyTests(unittest.TestCase):
             native_binding=_native_binding(),
         )
         self.assertEqual(verdict, "rejected")
+        self.assertIsNone(record)
+
+    def test_non_primary_claim_may_sign_with_inclusion_key(self):
+        listing = copy.deepcopy(self.listing)
+        listing["seller"]["identity"]["presentedBy"] = "did:example:seller"
+        listing["seller"]["identity"]["claims"].append(
+            {"ref": "did:example:seller"}
+        )
+        listing["signature"] = _sign(
+            listing, listing_artifact.LISTING_DOMAINS[listing_artifact.LEGACY_LISTING],
+            _seller_private(),
+        )
+        verdict, reason, record = listing_admission.admit_listing(
+            listing, inclusion_key=self.key, session_boundary=COMMITTED_BOUNDARY,
+            native_binding=_native_binding(),
+        )
+        self.assertEqual(verdict, "indeterminate")
+        self.assertIn("authenticated committed-session", reason)
+        self.assertIsNone(record)
+
+    def test_claimed_did_signer_remains_unresolved(self):
+        listing = copy.deepcopy(self.listing)
+        listing["seller"]["identity"]["claims"].append(
+            {"ref": "did:example:seller"}
+        )
+        listing["signature"] = _sign(
+            listing, listing_artifact.LISTING_DOMAINS[listing_artifact.LEGACY_LISTING],
+            _seller_private(),
+        )
+        listing["signature"]["signer"] = "did:example:seller"
+        verdict, reason, record = listing_admission.admit_listing(
+            listing, inclusion_key=self.key, session_boundary=COMMITTED_BOUNDARY,
+            native_binding=_native_binding(),
+        )
+        self.assertEqual(verdict, "indeterminate")
+        self.assertIn("resolution", reason)
+        self.assertIsNone(record)
+
+    def test_signer_absent_from_claims_is_rejected(self):
+        listing = copy.deepcopy(self.listing)
+        listing["seller"]["identity"]["claims"] = [{"ref": "did:example:seller"}]
+        verdict, reason, record = listing_admission.admit_listing(
+            listing, inclusion_key=self.key, session_boundary=COMMITTED_BOUNDARY,
+            native_binding=_native_binding(),
+        )
+        self.assertEqual(verdict, "rejected")
+        self.assertIn("absent", reason)
+        self.assertIsNone(record)
+
+    def test_claimed_self_auth_key_with_invalid_signature_is_rejected(self):
+        listing = copy.deepcopy(self.listing)
+        listing["signature"]["value"] = "not-a-signature"
+        verdict, reason, record = listing_admission.admit_listing(
+            listing, inclusion_key=self.key, session_boundary=COMMITTED_BOUNDARY,
+            native_binding=_native_binding(),
+        )
+        self.assertEqual(verdict, "rejected")
+        self.assertIn("signature", reason)
         self.assertIsNone(record)
 
     def test_unsupported_boundary_is_indeterminate(self):
@@ -485,6 +544,34 @@ class RetainedAdmissionTests(unittest.TestCase):
         self.assertEqual(verdict, "rejected")
         verdict, _, _ = capability.verify(listing, ref, "new-session")
         self.assertEqual(verdict, "rejected")
+
+
+class ImportModeTests(unittest.TestCase):
+    def test_package_import_uses_repository_modules_without_path_mutation(self):
+        code = (
+            "import scripts.listing_admission as a; "
+            "import scripts.listing_artifact as b; "
+            "import scripts.rsc_current_admission as c; "
+            "import scripts.jcs as j; "
+            "assert a.jcs_canonicalize is j.canonicalize; "
+            "assert b.jcs_canonicalize is j.canonicalize; "
+            "assert c.jcs is j; "
+            "assert b.prepare_listing_publication({}, None, substrate='x', finality_profile='y')[0] == 'fail'"
+        )
+        subprocess.run([sys.executable, "-c", code], cwd=ROOT, check=True)
+
+    def test_direct_script_import_without_path_mutation(self):
+        code = (
+            "import listing_admission as a; "
+            "import listing_artifact as b; "
+            "import rsc_current_admission as c; "
+            "import jcs; "
+            "assert a.jcs_canonicalize is jcs.canonicalize; "
+            "assert b.jcs_canonicalize is jcs.canonicalize; "
+            "assert c.jcs is jcs; "
+            "assert b.prepare_listing_publication({}, None, substrate='x', finality_profile='y')[0] == 'fail'"
+        )
+        subprocess.run([sys.executable, "-c", code], cwd=ROOT / "scripts", check=True)
 
 
 if __name__ == "__main__":

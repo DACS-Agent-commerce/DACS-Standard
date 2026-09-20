@@ -23,20 +23,25 @@ import hashlib
 import re
 from dataclasses import dataclass
 
-try:
+if __package__:
+    from .jcs import canonicalize as jcs_canonicalize
+    from . import listing_artifact
+    from .rsc_current_admission import (
+        CONFORMANCE_SUBSTRATE,
+        CONFORMANCE_FINALITY,
+        validate_listing_capacity,
+    )
+else:  # direct-script and scripts-on-path consumers
     from jcs import canonicalize as jcs_canonicalize
-except ImportError:  # imported as scripts.listing_admission by tests
-    from scripts.jcs import canonicalize as jcs_canonicalize
+    import listing_artifact
+    from rsc_current_admission import (
+        CONFORMANCE_SUBSTRATE,
+        CONFORMANCE_FINALITY,
+        validate_listing_capacity,
+    )
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-import listing_artifact
-from rsc_current_admission import (
-    CONFORMANCE_SUBSTRATE,
-    CONFORMANCE_FINALITY,
-    validate_listing_capacity,
-)
 
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 SESSION_BOUNDARIES = frozenset({
@@ -160,11 +165,17 @@ def admit_listing(
     if not isinstance(inclusion_key, str) or _HEX.fullmatch(inclusion_key) is None:
         return "indeterminate", "listing inclusion key is unavailable", None
     signature = listing.get("signature")
-    publisher = listing.get("seller", {}).get("identity", {}).get("presentedBy")
-    if not isinstance(signature, dict) or not isinstance(publisher, str):
-        return "indeterminate", "listing signature or publisher is unavailable", None
-    if signature.get("signer") != publisher or publisher != f"key:{inclusion_key}":
-        return "rejected", "listing signer or publisher key is not exact", None
+    identity = listing.get("seller", {}).get("identity", {})
+    claims = identity.get("claims") if isinstance(identity, dict) else None
+    signer = signature.get("signer") if isinstance(signature, dict) else None
+    if not isinstance(signer, str) or not isinstance(claims, list):
+        return "indeterminate", "listing signature or seller claims are unavailable", None
+    if not any(isinstance(claim, dict) and claim.get("ref") == signer for claim in claims):
+        return "rejected", "listing signer is absent from seller claims", None
+    if signer != f"key:{inclusion_key}":
+        if signer.startswith("key:"):
+            return "rejected", "listing signer key does not match the inclusion key", None
+        return "indeterminate", "listing signer key resolution is unavailable", None
     if not _verify_listing_signature(listing, domain, inclusion_key):
         return "rejected", "listing signature does not verify under the inclusion key", None
 

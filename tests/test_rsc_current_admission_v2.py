@@ -7,6 +7,7 @@ fresh v2 admission; see ``test_revocation_state_completeness_vectors`` for the
 recorded-policy replay oracle.
 """
 import copy
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -78,6 +79,54 @@ class ListingCapacityTests(unittest.TestCase):
         adapter = TrustedNativeRecordBinding(CONFORMANCE_SUBSTRATE, CONFORMANCE_FINALITY,
                                             "unsupported", 65536, lambda value: None)
         self.assertEqual(self.disposition(value, adapter), "indeterminate")
+
+    def test_mixed_import_modes_preserve_only_same_file_binding_capability(self):
+        code = """
+import sys
+sys.path.insert(0, 'scripts')
+import json
+from pathlib import Path
+import rsc_current_admission as direct
+import scripts.rsc_current_admission as package
+import scripts.listing_artifact as artifact
+import scripts.listing_admission as admission
+from scripts import jcs
+value = {'extension': 'ordinary', 'signature': {'value': 'signed'}}
+listing = json.loads(Path('conformance/vectors/security/identity-bundle-hash-binding-v0.1.json').read_text())['scenarios']['identityBoundAgreement']['listing']
+for owner, consumer in ((direct, package), (package, direct)):
+    binding = owner.TrustedNativeRecordBinding(
+        owner.CONFORMANCE_SUBSTRATE, owner.CONFORMANCE_FINALITY,
+        'fixture-json-v1', 65536, lambda value: jcs.canonicalize(value).encode(),
+    )
+    assert consumer.validate_listing_capacity(
+        value, binding, substrate=owner.CONFORMANCE_SUBSTRATE,
+        finality_profile=owner.CONFORMANCE_FINALITY,
+    ) == 'pass'
+    assert consumer.validate_listing_capacity(
+        value, {'record_limit': 1024}, substrate=owner.CONFORMANCE_SUBSTRATE,
+        finality_profile=owner.CONFORMANCE_FINALITY,
+    ) == 'indeterminate'
+    wrong = owner.TrustedNativeRecordBinding(
+        owner.CONFORMANCE_SUBSTRATE, owner.CONFORMANCE_FINALITY,
+        'fixture-json-v1', 1, lambda value: b'over-limit',
+    )
+    assert consumer.validate_listing_capacity(
+        value, wrong, substrate=owner.CONFORMANCE_SUBSTRATE,
+        finality_profile=owner.CONFORMANCE_FINALITY,
+    ) == 'fail'
+    if owner is direct:
+        assert artifact.prepare_listing_publication(
+            listing, binding, substrate=owner.CONFORMANCE_SUBSTRATE,
+            finality_profile=owner.CONFORMANCE_FINALITY,
+        )[0] == 'pass'
+        verdict, reason, record = admission.admit_listing(
+            listing, inclusion_key=listing['signature']['signer'][4:],
+            session_boundary='past-authenticated-agreement-commitment',
+            native_binding=binding,
+        )
+        assert verdict == 'indeterminate' and 'authenticated committed-session' in reason and record is None
+"""
+        subprocess.run([sys.executable, "-c", code], cwd=ROOT, check=True)
 
 
 class JoinedCurrentStateTests(unittest.TestCase):

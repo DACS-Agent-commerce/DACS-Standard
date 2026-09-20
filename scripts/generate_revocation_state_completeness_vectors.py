@@ -673,6 +673,13 @@ def build_vectors() -> list[dict]:
     discovered_marker["resolutionContext"]["resolvedMarkers"].append(
         resolved_marker(TARGET_REF, TARGET_MARKER, SELLER_KEY, LISTING_ID)
     )
+    historical_discovered_marker = input_for(
+        OTHER_HEAD, OTHER_LEAVES, discovery_status="revoked",
+        listing_value=historical_listing,
+    )
+    historical_discovered_marker["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(TARGET_REF, TARGET_MARKER, SELLER_KEY, LISTING_ID)
+    )
 
     rb5_indeterminate = copy.deepcopy(active)
     rb5_indeterminate["discovery"] = {
@@ -881,6 +888,7 @@ def build_vectors() -> list[dict]:
         vector("rsc-checkpoint-history-gap", "indeterminate", "a later head cannot substitute for the complete checkpoint chain", history_gap, "indeterminate"),
         vector("rsc-producer-time-cannot-prove-latest", "indeterminate", "producer time cannot replace an authenticated current-state policy", producer_time_only, "indeterminate"),
         vector("rsc-rb4-discovered-marker-precedes-nonmembership", "fail", "a verified discovered marker cannot be ignored even when the state proof says absent", discovered_marker, "revoked"),
+        vector("rsc-rb4-historical-listing-without-state-ref", "fail", "a verified exact-target marker revokes a signed historical Listing without an RSC state reference", historical_discovered_marker, "revoked"),
         vector("rsc-rb5-indeterminate-precedes-nonmembership", "indeterminate", "an unresolved discovered revocation record prevents state non-membership from returning absent", rb5_indeterminate, "indeterminate"),
         vector("rsc-conflict-later-rewrite", "indeterminate", "a later authenticated head that rewrites the target via a cross-tuple transition substitution is indeterminate, never revoked", conflict_later_rewrite, "indeterminate"),
         vector("rsc-conflict-removal-transition", "indeterminate", "a later authenticated head whose root removes the appended revocation leaf is indeterminate, never absent", conflict_removal_transition, "indeterminate"),
@@ -911,7 +919,7 @@ def document() -> dict:
         "set": SET_NAME,
         "spec": SPEC,
         "decisionModel": "verifier-owned corrective-profile admission (exact release pin + complete module tuple, session- and identity-bound) precedes all listing interpretation; only a signed Listing whose finalized receipt and authenticated current-head non-membership share one authenticated finalized state admits a new session; verified inclusion or a superseding authenticated revocation fails as revoked; every incomplete/conflicting/provenance-mutated proof is indeterminate",
-        "inputModel": "a signed Listing carrying its revocationState reference, a finalized listing receipt, exact signed heads/markers, sparse proofs, binding-self-authenticated finalized receipts, key-authority results, and binding-authenticated current-state context whose signature binds the listing, the head, and the complete conflict-observation set",
+        "inputModel": "a signed current Listing carrying its revocationState reference or a signed historical Listing without one, a finalized listing receipt, exact signed heads/markers, sparse proofs, binding-self-authenticated finalized receipts, key-authority results, and binding-authenticated current-state context whose signature binds the listing, the head, and the complete conflict-observation set",
         "authoritativeProfile": {
             "releasePin": AUTHORITATIVE_RELEASE_PIN,
             "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,

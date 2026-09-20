@@ -1,7 +1,12 @@
 """Versioned RSC comparison/capacity contracts; no admission authority implied."""
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
-import jcs
+import sys
+if __package__:
+    from . import jcs
+else:  # direct-script and scripts-on-path consumers
+    import jcs
 
 CURRENT_ADMISSION_POLICY = "rsc-current-admission-v2"
 RECORDED_ADMISSION_POLICY = "rsc-recorded-admission-v1"
@@ -27,6 +32,25 @@ class TrustedNativeRecordBinding:
     canonical_budget: int | None = None
 
 
+def _is_trusted_native_binding(binding) -> bool:
+    if isinstance(binding, TrustedNativeRecordBinding):
+        return True
+    # Both supported import modes can coexist in one interpreter. Their class
+    # objects differ, but only the exact class loaded from this same file is
+    # equivalent to the verifier-installed binding; plain artifact data is not.
+    sibling_name = "rsc_current_admission" if __package__ else "scripts.rsc_current_admission"
+    sibling = sys.modules.get(sibling_name)
+    sibling_type = getattr(sibling, "TrustedNativeRecordBinding", None)
+    sibling_file = getattr(sibling, "__file__", None)
+    return (
+        isinstance(sibling_type, type)
+        and sibling_type.__module__ == sibling_name
+        and isinstance(sibling_file, str)
+        and Path(sibling_file).resolve() == Path(__file__).resolve()
+        and isinstance(binding, sibling_type)
+    )
+
+
 def listing_content_size(listing: dict) -> int:
     if not isinstance(listing, dict):
         raise ValueError("Listing must be an object")
@@ -42,7 +66,7 @@ def validate_listing_capacity(listing: dict, binding, *, substrate: str,
         return "fail"
     if size > LISTING_CAP:
         return "fail"
-    if not isinstance(binding, TrustedNativeRecordBinding):
+    if not _is_trusted_native_binding(binding):
         return "indeterminate"
     if (binding.substrate != substrate or binding.finality_profile != finality_profile
             or not isinstance(binding.encoding_policy, str) or not binding.encoding_policy

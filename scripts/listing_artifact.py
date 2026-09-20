@@ -10,10 +10,10 @@ from __future__ import annotations
 import math
 import re
 
-try:
+if __package__:
+    from .jcs import canonicalize as jcs_canonicalize
+else:  # direct-script and scripts-on-path consumers
     from jcs import canonicalize as jcs_canonicalize
-except ImportError:  # imported as scripts.listing_artifact by tests
-    from scripts.jcs import canonicalize as jcs_canonicalize
 
 
 LEGACY_LISTING = "Listing"
@@ -490,7 +490,10 @@ def prepare_listing_publication(listing, binding, *, substrate, finality_profile
     No provider call, signature repair, or canonical/native conversion occurs here.
     """
     import copy
-    from rsc_current_admission import validate_listing_capacity
+    if __package__:
+        from .rsc_current_admission import validate_listing_capacity
+    else:
+        from rsc_current_admission import validate_listing_capacity
     candidate = copy.deepcopy(listing)
     if not validate_listing_shape(candidate)[0]:
         return "fail", None

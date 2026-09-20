@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import hashlib
 import json
 from pathlib import Path
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
 from jcs import canonicalize as jcs_canonicalize
+from reputation_evidence import (
+    artifact_hash,
+    decode_canonical_object,
+    encode_canonical_object,
+    inspect_anchor_receipt,
+    resolve_anchor_history,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +28,11 @@ OUTPUT = (
 )
 SET_NAME = "reputation-authenticated-window-v0.6"
 SPEC = "DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated outcome window"
+
+ANCHOR_ADAPTER_DOMAIN = "dacs-test-window-anchor-adapter:v1:"
+ANCHOR_POLICY = "dacs-test-window-anchor-v1"
+
+_NO_HEIGHT = object()
 
 JOB_ID = "01K4AWT0000000000000000001"
 ANCHOR_TRANSACTION_REF = {"kind": "demos-tx", "value": "tx-window-a"}
@@ -139,15 +154,87 @@ def transaction_ref(value: str) -> dict:
     return {"kind": "demos-tx", "value": value}
 
 
-def receipt_projection_hash(item: dict) -> str:
-    scope = {key: value for key, value in item.items() if key != "evidence"}
-    return jcs_hash(scope)
+def private_key(label: str) -> Ed25519PrivateKey:
+    return Ed25519PrivateKey.from_private_bytes(hashlib.sha256(label.encode()).digest())
 
 
-def seal_receipt(item: dict) -> dict:
+def claim_for(key: Ed25519PrivateKey) -> str:
+    return "key:" + key.public_key().public_bytes_raw().hex()
+
+
+def b64url(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+ADAPTER_KEY = private_key("dacs-395-window-fixture-adapter")
+ADAPTER = claim_for(ADAPTER_KEY)
+
+
+def sign_adapter_evidence(unsigned: dict) -> dict:
+    digest = artifact_hash(unsigned)
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {
+            "algorithm": "ed25519",
+            "signer": ADAPTER,
+            "value": b64url(
+                ADAPTER_KEY.sign((ANCHOR_ADAPTER_DOMAIN + digest).encode("ascii"))
+            ),
+        },
+    }
+
+
+def receipt_adapter_evidence(item: dict) -> dict | None:
+    evidence = item.get("evidence")
+    if not isinstance(evidence, dict):
+        return None
+    return decode_canonical_object(evidence.get("value"))
+
+
+def seal_receipt(
+    item: dict,
+    *,
+    authorized_signer: str | None = None,
+    native_order: object | None = None,
+    lineage_root_transaction: dict | None = None,
+    replacement_relation: object | None = None,
+) -> dict:
+    prior = receipt_adapter_evidence(item) or {}
+    if native_order is None:
+        native_order = prior.get("nativeOrder")
+    if native_order is None:
+        raise ValueError("fixture-native order is required")
+    if lineage_root_transaction is None:
+        lineage_root_transaction = prior.get("lineageRootTransactionRef")
+    if lineage_root_transaction is None:
+        lineage_root_transaction = copy.deepcopy(item.get("transactionRef"))
+    if replacement_relation is None:
+        replacement_relation = prior.get("replacementRelation")
+    if authorized_signer is None:
+        authorized_signer = item.get("writer")
+
+    item.pop("nativeOrder", None)
+    item.pop("replacementRelation", None)
+    item.pop("evidence", None)
+    unsigned = {
+        "anchorEvidenceVersion": "1",
+        "policyId": ANCHOR_POLICY,
+        "receiptHash": jcs_hash(item),
+        "authorizedSigner": authorized_signer,
+        "nativeOrder": native_order,
+        "lineageRootTransactionRef": copy.deepcopy(lineage_root_transaction),
+    }
+    if item.get("state") == "replaced":
+        if replacement_relation is None:
+            replacement_relation = {
+                "kind": "authenticated-replacement",
+                "predecessor": copy.deepcopy(item.get("transactionRef")),
+                "replacement": copy.deepcopy(item.get("replacementTransactionRef")),
+            }
+        unsigned["replacementRelation"] = copy.deepcopy(replacement_relation)
     item["evidence"] = {
-        "kind": "fixture-only-anchor-binding-adapter-projection",
-        "value": receipt_projection_hash(item),
+        "kind": ANCHOR_POLICY,
+        "value": encode_canonical_object(sign_adapter_evidence(unsigned)),
     }
     return item
 
@@ -183,7 +270,6 @@ def receipt(
         "state": state,
         "observationDisposition": disposition,
         "observedAt": 9_999_999,
-        "nativeOrder": native_order,
     }
     if state in {"included", "finalized"}:
         item["blockRef"] = {"id": block_id}
@@ -195,15 +281,12 @@ def receipt(
             item["blockRef"]["timestamp"] = timestamp
     if disposition == "indeterminate" and preserved_receipt is not None:
         item["preservedReceiptHash"] = jcs_hash(preserved_receipt)
-    return seal_receipt(item)
-
-
-def relation_proof_ref(predecessor: dict, replacement: dict, native_order: int) -> str:
-    return "fixture-only-replacement:" + jcs_hash({
-        "predecessor": predecessor,
-        "replacement": replacement,
-        "nativeOrder": native_order,
-    })
+    return seal_receipt(
+        item,
+        authorized_signer=bound_bundle["writer"],
+        native_order=native_order,
+        lineage_root_transaction=bound_bundle["transactionRef"],
+    )
 
 
 def replacement_receipt(
@@ -221,21 +304,26 @@ def replacement_receipt(
         native_order=native_order,
         bundle=bundle,
     )
-    predecessor_ref = transaction_ref(transaction)
     replacement_ref = transaction_ref(replacement)
-    proof_ref = relation_proof_ref(
-        predecessor_ref, replacement_ref, native_order
+    item["replacementTransactionRef"] = replacement_ref
+    relation = {
+        "kind": "authenticated-replacement",
+        "predecessor": transaction_ref(transaction),
+        "replacement": copy.deepcopy(replacement_ref),
+    }
+    sealed = seal_receipt(
+        item,
+        authorized_signer=(BUNDLE if bundle is None else bundle)["writer"],
+        native_order=native_order,
+        lineage_root_transaction=(BUNDLE if bundle is None else bundle)["transactionRef"],
+        replacement_relation=relation,
     )
     if not relation_valid:
-        proof_ref = "fixture-only-replacement:unverified"
-    item["replacementTransactionRef"] = replacement_ref
-    item["replacementRelation"] = {
-        "kind": "fixture-only-authenticated-replacement-projection",
-        "predecessor": predecessor_ref,
-        "replacement": copy.deepcopy(replacement_ref),
-        "proofRef": proof_ref,
-    }
-    return seal_receipt(item)
+        adapter = receipt_adapter_evidence(sealed)
+        assert adapter is not None
+        adapter["signature"]["value"] = "A" * 86
+        sealed["evidence"]["value"] = encode_canonical_object(adapter)
+    return sealed
 
 
 def mutate_receipt(item: dict, mutator) -> dict:
@@ -244,15 +332,47 @@ def mutate_receipt(item: dict, mutator) -> dict:
     return seal_receipt(changed)
 
 
-def canonical_history(items: list[dict]) -> list[dict]:
-    unique = {jcs_hash(item): item for item in items}
-    return [
-        copy.deepcopy(item)
-        for digest, item in sorted(
-            unique.items(),
-            key=lambda pair: (pair[1]["nativeOrder"], pair[0]),
+def mutate_receipt_adapter(item: dict, mutator) -> dict:
+    changed = copy.deepcopy(item)
+    adapter = receipt_adapter_evidence(changed)
+    if adapter is None:
+        raise ValueError("missing fixture adapter evidence")
+    mutator(adapter)
+    changed["evidence"]["value"] = encode_canonical_object(adapter)
+    return changed
+
+
+def resolve_fixture_anchor(bundle: dict, items: list[dict]) -> tuple[dict, list[dict]]:
+    expected_binding = {
+        field: copy.deepcopy(bundle[field])
+        for field in (
+            "substrate", "logicalAddress", "nativeAddress", "contentHash",
+            "writer", "nonce",
         )
-    ]
+        if field in bundle
+    }
+
+    def receipt_verifier(item):
+        return inspect_anchor_receipt(
+            item,
+            expected_binding=expected_binding,
+            adapter_domain=ANCHOR_ADAPTER_DOMAIN,
+            adapter_policy=ANCHOR_POLICY,
+            trusted_adapter=ADAPTER,
+            authorized_signer=bundle["writer"],
+        )
+
+    status, selected, history = resolve_anchor_history(
+        None,
+        items,
+        expected_binding=expected_binding,
+        receipt_verifier=receipt_verifier,
+        expected_lineage_root=bundle["transactionRef"],
+        allow_implicit_selection=True,
+    )
+    if status != "pass" or selected is None:
+        raise ValueError("replay fixture requires one shared-adapter-resolved anchor")
+    return selected, history
 
 
 def canonical_outcome_history(items: list[dict]) -> list[dict]:
@@ -330,14 +450,14 @@ def replay_input(
     receipts: list[dict],
     outcome_evidence: list[dict],
 ) -> dict:
-    anchor_history = canonical_history(receipts)
+    selected_anchor, anchor_history = resolve_fixture_anchor(BUNDLE, receipts)
     outcome_history = canonical_outcome_history(outcome_evidence)
     return current_input(
         receipts,
         outcome_evidence,
         replayContext={
             "outcomeTimePolicy": TRUSTED_OUTCOME_POLICY["policyId"],
-            "anchorReceipt": copy.deepcopy(anchor_history[-1]),
+            "anchorReceipt": copy.deepcopy(selected_anchor),
             "anchorReceiptHistory": anchor_history,
             "outcomeTimeEvidence": copy.deepcopy(outcome_history[0]),
             "outcomeTimeEvidenceHistory": outcome_history,
@@ -598,17 +718,7 @@ def build_vectors() -> list[dict]:
     replaced = replacement_receipt()
     successor = receipt("tx-window-b", native_order=21, block_id="block-21")
     invalid_relation = replacement_receipt(relation_valid=False)
-    reversed_relation = copy.deepcopy(replaced)
-    reversed_relation["replacementTransactionRef"] = transaction_ref("tx-window-a")
-    reversed_relation["replacementRelation"] = {
-        "kind": "fixture-only-authenticated-replacement-projection",
-        "predecessor": transaction_ref("tx-window-b"),
-        "replacement": transaction_ref("tx-window-a"),
-        "proofRef": relation_proof_ref(
-            transaction_ref("tx-window-b"), transaction_ref("tx-window-a"), 18
-        ),
-    }
-    reversed_relation = seal_receipt(reversed_relation)
+    reversed_relation = replacement_receipt("tx-window-b", "tx-window-a")
     vectors += [
         vector(
             "awt-wrong-sole-anchor-transaction-indeterminate", "indeterminate",
@@ -978,9 +1088,12 @@ def build_vectors() -> list[dict]:
         ("block-height-signed", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "-20"))),
         ("block-height-plus", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "+20"))),
         ("block-height-space", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", " 20"))),
+        ("block-height-unicode-digit", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "\u0662\u0660"))),
         ("block-height-leading-zero", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "020"))),
+        ("block-height-decimal", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "20.0"))),
+        ("block-height-exponent", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("height", "20e0"))),
         ("timestamp-container", lambda item: mutate_receipt(item, lambda r: r["blockRef"].__setitem__("timestamp", []))),
-        ("native-order-container", lambda item: mutate_receipt(item, lambda r: r.__setitem__("nativeOrder", []))),
+        ("native-order-container", lambda item: mutate_receipt_adapter(item, lambda r: r.__setitem__("nativeOrder", []))),
         ("state-container", lambda item: mutate_receipt(item, lambda r: r.__setitem__("state", []))),
         ("disposition-container", lambda item: mutate_receipt(item, lambda r: r.__setitem__("observationDisposition", []))),
         ("native-evidence-array", lambda item: {**item, "evidence": []}),
@@ -1000,22 +1113,48 @@ def build_vectors() -> list[dict]:
         ),
         (
             "replacement-relation-array",
-            lambda item: item.__setitem__("replacementRelation", []),
+            lambda item: mutate_receipt_adapter(
+                item, lambda evidence: evidence.__setitem__("replacementRelation", [])
+            ),
         ),
         (
             "replacement-predecessor-array",
-            lambda item: item["replacementRelation"].__setitem__("predecessor", []),
+            lambda item: mutate_receipt_adapter(
+                item,
+                lambda evidence: evidence["replacementRelation"].__setitem__(
+                    "predecessor", []
+                ),
+            ),
         ),
         (
             "replacement-successor-array",
-            lambda item: item["replacementRelation"].__setitem__("replacement", []),
+            lambda item: mutate_receipt_adapter(
+                item,
+                lambda evidence: evidence["replacementRelation"].__setitem__(
+                    "replacement", []
+                ),
+            ),
         ),
         (
             "replacement-proof-container",
-            lambda item: item["replacementRelation"].__setitem__("proofRef", []),
+            lambda item: mutate_receipt_adapter(
+                item,
+                lambda evidence: evidence["replacementRelation"].__setitem__(
+                    "proofRef", []
+                ),
+            ),
+        ),
+        (
+            "replacement-kind-container",
+            lambda item: mutate_receipt_adapter(
+                item,
+                lambda evidence: evidence["replacementRelation"].__setitem__(
+                    "kind", []
+                ),
+            ),
         ),
     ):
-        malformed = mutate_receipt(replacement_receipt(), mutate)
+        malformed = mutate(copy.deepcopy(replacement_receipt()))
         vectors.append(vector(
             f"awt-malformed-{name}-indeterminate", "indeterminate",
             "malformed replacement projections fail closed before authorization",
@@ -1313,12 +1452,18 @@ def document() -> dict:
         "inputModel": (
             "one authoritative copy after external two-copy reconciliation and RSV; the "
             "fixture-only harness executes resolve_current/replay countability and membership using an "
-            "exact-object binding-adapter projection trusted separately by the verifier. "
+            "Ed25519-signed trusted synthetic fixture projection selected separately by the verifier. "
             "It models, but does not verify, native proof bytes or a production adapter"
         ),
         "anchorModel": (
-            "Anchor receipts retain exact-bundle provenance/finality and CORE lifecycle "
-            "semantics only; their timestamps, observedAt, evidenceValid, finalisedAt and "
+            "Portable CORE AnchorReceipt fields remain unchanged; fixture native order, exact "
+            "original-transaction lineage root, and replacement relation live inside signed "
+            "evidence.value. Current admission may infer one validated successor, while replay "
+            "retains that exact selected member. blockRef.id is required while blockRef.height "
+            "is optional and, when present, is the canonical ASCII unsigned-decimal string \"0\" "
+            "or [1-9][0-9]*. The declared demos-bft-final inclusion-final binding authorizes the "
+            "compressed submitted/accepted->finalized edges; any undeclared profile or "
+            "cross-profile history is rejected. Receipt timestamps, observedAt, finalisedAt and "
             "SessionRecord.endedAt never supply business occurrence authority"
         ),
         "outcomeHistoryModel": (

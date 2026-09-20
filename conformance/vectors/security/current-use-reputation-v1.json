@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 8,
-  "hash": "38c33875c3725942376993cc1124b00249d094b29f7f3730bd925b355a340e37",
+  "hash": "172bcdea70d10a4be29e68b08251043c3878bfe89c65c362ea322d99f4c5ded1",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -997,7 +997,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -1014,7 +1014,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -1033,7 +1033,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -2012,7 +2012,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -2029,7 +2029,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -2048,7 +2048,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -3044,7 +3044,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -3061,7 +3061,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -3080,7 +3080,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -4110,7 +4110,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -4127,7 +4127,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -4146,7 +4146,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -5573,7 +5573,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -5590,7 +5590,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -5609,7 +5609,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -6908,7 +6908,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -6925,7 +6925,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -6944,7 +6944,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -7783,7 +7783,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -7800,7 +7800,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -7819,7 +7819,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },
@@ -8424,7 +8424,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             },
@@ -8441,7 +8441,7 @@
                   "dacs2": "0.6",
                   "dacs3": "0.6",
                   "dacs4": "0.8",
-                  "dacs5": "0.6"
+                  "dacs5": "0.7"
                 }
               }
             }
@@ -8460,7 +8460,7 @@
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6"
+                "dacs5": "0.7"
               }
             }
           },

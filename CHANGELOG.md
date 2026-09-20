@@ -110,6 +110,60 @@ The format used per release:
   does not claim to be the live provider/network receipt. This establishes
   provider-test reference-backing without changing the rail's operator-gated
   production availability.
+### Added — exact participation and outcome-authorized reputation (#395)
+
+- **Typed source-backed participation (SPA-1..SPA-6)** — adds the closed
+  `SessionParticipationAdmission` and `TimeoutMarker` types for the unreleased
+  current profile. Both bind the same exact obligation; RFQ uses the existing
+  signed DACS-3 channel turn and derived responder, commit uses the exact
+  proposed Agreement hash, and settle uses the exact Agreement reference. The
+  separate admission anchor is derived from the unsigned-JCS obligation hash.
+- **Authenticated artifact and receipt admission** — participation and rating
+  consumers share unsigned RFC 8785 JCS artifact-hash and global-unique-roster
+  checks while applying their actual schemas, including RatingRecord's optional
+  `freeText` and `dimensions`. Admission references, signatures, and receipts
+  use that one unsigned hash. Portable CORE receipts carry fixture-native order,
+  replacement relation, and lineage-root authority inside canonical signed
+  `evidence: {kind, value}`; the selected finalized receipt must be an exact
+  canonical-history member reached by one complete unique incoming lineage.
+  Missing/disconnected predecessors, branch/cycle/late edges, and finalized
+  predecessors are non-countable. Producer
+  `evidenceValid`, writer-authorized, history, and nonce-freshness flags grant
+  no authority. Admission nonce matching follows the verifier-issued CORE
+  challenge for the job, whose issuer must be the actual counterparty or the
+  authenticated in-roster orchestrator acting for it; no global nonce index is
+  introduced.
+- **Exact outcome authority and ratings (SPA-6..SPA-8)** — elapsed deadlines,
+  admission/publication timestamps, and bundle absence do not prove nonresponse
+  or abort causality. Current timeout blame requires independently trusted exact
+  outcome evidence in addition to authoritative absence and participation;
+  missing or conflicting proof leaves the timeout audit-only and non-countable.
+  Current ratings require the shared artifact/roster gate, a fully signed
+  completed exact rate phase, exact unsigned-hash reference, and verified
+  completed-outcome occurrence. The corpus labels its positive adapter evidence
+  fixture-only; production Demos nonresponse authority remains unavailable.
+- **Verifier-owned corrective-profile admission for SPA** — the current
+  one-sided and rating consumers no longer trust a caller `currentProfile`
+  boolean. Both admit only through verifier- or orchestrator-owned trusted
+  context outside caller input that binds the exact session and authenticated
+  participant identities to the immutable corrective-profile release pin and the
+  complete module tuple CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 /
+  DACS-4 v0.8 / DACS-5 v0.7. A caller-supplied profile object or copied
+  reference label has no authority. An omitted `trustedContext` field fails
+  closed exactly like an explicit `null`; unauthenticated,
+  duplicated/ambiguous, pin-, tuple-, session-, or identity-mismatched authority
+  fails closed before any one-sided blame or rating becomes current/countable.
+- **Compatibility** — integrates the accepted #394 business-outcome occurrence,
+  receipt-lifecycle, canonical `blockRef.height` grammar, and compressed
+  `demos-bft-final` inclusion-final history repair through the shared signed
+  evidence adapter. The reconciled AWT corpus carries 185 vectors, including
+  signed height negatives (Unicode digit, decimal, and exponent forms). No released DACS-3 envelope or
+  historical DACS-5 signed-record meaning changes: unknown DACS-3 envelope
+  members remain in the signed hash. The fixture verifies only Ed25519/raw-key
+  cases, reports registered but unavailable algorithms/key resolution as
+  indeterminate, and rejects unknown or invalid algorithms. All five older
+  reputation algorithms remain frozen historical/partial signals.
+
 ### Added — authenticated reputation-outcome time
 
 - **Outcome-window contract (AWT-1..AWT-8; #384)** — retains the structurally
@@ -442,7 +496,7 @@ The format used per release:
   `"dacs-canonical-channel-message:v1:" || ASCII(lowercase-hex
   sha256(JCS(unsigned_message)))`. It is bound to the exact coordinated profile
   tuple recorded in `PROFILE.md` (CORE v0.3, DACS-1 v0.8, DACS-2 v0.6, DACS-3
-  v0.6, DACS-4 v0.8, DACS-5 v0.6) and does not claim ordinary cross-minor
+  v0.6, DACS-4 v0.8, DACS-5 v0.7) and does not claim ordinary cross-minor
   compatibility with a pre-v0.6 channel-message profile. The historical Demos
   arm is archival-only: a conforming reader accepts historical bytes only
   through the explicitly selected `legacy-import` operation, refuses them on
@@ -756,7 +810,7 @@ The format used per release:
   unknown phase; ordinary and repeated payment pipelines retain their prior
   meaning.
 
-### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.6
+### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7
 
 - **Canonical byte-exact `jobId` grammar** (CORE §B.1 JID-1..JID-4;
   DACS-4 §9.5.8; DACS-5 §10.3/§10.4.2; #339) — replaces the ambiguous

@@ -647,6 +647,27 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
             "CORE §11.1.2 and PROFILE.md declare different corrective tuples",
         )
 
+        dacs3_text = (ROOT / "spec/DACS-3-NEGOTIATE.md").read_text(encoding="utf-8")
+        dacs3_header = re.search(
+            r"this candidate is bound to the exact coordinated profile tuple "
+            r"in `PROFILE\.md` \((CORE v[^)]*)\)",
+            dacs3_text,
+        )
+        self.assertIsNotNone(dacs3_header, "DACS-3 declares no current tuple")
+        expected_header = "CORE v{core}, DACS-1 v{dacs1}, DACS-2 v{dacs2}, " \
+            "DACS-3 v{dacs3}, DACS-4 v{dacs4}, DACS-5 v{dacs5}"
+        self.assertEqual(expected_header.format(**core_tuple), dacs3_header.group(1))
+
+        laa_vectors = json.loads(
+            (ROOT / "conformance/vectors/security/legacy-agreement-admission-v0.8.json")
+            .read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            core_tuple,
+            laa_vectors["profile"]["moduleVersions"],
+            "LAA candidate metadata diverges from the corrective tuple",
+        )
+
         # Independent parse 3: the channel-wire corrective declaration in the
         # CHANGELOG is a required CORE §11.1.2 version inventory, not prose that
         # may retain a superseded composed tuple after integration.
@@ -683,7 +704,7 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
                 "dacs2": "0.6",
                 "dacs3": "0.6",
                 "dacs4": "0.8",
-                "dacs5": "0.6",
+                "dacs5": "0.7",
             },
             "the authoritative tuple drifted",
         )

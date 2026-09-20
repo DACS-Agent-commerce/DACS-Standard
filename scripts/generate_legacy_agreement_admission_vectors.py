@@ -1343,11 +1343,11 @@ def vectors() -> list[dict]:
 RELEASE_PIN = "0000000000000000000000000000000000000001"
 CURRENT_MODULE_TUPLE = {
     "core": "0.3",
-    "dacs1": "0.7",
+    "dacs1": "0.8",
     "dacs2": "0.6",
     "dacs3": "0.6",
     "dacs4": "0.8",
-    "dacs5": "0.6",
+    "dacs5": "0.7",
 }
 
 

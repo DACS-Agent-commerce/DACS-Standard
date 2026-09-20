@@ -102,7 +102,7 @@ HISTORICAL_ALICE_REF = f"cci:{public_hex(ALICE)}"
 CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
 CURRENT_MODULE_VERSIONS = {
     "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
-    "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.6",
+    "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",
 }
 CURRENT_PARTICIPANTS = sorted(
     [ALICE_REF, BOB_REF, ECDSA_REF, SR1_REF, UNRESOLVED_REF],

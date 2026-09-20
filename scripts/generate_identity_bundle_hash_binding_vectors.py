@@ -3188,7 +3188,6 @@ def build() -> dict[str, Any]:
             },
         },
         "otherApprovedReservationsNotImplemented": [
-            "RevocationBoundListing/revocationBoundListingVersion",
             "FinalityBoundSettlementEvidence/finalityBoundEvidenceVersion",
             "FinalityBoundEvidenceFaultAttestationBundle/finalityBoundEvidenceFaultBundleVersion",
             "FinalityBoundEvidenceFaultBundleExtendedPointer",

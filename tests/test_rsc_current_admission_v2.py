@@ -120,10 +120,13 @@ class ListingArtifactDispatchTests(unittest.TestCase):
         self.assertEqual(listing_artifact.classify_listing_artifact({"dacsVersion": "1"}),
                          ("Listing", "dacs-listing:v1:"))
         self.assertEqual(
-            listing_artifact.classify_listing_artifact({"revocationBoundListingVersion": "1"}),
-            ("RevocationBoundListing", "dacs-revocation-bound-listing:v1:"),
+            listing_artifact.classify_listing_artifact(
+                {"dacsVersion": "1", "revocationState": {}}
+            ),
+            ("Listing", "dacs-listing:v1:"),
         )
-        for bad in ({}, {"dacsVersion": "1", "revocationBoundListingVersion": "1"},
+        for bad in ({}, {"revocationBoundListingVersion": "1"},
+                    {"dacsVersion": "1", "revocationBoundListingVersion": "1"},
                     {"dacsVersion": "2"}, []):
             with self.subTest(bad=bad):
                 with self.assertRaises(ValueError):

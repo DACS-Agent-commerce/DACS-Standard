@@ -17,10 +17,8 @@ except ImportError:  # imported as scripts.listing_artifact by tests
 
 
 LEGACY_LISTING = "Listing"
-REVOCATION_BOUND_LISTING = "RevocationBoundListing"
 LISTING_DOMAINS = {
     LEGACY_LISTING: "dacs-listing:v1:",
-    REVOCATION_BOUND_LISTING: "dacs-revocation-bound-listing:v1:",
 }
 
 KNOWN_PHASES = frozenset({
@@ -80,14 +78,13 @@ def classify_listing_artifact(listing, supported=None):
     """Return ``(type, domain)`` or raise ValueError before type-specific use."""
     if not isinstance(listing, dict):
         raise ValueError("listing is not an object")
-    has_legacy = "dacsVersion" in listing
-    has_bound = "revocationBoundListingVersion" in listing
-    if has_legacy == has_bound:
-        raise ValueError("listing discriminator is missing or non-exclusive")
-    artifact_type = LEGACY_LISTING if has_legacy else REVOCATION_BOUND_LISTING
-    discriminator = "dacsVersion" if has_legacy else "revocationBoundListingVersion"
-    if listing.get(discriminator) != "1":
+    if "revocationBoundListingVersion" in listing:
+        raise ValueError("listing discriminator is unsupported")
+    if "dacsVersion" not in listing:
+        raise ValueError("listing discriminator is missing")
+    if listing.get("dacsVersion") != "1":
         raise ValueError("listing type version is unsupported")
+    artifact_type = LEGACY_LISTING
     if supported is not None and artifact_type not in supported:
         raise ValueError("listing type is unsupported by this consumer")
     return artifact_type, LISTING_DOMAINS[artifact_type]
@@ -473,8 +470,6 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         if not isinstance(accepted, list) or not accepted:
             return False, "payment pipeline requires acceptedRails", artifact_type, domain
 
-    if artifact_type == REVOCATION_BOUND_LISTING and not isinstance(listing.get("revocationState"), dict):
-        return False, "revocation-bound listing lacks revocationState", artifact_type, domain
     signature = listing.get("signature")
     if (
         not isinstance(signature, dict)

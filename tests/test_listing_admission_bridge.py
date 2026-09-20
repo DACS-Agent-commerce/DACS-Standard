@@ -67,10 +67,9 @@ def _legacy_listing() -> dict:
     return copy.deepcopy(raw["scenarios"]["identityBoundAgreement"]["listing"])
 
 
-def _revocation_bound_listing() -> dict:
+def _normative_current_listing() -> dict:
+    """The RSC Listing wire shape retains dacsVersion and its original domain."""
     listing = _legacy_listing()
-    listing.pop("dacsVersion")
-    listing["revocationBoundListingVersion"] = "1"
     listing["revocationState"] = {
         "revocationStateRefVersion": "1",
         "logicalAddress": "dacs1-revocations:key%3A" + _public_hex(_seller_private()),
@@ -78,18 +77,6 @@ def _revocation_bound_listing() -> dict:
         "checkpointSequence": "0",
         "checkpointHeadHash": "00" * 32,
     }
-    priv = _seller_private()
-    listing["signature"] = _sign(
-        listing, listing_artifact.LISTING_DOMAINS[listing_artifact.REVOCATION_BOUND_LISTING], priv
-    )
-    return listing
-
-
-def _normative_current_listing() -> dict:
-    """The RSC Listing wire shape retains dacsVersion and its original domain."""
-    listing = _revocation_bound_listing()
-    listing.pop("revocationBoundListingVersion")
-    listing["dacsVersion"] = "1"
     listing["signature"] = _sign(
         listing, listing_artifact.LISTING_DOMAINS[listing_artifact.LEGACY_LISTING],
         _seller_private(),
@@ -241,75 +228,6 @@ class AdmitListingLegacyTests(unittest.TestCase):
         self.assertIsNone(record)
 
 
-class AdmitListingRevocationBoundTests(unittest.TestCase):
-    def setUp(self):
-        self.listing = _revocation_bound_listing()
-        self.key = _public_hex(_seller_private())
-
-    def test_join_required_for_bound_listing(self):
-        # Missing current-state evidence must never admit a bound listing.
-        verdict, reason, record = listing_admission.admit_listing(
-            self.listing,
-            inclusion_key=self.key,
-            session_boundary="new-session",
-            native_binding=_native_binding(),
-        )
-        self.assertEqual(verdict, "indeterminate")
-        self.assertIsNone(record)
-        self.assertIn("full DACS-1", reason)
-
-    def test_old_reader_without_v2_admission_cannot_admit_bound_listing(self):
-        # RSC-10 downgrade-safe boundary: a reader that only checks the Listing
-        # signature has no currentness authority. A validly signed bound Listing
-        # without the v2 common-state join is indeterminate, never verified, so
-        # an unsupported old reader must refuse rather than silently proceed.
-        verdict, reason, record = listing_admission.admit_listing(
-            self.listing,
-            inclusion_key=self.key,
-            session_boundary="new-session",
-            native_binding=_native_binding(),
-        )
-        self.assertEqual(verdict, "indeterminate")
-        self.assertIsNone(record)
-
-    def test_mismatched_join_evidence_is_indeterminate(self):
-        verdict, reason, _ = listing_admission.admit_listing(
-            self.listing,
-            inclusion_key=self.key,
-            session_boundary="new-session",
-            native_binding=_native_binding(),
-            current_listing_evidence=_signed_evidence("state-300"),
-            current_state_evidence=_signed_evidence("state-301"),
-            trusted_state=_trusted_state("state-300"),
-        )
-        self.assertEqual(verdict, "indeterminate")
-
-    def test_matching_raw_state_labels_never_mint_admission(self):
-        verdict, reason, record = listing_admission.admit_listing(
-            self.listing,
-            inclusion_key=self.key,
-            session_boundary="new-session",
-            native_binding=_native_binding(),
-            current_listing_evidence=_signed_evidence("state-300"),
-            current_state_evidence=_signed_evidence("state-300"),
-            trusted_state=_trusted_state("state-300"),
-        )
-        self.assertEqual(verdict, "indeterminate")
-        self.assertIn("full DACS-1", reason)
-        self.assertIsNone(record)
-
-    def test_committed_bound_listing_requires_prior_admission_not_fresh_rsc(self):
-        verdict, reason, record = listing_admission.admit_listing(
-            self.listing,
-            inclusion_key=self.key,
-            session_boundary=COMMITTED_BOUNDARY,
-            native_binding=_native_binding(),
-        )
-        self.assertEqual(verdict, "indeterminate")
-        self.assertIn("authenticated committed-session", reason)
-        self.assertIsNone(record)
-
-
 class CurrentNormativeListingBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.listing = _normative_current_listing()
@@ -342,6 +260,27 @@ class CurrentNormativeListingBoundaryTests(unittest.TestCase):
         self.assertEqual(verdict, "indeterminate")
         self.assertIn("full DACS-1", reason)
         self.assertIsNone(record)
+
+    def test_undefined_discriminator_is_rejected_even_with_valid_listing_signature(self):
+        for include_normative_version in (False, True):
+            with self.subTest(include_normative_version=include_normative_version):
+                listing = copy.deepcopy(self.listing)
+                if not include_normative_version:
+                    listing.pop("dacsVersion")
+                listing["revocationBoundListingVersion"] = "1"
+                self.resign(listing)
+                verdict, reason, record = self.admit(listing)
+                self.assertEqual(verdict, "rejected")
+                self.assertIn("discriminator", reason)
+                self.assertIsNone(record)
+                publication, candidate = listing_artifact.prepare_listing_publication(
+                    listing,
+                    _native_binding(),
+                    substrate=CONFORMANCE_SUBSTRATE,
+                    finality_profile=CONFORMANCE_FINALITY,
+                )
+                self.assertEqual(publication, "fail")
+                self.assertIsNone(candidate)
 
     def test_raw_matching_or_mismatched_state_labels_are_inert(self):
         for listing_state, revocation_state in (

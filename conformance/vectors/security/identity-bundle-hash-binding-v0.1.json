@@ -48,7 +48,6 @@
     }
   },
   "otherApprovedReservationsNotImplemented": [
-    "RevocationBoundListing/revocationBoundListingVersion",
     "FinalityBoundSettlementEvidence/finalityBoundEvidenceVersion",
     "FinalityBoundEvidenceFaultAttestationBundle/finalityBoundEvidenceFaultBundleVersion",
     "FinalityBoundEvidenceFaultBundleExtendedPointer",

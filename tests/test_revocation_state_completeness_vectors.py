@@ -792,10 +792,13 @@ def _evaluate(data, public_keys, trusted_admission=None):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
     current_seq = int(current["sequence"])
+    conflict_revokes_target = False
+    conflict_indeterminate = False
     for conflict in context.get("knownConflictingHeads", []):
         checked = validate_head_item(conflict, listing, state_ref, public_keys)
         if checked is None:
-            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+            conflict_indeterminate = True
+            continue
         conflicting, conflicting_hash = checked
         conflict_seq = int(conflicting["sequence"])
         transition = conflicting.get("transition")
@@ -812,21 +815,31 @@ def _evaluate(data, public_keys, trusted_admission=None):
             if predecessor is None or not validate_transition(
                 conflicting, predecessor[0], predecessor[1], context, public_keys
             ):
-                return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+                conflict_indeterminate = True
+                continue
             if conflict_seq > current_seq:
-                return "fail", {"revocationCheck": "revoked", "session": "refuse"}
-            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+                conflict_revokes_target = True
+            else:
+                conflict_indeterminate = True
+            continue
         if conflict_seq == current_seq and (
             conflicting.get("previousHeadHash") == current.get("previousHeadHash")
             and conflicting_hash != current_hash
         ):
             # A same-sequence sibling omitting this target must not turn an
             # established revocation into absent: it is an equivocation.
-            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+            conflict_indeterminate = True
         if conflict_seq > current_seq:
             # A later authenticated head that does not revoke the target still
             # proves the accepted current head is stale.
-            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+            conflict_indeterminate = True
+
+    # Classify the complete signed observation set before applying RSC-7:
+    # a verified target revocation wins regardless of producer-chosen ordering.
+    if conflict_revokes_target:
+        return "fail", {"revocationCheck": "revoked", "session": "refuse"}
+    if conflict_indeterminate:
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
     proof = context.get("stateProof")
     if not validate_state_proof_shape(proof, key, current_hash):
@@ -1355,6 +1368,80 @@ class RevocationStateCompletenessTests(unittest.TestCase):
             evaluate(higher["input"], self.document["publicKeys"],
                      higher.get("trustedProfileAdmission"))[1]["revocationCheck"],
             "revoked",
+        )
+
+    def test_conflict_set_revocation_precedence_is_order_independent(self):
+        third = g.listing_tuple("third-service", "66" * 32)
+        third_marker = g.marker(third)
+        third_ref = g.marker_ref(third_marker, "third-service")
+        non_target, _ = g.append_head(g.OTHER_HEAD, g.OTHER_LEAVES,
+                                      third, third_ref)
+        target, _ = g.append_head(g.OTHER_HEAD, g.OTHER_LEAVES,
+                                  g.TARGET, g.TARGET_REF)
+        pubs = self.document["publicKeys"]
+        for heads in ((non_target, target), (target, non_target)):
+            with self.subTest(target_last=heads[-1] is target):
+                data = g.input_for(
+                    g.OTHER_HEAD, g.OTHER_LEAVES,
+                    conflicting_heads=[g.history_item(head) for head in heads],
+                )
+                context = data["resolutionContext"]
+                context["resolvedMarkers"].extend([
+                    g.resolved_marker(g.TARGET_REF, g.TARGET_MARKER,
+                                      g.SELLER_KEY, g.LISTING_ID),
+                    g.resolved_marker(third_ref, third_marker,
+                                      g.SELLER_KEY, "third-service"),
+                ])
+                for item in context["knownConflictingHeads"]:
+                    self.assertIsNotNone(validate_head_item(
+                        item, data["listing"], data["listing"]["revocationState"], pubs,
+                    ))
+                    self.assertTrue(validate_transition(
+                        item["head"], g.OTHER_HEAD, g.artifact_hash(g.OTHER_HEAD),
+                        context, pubs,
+                    ))
+                for caller in (evaluate, evaluate_recorded_policy):
+                    self.assertEqual(
+                        caller(data, pubs, g.profile_admission()),
+                        ("fail", {"revocationCheck": "revoked", "session": "refuse"}),
+                    )
+
+        non_target_only = g.input_for(
+            g.OTHER_HEAD, g.OTHER_LEAVES,
+            conflicting_heads=[g.history_item(non_target)],
+        )
+        non_target_only["resolutionContext"]["resolvedMarkers"].append(
+            g.resolved_marker(third_ref, third_marker, g.SELLER_KEY, "third-service")
+        )
+        self.assertEqual(
+            evaluate(non_target_only, pubs, g.profile_admission()),
+            ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+        )
+
+    def test_invalid_conflict_does_not_mask_independent_revocation(self):
+        target_higher, _ = g.append_head(g.OTHER_HEAD, g.OTHER_LEAVES,
+                                         g.TARGET, g.TARGET_REF)
+        invalid = g.history_item(target_higher)
+        invalid["head"]["signature"]["value"] = "not-a-signature"
+        valid = g.history_item(target_higher)
+        for heads in ((invalid, valid), (valid, invalid)):
+            with self.subTest(valid_last=heads[-1] is valid):
+                data = g.input_for(g.OTHER_HEAD, g.OTHER_LEAVES,
+                                   conflicting_heads=list(heads))
+                data["resolutionContext"]["resolvedMarkers"].append(
+                    g.resolved_marker(g.TARGET_REF, g.TARGET_MARKER,
+                                      g.SELLER_KEY, g.LISTING_ID)
+                )
+                for caller in (evaluate, evaluate_recorded_policy):
+                    self.assertEqual(
+                        caller(data, g.document()["publicKeys"], g.profile_admission()),
+                        ("fail", {"revocationCheck": "revoked", "session": "refuse"}),
+                    )
+        invalid_only = g.input_for(g.OTHER_HEAD, g.OTHER_LEAVES,
+                                   conflicting_heads=[invalid])
+        self.assertEqual(
+            evaluate(invalid_only, g.document()["publicKeys"], g.profile_admission()),
+            ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
         )
 
     def test_wrong_key_and_wrong_algorithm_vectors_fail_closed(self):

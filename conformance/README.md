@@ -6,8 +6,8 @@ An independent, third-party set of conformance vectors for the DACS v0.1 full-pr
 
 Surface labels travel with each vector:
 
-- **GOLDEN (194)** — byte-stable reference outputs plus steward-corrected regressions pinned by executable predicates. Counts: 7 canonicalize, 5 decimal, 5 signing, 2 artifact-reference-shape, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 36 verify, 24 vet, 19 negotiate, and 12 governance checks.
-- **CANDIDATE (42)** — 28 `PayeeBoundAgreementDocument` / PB-1..PB-3 vectors plus 14 historical reputation outputs whose one-copy inputs lack authoritative-absence context.
+- **GOLDEN (176)** — byte-stable reference outputs plus steward-corrected regressions pinned by executable predicates. Counts: 6 canonicalize, 5 decimal, 5 signing, 2 artifact-reference-shape, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 37 settlement, 36 verify, 24 vet, 19 negotiate, and 12 governance checks.
+- **CANDIDATE (64)** — 29 `PayeeBoundAgreementDocument` / PB-1..PB-3 and RD-5 vectors, 14 historical reputation outputs whose one-copy inputs lack authoritative-absence context, 17 output-only DACS-X dispute/disclosure expectations awaiting public signed inputs and normative artifact contracts, and four grouped #390 identity-bound agreement expectations backed by the executable security corpus.
 
 ## Why
 
@@ -20,6 +20,15 @@ enforced by the spec-derived validators and their exact case sets; changing the
 profile identifier would incorrectly create a new full-profile version.
 
 ## Validate
+
+The `registry-bootstrap-v0.1` security corpus has been regenerated for the
+ratified numeric-version contract, including dependent hashes, signatures, and
+successor links, and now also carries the forward-readable optional-evidence
+extension vectors (76 + 3 = 79 expected outcomes; all prior outcomes are
+preserved). Check local
+byte determinism with `python3 scripts/generate_sr2_resolution_vectors.py --check`;
+this bounded fixture check does not establish native proof verification or
+integrated full-suite acceptance.
 
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json
@@ -39,11 +48,16 @@ For a runnable five-stage builder path, see the dependency-free
 artifact chain, emits canonical bytes/hashes/signature payloads/refs, and executes
 five deterministic failure examples without importing a live substrate SDK.
 
+The [`evaluations/`](./evaluations/) directory contains explicitly
+non-normative, bounded evaluation proposals and reproducibility artifacts. They
+do not add conformance requirements or promote their case sets into golden
+vectors.
+
 Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 
 ## Coverage
 
-- `canonicalize`: 7 golden vectors, §7.1 JCS canonicalization and §7.2 signed scope.
+- `canonicalize`: 6 legacy golden vectors for JCS canonicalization and signed scope. Current CORE §B.2 fraction, magnitude, and Unicode boundaries are exercised by the self-contained `canonical-json-v0.1` security corpus.
 - `decimal`: 5 golden vectors, §14.4 CD-1 canonical decimals and §9.3 positivity.
 - `signing`: 5 golden vectors, §7.7 domain-separated Ed25519 (SIG-2 / SIG-4).
 - `artifact-reference-shape`: 2 golden manifest cases backed by 19 executable
@@ -54,32 +68,34 @@ Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`,
 - `dacs1`: 24 golden vectors, §6.3 identity bundles, SIWD Resource binding, freshness, identityTier derivation, requirement matching, listing validation, forged/unresolved `verifiedBy` fail-closed tiering, and #170 existence-only versus controlled-use gates.
 - `addressing`: 2 golden vectors, CF-4 reserved-delimiter encoding for DACS logical address segments.
 - `bundle`: 4 golden vectors, §10.4 / §10.4.1 AttestationBundle verification.
-- `dispute`: 8 golden vectors, §11.2.1 DACS-X dispute flow with the 4-value decision (`pass`/`fail`/`indeterminate`/`error`). (The former HTLC-9 `correction`-amendment vector was retired — Round-4 R4-A removed the correction amendment and resolves an HTLC-9 asymmetric settlement through the ST-8 `settle-asymmetric` state at the settlement layer; see the §14.5 verify-st-asymmetric-* vectors.)
-- `disclosure`: 9 golden vectors, §8.7 DACS-X arbitrator transcript-disclosure (step 3, DP-1).
-- `settlement`: 37 golden vectors, §14.4 SettlementEvidence verification — PC-1..7 (anchor, attestationRef→evidence hash, outcome classification, currency-resolution, settlementFinality, anchor-pending cross-chain return), per-rail success (incl. `pay-x402` gasless-USDC-on-Base, §9.5.7), HTLC finality parameters, RD-5 railType↔asset/network coherence, §9.5.1/PIPE-5 amount==agreement.terms.price, CD-1/§9.3 amount canonicalisation, and the `dacs-4-evidence` signature.
-- `candidate`: 42 candidate vectors — 28 §8.5/§8.6 `PayeeBoundAgreementDocument` artifact compatibility plus §9.5.1 PB-1..PB-3 payee-destination binding — legacy/current reader behaviour, legacy payoutBindings rejection, phase/artifact mismatch, cross-domain signature rejection, exact payout coverage, destination match/mismatch, positive tier-2 controlled-claim binding, positive tier-1 `pay-dem` intrinsic binding, tier-2 resolution mismatch, tier-2 resolver error, applicable-but-unresolvable tier-2 pause with exact recorded cause, SB-3 fallback separation, and repeated pay phases keyed by `(railId, phaseIndex)` — plus 14 pre-guard-(iv) reputation outputs retained for regeneration after valid resolution context is available.
+- `dispute`: 8 candidate output expectations for the anticipated §11.2.1 DACS-X dispute flow and 4-value decision. They are not golden until the repository publishes the exact signed inputs/resolver context, versioned artifacts, signature recipes, and an independent executable predicate. (The former HTLC-9 `correction`-amendment expectation was retired — Round-4 R4-A resolves asymmetric settlement through ST-8 at the settlement layer.)
+- `disclosure`: 9 candidate output expectations for proposed §8.7 DACS-X arbitrator transcript disclosure (step 3, DP-1). They are not current conformance cases: disclosure grant/order/consent artifacts, exact signed bytes, transcript inputs, and resolver context are not published; #99/#351 track that work.
+- `settlement`: 37 golden vectors plus the corrected RD-5 chain-ID candidate, §14.4 SettlementEvidence verification — PC-1..7 (anchor, attestationRef→evidence hash, outcome classification, currency-resolution, settlementFinality, anchor-pending cross-chain return), per-rail success (including `pay-x402` gasless-USDC-on-Base and the official-AP2-backed `pay-ap2` fixture), HTLC finality parameters, RD-5 railType↔asset/network coherence, §9.5.1/PIPE-5 amount==agreement.terms.price, CD-1/§9.3 amount canonicalisation, and the `dacs-4-evidence` signature.
+- `candidate`: 64 candidate vectors — 29 §8.5/§8.6 `PayeeBoundAgreementDocument` / PB-1..PB-3 and corrected RD-5 cases; 14 pre-guard-(iv) reputation outputs retained for regeneration after valid resolution context is available; the 17 output-only DACS-X dispute/disclosure expectations described above; and four grouped #390 identity-bound agreement expectations whose detailed cases live in the candidate security corpus.
 - `verify`: 49 golden vectors, §14.5 DACS-5 Verify — two-sided logical-address derivation `stor-{sha256(jobId+"-bundle-"+role)}` (§10.4.2) with jobId binding; native-address resolution on a write-input substrate goes through the signed `BundleBinding` (§10.4.2 BB-1..BB-8; fail-closed + multiplicity-void + suppression-diligence resolution vectors to follow via dacs-verify); §10.4.3(a-d) consumption (one-sided→aborted-by-self per §10.11, unified, divergent — "divergent" is a **consumer verdict, NOT an `outcome` enum value**; presence-mismatched `phaseSummary` entry sets are divergent; advisory-only skew is unified; divergent copies are dispute evidence but their jobId is excluded from DACS-5 reputation), the ST-1..8 transition table + state→outcome mapping (§10.3.1, incl. the non-terminal `settle-asymmetric` HTLC-9 open state, ST-8), and reputation derivation (§10.5.1 — two-sided per-jobId reconciliation via `anchoredByRole` with `perspective_flip` of a counterparty-anchored copy per §10.11; `party_fault_denom` excludes `failed-substrate`; divergent jobIds are excluded from all metrics; null≠zero; rating aggregation with `(rater,jobId,targetRole)` de-duplication; deterministic receipt `windowingBasis` + sorted `bundleRefs`; `observedTransactionalVolume` grouped by currency). The guard-(iv) golden excludes raw one-copy inputs lacking authoritative-absence context; the 14 affected historical metric outputs are candidates, not current goldens.
 - `vet`: 24 golden vectors, DACS-2 method contract, retry semantics, MA-1..3 resolution, freshness, oneOf/cross-accumulator precedence, and counterparty-malformed fault attribution.
 - `negotiate`: 19 golden vectors, §8.4.3 / §8.5.1 / §8.5.2 listing-conformance checks including CD-1 price validation, negotiable band math, sealed-envelope role assignment, required signer coverage, and commit rejection for SE-8.
 - `governance`: 12 golden vectors, §14.7 GOV-1..3 steward disclosure and pin-time anchoring-phase checks.
 
-## §8.7 arbitrator-disclosure (step 3)
+## Candidate §8.7 arbitrator-disclosure expectations (step 3)
 
-The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: the full §8.7 channel transcript is disclosed to the **named arbitrator only**, producing **no presentable artifact**. A `dacs-x-disclosure-grant` (SIG-4) authorizes one transcript → one credentialed arbitrator → one dispute, either by **signed party agreement** (every channel member co-signs) or by **arbitrator order**. The verifier enforces: recipient is the credentialed arbitrator (anti-swap, DP-5 bilateral selection), the disclosed transcript matches the grant's pinned hash (anti-substitution), the grant binds to the open dispute, the transcript's own member signatures verify, and the result is a bare check — nothing re-anchorable. It is structurally distinct from §11.2.7 claim-disclosure (different object, audience, and output). No new cryptography — §7.7 signing + §7.2 hashing + DACS-1 claim references only (DP-4).
+The output map describes the intended DACS-X step-3 policy boundary: a full transcript is disclosed to the **named arbitrator only**, producing no presentable artifact, after party agreement or an arbitrator order. It is retained for design discussion, not as executable proof. This repository does not currently define or ship the `dacs-x-disclosure-grant`/order artifacts, signed inputs, exact signature domains/recipes, transcript-signature contract, credentialed-arbitrator resolver context, or a predicate that consumes those inputs. Implementations MUST NOT cite these nine expected strings as current §8.7 conformance. #99 owns the DACS-X input/verifier pack; #351 owns the prerequisite transcript/consent/encryption/SR-2 contract.
 
 ## Files
 
-- `MANIFEST.json` — the case index: every vector's `id`, `area`, spec `§`, summary, `status`, golden `reason`, and pinned `want`.
+- `MANIFEST.json` — the case index: every vector's `id`, `area`, spec `§`, summary, `status`, provenance `reason`, and pinned `want`.
 - `fixtures/attestation-bundle-0004.json` — the full byte-stable completed §10.4 AttestationBundle fixture.
 - `fixtures/attestation-bundle-0004-seller.json` — the same `jobId` as DACS-VERIFY-0004 with a divergent `failed-counterparty` outcome; it verifies independently and has a different bundle hash.
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.
+- `fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json` — deterministic signed listing/EBFAB fixture covering bundle and extended-pointer domains, discriminator/type-swap refusal, cross-type replay, signed-but-SEB-invalid rejection, EBFAB/EBFAB member divergence, and EBFAB authority across every older bundle type.
 - `fixtures/identity/control-gate-vectors.json` — the #170 DACS-1 controlled-use input→expected fixture pack: existence-only registry passes remain valid supporting context but cannot satisfy `presentedBy` / reputation-key use; malformed or unresolvable control proofs stay on the §7.5.1 4-value path.
 - `fixtures/settlement-evidence-payment-success.json` — a byte-stable pay-evm-erc20 success SettlementEvidence (§9.7) with its PaymentPhaseInput + PhaseHandlerResult, signed by a deterministic orchestrator key.
+- `fixtures/settlement/settlement-ap2-reference.json` — a byte-stable public fixture generated and verified with the official AP2 Python SDK at the pinned commit. It carries the separate CheckoutMandate and PaymentMandate presentations, public JWKs, byte-exact transaction-ID projection, replayable non-secret provider-response bytes, deterministic signed DAHR transaction/block wire evidence, the `ap2-sr3` receipt references, and deterministic signed `pay-ap2` SettlementEvidence. `tests/test_ap2_reference_fixture.py` independently checks the merchant JWS, canonical ULID, exact response-byte hash and parsed session/amount binding, known-answer DAHR transaction/block identities, Ed25519 signatures against a separately pinned fixture validator roster, inclusion/finality, evidence hash, and DACS signature; it rejects detached status-field mutations and an internally consistent attacker-selected block roster. The public fixture is a deterministic conformance replay, not the historical live provider/network receipt.
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.
 - `fixtures/session-bundles-presence.json` — byte-stable buyer/seller bundle pairs for §10.4.3 phaseSummary entry-set mismatch and advisory-only skew.
 - `fixtures/session-bundles-reputation.json` — a legacy mixed-outcome one-copy bundle set with no retained two-address read context. Current §10.5.1 guard (iv) excludes it; its historical positive metric outputs are candidates for regeneration, not current goldens.
-- `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, dispute/disclosure decision maps + seeds, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps.
+- `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps. The file also retains proposed dispute/disclosure decision maps/seeds, but those rows are candidate output-only expectations until #99/#351 supply their public inputs and executable contracts.
 - `vectors/security/artifact-reference-shapes-v0.1.json` — the exact
   `AttestationRef` / `ChainTxRef` shape oracle used by
   `scripts/validate_artifact_shapes.py`.
@@ -96,6 +112,13 @@ The generator upgrades the nested refs, re-hashes and re-signs the affected
 bundle/evidence bytes with the published test seeds, and refreshes the pinned
 golden hashes.
 
+The EBFAB compatibility fixture has its own deterministic generator:
+
+```sh
+python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --write
+python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
+```
+
 ## Implementation observations (non-normative)
 
 Vectors that double as executable evidence of implementation friction. Stated as observations for the group to confirm or correct, not as normative claims:
@@ -105,3 +128,28 @@ Vectors that double as executable evidence of implementation friction. Stated as
 - **DACS-VERIFY-0004** — `conformance/fixtures/attestation-bundle-0004.json` is a full completed §10.4 `AttestationBundle`, signed by buyer + seller with deterministic issuer-kit keys. `conformance/fixtures/attestation-bundle-0004-seller.json` is a same-`jobId` divergent seller-side bundle with outcome `failed-counterparty`; it also verifies and has a distinct bundle hash. Divergent-bundle dispute/disclosure vectors pin both refs. The bundle verifier accepts valid bundles, rejects a completed bundle missing a required signer, and surfaces malformed resolved keys as `error`.
 
 The published golden vectors assert the remaining observed behaviour, so the evidence is runnable.
+
+### Complete Recipe fixture follow-up
+
+The generator now constructs a registered `key` / `self-signed` Recipe with
+required age, retry and governance fields and a deterministic steward
+signature. The signature uses the test harness's `keyId` / `algorithm` / `value`
+codec under `dacs-recipe:v1:`; this does not allocate a production signature
+wire format or establish live registry-steward authorization. The selector-only
+unit projections are not complete wire artifacts.
+
+The renewed bootstrap corpus contains 79 deterministic cases, including three
+optional-evidence forward-readability controls. Its dependent hashes,
+signatures, references and security-vector index are regenerated, and the
+checked-in generator plus integrated reference tests establish byte-identical
+reproduction for this fixture profile.
+
+### AP2 fixture-profile scope in the composed candidate
+
+The AP2 handler-safety corpus retains its explicitly synthetic DACS-4 v0.7
+profile and verifier-owned module tuple. Those fixture bytes and expected
+outcomes are preserved; its local profile-admission tests do not establish
+admission of the later composed tuple in `spec/PROFILE.md`. Current composed
+profile metadata is checked by the JID reference controls. Deployment or
+end-to-end AP2 support for the composed candidate requires separate exact-pin
+consumer evidence; a green pinned fixture-profile run is not that evidence.

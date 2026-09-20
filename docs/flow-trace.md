@@ -53,6 +53,10 @@ function signedBytes(kind: string, artifactHash: string): Uint8Array {
 }
 function jcs(obj: any): string { /* RFC 8785 canonical JSON */ }
 function sha256Hex(bytes: Uint8Array | string): string { /* sha256, hex-encoded */ }
+function base64urlNoPad(bytes: Uint8Array): string {
+  // CORE §B.7 SIG-6: unpadded Base64URL that re-encodes to itself.
+  return base64url(bytes).replace(/=+$/, "");
+}
 
 // SDK imports used throughout
 import { Demos } from "@kynesyslabs/demosdk/websdk";
@@ -242,8 +246,9 @@ async function vetViaDAHR(demos: Demos, claim: Claim, recipe: Recipe, jobId: str
   // GET, then co-sign a Demos transaction that asserts: "URL=X, time=T,
   // body_sha256=H." The body is returned to the caller inline. The on-chain
   // artifact is the *hash*, not the body. No private info crosses chain
-  // because the request is a public-API GET — DAHR is explicitly never used
-  // for endpoints that require buyer-side secrets.
+  // because the request is a public-API GET. DAHR's one credential-bound
+  // use is the AP2-3-scoped read-only provider-status fetch (§9.5.6 AP2-2/AP2-3);
+  // other endpoints requiring buyer-side secrets use other DACS-2 methods.
   const dahr = await demos.web2.createDahr();
   let response;
   try {
@@ -295,14 +300,14 @@ async function vetViaDAHR(demos: Demos, claim: Claim, recipe: Recipe, jobId: str
 
 Notes:
 - **The "hash triggers an operation" answer is in `dahr.startProxy(...)`.** Validators fetch, validators co-sign the anchoring tx asserting `(url, time, bodyHash)`. The body is delivered to the caller inline; the anchoring tx is what survives. A later consumer holding the VerifyResult can either trust the anchored hash or re-fetch and re-verify against the hash.
-- **"How, without private info?"** Public-API endpoint. DAHR is for attesting *public* data fetches. Anything credential-bound goes through other DACS-2 methods (`verifiable-credential` for VC issuance flows, `oauth-attested` for OAuth-scoped fetches handled by buyer-side code without validator involvement, `zktls` when underlying data is private and a TLSNotary proof is appropriate).
+- **"How, without private info?"** Public-API endpoint. DAHR is for attesting *public* data fetches. Credential-bound fetches go through other DACS-2 methods (`verifiable-credential` for VC issuance flows, `oauth-attested` for OAuth-scoped fetches handled by buyer-side code without validator involvement, `zktls` when underlying data is private and a TLSNotary proof is appropriate) — with one carve-out: the AP2-3-scoped read-only provider-status fetch for `pay-ap2` (§9.5.6 AP2-2/AP2-3) is a DAHR fetch by construction.
 - **Recipe pinning.** A `ClaimRequirement.recipeVersion` (§6.3.3, §7.4.1) pins an exact DACS-2 recipe version per claim at session start. If the steward ships a new recipe mid-session (e.g., GLEIF moved their endpoint), the session continues against the pinned version. New sessions start against the latest (when no pin is set).
 
 ---
 
 ## 5. Stage 3 — Negotiate (RFQ on L2PS)
 
-The buyer and seller exchange offers and counters through an L2PS subnet. Each channel message is signed under the channel-msg domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
+The buyer and seller exchange offers and counters through an L2PS subnet. Each current DACS channel message is a discriminated `CanonicalChannelMessage` signed under the canonical-channel-message domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
 
 ```typescript
 async function negotiateRFQ(
@@ -326,23 +331,26 @@ async function negotiateRFQ(
 
   // Distribute RSA membership keys to buyer + seller out-of-band (e.g., via SIWD).
 
-  // 2. Multi-turn exchange. Each message signed under "dacs-channelmsg:v1:".
-  const transcript: SignedChannelMsg[] = [];
+  // 2. Multi-turn exchange. Each current message carries
+  // canonicalChannelMessageVersion: "1" and is signed under
+  // "dacs-canonical-channel-message:v1:" per DACS-3 CH-7/CH-8.
+  const transcript: CanonicalChannelMessage[] = [];
 
   // Turn 1: buyer offers 85 USDC
   transcript.push(await sendChannelMsg(subnet, buyerDemos, {
     channelId: subnetId,
     sequence: 1,
-    type: "counter",
+    type: "offer",
     body: { price: { amount: "85", currency: "USDC" }, deliverable: listing.offering.deliverable },
   }));
 
-  // Turn 2: seller counters 95 USDC
+  // Turn 2: seller counters 95 USDC (refs at the message level, per §8.3.3)
   transcript.push(await sendChannelMsg(subnet, sellerDemos, {
     channelId: subnetId,
     sequence: 2,
     type: "counter",
-    body: { price: { amount: "95", currency: "USDC" }, refs: { repliesTo: 1 } },
+    refs: { repliesTo: 1 },
+    body: { price: { amount: "95", currency: "USDC" } },
   }));
 
   // Turn 3: buyer counters 90 USDC
@@ -350,7 +358,8 @@ async function negotiateRFQ(
     channelId: subnetId,
     sequence: 3,
     type: "counter",
-    body: { price: { amount: "90", currency: "USDC" }, refs: { repliesTo: 2 } },
+    refs: { repliesTo: 2 },
+    body: { price: { amount: "90", currency: "USDC" } },
   }));
 
   // Turn 4: seller accepts
@@ -358,7 +367,8 @@ async function negotiateRFQ(
     channelId: subnetId,
     sequence: 4,
     type: "accept",
-    body: { acceptedTerms: transcript[2].body, refs: { repliesTo: 3 } },
+    refs: { repliesTo: 3 },
+    body: { acceptedTerms: transcript[2].body },
   });
   transcript.push(acceptMsg);
 
@@ -418,20 +428,39 @@ async function negotiateRFQ(
   return { agreement, agreementHash, commitment };
 }
 
-async function sendChannelMsg(subnet: any, sender: Demos, msg: Partial<ChannelMessage>) {
-  const envelope = {
+async function sendChannelMsg(subnet: any, sender: Demos, msg: Partial<CanonicalChannelMessage>) {
+  // DACS-3 §8.3.3 CH-7: the current message is a discriminated
+  // CanonicalChannelMessage. `sender` is the author's canonical primary
+  // ClaimReference (CF-2 byte form) under the registered DACS-1 scheme
+  // registry — e.g. `key:<64 lowercase hex>` for an Ed25519 primary key;
+  // the generic historical `cci:<hex>` spelling is unregistered and refused
+  // on current reads — and the authenticated CH-1 membership binding — not
+  // the message — supplies the member's key and key type.
+  const senderClaim = lookupPrimaryClaim(sender);
+  const unsignedMessage = {
+    canonicalChannelMessageVersion: "1",  // exclusive current-message discriminator (CH-7)
     channelId: msg.channelId,
-    sequence: msg.sequence,
-    sender: { primaryClaim: lookupPrimaryClaim(sender), address: sender.getAddress() },
+    sequence: msg.sequence,                // positive integer, monotonic per channel
+    sender: senderClaim,
     sentAt: Date.now(),
     type: msg.type,
     body: msg.body,
-    refs: msg.refs,
+    ...(msg.refs ? { refs: msg.refs } : {}),
   };
-  const envHash = sha256Hex(jcs(envelope));
+  // DACS-3 §8.3.3 CH-8: exact signed bytes —
+  //   message_hash := lowercase_hex(sha256(UTF8(JCS(unsigned_message))))
+  //   signed_bytes := UTF8("dacs-canonical-channel-message:v1:") || ASCII(message_hash)
+  const messageHash = sha256Hex(jcs(unsignedMessage));   // 64-char lowercase hex, ASCII-encoded
   const signed = {
-    ...envelope,
-    signature: await sender.sign(signedBytes("channelmsg", envHash)),
+    ...unsignedMessage,
+    signature: {
+      signatureVersion: "1",              // version-1 signature envelope (CH-7)
+      signer: senderClaim,                 // same party as `sender` under CORE §B.1/CF-3
+      algorithm: "ed25519",                // matches the authenticated primary key's type
+      value: base64urlNoPad(await sender.sign(
+        concat(utf8("dacs-canonical-channel-message:v1:"), ascii(messageHash)),
+      )),                                  // CORE §B.7 SIG-6 unpadded Base64URL
+    },
   };
 
   // ⚠ Today: subnet.sendMessage({ recipient, content }) is the SDK call.
@@ -721,13 +750,13 @@ The trace is an honest forward projection of what production DACS-on-Demos code 
 
 ### 9.3 SR-4 (L2PS) — channel-message envelope API
 
-**Trace assumption.** `sendChannelMsg(...)` sends a fully-structured envelope (sequence, signature, refs) and the SDK preserves the structure on the receive side.
+**Trace assumption.** `sendChannelMsg(...)` sends a fully-structured `CanonicalChannelMessage` envelope (discriminator, sequence, signature envelope, refs) and the SDK preserves the structure on the receive side.
 
-**Reality today.** `subnet.sendMessage({ recipient, content })` accepts arbitrary `content`. The structure is whatever the caller puts in. There is no SDK-level type for `ChannelMessage`, no sequence enforcement, no transcript-export.
+**Reality today.** `@kynesyslabs/demosdk@4.0.16` exposes the historical Demos message container: no current DACS discriminator, a bare lowercase-hex Ed25519 value, and the frozen `dacs-channelmsg:v1:` raw-digest signed bytes. It is evidence for the explicit read/import arm, not the current DACS type.
 
-**Gap.** First-class `ChannelMessage` type in the SDK with sequence validation on receive, transcript export, and helper for the `dacs-channelmsg:v1:` signing. Also on DACS-3 Tier 1.
+**Gap.** Add a `CanonicalChannelMessage` producer/consumer that emits the CH-7/CH-8 discriminator, signature envelope, SIG-6 value, canonical domain and ASCII lowercase-hex digest framing; retain the old SDK object only behind an explicit historical import API. Execute the Standard's mixed-wire corpus and keep sequence validation/transcript export. Also on DACS-3 Tier 1.
 
-**Spec impact.** None — the envelope shape in this trace matches DACS-3 §8.3.3.
+**Spec impact.** DACS-3 §8.3.3 defines the current/historical split. This trace shows only the current arm; importing the SDK's historical message does not authorize re-emitting it.
 
 ### 9.4 SR-4 (L2PS) — encrypted-transcript anchoring
 

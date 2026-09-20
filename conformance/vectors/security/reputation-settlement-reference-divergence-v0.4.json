@@ -1,0 +1,48 @@
+{
+  "set": "reputation-settlement-reference-divergence-v0.4",
+  "spec": "DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb",
+  "comparisonModel": "compare full canonical AttestationRef multisets with multiplicity, not contentHash alone; digest tokens in compact arms name distinct full references; array order alone is immaterial",
+  "hash": "13b04dc687020bd68e7dee9f710758da90ab43d5da1560fe91790a122d64aa29",
+  "count": 6,
+  "vectors": [
+    {
+      "name": "reputation-settlement-reference-reordered-unified",
+      "expected": "pass",
+      "input": { "selfRefs": ["sha256:a", "sha256:b"], "counterpartyRefs": ["sha256:b", "sha256:a"] },
+      "want": { "lookupDisposition": "unified", "bundleIncluded": true }
+    },
+    {
+      "name": "reputation-settlement-reference-added-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a", "sha256:b"], "counterpartyRefs": ["sha256:a"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-removed-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a"], "counterpartyRefs": ["sha256:a", "sha256:b"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-duplicated-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a", "sha256:a"], "counterpartyRefs": ["sha256:a"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-substituted-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a"], "counterpartyRefs": ["sha256:b"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-same-content-different-anchor-divergent",
+      "expected": "fail",
+      "input": {
+        "selfRefs": [{ "anchor": { "kind": "storage-program", "locator": "stor-a" }, "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }],
+        "counterpartyRefs": [{ "anchor": { "kind": "https", "locator": "https://example.invalid/evidence" }, "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }]
+      },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    }
+  ]
+}

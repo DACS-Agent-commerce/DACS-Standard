@@ -1,0 +1,349 @@
+{
+  "fixtureVersion": "1",
+  "provenance": {
+    "officialAp2Repository": "https://github.com/google-agentic-commerce/AP2",
+    "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
+    "generator": "official AP2 Python SDK MandateClient + DACS reference fixture",
+    "fixtureGeneratedAt": "2026-09-02T09:10:38Z",
+    "note": "The AP2 presentations and JWKs come from the official AP2 SDK. The provider response and Demos wire evidence are deterministic public conformance replay data, not a live-network or production-provider receipt; every signing seed is public test material and no production secret is included."
+  },
+  "officialAp2": {
+    "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
+    "request": {
+      "presentation": {
+        "checkoutPresentation": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0IiwgImtpZCI6ICJkYWNzLWFwMi11c2VyLXYxIn0.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIlJoWTVPMTdTM1VRRms5VzNrOUJhQnBVZ3V3UjltbnVDSmR3SzRtRXhmRDgifV0sICJfc2RfYWxnIjogInNoYS0yNTYifQ.1b4Md1BMe_H53wpECCWQMyDyea1WRE2lfSI7W4gEQ_poN_3X-2olvwC0yHs568en2vQBt9ALg867Fz-fgMhyWQ~WyJJZENrOUluMzNuTm91SjZiT0JnUmF3IiwgeyJ2Y3QiOiAibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCAiY29uc3RyYWludHMiOiBbXSwgImNuZiI6IHsiandrIjogeyJjcnYiOiAiUC0yNTYiLCAia2lkIjogImRhY3MtYXAyLWFnZW50LXYxIiwgImt0eSI6ICJFQyIsICJ4IjogInlRRDhFcDNBY1gyWXBxOFYyN2tYa3dvNFVnMUtPM19QZTRiaVJ6ZXpCOW8iLCAieSI6ICJGY21XdzJqT3VmQmw1TS1LbDFBMnVrcEhGNXR5cUhndERBdDk2SnRsaFdrIn19fV0~~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK3NkLWp3dCIsICJraWQiOiAiZGFjcy1hcDItYWdlbnQtdjEifQ.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIjIyMXBLeHlrTEh2WTltSTdoTnIwUklla3RaWnJJVktyMVBaYUdEVUlJUVUifV0sICJpYXQiOiAxNzg4MzA0NTE2LCAiYXVkIjogImRhY3MtYXAyLW1lcmNoYW50IiwgIm5vbmNlIjogImRhY3MtYXAyLXJlZmVyZW5jZS1ub25jZS12MSIsICJzZF9oYXNoIjogInRBZFhfYU5Ka2F5VkRQR0F3MUYySEZZVllYMGhnSlNiUnZMXzhuVDFNdUkiLCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.mjAfoDuDt4gGWjptmrm_3ZyCE3pq9NHIW201sgE9ttv0mwwn_FYb7LJZbGbrPBmOPbY-CeWS5XwYPxBG7nMgaw~WyJWM1diQ29HUm9jWDRTUEMzWGIxY1N3IiwgeyJfc2QiOiBbIjVOeEY0QTJsVDhVb1otUURka1Q1S1JPX3MzZTVuZktnUWZ5dnVsT3pKMEUiXSwgInZjdCI6ICJtYW5kYXRlLmNoZWNrb3V0LjEiLCAiY2hlY2tvdXRfaGFzaCI6ICJYZ1dILWdscEpiZFc4NkRZQnQxNjVHdDVKYmVwVWI5LTlrOXhsa2pVenh3In1d~WyJ2LWxoYWtYZUJTM0NYVVVNVjJpUmxBIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pQWlSVk15TlRZaUxDQWlhMmxrSWpvZ0ltUmhZM010WVhBeUxXMWxjbU5vWVc1MExYWXhJaXdnSW5SNWNDSTZJQ0pLVjFRaWZRLmV5SnBaQ0k2SUNKamFHdGZaR0ZqYzE5aGNESmZjbVZtWlhKbGJtTmxJaXdnSW0xbGNtTm9ZVzUwSWpvZ2V5SnBaQ0k2SUNKaFkyTjBYMlJoWTNOZmNtVm1aWEpsYm1ObElpd2dJbTVoYldVaU9pQWlSRUZEVXlCQlVESWdVbVZtWlhKbGJtTmxJbjBzSUNKc2FXNWxYMmwwWlcxeklqb2dXM3NpYVdRaU9pQWliR2xmWkdGamMxOWhjREpmY21WbVpYSmxibU5sSWl3Z0ltbDBaVzBpT2lCN0ltbGtJam9nSW1SaFkzTXRZWEF5TFhKbFptVnlaVzVqWlNJc0lDSjBhWFJzWlNJNklDSkVRVU5USUVGUU1pQnlaV1psY21WdVkyVWdjMlYwZEd4bGJXVnVkQ0lzSUNKd2NtbGpaU0k2SURVd2ZTd2dJbkYxWVc1MGFYUjVJam9nTVN3Z0luUnZkR0ZzY3lJNklGdDdJblI1Y0dVaU9pQWljM1ZpZEc5MFlXd2lMQ0FpWVcxdmRXNTBJam9nTlRCOUxDQjdJblI1Y0dVaU9pQWlkRzkwWVd3aUxDQWlZVzF2ZFc1MElqb2dOVEI5WFgxZExDQWljM1JoZEhWeklqb2dJbkpsWVdSNVgyWnZjbDlqYjIxd2JHVjBaU0lzSUNKamRYSnlaVzVqZVNJNklDSlZVMFFpTENBaWRHOTBZV3h6SWpvZ1czc2lkSGx3WlNJNklDSnpkV0owYjNSaGJDSXNJQ0poYlc5MWJuUWlPaUExTUgwc0lIc2lkSGx3WlNJNklDSjBiM1JoYkNJc0lDSmhiVzkxYm5RaU9pQTFNSDFkTENBaWJHbHVhM01pT2lCYmV5SjBlWEJsSWpvZ0luQnlhWFpoWTNsZmNHOXNhV041SWl3Z0luVnliQ0k2SUNKb2RIUndjem92TDJSaFkzTXVjMmd2Y0hKcGRtRmplU0o5TENCN0luUjVjR1VpT2lBaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0lDSjFjbXdpT2lBaWFIUjBjSE02THk5a1lXTnpMbk5vTDNSbGNtMXpJbjFkZlEuUFBpSVpjR3hTbTg2a0ZsSjZuNEtWMmRXeDJOeERxNGpHSXpQTGd0V2ZGeGFqeVpsZC16M2V4cGVpT3NPSFRxcktXa1FhWHB6Zk50V3pSMldqZlA2YmciXQ~",
+        "paymentPresentation": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0IiwgImtpZCI6ICJkYWNzLWFwMi11c2VyLXYxIn0.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogImIzR3FNaENrSlRmdUs0ZVh4QUhSN1A5eGtCME9NZTBRY0lFQURYcGVjcVEifV0sICJfc2RfYWxnIjogInNoYS0yNTYifQ.dZQvGQ4CccdVho5LBdd-1xPZRhzCKzO50LcYfEE3rdt7gSPlSpObRB516MPnjGeeyN-_1pr0SAPwuwGNyq0upQ~WyI5R0QtNzNUZ2VyQ2IzNzFfQ2RVZGRRIiwgeyJ2Y3QiOiAibWFuZGF0ZS5wYXltZW50Lm9wZW4uMSIsICJjb25zdHJhaW50cyI6IFtdLCAiY25mIjogeyJqd2siOiB7ImNydiI6ICJQLTI1NiIsICJraWQiOiAiZGFjcy1hcDItYWdlbnQtdjEiLCAia3R5IjogIkVDIiwgIngiOiAieVFEOEVwM0FjWDJZcHE4VjI3a1hrd280VWcxS08zX1BlNGJpUnplekI5byIsICJ5IjogIkZjbVd3MmpPdWZCbDVNLUtsMUEydWtwSEY1dHlxSGd0REF0OTZKdGxoV2sifX19XQ~~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK3NkLWp3dCIsICJraWQiOiAiZGFjcy1hcDItYWdlbnQtdjEifQ.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIlh0a0s4NDlzanZhM0dyN0pCU1NPWU5IckxOdllNbHB0aWg4d1NZUE9XeG8ifV0sICJpYXQiOiAxNzg4MzA0NTE2LCAiYXVkIjogImRhY3MtYXAyLW1lcmNoYW50IiwgIm5vbmNlIjogImRhY3MtYXAyLXJlZmVyZW5jZS1ub25jZS12MSIsICJzZF9oYXNoIjogIlBfbzM1M21waUJiSTR6ejkxaEFRZnB5RC04dHVYeGdmUE1uS0FRY0VGZUUiLCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.-4u9gB18TO4TzN29znJI5qdu-AX5IZozMClLEVXNyxJARp33XZ75gmVD1NHcYgjOrnZdf_F3rhjedautMTiIKg~WyJ4VzFRNnVQMFdQVmxmeWFhVUpsOHlRIiwgeyJ2Y3QiOiAibWFuZGF0ZS5wYXltZW50LjEiLCAidHJhbnNhY3Rpb25faWQiOiAiWGdXSC1nbHBKYmRXODZEWUJ0MTY1R3Q1SmJlcFViOS05azl4bGtqVXp4dyIsICJwYXllZSI6IHsiaWQiOiAiYWNjdF9kYWNzX3JlZmVyZW5jZSIsICJuYW1lIjogIkRBQ1MgQVAyIFJlZmVyZW5jZSJ9LCAicGF5bWVudF9hbW91bnQiOiB7ImFtb3VudCI6IDUwLCAiY3VycmVuY3kiOiAiVVNEIn0sICJwYXltZW50X2luc3RydW1lbnQiOiB7ImlkIjogInBtX2NhcmRfdmlzYSIsICJ0eXBlIjogImNhcmQifX1d~"
+      },
+      "trust": {
+        "userPublicJwk": {
+          "crv": "P-256",
+          "kid": "dacs-ap2-user-v1",
+          "kty": "EC",
+          "x": "GvAJOD5a9RZ3q3hEnMp-CrLebge_jy4I4ZCixoxzgZo",
+          "y": "NgU6E3ysQemB42Ez64ROG1Kw3yuG_D_XdtHLX-JCi-w"
+        },
+        "merchantPublicJwk": {
+          "crv": "P-256",
+          "kid": "dacs-ap2-merchant-v1",
+          "kty": "EC",
+          "x": "Zy8NP2pjEk4zW5nYZFtFh-gyU7San2SPvDAdvYaZfko",
+          "y": "JA9OCSU12De59y6F_oCW6vOvUeyi7PDN0_wqXcj3R-g"
+        }
+      },
+      "expectedAudience": "dacs-ap2-merchant",
+      "expectedNonce": "dacs-ap2-reference-nonce-v1",
+      "merchantSignatureGeneration": "non-deterministic"
+    },
+    "verified": {
+      "checkout": {
+        "vct": "mandate.checkout.1",
+        "checkoutJwt": "eyJhbGciOiAiRVMyNTYiLCAia2lkIjogImRhY3MtYXAyLW1lcmNoYW50LXYxIiwgInR5cCI6ICJKV1QifQ.eyJpZCI6ICJjaGtfZGFjc19hcDJfcmVmZXJlbmNlIiwgIm1lcmNoYW50IjogeyJpZCI6ICJhY2N0X2RhY3NfcmVmZXJlbmNlIiwgIm5hbWUiOiAiREFDUyBBUDIgUmVmZXJlbmNlIn0sICJsaW5lX2l0ZW1zIjogW3siaWQiOiAibGlfZGFjc19hcDJfcmVmZXJlbmNlIiwgIml0ZW0iOiB7ImlkIjogImRhY3MtYXAyLXJlZmVyZW5jZSIsICJ0aXRsZSI6ICJEQUNTIEFQMiByZWZlcmVuY2Ugc2V0dGxlbWVudCIsICJwcmljZSI6IDUwfSwgInF1YW50aXR5IjogMSwgInRvdGFscyI6IFt7InR5cGUiOiAic3VidG90YWwiLCAiYW1vdW50IjogNTB9LCB7InR5cGUiOiAidG90YWwiLCAiYW1vdW50IjogNTB9XX1dLCAic3RhdHVzIjogInJlYWR5X2Zvcl9jb21wbGV0ZSIsICJjdXJyZW5jeSI6ICJVU0QiLCAidG90YWxzIjogW3sidHlwZSI6ICJzdWJ0b3RhbCIsICJhbW91bnQiOiA1MH0sIHsidHlwZSI6ICJ0b3RhbCIsICJhbW91bnQiOiA1MH1dLCAibGlua3MiOiBbeyJ0eXBlIjogInByaXZhY3lfcG9saWN5IiwgInVybCI6ICJodHRwczovL2RhY3Muc2gvcHJpdmFjeSJ9LCB7InR5cGUiOiAidGVybXNfb2Zfc2VydmljZSIsICJ1cmwiOiAiaHR0cHM6Ly9kYWNzLnNoL3Rlcm1zIn1dfQ.PPiIZcGxSm86kFlJ6n4KV2dWx2NxDq4jGIzPLgtWfFxajyZld-z3expeiOsOHTqrKWkQaXpzfNtWzR2WjfP6bg",
+        "checkoutHash": "XgWH-glpJbdW86DYBt165Gt5JbepUb9-9k9xlkjUzxw"
+      },
+      "payment": {
+        "vct": "mandate.payment.1",
+        "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
+        "protocolVersion": "0.2",
+        "transactionId": "XgWH-glpJbdW86DYBt165Gt5JbepUb9-9k9xlkjUzxw",
+        "payee": {
+          "id": "acct_dacs_reference",
+          "name": "DACS AP2 Reference"
+        },
+        "paymentAmount": {
+          "amount": 50,
+          "currency": "USD"
+        },
+        "paymentInstrument": {
+          "id": "pm_card_visa",
+          "type": "card"
+        }
+      },
+      "merchantSignature": {
+        "algorithm": "ES256",
+        "generation": "non-deterministic"
+      },
+      "verifierEvidenceHash": "745f573c89a463db214cc6bcb09dc493577a18fea792c2e70e5551ba837fafc7"
+    }
+  },
+  "agreement": {
+    "jobId": "01K4AP2PAY0000000000000004",
+    "phaseIndex": 2,
+    "railId": "ap2:stripe-paymentintents",
+    "agreementHash": "ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097",
+    "payeeId": "acct_dacs_reference",
+    "amount": "0.5",
+    "currency": "USD",
+    "currencyMinorUnits": 2
+  },
+  "provider": {
+    "statusResource": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference",
+    "statusProjection": {
+      "amount": 50,
+      "amount_received": 50,
+      "currency": "usd",
+      "id": "pi_dacs_reference",
+      "metadata": {
+        "dacs_agreement_hash": "ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097",
+        "dacs_job_id": "01K4AP2PAY0000000000000004"
+      },
+      "object": "payment_intent",
+      "status": "succeeded"
+    },
+    "statusResponseBytes": "{\"amount\":50,\"amount_received\":50,\"currency\":\"usd\",\"id\":\"pi_dacs_reference\",\"metadata\":{\"dacs_agreement_hash\":\"ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097\",\"dacs_job_id\":\"01K4AP2PAY0000000000000004\"},\"object\":\"payment_intent\",\"status\":\"succeeded\"}",
+    "projectionNote": "statusResponseBytes is the exact replayable UTF-8 body committed by the DAHR responseHash. statusProjection MUST be parsed from those bytes without reserialisation and cannot be supplied independently.",
+    "statusResponseHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2",
+    "statusResponseHeadersHash": "a9f03a1c11cecca2b7079c398685ddf65891a8f1ab5a8ada6666e6fb2aa0f5e9",
+    "attestedAnchorTxRef": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
+  },
+  "dahr": {
+    "network": "Deterministic Demos DAHR conformance replay; not a live network receipt",
+    "signedTransaction": {
+      "content": {
+        "type": "web2Request",
+        "from": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+        "to": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+        "amount": "0",
+        "data": [
+          "web2Request",
+          {
+            "message": {
+              "sessionId": "11ffe28c8d1fa22110c5019ca32198187b180cf835089e8d1896070fbc59bf66",
+              "payload": "",
+              "authorization": "",
+              "web2Request": {
+                "raw": {
+                  "action": "startProxy",
+                  "parameters": [],
+                  "method": "GET",
+                  "url": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference",
+                  "headers": {},
+                  "stage": {
+                    "origin": {
+                      "identity": "",
+                      "connection_url": ""
+                    }
+                  }
+                },
+                "result": {
+                  "sessionId": "11ffe28c8d1fa22110c5019ca32198187b180cf835089e8d1896070fbc59bf66",
+                  "targetUrl": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference",
+                  "timestamp": 1788340238794,
+                  "status": 200,
+                  "headers": {
+                    "date": "Wed, 02 Sep 2026 09:10:38 GMT",
+                    "content-type": "application/json",
+                    "content-length": "1691",
+                    "connection": "close",
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-methods": "GET, HEAD, PUT, PATCH, POST, DELETE",
+                    "access-control-allow-origin": "*",
+                    "access-control-expose-headers": "Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required",
+                    "access-control-max-age": "300",
+                    "cache-control": "no-cache, no-store",
+                    "content-security-policy": "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=2vwfkyGMAiOOKUGwOKFYav7TX7TbgMsbWTJVmQ3p1AgfmTKOtVIwpzFUbG8uBgM1XTcm-zc2t9r344xh; report-to csp",
+                    "report-to": "{\"group\":\"csp\",\"max_age\":8640,\"endpoints\":[{\"url\":\"https://q.stripe.com/csp-report-v2?q=2vwfkyGMAiOOKUGwOKFYav7TX7TbgMsbWTJVmQ3p1AgfmTKOtVIwpzFUbG8uBgM1XTcm-zc2t9r344xh&t=1\"}],\"include_subdomains\":true}",
+                    "vary": "Origin",
+                    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+                    "server": "nginx",
+                    "reporting-endpoints": "csp=\"https://q.stripe.com/csp-report-v2?q=2vwfkyGMAiOOKUGwOKFYav7TX7TbgMsbWTJVmQ3p1AgfmTKOtVIwpzFUbG8uBgM1XTcm-zc2t9r344xh&t=1\"",
+                    "request-id": "req_drbDPBsQWr79q2",
+                    "stripe-version": "2026-06-24.dahlia",
+                    "x-stripe-priority-routing-enabled": "true",
+                    "x-stripe-routing-context-priority-tier": "api-testmode",
+                    "x-wc": "3c3"
+                  },
+                  "responseHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2",
+                  "responseHeadersHash": "a9f03a1c11cecca2b7079c398685ddf65891a8f1ab5a8ada6666e6fb2aa0f5e9",
+                  "statusText": "OK"
+                },
+                "hash": "",
+                "signature": {
+                  "type": "ed25519",
+                  "data": ""
+                }
+              }
+            }
+          }
+        ],
+        "nonce": 13,
+        "timestamp": 1788340238797,
+        "transaction_fee": {
+          "network_fee": "1000000000",
+          "rpc_fee": "1000000000",
+          "additional_fee": "0",
+          "rpc_address": null
+        },
+        "from_ed25519_address": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+        "gcr_edits": [
+          {
+            "type": "assign",
+            "account": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+            "context": "web2",
+            "txhash": "",
+            "isRollback": false
+          },
+          {
+            "type": "balance",
+            "account": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+            "operation": "remove",
+            "amount": "1000000000",
+            "txhash": "",
+            "isRollback": false
+          },
+          {
+            "type": "nonce",
+            "operation": "add",
+            "account": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+            "amount": 1,
+            "txhash": "",
+            "isRollback": false
+          }
+        ]
+      },
+      "signature": {
+        "type": "ed25519",
+        "data": "0x76028091467f4ba2398f88617d4e5e6b7e8f9177023db5fc67372c556e5d08d9b58a3079fff3eb5a90f9790a5b82a699e8a704ad4acec90f358277bf24b05907"
+      },
+      "hash": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
+    },
+    "canonicalTransaction": {
+      "hash": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010",
+      "status": "confirmed",
+      "blockNumber": 213605
+    },
+    "block": {
+      "number": 213605,
+      "hash": "fd0977fba4ef15128801401c30648b643f67b3e638df1cf27aa5f6ed9134ddc0",
+      "content": {
+        "ordered_transactions": [
+          "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
+        ],
+        "encrypted_transactions_hashes": {},
+        "per_address_transactions": {},
+        "web2data": {},
+        "previousHash": "1d047827a8f334a8c82ef1ff4171191bb4a38c6dd123e7d61b79cf6d7539d728",
+        "timestamp": 1788340247,
+        "peerlist": [
+          "0x41e8fde132ad670e534cd8b275d2cd7eec77733c66f8db48a1cada7fabfc4555",
+          "0xb4740ba4e0f7e0576f11e8149dbbb2529c212213db679831fb5d1b221e84552d",
+          "0xed3234b276d4ceda57d59bad14fbaf5a773c0f318c999de3a60d53c5a5b34c05"
+        ],
+        "l2ps_partecipating_nodes": {},
+        "l2ps_banned_nodes": {},
+        "native_tables_hashes": {
+          "native_subnets_txs": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "native_tlsnotary": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "status": "confirmed",
+      "validationData": {
+        "signatures": {
+          "0x41e8fde132ad670e534cd8b275d2cd7eec77733c66f8db48a1cada7fabfc4555": "0x79fdc0a20aaadef1fcfbe9f0536dae531205e85957958192664c868f8a516cf3f67b7fa6f932308d19c4192732f8128cb4b1b70a5897dc41ace7572390e98f08",
+          "0xb4740ba4e0f7e0576f11e8149dbbb2529c212213db679831fb5d1b221e84552d": "0x6544106afb643064f35d9bae948b390a3b4abaf2f2770b72948eb22da3f298887430c1e22afab8b5fbdd298722920db58ec959df615152bb0982a673c50d4f04",
+          "0xed3234b276d4ceda57d59bad14fbaf5a773c0f318c999de3a60d53c5a5b34c05": "0xe42f84619ce6040de2c76e5707f577b7e56b8ae77b7c34879ee93aca51b0c4a760203b2e9a5c19af4fac40eef8414fffaf7043f15d124c70df7ed4d29c29590c"
+        }
+      }
+    }
+  },
+  "result": {
+    "ok": true,
+    "txRefs": [
+      {
+        "kind": "ap2-sr3",
+        "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
+        "protocolVersion": "0.2",
+        "providerRef": "pi_dacs_reference",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference"
+          },
+          "contentHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
+        }
+      }
+    ],
+    "attestationRef": {
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "dacs4:payment:01K4AP2PAY0000000000000004:ap2%3Astripe-paymentintents:2"
+      },
+      "contentHash": "af45b06493a419deb211a4bf4b958a2100b5b1b9cc51d412e64d5b1338b1c235"
+    }
+  },
+  "evidence": {
+    "evidenceVersion": "1",
+    "jobId": "01K4AP2PAY0000000000000004",
+    "observedAt": 1788340250184,
+    "outcome": "success",
+    "paymentAmount": {
+      "amount": "0.5",
+      "currency": "USD"
+    },
+    "paymentTxRefs": [
+      {
+        "kind": "ap2-sr3",
+        "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
+        "protocolVersion": "0.2",
+        "providerRef": "pi_dacs_reference",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference"
+          },
+          "contentHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
+        }
+      }
+    ],
+    "phase": "pay-ap2",
+    "settlementFinality": {
+      "finalityObservedAt": 1788340250184,
+      "model": "provider-receipt"
+    },
+    "signature": {
+      "algorithm": "ed25519",
+      "signer": "did:demos:orchestrator",
+      "value": "EhaAU_BSuOGv3dVpuDppXqrewBYllv7OCZikw9dn4QN4ERR4qp7nFC9anrI3smaQmDWIj3z_gEcOwwQbpRucCA"
+    }
+  },
+  "evidenceHash": "af45b06493a419deb211a4bf4b958a2100b5b1b9cc51d412e64d5b1338b1c235",
+  "publicKeys": {
+    "did:demos:orchestrator": "maekceCtXQ62avDhCrkykrlD64Bd6XkRY320vgwHLkI"
+  },
+  "seeds": {
+    "orchestrator": "e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4",
+    "dahrWriter": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+    "dahrValidators": [
+      "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3",
+      "d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4"
+    ]
+  },
+  "expected": {
+    "officialMandatesVerify": true,
+    "transactionIdMatchesCheckoutJws": true,
+    "merchantCheckoutSignatureVerifies": true,
+    "providerStatusBindsSession": true,
+    "providerStatusBindsAgreement": true,
+    "providerStatusMatchesAmountCurrency": true,
+    "providerResponseBytesBindProjection": true,
+    "jobIdIsCanonicalUlid": true,
+    "receiptAttestationMatchesDahrCommitment": true,
+    "dahrTransactionHashVerifies": true,
+    "dahrTransactionSignatureVerifies": true,
+    "dahrRequestResponseBindingVerifies": true,
+    "dahrTransactionIncluded": true,
+    "dahrBlockConfirmed": true,
+    "dahrValidatorSetUsesIndependentTrustAnchor": true,
+    "dahrSelfCertifiedValidatorSetRejected": true,
+    "settlementEvidenceVerifies": true,
+    "verdict": "pass"
+  }
+}

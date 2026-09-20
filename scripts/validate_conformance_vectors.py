@@ -35,6 +35,7 @@ EXPECTED_STAGES = ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
 MANIFEST_REQUIRED_CASE = {"id", "area", "spec", "summary", "status", "want"}
 MANIFEST_STATUSES = {"golden", "candidate"}
 REGISTRY_CASE_ID = "sig-registry-closed"
+HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
 REQUIRED_TOP_LEVEL = {
     "vectorId",
@@ -59,8 +60,12 @@ DOMAIN_RE = re.compile(r'"(dacs[-a-z0-9]*:v1:)"')
 # kind's "hash-excluded field(s)" from the CORE §B.2 per-artifact template.
 HASH_EXCLUDED = {
     "Listing": {"signature"},                              # §B.2
+    "VerifyResult": {"signature"},                         # §B.2 / §7.5
     "CompositeVerificationRecord": {"signature"},          # §B.2 / §7.7
     "AgreementDocument": {"signatures"},                   # DACS-3 §8.5 (L463: "omitting the `signatures` field")
+    "PayeeBoundAgreementDocument": {"signatures"},
+    "IdentityBoundAgreementDocument": {"signatures"},
+    "IdentityBoundPayeeAgreementDocument": {"signatures"},
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
     "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
 }
@@ -70,8 +75,12 @@ HASH_EXCLUDED = {
 # separator is registry-validated, never trusted as supplied by the vector.
 KIND_SEPARATOR = {
     "Listing": "dacs-listing:v1:",
+    "VerifyResult": "dacs-verifyresult:v1:",
     "CompositeVerificationRecord": "dacs-composite:v1:",
     "AgreementDocument": "dacs-agreement:v1:",
+    "PayeeBoundAgreementDocument": "dacs-payee-bound-agreement:v1:",
+    "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
+    "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
@@ -124,7 +133,7 @@ def legacy_spelling_allowed(path: Path, data: dict) -> bool:
 def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     spec_text = specsource.spec_text(root)
     start_marker = "The v0.x registry of domain separators at this revision is closed:"
-    end_marker = "**Payload shape — single-hash vs composite.**"
+    end_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
     start = spec_text.find(start_marker)
     end = spec_text.find(end_marker, start)
     if start == -1 or end == -1:
@@ -132,15 +141,31 @@ def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     return set(DOMAIN_RE.findall(spec_text[start:end]))
 
 
+def load_historical_channel_domain(root: Path = ROOT) -> str | None:
+    """Parse the one frozen channel import domain outside the producer table."""
+
+    spec_text = specsource.spec_text(root)
+    start_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
+    end_marker = "**Payload shape — single-hash vs composite.**"
+    start = spec_text.find(start_marker)
+    end = spec_text.find(end_marker, start)
+    if start == -1 or end == -1:
+        return None
+    domains = set(DOMAIN_RE.findall(spec_text[start:end]))
+    if len(domains) != 1:
+        return None
+    return domains.pop()
+
+
 def canonical_json(value: Any) -> bytes:
     """§B.2 canonical bytes of ``value``, for the JSON subset these artifacts occupy.
 
     Delegates to the stdlib-only ``jcs`` module (RFC 8785 over integers, strings,
     literals, arrays, objects — see its docstring) so the artifact hash is the JCS
-    serialisation rather than ``json.dumps``. On the all-ASCII, float-free vector
-    corpus the two coincide byte-for-byte. Per CF-1 the module NFC-normalises string
-    *values* only; member names are serialised and UTF-16-sorted as received. It
-    fails closed on floats and oversized integers.
+    serialisation rather than ``json.dumps``. Per CF-1 the module NFC-normalises
+    string *values* only; member names are serialised and UTF-16-sorted as received.
+    Finite binary64 fractions are supported; numbers outside the DACS magnitude
+    bound fail closed.
     """
 
     return jcs.canonicalize(value).encode("utf-8")
@@ -520,6 +545,34 @@ def validate_manifest(path: Path) -> list[str]:
                             f"{prefix}.want.separators MUST equal the sorted closed §B.7 registry",
                         )
                     )
+                historical = want.get("historicalImport")
+                parsed_historical_domain = load_historical_channel_domain(ROOT)
+                expected_historical = {
+                    "operation": "legacy-import",
+                    "separator": HISTORICAL_CHANNEL_DOMAIN,
+                    "digestFraming": "raw-sha256-bytes",
+                }
+                if parsed_historical_domain != HISTORICAL_CHANNEL_DOMAIN:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}: could not parse the one frozen historical channel domain",
+                        )
+                    )
+                if historical != expected_historical:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.historicalImport MUST pin the separate frozen channel import domain",
+                        )
+                    )
+                if HISTORICAL_CHANNEL_DOMAIN in registry:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.separators MUST exclude the historical import-only domain",
+                        )
+                    )
 
     golden_path = path.parent / "vectors" / "golden.json"
     if golden_path.exists():
@@ -541,7 +594,7 @@ def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     manifest_dir = manifest_path.parent
     fixture_keys = {
         "bundle": ["fixture", "divergentSellerFixture", "htlc9Fixture"],
-        "settlement": ["fixture", "deliveryFixture"],
+        "settlement": ["fixture", "deliveryFixture", "ap2Fixture"],
     }
     for section, keys in fixture_keys.items():
         section_data = data.get(section)

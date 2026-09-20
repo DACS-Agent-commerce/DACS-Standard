@@ -216,7 +216,7 @@
     }
   },
   "dispute": {
-    "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
+    "status": "candidate — output-only expectations; exact signed inputs and normative artifact contracts are not published here",
     "bundleRef": {
       "jobId": "DACS-VERIFY-0004",
       "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
@@ -250,10 +250,10 @@
       "nonCanonicalAmount": "fail",
       "unknownBundle": "fail"
     },
-    "inputs": "constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; divergent-bundle refs point to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json; HTLC-9 bundle ref points to conformance/fixtures/attestation-bundle-htlc9.json"
+    "inputs": "observed from inputs constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; the exact signed input/resolver pack is not published here; divergent-bundle refs point to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json; HTLC-9 bundle ref points to conformance/fixtures/attestation-bundle-htlc9.json"
   },
   "disclosure": {
-    "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
+    "status": "candidate — output-only expectations; exact signed inputs and normative artifact contracts are not published here",
     "bundleRef": {
       "jobId": "DACS-VERIFY-0004",
       "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
@@ -286,18 +286,22 @@
       "malformedKey": "error",
       "transcriptUnsigned": "fail"
     },
-    "inputs": "constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; dispute record points to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json"
+    "inputs": "observed from inputs constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; the exact signed input/resolver pack is not published here; dispute record points to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json"
   },
   "settlement": {
     "status": "golden — reference-verifier-accepted + byte-stable",
     "fixture": "conformance/fixtures/settlement-evidence-payment-success.json",
     "deliveryFixture": "conformance/fixtures/settlement-evidence-delivery-success.json",
+    "ap2Fixture": "conformance/fixtures/settlement/settlement-ap2-reference.json",
     "jobId": "DACS-VERIFY-SETTLE-0001",
     "deliveryJobId": "DACS-VERIFY-DELIVER-0001",
+    "ap2JobId": "01K4AP2PAY0000000000000004",
     "evidenceHash": "719fc5a3c3d32c5d2010ebc210ec5ea8fcbdea6cd014eefa141dab7dfda78f0b",
     "deliveryEvidenceHash": "89b28b232c5217b3828d028c0d2c28fcdce535972e84010f75298eacee155efa",
+    "ap2EvidenceHash": "af45b06493a419deb211a4bf4b958a2100b5b1b9cc51d412e64d5b1338b1c235",
     "decisions": {
       "paymentPass": "pass",
+      "ap2ReferencePass": "pass",
       "deliveryPass": "pass",
       "currencyMismatchNotRejected": "fail",
       "successPaymentMissingFinality": "fail",

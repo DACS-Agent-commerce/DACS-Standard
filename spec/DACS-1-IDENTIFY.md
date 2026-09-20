@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.6** on the common DACS v0.1 baseline. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, keeps authoritative listing-time rail resolution on the existing DACS-4 registry contract while CORE registry-bootstrap activation remains deferred, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -84,7 +84,11 @@ coordinates. When a claim is intended to establish the DACS-4 PB-2
 chain-specific payee binding for an EVM rail, producers MUST emit
 `cci-xm:evm:<chainId>:<address>`, where `<chainId>` is the EIP-155 chain ID as
 a bare positive decimal integer with no leading zeros and `<address>` is
-non-empty. The family component is the lowercase ASCII literal `evm`; any
+non-empty. For PB-2 applicability, `<chainId>` MUST be no greater than
+`9007199254740991`, matching the largest conforming numeric chain ID in a
+signed `RailDefinition`; larger textual identifiers remain readable generic
+`cci-xm` claims but do not conform to this PB-2 profile. The family component
+is the lowercase ASCII literal `evm`; any
 other spelling does not conform to this profile.
 
 For PB-2 chain applicability, a reader treats the bytes after
@@ -132,10 +136,10 @@ The Storage Program at stor-{sha256(subject_cci + ":" + credential-type + ":" + 
 
 **Canonical DNS-domain profile and Demos compatibility (DCR-1..DCR-8).**
 
-- **(DCR-1) Canonical domain identity.** The only canonical DACS DNS-domain ClaimReference is `domain:<host>`. `<host>` MUST be the lower-case ASCII A-label result of IDNA2008 ToASCII with STD3 rules applied label-by-label to the NFC-normalized Unicode hostname. It MUST contain only non-empty labels, each at most 63 octets and the complete hostname at most 253 octets. A producer MUST emit that exact form before hashing or signing.
+- **(DCR-1) Canonical domain identity.** The only canonical DACS DNS-domain ClaimReference is `domain:<host>`. `<host>` MUST be the lower-case ASCII A-label result of IDNA2008 ToASCII with STD3 rules applied label-by-label to the NFC-normalized Unicode hostname. It MUST contain only non-empty labels, each at most 63 octets and the complete hostname at most 253 octets. A producer MUST emit that exact form before hashing or signing. A current `domain:` reference carrying a U-label, upper-case ASCII host, or any other spelling that merely maps to the canonical result is non-conforming and MUST be rejected rather than repaired during verification.
 - **(DCR-2) Hostname-only boundary.** A conforming domain identifier MUST NOT contain a scheme, user information, port, path, query, fragment, IP literal, empty label, leading/trailing hyphen, underscore, wildcard, surrounding whitespace, or terminal root dot. Inputs such as `https://example.com`, `example.com:443`, `user@example.com`, `example.com/path`, `127.0.0.1`, `[::1]`, `*.example.com`, and `example.com.` are not ClaimReference hostnames and MUST be rejected rather than stripped or repaired.
-- **(DCR-3) Producer transition.** DACS-1 v0.6 producers MUST emit only the canonical `domain:` form. Demos `web2.domain` is a substrate-native storage context, not a second DACS scheme. A Demos adapter maps a verified native record to `domain:<host>` and retains its source context under `BundleClaim.metadata.demosGcrDomain`; it MUST NOT emit `web2:domain:`.
-- **(DCR-4) Permanent legacy read/replay.** A historical `web2:domain:<host>` reference is a permanent read/replay alias for semantic matching only. A reader MUST first verify the enclosing artifact's original bytes, hash, and signature. Only after that verification may it canonicalize `<host>` under DCR-1 and derive the semantic identity `domain:<host>`. It MUST NOT rewrite, re-hash, re-sign, or represent the historical artifact as having originally contained the canonical spelling. A malformed legacy hostname is `error`, not a new identity.
+- **(DCR-3) Producer transition.** DACS-1 v0.6 and later producers MUST emit only the canonical `domain:` form. Demos `web2.domain` is a substrate-native storage context, not a second DACS scheme. A Demos adapter maps a verified native record to `domain:<host>` and retains its source context under `BundleClaim.metadata.demosGcrDomain`; it MUST NOT emit `web2:domain:`. This is a producer-output requirement: conformance is tested at the producer/serializer boundary. The frozen `IdentityBundle.bundleVersion: "1"` shape carries no authenticated DACS-1 minor-version discriminator, so a reader MUST NOT infer production era from mutable deployment state, a caller sidecar, `presentedAt`, or a producer self-declaration.
+- **(DCR-4) Permanent legacy read/replay.** A signature-valid `bundleVersion: "1"` artifact containing a `web2:domain:<host>` reference is handled through this permanent read/replay compatibility arm for semantic matching only. A reader MUST first verify the enclosing artifact's original bytes, hash, and signature. Only after that verification may it canonicalize `<host>` under DCR-1 and derive the semantic identity `domain:<host>`. ASCII letter case in an otherwise valid historical hostname is folded to lower case during that semantic derivation and is not, by itself, malformed. It MUST NOT rewrite, re-hash, re-sign, or represent the artifact as having originally contained the canonical spelling. A malformed legacy hostname is `error`, not a new identity. The reader MUST apply this rule from the signed artifact's registered `bundleVersion` and alias spelling alone; mutable current profile state cannot reclassify the same retained bytes. Current-producer conformance is enforced at emission under DCR-3, not by disabling permanent reads. This compatibility arm does not permit a current `domain:` producer to rely on reader-side repair under DCR-1.
 - **(DCR-5) Semantic deduplication.** Before requirement matching, primary-claim resolution, tier derivation, `oneOf` evaluation, or reputation keying, a reader MUST collapse canonical and legacy aliases with the same DCR-1 host to one semantic domain claim. The aliases cannot count twice, improve identity tier, satisfy two alternatives, or split/merge reputation. A current producer emitting both aliases is non-conforming; a reader of historical bytes still verifies the original artifact and evaluates the deduplicated semantic set.
 - **(DCR-6) Source metadata.** `BundleClaim.metadata.demosGcrDomain`, when present, MUST carry the native context literal `web2.domain`, canonical `hostname`, 64-character lower-case hexadecimal Demos Ed25519 `account`, exact HTTPS `proofUrl`, the Demos `sourceTransaction` (`txHash` and `blockNumber`), and `recordedAt`. The canonical proof URL is exactly `https://<host>/.well-known/demos-cci.txt`. The historical fetched proof body is not part of the GCR record and MUST NOT be invented or re-fetched as if it were persistent evidence. Metadata is inspectable provenance, not authority: consumers independently resolve and authenticate the GCR record under DACS-2 §7.3.10.
 - **(DCR-7) Controlled use.** A passing and fresh `demos-gcr-domain` result establishes a persistent host-to-Demos-account binding. It qualifies the domain as controlled only when the bundle presentation also verifies under that same Ed25519 account (directly, or through an authenticated SR-1/session-key binding to it). A GCR record copied into another party's bundle is valid source data but does not give that party control, cannot serve as its `presentedBy`, and cannot receive its reputation.
@@ -262,7 +266,7 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 **Session nonce binding.** `presentedAt` is always present (a required schema field). A bundle presented in the context of a specific session SHOULD additionally carry a session-binding nonce:
 
 - The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim and session-key presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
-- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the session’s expected nonce, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, per-`jobId`, single-use — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it.
+- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the distinct challenge it issued for this exact `jobId` and presenter, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, distinct per presentation, bounded-lifetime, and consumed on the first attempt including failure — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it. A later stage reverifies the retained accepted presentation and does not re-accept the consumed nonce.
 - For SIWD the nonce lives in the omitted `presentation` field and so is not in `bundle_hash`; the verifier's nonce-match check above is the binding for that kind and is therefore a MUST, not advisory.
 - Bundles presented without session-nonce binding are usable only outside session contexts (e.g., listing publication where the bundle is the seller’s own self-binding to the listing).
 
@@ -293,9 +297,9 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 - If the listing's `BundleRequirement.primaryClaimSelector` is set, the presenter SHOULD select the highest-tier claim of the matching scheme. If no selector is set, the presenter SHOULD select the highest-tier claim available, per the **Claim tiers** table above.
 - Readers MUST accept any `presentedBy` value that resolves to a claim in `claims`. A reader MAY prefer a higher-tier alternative for display or reputation lookup but MUST NOT reject a bundle solely because `presentedBy` is not the highest-tier claim.
 
-**Verified-presentedBy for reputation.** Reputation MUST NOT be keyed against an unverified `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. If the resolved `presentedBy` claim has a verifiable scheme but lacks a passing **and fresh** `verifiedBy` (stale per the §6.3.2 freshness gate counts as not-currently-verified), **or the presenter has not proven control of it** (step (6) above — it rests only on a DACS-2 existence/validity check, e.g. a bare-registry `lei` lookup), consumers MUST treat it as the lowest (plain signing-key) tier for reputation purposes, or reject. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
+**Controlled `presentedBy` for reputation.** Reputation MUST NOT be keyed against an uncontrolled `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. Ordinarily the resolved claim therefore needs a passing **and fresh** `verifiedBy` plus the applicable control proof from step (6). The narrow exception is an exact `key:` claim whose valid bundle presentation itself proves control: it MAY key reputation at the lowest (plain signing-key) tier without a `VerifyResult`. This exception proves control of that signing key only; it does not make the key verified, elevate `identityTier`, or transfer control to another presence-only claim. A presence-only authority identifier such as `lei:` remains existence-only and MUST NOT become `presentedBy` or a reputation key without an independent control proof. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
 
-> **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself. The MA-3 verified-presentedBy check (§6.3.3) enforces this at match time when a selector is set; this rule extends the same protection to the no-selector case where reputation still keys on `presentedBy` (§6.6, §10.5.2).
+> **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself while preserving the useful self-authenticating `key:` case. The MA-3/PCR-5 controlled-presentedBy check (§6.3.3) enforces this at match time when a selector is set; this rule extends the same protection to the no-selector case where reputation still keys on `presentedBy` (§6.6, §10.5.2).
 
 **Verification reference resolution.** For a BundleClaim with `verifiedBy` present, the reader runs these checks in order; **any failure makes the claim unverified** for evaluation against bundle requirements:
 
@@ -306,13 +310,15 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 5. **Decision** — `VerifyResult.decision == "pass"`.
 6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
 
+   Key rotation, revocation, and post-revocation validity after this control proof are governed by the §6.6 **Key lifecycle** rules; a historical proof does not make a rotated or revoked key current for a new session.
+
 **Freshness window.** The claim's effective window is derived from the resolved VerifyResult, **not** the presenter-supplied wrapper:
 - **Issuance** = `VerifyResult.verifiedAt`.
 - **Expiry** = `min(BundleClaim.expiresAt ?? ∞, VerifyResult.validUntil ?? (verifiedAt + defaultMaxAgeSec × 1000))`, where `defaultMaxAgeSec` is read from the recipe at `VerifyResult.recipeVersion` (the exact recipe the result was validated under, §7.4.3 — NOT "latest", so a later recipe revision cannot retroactively widen an already-issued result's window).
 - **Presenter narrows only** — a `BundleClaim.issuedAt` later than `verifiedAt`, or an `expiresAt` later than `VerifyResult.validUntil`, MUST be ignored (clamped to the authority window): a presenter cannot extend the authority's freshness window with a generous wrapper timestamp.
-- **Fail-closed** — if `VerifyResult.validUntil < verifiedAt`, or `verifiedAt` is absent/non-numeric, the window is undeterminable and the claim MUST be treated as stale. (When `verifiedBy` is absent there is no authority window and the §6.3.2 fail-closed default applies.)
+- **Fail-closed for verified use** — if `VerifyResult.validUntil < verifiedAt`, or `verifiedAt` is absent/non-numeric, the window is undeterminable and the claim MUST be treated as stale. When `verifiedBy` is absent there is no authority window: the claim cannot satisfy a verification-required use, but it MAY still satisfy an explicit presence-only requirement under PCR-1..PCR-3.
 **Staleness**
-A `verifiedBy` reference is **stale** when `now >` the effective expiry from the **Freshness window** above (`verifiedAt`/`validUntil` are unix ms; `defaultMaxAgeSec` is seconds → ×1000). This is the same `validUntil`-aware window VP-C1 uses for reuse (§7.6.1), so the freshness and reuse rules agree. When `verifiedBy` is absent or its window is undeterminable, the reference MUST be treated as stale (fail-closed) — an unknown age MUST NOT pass the freshness gate. A stale verification MUST be refreshed during the Vet stage (DACS-2) for any claim required by the listing's BundleRequirement.
+A `verifiedBy` reference is **stale** when `now >` the effective expiry from the **Freshness window** above (`verifiedAt`/`validUntil` are unix ms; `defaultMaxAgeSec` is seconds → ×1000). This is the same `validUntil`-aware window VP-C1 uses for reuse (§7.6.1), so the freshness and reuse rules agree. When `verifiedBy` is absent or its window is undeterminable, the reference MUST be treated as stale (fail-closed) for verification-required use — an unknown age MUST NOT pass the freshness gate. A stale verification MUST be refreshed during the Vet stage (DACS-2) only when the applicable `ClaimRequirement.verificationRequired` is `true`; a presence-only match MUST NOT trigger or depend on that refresh.
 
 **Conformance — bundles**
 A conforming bundle **producer** MUST:
@@ -325,7 +331,7 @@ A conforming bundle **reader** MUST:
 - (BR-2) reject a bundle whose presentation signature does not verify;
 - (BR-3) reject a bundle in which a required (per listing) claim has a missing or invalid `verifiedBy` when `verificationRequired = true`;
 - (BR-4) treat claims with unknown schemes as unverified;
-- (BR-5) when the listing sets `primaryClaimSelector`, reject a bundle whose `presentedBy` claim is not itself verified-and-fresh (missing/failing `verifiedBy`, or stale per the §6.3.2 freshness gate), even when its scheme matches the selector. The §6.3.3 match() step enforces this, preventing tier-laundering where an unverified or stale primary claim rides on separately-verified required claims.
+- (BR-5) when the listing sets `primaryClaimSelector`, apply MA-3/PCR-5 to the exact `presentedBy` claim. It MUST be controlled and either verified-and-fresh or explicitly authorized by a satisfied presence-only selector requirement. The latter path is usable for a self-authenticating `key:` presentation but does not make an existence-only identifier controlled. A separately verified claim of the same scheme MUST NOT launder the selected claim.
 **Selective disclosure (scope note).** v0.1 provides no per-claim selective-disclosure mechanism at the bundle layer: there is no per-claim blinding, no commitment-with-open-on-demand, and no proof-of-possession-without-disclosure for a claim a listing did not require. Concretely:
 
 - A verifier that receives a bundle sees every claim in `claims[]`; the `presentedBy` primary claim is always disclosed and is the cross-session correlator used for reputation and audit (§6.4 Rationale, §6.3.4).
@@ -366,19 +372,28 @@ A listing declares which bundles it will accept.
 ```
 type BundleRequirement = {
   requirementVersion: "1"
-  required: ClaimRequirement[]         // all MUST be satisfied
-  oneOf?: ClaimRequirement[][]         // EACH inner group MUST be satisfied (AND across groups); a group is satisfied when ≥1 of its members is satisfied (OR within a group)
+  required: ClaimRequirement[]         // all MUST be satisfied; MAY be empty
+  oneOf?: ClaimRequirement[][]         // omitted/empty adds no constraint; each present inner group MUST be non-empty and satisfied (AND across groups); a group is satisfied when ≥1 of its members is satisfied (OR within a group)
   preferredPresentation?: "siwd" | "sr1-root" | "per-claim" | "session-key" | "any"
   primaryClaimSelector?: string        // scheme whose identifier MUST be `presentedBy`
 }
 type ClaimRequirement = {
   scheme: string                       // e.g. "lei"
   verificationRequired: boolean
-  maxAge?: number                      // seconds; tightens (never widens) the effective freshness window — overrides the recipe default downward only
-  recipeVersion?: number               // pin a specific DACS-2 recipe version (§7.4.1); else latest-at-session-start
+  maxAge?: number                      // verificationRequired=true only; seconds; tightens (never widens) the effective freshness window
+  recipeVersion?: number               // verificationRequired=true only; pin a specific DACS-2 recipe version (§7.4.1); else latest-at-session-start
   parameters?: Record<string, unknown> // scheme-specific
 }
 ```
+
+**Presence-only claim requirements (PCR-1..PCR-6).** `verificationRequired` selects one of two closed evaluation modes; it is not a hint to a verifier.
+
+- **(PCR-1) Configuration boundary.** `verificationRequired` MUST be the JSON boolean `true` or `false`; another type or absence is a requirement error. When `verificationRequired = false`, the requirement is **presence-only**. `maxAge` and `recipeVersion` MUST be absent because no authority result or authority time window is selected. Their presence is a requirement error, not an instruction to manufacture or resolve a `VerifyResult`. When `verificationRequired = true`, the existing verification and freshness rules apply unchanged. An empty `required` array and an omitted or empty `oneOf` array impose no member constraint; an empty inner `oneOf` group is a requirement error rather than an unsatisfiable or silently satisfied group.
+- **(PCR-2) Presence predicate.** A presence-only member passes only when the signed `IdentityBundle` contains a claim of the required known scheme whose reference is canonical, whose unexpired `expiresAt` (when present) contains `now`, and whose signed `BundleClaim` data satisfies `parameters` (when present). A match establishes only that the presenter signed those claim values; it does not authenticate them against an external authority. A missing claim, an expired `expiresAt`, or a parameter mismatch is a non-match. `issuedAt` is informational in this mode: it MAY be absent and, when present, MUST NOT be treated as an authority issuance time or proof of verification.
+- **(PCR-3) Optional verification reference.** A presence-matched claim MAY carry `verifiedBy`, but its decision, freshness, resolution availability, and reuse status MUST NOT elevate or defeat the presence decision. Readers MUST NOT dereference it solely to decide presence. The reference still MUST have the `VerifyResultRef` wire shape; a malformed reference makes the bundle evaluation an error. This rule does not erase the reference or permit its use as passing verification elsewhere.
+- **(PCR-4) Verified predicate.** A member with `verificationRequired = true` passes only through the §6.3.2 resolution, passing-decision, freshness, `maxAge`, recipe, and parameter checks. Presence of a matching claim is insufficient.
+- **(PCR-5) Control and tier boundary.** Presence is not control and is not verification. It MUST NOT elevate `identityTier`, establish a controlled `presentedBy`, or key reputation. MA-3 permits an exact presence-only selector only when the requirement explicitly authorizes that presence path **and** the presenter independently proves control under §6.3.2 step (6). A valid bundle presentation proves this for its exact `key:` claim; an existence-only authority identifier such as `lei:` does not. A different verified claim of the same scheme MUST NOT supply control or verification to the selected claim.
+- **(PCR-6) DACS-2 bridge.** Vet evaluates presence-only members directly against the exact signed bundle bound by `CompositeVerificationRecord.bundleHash`; it MUST NOT emit a synthetic `VerifyResult` or `VerifyResultRef` for presence. DACS-2 §7.7.1 defines mixed required/`oneOf` aggregation and strict replay.
 
 **Matching algorithm**
 A reader MUST evaluate a candidate IdentityBundle against a BundleRequirement using the following deterministic algorithm:
@@ -396,9 +411,29 @@ match(bundle, requirement):
 
      remain unchanged and current dual-alias producers are still non-conforming.
 
+     Validate every ClaimRequirement before matching. An unknown/non-canonical
+
+     scheme, a non-boolean/missing verificationRequired, a malformed parameters
+
+     value, or an empty inner oneOf group returns ERROR. Empty required and
+
+     omitted/empty oneOf collections are valid and add no member constraint.
+
+     If a presence-only member
+
+     carries maxAge or recipeVersion, return ERROR (PCR-1). Validate every
+
+     present BundleClaim.verifiedBy as a VerifyResultRef wire value; a malformed
+
+     reference returns ERROR even though a presence-only decision does not resolve it (PCR-3).
+
   1. (MA-1) For each cr in requirement.required:
 
-       if NOT find_claim(bundle, cr): return REJECT("missing required: <cr.scheme>")
+       result := find_claim(bundle, cr)
+
+       if result == error: return ERROR("invalid claim or requirement: <cr.scheme>")
+
+       if result != pass: return REJECT("missing or unsatisfied required: <cr.scheme>")
 
   2. (MA-1) For each group in (requirement.oneOf or []):
 
@@ -406,7 +441,11 @@ match(bundle, requirement):
 
        for each cr in group:
 
-         if find_claim(bundle, cr): any_satisfied := true; break
+         result := find_claim(bundle, cr)
+
+         if result == error: return ERROR("invalid oneOf member: <cr.scheme>")
+
+         if result == pass: any_satisfied := true; break
 
        if NOT any_satisfied: return REJECT("oneOf group unsatisfied")
 
@@ -416,7 +455,7 @@ match(bundle, requirement):
 
   3b. (MA-3) If requirement.primaryClaimSelector is set:
 
-       // The exact claim presentedBy resolves to MUST itself be verified — not merely some claim of the selector scheme.
+       // The exact claim presentedBy resolves to MUST itself be controlled — not merely some claim of the selector scheme.
 
        // Otherwise a presenter could launder reputation by pairing an unverified (or third-party) presentedBy identifier with a *different*, already-verified claim of the same scheme.
 
@@ -424,7 +463,25 @@ match(bundle, requirement):
 
        if presented is null: return REJECT   // presentedBy does not resolve to a claim in the bundle
 
-       if presented.verifiedBy missing OR resolution fails OR (the VerifyResult resolved from presented.verifiedBy).decision != "pass" OR presented is stale per the §6.3.2 effective-window freshness gate (the same predicate find_claim applies): return REJECT   // decision is read from the resolved VerifyResult, not from VerifyResultRef; a passing-but-stale presentedBy MUST also be rejected, so a stale high-tier claim cannot key reputation even when its scheme is absent from required[]
+       verified_selector := presented has a passing-and-fresh verifiedBy under the §6.3.2 verified-claim gate
+
+       presence_selector := exact_presented_satisfies_presence_member(requirement, presented)
+
+                            AND no required verificationRequired=true member has the selector scheme
+
+                            AND every oneOf group containing a verificationRequired=true member of
+
+                                the selector scheme is satisfied either by an exact presence-only
+
+                                member for presented or by a passing member of another scheme
+
+       controlled := presenter proves control of the exact presented claim under §6.3.2 step (6)
+
+       if NOT controlled OR NOT (verified_selector OR presence_selector): return REJECT
+
+       // A valid key: bundle presentation can satisfy controlled+presence_selector.
+
+       // An existence-only lei: cannot. A different verified same-scheme claim cannot launder either predicate.
 
   4. If requirement.preferredPresentation is set AND != "any":
 
@@ -432,15 +489,47 @@ match(bundle, requirement):
 
   5. return ACCEPT
 
+exact_presented_satisfies_presence_member(requirement, presented):
+
+  selector := canonical_scheme(presented.ref)
+
+  return any cr in requirement.required ++ flatten(requirement.oneOf) where
+
+         cr.scheme == selector
+
+         AND cr.verificationRequired == false
+
+         AND presented.ref is canonical
+
+         AND (presented.expiresAt is absent OR now <= presented.expiresAt)
+
+         AND (cr.parameters is absent OR scheme_specific_match(presented, cr.parameters))
+
 find_claim(bundle, cr):
+
+  if cr.verificationRequired == false AND (cr.maxAge present OR cr.recipeVersion present): return error
 
   for each c in bundle.claims:
 
     if c.ref.scheme != cr.scheme: continue
 
-    if cr.verificationRequired AND (c.verifiedBy missing OR resolution fails OR (the VerifyResult resolved from c.verifiedBy).decision != "pass"): continue
+    if c.ref is non-canonical OR c.verifiedBy is present but malformed: return error
 
-    // Freshness gate. The §6.3.2 staleness rule applies UNCONDITIONALLY (even when cr.maxAge is unset).
+    if c.expiresAt is present AND now > c.expiresAt: continue
+
+    if cr.parameters AND NOT scheme_specific_match(c, cr.parameters): continue
+
+    if cr.verificationRequired == false:
+
+      // issuedAt and any well-shaped verifiedBy are non-authoritative for this decision.
+
+      // Do not resolve verifiedBy and do not run a verification freshness gate (PCR-2/PCR-3).
+
+      return pass
+
+    if c.verifiedBy missing OR resolution fails OR (the VerifyResult resolved from c.verifiedBy).decision != "pass": continue
+
+    // Verification-required freshness gate (PCR-4). It does not run for presence-only members.
     // Freshness is keyed on the EFFECTIVE window from the resolved VerifyResult (§6.3.2 clamp):
     //   vr := the VerifyResult resolved from c.verifiedBy
     //   eff_verifiedAt := vr.verifiedAt
@@ -451,11 +540,9 @@ find_claim(bundle, cr):
     if c.verifiedBy missing OR vr window undeterminable OR now > eff_expiry: continue
     if cr.maxAge AND (now - eff_verifiedAt) > cr.maxAge * 1000: continue   // listing-tightened bound (overrides the recipe default downward); ms vs seconds → ×1000
 
-    if cr.parameters AND NOT scheme_specific_match(c, cr.parameters): continue
+    return pass
 
-    return c
-
-  return null
+  return fail
 ```
 
 scheme_specific_match is defined per scheme in DACS-2 recipes. Where parameters are unrecognised, readers MUST treat the requirement as unmatched (not silently passed).
@@ -498,7 +585,7 @@ type Listing = {
   pipeline: PhaseStep[]                // non-empty, ordered
   // Pricing and accepted rails, per DACS-4
   pricing: PricingSpec
-  acceptedRails?: PaymentRailRef[]      // OPTIONAL: required and non-empty IF pipeline contains any pay-* phase
+  acceptedRails?: PaymentRailRef[]      // OPTIONAL: required and non-empty IF pipeline contains a concrete pay-* or pay-alternative phase
   // Terms
   terms: ListingTerms
   // Validity window
@@ -524,7 +611,7 @@ type ListingTerms = {
 }
 ```
 
-**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement`, DACS-3 §8.4.3 SE-8), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
+**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope` or `negotiate-sealed-envelope-complete`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement` or `negotiate-sealed-envelope-procurement-complete`, DACS-3 §8.4.3 SE-8 / §8.4.4 SAC-9), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
 
 **`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).
 
@@ -552,11 +639,14 @@ type PhaseType =
   | "vet-credentials"
   // DACS-3
   | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
+  | "negotiate-sealed-envelope-complete" | "negotiate-sealed-envelope-procurement-complete"
   | "commit-agreement" | "commit-payee-bound-agreement"
+  | "commit-identity-bound-agreement" | "commit-identity-bound-payee-agreement"
+  | "commit-selection-bound-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
-  | "pay-ap2" | "pay-x402" | "pay-dem"
+  | "pay-ap2" | "pay-x402" | "pay-dem" | "pay-alternative"
   | "deliver-storage-program" | "deliver-entitlement" | "deliver-attested-payload"
   // DACS-5
   | "rate"
@@ -571,11 +661,19 @@ Per-kind parameter shapes are normative in the owning chapter:
 | negotiate-rfq | {maxTurns, timeoutSec, channelSubnet?, rfqInitiator?} | 8 |
 | negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
+| negotiate-sealed-envelope-complete | {commitDeadline, revealWindow, selectionRule, candidateSetBinding, auctionMode?, channelSubnet?}; `selectionRule` is `"lowest-price"` or `"highest-price"`; `auctionMode`, when present, MUST be `"demand"`; DACS-3 §8.4.4 | 8 |
+| negotiate-sealed-envelope-procurement-complete | {commitDeadline, revealWindow, selectionRule, candidateSetBinding, auctionMode, channelSubnet?}; `selectionRule` is `"lowest-price"` or `"highest-price"`; `auctionMode` MUST be `"procurement"`; DACS-3 §8.4.4 | 8 |
 | commit-agreement | none | 8 |
 | commit-payee-bound-agreement | none | 8 |
+| commit-selection-bound-agreement | none; consumes only `SealedSelectionAgreementDocument` | 8 |
+| commit-identity-bound-agreement | none | 8 |
+| commit-identity-bound-payee-agreement | none | 8 |
+| pay-alternative | {alternatives: PaymentRailRef[]} (DACS-4 APR-1; listing projection only, never executable) | 9 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
 | rate | optional {required?: boolean} | 10 |
+
+For a new session under the current DACS-1 v0.8 / DACS-3 v0.6 profile, a sealed-envelope listing MUST use one of the two `*-complete` negotiation phases and `commit-selection-bound-agreement`. The two earlier sealed phase kinds remain valid signed historical inputs and may complete an already pinned session, but they cannot establish candidate-set completeness and MUST NOT be selected for a new current-profile session. This is paired with the structurally distinct new phase and agreement types so an older reader rejects a current complete-profile listing rather than silently ignoring its security requirements.
 
 **Canonical serialisation and signature**
 The listing follows the §B.2 canonical-form template, omitting the `signature` field. The signature.value is computed over:
@@ -585,6 +683,13 @@ Verifiers MUST:
 - recompute the canonical form, listing hash, and domain-separated signed bytes;
 - resolve signature.signer to the corresponding key (via seller.identity.claims, then via DACS-2 verification if a verifiable identifier);
 - verify the signature against signed_bytes.
+
+A transacting reader MUST validate every pipeline phase against its supported
+closed `PhaseType` set before negotiation, commitment, payment, or irreversible
+delivery. In particular, the two identity-bound commitment phases are distinct
+signed Listing values. A reader that does not implement them MUST refuse the
+Listing as unsupported and MUST NOT rename either phase to an older commitment
+phase or discard it and continue.
 
 If signature.algorithm is sr1-aggregate, the signer’s IdentityBundle.presentation MUST be of kind sr1-root and the signature is the SR-1 root signature over signed_bytes — the SR-1 aggregate signature scheme applies to the same domain-separated payload, not directly to the listing hash.
 
@@ -731,13 +836,14 @@ type ListingValidationDisposition =
 ```
 
 1. schema conformance;
-2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
+2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Ordinary additive-minor skew is not checked here because §11.1.2 + SIG-5 make it forward-readable. A declared pre-v1 corrective profile is different: its exact release/commit and per-document tuple MUST already have passed CORE §11.1.2 profile admission before this listing-validation sequence begins; a missing or different pin refuses the session rather than falling through this major-only field;
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
 4. canonical form well-formed and signature verifies;
 5. revocation check per RB-4..RB-6 returns `absent`;
 6. `seller.identity` bundle conformant per §6.3.2;
 7. pipeline references valid phase types per DACS-3/4/5;
-8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and
+8. if pipeline contains any concrete pay-* phase or `pay-alternative`,
+   `acceptedRails` MUST be present and
    non-empty and the reader MUST run listing-time rail resolution under
    LRR-1..LRR-6. A `rejected` result is a validation failure and halts. An
    `indeterminate` result is retained, MUST NOT be relabelled as `rejected`,
@@ -770,12 +876,12 @@ The reader MUST compose those results into exactly one
 type ListingRailResolution = "verified" | "rejected" | "indeterminate"
 ```
 
-- (LRR-1) **Unambiguous listing binding.** Every `pay-*` phase MUST carry a string `parameters.rail`, and every such value MUST equal the `railId` of at least one `acceptedRails` entry. The raw `acceptedRails` array MUST NOT contain duplicate full-canonical `PaymentRailRef` values, where equality is over the CORE §B.2 RFC 8785 canonical bytes. Canonically distinct references MAY share a `railId`: at listing time the `railId` dispatches to the one handler fixed by DACS-4 RD-6, while the complete reference carries a selectable version/parameter requirement for agreement and session start. No one complete reference is selected merely by a listing phase's `parameters.rail`. Every reference is validated independently, and every entry in `acceptedRails`, including an entry whose `railId` is not used by a particular pay phase, is subject to LRR-2 through LRR-5. Mere membership in the listing's own array never establishes resolution.
-- (LRR-2) **Authoritative source.** The reader MUST resolve one internally consistent rail-registry snapshot through DACS-4 §9.4.3. Under PA-2 or PA-3 this means reading `dacs4:registry:v0.1`, verifying the applicable steward/governance authority, and obtaining verified CORE §5.1 `finalized` receipts plus independent content resolution for the index and the definition resolved for every advertised `PaymentRailRef`. The reader MUST NOT use a catalog row, listing field, counterparty copy, or unauthenticated cache as registry authority.
-- (LRR-3) **Reference-to-definition match.** For every `PaymentRailRef`, the authenticated index MUST contain that exact `railId`. If `railVersion` is present, the indexed and resolved definition MUST carry that exact version; otherwise the reader uses the index's latest version in the snapshot for this validation attempt. That result is the reference-resolved definition. It MUST match the index's anchor/content hash, verify under `dacs-rail:v1:`, repeat the reference's `railId` and the selected `railVersion`, and satisfy its schema plus RD-1..RD-6.
-- (LRR-4) **Phase-handler binding.** For every `pay-*` phase, every reference-resolved definition whose `railId` equals the phase's `parameters.rail` MUST carry the same `phaseHandler`, as required across versions by DACS-4 RD-6, and that handler MUST equal the phase's `kind`. Two phases with different kinds therefore cannot dispatch through the same `railId`. Selection of one complete `PaymentRailRef` and its parameters is deferred to the agreement and session-start pin; it is not inferred from the listing's railId-only phase field. A listing cannot route `pay-x402`, for example, through a definition registered for `pay-evm-erc20`.
+- (LRR-1) **Unambiguous listing binding.** Every concrete DACS-4 `PaymentPhaseType` phase MUST carry a string `parameters.rail`, and every such value MUST equal the `railId` of at least one `acceptedRails` entry. `pay-alternative` is the sole exception: it MUST carry complete references under APR-1 and MUST NOT carry or be coerced to a single `parameters.rail`. The raw `acceptedRails` array MUST NOT contain duplicate full-canonical `PaymentRailRef` values, where equality is over the CORE §B.2 RFC 8785 canonical bytes. Canonically distinct references MAY share a `railId`: at listing time the `railId` dispatches to the one handler fixed by DACS-4 RD-6, while the complete reference carries a selectable version/parameter requirement for agreement and session start. No one complete reference is selected merely by a concrete listing phase's `parameters.rail`, and array order never selects an APR alternative. Every reference is validated independently, and every entry in `acceptedRails`, including an entry whose `railId` is not used by a particular concrete phase or alternative, is subject to LRR-2 through LRR-5. Mere membership in the listing's own array never establishes resolution.
+- (LRR-2) **Authoritative source.** The reader MUST resolve one internally consistent rail-registry snapshot through DACS-4 §9.4.3 under the existing numeric registry-version contract and resolve each advertised `PaymentRailRef` through an authenticated index entry. The authenticated entry's native locator and content hash are a content reference, not a separately asserted logical-to-native mapping; the reader MUST still verify the fetched definition's `dacs-rail:v1:` signature, exact version, availability, governance, and RD-1..RD-6. The reader MUST NOT use a catalog row, listing field, counterparty copy, unauthenticated cache, or bare locator outside that authenticated snapshot as registry authority. This profile does not activate CORE registry-bootstrap v1 for listing admission or session start; PA-1 remains the explicitly disclosed in-code path, and PA-3 requires its future governance-specific bootstrap type.
+- (LRR-3) **Reference-to-definition match.** For every `PaymentRailRef`, the authenticated index MUST contain its `railId` under derived NFC comparison without changing signed bytes. If `railVersion` is present, the reader selects the one exact numeric version without coercion. Otherwise it selects the unique greatest numeric version for that rail ID before applying eligibility. That result is the reference-resolved definition. It MUST match the index's anchor/content hash, verify under `dacs-rail:v1:`, repeat the reference's NFC-derived `railId` and exact numeric `railVersion`, and satisfy its schema plus RD-1..RD-6. An unavailable, invalid, unclassifiable, or ineligible selected definition MUST NOT authorize fallback to an older version.
+- (LRR-4) **Phase-handler binding.** For every concrete DACS-4 `PaymentPhaseType` phase, every reference-resolved definition whose `railId` equals the phase's `parameters.rail` MUST carry the same `phaseHandler`, as required across versions by DACS-4 RD-6, and that handler MUST equal the phase's `kind`. Two concrete phases with different kinds therefore cannot dispatch through the same `railId`. For `pay-alternative`, apply APR-2 instead: each complete alternative resolves to its own concrete handler and that handler MUST NOT be `pay-alternative`; no handler is required to equal the listing-only projection kind. Selection of one complete `PaymentRailRef` and its parameters is deferred to the agreement and session-start pin; it is not inferred from a concrete listing phase's railId-only field or from alternative array order. A listing cannot route `pay-x402`, for example, through a definition registered for `pay-evm-erc20`.
 - (LRR-5) **Disposition and precedence.** Failure to authenticate the registry authority under LRR-2 returns `indeterminate`; an unauthenticated snapshot MUST NOT establish a contradiction. Once registry authority is authenticated, aggregate the checks over every advertised reference with flat precedence `rejected`, then `indeterminate`, then `verified`. Return `rejected` when the listing binding is malformed or ambiguous under LRR-1, when the authenticated snapshot conclusively lacks a named rail/version, or when an otherwise valid resolved definition contradicts the listing or phase handler under LRR-3/LRR-4. Return `indeterminate` when a required definition, finality receipt, independent content, or steward/governance key is absent, unavailable, internally inconsistent, not yet finalized, or cannot be authenticated. Return `verified` only after every applicable check succeeds. Consequently, an unavailable definition for an advertised but currently unused rail makes the whole signed listing `indeterminate` and LR-3 blocks every new session from that listing until all advertised claims resolve; a publisher can remove the unavailable claim only by issuing a new signed listing version.
-- (LRR-6) **Progressive-anchoring and session boundary.** PA-1, PA-2, and PA-3 name the authority basis a reader accepts for this check, not a lifecycle state of the listing. A reader explicitly operating and disclosing PA-1 MAY resolve against its disclosed, signed in-code registry snapshot only when its trust policy accepts `governance.anchoring: "in-code"`; it MUST retain and surface `pa1-in-code` as the authority basis and MUST NOT describe that result as canonically anchored. For an unpinned PA-1 reference, the unique highest `railVersion` for that `railId` in the signed snapshot is used; duplicate definitions at that version or handler drift under RD-6 are `rejected`. A PA-2 or PA-3 reader MUST NOT fall back to in-code constants when the canonical index or a definition is unavailable. Listing-time `verified` establishes discovery eligibility only: at session start the orchestrator MUST select one complete `PaymentRailRef`, resolve and pin its exact definition under DACS-4 §9.4.3, and apply RAV-R1..RAV-R5. A discovery mirror MAY surface availability only as a non-authoritative prefilter or user-interface hint. That hint cannot satisfy the authoritative read, change `ListingValidationDisposition`, establish or refute a RAV result, or override a missing or contradictory authoritative value.
+- (LRR-6) **Progressive-anchoring and session boundary.** PA-1, PA-2, and PA-3 name the authority basis a reader accepts for this check, not a lifecycle state of the listing. A reader explicitly operating and disclosing PA-1 MAY resolve against its disclosed, signed in-code registry snapshot only when its trust policy accepts `governance.anchoring: "in-code"`; it MUST retain and surface `pa1-in-code` as the authority basis and MUST NOT describe that result as canonically anchored. For an unpinned PA-1 reference, the reader uses the unique greatest numeric `railVersion` for that NFC-derived `railId`. It selects before eligibility and permits no older fallback. Duplicate definitions at that version or handler drift under RD-6 are `rejected`. A PA-2 or PA-3 reader MUST NOT fall back to in-code constants when the canonical index or a definition is unavailable. Listing-time `verified` establishes discovery eligibility only: at session start the orchestrator MUST select one complete `PaymentRailRef`, resolve and pin its exact definition under DACS-4 §9.4.3, and apply RAV-R1..RAV-R5. A discovery mirror MAY surface availability only as a non-authoritative prefilter or user-interface hint. That hint cannot satisfy the authoritative read, change `ListingValidationDisposition`, establish or refute a RAV result, or override a missing or contradictory authoritative value.
 
 **Conformance — listing publishers and readers**
 A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; and (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record. For a pay-bearing listing it MUST: (LP-6) obtain `verified` under LRR-1..LRR-6 at publication time rather than treating its own `acceptedRails` array as proof.
@@ -1032,7 +1138,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Forged listings.** *Threat:* an attacker publishes a listing impersonating a known seller. *Mitigation:* listings are signed; the signer MUST be a key referenced in seller.identity.claims, and the bundle itself MUST verify. A reader following the validation order detects the impersonation at the signature step or the bundle-conformance step.
 
-**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one session and replays it in another. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates fresh per session and which is bound to the session-binding nonce when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). Verifiers in a session context MUST validate the nonce; bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
+**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings or omits real ones. *Mitigation:* ListingSummary includes the anchor and contentHash; clients dereference and verify. A poisoned catalog causes UX confusion (a listing that does not exist on chain, or a missing listing) but cannot produce a verifiable false transaction.
 

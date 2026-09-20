@@ -64,6 +64,10 @@ PER_SET_VERDICTS = {
 
 VERDICT_FIELDS = ("expected", "decision")
 
+HISTORICAL_SB2_SET = "sb2-settlement-uniqueness-v0.1"
+CURRENT_SB2_SET = "sb2-collision-authority-v0.8"
+SB1_EVENT_IDENTITY_SET = "settlement-event-identity-v0.6"
+
 
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
     """The accepted canonical encodings of the vectors array (see docstring)."""
@@ -100,6 +104,62 @@ def validate_set(path: str) -> tuple[list[str], int]:
         errors.append(f"{name}: 'set' must be a string")
     elif data["set"] != stem:
         errors.append(f"{name}: 'set' is '{data['set']}' but filename stem is '{stem}'")
+
+    # The v0.1 SB-2 corpus retains useful key/idempotency cases, but its
+    # first-observed cross-tuple winner is not current conformance. Keep that
+    # boundary machine-readable so catalog consumers cannot advertise both
+    # incompatible collision rules as current.
+    if stem == HISTORICAL_SB2_SET:
+        profile = data.get("conformanceProfile")
+        required_profile = {
+            "status": "superseded",
+            "currentCollisionAuthority": False,
+            "normativeScope": (
+                "settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
+            ),
+            "supersededBy": CURRENT_SB2_SET,
+        }
+        if data.get("tier") != "historical":
+            errors.append(f"{name}: superseded SB-2 set must have tier 'historical'")
+        if profile != required_profile:
+            errors.append(
+                f"{name}: superseded SB-2 conformanceProfile must be exactly "
+                f"{required_profile!r}"
+            )
+        successor_path = os.path.join(SECURITY_DIR, f"{CURRENT_SB2_SET}.json")
+        if not os.path.isfile(successor_path):
+            errors.append(f"{name}: declared current successor is unavailable")
+
+    if stem == CURRENT_SB2_SET:
+        supersedes = data.get("supersedes")
+        if supersedes != [HISTORICAL_SB2_SET]:
+            errors.append(
+                f"{name}: current SB-2 set must explicitly supersede "
+                f"{HISTORICAL_SB2_SET}"
+            )
+
+    if stem == SB1_EVENT_IDENTITY_SET:
+        required_profile = {
+            "status": "partially-superseded",
+            "currentCollisionAuthority": False,
+            "normativeScope": (
+                "sb1-event-identity-projection-and-same-tuple-idempotency-only"
+            ),
+            "historicalCollisionVectors": ["same-event-second-job-rejected"],
+            "currentCollisionAuthoritySet": CURRENT_SB2_SET,
+        }
+        if data.get("tier") != "candidate":
+            errors.append(f"{name}: SB-1 event-identity set must have tier 'candidate'")
+        if data.get("conformanceProfile") != required_profile:
+            errors.append(
+                f"{name}: SB-1 event-identity conformanceProfile must be exactly "
+                f"{required_profile!r}"
+            )
+        if "SB-2" in data.get("spec", ""):
+            errors.append(
+                f"{name}: partially superseded event-identity set must not claim "
+                "current SB-2 coverage"
+            )
 
     vectors = data["vectors"]
     if not isinstance(vectors, list) or not vectors:

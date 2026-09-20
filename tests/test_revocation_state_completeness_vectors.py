@@ -6,6 +6,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from scripts import generate_revocation_state_completeness_vectors as g
+
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -561,12 +563,11 @@ def validate_state_proof_shape(proof, expected_leaf_key, expected_head_hash):
 def validate_resolved_marker_entry(entry):
     """Fail-closed closed-shape gate for one ``ResolvedRevocationMarker``.
 
-    The wire type (DACS-1 v0.8, RSC-9) is a closed object with exactly
-    ``revocationRef``, ``marker``, ``receipt`` and ``authority``. Every scalar
-    and nested container is type-checked and any extra, missing, or substituted
-    member fails closed here, so an empty dict, a shell entry, or a mutated
-    marker can never be carried into the marker-resolution boundary and then
-    skipped as inert context while an ``absent`` result is reproduced.
+    The resolved-context wrapper is closed, but the signed marker permits
+    future optional members under CORE SIG-5 and ordinary-minor compatibility.
+    Required fields and nested containers are checked before authentication,
+    so an empty dict or shell entry cannot be skipped as inert context while
+    an ``absent`` result is reproduced.
     """
     if not isinstance(entry, dict) or set(entry) != {"revocationRef", "marker", "receipt", "authority"}:
         return False
@@ -587,8 +588,6 @@ def validate_resolved_marker_entry(entry):
     if not isinstance(marker, dict):
         return False
     if not {"listingId", "listingVersion", "listingContentHash", "revokedAt", "signature"} <= set(marker):
-        return False
-    if not set(marker) <= {"listingId", "listingVersion", "listingContentHash", "revokedAt", "reason", "signature"}:
         return False
     if (
         not isinstance(marker.get("listingId"), str)
@@ -793,13 +792,11 @@ def _evaluate(data, public_keys, trusted_admission=None):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
     current_seq = int(current["sequence"])
-    validated_conflicts = []
     for conflict in context.get("knownConflictingHeads", []):
         checked = validate_head_item(conflict, listing, state_ref, public_keys)
         if checked is None:
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         conflicting, conflicting_hash = checked
-        validated_conflicts.append(conflicting)
         conflict_seq = int(conflicting["sequence"])
         transition = conflicting.get("transition")
         if isinstance(transition, dict) and transition.get("leafKey") == key:
@@ -840,9 +837,16 @@ def _evaluate(data, public_keys, trusted_admission=None):
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         if rb_disposition == "indeterminate":
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+        # A known authenticated conflicting view cannot establish complete
+        # absence. Target-revoking higher heads have already returned revoked;
+        # all remaining nonempty conflict sets are non-authorizing under RSC-7.
+        # In particular, a conflict's unverified transition cannot be used to
+        # launder an otherwise-unused resolved marker into accepted context.
+        if context["knownConflictingHeads"]:
+            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         consumed_refs = [
             transition["revocationRef"]
-            for head in [*(item[0] for item in validated), *validated_conflicts]
+            for head, _ in validated
             if isinstance((transition := head.get("transition")), dict)
             and isinstance(transition.get("revocationRef"), dict)
         ]
@@ -1976,6 +1980,66 @@ class RevocationStateCompletenessTests(unittest.TestCase):
             evaluate(replay, self.document["publicKeys"],
                      genesis.get("trustedProfileAdmission")),
             ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+        )
+
+    def test_conflicting_head_cannot_launder_unused_marker(self):
+        # A signed conflict head can have the right outer shape while its
+        # transition is invalid. Its ref must not make an otherwise-unused
+        # marker appear consumed in an authorizing absence proof.
+        third = g.listing_tuple("third-service", "66" * 32)
+        third_marker = g.marker(third)
+        ref = g.marker_ref(third_marker, "third-service")
+        key = g.leaf_key(third)
+        unsigned = {name: json.loads(json.dumps(value)) for name, value in g.GENESIS.items()
+                    if name != "signature"}
+        unsigned["transition"] = {
+            "leafKey": key,
+            "revocationRef": ref,
+            "priorProof": g.compact_proof({}, key),
+        }
+        conflict = g.sign_artifact(unsigned, g.SELLER_KEY, g.SELLER, g.HEAD_DOMAIN)
+        data = g.input_for(g.OTHER_HEAD, g.OTHER_LEAVES,
+                           conflicting_heads=[g.history_item(conflict)])
+        context = data["resolutionContext"]
+        context["resolvedMarkers"].append(
+            g.resolved_marker(ref, third_marker, g.SELLER_KEY, "third-service")
+        )
+        pubs = g.document()["publicKeys"]
+        self.assertIsNotNone(validate_head_item(
+            context["knownConflictingHeads"][0], data["listing"],
+            data["listing"]["revocationState"], pubs,
+        ))
+        self.assertFalse(validate_transition(
+            conflict, g.GENESIS, g.artifact_hash(g.GENESIS), context, pubs,
+        ))
+        self.assertEqual(
+            evaluate(data, pubs, g.profile_admission()),
+            ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+        )
+
+    def test_consumed_signed_marker_accepts_future_optional_member(self):
+        # CORE SIG-5: preserve and authenticate unknown signed artifact members;
+        # a valid non-target transition remains a legitimate absence control.
+        base = g.marker(g.OTHER)
+        unsigned = {name: json.loads(json.dumps(value)) for name, value in base.items()
+                    if name != "signature"}
+        unsigned["futureOptionalNote"] = "inert-signed-extension"
+        extended = g.sign_artifact(unsigned, g.SELLER_KEY, g.SELLER, g.MARKER_DOMAIN)
+        ref = g.marker_ref(extended, "other-extended")
+        head, leaves = g.append_head(g.GENESIS, {}, g.OTHER, ref)
+        data = g.input_for(head, leaves)
+        context = data["resolutionContext"]
+        context["resolvedMarkers"] = [
+            g.resolved_marker(ref, extended, g.SELLER_KEY, g.OTHER_LISTING_ID)
+        ]
+        pubs = g.document()["publicKeys"]
+        self.assertTrue(verify_artifact(extended, pubs["initial"], MARKER_DOMAIN))
+        self.assertTrue(validate_transition(
+            head, g.GENESIS, g.artifact_hash(g.GENESIS), context, pubs,
+        ))
+        self.assertEqual(
+            evaluate(data, pubs, g.profile_admission()),
+            ("pass", {"revocationCheck": "absent", "session": "continue"}),
         )
 
     def test_absent_branch_refuses_shadowed_and_duplicate_target_marker(self):

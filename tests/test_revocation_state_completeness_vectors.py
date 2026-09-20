@@ -510,6 +510,163 @@ def discovery_disposition(discovery, context, target, public_keys=None):
     return "indeterminate"
 
 
+def validate_state_proof_shape(proof, expected_leaf_key, expected_head_hash):
+    """Fail-closed disposition-dependent closed-shape gate for RevocationStateProof.
+
+    The wire type (DACS-1 v0.8, RSC-6/RSC-9) is disposition-dependent: an
+    ``absent`` proof carries exactly the base member set and no ``revocationRef``,
+    while a ``revoked`` proof carries exactly one closed-shape ``revocationRef``.
+    Every authorizing branch therefore runs only after the exact key set, scalar
+    types, version literal, and both binding hashes pass here. A downgraded,
+    extra-key, non-string, list-proof, or malformed-ref proof returns False so the
+    authorizing absent branch can never run on a mutated proof shape.
+    """
+    if not isinstance(proof, dict):
+        return False
+    disposition = proof.get("disposition")
+    base = {"revocationStateProofVersion", "headContentHash", "leafKey", "disposition", "proof"}
+    if disposition == "absent":
+        if set(proof) != base:
+            return False
+    elif disposition == "revoked":
+        if set(proof) != base | {"revocationRef"}:
+            return False
+    else:
+        return False
+    if proof.get("revocationStateProofVersion") != "1":
+        return False
+    if not isinstance(proof.get("headContentHash"), str) or proof.get("headContentHash") != expected_head_hash:
+        return False
+    if not isinstance(proof.get("leafKey"), str) or proof.get("leafKey") != expected_leaf_key:
+        return False
+    if not isinstance(proof.get("proof"), dict):
+        return False
+    if disposition == "revoked":
+        ref = proof.get("revocationRef")
+        anchor = ref.get("anchor") if isinstance(ref, dict) else None
+        if (
+            not isinstance(ref, dict)
+            or set(ref) != {"anchor", "contentHash", "signer"}
+            or not isinstance(anchor, dict)
+            or set(anchor) != {"kind", "locator"}
+            or anchor.get("kind") not in {"storage-program", "ipfs", "https"}
+            or not isinstance(anchor.get("locator"), str)
+            or not isinstance(ref.get("contentHash"), str)
+            or not isinstance(ref.get("signer"), str)
+        ):
+            return False
+    return True
+
+
+def validate_resolved_marker_entry(entry):
+    """Fail-closed closed-shape gate for one ``ResolvedRevocationMarker``.
+
+    The wire type (DACS-1 v0.8, RSC-9) is a closed object with exactly
+    ``revocationRef``, ``marker``, ``receipt`` and ``authority``. Every scalar
+    and nested container is type-checked and any extra, missing, or substituted
+    member fails closed here, so an empty dict, a shell entry, or a mutated
+    marker can never be carried into the marker-resolution boundary and then
+    skipped as inert context while an ``absent`` result is reproduced.
+    """
+    if not isinstance(entry, dict) or set(entry) != {"revocationRef", "marker", "receipt", "authority"}:
+        return False
+    ref = entry.get("revocationRef")
+    if not isinstance(ref, dict) or set(ref) != {"anchor", "contentHash", "signer"}:
+        return False
+    anchor = ref.get("anchor")
+    if (
+        not isinstance(anchor, dict)
+        or set(anchor) != {"kind", "locator"}
+        or anchor.get("kind") not in {"storage-program", "ipfs", "https"}
+        or not isinstance(anchor.get("locator"), str)
+    ):
+        return False
+    if not isinstance(ref.get("contentHash"), str) or not isinstance(ref.get("signer"), str):
+        return False
+    marker = entry.get("marker")
+    if not isinstance(marker, dict):
+        return False
+    if not {"listingId", "listingVersion", "listingContentHash", "revokedAt", "signature"} <= set(marker):
+        return False
+    if not set(marker) <= {"listingId", "listingVersion", "listingContentHash", "revokedAt", "reason", "signature"}:
+        return False
+    if (
+        not isinstance(marker.get("listingId"), str)
+        or not isinstance(marker.get("listingContentHash"), str)
+        or not isinstance(marker.get("listingVersion"), int)
+        or isinstance(marker.get("listingVersion"), bool)
+        or not isinstance(marker.get("revokedAt"), int)
+        or isinstance(marker.get("revokedAt"), bool)
+    ):
+        return False
+    if "reason" in marker and not isinstance(marker["reason"], str):
+        return False
+    signature = marker.get("signature")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not isinstance(signature.get("algorithm"), str)
+        or not isinstance(signature.get("signer"), str)
+        or not isinstance(signature.get("value"), str)
+    ):
+        return False
+    if not isinstance(entry.get("receipt"), dict):
+        return False
+    authority = entry.get("authority")
+    if (
+        not isinstance(authority, dict)
+        or set(authority) != {"claim", "key", "disposition", "evidence"}
+        or not isinstance(authority.get("claim"), str)
+        or not isinstance(authority.get("key"), str)
+        or authority.get("disposition") not in ("verified", "indeterminate")
+    ):
+        return False
+    evidence = authority.get("evidence")
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != {"kind", "value"}
+        or not isinstance(evidence.get("kind"), str)
+        or not isinstance(evidence.get("value"), str)
+    ):
+        return False
+    return True
+
+
+def marker_context_forbids_absent(context, target, public_keys, consumed_refs):
+    """Fail-closed marker-context gate for the authorizing absent branch.
+
+    ``resolvedMarkers`` is verifier-supplied resolution context (RSC-9). A
+    producer retaining an ``absent`` result must reproduce the exact context it
+    used: a marker entry that does not independently authenticate (RB-1/RB-4
+    shape plus key-lifecycle authority) is malformed or unused context and is
+    non-conforming, so it can never be skipped while reproducing ``absent``.
+    An authenticated marker not used by a validated transition is also unused
+    context, even when it refers to another Listing tuple.
+    A marker that does authenticate a revocation of the exact Listing tuple is
+    verified revocation evidence that cannot be ignored while a non-membership
+    proof returns ``absent``: RSC-7 gives the conflict between authenticated
+    views precedence over RSC-proven absence. Returns True — so the absent
+    branch refuses with non-authorizing indeterminate, never ``absent`` — when
+    the retained marker context is non-conforming or when any marker
+    authenticates the exact Listing tuple.
+    """
+    markers = context.get("resolvedMarkers")
+    if not isinstance(markers, list):
+        return True
+    for item in markers:
+        ref = item.get("revocationRef") if isinstance(item, dict) else None
+        if not isinstance(ref, dict):
+            return True
+        resolved = resolve_marker(context, ref, public_keys=public_keys)
+        if resolved is None:
+            return True
+        if resolved == target:
+            return True
+        if ref not in consumed_refs:
+            return True
+    return False
+
+
 def evaluate(data, public_keys, trusted_admission=None):
     # RSC totality: every untrusted root/container/scalar is evaluated through a
     # fail-closed boundary. A non-object root, a malformed revocationState anchor,
@@ -636,11 +793,13 @@ def _evaluate(data, public_keys, trusted_admission=None):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
     current_seq = int(current["sequence"])
+    validated_conflicts = []
     for conflict in context.get("knownConflictingHeads", []):
         checked = validate_head_item(conflict, listing, state_ref, public_keys)
         if checked is None:
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         conflicting, conflicting_hash = checked
+        validated_conflicts.append(conflicting)
         conflict_seq = int(conflicting["sequence"])
         transition = conflicting.get("transition")
         if isinstance(transition, dict) and transition.get("leafKey") == key:
@@ -673,20 +832,32 @@ def _evaluate(data, public_keys, trusted_admission=None):
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
     proof = context.get("stateProof")
-    if not isinstance(proof, dict) or proof.get("revocationStateProofVersion") != "1":
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    if proof.get("headContentHash") != current_hash or proof.get("leafKey") != key:
+    if not validate_state_proof_shape(proof, key, current_hash):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
     disposition = proof.get("disposition")
     if disposition == "absent":
-        if "revocationRef" in proof or proof_root(key, proof.get("proof"), EMPTY[0]) != current.get("rootHash"):
+        if proof_root(key, proof.get("proof"), EMPTY[0]) != current.get("rootHash"):
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         if rb_disposition == "indeterminate":
+            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+        consumed_refs = [
+            transition["revocationRef"]
+            for head in [*(item[0] for item in validated), *validated_conflicts]
+            if isinstance((transition := head.get("transition")), dict)
+            and isinstance(transition.get("revocationRef"), dict)
+        ]
+        if marker_context_forbids_absent(context, target, public_keys, consumed_refs):
+            # RSC-7 precedence over RSC-proven absence: an independently
+            # authenticated exact-target revocation marker is verified revocation
+            # evidence that the non-membership proof cannot out-rank; RSC-9
+            # marks a malformed, shadowed, duplicated, or otherwise unused marker
+            # context non-conforming. Either way the authorizing absent branch
+            # refuses — never `absent`.
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         return "pass", {"revocationCheck": "absent", "session": "continue"}
     if disposition == "revoked":
         ref = proof.get("revocationRef")
-        if not isinstance(ref, dict) or proof_root(key, proof.get("proof"), revoked_leaf(key, ref)) != current.get("rootHash"):
+        if proof_root(key, proof.get("proof"), revoked_leaf(key, ref)) != current.get("rootHash"):
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         if resolve_marker(context, ref, target, public_keys) is None:
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
@@ -746,7 +917,11 @@ def validate_resolution_context_shape(context):
     evaluation branch may run. A missing member (notably an omitted
     ``resolvedMarkers``), a null/object/malformed entry, or an extra key fails
     closed here, so a transition-free genesis ``absent`` cannot bypass marker
-    resolution.
+    resolution. Each ``resolvedMarkers`` entry must itself be a closed
+    ``ResolvedRevocationMarker`` shape and each ``revocationRef`` must appear
+    exactly once: an empty dict, a shell entry, or a shadow/duplicate marker
+    cannot be carried into the marker-resolution boundary and then ignored
+    while ``absent`` is reproduced.
     """
     if not isinstance(context, dict) or set(context) != set(EXPECTED_CONTEXT_FIELDS):
         return False
@@ -797,10 +972,18 @@ def validate_resolution_context_shape(context):
     if not isinstance(context.get("stateProof"), dict):
         return False
     resolved_markers = context.get("resolvedMarkers")
-    if not isinstance(resolved_markers, list) or not all(
-        isinstance(item, dict) for item in resolved_markers
-    ):
+    if not isinstance(resolved_markers, list):
         return False
+    seen_refs = set()
+    for item in resolved_markers:
+        if not validate_resolved_marker_entry(item):
+            return False
+        ref = item.get("revocationRef")
+        if isinstance(ref, dict):
+            marker_ref = (ref.get("anchor", {}).get("locator"), ref.get("contentHash"), ref.get("signer"))
+            if marker_ref in seen_refs:
+                return False
+            seen_refs.add(marker_ref)
     conflicting = context.get("knownConflictingHeads")
     if not isinstance(conflicting, list) or not all(
         isinstance(item, dict) for item in conflicting
@@ -1667,6 +1850,315 @@ class RevocationStateCompletenessTests(unittest.TestCase):
         )
         self.assertEqual(verdict, "indeterminate")
         self.assertNotEqual(want["revocationCheck"], "absent")
+
+    def test_absent_branch_refuses_independently_authenticated_target_marker(self):
+        # RSC-7/RSC-9: the authorizing absent branch cannot ignore a resolved
+        # marker that independently authenticates a revocation of the exact
+        # Listing tuple. A producer caching such a context (unused marker) must
+        # not reproduce `absent`: the authenticated marker view conflicts with
+        # the current-head non-membership view, so the verdict is non-authorizing
+        # indeterminate, never absent and never revoked.
+        active = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-active-nonmembership"
+        )
+        discovered = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-rb4-discovered-marker-precedes-nonmembership"
+        )
+        listing = active["input"]["listing"]
+        target_entry = next(
+            item for item in discovered["input"]["resolutionContext"]["resolvedMarkers"]
+            if item.get("marker", {}).get("listingId") == listing.get("listingId")
+            and item.get("marker", {}).get("listingContentHash") == listing.get("listingContentHash")
+        )
+        self.assertEqual(active["expected"], "pass")
+        self.assertEqual(active["want"]["revocationCheck"], "absent")
+
+        injected = json.loads(json.dumps(active["input"]))
+        injected["resolutionContext"]["resolvedMarkers"].append(
+            json.loads(json.dumps(target_entry))
+        )
+        verdict, want = evaluate(
+            injected, self.document["publicKeys"],
+            active.get("trustedProfileAdmission"),
+        )
+        self.assertEqual(verdict, "indeterminate")
+        self.assertNotIn(want["revocationCheck"], ("absent", "revoked"))
+        self.assertEqual(want["session"], "refuse")
+
+    def test_absent_branch_refuses_malformed_or_unusable_marker_context(self):
+        # RSC-9: retained marker context must be exact. An empty dict entry, a
+        # shell entry with a non-object revocationRef, or a well-shaped but
+        # unauthenticated marker entry is malformed or unused context and is
+        # non-conforming; reproducing `absent` from it must refuse. The
+        # legitimate active/genesis absence — including the consumed other-target
+        # transition marker on the active vector — stays `absent`.
+        active = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-active-nonmembership"
+        )
+        genesis = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-genesis-absent"
+        )
+        discovered = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-rb4-discovered-marker-precedes-nonmembership"
+        )
+        listing = active["input"]["listing"]
+        target_entry = next(
+            item for item in discovered["input"]["resolutionContext"]["resolvedMarkers"]
+            if item.get("marker", {}).get("listingId") == listing.get("listingId")
+            and item.get("marker", {}).get("listingContentHash") == listing.get("listingContentHash")
+        )
+        unusable = json.loads(json.dumps(target_entry))
+        unusable["marker"]["signature"]["value"] = (
+            "A" + unusable["marker"]["signature"]["value"][1:]
+        )
+        mutations = [
+            ("empty-dict", {}),
+            ("shell-revocationRef-string", {"revocationRef": "not-a-ref"}),
+            ("shell-missing-authority", {
+                "revocationRef": json.loads(json.dumps(target_entry["revocationRef"])),
+                "marker": json.loads(json.dumps(target_entry["marker"])),
+                "receipt": json.loads(json.dumps(target_entry["receipt"])),
+            }),
+            ("unauthenticated-marker", unusable),
+        ]
+        for name, entry in mutations:
+            with self.subTest(mutation=name):
+                injected = json.loads(json.dumps(active["input"]))
+                injected["resolutionContext"]["resolvedMarkers"].append(entry)
+                verdict, want = evaluate(
+                    injected, self.document["publicKeys"],
+                    active.get("trustedProfileAdmission"),
+                )
+                self.assertEqual(verdict, "indeterminate")
+                self.assertNotEqual(want["revocationCheck"], "absent")
+                self.assertEqual(want["session"], "refuse")
+
+        baseline, want = evaluate(
+            active["input"], self.document["publicKeys"],
+            active.get("trustedProfileAdmission"),
+        )
+        self.assertEqual((baseline, want), (active["expected"], active["want"]))
+        self.assertEqual(want["revocationCheck"], "absent")
+        genesis_result, genesis_want = evaluate(
+            genesis["input"], self.document["publicKeys"],
+            genesis.get("trustedProfileAdmission"),
+        )
+        self.assertEqual((genesis_result, genesis_want), (genesis["expected"], genesis["want"]))
+        self.assertEqual(genesis_want["revocationCheck"], "absent")
+
+    def test_absent_branch_refuses_valid_but_unused_other_marker(self):
+        # RSC-9 does not permit a well-authenticated marker to become inert
+        # merely because it names another tuple. The active control consumes
+        # this marker in a validated head transition; genesis has no transition
+        # and therefore cannot retain it while claiming complete absence.
+        active = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-active-nonmembership"
+        )
+        genesis = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-genesis-absent"
+        )
+        marker = active["input"]["resolutionContext"]["resolvedMarkers"][0]
+        self.assertEqual(
+            evaluate(active["input"], self.document["publicKeys"],
+                     active.get("trustedProfileAdmission")),
+            ("pass", {"revocationCheck": "absent", "session": "continue"}),
+        )
+        replay = json.loads(json.dumps(genesis["input"]))
+        replay["resolutionContext"]["resolvedMarkers"].append(json.loads(json.dumps(marker)))
+        self.assertEqual(
+            evaluate(replay, self.document["publicKeys"],
+                     genesis.get("trustedProfileAdmission")),
+            ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+        )
+
+    def test_absent_branch_refuses_shadowed_and_duplicate_target_marker(self):
+        # RSC-9/RSC-7: a shadow or duplicate marker entry with the same
+        # `revocationRef` must not hide a verified exact-target revocation.
+        # `resolve_marker`'s multiplicity guard alone would treat the duplicated
+        # ref as unresolved; the closed marker-context boundary must refuse
+        # (indeterminate), never reproduce `absent`, whether the second entry is
+        # a full duplicate of the authenticated target marker, a shadow entry
+        # carrying the same revocationRef, or the authenticated marker followed
+        # by an identical copy.
+        active = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-active-nonmembership"
+        )
+        discovered = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-rb4-discovered-marker-precedes-nonmembership"
+        )
+        listing = active["input"]["listing"]
+        target_entry = next(
+            item for item in discovered["input"]["resolutionContext"]["resolvedMarkers"]
+            if item.get("marker", {}).get("listingId") == listing.get("listingId")
+            and item.get("marker", {}).get("listingContentHash") == listing.get("listingContentHash")
+        )
+        shadow = {"revocationRef": json.loads(json.dumps(target_entry["revocationRef"]))}
+        mutations = [
+            ("authenticated-plus-same-ref-shadow", [target_entry, shadow]),
+            ("duplicated-valid-entry", [target_entry, target_entry]),
+            ("shadow-then-authenticated", [shadow, target_entry]),
+        ]
+        for name, entries in mutations:
+            with self.subTest(mutation=name):
+                injected = json.loads(json.dumps(active["input"]))
+                injected["resolutionContext"]["resolvedMarkers"].extend(
+                    json.loads(json.dumps(entries))
+                )
+                verdict, want = evaluate(
+                    injected, self.document["publicKeys"],
+                    active.get("trustedProfileAdmission"),
+                )
+                self.assertEqual(verdict, "indeterminate")
+                self.assertNotEqual(want["revocationCheck"], "absent")
+                self.assertEqual(want["session"], "refuse")
+
+    def test_absent_state_proof_is_closed_disposition_dependent_shape(self):
+        # RSC-6/RSC-9: an `absent` RevocationStateProof carries exactly the base
+        # member set and no `revocationRef`. The authorizing absent branch fails
+        # closed on any extra key, injected/downgraded member, non-string scalar,
+        # or list-valued proof — never `absent`.
+        positive = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-active-nonmembership"
+        )
+        proof = positive["input"]["resolutionContext"]["stateProof"]
+        self.assertEqual(
+            set(proof),
+            {"revocationStateProofVersion", "headContentHash", "leafKey", "disposition", "proof"},
+        )
+        ref = {"anchor": {"kind": "storage-program", "locator": "storage-program:marker-x"},
+               "contentHash": "00" * 32, "signer": "did:example:seller"}
+        mutations = [
+            ("extra-key", lambda p: p.__setitem__("extraMember", "x")),
+            ("revocationRef-injected", lambda p: p.__setitem__("revocationRef", dict(ref))),
+            ("revocationRef-null", lambda p: p.__setitem__("revocationRef", None)),
+            ("disposition-mutated", lambda p: p.__setitem__("disposition", "unclear")),
+            ("disposition-list", lambda p: p.__setitem__("disposition", ["absent"])),
+            ("proof-list", lambda p: p.__setitem__("proof", [])),
+            ("proof-omitted", lambda p: p.pop("proof")),
+            ("proof-empty-object", lambda p: p.__setitem__("proof", {})),
+            ("leafKey-list", lambda p: p.__setitem__("leafKey", [])),
+            ("headContentHash-list", lambda p: p.__setitem__("headContentHash", [])),
+            ("version-omitted", lambda p: p.pop("revocationStateProofVersion")),
+            ("version-mutated", lambda p: p.__setitem__("revocationStateProofVersion", "2")),
+            ("headContentHash-omitted", lambda p: p.pop("headContentHash")),
+            ("leafKey-omitted", lambda p: p.pop("leafKey")),
+        ]
+        for name, mutate in mutations:
+            with self.subTest(mutation=name):
+                tampered = json.loads(json.dumps(positive["input"]))
+                mutate(tampered["resolutionContext"]["stateProof"])
+                verdict, want = evaluate(
+                    tampered, self.document["publicKeys"],
+                    positive.get("trustedProfileAdmission"),
+                )
+                self.assertEqual(verdict, "indeterminate")
+                self.assertNotEqual(want["revocationCheck"], "absent")
+                self.assertEqual(want["session"], "refuse")
+
+    def test_revoked_state_proof_is_closed_disposition_dependent_shape(self):
+        # RSC-6/RSC-9: a `revoked` RevocationStateProof carries exactly one
+        # closed-shape `revocationRef`. Mutating or removing it — including a
+        # downgrade to `absent` — must be indeterminate, never `revoked` and
+        # never `absent`. The censored-tombstone vector exercises the RSC
+        # inclusion path (discovery active), not the discovery-revoked early
+        # return.
+        censored = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-censored-tombstone"
+        )
+        self.assertEqual(censored["input"]["discovery"]["status"], "active")
+        proof = censored["input"]["resolutionContext"]["stateProof"]
+        self.assertEqual(
+            set(proof),
+            {"revocationStateProofVersion", "headContentHash", "leafKey",
+             "disposition", "revocationRef", "proof"},
+        )
+        invalid_kind = json.loads(json.dumps(proof))
+        invalid_kind["revocationRef"]["anchor"]["kind"] = "not-a-registered-anchor-kind"
+        self.assertFalse(validate_state_proof_shape(
+            invalid_kind, proof["leafKey"], proof["headContentHash"]
+        ))
+        mutations = [
+            ("extra-key", lambda p: p.__setitem__("extraMember", "x")),
+            ("revocationRef-omitted", lambda p: p.pop("revocationRef")),
+            ("revocationRef-null", lambda p: p.__setitem__("revocationRef", None)),
+            ("revocationRef-string", lambda p: p.__setitem__("revocationRef", "ref")),
+            ("revocationRef-extra-key", lambda p: p["revocationRef"].__setitem__("extra", True)),
+            ("revocationRef-anchor-list", lambda p: p["revocationRef"].__setitem__("anchor", ["a"])),
+            ("revocationRef-anchor-no-locator",
+             lambda p: p["revocationRef"].__setitem__("anchor", {"kind": "storage-program"})),
+            ("revocationRef-contentHash-list",
+             lambda p: p["revocationRef"].__setitem__("contentHash", [])),
+            ("revocationRef-signer-list",
+             lambda p: p["revocationRef"].__setitem__("signer", [])),
+            ("disposition-downgraded-to-absent",
+             lambda p: (p.pop("revocationRef"), p.__setitem__("disposition", "absent"))),
+            ("disposition-mutated", lambda p: p.__setitem__("disposition", "unclear")),
+            ("proof-list", lambda p: p.__setitem__("proof", [])),
+        ]
+        for name, mutate in mutations:
+            with self.subTest(mutation=name):
+                tampered = json.loads(json.dumps(censored["input"]))
+                mutate(tampered["resolutionContext"]["stateProof"])
+                verdict, want = evaluate(
+                    tampered, self.document["publicKeys"],
+                    censored.get("trustedProfileAdmission"),
+                )
+                self.assertEqual(verdict, "indeterminate")
+                self.assertNotIn(want["revocationCheck"], ("revoked", "absent"))
+                self.assertEqual(want["session"], "refuse")
+
+    def test_rsc7_precedence_survives_absent_branch_hardening(self):
+        # RSC-7 precedence is unchanged by the closed-context hardening: a
+        # discovered marker still outranks a non-membership proof, an RB-5
+        # indeterminate discovery still blocks absence, a strictly-higher
+        # authenticated revoking head still supersedes a stale absent read, and
+        # legitimate active/genesis absence — including the consumed other-target
+        # transition marker on the active vector — still admits a session.
+        cases = {
+            "rsc-valid-active-nonmembership": ("pass", "absent"),
+            "rsc-valid-genesis-absent": ("pass", "absent"),
+            "rsc-rb4-discovered-marker-precedes-nonmembership": ("fail", "revoked"),
+            "rsc-rb5-indeterminate-precedes-nonmembership": ("indeterminate", "indeterminate"),
+            "rsc-higher-known-head-revokes": ("fail", "revoked"),
+            "rsc-censored-tombstone": ("fail", "revoked"),
+            "rsc-two-equivocated-heads": ("indeterminate", "indeterminate"),
+        }
+        for name, (verdict, check) in cases.items():
+            with self.subTest(vector=name):
+                vector = next(
+                    item for item in self.document["vectors"]
+                    if item["name"] == name
+                )
+                result = evaluate(
+                    vector["input"], self.document["publicKeys"],
+                    vector.get("trustedProfileAdmission"),
+                )
+                self.assertEqual(result[0], verdict)
+                self.assertEqual(result[1]["revocationCheck"], check)
+
+    def test_recorded_policy_replay_remains_byte_faithful_after_hardening(self):
+        # RSC-9 replay: the frozen v0.8 corpus is replayed byte-for-byte through
+        # the explicitly recorded v1 policy oracle, which shares the hardened
+        # evaluator. Every recorded verdict must reproduce exactly; a historical
+        # v1 pass is never promoted to current admission.
+        for vector in self.document["vectors"]:
+            with self.subTest(vector=vector["name"]):
+                expected, want = evaluate_recorded_policy(
+                    vector["input"], self.document["publicKeys"],
+                    vector.get("trustedProfileAdmission"),
+                )
+                self.assertEqual((expected, want), (vector["expected"], vector["want"]))
 
 
 if __name__ == "__main__":

@@ -529,6 +529,7 @@ def verify_agreement(agreement: object, artifact: str) -> tuple[str, str]:
     parties = agreement.get("parties")
     if (
         not isinstance(agreement.get("jobId"), str)
+        or re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", agreement["jobId"]) is None
         or not isinstance(agreement.get("listingRef"), dict)
         or not isinstance(agreement.get("terms"), dict)
         or not isinstance(parties, list)
@@ -2789,6 +2790,36 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
+
+    def test_scenario_job_ids_are_distinct_canonical_jid1(self):
+        ids = [scenario["agreement"]["jobId"] for scenario in self.data["scenarios"].values()]
+        for job_id in ids:
+            with self.subTest(job_id=job_id):
+                self.assertRegex(job_id, r"\A[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
+        self.assertEqual(
+            self.data["scenarios"]["identityBoundProcurement"]["agreement"]["jobId"],
+            generator.JOB_IDS["identityBoundProcurement"],
+        )
+        self.assertNotEqual(
+            generator.JOB_IDS["identityBoundProcurement"],
+            generator.JOB_IDS["identityBoundSealed"],
+        )
+        with self.assertRaisesRegex(ValueError, "noncanonical JID-1"):
+            generator.scenario("identityBoundAgreement", "01KTY8ZJ00CW7KSECW3FS6PQ0I")
+
+    def test_resigned_noncanonical_agreement_is_error_before_action(self):
+        agreement = copy.deepcopy(self.data["scenarios"]["identityBoundProcurement"]["agreement"])
+        self.assertEqual(verify_agreement(agreement, "identityBoundAgreement"), ("pass", "verified"))
+        for malformed in (
+            "01KTY8ZJ00CW7KSECW3FS6PQ0I",  # Crockford decode alias
+            "01kty8zj00cw7ksecw3fs6pq0j",  # case folding forbidden
+            "81KTY8ZJ00CW7KSECW3FS6PQ0J",  # ULID overflow
+        ):
+            with self.subTest(job_id=malformed):
+                changed = copy.deepcopy(agreement)
+                changed["jobId"] = malformed
+                generator.resign_agreement(changed, "identityBoundAgreement")
+                self.assertEqual(verify_agreement(changed, "identityBoundAgreement"), ("error", "malformed-input"))
 
     def test_terminal_profile_context_is_explicit_and_preserves_valid_paths(self):
         for name in (

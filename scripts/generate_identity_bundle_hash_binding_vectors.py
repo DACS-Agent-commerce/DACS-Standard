@@ -8,6 +8,7 @@ import base64
 import copy
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -135,7 +136,7 @@ JOB_IDS = {
     "replacement": "01KTY8ZJ00CW7KSECW3FS6PQ0F",
     "historicalSealed": "01KTY8ZJ00CW7KSECW3FS6PQ0G",
     "identityBoundSealed": "01KTY8ZJ00CW7KSECW3FS6PQ0H",
-    "identityBoundProcurement": "01KTY8ZJ00CW7KSECW3FS6PQ0I",
+    "identityBoundProcurement": "01KTY8ZJ00CW7KSECW3FS6PQ0J",
 }
 
 FIXTURE_REQUIREMENT = {
@@ -1252,6 +1253,9 @@ def scenario(
     sealed_deadline: int = NOW - 7_000,
     procurement: bool = False,
 ) -> dict[str, Any]:
+    # JID-1 admission precedes all job-derived addresses and signed effects.
+    if not isinstance(job_id, str) or re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", job_id) is None:
+        raise ValueError(f"noncanonical JID-1 jobId: {job_id!r}")
     if disposition is not None:
         disposition = copy.deepcopy(disposition)
         if (

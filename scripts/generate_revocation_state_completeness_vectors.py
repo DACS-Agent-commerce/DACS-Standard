@@ -360,9 +360,10 @@ def current_state_message(
     listing_content_hash: str,
     listing_receipt_value: dict,
     conflicting_heads: list[dict],
+    policy: str = CURRENT_STATE_POLICY,
 ) -> bytes:
     payload = {
-        "policy": CURRENT_STATE_POLICY,
+        "policy": policy,
         "finalizedStateId": finalized_state_id,
         "logicalAddress": LOGICAL_ADDRESS,
         "nativeAddress": NATIVE_ADDRESS,
@@ -373,6 +374,21 @@ def current_state_message(
         "conflictingHeadsHash": hash_hex(conflicting_heads),
     }
     return (CURRENT_STATE_DOMAIN + hash_hex(payload)).encode("ascii")
+
+
+def resign_current_state(data: dict) -> None:
+    """Keep the envelope authentic after a deliberate policy/receipt mutation."""
+    context = data["resolutionContext"]
+    evidence = context["currentStateEvidence"]
+    evidence["listingReceiptHash"] = hash_hex(context["listingReceipt"])
+    evidence["evidence"]["value"] = b64url(CURRENT_STATE_KEY.sign(
+        current_state_message(
+            context["headRef"], context["headReceipt"],
+            evidence["finalizedStateId"], evidence["listingContentHash"],
+            context["listingReceipt"], context["knownConflictingHeads"],
+            policy=evidence["policy"],
+        )
+    ))
 
 
 def marker_receipt(ref: dict, suffix: str) -> dict:
@@ -646,6 +662,7 @@ def build_vectors() -> list[dict]:
     producer_time_only = copy.deepcopy(active)
     producer_time_only["producerSaysLatestAt"] = 9_999_999_999_999
     producer_time_only["resolutionContext"]["currentStateEvidence"]["policy"] = "producer-time-only"
+    resign_current_state(producer_time_only)
 
     discovered_marker = copy.deepcopy(active)
     discovered_marker["discovery"] = {
@@ -697,6 +714,8 @@ def build_vectors() -> list[dict]:
     listing_receipt_missing = changed(active, lambda x: x["resolutionContext"].pop("listingReceipt"))
     listing_receipt_stale = changed(active, lambda x: x["resolutionContext"]["listingReceipt"]["blockRef"].update({"id": "block-stale", "height": "1"}))
     listing_receipt_tampered = changed(active, lambda x: x["resolutionContext"]["listingReceipt"].update({"contentHash": "00" * 32}))
+    for item in (listing_receipt_stale, listing_receipt_tampered):
+        resign_current_state(item)
 
     # A1 completion: authenticated conflict-set evolution stays fail-closed. A
     # later authenticated head that rewrites the target via a cross-tuple
@@ -724,6 +743,8 @@ def build_vectors() -> list[dict]:
     head_blockref_string = changed(active, lambda x: x["resolutionContext"]["headReceipt"].__setitem__("blockRef", "block-0"))
     listing_blockref_list = changed(active, lambda x: x["resolutionContext"]["listingReceipt"].__setitem__("blockRef", ["block-0"]))
     listing_blockref_string = changed(active, lambda x: x["resolutionContext"]["listingReceipt"].__setitem__("blockRef", "block-0"))
+    for item in (listing_blockref_list, listing_blockref_string):
+        resign_current_state(item)
     head_authority_list = changed(active, lambda x: x["resolutionContext"]["headHistory"][0].__setitem__("authority", []))
     head_authority_string = changed(active, lambda x: x["resolutionContext"]["headHistory"][0].__setitem__("authority", "seller"))
 

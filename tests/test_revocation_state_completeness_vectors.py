@@ -3,8 +3,10 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts import generate_revocation_state_completeness_vectors as g
 
@@ -410,6 +412,13 @@ def validate_listing_receipt(receipt, digest):
     return True
 
 
+def listing_receipt_joins_head(listing_block_ref, head_block_ref):
+    return (
+        isinstance(listing_block_ref, dict)
+        and listing_block_ref.get("id") == head_block_ref.get("id")
+    )
+
+
 def exact_corrective_profile(profile):
     return (
         isinstance(profile, dict)
@@ -472,9 +481,7 @@ def verify_current_state(state_ref, context, public_key, listing):
     if not validate_listing_receipt(listing_receipt, listing_digest):
         return False
     listing_block_ref = listing_receipt.get("blockRef")
-    if not isinstance(listing_block_ref, dict):
-        return False
-    if listing_block_ref.get("id") != head_block_ref.get("id"):
+    if not listing_receipt_joins_head(listing_block_ref, head_block_ref):
         return False
     if evidence.get("listingContentHash") != listing_digest:
         return False
@@ -510,6 +517,26 @@ def discovery_disposition(discovery, context, target, public_keys=None):
             return "revoked"
         return "indeterminate"
     return "indeterminate"
+
+
+def verified_discovered_marker(discovery, context, target, public_keys):
+    """RB-4 checks the selected exact binding, not unrelated RSC context."""
+    if not isinstance(discovery, dict) or not isinstance(context, dict):
+        return False
+    if discovery.get("status") != "revoked" or not isinstance(discovery.get("revocationRef"), dict):
+        return False
+    markers = context.get("resolvedMarkers")
+    if not isinstance(markers, list):
+        return False
+    matching = [
+        item for item in markers
+        if isinstance(item, dict) and item.get("revocationRef") == discovery["revocationRef"]
+    ]
+    return (
+        len(matching) == 1
+        and validate_resolved_marker_entry(matching[0])
+        and discovery_disposition(discovery, context, target, public_keys) == "revoked"
+    )
 
 
 def validate_state_proof_shape(proof, expected_leaf_key, expected_head_hash):
@@ -723,9 +750,6 @@ def _evaluate(data, public_keys, trusted_admission=None):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
     context = data.get("resolutionContext")
-    if not validate_resolution_context_shape(context):
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-
     target = {
         "sellerPrimaryClaim": listing.get("sellerPrimaryClaim"),
         "listingId": listing.get("listingId"),
@@ -733,9 +757,13 @@ def _evaluate(data, public_keys, trusted_admission=None):
         "listingContentHash": listing.get("listingContentHash"),
     }
     key = hash_hex(target)
-    rb_disposition = discovery_disposition(data.get("discovery"), context, target, public_keys)
-    if rb_disposition == "revoked":
+    # RB-4 authenticates the exact marker independently of the RSC head view.
+    # Missing RSC join fields cannot demote a proven revocation to unknown.
+    if verified_discovered_marker(data.get("discovery"), context, target, public_keys):
         return "fail", {"revocationCheck": "revoked", "session": "refuse"}
+    if not validate_resolution_context_shape(context):
+        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+    rb_disposition = discovery_disposition(data.get("discovery"), context, target, public_keys)
     if not verify_current_state(state_ref, context, public_keys.get("currentStateAuthority", ""), listing):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
     evidence = context["currentStateEvidence"]
@@ -930,8 +958,9 @@ def validate_resolution_context_shape(context):
     """Fail-closed closed-shape gate for the mandatory resolution context.
 
     All nine normative ``RevocationHeadResolutionContext`` members are mandatory
-    (RSC-9) and must carry their exact container/value types before any
-    evaluation branch may run. A missing member (notably an omitted
+    (RSC-9) and must carry their exact container/value types before the RSC
+    inclusion or non-membership branches may run. Independently authenticated
+    RB-4 revocation is handled earlier. A missing member (notably an omitted
     ``resolvedMarkers``), a null/object/malformed entry, or an extra key fails
     closed here, so a transition-free genesis ``absent`` cannot bypass marker
     resolution. Each ``resolvedMarkers`` entry must itself be a closed
@@ -941,6 +970,8 @@ def validate_resolution_context_shape(context):
     while ``absent`` is reproduced.
     """
     if not isinstance(context, dict) or set(context) != set(EXPECTED_CONTEXT_FIELDS):
+        return False
+    if not validate_marker_resolution_context_shape(context):
         return False
     head_ref = context.get("headRef")
     if not isinstance(head_ref, dict):
@@ -988,6 +1019,18 @@ def validate_resolution_context_shape(context):
         return False
     if not isinstance(context.get("stateProof"), dict):
         return False
+    conflicting = context.get("knownConflictingHeads")
+    if not isinstance(conflicting, list) or not all(
+        isinstance(item, dict) for item in conflicting
+    ):
+        return False
+    return True
+
+
+def validate_marker_resolution_context_shape(context):
+    """Validate the RB-4 subset without requiring unrelated RSC join evidence."""
+    if not isinstance(context, dict):
+        return False
     resolved_markers = context.get("resolvedMarkers")
     if not isinstance(resolved_markers, list):
         return False
@@ -1001,11 +1044,6 @@ def validate_resolution_context_shape(context):
             if marker_ref in seen_refs:
                 return False
             seen_refs.add(marker_ref)
-    conflicting = context.get("knownConflictingHeads")
-    if not isinstance(conflicting, list) or not all(
-        isinstance(item, dict) for item in conflicting
-    ):
-        return False
     return True
 
 
@@ -1259,6 +1297,85 @@ class RevocationStateCompletenessTests(unittest.TestCase):
                     vector.get("trustedProfileAdmission"),
                 )
                 self.assertEqual((expected, want), (vector["expected"], vector["want"]))
+
+    def test_rb4_verified_marker_precedes_unrelated_rsc_context(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        rb4 = vectors["rsc-rb4-discovered-marker-precedes-nonmembership"]
+        revoked = ("fail", {"revocationCheck": "revoked", "session": "refuse"})
+        self.assertEqual(evaluate(rb4["input"], self.document["publicKeys"], rb4["trustedProfileAdmission"]), revoked)
+        for field in ("headReceipt", "currentStateEvidence", "headHistory", "stateProof", "knownConflictingHeads"):
+            with self.subTest(field=field):
+                data = json.loads(json.dumps(rb4["input"]))
+                data["resolutionContext"].pop(field)
+                self.assertEqual(evaluate(data, self.document["publicKeys"], rb4["trustedProfileAdmission"]), revoked)
+
+        unrelated_malformed = json.loads(json.dumps(rb4["input"]))
+        unrelated_malformed["resolutionContext"]["resolvedMarkers"].append({})
+        self.assertEqual(
+            evaluate(unrelated_malformed, self.document["publicKeys"], rb4["trustedProfileAdmission"]),
+            revoked,
+        )
+
+        for mutation in ("missing", "malformed", "duplicate", "unauthenticated"):
+            with self.subTest(marker=mutation):
+                data = json.loads(json.dumps(rb4["input"]))
+                if mutation == "missing":
+                    data["resolutionContext"].pop("resolvedMarkers")
+                elif mutation == "malformed":
+                    data["resolutionContext"]["resolvedMarkers"] = [{}]
+                elif mutation == "duplicate":
+                    data["resolutionContext"]["resolvedMarkers"].append(
+                        json.loads(json.dumps(data["resolutionContext"]["resolvedMarkers"][-1]))
+                    )
+                else:
+                    data["resolutionContext"]["resolvedMarkers"][-1]["marker"]["signature"]["value"] = "not-a-signature"
+                self.assertEqual(evaluate(data, self.document["publicKeys"], rb4["trustedProfileAdmission"])[1]["revocationCheck"], "indeterminate")
+
+        active = vectors["rsc-valid-active-nonmembership"]
+        for field in ("headReceipt", "currentStateEvidence", "headHistory", "stateProof", "knownConflictingHeads"):
+            with self.subTest(active_missing=field):
+                data = json.loads(json.dumps(active["input"]))
+                data["resolutionContext"].pop(field)
+                self.assertNotEqual(evaluate(data, self.document["publicKeys"], active["trustedProfileAdmission"])[1]["revocationCheck"], "absent")
+
+    def test_named_negative_current_state_envelopes_are_authentic_and_sensitive(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        cases = (
+            ("rsc-producer-time-cannot-prove-latest", "policy"),
+            ("rsc-listing-receipt-stale", "join"),
+            ("rsc-listing-receipt-tampered", "receipt"),
+            ("rsc-listing-receipt-blockref-list", "join"),
+            ("rsc-listing-receipt-blockref-string", "join"),
+        )
+        for name, gate in cases:
+            with self.subTest(name=name):
+                vector = vectors[name]
+                data = vector["input"]
+                context = data["resolutionContext"]
+                evidence = context["currentStateEvidence"]
+                self.assertEqual(evidence["listingReceiptHash"], hash_hex(context["listingReceipt"]))
+                message = current_state_message(
+                    data["listing"]["revocationState"], context, evidence,
+                    artifact_hash(data["listing"]),
+                )
+                Ed25519PublicKey.from_public_bytes(bytes.fromhex(
+                    self.document["publicKeys"]["currentStateAuthority"]
+                )).verify(decode_b64url(evidence["evidence"]["value"]), message)
+                self.assertEqual(
+                    evaluate(data, self.document["publicKeys"], vector["trustedProfileAdmission"]),
+                    (vector["expected"], vector["want"]),
+                )
+                if gate == "policy":
+                    patch = mock.patch.object(sys.modules[__name__], "CURRENT_STATE_POLICY", "producer-time-only")
+                elif gate == "receipt":
+                    patch = mock.patch.object(sys.modules[__name__], "validate_listing_receipt", return_value=True)
+                else:
+                    patch = mock.patch.object(sys.modules[__name__], "listing_receipt_joins_head", return_value=True)
+                with patch:
+                    self.assertEqual(
+                        evaluate(data, self.document["publicKeys"], vector["trustedProfileAdmission"])[1]["revocationCheck"],
+                        "absent", "omitting the named gate must invalidate this negative oracle",
+                    )
 
     def test_acceptance_cases_are_explicit(self):
         names = {item["name"] for item in self.document["vectors"]}

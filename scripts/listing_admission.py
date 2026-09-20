@@ -1,12 +1,12 @@
 """Exact Listing admission bridge for the current corrective-profile consumers.
 
-This is a compatibility bridge, not a re-introduction of the removed consumer
-dispatch. It consumes the portable ``rsc-current-admission-v2`` result
-(``joined_current_state`` plus ``validate_listing_capacity``) and issues a
-verifier-owned :class:`AdmittedListing`. No admission authority is ever decoded
-from artifact data or caller fields: the retained capability revalidates exact
-bytes on every use and fails closed on any substitution, key mismatch, stale
-evidence, or capacity failure.
+This is a partial compatibility bridge, not a complete DACS-1 evaluator. It
+never promotes caller-supplied lifecycle labels, current-state labels, or
+partial local checks into admission authority. A new-session capability
+requires an authoritative ordered DACS-1 evaluator; an already-committed
+exception requires authenticated prior commitment bound to the exact Listing.
+This module has neither verifier and therefore returns indeterminate without
+issuing an :class:`AdmittedListing` for either direct call.
 
 Every admission entry point returns a three-value ``(verdict, reason, record)``
 tuple where ``verdict`` is ``"verified"``, ``"rejected"``, or ``"indeterminate"``
@@ -35,7 +35,6 @@ import listing_artifact
 from rsc_current_admission import (
     CONFORMANCE_SUBSTRATE,
     CONFORMANCE_FINALITY,
-    joined_current_state,
     validate_listing_capacity,
 )
 
@@ -138,11 +137,14 @@ def admit_listing(
     current_state_evidence=None,
     trusted_state=None,
 ):
-    """Minimal adapter: consume the v2 join/capacity result and issue exact admission.
+    """Run partial checks, but never issue an unauthenticated admission.
 
-    Returns ``(verdict, reason, AdmittedListing | None)``. A
-    ``RevocationBoundListing`` additionally requires the v2 common-state join and
-    its exact content binding.
+    Returns ``(verdict, reason, AdmittedListing | None)``. A local signature,
+    shape, current-state label join, or capacity check is not the normative
+    ordered DACS-1 admission (profile, time, RSC, identity, phase, rail, and
+    finalized anchor). Nor does a caller's committed-session string prove an
+    authenticated prior agreement commitment. Current-evidence arguments
+    remain for API compatibility but cannot authorize either boundary.
     """
     if not isinstance(listing, dict):
         return "rejected", "listing is not an object", None
@@ -166,13 +168,7 @@ def admit_listing(
     if not _verify_listing_signature(listing, domain, inclusion_key):
         return "rejected", "listing signature does not verify under the inclusion key", None
 
-    if listing_type == listing_artifact.REVOCATION_BOUND_LISTING:
-        if not joined_current_state(
-            current_listing_evidence, current_state_evidence, trusted_state or {}
-        ):
-            return "indeterminate", "current-state evidence is unavailable or mismatched", None
-
-    if native_binding is not None:
+    if session_boundary == "new-session" or native_binding is not None:
         capacity = validate_listing_capacity(
             listing,
             native_binding,
@@ -184,16 +180,19 @@ def admit_listing(
         if capacity != "pass":
             return "indeterminate", "native-capacity evidence is unavailable", None
 
-    ref = exact_listing_ref(listing)
-    return "verified", "verified", AdmittedListing(
-        "verified",
-        listing_type,
-        (ref["listingId"], ref["version"], ref["contentHash"]),
-        publisher,
-        inclusion_key,
-        session_boundary,
-    )
+    if session_boundary == "new-session":
+        if not isinstance(listing.get("revocationState"), dict):
+            return "indeterminate", "current revocation-state reference is unavailable", None
+        # The portable v2 join compares already-authenticated child results;
+        # these public dict parameters are not those results. More importantly,
+        # no full ordered DACS-1 evaluator is installed here. Do not issue a
+        # capability from signature, shape, capacity, or caller labels alone.
+        return "indeterminate", "full DACS-1 new-session admission is unavailable", None
 
+    # RSC-8 preserves already-committed sessions, but the caller's boundary
+    # string does not authenticate that state or bind its agreement/listingRef.
+    # A separate verifier-owned prior admission is needed for retained use.
+    return "indeterminate", "authenticated committed-session admission is unavailable", None
 
 def retained_listing_admission(
     listing,
@@ -206,7 +205,7 @@ def retained_listing_admission(
     current_state_evidence=None,
     trusted_state=None,
 ):
-    """Build a verifier-owned capability that replays the v2 gate on every use.
+    """Retain exact inputs for rechecking; this partial bridge cannot mint authority.
 
     All inputs are deep-copied so a later caller mutation cannot mint authority.
     A caller-substituted listing or reference never re-enters the retained gate.

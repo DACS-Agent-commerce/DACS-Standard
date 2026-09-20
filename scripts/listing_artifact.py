@@ -29,10 +29,13 @@ KNOWN_PHASES = frozenset({
     "negotiate-rfq",
     "negotiate-sealed-envelope",
     "negotiate-sealed-envelope-procurement",
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
     "commit-agreement",
     "commit-payee-bound-agreement",
     "commit-identity-bound-agreement",
     "commit-identity-bound-payee-agreement",
+    "commit-selection-bound-agreement",
     "pay-evm-erc20",
     "pay-solana-spl",
     "pay-cross-chain-htlc",
@@ -58,9 +61,15 @@ NEGOTIATION_PHASES = frozenset(
 COMMITMENT_PHASES = frozenset({
     "commit-agreement", "commit-payee-bound-agreement",
     "commit-identity-bound-agreement", "commit-identity-bound-payee-agreement",
+    "commit-selection-bound-agreement",
+})
+COMPLETE_SEALED_NEGOTIATIONS = frozenset({
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
 })
 
 _LISTING_ID = re.compile(r"[A-Za-z0-9._~-]{1,128}\Z")
+_HASH = re.compile(r"[0-9a-f]{64}\Z")
 _AMOUNT = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 _SELECTION_RULES = frozenset({"lowest-price", "highest-price", "first-acceptable"})
 _CAPABILITIES = frozenset({"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
@@ -115,6 +124,7 @@ def validate_sealed_session_deadline(listing, session_start):
             if step.get("kind") not in {
                 "negotiate-sealed-envelope",
                 "negotiate-sealed-envelope-procurement",
+                *COMPLETE_SEALED_NEGOTIATIONS,
             }:
                 continue
             if not _is_number(session_start):
@@ -156,6 +166,24 @@ def validate_listing_window(listing, now):
 
 def _is_nonempty_string(value):
     return isinstance(value, str) and bool(value)
+
+
+def _valid_attestation_ref(value):
+    if not isinstance(value, dict) or not {"anchor", "contentHash"} <= set(value):
+        return False
+    if set(value) - {"anchor", "contentHash", "signer"}:
+        return False
+    anchor = value["anchor"]
+    return (
+        isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and isinstance(anchor["kind"], str)
+        and anchor["kind"] in {"storage-program", "ipfs", "https"}
+        and _is_nonempty_string(anchor["locator"])
+        and isinstance(value["contentHash"], str)
+        and _HASH.fullmatch(value["contentHash"]) is not None
+        and ("signer" not in value or _is_nonempty_string(value["signer"]))
+    )
 
 
 def _valid_price(value):
@@ -286,7 +314,7 @@ def _valid_pipeline(pipeline, pricing, deliverable):
         and pricing_kind not in {"negotiable", "metered"}
         or negotiation in {
             "negotiate-sealed-envelope", "negotiate-sealed-envelope-procurement"
-        }
+        } | COMPLETE_SEALED_NEGOTIATIONS
         and pricing_kind != "auction"
     ):
         return False
@@ -299,16 +327,39 @@ def _valid_pipeline(pipeline, pricing, deliverable):
         or not _is_number(parameters.get("timeoutSec"))
     ):
         return False
+    if (
+        (negotiation in COMPLETE_SEALED_NEGOTIATIONS)
+        != (kinds[commitments[0]] == "commit-selection-bound-agreement")
+    ):
+        return False
     if negotiation.startswith("negotiate-sealed-envelope") and (
         not isinstance(parameters, dict)
         or not _is_number(parameters.get("commitDeadline"))
         or not _is_number(parameters.get("revealWindow"))
         or parameters["revealWindow"] < 60
         or parameters.get("selectionRule") != pricing.get("selectionRule")
-        or negotiation == "negotiate-sealed-envelope-procurement"
+        or negotiation in {
+            "negotiate-sealed-envelope-procurement",
+            "negotiate-sealed-envelope-procurement-complete",
+        }
         and parameters.get("auctionMode") != "procurement"
-        or negotiation == "negotiate-sealed-envelope"
+        or negotiation in {
+            "negotiate-sealed-envelope",
+            "negotiate-sealed-envelope-complete",
+        }
         and "auctionMode" in parameters and parameters["auctionMode"] != "demand"
+        or negotiation in COMPLETE_SEALED_NEGOTIATIONS
+        and (
+            parameters.get("selectionRule") not in {"lowest-price", "highest-price"}
+            or not isinstance(parameters.get("candidateSetBinding"), dict)
+            or set(parameters["candidateSetBinding"]) != {
+                "bindingId", "bindingVersion", "definitionRef"
+            }
+            or not _is_nonempty_string(parameters["candidateSetBinding"].get("bindingId"))
+            or not isinstance(parameters["candidateSetBinding"].get("bindingVersion"), str)
+            or re.fullmatch(r"[1-9][0-9]*", parameters["candidateSetBinding"]["bindingVersion"]) is None
+            or not _valid_attestation_ref(parameters["candidateSetBinding"].get("definitionRef"))
+        )
     ):
         return False
     alternatives = [step for step in pipeline if step["kind"] == "pay-alternative"]

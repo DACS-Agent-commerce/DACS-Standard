@@ -1,4 +1,4 @@
-"""Versioned current RSC admission contracts; no production binding is implied."""
+"""Versioned RSC comparison/capacity contracts; no admission authority implied."""
 from dataclasses import dataclass
 from typing import Callable
 import jcs
@@ -66,10 +66,11 @@ def validate_listing_capacity(listing: dict, binding, *, substrate: str,
 
 
 def joined_current_state(listing_evidence, revocation_evidence, trusted) -> bool:
-    """Join already signature-verified values under the pinned fixture policy.
+    """Compare labels from independently preverified values under a fixture policy.
 
-    The state identifier and authority are verifier-installed for this decision;
-    equal producer labels or two ordinary reads cannot establish currentness.
+    This function does not verify signatures, receipts, locators, content hashes,
+    conflict sets, profile, or full DACS-1 admission. In particular, matching
+    caller dictionaries must never be promoted to a new-session capability.
     """
     if trusted.get("admissionPolicy") != CURRENT_ADMISSION_POLICY:
         return False

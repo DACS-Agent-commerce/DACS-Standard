@@ -36,9 +36,9 @@ AUTHORITATIVE_MODULE_VERSIONS = {
     "core": "0.3",
     "dacs1": "0.8",
     "dacs2": "0.6",
-    "dacs3": "0.5",
+    "dacs3": "0.6",
     "dacs4": "0.8",
-    "dacs5": "0.5",
+    "dacs5": "0.7",
 }
 ZERO_HASH = "00" * 32
 
@@ -1257,6 +1257,22 @@ class RevocationStateCompletenessTests(unittest.TestCase):
         self.assertEqual(profile["releasePin"], AUTHORITATIVE_RELEASE_PIN)
         self.assertEqual(profile["moduleVersions"], AUTHORITATIVE_MODULE_VERSIONS)
         self.assertTrue(exact_corrective_profile(profile))
+        current_table = dict(re.findall(
+            r"^\| \[([^]]+)\]\([^)]+\) \| ([0-9.]+) \|",
+            (ROOT / "spec" / "PROFILE.md").read_text(encoding="utf-8"),
+            re.MULTILINE,
+        ))
+        for key, document in (
+            ("core", "CORE"), ("dacs1", "DACS-1-IDENTIFY"),
+            ("dacs2", "DACS-2-VET"), ("dacs3", "DACS-3-NEGOTIATE"),
+            ("dacs4", "DACS-4-SETTLE"), ("dacs5", "DACS-5-VERIFY"),
+        ):
+            self.assertEqual(profile["moduleVersions"][key], current_table[document])
+        positive = next(
+            vector for vector in self.document["vectors"]
+            if vector["name"] == "rsc-valid-active-nonmembership"
+        )
+        self.assertEqual(positive["trustedProfileAdmission"]["profile"], profile)
 
     def test_conflict_evidence_omission_is_indeterminate_not_absent(self):
         # A1: the higher revoking-head case is `revoked`; removing the signed

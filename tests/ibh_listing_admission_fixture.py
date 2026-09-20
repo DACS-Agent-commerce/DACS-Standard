@@ -24,6 +24,7 @@ from rsc_current_admission import (  # noqa: E402
     CONFORMANCE_SUBSTRATE,
     CONFORMANCE_FINALITY,
     TrustedNativeRecordBinding,
+    validate_listing_capacity,
 )
 
 CORPUS = (
@@ -64,39 +65,84 @@ def _scenario_baseline(scenario: str) -> dict:
     return copy.deepcopy(scenarios[scenario])
 
 
-def retained_positive_admission(scenario: str) -> listing_admission.ListingAdmissionCapability:
-    """Return a capability from pinned pristine source, before materialization."""
-    baseline = _scenario_baseline(scenario)
-    listing = baseline.get("listing")
-    agreement = baseline.get("agreement")
+def _verified_fixture_capability(context: dict) -> listing_admission.ListingAdmissionCapability:
+    """Model prior authenticated commitment in this pinned offline harness only.
+
+    The direct bridge deliberately does not authenticate committed-session
+    provenance. The existing IBH oracle does so for this test fixture before a
+    retained terminal capability is issued; this is not a production adapter.
+    """
+    import test_identity_bundle_hash_binding_vectors as verifier
+
+    if "commitment" not in context:
+        artifact = context.get("artifact")
+        if not isinstance(artifact, str):
+            raise ValueError("fixture has no commitment artifact")
+        context = verifier.materialize(
+            {"scenarios": {artifact: context}},
+            {"scenario": artifact, "commitment": "finality", "stage": "commit"},
+        )
+
+    status, reason, artifact, _ = verifier.dispatch(context)
+    if status != "pass" or artifact is None:
+        raise ValueError("fixture commitment dispatch did not verify: %r" % ((status, reason),))
+    status, reason, _, _ = verifier.pre_action_gate(context, artifact, "commit", set())
+    if status != "pass":
+        raise ValueError("fixture committed-session gate did not verify: %r" % ((status, reason),))
+
+    listing = context.get("listing")
+    agreement = context.get("agreement")
     if not isinstance(listing, dict) or not isinstance(agreement, dict):
-        raise ValueError("pristine IBH fixture baseline is invalid")
+        raise ValueError("fixture has no exact Listing/agreement")
     listing_ref = agreement.get("listingRef")
     publisher = listing.get("seller", {}).get("identity", {}).get("presentedBy")
-    if (
-        not isinstance(listing_ref, dict)
-        or not isinstance(publisher, str)
-        or not publisher.startswith("key:")
-    ):
-        raise ValueError("pristine IBH fixture baseline is invalid")
+    if not isinstance(listing_ref, dict) or not isinstance(publisher, str) or not publisher.startswith("key:"):
+        raise ValueError("fixture Listing publisher or reference is invalid")
     inclusion_key = publisher.removeprefix("key:")
-    # Confirm the retained admission actually verifies against the pristine bytes
-    # before exposing it to any consumer, so no broken fixture can mint authority.
-    disposition, reason, _ = listing_admission.admit_listing(
-        listing,
-        inclusion_key=inclusion_key,
-        session_boundary=COMMITTED_BOUNDARY,
-        native_binding=native_binding(),
-    )
-    if disposition != "verified":
-        raise ValueError("pristine Listing admission did not verify: %r" % ((disposition, reason),))
-    return listing_admission.retained_listing_admission(
-        listing,
-        listing_ref,
-        inclusion_key=inclusion_key,
-        session_boundary=COMMITTED_BOUNDARY,
-        native_binding=native_binding(),
-    )
+    expected_ref = listing_admission.exact_listing_ref(listing)
+    if listing_ref != expected_ref:
+        raise ValueError("fixture Listing reference differs from authenticated commitment")
+    if validate_listing_capacity(
+        listing, native_binding(), substrate=CONFORMANCE_SUBSTRATE,
+        finality_profile=CONFORMANCE_FINALITY,
+    ) != "pass":
+        raise ValueError("fixture native capacity is unavailable")
+
+    retained_context = copy.deepcopy(context)
+    retained_listing = copy.deepcopy(listing)
+    retained_ref = copy.deepcopy(listing_ref)
+
+    def revalidate(candidate, candidate_ref, boundary):
+        if (
+            boundary != COMMITTED_BOUNDARY
+            or not isinstance(candidate, dict)
+            or not isinstance(candidate_ref, dict)
+            or listing_admission.canonical_bytes(candidate)
+            != listing_admission.canonical_bytes(retained_listing)
+            or listing_admission.canonical_bytes(candidate_ref)
+            != listing_admission.canonical_bytes(retained_ref)
+        ):
+            return "rejected", "substituted or stale listing", None
+        status, _, selected, _ = verifier.dispatch(retained_context)
+        if status != "pass" or selected != artifact:
+            return "indeterminate", "prior commitment is unavailable", None
+        status, _, _, _ = verifier.pre_action_gate(
+            retained_context, artifact, "commit", set()
+        )
+        if status != "pass":
+            return "indeterminate", "prior commitment is unavailable", None
+        return "verified", "verified", listing_admission.AdmittedListing(
+            "verified", "Listing",
+            (retained_ref["listingId"], retained_ref["version"], retained_ref["contentHash"]),
+            publisher, inclusion_key, COMMITTED_BOUNDARY,
+        )
+
+    return listing_admission.ListingAdmissionCapability(revalidate)
+
+
+def retained_positive_admission(scenario: str) -> listing_admission.ListingAdmissionCapability:
+    """Return a capability from pinned pristine source, before materialization."""
+    return _verified_fixture_capability(_scenario_baseline(scenario))
 
 
 def retained_admission_for_context(context: dict) -> listing_admission.ListingAdmissionCapability:
@@ -106,27 +152,4 @@ def retained_admission_for_context(context: dict) -> listing_admission.ListingAd
     removing a nonce). The capability still re-verifies the exact bytes and
     signature on every use, so an arbitrary context cannot mint authority.
     """
-    listing = context.get("listing")
-    agreement = context.get("agreement")
-    if not isinstance(listing, dict) or not isinstance(agreement, dict):
-        raise ValueError("materialized context has no signed Listing/agreement")
-    listing_ref = agreement.get("listingRef")
-    publisher = listing.get("seller", {}).get("identity", {}).get("presentedBy")
-    if not isinstance(listing_ref, dict) or not isinstance(publisher, str) or not publisher.startswith("key:"):
-        raise ValueError("materialized context Listing is invalid")
-    inclusion_key = publisher.removeprefix("key:")
-    disposition, reason, _ = listing_admission.admit_listing(
-        listing,
-        inclusion_key=inclusion_key,
-        session_boundary=COMMITTED_BOUNDARY,
-        native_binding=native_binding(),
-    )
-    if disposition != "verified":
-        raise ValueError("materialized Listing admission did not verify: %r" % ((disposition, reason),))
-    return listing_admission.retained_listing_admission(
-        listing,
-        listing_ref,
-        inclusion_key=inclusion_key,
-        session_boundary=COMMITTED_BOUNDARY,
-        native_binding=native_binding(),
-    )
+    return _verified_fixture_capability(context)

@@ -325,6 +325,7 @@ The format used per release:
 
 - Add `rsc-current-admission-v2`: authenticate Listing and revocation current values at one common finalized evaluation state, retaining distinct earlier inclusion receipts. Preserve known-revocation precedence, committed sessions and explicit recorded-policy replay; current consumers cannot fall back to v1 evidence.
 - Separate the 16,384-octet signature-omitted canonical Listing cap from the trusted binding's complete encoded-record capacity. Add an offline adapter contract and ordinary acceptance checks without changing signed artifacts or regenerating the frozen v1 corpus.
+- Fail closed in the local Listing admission bridge: signature, shape, native-capacity, unsigned state labels, and a caller's committed-session label cannot mint admission without the applicable authoritative evaluator. The pinned historical IBH fixture independently verifies its signed commitment chain before installing a retained test capability; this is not a general runtime exception. Admit the current complete sealed-phase shapes and align the RSC conformance profile tuple with the composed release. Positive current Listing admission remains an implementation gap, not a passing bridge claim.
 
 ### Added — authoritative listing-revocation completeness
 

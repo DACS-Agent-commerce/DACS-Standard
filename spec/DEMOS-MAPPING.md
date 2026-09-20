@@ -209,4 +209,4 @@ This is a node/binding requirement, not something the DACS SDK can manufacture f
 
 ### RSC v2 capability requirement
 
-A Demos adapter for current RSC admission must authenticate both locator values at one finalized evaluation state under a registered compatible policy and separately provide the complete native-record encoding and trusted size limit. Ordinary address reads and transaction-history pagination alone do not establish that contract. Until an identified binding supplies both capabilities, new RevocationBoundListing eligibility remains indeterminate. The offline conformance policy is not a claim of deployed Demos support.
+A Demos adapter for current RSC admission must authenticate both locator values at one finalized evaluation state under a registered compatible policy and separately provide the complete native-record encoding and trusted size limit. Ordinary address reads and transaction-history pagination alone do not establish that contract. Until an identified binding supplies both capabilities, new current-profile Listing eligibility remains indeterminate. The offline conformance policy is not a claim of deployed Demos support.

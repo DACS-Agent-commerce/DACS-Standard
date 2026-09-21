@@ -2568,6 +2568,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
             nonpasses.append((kind, "fail", "present copy role or address binding is invalid"))
             continue
         authority = entry.get("authority")
+        receipt_contract = None
         if kind == "finality-bound":
             if not isinstance(authority, dict):
                 result = ("indeterminate", "strong copy authority unavailable", None)
@@ -2655,7 +2656,11 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                 if disposition != "pass":
                     nonpasses.append((kind, disposition, reason))
                     continue
-        authenticated.append(bundle)
+        authenticated.append({
+            "bundle": bundle,
+            "kind": kind,
+            "evidenceReceiptContract": receipt_contract,
+        })
 
     # A present strong copy that cannot establish its required proof is never
     # replaced by an otherwise-valid weaker representation of the same job.
@@ -2688,18 +2693,48 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                 return {"decision": decision, "reason": reason, "bundle": None}
     if not authenticated:
         return {"decision": "indeterminate", "reason": "no authenticated copies", "bundle": None}
-    jobs = {bundle["jobId"] for bundle in authenticated}
+    jobs = {item["bundle"]["jobId"] for item in authenticated}
     if len(jobs) != 1:
         return {"decision": "fail", "reason": "authenticated copies bind different jobs", "bundle": None}
     for index, left in enumerate(authenticated):
         for right in authenticated[index + 1:]:
-            if divergence(left, right):
+            if divergence(left["bundle"], right["bundle"]):
                 return {"decision": "fail", "reason": "authenticated copies diverge", "bundle": None}
+    archival_ebfabs = [
+        item for item in authenticated
+        if (
+            item["kind"] == "evidence-bound"
+            and item["evidenceReceiptContract"] == "archival"
+        )
+    ]
+    passing_strong = [
+        item for item in authenticated if item["kind"] == "finality-bound"
+    ]
+    if archival_ebfabs and not passing_strong:
+        return {
+            "decision": "indeterminate",
+            "reason": "archival EBFAB requires independently passing finality-bound authority",
+            "bundle": None,
+        }
+    selectable = [
+        item for item in authenticated
+        if not (
+            item["kind"] == "evidence-bound"
+            and item["evidenceReceiptContract"] == "archival"
+        )
+    ]
     winner = max(
-        authenticated,
-        key=lambda bundle: (bundle_type_rank(bundle), bundle_hash(bundle)),
+        selectable,
+        key=lambda item: (
+            bundle_type_rank(item["bundle"]),
+            bundle_hash(item["bundle"]),
+        ),
     )
-    return {"decision": "pass", "reason": "authenticated strongest compatible copy selected", "bundle": winner}
+    return {
+        "decision": "pass",
+        "reason": "authenticated strongest compatible copy selected",
+        "bundle": winner["bundle"],
+    }
 
 
 def _tagged_copy_valid_for_derive(tagged):
@@ -3443,8 +3478,8 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
         entry for entry in summary
         if isinstance(entry, dict) and entry.get("kind") in DELIVERY_PHASES
     ]
-    if not signed_delivery_rows and not actual_refs:
-        return ("pass", "FAB carries no evidence requiring delivery classification")
+    if not signed_delivery_rows:
+        return ("pass", "FAB carries no signed delivery row requiring current admission")
     if authority is None:
         return ("indeterminate", "FAB delivery validation authority is unavailable")
     if not isinstance(authority, dict):

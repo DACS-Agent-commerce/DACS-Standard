@@ -343,24 +343,6 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self.assertEqual("indeterminate", result.get("disposition"), result["reason"])
 
         value = self._fixture()
-        value["bundle"]["phaseSummary"] = []
-        self._resign_bundle_and_pointer(value)
-        result = R.resolve_absolute_fault_pointer(
-            value["pointer"],
-            value["bundle"],
-            pubkeys=value["keys"],
-            trusted_contexts=value["trusted"],
-            expected_jobid=CURRENT_JOB,
-            expected_role=value["role"],
-        )
-        self.assertFalse(result["ok"])
-        self.assertEqual("indeterminate", result.get("disposition"), result["reason"])
-
-        result = self._resolve(value)
-        self.assertFalse(result["ok"])
-        self.assertEqual("fail", result.get("disposition"), result["reason"])
-
-        value = self._fixture()
         result = R.resolve_absolute_fault_pointer(
             value["pointer"],
             value["bundle"],
@@ -377,6 +359,23 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         result = self._resolve(value)
         self.assertFalse(result["ok"])
         self.assertEqual("indeterminate", result.get("disposition"), result["reason"])
+
+    def test_evidence_without_signed_delivery_row_does_not_activate_gate(self):
+        value = self._fixture()
+        value["bundle"]["phaseSummary"] = []
+        self._resign_bundle_and_pointer(value)
+        without_authority = R.resolve_absolute_fault_pointer(
+            value["pointer"],
+            value["bundle"],
+            pubkeys=value["keys"],
+            trusted_contexts=value["trusted"],
+            expected_jobid=CURRENT_JOB,
+            expected_role=value["role"],
+        )
+        self.assertTrue(without_authority["ok"], without_authority["reason"])
+
+        with_authority = self._resolve(value)
+        self.assertTrue(with_authority["ok"], with_authority["reason"])
 
     def test_current_fab_malformed_authority_and_member_are_errors(self):
         for field in (
@@ -451,6 +450,46 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
             entry["evidenceReceiptContract"] = contract
         return entry
 
+    def _current_entry(self, bundle, authority):
+        entry = self._entry(
+            copy.deepcopy(bundle), copy.deepcopy(authority), "current"
+        )
+        for receipt in entry["authority"][
+            "verifiedReceiptByCanonicalRef"
+        ].values():
+            legacy_transaction = receipt.pop("transaction")
+            receipt["nonce"] = str(receipt["nonce"])
+            receipt.update({
+                "receiptVersion": "1",
+                "substrate": "fixture-current",
+                "finalityProfile": "fixture-final",
+                "transactionRef": {
+                    "kind": "fixture-transaction",
+                    "value": legacy_transaction,
+                },
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1_900_000_000_000,
+                "blockRef": {"id": "fixture-current-block"},
+                "evidence": {"kind": "fixture-proof", "value": "verified"},
+            })
+        return entry
+
+    def _with_authenticated_absence(self, present_entry):
+        role = present_entry["expectedRole"]
+        other_role = "seller" if role == "buyer" else "buyer"
+        job_id = present_entry["expectedJobId"]
+        trust = copy.deepcopy(self.trust)
+        trust.setdefault("copyDispositionByJobRole", {})[
+            job_id + ":" + other_role
+        ] = "absent"
+        absent = {
+            "disposition": "absent",
+            "expectedJobId": job_id,
+            "expectedRole": other_role,
+        }
+        return absent, trust
+
     def test_contract_is_required_typed_and_never_inferred_from_strong_peer(self):
         case = next(
             item for item in self.data["dacs5"]["strongBundleCases"]
@@ -484,27 +523,10 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
         )
         self.assertEqual("pass", result["decision"], result["reason"])
 
-        current_positive = copy.deepcopy(older)
-        current_positive["evidenceReceiptContract"] = "current"
-        for receipt in current_positive["authority"][
-            "verifiedReceiptByCanonicalRef"
-        ].values():
-            legacy_transaction = receipt.pop("transaction")
-            receipt["nonce"] = str(receipt["nonce"])
-            receipt.update({
-                "receiptVersion": "1",
-                "substrate": "fixture-current",
-                "finalityProfile": "fixture-final",
-                "transactionRef": {
-                    "kind": "fixture-transaction",
-                    "value": legacy_transaction,
-                },
-                "state": "finalized",
-                "observationDisposition": "established",
-                "observedAt": 1_900_000_000_000,
-                "blockRef": {"id": "fixture-current-block"},
-                "evidence": {"kind": "fixture-proof", "value": "verified"},
-            })
+        current_positive = self._current_entry(
+            compatibility["copies"]["evidence-bound"],
+            compatibility["evidenceBoundAuthority"],
+        )
         result = R.reconcile_authenticated_finality_copies(
             [strong, current_positive], self.pubkeys, self.trust
         )
@@ -517,6 +539,78 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
         )
         self.assertEqual("fail", no_fallback["decision"])
         self.assertIn("receipt", no_fallback["reason"])
+
+    def test_payment_only_fab_does_not_activate_delivery_admission(self):
+        compatibility = self.data["dacs5"]["compatibility"]
+        payment_only = self._entry(
+            compatibility["copies"]["fault"], None
+        )
+        absent, trust = self._with_authenticated_absence(payment_only)
+        result = R.reconcile_authenticated_finality_copies(
+            [payment_only, absent], self.pubkeys, trust
+        )
+        self.assertEqual("pass", result["decision"], result["reason"])
+        self.assertEqual("fault", R.bundle_type(result["bundle"]))
+
+    def test_archival_ebfab_is_comparison_only(self):
+        case = next(
+            item for item in self.data["dacs5"]["strongBundleCases"]
+            if item["model"] == "block-depth"
+        )
+        compatibility = self.data["dacs5"]["compatibility"]
+        archival = self._entry(
+            compatibility["copies"]["evidence-bound"],
+            compatibility["evidenceBoundAuthority"],
+            "archival",
+        )
+        absent, trust = self._with_authenticated_absence(archival)
+        archival_only = R.reconcile_authenticated_finality_copies(
+            [archival, absent], self.pubkeys, trust
+        )
+        self.assertEqual("indeterminate", archival_only["decision"])
+        self.assertIsNone(archival_only["bundle"])
+
+        invalid_authority = copy.deepcopy(case["authority"])
+        key = next(iter(invalid_authority["finalityVerificationByCanonicalRef"]))
+        invalid_authority["finalityVerificationByCanonicalRef"][key]["context"][
+            "observation"
+        ]["transactionRef"]["txHash"] = "ff" * 32
+        invalid_strong = self._entry(case["bundle"], invalid_authority)
+        blocked = R.reconcile_authenticated_finality_copies(
+            [invalid_strong, archival], self.pubkeys, self.trust
+        )
+        self.assertEqual("fail", blocked["decision"])
+        self.assertIsNone(blocked["bundle"])
+
+    def test_current_ebfab_remains_selectable_but_dual_era_refuses(self):
+        compatibility = self.data["dacs5"]["compatibility"]
+        current = self._current_entry(
+            compatibility["copies"]["evidence-bound"],
+            compatibility["evidenceBoundAuthority"],
+        )
+        absent, trust = self._with_authenticated_absence(current)
+        current_only = R.reconcile_authenticated_finality_copies(
+            [current, absent], self.pubkeys, trust
+        )
+        self.assertEqual("pass", current_only["decision"], current_only["reason"])
+        self.assertEqual("evidence-bound", R.bundle_type(current_only["bundle"]))
+
+        archival_bundle = copy.deepcopy(
+            compatibility["copies"]["evidence-bound"]
+        )
+        archival_bundle["anchoredByRole"] = (
+            "seller" if current["expectedRole"] == "buyer" else "buyer"
+        )
+        archival = self._entry(
+            archival_bundle,
+            compatibility["evidenceBoundAuthority"],
+            "archival",
+        )
+        dual_era = R.reconcile_authenticated_finality_copies(
+            [current, archival], self.pubkeys, self.trust
+        )
+        self.assertEqual("indeterminate", dual_era["decision"])
+        self.assertIsNone(dual_era["bundle"])
 
 
 class EntitlementCredentialRefBoundaryTests(unittest.TestCase):

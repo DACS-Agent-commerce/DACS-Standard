@@ -555,7 +555,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         pairs = [
             (second_strong, case["authority"]),
             (copies["evidence-bound"], old_authority),
-            (copies["fault"], old_authority),
+            (copies["fault"], None),
             (copies["legacy"], None),
         ]
         for older, authority in pairs:

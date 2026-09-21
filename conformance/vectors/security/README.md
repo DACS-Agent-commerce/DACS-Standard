@@ -81,7 +81,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 24 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 v0.3 §6.3.4 RB-1..RB-6 historical revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
-| [`revocation-state-completeness-v0.8.json`](revocation-state-completeness-v0.8.json) | DACS-1 v0.8 §6.3.4 RSC-1..RSC-10 authoritative revocation completeness | 102 | `fail` / `indeterminate` / `pass` |
+| [`revocation-state-completeness-v0.8.json`](revocation-state-completeness-v0.8.json) | DACS-1 v0.8 §6.3.4 RSC-1..RSC-10 authoritative revocation completeness | 112 | `fail` / `indeterminate` / `pass` |
 | [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 32 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
@@ -796,7 +796,7 @@ against the offered producer and reader fixtures remains pending.
 
 ### `revocation-state-completeness-v0.8.json` — §6.3.4 RSC-1..RSC-10
 
-102 candidate vectors make current non-revocation independently reproducible.
+112 candidate vectors make current non-revocation independently reproducible.
 They bind a stable state-line locator and checkpoint into the signed Listing,
 verify genuine deterministic Ed25519 signatures on every Listing, state head,
 and marker, authenticate the selected head as the latest finalized native value,
@@ -815,8 +815,13 @@ unauthenticated admission fails closed before any listing interpretation.
 
 Positive controls cover current non-membership in a tree containing another
 listing's revocation and a revocation signed after an authenticated key
-rotation. Adversarial cases cover a censored tombstone, stale but valid signed
-head, two valid children of one head, a higher-known authenticated head that
+rotation. A data-driven same-sequence sibling matrix crosses exact-target
+presence/absence with authentic/inauthentic heads: an authenticated exact-target
+sibling returns `revoked`, while omission is equivocation and unauthenticated
+siblings are non-authorizing. A separate RSC-2 matrix uses freshly signed
+genesis and transition heads to reject extra, missing, and wrongly typed members
+at the closed-schema boundary. Adversarial cases cover a censored tombstone,
+stale but valid signed head, two valid children of one head, a higher-known authenticated head that
 revokes the target, corrupted non-membership, unavailable latest-state evidence,
 cross-tuple replay, unresolved marker, rollback below the Listing checkpoint,
 unauthorized and corrupted rotation keys, wrong signer key, wrong signature

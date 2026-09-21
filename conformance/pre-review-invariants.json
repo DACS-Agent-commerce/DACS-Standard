@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "vectorMatrices": [
+    {
+      "id": "pr396-rsc7-same-sequence",
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "targetPresence": ["present", "absent"],
+        "authenticity": ["authentic", "inauthentic"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-same-sequence-target-present-authentic",
+          "coordinates": {"targetPresence": "present", "authenticity": "authentic"},
+          "expected": {"verdict": "fail", "revocationCheck": "revoked"},
+          "controlCase": "rsc-valid-active-nonmembership"
+        },
+        {
+          "caseId": "rsc-same-sequence-target-absent-authentic",
+          "coordinates": {"targetPresence": "absent", "authenticity": "authentic"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-active-nonmembership"
+        },
+        {
+          "caseId": "rsc-same-sequence-target-present-inauthentic",
+          "coordinates": {"targetPresence": "present", "authenticity": "inauthentic"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-same-sequence-target-present-authentic"
+        },
+        {
+          "caseId": "rsc-same-sequence-target-absent-inauthentic",
+          "coordinates": {"targetPresence": "absent", "authenticity": "inauthentic"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-active-nonmembership"
+        }
+      ]
+    },
+    {
+      "id": "pr396-rsc2-closed-head-schema",
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "headKind": ["genesis", "transition"],
+        "mutation": ["extra", "missing", "wrong-type"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-head-schema-genesis-extra",
+          "coordinates": {"headKind": "genesis", "mutation": "extra"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-genesis-absent"
+        },
+        {
+          "caseId": "rsc-head-schema-genesis-missing",
+          "coordinates": {"headKind": "genesis", "mutation": "missing"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-genesis-absent"
+        },
+        {
+          "caseId": "rsc-head-schema-genesis-wrong-type",
+          "coordinates": {"headKind": "genesis", "mutation": "wrong-type"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-genesis-absent"
+        },
+        {
+          "caseId": "rsc-head-schema-transition-extra",
+          "coordinates": {"headKind": "transition", "mutation": "extra"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-active-nonmembership"
+        },
+        {
+          "caseId": "rsc-head-schema-transition-missing",
+          "coordinates": {"headKind": "transition", "mutation": "missing"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-active-nonmembership"
+        },
+        {
+          "caseId": "rsc-head-schema-transition-wrong-type",
+          "coordinates": {"headKind": "transition", "mutation": "wrong-type"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
+          "controlCase": "rsc-valid-active-nonmembership"
+        }
+      ]
+    }
+  ],
+  "unitRegressions": [
+    {
+      "id": "prior-blocker-round10-lossy-signature-dedup",
+      "file": "tests/test_round10_validation_predicate_vectors.py",
+      "test": "Round10ValidationPredicateTests.test_r10_2_duplicate_invalid_defect"
+    },
+    {
+      "id": "prior-blocker-round11-four-probe-grid",
+      "file": "tests/test_round11_receipt_ingress_vectors.py",
+      "test": "Round11ReceiptIngressTests.test_r11_grid_covers_randoms_four"
+    },
+    {
+      "id": "prior-blocker-round12-replay-context-completeness",
+      "file": "tests/test_round12_replay_completeness_vectors.py",
+      "test": "Round12ReplayCompletenessTests.test_T1_missing_resolution_context"
+    },
+    {
+      "id": "prior-blocker-round14-full-standing-equivocation",
+      "file": "tests/test_round14_hub_reproduction_vectors.py",
+      "test": "Round14VerificationCompletion.test_b_bb6_two_full_standing_forms_are_indeterminate"
+    }
+  ],
+  "plannedInvariantClasses": [
+    {"id": "reference-reuse", "status": "planned"},
+    {"id": "selector-exclusivity", "status": "planned"},
+    {"id": "cross-module-composition", "status": "planned"}
+  ]
+}

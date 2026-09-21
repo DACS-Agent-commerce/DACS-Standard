@@ -602,6 +602,79 @@ def build_vectors() -> list[dict]:
 
     genesis_absent = input_for(GENESIS, {})
 
+    # PR #396 / RSC-7 matrix: target presence and artifact authenticity are
+    # independent axes for same-sequence siblings of one predecessor.  An
+    # authenticated exact-target sibling is revocation proof; omission or an
+    # unauthenticated sibling cannot establish revocation or absence.
+    third = listing_tuple("third-service", "66" * 32)
+    third_marker = marker(third)
+    third_ref = marker_ref(third_marker, "third-service")
+    third_head, _third_leaves = append_head(GENESIS, {}, third, third_ref)
+
+    same_sequence_target_present_authentic = input_for(
+        OTHER_HEAD, OTHER_LEAVES, conflicting_heads=[history_item(TARGET_HEAD)]
+    )
+    same_sequence_target_present_authentic["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(TARGET_REF, TARGET_MARKER, SELLER_KEY, LISTING_ID)
+    )
+
+    same_sequence_target_absent_authentic = input_for(
+        OTHER_HEAD, OTHER_LEAVES, conflicting_heads=[history_item(third_head)]
+    )
+    same_sequence_target_absent_authentic["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(third_ref, third_marker, SELLER_KEY, "third-service")
+    )
+
+    invalid_target_item = history_item(TARGET_HEAD)
+    invalid_target_item["head"]["signature"]["value"] = "not-a-signature"
+    same_sequence_target_present_inauthentic = input_for(
+        OTHER_HEAD, OTHER_LEAVES, conflicting_heads=[invalid_target_item]
+    )
+    same_sequence_target_present_inauthentic["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(TARGET_REF, TARGET_MARKER, SELLER_KEY, LISTING_ID)
+    )
+
+    invalid_third_item = history_item(third_head)
+    invalid_third_item["head"]["signature"]["value"] = "not-a-signature"
+    same_sequence_target_absent_inauthentic = input_for(
+        OTHER_HEAD, OTHER_LEAVES, conflicting_heads=[invalid_third_item]
+    )
+    same_sequence_target_absent_inauthentic["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(third_ref, third_marker, SELLER_KEY, "third-service")
+    )
+
+    # PR #396 / RSC-2 matrix: each malformed head is freshly signed and has a
+    # matching receipt, so only the sequence-dependent closed-schema boundary
+    # can reject it.  Genesis and transition heads are exercised separately.
+    def malformed_signed_head(base: dict, mutation) -> dict:
+        unsigned = {key: copy.deepcopy(value) for key, value in base.items() if key != "signature"}
+        mutation(unsigned)
+        return sign_artifact(unsigned, SELLER_KEY, SELLER, HEAD_DOMAIN)
+
+    genesis_schema_heads = {
+        "extra": malformed_signed_head(GENESIS, lambda h: h.__setitem__("unexpected", True)),
+        "missing": malformed_signed_head(GENESIS, lambda h: h.pop("issuedAt")),
+        "wrong-type": malformed_signed_head(GENESIS, lambda h: h.__setitem__("issuedAt", "1779000000000")),
+    }
+    transition_schema_heads = {
+        "extra": malformed_signed_head(OTHER_HEAD, lambda h: h.__setitem__("unexpected", True)),
+        "missing": malformed_signed_head(OTHER_HEAD, lambda h: h.pop("issuedAt")),
+        "wrong-type": malformed_signed_head(OTHER_HEAD, lambda h: h.__setitem__("issuedAt", "1780000000001")),
+    }
+    genesis_schema_vectors = {
+        label: input_for(
+            head, {}, checkpoint=head, history=[history_item(head)]
+        )
+        for label, head in genesis_schema_heads.items()
+    }
+    transition_schema_vectors = {
+        label: input_for(
+            head, OTHER_LEAVES,
+            history=[history_item(GENESIS), history_item(head)],
+        )
+        for label, head in transition_schema_heads.items()
+    }
+
     stale = input_for(GENESIS, {})
     stale["resolutionContext"]["currentStateEvidence"]["valueContentHash"] = artifact_hash(TARGET_HEAD)
 
@@ -856,6 +929,26 @@ def build_vectors() -> list[dict]:
     return [
         vector("rsc-valid-active-nonmembership", "pass", "an exact empty-leaf proof against the authenticated current head admits a new session", active, "absent"),
         vector("rsc-valid-genesis-absent", "pass", "a transition-free genesis head with an explicit empty marker set and an exact empty-leaf proof admits a new session", genesis_absent, "absent"),
+        vector("rsc-same-sequence-target-present-authentic", "fail", "a fully authenticated same-sequence sibling from the same predecessor whose exact transition revokes the target returns revoked", same_sequence_target_present_authentic, "revoked"),
+        vector("rsc-same-sequence-target-absent-authentic", "indeterminate", "an authenticated same-sequence sibling omitting the target is equivocation and never absence", same_sequence_target_absent_authentic, "indeterminate"),
+        vector("rsc-same-sequence-target-present-inauthentic", "indeterminate", "an unauthenticated same-sequence sibling cannot establish target revocation", same_sequence_target_present_inauthentic, "indeterminate"),
+        vector("rsc-same-sequence-target-absent-inauthentic", "indeterminate", "an unauthenticated same-sequence sibling omitting the target cannot establish absence", same_sequence_target_absent_inauthentic, "indeterminate"),
+        *[
+            vector(
+                f"rsc-head-schema-genesis-{label}", "indeterminate",
+                f"a freshly signed genesis head with a {label} member shape does not authenticate under the closed RSC-2 schema",
+                data, "indeterminate",
+            )
+            for label, data in genesis_schema_vectors.items()
+        ],
+        *[
+            vector(
+                f"rsc-head-schema-transition-{label}", "indeterminate",
+                f"a freshly signed transition head with a {label} member shape does not authenticate under the closed RSC-2 schema",
+                data, "indeterminate",
+            )
+            for label, data in transition_schema_vectors.items()
+        ],
         vector("rsc-valid-revocation-inclusion", "fail", "an exact inclusion proof and marker refuse the revoked listing", revoked, "revoked"),
         vector("rsc-censored-tombstone", "fail", "an active discovery row cannot hide a revocation committed by the current head", censored, "revoked"),
         vector("rsc-stale-signed-head", "indeterminate", "a valid old signed head is not the current finalized native value", stale, "indeterminate"),

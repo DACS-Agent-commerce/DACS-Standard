@@ -188,6 +188,90 @@ def canonical_decimal(value):
     return isinstance(value, str) and re.fullmatch(r"0|[1-9][0-9]*", value) is not None
 
 
+GENESIS_HEAD_FIELDS = {
+    "revocationStateHeadVersion", "sellerPrimaryClaim", "logicalAddress",
+    "sequence", "previousHeadHash", "rootHash", "entryCount", "issuedAt",
+    "signature",
+}
+TRANSITION_HEAD_FIELDS = GENESIS_HEAD_FIELDS | {"transition"}
+
+
+def validate_head_shape(head):
+    """Enforce RSC-2's sequence-dependent closed RevocationStateHead shape."""
+    if not isinstance(head, dict) or head.get("revocationStateHeadVersion") != "1":
+        return False
+    sequence = head.get("sequence")
+    if not canonical_decimal(sequence):
+        return False
+    expected_fields = GENESIS_HEAD_FIELDS if sequence == "0" else TRANSITION_HEAD_FIELDS
+    if set(head) != expected_fields:
+        return False
+    if not isinstance(head.get("sellerPrimaryClaim"), str):
+        return False
+    if not isinstance(head.get("logicalAddress"), str):
+        return False
+    if re.fullmatch(r"[0-9a-f]{64}", head.get("previousHeadHash", "")) is None:
+        return False
+    if re.fullmatch(r"[0-9a-f]{64}", head.get("rootHash", "")) is None:
+        return False
+    if not canonical_decimal(head.get("entryCount")):
+        return False
+    issued_at = head.get("issuedAt")
+    if not isinstance(issued_at, int) or isinstance(issued_at, bool):
+        return False
+    signature = head.get("signature")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not isinstance(signature.get("algorithm"), str)
+        or not isinstance(signature.get("signer"), str)
+        or not isinstance(signature.get("value"), str)
+    ):
+        return False
+    if sequence != "0":
+        transition = head.get("transition")
+        if not isinstance(transition, dict) or set(transition) != {
+            "leafKey", "revocationRef", "priorProof"
+        }:
+            return False
+        if re.fullmatch(r"[0-9a-f]{64}", transition.get("leafKey", "")) is None:
+            return False
+        ref = transition.get("revocationRef")
+        if not isinstance(ref, dict) or set(ref) not in (
+            {"anchor", "contentHash"}, {"anchor", "contentHash", "signer"}
+        ):
+            return False
+        anchor = ref.get("anchor")
+        if (
+            not isinstance(anchor, dict)
+            or set(anchor) != {"kind", "locator"}
+            or not isinstance(anchor.get("kind"), str)
+            or not isinstance(anchor.get("locator"), str)
+            or re.fullmatch(r"[0-9a-f]{64}", ref.get("contentHash", "")) is None
+            or ("signer" in ref and not isinstance(ref["signer"], str))
+        ):
+            return False
+        prior_proof = transition.get("priorProof")
+        if not isinstance(prior_proof, dict) or set(prior_proof) != {"siblings"}:
+            return False
+        siblings = prior_proof.get("siblings")
+        if not isinstance(siblings, list):
+            return False
+        prior_height = -1
+        for sibling in siblings:
+            if not isinstance(sibling, dict) or set(sibling) != {"height", "hash"}:
+                return False
+            height = sibling.get("height")
+            if (
+                not isinstance(height, int) or isinstance(height, bool)
+                or not prior_height < height < 256
+                or re.fullmatch(r"[0-9a-f]{64}", sibling.get("hash", "")) is None
+            ):
+                return False
+            prior_height = height
+    return True
+
+
 def marker_tuple(marker, seller):
     return {
         "sellerPrimaryClaim": seller,
@@ -312,7 +396,7 @@ def validate_head_item(item, listing, state_ref, public_keys=None):
     head = item["head"]
     receipt = item["receipt"]
     authority = item["authority"]
-    if not isinstance(head, dict) or head.get("revocationStateHeadVersion") != "1":
+    if not validate_head_shape(head):
         return None
     if not isinstance(authority, dict):
         return None
@@ -831,10 +915,9 @@ def _evaluate(data, public_keys, trusted_admission=None):
         transition = conflicting.get("transition")
         if isinstance(transition, dict) and transition.get("leafKey") == key:
             # Append-only revocation: an otherwise-authenticated head whose exact
-            # transition revokes this target cannot be ignored. If that head is at
-            # a higher sequence than the accepted current head it supersedes the
-            # stale non-membership read (revoked); at the same or lower sequence it
-            # is an equivocation and stays indeterminate, never absent.
+            # transition revokes this target cannot be ignored. A higher head
+            # supersedes the stale read, while an authenticated same-sequence
+            # sibling from the same predecessor is itself exact revocation proof.
             predecessor = next(
                 ((head, digest) for head, digest in validated if digest == conflicting.get("previousHeadHash")),
                 None,
@@ -844,7 +927,7 @@ def _evaluate(data, public_keys, trusted_admission=None):
             ):
                 conflict_indeterminate = True
                 continue
-            if conflict_seq > current_seq:
+            if conflict_seq >= current_seq:
                 conflict_revokes_target = True
             else:
                 conflict_indeterminate = True
@@ -1518,6 +1601,66 @@ class RevocationStateCompletenessTests(unittest.TestCase):
                      higher.get("trustedProfileAdmission"))[1]["revocationCheck"],
             "revoked",
         )
+
+    def test_pr396_same_sequence_sibling_matrix_is_authenticated_and_decision_bearing(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        expected = {
+            "rsc-same-sequence-target-present-authentic": ("fail", "revoked", True),
+            "rsc-same-sequence-target-absent-authentic": ("indeterminate", "indeterminate", True),
+            "rsc-same-sequence-target-present-inauthentic": ("indeterminate", "indeterminate", False),
+            "rsc-same-sequence-target-absent-inauthentic": ("indeterminate", "indeterminate", False),
+        }
+        for name, (verdict, disposition, authentic) in expected.items():
+            with self.subTest(case=name):
+                vector = vectors[name]
+                data = vector["input"]
+                context = data["resolutionContext"]
+                conflict = context["knownConflictingHeads"][0]
+                checked = validate_head_item(
+                    conflict, data["listing"], data["listing"]["revocationState"],
+                    self.document["publicKeys"],
+                )
+                self.assertEqual(checked is not None, authentic)
+                self.assertEqual(
+                    evaluate(data, self.document["publicKeys"], vector["trustedProfileAdmission"]),
+                    (verdict, {"revocationCheck": disposition, "session": "refuse"}),
+                )
+
+    def test_pr396_closed_head_schema_matrix_is_signed_but_never_authenticates(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+        names = {
+            f"rsc-head-schema-{head_kind}-{mutation}"
+            for head_kind in ("genesis", "transition")
+            for mutation in ("extra", "missing", "wrong-type")
+        }
+        for name in sorted(names):
+            with self.subTest(case=name):
+                vector = vectors[name]
+                data = vector["input"]
+                malformed = data["resolutionContext"]["headHistory"][-1]
+                head = malformed["head"]
+                self.assertTrue(
+                    verify_artifact(head, self.document["publicKeys"]["initial"], HEAD_DOMAIN),
+                    "the negative must remain freshly signed so the schema gate is load-bearing",
+                )
+                self.assertIsNone(validate_head_item(
+                    malformed, data["listing"], data["listing"]["revocationState"],
+                    self.document["publicKeys"],
+                ))
+                self.assertEqual(
+                    evaluate(data, self.document["publicKeys"], vector["trustedProfileAdmission"]),
+                    ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+                )
+
+        controls = ("rsc-valid-genesis-absent", "rsc-valid-active-nonmembership")
+        for name in controls:
+            vector = vectors[name]
+            item = vector["input"]["resolutionContext"]["headHistory"][-1]
+            self.assertIsNotNone(validate_head_item(
+                item, vector["input"]["listing"],
+                vector["input"]["listing"]["revocationState"],
+                self.document["publicKeys"],
+            ))
 
     def test_conflict_set_revocation_precedence_is_order_independent(self):
         third = g.listing_tuple("third-service", "66" * 32)
@@ -2241,12 +2384,12 @@ class RevocationStateCompletenessTests(unittest.TestCase):
             g.resolved_marker(ref, third_marker, g.SELLER_KEY, "third-service")
         )
         pubs = g.document()["publicKeys"]
-        self.assertIsNotNone(validate_head_item(
+        # RSC-2 now rejects this sequence-0-plus-transition shape before it can
+        # be treated as an authenticated head; the unused marker remains
+        # non-authorizing either way.
+        self.assertIsNone(validate_head_item(
             context["knownConflictingHeads"][0], data["listing"],
             data["listing"]["revocationState"], pubs,
-        ))
-        self.assertFalse(validate_transition(
-            conflict, g.GENESIS, g.artifact_hash(g.GENESIS), context, pubs,
         ))
         self.assertEqual(
             evaluate(data, pubs, g.profile_admission()),

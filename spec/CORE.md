@@ -1582,7 +1582,7 @@ For composite-payload separators each appended value MUST be a fixed-length hex 
 - `"dacs-atomic-operation-receipt:v1:"` — the Atomic Work operation receipt-leaf hash (§5.2); and
 - `"dacs-atomic-payment-slot:v1:"` and `"dacs-atomic-settlement-id:v1:"` — the Atomic payment conflict and operation-level settlement identities (§9.5.10 and §9.7.3).
 
-All eight follow the same domain-separation discipline, preventing cross-use of
+All ten follow the same domain-separation discipline, preventing cross-use of
 the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the
 "sign every artifact kind" conformance do not apply to them. The three Atomic
 Work identifier and receipt tags are introduced by the CORE v0.3 candidate;

@@ -55,6 +55,7 @@ LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN = "dacs-finality-bound-evidence:v1:"
 DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
+ATOMIC_SETTLEMENT_EVIDENCE_DOMAIN = "dacs-atomic-evidence:v1:"
 ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
 PAYLOAD_ATTESTATION_DOMAIN = "dacs-payload-attestation:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
@@ -1165,6 +1166,7 @@ def _validate_legacy_evidence_receipt(receipt, expected_nonce, *, expected_state
 def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase_index,
                                           phase_kind, signer, *, resolved=False,
                                           current_delivery=False,
+                                          atomic_evidence_logical_address=None,
                                           receipt_validator=_validate_current_evidence_receipt):
     """Validate independently authenticated execution authority against a verified receipt."""
     if not isinstance(execution, dict) or not isinstance(receipt, dict):
@@ -1176,7 +1178,11 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
         or execution.get("phaseOrchestrator") != signer
     ):
         return (False, "execution authority does not bind job, phase, or orchestrator")
-    if phase_kind.startswith("pay-"):
+    if atomic_evidence_logical_address is not None:
+        if not _nonempty_jcs_string(atomic_evidence_logical_address):
+            return (False, "Atomic evidence admission lacks an exact logical address")
+        expected_logical = atomic_evidence_logical_address
+    elif phase_kind.startswith("pay-"):
         rail_id = execution.get("railId")
         if not isinstance(rail_id, str) or not rail_id:
             return (False, "payment execution authority lacks railId")
@@ -1637,6 +1643,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
                                             session_execution_authority_by_phase_key,
                                             verified_receipt_by_canonical_ref,
                                             evidence_type, *,
+                                            atomic_evidence_admission=None,
                                             receipt_validator=_validate_current_evidence_receipt):
     """Resolve one exact phase from trusted SB-1 authority plus verified SR-2 receipt evidence."""
     ref_key = canonical(ref).decode("utf-8")
@@ -1645,6 +1652,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
         return (False, "evidence record lacks a verified SR-2 receipt", None)
     matches = []
     current_delivery = evidence_type == "delivery"
+    atomic_evidence = evidence_type == "atomic"
     for phase_key, execution in session_execution_authority_by_phase_key.items():
         if not isinstance(execution, dict):
             continue
@@ -1657,8 +1665,10 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
             or phase_key != f"{phase_index}:{phase_kind}"
             or execution.get("jobId") != bundle.get("jobId")
             or phase_kind != record.get("phase")
-            or (current_delivery and phase_index != record.get("phaseIndex"))
+            or ((current_delivery or atomic_evidence) and phase_index != record.get("phaseIndex"))
             or execution.get("phaseOrchestrator") != signer
+            or (atomic_evidence and execution.get("evidenceFamily") != "atomic")
+            or (not atomic_evidence and execution.get("evidenceFamily") == "atomic")
         ):
             continue
         resolution_classes = [False]
@@ -1671,6 +1681,11 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
             ok, _ = _validate_evidence_resolution_binding(
                 ref, execution, receipt, bundle, phase_index, phase_kind, signer,
                 resolved=resolved, current_delivery=current_delivery,
+                atomic_evidence_logical_address=(
+                    atomic_evidence_admission.get("logicalAddress")
+                    if atomic_evidence and isinstance(atomic_evidence_admission, dict)
+                    else None
+                ),
                 receipt_validator=receipt_validator,
             )
             if ok:
@@ -9297,6 +9312,104 @@ def _delivery_inner_type_valid(record, discriminator):
         and record.get(discriminator) == "1"
     )
 
+def _atomic_settlement_evidence_shape_valid(record):
+    """Validate the named v1 Atomic fields before consuming AWS admission.
+
+    Atomic evidence deliberately preserves unknown signed members.  This predicate
+    therefore closes its selector and conditional family, while the verifier-owned
+    AWS result authenticates the complete Work receipt/proof closure.
+    """
+    if not isinstance(record, dict):
+        return False
+    required = {
+        "atomicEvidenceVersion", "networkId", "jobId", "railId",
+        "phaseIndex", "phase", "outcome", "operationRef", "workReceiptRef",
+        "operationProof", "observedAt", "signature",
+    }
+    if not required <= set(record) or record.get("atomicEvidenceVersion") != "1":
+        return False
+    if any(
+        selector in record
+        for selector in (
+            "evidenceVersion", "deliveryEvidenceVersion",
+            "finalityBoundEvidenceVersion",
+        )
+    ):
+        return False
+    phase = record.get("phase")
+    outcome = record.get("outcome")
+    phase_index = record.get("phaseIndex")
+    if (
+        not _nonempty_jcs_string(record.get("networkId"))
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or not _nonempty_jcs_string(record.get("railId"))
+        or not _safe_nonnegative_integer(phase_index)
+        or phase not in {"pay-dem", "deliver-storage-program"}
+        or outcome not in {"success", "failure"}
+        or not _non_boolean_number(record.get("observedAt"))
+    ):
+        return False
+    operation_ref = record.get("operationRef")
+    receipt_ref = record.get("workReceiptRef")
+    proof = record.get("operationProof")
+    proof_subject = proof.get("subject") if isinstance(proof, dict) else None
+    signature = record.get("signature")
+    if (
+        not isinstance(operation_ref, dict)
+        or operation_ref.get("kind") != "demos-work-operation-v1"
+        or not _safe_nonnegative_integer(operation_ref.get("operationIndex"))
+        or not _nonempty_jcs_string(operation_ref.get("networkId"))
+        or not _sha256_hex(operation_ref.get("workId"))
+        or not _nonempty_jcs_string(operation_ref.get("operationId"))
+        or not _nonempty_jcs_string(operation_ref.get("operationKind"))
+        or not isinstance(receipt_ref, dict)
+        or receipt_ref.get("refVersion") != "1"
+        or not _nonempty_jcs_string(receipt_ref.get("networkId"))
+        or not _sha256_hex(receipt_ref.get("workId"))
+        or not _sha256_hex(receipt_ref.get("receiptCommitment"))
+        or not _sha256_hex(receipt_ref.get("contentHash"))
+        or not isinstance(receipt_ref.get("locator"), dict)
+        or not _nonempty_jcs_string(receipt_ref["locator"].get("kind"))
+        or not _nonempty_jcs_string(receipt_ref["locator"].get("value"))
+        or not isinstance(proof, dict)
+        or not _nonempty_jcs_string(proof.get("proofProfile"))
+        or not isinstance(proof_subject, dict)
+        or not _nonempty_jcs_string(proof.get("value"))
+        or not isinstance(signature, dict)
+        or signature.get("algorithm") != "ed25519"
+        or not _claim_reference_shape_valid(signature.get("signer"))
+        or not _nonempty_jcs_string(signature.get("value"))
+    ):
+        return False
+    if outcome == "failure":
+        return (
+            _nonempty_jcs_string(record.get("reason"))
+            and not {
+                "paymentAmount", "deliverableContentHash", "deliverableAnchor",
+                "settlementFinality",
+            } & set(record)
+        )
+    if phase == "pay-dem":
+        return (
+            operation_ref.get("operationKind") == "native-dem-transfer"
+            and _price_term_shape_valid(record.get("paymentAmount"))
+            and isinstance(record.get("settlementFinality"), dict)
+            and record["settlementFinality"].get("model") == "bft-final"
+            and _non_boolean_number(
+                record["settlementFinality"].get("finalityObservedAt")
+            )
+            and not {"deliverableContentHash", "deliverableAnchor"} & set(record)
+        )
+    anchor = record.get("deliverableAnchor")
+    return (
+        operation_ref.get("operationKind") == "storage-program-put"
+        and _sha256_hex(record.get("deliverableContentHash"))
+        and isinstance(anchor, dict)
+        and _nonempty_jcs_string(anchor.get("kind"))
+        and _nonempty_jcs_string(anchor.get("locator"))
+        and not {"paymentAmount", "settlementFinality"} & set(record)
+    )
+
 def _authenticated_evidence_wire_type(record, pubkeys):
     """Authenticate the evidence family under exactly one registered domain."""
     if not isinstance(record, dict) or not isinstance(pubkeys, dict) or not HAVE_CRYPTO:
@@ -9323,6 +9436,7 @@ def _authenticated_evidence_wire_type(record, pubkeys):
         ("settlement", SETTLEMENT_EVIDENCE_DOMAIN),
         ("delivery", DELIVERY_EVIDENCE_DOMAIN),
         ("finality-bound", FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN),
+        ("atomic", ATOMIC_SETTLEMENT_EVIDENCE_DOMAIN),
     ):
         if verify_sig(pubkeys[signer], domain, content_hash, value):
             candidates.append(family)
@@ -9333,11 +9447,13 @@ def _authenticated_evidence_wire_type(record, pubkeys):
         "settlement": "evidenceVersion",
         "delivery": "deliveryEvidenceVersion",
         "finality-bound": "finalityBoundEvidenceVersion",
+        "atomic": "atomicEvidenceVersion",
     }[family]
     present = [
         selector
         for selector in (
-            "evidenceVersion", "deliveryEvidenceVersion", "finalityBoundEvidenceVersion"
+            "evidenceVersion", "deliveryEvidenceVersion",
+            "finalityBoundEvidenceVersion", "atomicEvidenceVersion",
         )
         if selector in record
     ]
@@ -10106,6 +10222,7 @@ def _validate_ebfab_boolean(
     verified_receipt_by_canonical_ref,
     delivery_artifact_authority_by_phase_key=None,
     trusted_native_observations_by_canonical_ref=None,
+    atomic_evidence_admission_by_canonical_ref=None,
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
@@ -10132,6 +10249,10 @@ def _validate_ebfab_boolean(
         or (
             delivery_artifact_authority_by_phase_key is not None
             and not isinstance(delivery_artifact_authority_by_phase_key, dict)
+        )
+        or (
+            atomic_evidence_admission_by_canonical_ref is not None
+            and not isinstance(atomic_evidence_admission_by_canonical_ref, dict)
         )
     ):
         return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
@@ -10361,6 +10482,9 @@ def _validate_ebfab_boolean(
         elif evidence_type == "delivery":
             shape_valid = _delivery_evidence_shape_valid(record)
             evidence_domain = DELIVERY_EVIDENCE_DOMAIN
+        elif evidence_type == "atomic":
+            shape_valid = _atomic_settlement_evidence_shape_valid(record)
+            evidence_domain = ATOMIC_SETTLEMENT_EVIDENCE_DOMAIN
         else:
             return (False, "evidence record has an unsupported or ambiguous discriminator", None)
         if not shape_valid:
@@ -10371,8 +10495,8 @@ def _validate_ebfab_boolean(
             else settlement_evidence_hash(record)
         )
         record_phase = record.get("phase")
-        if record_phase in PAYMENT_PHASES and evidence_type != "settlement":
-            return (False, "payment phase does not resolve to SettlementEvidence", None)
+        if record_phase in PAYMENT_PHASES and evidence_type not in {"settlement", "atomic"}:
+            return (False, "payment phase does not resolve to its selected evidence family", None)
         if record_phase in DELIVERY_PHASES:
             if evidence_type == "settlement" and pipeline_kinds.count(record_phase) != 1:
                 return (False, "legacy delivery evidence is not a single unambiguous invocation", None)
@@ -10398,6 +10522,39 @@ def _validate_ebfab_boolean(
             signature["value"],
         ):
             return (False, "evidence signature does not verify under its type domain", None)
+        atomic_admission = None
+        if evidence_type == "atomic":
+            ref_key = canonical(ref).decode("utf-8")
+            if not isinstance(atomic_evidence_admission_by_canonical_ref, dict):
+                return (
+                    False,
+                    _DispositionReason(
+                        "verifier-owned Atomic Work settlement admission is unavailable",
+                        "indeterminate",
+                    ),
+                    None,
+                )
+            atomic_admission = atomic_evidence_admission_by_canonical_ref.get(ref_key)
+            if atomic_admission is None:
+                return (
+                    False,
+                    _DispositionReason(
+                        "exact Atomic Work settlement admission is unavailable",
+                        "indeterminate",
+                    ),
+                    None,
+                )
+            if (
+                not isinstance(atomic_admission, dict)
+                or set(atomic_admission) != {
+                    "disposition", "evidenceHash", "phaseKey", "logicalAddress"
+                }
+                or atomic_admission.get("disposition") != "pass"
+                or atomic_admission.get("evidenceHash") != evidence_hash
+                or not _nonempty_jcs_string(atomic_admission.get("phaseKey"))
+                or not _nonempty_jcs_string(atomic_admission.get("logicalAddress"))
+            ):
+                return (False, "Atomic Work settlement admission is malformed or mismatched", None)
         binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
             ref,
             record,
@@ -10406,11 +10563,17 @@ def _validate_ebfab_boolean(
             session_execution_authority_by_phase_key,
             verified_receipt_by_canonical_ref,
             evidence_type,
+            atomic_evidence_admission=atomic_admission,
             receipt_validator=_receipt_validator,
         )
         if not binding_ok:
             return (False, binding_result, None)
         phase_key, resolved_record = binding_result
+        if (
+            evidence_type == "atomic"
+            and atomic_admission.get("phaseKey") != phase_key
+        ):
+            return (False, "Atomic Work admission resolves to another phase", None)
         phase_index = int(phase_key.split(":", 1)[0])
         if phase_index >= len(pipeline_kinds) or record.get("phase") != pipeline_kinds[phase_index]:
             return (False, "authenticated phase is outside the signed listing pipeline", None)
@@ -10421,7 +10584,7 @@ def _validate_ebfab_boolean(
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "evidence record contradicts the signed phase result", None)
-        if record_phase in DELIVERY_PHASES:
+        if record_phase in DELIVERY_PHASES and evidence_type != "atomic":
             delivery_authority = (
                 delivery_artifact_authority_by_phase_key
                 if isinstance(delivery_artifact_authority_by_phase_key, dict)
@@ -10728,6 +10891,7 @@ def _tagged_copy_validation_for_derive(
         ebfab_authority.get("verifiedReceiptByCanonicalRef"),
         ebfab_authority.get("deliveryArtifactAuthorityByPhaseKey"),
         ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        ebfab_authority.get("atomicEvidenceAdmissionByCanonicalRef"),
         effective_pipeline=ebfab_authority.get("effectivePipeline"),
         additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
     )

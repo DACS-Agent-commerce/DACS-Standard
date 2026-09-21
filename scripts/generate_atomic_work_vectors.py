@@ -109,7 +109,7 @@ ALTERNATE_SELLER_PUBLIC_KEY = ref.b64u(
     ref.ed25519_public_key(SEEDS["alternate-seller"])
 )
 TEST_RAIL_ID = "demos-native:DEM"
-COMPOSED_PROOF_RESERVATION_BYTES = 19_000
+COMPOSED_PROOF_RESERVATION_BYTES = 19_900
 
 
 def claim(role: str) -> str:
@@ -301,6 +301,7 @@ def vet_record_ref(
 
 def listing_fixture(
     job_id: str = "01K1DPA0000000000000000000", *, payee_bound: bool = False,
+    current_profile: bool = False,
 ) -> dict[str, Any]:
     del job_id  # listing bytes are intentionally reusable across sessions.
     deliverable = {
@@ -318,7 +319,8 @@ def listing_fixture(
         "pipeline": [
             {"kind": "negotiate-fixed-price"},
             {"kind": (
-                "commit-payee-bound-agreement" if payee_bound
+                "commit-identity-bound-payee-agreement" if current_profile
+                else "commit-payee-bound-agreement" if payee_bound
                 else "commit-agreement"
             )},
             {"kind": "pay-dem", "parameters": {"rail": TEST_RAIL_ID}},
@@ -329,6 +331,17 @@ def listing_fixture(
         "terms": {"deadlineSecAfterCommit": 60},
         "validity": {"notBefore": 1_799_000_000_000, "notAfter": 1_800_000_060_000},
     }
+    if current_profile:
+        unsigned["revocationState"] = {
+            "revocationStateRefVersion": "1",
+            "anchor": {
+                "kind": "storage-program",
+                "locator": f"dacs1-revocations:{ref.cf4_encode(CLAIMS['seller'])}",
+            },
+            "contentHash": ref.sha256_hex(
+                ref.jcs_bytes({"seller": CLAIMS["seller"], "sequence": 7})
+            ),
+        }
     digest = ref.sha256_hex(ref.jcs_bytes(unsigned))
     unsigned["signature"] = {
         "algorithm": "ed25519", "signer": CLAIMS["seller"],
@@ -358,6 +371,7 @@ def resign_listing(listing: dict[str, Any]) -> dict[str, Any]:
 
 def agreement_document(
     job_id: str, *, payee_bound: bool = False,
+    current_profile: bool = False,
     payout_address: str = "dem-test-seller",
     payout_bindings: list[dict[str, Any]] | None = None,
     agreement_domain: bytes | None = None,
@@ -366,7 +380,9 @@ def agreement_document(
     omit_vet_refs: set[str] | None = None,
     seller_role: str = "seller",
 ) -> dict[str, Any]:
-    listing = listing_fixture(job_id, payee_bound=payee_bound)
+    listing = listing_fixture(
+        job_id, payee_bound=payee_bound, current_profile=current_profile
+    )
     buyer_bundle = identity_bundle("buyer", [CLAIMS["payer"]])
     seller_bundle = identity_bundle(seller_role)
     deliverable = listing["offering"]["deliverable"]
@@ -378,7 +394,9 @@ def agreement_document(
     vet_ref_overrides = vet_ref_overrides or {}
     unsigned: dict[str, Any] = {
         (
-            "payeeBoundAgreementVersion" if payee_bound else "agreementVersion"
+            "identityBoundPayeeAgreementVersion" if current_profile
+            else "payeeBoundAgreementVersion" if payee_bound
+            else "agreementVersion"
         ): "1",
         "jobId": job_id,
         "listingRef": {"listingId": listing["listingId"], "version": 1, "contentHash": listing_hash(listing)},
@@ -405,7 +423,7 @@ def agreement_document(
     for party in unsigned["parties"]:
         if party["role"] in (omit_vet_refs or set()):
             del party["vetRecordRef"]
-    if payee_bound:
+    if payee_bound or current_profile:
         unsigned["terms"]["payoutBindings"] = copy.deepcopy(
             payout_bindings
             if payout_bindings is not None
@@ -418,8 +436,11 @@ def agreement_document(
     digest = ref.sha256_hex(ref.jcs_bytes(unsigned))
     if agreement_domain is None:
         agreement_domain = (
-            ref._PAYEE_BOUND_AGREEMENT_DOMAIN
-            if payee_bound else ref._AGREEMENT_DOMAIN
+            ref._IDENTITY_BOUND_PAYEE_AGREEMENT_DOMAIN
+            if current_profile
+            else ref._PAYEE_BOUND_AGREEMENT_DOMAIN
+            if payee_bound
+            else ref._AGREEMENT_DOMAIN
         )
     unsigned["signatures"] = [
         {"party": CLAIMS[role], "algorithm": "ed25519", "value": ref.b64u(
@@ -656,9 +677,91 @@ def payment_phase_input(intent: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def current_profile_admission(
+    intent: dict[str, Any], authority: dict[str, Any]
+) -> dict[str, Any]:
+    """Authenticate the synthetic outputs of current RSC/IBH/LAA admission."""
+    listing = authority["listing"]
+    agreement = authority["agreement"]
+    payer_bundle = authority["payerBundle"]
+    payee_bundle = authority["payeeBundle"]
+    state_ref = listing["revocationState"]
+    listing_digest = listing_hash(listing)
+    value = {
+        "profile": copy.deepcopy(ref._CURRENT_PROFILE_TUPLE),
+        "workId": ref.work_id(intent),
+        "jobId": intent["jobId"],
+        "listingHash": listing_digest,
+        "agreementHash": ref._agreement_hash(agreement),
+        "agreementArtifact": "identity-bound-payee",
+        "commitPhase": "commit-identity-bound-payee-agreement",
+        "payerBundleHash": ref._identity_bundle_hash(payer_bundle),
+        "payeeBundleHash": ref._identity_bundle_hash(payee_bundle),
+        "rsc": {
+            "stateLine": copy.deepcopy(state_ref),
+            "disposition": "active-current",
+            "headContentHash": ref.sha256_hex(ref.jcs_bytes({
+                "stateLine": state_ref,
+                "listingHash": listing_digest,
+                "profile": ref._CURRENT_PROFILE_TUPLE,
+            })),
+        },
+        "ibhDisposition": "verified",
+        "laaDisposition": "current-eligible",
+    }
+    return encoded_evidence(
+        "test-current-profile-admission",
+        value,
+        "network",
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+    )
+
+
+def resign_current_profile_admission(
+    intent: dict[str, Any], authority: dict[str, Any]
+) -> None:
+    admission = authority["currentProfileAdmission"]
+    subject = ref.verify_encoded_evidence(
+        admission,
+        "test-current-profile-admission",
+        PUBLIC_KEYS,
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+        expected_signer=CLAIMS["network"],
+    )
+    subject.pop("signature")
+    authority["currentProfileAdmission"] = encoded_evidence(
+        "test-current-profile-admission",
+        subject,
+        "network",
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+    )
+
+
+def mutate_current_profile_admission(
+    authority: dict[str, Any], path: list[Any], value: Any,
+) -> None:
+    admission = authority["currentProfileAdmission"]
+    subject = ref.verify_encoded_evidence(
+        admission,
+        "test-current-profile-admission",
+        PUBLIC_KEYS,
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+        expected_signer=CLAIMS["network"],
+    )
+    subject.pop("signature")
+    subject = mutate(subject, path, value)
+    authority["currentProfileAdmission"] = encoded_evidence(
+        "test-current-profile-admission",
+        subject,
+        "network",
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+    )
+
+
 def authorization_authority(intent: dict[str, Any]) -> dict[str, Any]:
     agreement = intent["operations"][2]["payload"]["artifact"]
     payee_bound = "payeeBoundAgreementVersion" in agreement
+    current_profile = "identityBoundPayeeAgreementVersion" in agreement
     record = intent["operations"][3]["payload"]["artifact"]
     rail = rail_definition(intent["railId"])
     rail_index, rail_index_receipt, rail_receipt = rail_registry_material(rail)
@@ -668,9 +771,12 @@ def authorization_authority(intent: dict[str, Any]) -> dict[str, Any]:
         party for party in agreement["parties"] if party["role"] == "seller"
     )
     seller_role = role_for_claim(seller_party["primaryClaim"])
-    return {
+    authority = {
         "agreement": copy.deepcopy(agreement),
-        "listing": listing_fixture(intent["jobId"], payee_bound=payee_bound),
+        "listing": listing_fixture(
+            intent["jobId"], payee_bound=payee_bound,
+            current_profile=current_profile,
+        ),
         "payerBundle": identity_bundle("buyer", [CLAIMS["payer"]]),
         "payeeBundle": identity_bundle(seller_role),
         "paymentPhaseInput": payment_phase_input(intent),
@@ -704,6 +810,11 @@ def authorization_authority(intent: dict[str, Any]) -> dict[str, Any]:
             "orchestrator", ref._SESSION_CONTEXT_TEST_DOMAIN,
         ),
     }
+    if current_profile:
+        authority["currentProfileAdmission"] = current_profile_admission(
+            intent, authority
+        )
+    return authority
 
 
 def rebind_session_source_evidence(authority: dict[str, Any]) -> None:
@@ -722,7 +833,8 @@ def rebind_session_source_evidence(authority: dict[str, Any]) -> None:
 def purchase_intent(
     job_id: str = "01K1DPA0000000000000000000", *, generation: int = 0,
     expected_state: str = "vacant", prior_failure: str | None = None,
-    payee_bound: bool = False, payout_address: str = "dem-test-seller",
+    payee_bound: bool = False, current_profile: bool = False,
+    payout_address: str = "dem-test-seller",
     payout_bindings: list[dict[str, Any]] | None = None,
     agreement_domain: bytes | None = None,
     vet_ref_overrides: dict[str, dict[str, Any]] | None = None,
@@ -737,7 +849,8 @@ def purchase_intent(
         else "dem-test-alternate-seller"
     )
     agreement = agreement_document(
-        job_id, payee_bound=payee_bound, payout_address=payout_address,
+        job_id, payee_bound=payee_bound, current_profile=current_profile,
+        payout_address=payout_address,
         payout_bindings=payout_bindings, agreement_domain=agreement_domain,
         vet_records={"buyer": buyer_vet, "seller": seller_vet},
         vet_ref_overrides=vet_ref_overrides,
@@ -2088,12 +2201,12 @@ def execution_vectors() -> list[dict[str, Any]]:
 
 
 def purchase_completion_vectors() -> list[dict[str, Any]]:
-    purchase = purchase_intent()
+    purchase = purchase_intent(current_profile=True)
     purchase_receipt = final_receipt(purchase)
     completion = completion_intent(purchase_receipt)
     purchase_base = {
         "intent": purchase, "publicKeys": PUBLIC_KEYS,
-        "listing": listing_fixture(purchase["jobId"]),
+        "listing": listing_fixture(purchase["jobId"], current_profile=True),
         "authenticatedOrchestrator": CLAIMS["orchestrator"],
         "atomicReceipt": purchase_receipt,
     }
@@ -2158,7 +2271,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     purchase_commitment_projection = projected_anchor_fixture(
         purchase, purchase_receipt, 3
     )
-    completion_base = {"intent": completion, "purchaseIntent": purchase, "purchaseCommitmentProjection": purchase_commitment_projection, "listing": listing_fixture(purchase["jobId"]), "authenticatedOrchestrator": CLAIMS["orchestrator"], "publicKeys": PUBLIC_KEYS, "claimsEvidenceFinalized": False, "claimsBundleFinalized": False}
+    completion_base = {"intent": completion, "purchaseIntent": purchase, "purchaseCommitmentProjection": purchase_commitment_projection, "listing": listing_fixture(purchase["jobId"], current_profile=True), "authenticatedOrchestrator": CLAIMS["orchestrator"], "publicKeys": PUBLIC_KEYS, "claimsEvidenceFinalized": False, "claimsBundleFinalized": False}
     missing_commitment_projection = copy.deepcopy(completion_base)
     del missing_commitment_projection["purchaseCommitmentProjection"]
     bad_commitment_projection = mutate(
@@ -2187,7 +2300,9 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         **completion_base, "listing": resign_listing(wrong_completion_listing)
     }
     composed_purchase = composed_purchase_admission(purchase, purchase_receipt)
-    sequential_purchase = purchase_intent(gate_mode="sequential")
+    sequential_purchase = purchase_intent(
+        gate_mode="sequential", current_profile=True
+    )
     sequential_purchase_receipt = final_receipt(sequential_purchase)
     composed_sequential_purchase = composed_purchase_admission(
         sequential_purchase, sequential_purchase_receipt
@@ -2195,7 +2310,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     mismatched_gate_copy = copy.deepcopy(composed_purchase)
     mismatched_gate_copy["authority"]["gateMode"] = "sequential"
     alternate_seller_purchase = purchase_intent(
-        seller_role="alternate-seller"
+        seller_role="alternate-seller", current_profile=True
     )
     alternate_seller_receipt = final_receipt(alternate_seller_purchase)
     alternate_seller_admission = composed_purchase_admission(
@@ -2220,7 +2335,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         purchase, purchase_receipt, mismatched_completion,
         final_receipt(mismatched_completion),
     )
-    failed_purchase = purchase_intent()
+    failed_purchase = purchase_intent(current_profile=True)
     failed_purchase_receipt = final_receipt(
         failed_purchase, "rolled-back", 4
     )
@@ -2228,6 +2343,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         generation=failed_purchase_receipt["paymentSlot"]["after"]["generation"],
         expected_state="rolled-back",
         prior_failure=failed_purchase_receipt["receiptCommitment"],
+        current_profile=True,
     )
     retry_receipt = final_receipt(
         retry_purchase,
@@ -2267,6 +2383,34 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     composed_limit_too_small["capability"] = sign_capability(too_small_capability)
     missing_composed_limit_evidence = copy.deepcopy(composed_purchase)
     del missing_composed_limit_evidence["limitEvidence"]
+    missing_current_profile_admission = copy.deepcopy(composed_purchase)
+    del missing_current_profile_admission["authority"]["currentProfileAdmission"]
+    missing_current_profile_admission = add_composed_limit_evidence(
+        missing_current_profile_admission
+    )
+    stale_current_profile_admission = copy.deepcopy(composed_purchase)
+    mutate_current_profile_admission(
+        stale_current_profile_admission["authority"],
+        ["profile", "dacs1"],
+        "0.7",
+    )
+    stale_current_profile_admission = add_composed_limit_evidence(
+        stale_current_profile_admission
+    )
+    substituted_current_profile_admission = copy.deepcopy(composed_purchase)
+    mutate_current_profile_admission(
+        substituted_current_profile_admission["authority"],
+        ["listingHash"],
+        "99" * 32,
+    )
+    substituted_current_profile_admission = add_composed_limit_evidence(
+        substituted_current_profile_admission
+    )
+    legacy_purchase = purchase_intent()
+    legacy_receipt = final_receipt(legacy_purchase)
+    legacy_composed_admission = composed_purchase_admission(
+        legacy_purchase, legacy_receipt
+    )
     composed_proof_limit_too_small = copy.deepcopy(composed_purchase)
     proof_limited_capability = capability()
     proof_limited_capability["limits"]["maxProofBytes"] = 1
@@ -2281,6 +2425,10 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     )
     return [
         vector("awp-purchase-composed-admission", ["AWP-3", "AWP-5", "AWP-6", "AWP-7", "AWP-10", "AWP-11", "AWP-12"], "purchase-admission", composed_purchase, "pass", "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt.", boundary_rules=["AWP-12"]),
+        vector("awp-purchase-current-profile-admission-missing", ["AWP-4", "AWP-7"], "purchase-admission", missing_current_profile_admission, "indeterminate", "Current Atomic execution remains unavailable when verifier-owned RSC, IBH, LAA, and current-profile admission authority is absent."),
+        vector("awp-purchase-current-profile-admission-stale", ["AWP-4", "AWP-7"], "purchase-admission", stale_current_profile_admission, "fail", "A signed admission for a stale DACS-1 profile cannot authorize the advertised current Atomic tuple."),
+        vector("awp-purchase-current-profile-listing-substitution", ["AWP-4", "AWP-7"], "purchase-admission", substituted_current_profile_admission, "fail", "Verifier-owned current-profile admission binds the exact signed Listing and rejects a substituted Listing hash."),
+        vector("awp-purchase-legacy-agreement-not-current-authority", ["AWP-4", "AWP-7"], "purchase-admission", legacy_composed_admission, "indeterminate", "A historically readable AgreementDocument and commit-agreement phase do not authorize execution under the current Atomic tuple."),
         vector("awp-purchase-signed-sequential-admission", ["AWP-6", "AWP-7", "AWP-12"], "purchase-admission", composed_sequential_purchase, "pass", "A signed sequential gate selection is admitted only with the independently verified finalized commitment AnchorReceipt required before payment.", boundary_rules=["AWP-12"]),
         vector("awp-purchase-caller-gate-mode-mismatch", ["AWP-6"], "purchase-admission", mismatched_gate_copy, "fail", "An unsigned caller authority copy cannot change the proof path selected by the signed Work intent."),
         vector("awp-purchase-agreement-seller-differs-from-listing", ["AWP-7"], "purchase-admission", alternate_seller_admission, "fail", "A fully re-signed Work and Agreement from another seller cannot substitute for the seller identity that published the pinned Listing."),

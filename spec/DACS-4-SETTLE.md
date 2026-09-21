@@ -1839,6 +1839,7 @@ type SettlementEvidenceRecord =
   | SettlementEvidence
   | LegacyTransitionSettlementEvidence
   | FinalityBoundSettlementEvidence
+  | AtomicSettlementEvidenceV1
   | DeliveryEvidence
 
 type CredentialDeliveryBinding = {

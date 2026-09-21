@@ -1404,7 +1404,14 @@ operations and dependencies:
 - (AWP-3) A live Web2, XM, SR-3, L2PS, or other nondeterministic Vet action
   MUST NOT execute inside the Purchase Work.
 - (AWP-4) The `agreement` operation MUST verify the existing §8.5 agreement
-  artifact and MUST NOT create another agreement format.
+  artifact and MUST NOT create another agreement format. Under the advertised
+  current Atomic profile tuple, that artifact MUST be the current
+  `IdentityBoundPayeeAgreementDocument` selected by its exclusive discriminator
+  and `dacs-identity-bound-payee-agreement:v1:` domain, and the Listing pipeline
+  MUST select `commit-identity-bound-payee-agreement`. Historical
+  `AgreementDocument` / `commit-agreement` artifacts remain readable under their
+  version's historical rules but MUST NOT authorize a new current-profile Atomic
+  execution.
 - (AWP-5) A Purchase intent that differs from the table's exact operation set,
   order, dependency arrays, or required roles MUST be rejected. This exact-shape
   check MUST complete before required authorization pairs are derived or any
@@ -1442,6 +1449,13 @@ CA-1, SR2-8, and DACS-4 PIPE-6, not a reinterpretation of any of those rules.
   `primaryClaim` MUST equal `listing.seller.identity.presentedBy` under CORE
   CF-3 ClaimReference identity equality before payment admission; an
   independently valid Agreement signed by a different seller MUST be rejected.
+  For the advertised current profile tuple this check MUST consume verifier-owned
+  successful DACS-1 RSC current-head/revocation admission, DACS-2 identity-bundle
+  hash verification, and DACS-4 LAA current-eligibility and exact selector result
+  for the same signed Listing, Agreement, payer/payee bundles, `jobId`, and Work.
+  Missing authority is indeterminate; stale, substituted, legacy-only, or
+  contradictory authority is invalid. A caller assertion or a historically valid
+  agreement signature cannot stand in for those current-profile results.
 - (AWP-8) The node MUST evaluate §8.5.2 checks 5 and 6 with the consensus
   timestamp that becomes the finalized Work receipt's `blockRef.timestamp`.
 - (AWP-9) A client, signer, RPC, Indexer, `createdAt`, or `observedAt` timestamp

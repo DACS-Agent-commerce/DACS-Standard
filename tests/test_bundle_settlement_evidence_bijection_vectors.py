@@ -211,6 +211,9 @@ def derive_phase_disposition(authority, pubkeys):
         authority.get("verifiedReceiptByCanonicalRef"),
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        authority.get("atomicEvidenceAdmissionByCanonicalRef"),
+        effective_pipeline=authority.get("effectivePipeline"),
+        additional_commit_phase=authority.get("additionalCommitPhase"),
     )
 
 
@@ -351,6 +354,57 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     evaluate(vector["input"], self.data["executionAuthorities"], self.pubkeys),
                     (vector["want"]["disposition"], vector["want"]["reasonCode"]),
                 )
+
+    def test_atomic_evidence_composes_with_exact_set_and_reputation_dispatch(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["atomic-current-completed"]
+        )
+        disposition, reason, phase_keys = derive_phase_disposition(
+            authority, self.pubkeys
+        )
+        self.assertEqual((disposition, reason), ("pass", "ok"))
+        self.assertEqual(
+            phase_keys, ["2:pay-dem", "3:deliver-storage-program"]
+        )
+        authority["publicKeys"] = self.pubkeys
+        self.assertEqual(
+            R._tagged_copy_validation_for_derive({
+                "bundle": authority["bundle"],
+                "ebfabAuthority": authority,
+            }),
+            ("pass", "ok"),
+        )
+
+        missing = copy.deepcopy(authority)
+        missing.pop("atomicEvidenceAdmissionByCanonicalRef")
+        self.assertEqual(
+            R._tagged_copy_validation_for_derive({
+                "bundle": missing["bundle"],
+                "ebfabAuthority": missing,
+            })[0],
+            "indeterminate",
+        )
+
+    def test_atomic_and_ordinary_delivery_families_cannot_be_cross_coerced(self):
+        ordinary = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        ordinary["sessionExecutionAuthorityByPhaseKey"][
+            "0:deliver-storage-program"
+        ]["evidenceFamily"] = "atomic"
+        disposition, _, _ = derive_phase_disposition(ordinary, self.pubkeys)
+        self.assertEqual(disposition, "fail")
+
+        for name, expected in (
+            ("atomic-wrong-phase-family", "fail"),
+            ("atomic-dual-selector", "fail"),
+            ("atomic-missing-aws-admission", "indeterminate"),
+        ):
+            with self.subTest(authority=name):
+                disposition, _, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][name], self.pubkeys
+                )
+                self.assertEqual(disposition, expected)
 
     def test_cross_phase_inner_dependency_ownership_is_load_bearing(self):
         expected_reasons = {

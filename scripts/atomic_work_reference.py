@@ -80,12 +80,14 @@ _SLOT_STATE_TEST_DOMAIN = b"atomic-vector-slot-state:"
 _LIMITS_TEST_DOMAIN = b"atomic-vector-limit-metrics:"
 _SESSION_CONTEXT_TEST_DOMAIN = b"atomic-vector-session-context:"
 _SESSION_SOURCE_TEST_DOMAIN = b"atomic-vector-session-source:"
+_CURRENT_PROFILE_ADMISSION_TEST_DOMAIN = b"atomic-vector-current-profile-admission:"
 _ARTIFACT_TEST_DOMAIN = b"atomic-vector-artifact:"
 _BINDING_TEST_DOMAIN = b"atomic-vector-binding:"
 _PUBLICATION_TEST_DOMAIN = b"atomic-vector-publication:"
 _ANCHOR_TEST_DOMAIN = b"atomic-vector-anchor-finality:"
 _AGREEMENT_DOMAIN = b"dacs-agreement:v1:"
 _PAYEE_BOUND_AGREEMENT_DOMAIN = b"dacs-payee-bound-agreement:v1:"
+_IDENTITY_BOUND_PAYEE_AGREEMENT_DOMAIN = b"dacs-identity-bound-payee-agreement:v1:"
 _LISTING_DOMAIN = b"dacs-listing:v1:"
 _COMMITMENT_DOMAIN = b"dacs-finality-commitment:v1:"
 _COMPOSITE_DOMAIN = b"dacs-composite:v1:"
@@ -1939,26 +1941,30 @@ def _agreement_hash(agreement: dict[str, Any]) -> str:
 
 def _agreement_artifact_kind(agreement: dict[str, Any]) -> str:
     """Select exactly one DACS-3 agreement artifact before reading its terms."""
-    legacy = (
-        agreement.get("agreementVersion") == "1"
-        and "payeeBoundAgreementVersion" not in agreement
-    )
-    payee_bound = (
-        agreement.get("payeeBoundAgreementVersion") == "1"
-        and "agreementVersion" not in agreement
-    )
-    if legacy == payee_bound:
+    discriminators = {
+        "legacy": "agreementVersion",
+        "payee-bound": "payeeBoundAgreementVersion",
+        "identity-bound-payee": "identityBoundPayeeAgreementVersion",
+    }
+    present = [
+        kind for kind, selector in discriminators.items()
+        if selector in agreement
+    ]
+    if len(present) != 1:
         raise Invalid("agreement artifact must carry exactly one supported discriminator")
+    artifact_kind = present[0]
+    if agreement.get(discriminators[artifact_kind]) != "1":
+        raise Invalid("agreement artifact discriminator version unsupported")
     terms = agreement.get("terms")
     if not isinstance(terms, dict):
         raise Invalid("agreement terms are unavailable")
-    if legacy:
+    if artifact_kind == "legacy":
         if "payoutBindings" in terms:
             raise Invalid("legacy AgreementDocument cannot carry payout bindings")
         return "legacy"
     if not isinstance(terms.get("payoutBindings"), list):
-        raise Invalid("PayeeBoundAgreementDocument payout bindings are unavailable")
-    return "payee-bound"
+        raise Invalid("payout-bearing AgreementArtifact bindings are unavailable")
+    return artifact_kind
 
 
 def _verify_agreement(
@@ -1983,9 +1989,11 @@ def _verify_agreement(
     if not isinstance(sigs, list):
         raise Unknown("AgreementArtifact signatures unavailable")
     signature_domain = (
-        _AGREEMENT_DOMAIN
-        if artifact_kind == "legacy"
-        else _PAYEE_BOUND_AGREEMENT_DOMAIN
+        {
+            "legacy": _AGREEMENT_DOMAIN,
+            "payee-bound": _PAYEE_BOUND_AGREEMENT_DOMAIN,
+            "identity-bound-payee": _IDENTITY_BOUND_PAYEE_AGREEMENT_DOMAIN,
+        }[artifact_kind]
     )
     for role in ("buyer", "seller"):
         signer = claim_key(party_map[role].get("primaryClaim"))
@@ -2220,14 +2228,14 @@ def _verify_agreement_listing(
     # Check 9: the discriminator selects both the commit phase and, for the
     # payee-bound artifact, complete one-entry-per-pay-phase payout coverage.
     commit_steps = [s.get("kind") for s in listing["pipeline"] if str(s.get("kind", "")).startswith("commit-")]
-    expected_commit = (
-        "commit-agreement"
-        if artifact_kind == "legacy"
-        else "commit-payee-bound-agreement"
-    )
+    expected_commit = {
+        "legacy": "commit-agreement",
+        "payee-bound": "commit-payee-bound-agreement",
+        "identity-bound-payee": "commit-identity-bound-payee-agreement",
+    }[artifact_kind]
     if commit_steps != [expected_commit]:
         raise Invalid("Agreement artifact discriminator mismatches commitment phase")
-    if artifact_kind == "payee-bound":
+    if artifact_kind in {"payee-bound", "identity-bound-payee"}:
         bindings = agreement["terms"]["payoutBindings"]
         expected_keys = [
             (step.get("parameters", {}).get("rail"), index)
@@ -2257,6 +2265,76 @@ def _verify_agreement_listing(
             or set(actual_keys) != set(expected_keys)
         ):
             raise Invalid("PayeeBoundAgreementDocument payout coverage mismatch")
+
+
+_CURRENT_PROFILE_TUPLE = {
+    "core": "0.3",
+    "dacs1": "0.8",
+    "dacs2": "0.6",
+    "dacs3": "0.6",
+    "dacs4": "0.8",
+    "dacs5": "0.7",
+}
+
+
+def _verify_current_profile_admission(
+    source_intent: dict[str, Any], authority: dict[str, Any],
+    agreement: dict[str, Any], listing: dict[str, Any],
+    payer_bundle: dict[str, Any], payee_bundle: dict[str, Any],
+    public_keys: dict[str, str], network_authority: str,
+) -> None:
+    """Consume verifier-owned current-profile authority for Atomic execution.
+
+    The synthetic signed envelope stands in for the independently executed RSC,
+    IBH and LAA/current-profile admission pipeline.  Historical agreement bytes
+    remain readable by the focused helpers, but cannot authorize the composed
+    current Atomic profile.
+    """
+    admission = authority.get("currentProfileAdmission")
+    if not isinstance(admission, dict):
+        raise Unknown("verifier-owned current-profile admission unavailable")
+    subject = verify_encoded_evidence(
+        admission,
+        "test-current-profile-admission",
+        public_keys,
+        _CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+        expected_signer=network_authority,
+    )
+    if _agreement_artifact_kind(agreement) != "identity-bound-payee":
+        raise Invalid("current Atomic payment requires IdentityBoundPayeeAgreementDocument")
+    listing_hash = sha256_hex(jcs_bytes({
+        key: value for key, value in listing.items() if key != "signature"
+    }))
+    state_ref = listing.get("revocationState")
+    if not isinstance(state_ref, dict):
+        raise Invalid("current Atomic Listing lacks its RSC state-line reference")
+    expected = {
+        "profile": _CURRENT_PROFILE_TUPLE,
+        "workId": work_id(source_intent),
+        "jobId": source_intent.get("jobId"),
+        "listingHash": listing_hash,
+        "agreementHash": _agreement_hash(agreement),
+        "agreementArtifact": "identity-bound-payee",
+        "commitPhase": "commit-identity-bound-payee-agreement",
+        "payerBundleHash": _identity_bundle_hash(payer_bundle),
+        "payeeBundleHash": _identity_bundle_hash(payee_bundle),
+        "rsc": {
+            "stateLine": state_ref,
+            "disposition": "active-current",
+            "headContentHash": sha256_hex(jcs_bytes({
+                "stateLine": state_ref,
+                "listingHash": listing_hash,
+                "profile": _CURRENT_PROFILE_TUPLE,
+            })),
+        },
+        "ibhDisposition": "verified",
+        "laaDisposition": "current-eligible",
+    }
+    if set(subject) != set(expected) | {"signature"} or any(
+        not _json_equal(subject.get(field), value)
+        for field, value in expected.items()
+    ):
+        raise Invalid("current-profile admission is stale, substituted, or incomplete")
 
 
 def _profile_shape(intent: dict[str, Any], profile: str) -> None:
@@ -2494,6 +2572,7 @@ def _verified_authority_context(
     public_keys: dict[str, str], capability: dict[str, Any],
     expected_proof_profile: str, expected_rail_registry_authority: str | None,
     *, consensus_timestamp: int | None = None,
+    require_current_profile: bool = False,
 ) -> dict[str, Any]:
     """Build the single authenticated authority context used by all gates."""
     source_intent = intent
@@ -2549,6 +2628,17 @@ def _verified_authority_context(
     _verify_agreement_listing(agreement, listing, effective_timestamp)
     _verify_identity_bundle(payer_bundle, public_keys)
     _verify_identity_bundle(payee_bundle, public_keys)
+    if require_current_profile:
+        _verify_current_profile_admission(
+            source_intent,
+            authority,
+            agreement,
+            listing,
+            payer_bundle,
+            payee_bundle,
+            public_keys,
+            claim_key(capability["networkAuthority"]),
+        )
     if expected_rail_registry_authority is None:
         raise Unknown("independently pinned rail-registry steward unavailable")
     _verify_rail_definition(
@@ -3842,6 +3932,9 @@ def composed_proof_material(data: dict[str, Any]) -> dict[str, Any]:
             "sessionContextSourceEvidence": authority.get(
                 "sessionContextSourceEvidence"
             ),
+            "currentProfileAdmission": authority.get(
+                "currentProfileAdmission"
+            ),
         },
         "operationAuthorizations": data.get("authorizations"),
         "attemptProofs": [
@@ -4023,6 +4116,7 @@ def _evaluate_composed_admission(
         intent, authority, data["publicKeys"], capability,
         data.get("expectedProofProfile"), data.get("expectedRailRegistryAuthority"),
         consensus_timestamp=consensus_timestamp,
+        require_current_profile=True,
     )
     verify_authorizations(
         intent, data.get("authorizations"), data["publicKeys"], authority,

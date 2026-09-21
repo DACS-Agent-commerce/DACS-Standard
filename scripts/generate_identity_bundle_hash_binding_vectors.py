@@ -3065,6 +3065,50 @@ def build_vectors() -> list[dict[str, Any]]:
             )],
             reason="selection-bound-publisher-mismatch",
         ),
+        vector(
+            "sealed-complete-demand-commit-parameters-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "pipeline", 2, "parameters"], {"downgrade": True}
+            )],
+            reason="selection-bound-pipeline-mismatch",
+        ),
+        vector(
+            "sealed-complete-demand-commit-unexpected-member-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "pipeline", 2, "unexpected"], "ignored"
+            )],
+            reason="selection-bound-pipeline-mismatch",
+        ),
+        vector(
+            "sealed-complete-demand-unknown-predecessor-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "pipeline", 0, "kind"], "unknown-phase"
+            )],
+            reason="selection-bound-pipeline-mismatch",
+        ),
+        vector(
+            "sealed-complete-demand-vet-parameters-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "pipeline", 0, "parameters"], {}
+            )],
+            reason="selection-bound-pipeline-mismatch",
+        ),
     ])
     # SE-1 new-session deadline gate over the signed commitDeadline against the
     # verifier-trusted session start time (identity-bound sealed scenario startedAt

@@ -601,7 +601,7 @@ def validate_selection_bound_commit(context: dict) -> tuple[str, str]:
     if generator.hash_hex(selected) != reference["sha256"]:
         return "fail", "selection-bound-vector-ref-invalid"
     pipeline = context["listing"]["pipeline"]
-    phase_step = pipeline[1]
+    selected_listing = selected.get("listing")
     presented_listing = context.get("listing")
     presented_seller = (
         presented_listing.get("seller")
@@ -611,15 +611,32 @@ def validate_selection_bound_commit(context: dict) -> tuple[str, str]:
         presented_seller.get("identity")
         if isinstance(presented_seller, dict) else None
     )
-    selected_publisher = selected.get("listing", {}).get("publisherClaim")
+    selected_publisher = (
+        selected_listing.get("publisherClaim")
+        if isinstance(selected_listing, dict) else None
+    )
     presented_agreement = context.get("agreement")
     selected_agreement = selected.get("agreement")
-    if (
-        phase_step.get("kind") != selected.get("listing", {}).get("phaseKind")
-        or phase_step.get("parameters")
-        != selected.get("listing", {}).get("parameters")
-    ):
-        return "fail", "selection-bound-input-mismatch"
+    expected_pipeline = (
+        [
+            {"kind": "vet-credentials"},
+            {
+                "kind": selected_listing.get("phaseKind"),
+                "parameters": selected_listing.get("parameters"),
+            },
+            {"kind": generator.SELECTION_BOUND_PHASE},
+        ]
+        if isinstance(selected_listing, dict) else None
+    )
+    try:
+        if (
+            expected_pipeline is None
+            or generator.canonical_bytes(pipeline)
+            != generator.canonical_bytes(expected_pipeline)
+        ):
+            return "fail", "selection-bound-pipeline-mismatch"
+    except (TypeError, ValueError):
+        return "fail", "selection-bound-pipeline-mismatch"
     if (
         not isinstance(presented_publisher_identity, dict)
         or not isinstance(selected_publisher, str)
@@ -3655,6 +3672,22 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             (
                 "sealed-complete-procurement-counterparty-publisher-substitution-refused",
                 "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-demand-commit-parameters-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+            (
+                "sealed-complete-demand-commit-unexpected-member-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+            (
+                "sealed-complete-demand-unknown-predecessor-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+            (
+                "sealed-complete-demand-vet-parameters-refused",
+                "selection-bound-pipeline-mismatch",
             ),
         ):
             with self.subTest(name=name):

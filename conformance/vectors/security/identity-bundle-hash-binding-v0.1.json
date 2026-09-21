@@ -23417,8 +23417,8 @@
       }
     }
   },
-  "count": 394,
-  "hash": "9d1af691af0f55525d052a284076f931f1b4a230e1ec4c8fea65b93711fc00c5",
+  "count": 398,
+  "hash": "27874a45117b36237ff592983a37acb8c001b4c798ab85f9e74c212f83007bf4",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -28129,6 +28129,116 @@
         "verdict": "fail",
         "authorizedAction": false,
         "reason": "selection-bound-publisher-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-commit-parameters-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            2,
+            "parameters"
+          ],
+          "value": {
+            "downgrade": true
+          }
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-pipeline-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-commit-unexpected-member-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            2,
+            "unexpected"
+          ],
+          "value": "ignored"
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-pipeline-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-unknown-predecessor-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            0,
+            "kind"
+          ],
+          "value": "unknown-phase"
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-pipeline-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-vet-parameters-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            0,
+            "parameters"
+          ],
+          "value": {}
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-pipeline-mismatch"
       }
     },
     {

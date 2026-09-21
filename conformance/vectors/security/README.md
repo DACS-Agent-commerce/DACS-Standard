@@ -796,7 +796,7 @@ against the offered producer and reader fixtures remains pending.
 
 ### `revocation-state-completeness-v0.8.json` — §6.3.4 RSC-1..RSC-10
 
-101 candidate vectors make current non-revocation independently reproducible.
+102 candidate vectors make current non-revocation independently reproducible.
 They bind a stable state-line locator and checkpoint into the signed Listing,
 verify genuine deterministic Ed25519 signatures on every Listing, state head,
 and marker, authenticate the selected head as the latest finalized native value,

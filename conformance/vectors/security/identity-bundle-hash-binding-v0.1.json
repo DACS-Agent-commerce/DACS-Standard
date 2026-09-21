@@ -23182,10 +23182,243 @@
           "startedAt": 1899999980000
         }
       }
+    },
+    "selectionBoundDemand": {
+      "listing": {
+        "seller": {
+          "identity": {
+            "presentedBy": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b"
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "negotiate-sealed-envelope-complete",
+            "parameters": {
+              "commitDeadline": 2000000000000,
+              "revealWindow": 120,
+              "selectionRule": "lowest-price",
+              "candidateSetBinding": {
+                "bindingId": "test-complete-log",
+                "bindingVersion": "1",
+                "definitionRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-test-binding-8ec98ef35defa73e1bf5514b"
+                  },
+                  "contentHash": "8ec98ef35defa73e1bf5514b443303068b5ecb8a7681988a54073614d08020f1",
+                  "signer": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b"
+                }
+              }
+            }
+          },
+          {
+            "kind": "commit-selection-bound-agreement"
+          }
+        ]
+      },
+      "agreement": {
+        "sealedSelectionAgreementVersion": "1",
+        "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        "listingRef": {
+          "listingId": "complete-sealed-demo",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "parties": [
+          {
+            "role": "seller",
+            "bundleHash": "4141414141414141414141414141414141414141414141414141414141414141",
+            "primaryClaim": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-vet-publisher"
+              },
+              "contentHash": "4242424242424242424242424242424242424242424242424242424242424242"
+            }
+          },
+          {
+            "role": "buyer",
+            "bundleHash": "4343434343434343434343434343434343434343434343434343434343434343",
+            "primaryClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-vet-winner"
+              },
+              "contentHash": "4444444444444444444444444444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "terms": {
+          "deliverable": {
+            "deliverableType": "digital",
+            "hash": "abababababababababababababababababababababababababababababababab"
+          },
+          "price": {
+            "amount": "80",
+            "currency": "USD"
+          },
+          "deadline": 2000003720000,
+          "payoutBindings": []
+        },
+        "derivedFromPattern": "sealed-envelope",
+        "selectionReceiptRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "stor-selection-317b4a9cfa29fa5d5c14179d"
+          },
+          "contentHash": "317b4a9cfa29fa5d5c14179d238d1bc756a0c2c08b6ca6bbb4807238bdef5e8b",
+          "signer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695"
+        },
+        "generatedAt": 2000000127000,
+        "signatures": [
+          {
+            "algorithm": "ed25519",
+            "party": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+            "value": "7Q1Q_l1RUe6A6DR0gZlahptNqZvSSTqEF6cxd9Xh0ZsYcZGxEGnQpO1a6mpuiSZDJC5KAqhQWP5stEEwhDKkDQ"
+          },
+          {
+            "algorithm": "ed25519",
+            "party": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "value": "57U57fFysgLDyo7cedmoc-BPjmTN8MTVAlA6TTgR1Da4QGJh1cSaFexR-4wBoM6FPpCWWPjYllv4Mb0Vvgv-AQ"
+          }
+        ]
+      },
+      "verifierContext": {
+        "authenticatedSessionContext": {
+          "startedAt": 1899999980000
+        }
+      },
+      "sealedSelectionVectorRef": {
+        "corpus": "conformance/vectors/security/sealed-auction-completeness-v0.6.json",
+        "name": "complete-demand-absent-auction-mode",
+        "sha256": "3bd77847358241000614c091fdc1777fc599cc988d75a88adae81f06495adc33"
+      }
+    },
+    "selectionBoundProcurement": {
+      "listing": {
+        "seller": {
+          "identity": {
+            "presentedBy": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b"
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "negotiate-sealed-envelope-procurement-complete",
+            "parameters": {
+              "commitDeadline": 2000000000000,
+              "revealWindow": 120,
+              "selectionRule": "lowest-price",
+              "candidateSetBinding": {
+                "bindingId": "test-complete-log",
+                "bindingVersion": "1",
+                "definitionRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-test-binding-8ec98ef35defa73e1bf5514b"
+                  },
+                  "contentHash": "8ec98ef35defa73e1bf5514b443303068b5ecb8a7681988a54073614d08020f1",
+                  "signer": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b"
+                }
+              },
+              "auctionMode": "procurement"
+            }
+          },
+          {
+            "kind": "commit-selection-bound-agreement"
+          }
+        ]
+      },
+      "agreement": {
+        "sealedSelectionAgreementVersion": "1",
+        "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        "listingRef": {
+          "listingId": "complete-sealed-demo",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "4141414141414141414141414141414141414141414141414141414141414141",
+            "primaryClaim": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-vet-publisher"
+              },
+              "contentHash": "4242424242424242424242424242424242424242424242424242424242424242"
+            }
+          },
+          {
+            "role": "seller",
+            "bundleHash": "4343434343434343434343434343434343434343434343434343434343434343",
+            "primaryClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-vet-winner"
+              },
+              "contentHash": "4444444444444444444444444444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "terms": {
+          "deliverable": {
+            "deliverableType": "digital",
+            "hash": "abababababababababababababababababababababababababababababababab"
+          },
+          "price": {
+            "amount": "80",
+            "currency": "USD"
+          },
+          "deadline": 2000003720000,
+          "payoutBindings": []
+        },
+        "derivedFromPattern": "sealed-envelope",
+        "selectionReceiptRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "stor-selection-ea89294a070ad8b4c92b204e"
+          },
+          "contentHash": "ea89294a070ad8b4c92b204ec30074dcf6504ead90555af0f63a3b55f7051d15",
+          "signer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695"
+        },
+        "generatedAt": 2000000127000,
+        "signatures": [
+          {
+            "algorithm": "ed25519",
+            "party": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+            "value": "iYYIGHAhDF7oQmpDywamsigweew2EdloPiYmlQ8plwqdwX_OadKG9pjnIYZytosnEijmr5yelbE8mqAcJnudDg"
+          },
+          {
+            "algorithm": "ed25519",
+            "party": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "value": "aQ3BqDmRpsM_Iy135_K5PXxgFS-0Cq8NPx_Uwhh_fiUETzZXYTqgo37fsgysmxU4d2N4ybruVEV_1USDVEjiCA"
+          }
+        ]
+      },
+      "verifierContext": {
+        "authenticatedSessionContext": {
+          "startedAt": 1899999980000
+        }
+      },
+      "sealedSelectionVectorRef": {
+        "corpus": "conformance/vectors/security/sealed-auction-completeness-v0.6.json",
+        "name": "complete-lowest-price",
+        "sha256": "32a852495a038deb201afc3fc1e89b31a3801c1159cd0827652e7e5ca824952f"
+      }
     }
   },
-  "count": 383,
-  "hash": "b935c38fb722e3ad9a87a227073e0d4ce91ef81e8a06d5c94f45027f66e3cf1c",
+  "count": 387,
+  "hash": "dbf3dcded992697430639dfe8316ee36350b299bac41114da761d24b113fbb21",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -27427,7 +27660,7 @@
       }
     },
     {
-      "name": "identity-bound-sealed-envelope-losing-bidder-commit",
+      "name": "identity-bound-historical-sealed-new-session-refused",
       "operation": "validate-identity-bound-agreement-path",
       "scenario": "identityBoundSealed",
       "stage": "commit",
@@ -27435,11 +27668,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "historical-sealed-new-session-forbidden"
       }
     },
     {
@@ -27475,10 +27708,119 @@
       }
     },
     {
-      "name": "sealed-deadline-exact-boundary",
+      "name": "sealed-complete-demand-profile-admitted",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [],
+      "resign": [],
+      "unavailable": [],
+      "expected": "pass",
+      "want": {
+        "verdict": "pass",
+        "authorizedAction": true,
+        "reason": "verified"
+      }
+    },
+    {
+      "name": "sealed-complete-procurement-profile-admitted",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundProcurement",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [],
+      "resign": [],
+      "unavailable": [],
+      "expected": "pass",
+      "want": {
+        "verdict": "pass",
+        "authorizedAction": true,
+        "reason": "verified"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-wrong-commit-phase-refused",
       "operation": "validate-identity-bound-agreement-path",
       "scenario": "identityBoundSealed",
       "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "kind"
+          ],
+          "value": "negotiate-sealed-envelope-complete"
+        },
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "candidateSetBinding"
+          ],
+          "value": {
+            "bindingId": "fixture-complete-sealed-records",
+            "bindingVersion": "1",
+            "definitionRef": {
+              "anchor": {
+                "kind": "https",
+                "locator": "https://conformance.example/dacs/complete-sealed-binding-v1"
+              },
+              "contentHash": "c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7"
+            }
+          }
+        }
+      ],
+      "resign": [
+        "listing-chain"
+      ],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "sealed-profile-pairing-invalid"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-missing-binding-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "delete",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "candidateSetBinding"
+          ]
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "complete-sealed-binding-invalid"
+      }
+    },
+    {
+      "name": "sealed-deadline-exact-boundary",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27493,9 +27835,7 @@
           "value": 1900000040000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "pass",
       "want": {
@@ -27506,9 +27846,9 @@
     },
     {
       "name": "sealed-deadline-59_999-short",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27523,9 +27863,7 @@
           "value": 1900000039999
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27536,9 +27874,9 @@
     },
     {
       "name": "sealed-deadline-13_000-ms",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27553,9 +27891,7 @@
           "value": 1899999993000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27566,9 +27902,9 @@
     },
     {
       "name": "sealed-deadline-at-session-start",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27583,9 +27919,7 @@
           "value": 1899999980000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27596,9 +27930,9 @@
     },
     {
       "name": "sealed-deadline-missing",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27612,9 +27946,7 @@
           ]
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27625,9 +27957,9 @@
     },
     {
       "name": "sealed-deadline-malformed",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27642,9 +27974,7 @@
           "value": "soon"
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27655,9 +27985,9 @@
     },
     {
       "name": "sealed-deadline-procurement-exact-boundary",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27672,9 +28002,7 @@
           "value": 1900000040000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "pass",
       "want": {
@@ -27685,9 +28013,9 @@
     },
     {
       "name": "sealed-deadline-procurement-59_999-short",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27702,9 +28030,7 @@
           "value": 1900000039999
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27715,9 +28041,9 @@
     },
     {
       "name": "sealed-deadline-procurement-at-session-start",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27732,9 +28058,7 @@
           "value": 1899999980000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27745,9 +28069,9 @@
     },
     {
       "name": "sealed-deadline-procurement-13_000-ms",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27762,9 +28086,7 @@
           "value": 1899999993000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27775,9 +28097,9 @@
     },
     {
       "name": "sealed-deadline-procurement-missing",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27791,9 +28113,7 @@
           ]
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27804,9 +28124,9 @@
     },
     {
       "name": "sealed-deadline-procurement-malformed",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27821,9 +28141,7 @@
           "value": "soon"
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27834,9 +28152,9 @@
     },
     {
       "name": "sealed-deadline-procurement-missing-auctionMode",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
@@ -27861,9 +28179,7 @@
           "value": 1900000040000
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27874,22 +28190,11 @@
     },
     {
       "name": "sealed-deadline-procurement-malformed-auctionMode",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundProcurement",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "listing",
-            "pipeline",
-            1,
-            "parameters",
-            "auctionMode"
-          ],
-          "value": "demand"
-        },
         {
           "op": "set",
           "path": [
@@ -27900,11 +28205,20 @@
             "commitDeadline"
           ],
           "value": 1900000040000
+        },
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "auctionMode"
+          ],
+          "value": "demand"
         }
       ],
-      "resign": [
-        "listing-chain"
-      ],
+      "resign": [],
       "unavailable": [],
       "expected": "fail",
       "want": {
@@ -27917,7 +28231,7 @@
       "name": "sealed-deadline-procurement-marker-alone-no-role-swap",
       "operation": "validate-identity-bound-agreement-path",
       "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "stage": "payment",
       "commitment": "finality",
       "mutations": [
         {
@@ -27968,7 +28282,7 @@
       "name": "sealed-deadline-procurement-buyer-role-mismatched",
       "operation": "validate-identity-bound-agreement-path",
       "scenario": "identityBoundProcurement",
-      "stage": "commit",
+      "stage": "payment",
       "commitment": "finality",
       "mutations": [
         {
@@ -28005,19 +28319,21 @@
     },
     {
       "name": "sealed-deadline-session-start-moved",
-      "operation": "validate-identity-bound-agreement-path",
-      "scenario": "identityBoundSealed",
-      "stage": "commit",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
       "commitment": "finality",
       "mutations": [
         {
           "op": "set",
           "path": [
-            "commitInput",
-            "sessionContext",
-            "startedAt"
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "commitDeadline"
           ],
-          "value": 1900000200000
+          "value": 1900000040000
         },
         {
           "op": "set",

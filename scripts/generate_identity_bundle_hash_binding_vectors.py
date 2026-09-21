@@ -27,6 +27,17 @@ OUTPUT = ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.
 BASE_SHA = "3426faaebc09948d57a3a6d30fd6795df579b68f"
 NOW = 1_900_000_000_000
 WRONG_HASH = "11" * 32
+COMPLETE_CANDIDATE_SET_BINDING = {
+    "bindingId": "fixture-complete-sealed-records",
+    "bindingVersion": "1",
+    "definitionRef": {
+        "anchor": {
+            "kind": "https",
+            "locator": "https://conformance.example/dacs/complete-sealed-binding-v1",
+        },
+        "contentHash": "c7" * 32,
+    },
+}
 
 BUNDLE_DOMAIN = "dacs-bundle-presentation:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
@@ -69,6 +80,16 @@ PHASES = {
     "identityBoundAgreement": "commit-identity-bound-agreement",
     "identityBoundPayeeAgreement": "commit-identity-bound-payee-agreement",
 }
+SELECTION_BOUND_PHASE = "commit-selection-bound-agreement"
+HISTORICAL_SEALED_PHASES = frozenset({
+    "negotiate-sealed-envelope",
+    "negotiate-sealed-envelope-procurement",
+})
+COMPLETE_SEALED_PHASES = frozenset({
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
+})
+COMMITMENT_PHASES = frozenset(PHASES.values()) | {SELECTION_BOUND_PHASE}
 BASE_SUPPORTED_PHASES = frozenset({
     "vet-credentials",
     "negotiate-fixed-price",
@@ -93,6 +114,8 @@ BASE_SUPPORTED_PHASES = frozenset({
 CURRENT_SUPPORTED_PHASES = BASE_SUPPORTED_PHASES | {
     PHASES["identityBoundAgreement"],
     PHASES["identityBoundPayeeAgreement"],
+    *COMPLETE_SEALED_PHASES,
+    SELECTION_BOUND_PHASE,
 }
 AGREEMENT_DOMAINS = {
     "agreement": "dacs-agreement:v1:",
@@ -126,6 +149,8 @@ NEGOTIATION_PHASES = frozenset({
     "negotiate-rfq",
     "negotiate-sealed-envelope",
     "negotiate-sealed-envelope-procurement",
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
 })
 JOB_IDS = {
     "agreement": "01KTY8ZJ00CW7KSECW3FS6PQ0A",
@@ -1889,6 +1914,40 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         raise ValueError(f"unknown resign action: {action}")
 
 
+def selection_bound_commit_scenario(vector_name: str) -> dict[str, Any]:
+    """Pin one real SAC vector into the IBH commit-admission corpus."""
+    source = ROOT / "conformance/vectors/security/sealed-auction-completeness-v0.6.json"
+    document = json.loads(source.read_text(encoding="utf-8"))
+    selected = next(
+        item for item in document["vectors"] if item["name"] == vector_name
+    )
+    listing = selected["listing"]
+    return {
+        "listing": {
+            "seller": {
+                "identity": {"presentedBy": listing["publisherClaim"]},
+            },
+            "pipeline": [
+                {"kind": "vet-credentials"},
+                {
+                    "kind": listing["phaseKind"],
+                    "parameters": copy.deepcopy(listing["parameters"]),
+                },
+                {"kind": SELECTION_BOUND_PHASE},
+            ],
+        },
+        "agreement": copy.deepcopy(selected["agreement"]),
+        "verifierContext": {
+            "authenticatedSessionContext": {"startedAt": NOW - 20_000},
+        },
+        "sealedSelectionVectorRef": {
+            "corpus": "conformance/vectors/security/sealed-auction-completeness-v0.6.json",
+            "name": vector_name,
+            "sha256": hash_hex(selected),
+        },
+    }
+
+
 def vector(
     name: str,
     expected: str,
@@ -1899,11 +1958,12 @@ def vector(
     mutations: list[dict[str, Any]] | None = None,
     resign: list[str] | None = None,
     unavailable: list[str] | None = None,
+    operation: str = "validate-identity-bound-agreement-path",
     reason: str,
 ) -> dict[str, Any]:
     return {
         "name": name,
-        "operation": "validate-identity-bound-agreement-path",
+        "operation": operation,
         "scenario": scenario_name,
         "stage": stage,
         "commitment": commitment,
@@ -2850,7 +2910,14 @@ def build_vectors() -> list[dict[str, Any]]:
         stage="old-reader",
         reason="verified",
     ))
-    for stage in ("commit", "payment", "terminal"):
+    vectors.append(vector(
+        "identity-bound-historical-sealed-new-session-refused",
+        "fail",
+        scenario_name="identityBoundSealed",
+        stage="commit",
+        reason="historical-sealed-new-session-forbidden",
+    ))
+    for stage in ("payment", "terminal"):
         vectors.append(vector(
             f"identity-bound-sealed-envelope-losing-bidder-{stage}",
             "pass",
@@ -2858,6 +2925,49 @@ def build_vectors() -> list[dict[str, Any]]:
             stage=stage,
             reason="verified",
         ))
+    for label, scenario_name in (
+        ("demand", "selectionBoundDemand"),
+        ("procurement", "selectionBoundProcurement"),
+    ):
+        vectors.append(vector(
+            f"sealed-complete-{label}-profile-admitted",
+            "pass",
+            scenario_name=scenario_name,
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            reason="verified",
+        ))
+    vectors.extend([
+        vector(
+            "sealed-complete-demand-wrong-commit-phase-refused",
+            "fail",
+            scenario_name="identityBoundSealed",
+            stage="commit",
+            mutations=[
+                set_mutation(
+                    ["listing", "pipeline", 1, "kind"],
+                    "negotiate-sealed-envelope-complete",
+                ),
+                set_mutation(
+                    ["listing", "pipeline", 1, "parameters", "candidateSetBinding"],
+                    COMPLETE_CANDIDATE_SET_BINDING,
+                ),
+            ],
+            resign=["listing-chain"],
+            reason="sealed-profile-pairing-invalid",
+        ),
+        vector(
+            "sealed-complete-demand-missing-binding-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[delete_mutation([
+                "listing", "pipeline", 1, "parameters", "candidateSetBinding"
+            ])],
+            reason="complete-sealed-binding-invalid",
+        ),
+    ])
     # SE-1 new-session deadline gate over the signed commitDeadline against the
     # verifier-trusted session start time (identity-bound sealed scenario startedAt
     # is NOW - 20_000, so the exact 60s boundary is NOW + 40_000).
@@ -2870,23 +2980,26 @@ def build_vectors() -> list[dict[str, Any]]:
     ):
         vectors.append(vector(
             f"sealed-deadline-{label}", expected,
-            scenario_name="identityBoundSealed",
+            scenario_name="selectionBoundDemand",
+            stage="session-admission",
+            operation="validate-selection-bound-session-admission",
             mutations=[set_mutation(sealed_deadline_path, deadline)],
-            resign=["listing-chain"],
             reason=reason,
         ))
     vectors.append(vector(
         "sealed-deadline-missing", "fail",
-        scenario_name="identityBoundSealed",
+        scenario_name="selectionBoundDemand",
+        stage="session-admission",
+        operation="validate-selection-bound-session-admission",
         mutations=[delete_mutation(sealed_deadline_path)],
-        resign=["listing-chain"],
         reason="sealed-deadline-invalid",
     ))
     vectors.append(vector(
         "sealed-deadline-malformed", "fail",
-        scenario_name="identityBoundSealed",
+        scenario_name="selectionBoundDemand",
+        stage="session-admission",
+        operation="validate-selection-bound-session-admission",
         mutations=[set_mutation(sealed_deadline_path, "soon")],
-        resign=["listing-chain"],
         reason="sealed-deadline-invalid",
     ))
     # B9: procurement mode (SE-8) is gated before SE-1. A genuine procurement
@@ -2902,9 +3015,10 @@ def build_vectors() -> list[dict[str, Any]]:
     ):
         vectors.append(vector(
             f"sealed-deadline-{label}", expected,
-            scenario_name="identityBoundProcurement",
+            scenario_name="selectionBoundProcurement",
+            stage="session-admission",
+            operation="validate-selection-bound-session-admission",
             mutations=[set_mutation(sealed_deadline_path, deadline)],
-            resign=["listing-chain"],
             reason=reason,
         ))
     for label, mutation in (
@@ -2913,9 +3027,10 @@ def build_vectors() -> list[dict[str, Any]]:
     ):
         vectors.append(vector(
             f"sealed-deadline-{label}", "fail",
-            scenario_name="identityBoundProcurement",
+            scenario_name="selectionBoundProcurement",
+            stage="session-admission",
+            operation="validate-selection-bound-session-admission",
             mutations=[mutation],
-            resign=["listing-chain"],
             reason="sealed-deadline-invalid",
         ))
     # B9 SE-8 enforcement: a procurement phase missing or carrying an
@@ -2923,24 +3038,26 @@ def build_vectors() -> list[dict[str, Any]]:
     # SE-1 deadline gate can run, even when the deadline itself would be valid.
     vectors.append(vector(
         "sealed-deadline-procurement-missing-auctionMode", "fail",
-        scenario_name="identityBoundProcurement",
+        scenario_name="selectionBoundProcurement",
+        stage="session-admission",
+        operation="validate-selection-bound-session-admission",
         mutations=[
             delete_mutation(["listing", "pipeline", 1, "parameters", "auctionMode"]),
             set_mutation(sealed_deadline_path, NOW + 40_000),
         ],
-        resign=["listing-chain"],
         reason="unresolvable-auctionMode",
     ))
     vectors.append(vector(
         "sealed-deadline-procurement-malformed-auctionMode", "fail",
-        scenario_name="identityBoundProcurement",
+        scenario_name="selectionBoundProcurement",
+        stage="session-admission",
+        operation="validate-selection-bound-session-admission",
         mutations=[
+            set_mutation(sealed_deadline_path, NOW + 40_000),
             set_mutation(
                 ["listing", "pipeline", 1, "parameters", "auctionMode"], "demand"
             ),
-            set_mutation(sealed_deadline_path, NOW + 40_000),
         ],
-        resign=["listing-chain"],
         reason="unresolvable-auctionMode",
     ))
     # B9 SE-8 role direction: the mode marker alone cannot authorize. A demand
@@ -2957,6 +3074,7 @@ def build_vectors() -> list[dict[str, Any]]:
     vectors.append(vector(
         "sealed-deadline-procurement-marker-alone-no-role-swap", "fail",
         scenario_name="identityBoundSealed",
+        stage="payment",
         mutations=[
             procurement_kind, procurement_mode,
             set_mutation(sealed_deadline_path, NOW + 40_000),
@@ -2971,6 +3089,7 @@ def build_vectors() -> list[dict[str, Any]]:
     vectors.append(vector(
         "sealed-deadline-procurement-buyer-role-mismatched", "fail",
         scenario_name="identityBoundProcurement",
+        stage="payment",
         mutations=[
             set_mutation(["agreement", "parties", 0, "role"], "seller"),
             set_mutation(["agreement", "parties", 1, "role"], "buyer"),
@@ -2982,9 +3101,11 @@ def build_vectors() -> list[dict[str, Any]]:
     # listing evaluation time.
     vectors.append(vector(
         "sealed-deadline-session-start-moved", "fail",
-        scenario_name="identityBoundSealed",
+        scenario_name="selectionBoundDemand",
+        stage="session-admission",
+        operation="validate-selection-bound-session-admission",
         mutations=[
-            set_mutation(["commitInput", "sessionContext", "startedAt"], NOW + 200_000),
+            set_mutation(sealed_deadline_path, NOW + 40_000),
             set_mutation(
                 ["verifierContext", "authenticatedSessionContext", "startedAt"],
                 NOW + 200_000,
@@ -3131,6 +3252,12 @@ def build() -> dict[str, Any]:
     scenarios["identityBoundProcurement"] = scenario(
         "identityBoundAgreement", JOB_IDS["identityBoundProcurement"], sealed=True,
         sealed_deadline=NOW + 100_000, procurement=True,
+    )
+    scenarios["selectionBoundDemand"] = selection_bound_commit_scenario(
+        "complete-demand-absent-auction-mode"
+    )
+    scenarios["selectionBoundProcurement"] = selection_bound_commit_scenario(
+        "complete-lowest-price"
     )
     vectors = build_vectors()
     return {

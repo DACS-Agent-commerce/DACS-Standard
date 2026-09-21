@@ -85,6 +85,27 @@ KIND_SEPARATOR = {
     "AttestationBundle": "dacs-bundle:v1:",
 }
 
+# Kind -> the §B.2 body type discriminator that MUST be present with value "1" and
+# MUST NOT collide with another kind's discriminator. This binds the wrapper `kind`
+# to the artifact body before any hashing or signature work runs, so a wrapper
+# cannot smuggle a different artifact type past a reader that only dispatches on
+# the wrapper's `kind` label (CORE §11.2.5 version-signalling scope).
+BODY_DISCRIMINATORS = {
+    "Listing": "dacsVersion",
+    "VerifyResult": "resultVersion",
+    "CompositeVerificationRecord": "recordVersion",
+    "AgreementDocument": "agreementVersion",
+    "PayeeBoundAgreementDocument": "payeeBoundAgreementVersion",
+    "IdentityBoundAgreementDocument": "identityBoundAgreementVersion",
+    "IdentityBoundPayeeAgreementDocument": "identityBoundPayeeAgreementVersion",
+    "SettlementEvidence": "evidenceVersion",
+    "AttestationBundle": "bundleVersion",
+}
+
+# LR-2 size cap: the canonical JSON form of a Listing MUST NOT exceed 16,384 bytes
+# (DACS-1 §6.3.4). Enforced over the §B.2 signature-omitted canonical form.
+LISTING_SIZE_CAP = 16_384
+
 # The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
 # This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64
 # allowlist below, which they used to share (a conflation removed in the SIG-6 migration).
@@ -389,8 +410,50 @@ def validate_vector(path: Path) -> list[str]:
                 )
             )
 
-        # §B.2 envelope content hash over the signature-omitted canonical form.
-        expected_hash = content_hash_uri(kind, artifact["artifact"])
+        # B8: bind the wrapper kind to the body type discriminator BEFORE any hash
+        # or signature work. A wrapper cannot relabel a different artifact type.
+        body = artifact["artifact"]
+        discriminator = BODY_DISCRIMINATORS[kind]
+        if not isinstance(body, dict) or body.get(discriminator) != "1":
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} body must carry {discriminator}: '1'",
+                )
+            )
+        foreign = sorted(
+            other for other, field in BODY_DISCRIMINATORS.items()
+            if other != kind and isinstance(body, dict) and field in body
+        )
+        if foreign:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} body carries a foreign type discriminator: {foreign}",
+                )
+            )
+
+        # C12/C13: canonicalisation fails closed — an unsafe numeric magnitude or a
+        # non-JSON value is a controlled rejection, never an uncaught traceback, and
+        # an oversized Listing is rejected before any signature is considered.
+        try:
+            scope = signing_scope(kind, body)
+            canonical = canonical_json(scope)
+        except (ValueError, TypeError) as exc:
+            errors.append(
+                fail(path, f"{artifact_id}: canonical form is not an admissible DACS value: {exc}")
+            )
+            continue
+        if kind == "Listing" and len(canonical) > LISTING_SIZE_CAP:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: Listing canonical form exceeds the LR-2 size cap "
+                    f"({len(canonical)} > {LISTING_SIZE_CAP} bytes)",
+                )
+            )
+            continue
+        expected_hash = "sha256:" + hashlib.sha256(canonical).hexdigest()
         if artifact["contentHash"] != expected_hash:
             errors.append(
                 fail(

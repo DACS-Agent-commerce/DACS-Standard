@@ -321,6 +321,72 @@ The format used per release:
   definition→entry→snapshot→receipt→descriptor→evidence dependency order. The
   signed registry-bootstrap corpus was subsequently renewed at `3c94a48`,
   preserving all 76 case names and expected outcomes.
+### Fixed — explicit current revocation admission policy
+
+- Add `rsc-current-admission-v2`: authenticate Listing and revocation current values at one common finalized evaluation state, retaining distinct earlier inclusion receipts. Preserve known-revocation precedence, committed sessions and explicit recorded-policy replay; current consumers cannot fall back to v1 evidence.
+- Separate the 16,384-octet signature-omitted canonical Listing cap from the trusted binding's complete encoded-record capacity. Add an offline adapter contract and ordinary acceptance checks without changing signed artifacts or regenerating the frozen v1 corpus.
+- Fail closed in the local Listing admission bridge: signature, shape, native-capacity, unsigned state labels, and a caller's committed-session label cannot mint admission without the applicable authoritative evaluator. The pinned historical IBH fixture independently verifies its signed commitment chain before installing a retained test capability; this is not a general runtime exception. Admit the current complete sealed-phase shapes and align the RSC conformance profile tuple with the composed release. Positive current Listing admission remains an implementation gap, not a passing bridge claim.
+
+### Added — authoritative listing-revocation completeness
+
+- **Current revocation state (RSC-1..RSC-10; #375)** — adds the
+  listing-bound `RevocationStateRef`, signed append-only `RevocationStateHead`,
+  compact sparse-Merkle inclusion/non-membership proof, and exact replay
+  context. A current new-session check authenticates the stable state line's
+  latest finalized value, head authority and key rotation, complete checkpoint
+  chain, one-revocation transitions, and exact listing tuple. Discovery-only
+  absence, a stale signed head, rollback, equivocation, censored tombstone,
+  invalid proof, or unavailable current-state authority is `indeterminate` and
+  cannot make a listing session-eligible. Verified revocation still takes
+  precedence, while already committed sessions retain their pinned in-flight
+  semantics.
+- **Self-binding head receipts** — every historical head receipt recomputes
+  writer, transactionRef, nonce, blockRef, evidence, finalityProfile, and
+  native ordering; a provenance mutation is `indeterminate`, never `pass`.
+- **Load-bearing key-lifecycle authority evidence (RSC-2)** — head and marker
+  `authority.evidence` is a signed `(claim, key, validAt)` attestation from the
+  authenticated key-lifecycle authority, verified against each artifact's
+  finalized inclusion state. Omission, wrong container, attacker substitution,
+  or nested malformation fails closed as `indeterminate`, never `absent` or
+  `revoked`.
+- **Append-only freshness and downgrade boundary** — an authenticated
+  higher-sequence head whose exact transition revokes the tuple supersedes a
+  stale non-membership read (`revoked`); a same-sequence sibling omitting the
+  tuple is an equivocation. The current-profile boundary is the authenticated
+  CORE §11.1.2 corrective-profile admission, never the presence or absence of
+  `revocationState` on a same-`dacsVersion` Listing (RSC-10).
+- **Authenticated Listing evaluation state** — the Listing is a signed artifact
+  (no bare `authenticated` boolean); its signature binds the exact tuple the
+  revocation query recomputes. Wrong signer key and wrong signature algorithm
+  vectors fail closed.
+- **Verifier-owned corrective-profile admission** — a bare caller-supplied
+  `currentProfile` boolean has no authority. Current-profile admission is the
+  verifier-owned exact release pin plus complete module tuple, session- and
+  identity-bound; caller copies, missing, mismatched, incomplete, or
+  unauthenticated admission fails closed before listing interpretation.
+- **Signed conflict-observation completeness** — the complete
+  known-conflicting-head set is signed into the current-state evidence. Omitting
+  or substituting it is `indeterminate`, never `absent`, so a higher revoking
+  head cannot be downgraded by dropping the conflict observation.
+- **One authenticated finalized state** — the current-state signature binds the
+  exact Listing content hash and its finalized receipt (LP-1) to the head's
+  finalized state, so the Listing and its revocation non-membership are evaluated
+  in one authenticated finalized state; a missing, stale, or hash-mismatched
+  listing receipt is `indeterminate`.
+- **Sealed-auction new-session deadline gate (SE-1)** — the signed
+  `commitDeadline` MUST be at least 60 s after the verifier-trusted session
+  start time for both demand and procurement modes, enforced before any effect;
+  committed sessions are never re-gated.
+- **Sealed-envelope role direction (SE-8)** — a genuine procurement specimen
+  assigns the listing publisher as the agreement `buyer` and the winning bidder
+  as the agreement `seller`; demand keeps the publisher as the agreement
+  `seller`. The `auctionMode` marker alone never authorizes: a mode-marker
+  without the role swap, or a swapped/mismatched role assignment, is rejected
+  with `sealed-role-direction-invalid` before the SE-1 deadline gate.
+- **Listing boundary enforcement (LR-2)** — the validator rejects a Listing
+  whose signature-omitted canonical form exceeds 16,384 bytes and fails closed
+  (controlled rejection, no traceback) on unsafe numeric magnitudes such as
+  `2**53`, and binds the wrapper `kind` to the body type discriminator.
 
 ### Fixed — authenticated Vet replay and reference consumers
 

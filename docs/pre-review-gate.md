@@ -3,8 +3,10 @@
 Run `python3 scripts/pre_review_gate.py` before requesting review. The gate
 executes the invariant registry in `conformance/pre-review-invariants.json` and
 fails when a required case disappears, a declared matrix loses a cell, a vector
-no longer produces its pinned outcome, a negative no longer differs from its
-positive control, or a named prior-blocker unit regression stops executing.
+no longer produces its complete pinned outcome (verdict and consumer effects),
+a control no longer produces its own independently pinned outcome, a negative no
+longer differs from its control, or a named prior-blocker unit regression stops
+executing.
 
 Current enforced coverage is deliberately narrow:
 

@@ -59,10 +59,60 @@ class PreReviewGateTests(unittest.TestCase):
         with self.assertRaisesRegex(self.gate.GateError, "required case disappeared"):
             self.gate.run_vector_matrices(manifest)
 
+    def test_incomplete_consumer_effect_expectation_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["vectorMatrices"][0]["cases"][0]["expected"].pop("session")
+        with self.assertRaisesRegex(self.gate.GateError, "incomplete expected result"):
+            self.gate.validate_manifest(manifest)
+
+    def test_session_only_case_drift_is_rejected(self):
+        original_load = self.gate._load_evaluator
+
+        class SessionDrift:
+            def __init__(self, evaluator):
+                self.evaluator = evaluator
+
+            def evaluate(self, *args):
+                verdict, effects = self.evaluator.evaluate(*args)
+                return verdict, {**effects, "session": "continue"}
+
+        self.gate._load_evaluator = lambda relative: SessionDrift(original_load(relative))
+        try:
+            with self.assertRaisesRegex(self.gate.GateError, "expected.*session.*refuse"):
+                self.gate.run_vector_matrices(self.manifest)
+        finally:
+            self.gate._load_evaluator = original_load
+
+    def test_control_only_drift_is_rejected(self):
+        original_load = self.gate._load_evaluator
+        corpus_path = ROOT / self.manifest["vectorMatrices"][0]["corpus"]
+        corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
+        control_input = next(
+            vector["input"] for vector in corpus["vectors"]
+            if vector["name"] == "rsc-valid-active-nonmembership"
+        )
+
+        class ControlDrift:
+            def __init__(self, evaluator):
+                self.evaluator = evaluator
+
+            def evaluate(self, data, *args):
+                if data == control_input:
+                    return "fail", {"revocationCheck": "revoked", "session": "refuse"}
+                return self.evaluator.evaluate(data, *args)
+
+        self.gate._load_evaluator = lambda relative: ControlDrift(original_load(relative))
+        try:
+            with self.assertRaisesRegex(self.gate.GateError, "control.*expected"):
+                self.gate.run_vector_matrices(self.manifest)
+        finally:
+            self.gate._load_evaluator = original_load
+
     def test_case_must_discriminate_from_its_control(self):
         manifest = copy.deepcopy(self.manifest)
         case = manifest["vectorMatrices"][0]["cases"][0]
         case["controlCase"] = case["caseId"]
+        case["controlExpected"] = copy.deepcopy(case["expected"])
         self.gate.validate_manifest(manifest)
         with self.assertRaisesRegex(self.gate.GateError, "no longer discriminates"):
             self.gate.run_vector_matrices(manifest)

@@ -83,9 +83,14 @@ def validate_manifest(manifest: object) -> None:
             if coordinate in actual:
                 raise GateError(f"{matrix['id']}: duplicate coordinate {dict(coordinate)}")
             actual.add(coordinate)
-            expected = case.get("expected")
-            if not isinstance(expected, dict) or set(expected) != {"verdict", "revocationCheck"}:
-                raise GateError(f"{matrix['id']}/{case_id}: incomplete expected result")
+            for expectation_name in ("expected", "controlExpected"):
+                expected = case.get(expectation_name)
+                if not isinstance(expected, dict) or set(expected) != {
+                    "verdict", "revocationCheck", "session",
+                }:
+                    raise GateError(
+                        f"{matrix['id']}/{case_id}: incomplete {expectation_name} result"
+                    )
             if not isinstance(case.get("controlCase"), str):
                 raise GateError(f"{matrix['id']}/{case_id}: missing discriminating controlCase")
         if actual != required:
@@ -132,6 +137,22 @@ def _load_evaluator(relative: str):
     return module
 
 
+def _complete_outcome(result: object, label: str) -> dict:
+    if not isinstance(result, tuple) or len(result) != 2 or not isinstance(result[1], dict):
+        raise GateError(f"{label}: evaluator returned a malformed outcome")
+    verdict, effects = result
+    if "verdict" in effects:
+        raise GateError(f"{label}: consumer effects must not redefine verdict")
+    return {"verdict": verdict, **effects}
+
+
+def _corpus_outcome(vector: dict, label: str) -> dict:
+    effects = vector.get("want")
+    if not isinstance(effects, dict) or "verdict" in effects:
+        raise GateError(f"{label}: corpus has a malformed expected outcome")
+    return {"verdict": vector.get("expected"), **effects}
+
+
 def run_vector_matrices(manifest: dict) -> int:
     executed = 0
     loaded = {}
@@ -155,19 +176,23 @@ def run_vector_matrices(manifest: dict) -> int:
                 vector.get("input"), corpus.get("publicKeys"),
                 vector.get("trustedProfileAdmission"),
             )
-            observed = {"verdict": result[0], "revocationCheck": result[1].get("revocationCheck")}
+            observed = _complete_outcome(result, f"{matrix['id']}/{case_id}")
             if observed != case["expected"]:
                 raise GateError(f"{matrix['id']}/{case_id}: expected {case['expected']}, got {observed}")
-            if observed != {"verdict": vector.get("expected"), "revocationCheck": vector.get("want", {}).get("revocationCheck")}:
+            if case["expected"] != _corpus_outcome(vector, f"{matrix['id']}/{case_id}"):
                 raise GateError(f"{matrix['id']}/{case_id}: registry and corpus expectations diverge")
             control_result = evaluator.evaluate(
                 control.get("input"), corpus.get("publicKeys"),
                 control.get("trustedProfileAdmission"),
             )
-            control_observed = {
-                "verdict": control_result[0],
-                "revocationCheck": control_result[1].get("revocationCheck"),
-            }
+            control_label = f"{matrix['id']}/{case_id} control {control_id}"
+            control_observed = _complete_outcome(control_result, control_label)
+            if control_observed != case["controlExpected"]:
+                raise GateError(
+                    f"{control_label}: expected {case['controlExpected']}, got {control_observed}"
+                )
+            if case["controlExpected"] != _corpus_outcome(control, control_label):
+                raise GateError(f"{control_label}: registry and corpus expectations diverge")
             if observed == control_observed:
                 raise GateError(
                     f"{matrix['id']}/{case_id}: no longer discriminates from control {control_id}"

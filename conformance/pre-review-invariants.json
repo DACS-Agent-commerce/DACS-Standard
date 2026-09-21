@@ -13,26 +13,30 @@
         {
           "caseId": "rsc-same-sequence-target-present-authentic",
           "coordinates": {"targetPresence": "present", "authenticity": "authentic"},
-          "expected": {"verdict": "fail", "revocationCheck": "revoked"},
-          "controlCase": "rsc-valid-active-nonmembership"
+          "expected": {"verdict": "fail", "revocationCheck": "revoked", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-same-sequence-target-absent-authentic",
           "coordinates": {"targetPresence": "absent", "authenticity": "authentic"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-active-nonmembership"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-same-sequence-target-present-inauthentic",
           "coordinates": {"targetPresence": "present", "authenticity": "inauthentic"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-same-sequence-target-present-authentic"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-same-sequence-target-present-authentic",
+          "controlExpected": {"verdict": "fail", "revocationCheck": "revoked", "session": "refuse"}
         },
         {
           "caseId": "rsc-same-sequence-target-absent-inauthentic",
           "coordinates": {"targetPresence": "absent", "authenticity": "inauthentic"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-active-nonmembership"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         }
       ]
     },
@@ -48,38 +52,44 @@
         {
           "caseId": "rsc-head-schema-genesis-extra",
           "coordinates": {"headKind": "genesis", "mutation": "extra"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-genesis-absent"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-head-schema-genesis-missing",
           "coordinates": {"headKind": "genesis", "mutation": "missing"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-genesis-absent"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-head-schema-genesis-wrong-type",
           "coordinates": {"headKind": "genesis", "mutation": "wrong-type"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-genesis-absent"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-head-schema-transition-extra",
           "coordinates": {"headKind": "transition", "mutation": "extra"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-active-nonmembership"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-head-schema-transition-missing",
           "coordinates": {"headKind": "transition", "mutation": "missing"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-active-nonmembership"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         },
         {
           "caseId": "rsc-head-schema-transition-wrong-type",
           "coordinates": {"headKind": "transition", "mutation": "wrong-type"},
-          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate"},
-          "controlCase": "rsc-valid-active-nonmembership"
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
         }
       ]
     }

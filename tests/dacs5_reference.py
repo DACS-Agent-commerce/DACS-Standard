@@ -2021,6 +2021,7 @@ def _validate_bound_fault_bundle(
     authenticated_records = []
     actual_keys = []
     pending_closure_result = None
+    delivery_dependency_owners = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
         if not isinstance(record, dict):
@@ -2130,6 +2131,23 @@ def _validate_bound_fault_bundle(
                     _DispositionReason(closure_reason, closure_disposition),
                     None,
                 )
+            if closure_disposition == "pass" and evidence_type == "delivery":
+                ownership_disposition, ownership_reason = (
+                    _current_delivery_inner_ownership(
+                        record,
+                        phase_key,
+                        delivery_authority.get(phase_key),
+                        delivery_dependency_owners,
+                    )
+                )
+                if ownership_disposition != "pass":
+                    return (
+                        False,
+                        _DispositionReason(
+                            ownership_reason, ownership_disposition
+                        ),
+                        None,
+                    )
             if closure_disposition == "indeterminate" and pending_closure_result is None:
                 pending_closure_result = (closure_disposition, closure_reason)
         actual_keys.append(phase_key)
@@ -8658,6 +8676,104 @@ def _combine_closure_results(results):
             selected = result
     return selected
 
+def _claim_phase_bound_identity(ledger, identity_class, identity, phase_key):
+    """Reserve one canonical current-delivery identity for exactly one phase."""
+    if not isinstance(ledger, dict) or not _nonempty_jcs_string(phase_key):
+        return _closure_result("error", "delivery dependency ownership context is malformed")
+    try:
+        identity_key = canonical(identity)
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return _closure_result("error", identity_class + " is not canonicalizable")
+    owners = ledger.setdefault(identity_class, {})
+    owner = owners.get(identity_key)
+    if owner is not None and owner != phase_key:
+        return _closure_result(
+            "fail", identity_class + " is reused across distinct delivery phase keys"
+        )
+    owners[identity_key] = phase_key
+    return _closure_result("pass")
+
+def _current_delivery_inner_ownership(record, phase_key, closure, ledger):
+    """Claim validated inner records, references, proofs, and native transactions.
+
+    This runs only after one current DeliveryEvidence closure has passed. Historical
+    SettlementEvidence remains governed by its frozen single-invocation rules.
+    """
+    if record.get("outcome") != "success" or record.get("phase") == "deliver-storage-program":
+        return _closure_result("pass")
+    if not isinstance(closure, dict):
+        return _closure_result("error", "delivery artifact authority is malformed")
+
+    phase = record.get("phase")
+    if phase == "deliver-entitlement":
+        entitlement = closure.get("entitlementRecord", {}).get("artifact")
+        content_hash = _signed_envelope_content_hash(entitlement)
+        if content_hash is None:
+            return _closure_result("error", "signed entitlement identity is malformed")
+        claims = [
+            ("signed inner delivery artifact", {
+                "type": "EntitlementRecord", "contentHash": content_hash,
+            }),
+        ]
+        credential_ref = (
+            entitlement.get("credentialRef", {}).get("ref")
+            if isinstance(entitlement, dict) else None
+        )
+        if credential_ref is not None:
+            claims.append(("credentialRef", credential_ref))
+            credential = closure.get("credential")
+            if not isinstance(credential, dict):
+                return _closure_result(
+                    "error", "credential semantic identity is malformed"
+                )
+            claims.append(("credential semantic identity", {
+                "cleartextHash": credential.get("cleartextHash"),
+                "cleartextBytesBase64url": credential.get(
+                    "cleartextBytesBase64url"
+                ),
+            }))
+    elif phase == "deliver-attested-payload":
+        payload_record = closure.get("payloadAttestationRecord", {}).get("artifact")
+        content_hash = _signed_envelope_content_hash(payload_record)
+        method_evidence = closure.get("methodEvidence", {}).get("artifact")
+        if content_hash is None or not isinstance(payload_record, dict) or not isinstance(
+            method_evidence, dict
+        ):
+            return _closure_result("error", "signed payload or method proof identity is malformed")
+        method_ref = payload_record.get("methodEvidenceRef")
+        method_kind = payload_record.get("verificationMethod")
+        if method_kind == "self-signed":
+            proof_identity = {
+                "kind": method_evidence.get("kind"),
+                "payloadContentHash": method_evidence.get("payloadContentHash"),
+                "methodInput": method_evidence.get("methodInput"),
+            }
+        else:
+            proof_identity = {
+                field: method_evidence.get(field)
+                for field in ("kind", "request", "response", "transaction", "proofValid")
+            }
+        claims = [
+            ("signed inner delivery artifact", {
+                "type": "PayloadAttestationRecord", "contentHash": content_hash,
+            }),
+            ("methodEvidenceRef", method_ref),
+            ("method evidence proof", proof_identity),
+        ]
+        transaction_ref = payload_record.get("methodTransactionRef")
+        if transaction_ref is not None:
+            claims.append(("native method transaction", transaction_ref))
+    else:
+        return _closure_result("error", "unsupported current delivery phase")
+
+    for identity_class, identity in claims:
+        result = _claim_phase_bound_identity(
+            ledger, identity_class, identity, phase_key
+        )
+        if result[0] != "pass":
+            return result
+    return _closure_result("pass")
+
 def _utf8_bytes(value, subject):
     if not isinstance(value, str):
         return (_closure_result("error", subject + " is not a string"), None)
@@ -10207,6 +10323,7 @@ def _validate_ebfab_boolean(
     authenticated_records = []
     actual_keys = []
     pending_closure_result = None
+    delivery_dependency_owners = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
         if not isinstance(record, dict):
@@ -10304,6 +10421,23 @@ def _validate_ebfab_boolean(
                     _DispositionReason(closure_reason, closure_disposition),
                     None,
                 )
+            if closure_disposition == "pass" and evidence_type == "delivery":
+                ownership_disposition, ownership_reason = (
+                    _current_delivery_inner_ownership(
+                        record,
+                        phase_key,
+                        delivery_authority.get(phase_key),
+                        delivery_dependency_owners,
+                    )
+                )
+                if ownership_disposition != "pass":
+                    return (
+                        False,
+                        _DispositionReason(
+                            ownership_reason, ownership_disposition
+                        ),
+                        None,
+                    )
             if closure_disposition == "indeterminate" and pending_closure_result is None:
                 pending_closure_result = (closure_disposition, closure_reason)
         actual_keys.append(phase_key)

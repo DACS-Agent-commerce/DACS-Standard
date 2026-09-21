@@ -105,6 +105,13 @@ BODY_DISCRIMINATORS = {
     "AttestationBundle": "bundleVersion",
 }
 
+DACS4_EVIDENCE_SELECTORS = frozenset({
+    "deliveryEvidenceVersion",
+    "evidenceVersion",
+    "finalityBoundEvidenceVersion",
+    "legacyTransitionEvidenceVersion",
+})
+
 # LR-2 size cap: the canonical JSON form of a Listing MUST NOT exceed 16,384 bytes
 # (DACS-1 §6.3.4). Enforced over the §B.2 signature-omitted canonical form.
 LISTING_SIZE_CAP = 16_384
@@ -118,10 +125,8 @@ def lifecycle_evidence_kind_matches(kind: str, artifact: Any) -> bool:
     expected = (
         "deliveryEvidenceVersion" if kind == "DeliveryEvidence" else "evidenceVersion"
     )
-    other = (
-        "evidenceVersion" if kind == "DeliveryEvidence" else "deliveryEvidenceVersion"
-    )
-    return artifact.get(expected) == "1" and other not in artifact
+    present = DACS4_EVIDENCE_SELECTORS.intersection(artifact)
+    return artifact.get(expected) == "1" and present == {expected}
 
 # The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
 # This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64

@@ -262,7 +262,7 @@ def make_authority(name, definition, signing_keys):
         if definition["bundleOutcome"] == "completed"
         else {"state": "included", "independentlyResolvable": False}
     ))
-    return {
+    authority = {
         "listing": listing,
         "bundle": bundle,
         "defaultReferenceLifecycle": copy.deepcopy(default_lifecycle),
@@ -275,6 +275,194 @@ def make_authority(name, definition, signing_keys):
         ),
         "bundleLifecycle": bundle_lifecycle,
     }
+    cross_phase_reuse = definition.get("crossPhaseDeliveryReuse")
+    if cross_phase_reuse is not None:
+        apply_cross_phase_delivery_reuse(
+            authority, cross_phase_reuse, signing_keys
+        )
+    return authority
+
+
+def _delivery_resolution(authority, phase_key):
+    phase_index_text, phase = phase_key.split(":", 1)
+    phase_index = int(phase_index_text)
+    for position, ref in enumerate(authority["bundle"]["settlementEvidence"]):
+        key = F.canonical(ref).decode("utf-8")
+        resolution = authority["referenceValidationByCanonicalRef"].get(key)
+        record = resolution.get("record") if isinstance(resolution, dict) else None
+        if (
+            isinstance(record, dict)
+            and record.get("phaseIndex") == phase_index
+            and record.get("phase") == phase
+        ):
+            return position, ref, resolution, record
+    raise ValueError("missing current delivery resolution for " + phase_key)
+
+
+def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
+    position, old_ref, resolution, record = _delivery_resolution(
+        authority, phase_key
+    )
+    old_key = F.canonical(old_ref).decode("utf-8")
+    top_receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_key)
+    authority["referenceValidationByCanonicalRef"].pop(old_key)
+    F.sign_artifact(
+        record,
+        signing_keys["seller"],
+        F.CLAIMS["seller"],
+        F.DELIVERY_EVIDENCE_DOMAIN,
+    )
+    new_ref = copy.deepcopy(old_ref)
+    new_ref["contentHash"] = F.evidence_hash(record)
+    new_key = F.canonical(new_ref).decode("utf-8")
+    top_receipt["contentHash"] = new_ref["contentHash"]
+    authority["referenceValidationByCanonicalRef"][new_key] = resolution
+    authority["verifiedReceiptByCanonicalRef"][new_key] = top_receipt
+    authority["bundle"]["settlementEvidence"][position] = new_ref
+    authority["bundle"]["phaseSummary"][position]["attestationRef"] = new_ref
+
+    closure = authority["deliveryArtifactAuthorityByPhaseKey"][phase_key]
+    authority["verifiedReceiptByCanonicalRef"].update(
+        F.make_delivery_closure_receipts(
+            record,
+            closure,
+            record["jobId"],
+            record["phase"],
+            record["phaseIndex"],
+        )
+    )
+
+
+def apply_cross_phase_delivery_reuse(authority, mode, signing_keys):
+    """Create exact negative authorities for bundle-wide PDE-6 ownership."""
+    phase_keys = sorted(authority["deliveryArtifactAuthorityByPhaseKey"])
+    if len(phase_keys) != 2:
+        raise ValueError("cross-phase reuse fixtures require exactly two deliveries")
+    first_key, second_key = phase_keys
+    first = authority["deliveryArtifactAuthorityByPhaseKey"][first_key]
+    second = authority["deliveryArtifactAuthorityByPhaseKey"][second_key]
+    _, _, _, first_record = _delivery_resolution(authority, first_key)
+    _, _, _, second_record = _delivery_resolution(authority, second_key)
+
+    if mode in {"credential-ref", "semantic-credential"}:
+        first_entitlement = first["entitlementRecord"]["artifact"]
+        second_entitlement = second["entitlementRecord"]["artifact"]
+        if mode == "credential-ref":
+            second_entitlement["credentialRef"] = copy.deepcopy(
+                first_entitlement["credentialRef"]
+            )
+            # Keep the signed inner artifacts distinct so this fixture isolates
+            # the canonical credential reference ownership rule.
+            second_entitlement["phaseDeliveryLabel"] = "second-current-delivery"
+            second["credential"] = copy.deepcopy(first["credential"])
+        else:
+            # Preserve the second phase's independently authenticated anchor, but
+            # re-anchor the exact same credential bytes and cleartext identity.
+            second_credential_ref = second_entitlement["credentialRef"]
+            second_credential_ref["ref"]["contentHash"] = first_entitlement[
+                "credentialRef"
+            ]["ref"]["contentHash"]
+            second["credential"] = copy.deepcopy(first["credential"])
+            second["credential"]["credentialRef"] = copy.deepcopy(
+                second_credential_ref
+            )
+        F.sign_artifact(
+            second_entitlement,
+            signing_keys["seller"],
+            F.CLAIMS["seller"],
+            F.ENTITLEMENT_DOMAIN,
+        )
+        credential_hash = second["credential"]["storedContentHash"]
+        second["credential"]["_storageBinding"] = {
+            "effectiveAccessMode": "buyer-only",
+            "storedContentHash": credential_hash,
+            "acl": {"mode": "restricted", "allowed": [F.CLAIMS["buyer"]]},
+        }
+        second_record["credentialDelivery"] = copy.deepcopy(
+            (
+                first_record["credentialDelivery"]
+                if mode == "credential-ref"
+                else {
+                    **second_record["credentialDelivery"],
+                    "credentialRef": copy.deepcopy(
+                        second_entitlement["credentialRef"]
+                    ),
+                    "credentialCleartextHash": second["credential"][
+                        "cleartextHash"
+                    ],
+                }
+            )
+        )
+        second_record["deliverableContentHash"] = F.evidence_hash(
+            second_entitlement
+        )
+    elif mode in {"signed-payload-record", "literal-method-ref", "semantic-method-proof"}:
+        first_payload = first["deliverable"]
+        second_payload_address = second_record["deliverableAnchor"]["locator"]
+        second["deliverable"] = copy.deepcopy(first_payload)
+        second["deliverable"]["logicalAddress"] = second_payload_address
+        second["deliverable"]["nativeAddress"] = second_payload_address
+        second["deliverable"]["_storageBinding"] = {
+            "effectiveAccessMode": "public",
+            "storedContentHash": second["deliverable"]["storedContentHash"],
+        }
+        second_record["deliverableContentHash"] = first_record[
+            "deliverableContentHash"
+        ]
+        second["agreementHash"] = first["agreementHash"]
+        authority["sessionExecutionAuthorityByPhaseKey"][second_key][
+            "agreementHash"
+        ] = first["agreementHash"]
+
+        first_payload_record = first["payloadAttestationRecord"]["artifact"]
+        payload_record = copy.deepcopy(first_payload_record)
+        if mode != "signed-payload-record":
+            payload_record["verifiedAt"] += 1
+        if mode == "semantic-method-proof":
+            second_method_address = second["methodEvidence"]["logicalAddress"]
+            payload_record["methodEvidenceRef"] = copy.deepcopy(
+                first_payload_record["methodEvidenceRef"]
+            )
+            payload_record["methodEvidenceRef"]["anchor"][
+                "locator"
+            ] = second_method_address
+            second["methodEvidence"] = copy.deepcopy(first["methodEvidence"])
+            second["methodEvidence"]["logicalAddress"] = second_method_address
+            second["methodEvidence"]["nativeAddress"] = second_method_address
+        else:
+            second["methodEvidence"] = copy.deepcopy(first["methodEvidence"])
+        if mode != "signed-payload-record":
+            F.sign_artifact(
+                payload_record,
+                signing_keys["orchestrator"],
+                F.CLAIMS["orchestrator"],
+                F.PAYLOAD_ATTESTATION_DOMAIN,
+            )
+        second_phase_index = int(second_key.split(":", 1)[0])
+        attestation_address = (
+            f"dacs4:payload-attestation:{payload_record['jobId']}:"
+            f"{second_phase_index}:{payload_record['verificationMethodHash']}:"
+            f"{payload_record['attempt']}"
+        )
+        second["payloadAttestationRecord"] = {
+            "logicalAddress": attestation_address,
+            "nativeAddress": attestation_address,
+            "artifact": payload_record,
+            "available": True,
+            "independentlyResolvable": True,
+        }
+        second_record["attestationRef"] = {
+            "anchor": {
+                "kind": "storage-program", "locator": attestation_address,
+            },
+            "contentHash": F.evidence_hash(payload_record),
+            "signer": payload_record["signature"]["signer"],
+        }
+    else:
+        raise ValueError("unsupported cross-phase reuse fixture: " + str(mode))
+
+    _refresh_current_delivery_authority(authority, second_key, signing_keys)
+    F.sign_bundle(authority["bundle"], "evidence-bound", signing_keys)
 
 
 def semantic_definitions(data):
@@ -367,6 +555,40 @@ def generate(source):
             {"index": 1, "kind": "deliver-storage-program", "outcome": "ok"},
         ],
     }
+    current_completed = {
+        "bundleOutcome": "completed",
+        "defaultReferenceLifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": True,
+        },
+    }
+    cross_phase_delivery_reuse = {
+        "cross-phase-credential-ref-reuse": (
+            "deliver-entitlement", "credential-ref"
+        ),
+        "cross-phase-semantic-credential-reuse": (
+            "deliver-entitlement", "semantic-credential"
+        ),
+        "cross-phase-signed-payload-reuse": (
+            "deliver-attested-payload", "signed-payload-record"
+        ),
+        "cross-phase-literal-method-ref-reuse": (
+            "deliver-attested-payload", "literal-method-ref"
+        ),
+        "cross-phase-semantic-method-proof-reuse": (
+            "deliver-attested-payload", "semantic-method-proof"
+        ),
+    }
+    for authority_name, (phase, reuse_mode) in cross_phase_delivery_reuse.items():
+        definitions[authority_name] = {
+            **copy.deepcopy(current_completed),
+            "listingPipeline": [phase, phase],
+            "phaseSummary": [
+                {"index": 0, "kind": phase, "outcome": "ok"},
+                {"index": 1, "kind": phase, "outcome": "ok"},
+            ],
+            "crossPhaseDeliveryReuse": reuse_mode,
+        }
     if "invalid-bundle-signature" not in definitions:
         definitions["invalid-bundle-signature"] = copy.deepcopy(definitions["standard-completed"])
         definitions["invalid-bundle-signature"]["corruptBundleSignature"] = True
@@ -507,6 +729,26 @@ def generate(source):
                     "execution-authority-indeterminate"
                     if indeterminate else "execution-authority"
                 ),
+            },
+        })
+
+    for authority_name in cross_phase_delivery_reuse:
+        vector_name = f"bundle-settlement-bijection-{authority_name}-reject"
+        if any(vector["name"] == vector_name for vector in data["vectors"]):
+            continue
+        data["vectors"].append({
+            "name": vector_name,
+            "expected": "fail",
+            "input": {
+                "executionAuthorityRef": authority_name,
+                "topLevelRefs": [],
+                "resolvedReferencePhaseKeys": {},
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {
+                "disposition": "rejected",
+                "reasonCode": "execution-authority",
             },
         })
 

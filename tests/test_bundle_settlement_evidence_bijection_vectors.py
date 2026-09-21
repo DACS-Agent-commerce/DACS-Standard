@@ -352,6 +352,141 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     (vector["want"]["disposition"], vector["want"]["reasonCode"]),
                 )
 
+    def test_cross_phase_inner_dependency_ownership_is_load_bearing(self):
+        expected_reasons = {
+            "cross-phase-credential-ref-reuse": (
+                "credentialRef is reused across distinct delivery phase keys"
+            ),
+            "cross-phase-semantic-credential-reuse": (
+                "credential semantic identity is reused across distinct delivery phase keys"
+            ),
+            "cross-phase-signed-payload-reuse": (
+                "signed inner delivery artifact is reused across distinct delivery phase keys"
+            ),
+            "cross-phase-literal-method-ref-reuse": (
+                "methodEvidenceRef is reused across distinct delivery phase keys"
+            ),
+            "cross-phase-semantic-method-proof-reuse": (
+                "method evidence proof is reused across distinct delivery phase keys"
+            ),
+        }
+        for authority_name, expected_reason in expected_reasons.items():
+            authority = self.data["executionAuthorities"][authority_name]
+            disposition, reason, phase_keys = derive_phase_disposition(
+                authority, self.pubkeys
+            )
+            with self.subTest(authority=authority_name):
+                self.assertEqual(disposition, "fail")
+                self.assertEqual(reason, expected_reason)
+                self.assertIsNone(phase_keys)
+                released_ok, released_reason, released_keys = R.validate_ebfab(
+                    authority.get("bundle"),
+                    authority.get("listing"),
+                    self.pubkeys,
+                    authority.get("referenceValidationByCanonicalRef"),
+                    authority.get("bundleLifecycle"),
+                    authority.get("sessionExecutionAuthorityByPhaseKey"),
+                    authority.get("verifiedReceiptByCanonicalRef"),
+                    authority.get("deliveryArtifactAuthorityByPhaseKey"),
+                    authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+                )
+                self.assertFalse(released_ok)
+                self.assertEqual(str(released_reason), expected_reason)
+                self.assertIsNone(released_keys)
+
+        credential = self.data["executionAuthorities"][
+            "cross-phase-credential-ref-reuse"
+        ]["deliveryArtifactAuthorityByPhaseKey"]
+        credential_closures = [credential[key] for key in sorted(credential)]
+        credential_artifacts = [
+            closure["entitlementRecord"]["artifact"]
+            for closure in credential_closures
+        ]
+        self.assertEqual(
+            credential_artifacts[0]["credentialRef"]["ref"],
+            credential_artifacts[1]["credentialRef"]["ref"],
+        )
+        self.assertNotEqual(
+            R._signed_envelope_content_hash(credential_artifacts[0]),
+            R._signed_envelope_content_hash(credential_artifacts[1]),
+        )
+
+        semantic_credential = self.data["executionAuthorities"][
+            "cross-phase-semantic-credential-reuse"
+        ]["deliveryArtifactAuthorityByPhaseKey"]
+        semantic_credential_closures = [
+            semantic_credential[key] for key in sorted(semantic_credential)
+        ]
+        semantic_credential_artifacts = [
+            closure["entitlementRecord"]["artifact"]
+            for closure in semantic_credential_closures
+        ]
+        self.assertNotEqual(
+            semantic_credential_artifacts[0]["credentialRef"]["ref"],
+            semantic_credential_artifacts[1]["credentialRef"]["ref"],
+        )
+        self.assertEqual(
+            semantic_credential_closures[0]["credential"][
+                "cleartextBytesBase64url"
+            ],
+            semantic_credential_closures[1]["credential"][
+                "cleartextBytesBase64url"
+            ],
+        )
+        self.assertEqual(
+            semantic_credential_closures[0]["credential"]["cleartextHash"],
+            semantic_credential_closures[1]["credential"]["cleartextHash"],
+        )
+
+        signed_reuse = self.data["executionAuthorities"][
+            "cross-phase-signed-payload-reuse"
+        ]["deliveryArtifactAuthorityByPhaseKey"]
+        signed_records = [
+            signed_reuse[key]["payloadAttestationRecord"]["artifact"]
+            for key in sorted(signed_reuse)
+        ]
+        self.assertEqual(
+            R._signed_envelope_content_hash(signed_records[0]),
+            R._signed_envelope_content_hash(signed_records[1]),
+        )
+
+        literal_reuse = self.data["executionAuthorities"][
+            "cross-phase-literal-method-ref-reuse"
+        ]["deliveryArtifactAuthorityByPhaseKey"]
+        literal_records = [
+            literal_reuse[key]["payloadAttestationRecord"]["artifact"]
+            for key in sorted(literal_reuse)
+        ]
+        self.assertEqual(
+            literal_records[0]["methodEvidenceRef"],
+            literal_records[1]["methodEvidenceRef"],
+        )
+        self.assertNotEqual(
+            R._signed_envelope_content_hash(literal_records[0]),
+            R._signed_envelope_content_hash(literal_records[1]),
+        )
+
+        semantic_reuse = self.data["executionAuthorities"][
+            "cross-phase-semantic-method-proof-reuse"
+        ]["deliveryArtifactAuthorityByPhaseKey"]
+        semantic_closures = [semantic_reuse[key] for key in sorted(semantic_reuse)]
+        semantic_records = [
+            closure["payloadAttestationRecord"]["artifact"]
+            for closure in semantic_closures
+        ]
+        self.assertNotEqual(
+            semantic_records[0]["methodEvidenceRef"],
+            semantic_records[1]["methodEvidenceRef"],
+        )
+        self.assertEqual(
+            semantic_closures[0]["methodEvidence"]["artifact"],
+            semantic_closures[1]["methodEvidence"]["artifact"],
+        )
+        self.assertEqual(
+            semantic_records[0]["methodTransactionRef"],
+            semantic_records[1]["methodTransactionRef"],
+        )
+
     def test_phase_authority_is_derived_not_caller_supplied(self):
         for vector in self.data["vectors"]:
             self.assertNotIn("expectedPhaseKeys", vector["input"])

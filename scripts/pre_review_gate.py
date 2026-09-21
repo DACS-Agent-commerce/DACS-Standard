@@ -176,6 +176,14 @@ def validate_manifest(manifest: object) -> None:
         if item["id"] in covered_ids:
             raise GateError(f"invariant class cannot be both covered and planned: {item['id']}")
 
+    declared_matrix_classes = set().union(*matrix_classes.values())
+    unclaimed_matrix_classes = declared_matrix_classes - covered_ids
+    if unclaimed_matrix_classes:
+        raise GateError(
+            "matrix invariant classes must be claimed as covered: "
+            f"{sorted(unclaimed_matrix_classes)}"
+        )
+
 
 def _within_root(relative: str) -> Path:
     path = (ROOT / relative).resolve()

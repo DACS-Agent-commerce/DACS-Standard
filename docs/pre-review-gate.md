@@ -23,12 +23,12 @@ Current enforced coverage is deliberately narrow:
   unsupported integer magnitude;
 - selected existing round 10, 11, 12, and 14 named blocker regressions.
 
-The registry records reference reuse, selector exclusivity, and cross-module
-composition as covered only through the matrix IDs that execute them. A claim
-whose matrix is missing or does not declare that invariant class fails manifest
-validation. Each matrix pins the complete result independently from the corpus,
-executes a discriminating control with its own pinned result, and rejects
-missing cells or extra/missing consumer effects.
+The registry records every matrix-backed invariant class as covered only through
+the matrix IDs that execute it. A claim whose matrix is missing or does not
+declare that invariant class fails manifest validation, and an executable matrix
+class that is not claimed as covered also fails. Each matrix pins the complete
+result independently from the corpus, executes a discriminating control with its
+own pinned result, and rejects missing cells or extra/missing consumer effects.
 
 This is targeted RSC/RB coverage, not a claim that every selector, reference,
 or module composition elsewhere in DACS is exhaustively enumerated. New protocol

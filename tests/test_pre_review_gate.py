@@ -46,7 +46,13 @@ class PreReviewGateTests(unittest.TestCase):
         self.assertEqual(self.manifest["plannedInvariantClasses"], [])
         self.assertEqual(
             {item["id"] for item in self.manifest["coveredInvariantClasses"]},
-            {"reference-reuse", "selector-exclusivity", "cross-module-composition"},
+            {
+                "same-sequence-conflict",
+                "closed-schema",
+                "reference-reuse",
+                "selector-exclusivity",
+                "cross-module-composition",
+            },
         )
         manifest = copy.deepcopy(self.manifest)
         manifest["coveredInvariantClasses"][0]["matrixIds"] = ["missing-matrix"]
@@ -58,6 +64,16 @@ class PreReviewGateTests(unittest.TestCase):
             "pr396-selector-exclusivity"
         ]
         with self.assertRaisesRegex(self.gate.GateError, "does not declare this invariant class"):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        manifest["coveredInvariantClasses"] = [
+            item for item in manifest["coveredInvariantClasses"]
+            if item["id"] != "closed-schema"
+        ]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "matrix invariant classes must be claimed as covered"
+        ):
             self.gate.validate_manifest(manifest)
 
     def test_class_cannot_be_both_covered_and_planned(self):

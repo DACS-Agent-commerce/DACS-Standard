@@ -258,6 +258,8 @@
     }
   ],
   "coveredInvariantClasses": [
+    {"id": "same-sequence-conflict", "matrixIds": ["pr396-rsc7-same-sequence"]},
+    {"id": "closed-schema", "matrixIds": ["pr396-rsc2-closed-head-schema"]},
     {"id": "reference-reuse", "matrixIds": ["pr396-reference-reuse"]},
     {"id": "selector-exclusivity", "matrixIds": ["pr396-selector-exclusivity"]},
     {"id": "cross-module-composition", "matrixIds": ["pr396-cross-module-composition"]}

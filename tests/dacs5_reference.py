@@ -9310,7 +9310,7 @@ def _authenticated_evidence_wire_type(record, pubkeys):
     if (
         not isinstance(signer, str)
         or signer not in pubkeys
-        or signature.get("algorithm") not in SUPPORTED_SIGNATURE_ALGORITHMS
+        or not _string_member(signature.get("algorithm"), SUPPORTED_SIGNATURE_ALGORITHMS)
         or not canonical_ok
     ):
         return None

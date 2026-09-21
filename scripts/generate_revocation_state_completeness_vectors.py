@@ -675,6 +675,26 @@ def build_vectors() -> list[dict]:
         for label, head in transition_schema_heads.items()
     }
 
+    # Pre-review selector-exclusivity matrix. The sequence value selects the
+    # RevocationStateHead arm: zero is genesis (no transition), while non-zero
+    # requires exactly one transition. These mismatches are freshly signed and
+    # receive matching receipts so authentication cannot mask the shape check.
+    genesis_with_transition_head = malformed_signed_head(
+        GENESIS,
+        lambda h: h.__setitem__("transition", copy.deepcopy(OTHER_HEAD["transition"])),
+    )
+    selector_genesis_with_transition = input_for(
+        genesis_with_transition_head, {}, checkpoint=genesis_with_transition_head,
+        history=[history_item(genesis_with_transition_head)],
+    )
+    transition_without_transition_head = malformed_signed_head(
+        OTHER_HEAD, lambda h: h.pop("transition")
+    )
+    selector_transition_without_transition = input_for(
+        transition_without_transition_head, OTHER_LEAVES,
+        history=[history_item(GENESIS), history_item(transition_without_transition_head)],
+    )
+
     stale = input_for(GENESIS, {})
     stale["resolutionContext"]["currentStateEvidence"]["valueContentHash"] = artifact_hash(TARGET_HEAD)
 
@@ -760,6 +780,35 @@ def build_vectors() -> list[dict]:
         "integrityConsistent": True,
         "revocationRef": changed(TARGET_REF, lambda x: x["anchor"].update({"locator": "storage-program:unreachable"})),
     }
+
+    # Pre-review exact-reference-reuse matrix. The positive consumes OTHER_REF
+    # in a validated transition. Every negative keeps the relevant signed
+    # marker authentic unless invalid shadow binding is the property under test.
+    reference_duplicate = copy.deepcopy(active)
+    reference_duplicate["resolutionContext"]["resolvedMarkers"].append(
+        copy.deepcopy(reference_duplicate["resolutionContext"]["resolvedMarkers"][0])
+    )
+    reference_shadowed = copy.deepcopy(active)
+    reference_shadowed["resolutionContext"]["resolvedMarkers"] = [{
+        "revocationRef": copy.deepcopy(OTHER_REF),
+        "marker": copy.deepcopy(TARGET_MARKER),
+        "receipt": copy.deepcopy(
+            active["resolutionContext"]["resolvedMarkers"][0]["receipt"]
+        ),
+        "authority": copy.deepcopy(
+            active["resolutionContext"]["resolvedMarkers"][0]["authority"]
+        ),
+    }]
+    reference_wrong_target = copy.deepcopy(active)
+    reference_wrong_target["discovery"] = {
+        "status": "revoked",
+        "integrityConsistent": True,
+        "revocationRef": copy.deepcopy(OTHER_REF),
+    }
+    reference_unused = copy.deepcopy(genesis_absent)
+    reference_unused["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(OTHER_REF, OTHER_MARKER, SELLER_KEY, OTHER_LISTING_ID)
+    )
 
     # A2: a caller-supplied profile object or opaque label has no authority, even
     # when it copies locally meaningful bytes.
@@ -949,6 +998,12 @@ def build_vectors() -> list[dict]:
             )
             for label, data in transition_schema_vectors.items()
         ],
+        vector("rsc-selector-genesis-with-transition", "indeterminate", "a signed sequence-zero head cannot also select the transition arm", selector_genesis_with_transition, "indeterminate"),
+        vector("rsc-selector-transition-without-transition", "indeterminate", "a signed non-zero head cannot omit its selected transition arm", selector_transition_without_transition, "indeterminate"),
+        vector("rsc-reference-duplicate-consumed", "indeterminate", "duplicating an otherwise authentic consumed reference makes resolution ambiguous", reference_duplicate, "indeterminate"),
+        vector("rsc-reference-shadowed-consumed", "indeterminate", "a shadow entry cannot launder or hide the exact consumed reference", reference_shadowed, "indeterminate"),
+        vector("rsc-reference-wrong-target", "indeterminate", "an authentic reference consumed for another tuple cannot revoke this Listing", reference_wrong_target, "indeterminate"),
+        vector("rsc-reference-unused-authentic", "indeterminate", "an authentic but unconsumed reference cannot be retained in an authorizing absence context", reference_unused, "indeterminate"),
         vector("rsc-valid-revocation-inclusion", "fail", "an exact inclusion proof and marker refuse the revoked listing", revoked, "revoked"),
         vector("rsc-censored-tombstone", "fail", "an active discovery row cannot hide a revocation committed by the current head", censored, "revoked"),
         vector("rsc-stale-signed-head", "indeterminate", "a valid old signed head is not the current finalized native value", stale, "indeterminate"),

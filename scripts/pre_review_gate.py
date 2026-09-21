@@ -36,21 +36,50 @@ def validate_manifest(manifest: object) -> None:
         raise GateError("manifest must be a schemaVersion 1 object")
     matrices = manifest.get("vectorMatrices")
     regressions = manifest.get("unitRegressions")
+    corpus_pins = manifest.get("corpusPins")
+    covered = manifest.get("coveredInvariantClasses")
     planned = manifest.get("plannedInvariantClasses")
     if not isinstance(matrices, list) or not matrices:
         raise GateError("vectorMatrices must be a nonempty list")
     if not isinstance(regressions, list) or not regressions:
         raise GateError("unitRegressions must be a nonempty list")
+    if not isinstance(corpus_pins, dict) or not corpus_pins:
+        raise GateError("corpusPins must be a nonempty object")
+    if not isinstance(covered, list):
+        raise GateError("coveredInvariantClasses must be a list")
     if not isinstance(planned, list):
         raise GateError("plannedInvariantClasses must be a list")
 
+    for corpus_name, pin in corpus_pins.items():
+        if (
+            not isinstance(corpus_name, str) or not corpus_name
+            or not isinstance(pin, dict)
+            or set(pin) != {"spec", "authoritativeProfile"}
+            or not isinstance(pin.get("spec"), str)
+            or not isinstance(pin.get("authoritativeProfile"), dict)
+        ):
+            raise GateError("corpusPins entries require spec and authoritativeProfile")
+
     ids: set[str] = set()
+    matrix_classes: dict[str, set[str]] = {}
     for matrix in matrices:
         if not isinstance(matrix, dict) or not isinstance(matrix.get("id"), str):
             raise GateError("every vector matrix needs a string id")
         if matrix["id"] in ids:
             raise GateError(f"duplicate invariant id: {matrix['id']}")
         ids.add(matrix["id"])
+        invariant_classes = matrix.get("invariantClasses")
+        if (
+            not isinstance(invariant_classes, list)
+            or not invariant_classes
+            or not all(isinstance(item, str) and item for item in invariant_classes)
+            or len(set(invariant_classes)) != len(invariant_classes)
+        ):
+            raise GateError(f"{matrix['id']}: invariantClasses must be unique strings")
+        matrix_classes[matrix["id"]] = set(invariant_classes)
+        corpus_name = matrix.get("corpus")
+        if corpus_name not in corpus_pins:
+            raise GateError(f"{matrix['id']}: corpus has no exact revision/profile pin")
         dimensions = matrix.get("dimensions")
         cases = matrix.get("cases")
         if not isinstance(dimensions, dict) or not dimensions:
@@ -108,11 +137,44 @@ def validate_manifest(manifest: object) -> None:
             raise GateError(f"duplicate invariant id: {regression['id']}")
         ids.add(regression["id"])
 
+    covered_ids: set[str] = set()
+    for item in covered:
+        if not isinstance(item, dict) or set(item) != {"id", "matrixIds"}:
+            raise GateError("covered invariant classes require id and matrixIds")
+        class_id = item.get("id")
+        evidence = item.get("matrixIds")
+        if (
+            not isinstance(class_id, str) or not class_id
+            or class_id in covered_ids
+            or not isinstance(evidence, list) or not evidence
+            or not all(isinstance(matrix_id, str) for matrix_id in evidence)
+            or len(set(evidence)) != len(evidence)
+        ):
+            raise GateError("covered invariant classes require a unique id and matrix evidence")
+        covered_ids.add(class_id)
+        for matrix_id in evidence:
+            if matrix_id not in matrix_classes:
+                raise GateError(f"{class_id}: coverage references missing matrix {matrix_id}")
+            if class_id not in matrix_classes[matrix_id]:
+                raise GateError(
+                    f"{class_id}: matrix {matrix_id} does not declare this invariant class"
+                )
+
+    planned_ids: set[str] = set()
     for item in planned:
-        if not isinstance(item, dict) or item.get("status") != "planned":
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"id", "status"}
+            or not isinstance(item.get("id"), str)
+            or not item["id"]
+            or item.get("status") != "planned"
+        ):
             raise GateError("planned invariant classes must be explicitly status=planned")
-        if item.get("id") in ids:
-            raise GateError(f"planned invariant is falsely registered as covered: {item.get('id')}")
+        if item["id"] in planned_ids:
+            raise GateError(f"duplicate planned invariant class: {item['id']}")
+        planned_ids.add(item["id"])
+        if item["id"] in covered_ids:
+            raise GateError(f"invariant class cannot be both covered and planned: {item['id']}")
 
 
 def _within_root(relative: str) -> Path:
@@ -153,13 +215,35 @@ def _corpus_outcome(vector: dict, label: str) -> dict:
     return {"verdict": vector.get("expected"), **effects}
 
 
+def _index_vectors(corpus: dict, label: str) -> dict[str, dict]:
+    vectors: dict[str, dict] = {}
+    for item in corpus.get("vectors", []):
+        if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+            continue
+        name = item["name"]
+        if name in vectors:
+            raise GateError(f"{label}: duplicate corpus vector name: {name}")
+        vectors[name] = item
+    return vectors
+
+
 def run_vector_matrices(manifest: dict) -> int:
     executed = 0
     loaded = {}
     for matrix in manifest["vectorMatrices"]:
         corpus_path = _within_root(matrix["corpus"])
         corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
-        vectors = {item.get("name"): item for item in corpus.get("vectors", []) if isinstance(item, dict)}
+        pin = manifest["corpusPins"][matrix["corpus"]]
+        observed_pin = {
+            "spec": corpus.get("spec"),
+            "authoritativeProfile": corpus.get("authoritativeProfile"),
+        }
+        if observed_pin != pin:
+            raise GateError(
+                f"{matrix['id']}: corpus revision/profile pin drifted: "
+                f"expected {pin}, got {observed_pin}"
+            )
+        vectors = _index_vectors(corpus, matrix["id"])
         if matrix["evaluator"] not in loaded:
             loaded[matrix["evaluator"]] = _load_evaluator(matrix["evaluator"])
         evaluator = loaded[matrix["evaluator"]]

@@ -1662,6 +1662,90 @@ class RevocationStateCompletenessTests(unittest.TestCase):
                 self.document["publicKeys"],
             ))
 
+    def test_pre_review_selector_and_reference_negatives_isolate_the_intended_property(self):
+        vectors = {item["name"]: item for item in self.document["vectors"]}
+
+        for name in (
+            "rsc-selector-genesis-with-transition",
+            "rsc-selector-transition-without-transition",
+        ):
+            with self.subTest(case=name):
+                vector = vectors[name]
+                item = vector["input"]["resolutionContext"]["headHistory"][-1]
+                head = item["head"]
+                self.assertTrue(
+                    verify_artifact(head, self.document["publicKeys"]["initial"], HEAD_DOMAIN),
+                    "selector negatives must remain signed",
+                )
+                self.assertEqual(item["receipt"]["contentHash"], artifact_hash(head))
+                self.assertFalse(validate_head_shape(head))
+
+        for name in (
+            "rsc-reference-duplicate-consumed",
+            "rsc-reference-shadowed-consumed",
+            "rsc-reference-wrong-target",
+            "rsc-reference-unused-authentic",
+        ):
+            with self.subTest(case=name):
+                vector = vectors[name]
+                markers = vector["input"]["resolutionContext"]["resolvedMarkers"]
+                self.assertTrue(markers)
+                for entry in markers:
+                    marker = entry["marker"]
+                    self.assertTrue(
+                        verify_artifact(
+                            marker, self.document["publicKeys"]["initial"], MARKER_DOMAIN
+                        ),
+                        "reference-boundary negatives must not rely on a bad marker signature",
+                    )
+                self.assertEqual(
+                    evaluate(
+                        vector["input"], self.document["publicKeys"],
+                        vector["trustedProfileAdmission"],
+                    ),
+                    ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+                )
+
+        shadow = vectors["rsc-reference-shadowed-consumed"]["input"][
+            "resolutionContext"
+        ]["resolvedMarkers"][-1]
+        self.assertEqual(
+            len(vectors["rsc-reference-shadowed-consumed"]["input"][
+                "resolutionContext"
+            ]["resolvedMarkers"]),
+            1,
+            "shadow coverage must not collapse into duplicate-reference coverage",
+        )
+        self.assertEqual(
+            shadow["receipt"]["contentHash"], shadow["revocationRef"]["contentHash"],
+            "the shadow must not fail because its finalized receipt is stale",
+        )
+        self.assertNotEqual(
+            artifact_hash(shadow["marker"]), shadow["revocationRef"]["contentHash"],
+            "the exact marker-to-reference binding is the isolated shadow defect",
+        )
+        self.assertTrue(verify_authority_evidence(
+            shadow["authority"], self.document["publicKeys"]["keyLifecycleAuthority"],
+            shadow["revocationRef"]["signer"], shadow["authority"]["key"],
+            shadow["receipt"]["blockRef"]["id"],
+        ))
+        repaired = json.loads(json.dumps(
+            vectors["rsc-reference-shadowed-consumed"]["input"]
+        ))
+        repaired["resolutionContext"]["resolvedMarkers"][0]["marker"] = json.loads(
+            json.dumps(vectors["rsc-valid-active-nonmembership"]["input"][
+                "resolutionContext"
+            ]["resolvedMarkers"][0]["marker"])
+        )
+        self.assertEqual(
+            evaluate(
+                repaired, self.document["publicKeys"],
+                vectors["rsc-reference-shadowed-consumed"]["trustedProfileAdmission"],
+            ),
+            ("pass", {"revocationCheck": "absent", "session": "continue"}),
+            "repairing only the marker-to-reference binding must restore the control",
+        )
+
     def test_conflict_set_revocation_precedence_is_order_independent(self):
         third = g.listing_tuple("third-service", "66" * 32)
         third_marker = g.marker(third)

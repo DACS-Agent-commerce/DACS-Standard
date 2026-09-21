@@ -12,12 +12,25 @@ Current enforced coverage is deliberately narrow:
 
 - RSC-7 same-sequence sibling target presence × artifact authenticity;
 - RSC-2 genesis/transition closed-head shape × extra/missing/wrong-type member;
+- RB-4/RB-5 and RSC non-membership composition across absent, revoked, and
+  unavailable discovery results;
+- the sequence-selected genesis/transition head union, including each valid
+  arm and both arm/body mismatches;
+- exact revocation-reference use across consumed, duplicated, shadowed,
+  wrong-target, and unused references;
 - selected existing round 10, 11, 12, and 14 named blocker regressions.
 
-The registry lists reference reuse, selector exclusivity, and cross-module
-composition as `planned`; those labels are extension points, not coverage
-claims. Promote one only by adding a complete executable matrix (or named unit
-regression), a discriminating control, and tests that make registry drift fail.
+The registry records reference reuse, selector exclusivity, and cross-module
+composition as covered only through the matrix IDs that execute them. A claim
+whose matrix is missing or does not declare that invariant class fails manifest
+validation. Each matrix pins the complete result independently from the corpus,
+executes a discriminating control with its own pinned result, and rejects
+missing cells or extra/missing consumer effects.
+
+This is targeted RSC/RB coverage, not a claim that every selector, reference,
+or module composition elsewhere in DACS is exhaustively enumerated. New protocol
+arms and new cross-module joins still require their own complete matrices before
+review.
 
 Pre-review checklist:
 

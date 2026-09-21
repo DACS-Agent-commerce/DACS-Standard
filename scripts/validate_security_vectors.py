@@ -23,6 +23,9 @@ This validator checks each set against its own claims:
   ``decision``) whose value is a known DACS verdict — the §7.5.1 four-value
   set plus the documented set-specific vocabularies (FR-4 reconciliation
   trichotomy, DV-6 readability four-way, agreement-listing accept/reject).
+  Sets with a ``PER_SET_VERDICTS`` entry are checked against only their own
+  vocabulary, so the RFC #320 set cannot silently re-declare ``pass`` where
+  the evidence classifier establishes ``coherent``.
 
 Dependency-free stdlib, matching the other validators.
 """
@@ -39,15 +42,24 @@ SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
 
 REQUIRED_FIELDS = ("set", "spec", "count", "hash", "vectors")
 
-# §7.5.1 four-value + documented per-set vocabularies:
-#   agreement-listing: accept/reject (+indeterminate)
-#   feeschedule FR-4:  reconciles/diverged/indeterminate
-#   private-deliverables DV-6: readable/clean-negative/ACL-dropped/indeterminate
+# §7.5.1 four-value + documented per-set vocabularies.
+#
+# §7.5.1 four-value set is pass/fail/indeterminate/error; the set-specific vocabularies below
+# are documented per set (FR-4 reconciliation trichotomy, DV-6 readability four-way,
+# agreement-listing accept/reject, and the RFC #320 classifier's coherent/fail/indeterminate/reject).
+# This is the GLOBAL union, used only as a fallback for sets without a per-set map below.
 KNOWN_VERDICTS = {
     "pass", "fail", "indeterminate", "error",
+    "coherent",
     "accept", "reject",
     "reconciles", "diverged",
     "readable", "clean-negative", "ACL-dropped",
+}
+
+# RFC #320 classifies supplied verification results; its positive verdict is
+# `coherent`, not `pass`. Other sets retain their existing vocabulary behavior.
+PER_SET_VERDICTS = {
+    "atomic-work-receipt-absence-v0.1": {"coherent", "fail", "indeterminate", "reject"},
 }
 
 VERDICT_FIELDS = ("expected", "decision")
@@ -88,7 +100,9 @@ def validate_set(path: str) -> tuple[list[str], int]:
         return errors, 0
 
     stem = name[:-len(".json")]
-    if data["set"] != stem:
+    if not isinstance(data["set"], str):
+        errors.append(f"{name}: 'set' must be a string")
+    elif data["set"] != stem:
         errors.append(f"{name}: 'set' is '{data['set']}' but filename stem is '{stem}'")
 
     # The v0.1 SB-2 corpus retains useful key/idempotency cases, but its
@@ -189,10 +203,13 @@ def validate_set(path: str) -> tuple[list[str], int]:
             errors.append(
                 f"{name}: vectors[{i}] ('{vname}') has no verdict field "
                 f"({' / '.join(VERDICT_FIELDS)})")
-        elif verdict not in KNOWN_VERDICTS:
-            errors.append(
-                f"{name}: vectors[{i}] ('{vname}') has unknown verdict '{verdict}' "
-                f"(known: {', '.join(sorted(KNOWN_VERDICTS))})")
+        else:
+            allowed = PER_SET_VERDICTS.get(stem, KNOWN_VERDICTS)
+            if verdict not in allowed:
+                errors.append(
+                    f"{name}: vectors[{i}] ('{vname}') has unknown verdict '{verdict}' "
+                    f"for set '{data['set']}' "
+                    f"(permitted: {', '.join(sorted(allowed))})")
 
     return errors, len(vectors)
 

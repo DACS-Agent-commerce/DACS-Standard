@@ -970,12 +970,30 @@ class FixtureFactory:
             },
             "verifiedReceiptByCanonicalRef": {
                 canonical_ref: {
+                    "receiptVersion": "1",
+                    "substrate": "demos-testnet",
+                    "finalityProfile": "demos-bft-final",
                     "logicalAddress": "dacs4:payment:%s:%s:0" % (evidence["jobId"], quote(rail_id, safe="-._~")),
                     "nativeAddress": evidence_ref["anchor"]["locator"],
                     "contentHash": evidence_ref["contentHash"],
-                    "transaction": "demos:test:" + hashlib.sha256((model + ":anchor").encode()).hexdigest(),
+                    "transactionRef": {
+                        "kind": "demos-transaction",
+                        "value": "demos:test:" + hashlib.sha256((model + ":anchor").encode()).hexdigest(),
+                    },
                     "writer": CLAIMS["orchestrator"],
-                    "nonce": 0,
+                    "nonce": "0",
+                    "state": "finalized",
+                    "observationDisposition": "established",
+                    "observedAt": OBSERVED_AT,
+                    "blockRef": {
+                        "id": "block-" + hashlib.sha256((model + ":anchor").encode()).hexdigest()[:32],
+                        "height": "1000",
+                        "timestamp": OBSERVED_AT,
+                    },
+                    "evidence": {
+                        "kind": "fixture-demos-bft-proof",
+                        "value": hashlib.sha256((model + ":receipt-proof").encode()).hexdigest(),
+                    },
                 }
             },
             "finalityVerificationByCanonicalRef": {

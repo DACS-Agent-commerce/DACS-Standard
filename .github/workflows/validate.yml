@@ -66,6 +66,8 @@ jobs:
 
       - name: Verify SR-2 resolution vectors are deterministic
         run: python3 scripts/generate_sr2_resolution_vectors.py --check
+      - name: Verify phase-bound delivery vectors are deterministic
+        run: python3 scripts/generate_phase_bound_delivery_vectors.py --check
 
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check

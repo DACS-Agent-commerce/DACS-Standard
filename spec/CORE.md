@@ -571,8 +571,11 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs3:selection:{jobId}:{phaseIndex}` (complete sealed selection receipt) | none | `jobId`, `phaseIndex` |
 | `dacs1-revocations:{sellerPrimaryClaim}` (stable revocation-state line) | `sellerPrimaryClaim` | `dacs1-revocations` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
+| `dacs4:delivery:{jobId}:{phaseIndex}` (§9.7 PDE-1..PDE-8) | none | `jobId`, `phaseIndex` |
+| `dacs4:deliverable:{jobId}:{phaseIndex}` (§9.6/§9.7 PDE-3) | none | `jobId`, `phaseIndex` |
+| `dacs4:entitlement:{jobId}:{phaseIndex}:{renewalSeq}` (§9.6.2/§9.7 PDE-3) | none | `jobId`, `phaseIndex`, `renewalSeq` |
+| `dacs4:payload-attestation:{jobId}:{phaseIndex}:{verificationMethodHash}:{attempt}` (§9.6.3/§9.7 PDE-3) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `phaseIndex`, `verificationMethodHash`, `attempt` |
 | `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}` (§9.9.1 APR-6) | none | `priorJobId`, `priorPhaseIndex`, `dispositionId` |
-| `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
 | `dacs3:commit:{jobId}` (agreement commitment, §8.6) | none | `jobId` |
@@ -633,6 +636,10 @@ object with a non-conforming value has a cryptographically valid signature over
 its original scope through an explicitly selected legacy-replay path; it MUST
 NOT report current DACS semantic conformance, derive a current address, perform
 a current lookup, or authorize an action from that value.
+
+The pre-DACS-4-v0.7 unindexed delivery addresses are historical read forms,
+not alternate current spellings. Their admissibility and inability to satisfy a
+repeated delivery invocation are defined exclusively by §9.7 PDE-7.
 
 ### B.2 Anchoring and signing
 
@@ -745,7 +752,8 @@ complete lexical and derivation constraints wherever that alias is used.
 - **Session record.** The live state document for an active session. Held off-chain by the orchestrator; the bundle is the on-chain artifact. Defined in chapter 10 (DACS-5).
 - **Attestation bundle.** The frozen end-of-session artifact, anchored via SR-2. The audit unit. Defined in chapter 10.
 - **Agreement document.** The canonical signed JSON document produced by a negotiation pattern. Defined in chapter 8 (DACS-3).
-- **SettlementEvidence.** The uniform record produced by every DACS-4 payment and delivery phase. Defined in chapter 9.
+- **SettlementEvidence.** The current payment-evidence record produced by DACS-4 payment phases; historical records may carry a delivery phase under the restricted PDE-7 legacy arm. Defined in chapter 9.
+- **DeliveryEvidence.** The current DACS-4 delivery-evidence record, signing the exact job, pipeline phase index/kind, phase-indexed artifact closure, and any exact delivered-only credential binding. Defined in chapter 9.
 
 ### B.5 Shared phase-handler types
 
@@ -826,6 +834,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-4 legacy transition settlement evidence | "dacs-legacy-transition-evidence:v1:" | §9.7 |
 | DACS-4 finality-bound settlement evidence | "dacs-finality-bound-evidence:v1:" | §9.7 |
 | DACS-4 finality observation response | "dacs-finality-observation-response:v1:" | §9.7.0 |
+| DACS-4 delivery evidence | "dacs-delivery-evidence:v1:" | §9.7 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
@@ -1049,6 +1058,34 @@ CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and 
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 
+**DACS-5 bundle-family admission (normative).** Bundle-or-pointer admission MUST
+enter through protocol-owned context established independently of the untrusted
+record before family-specific parsing or action: for example, a fixed operation,
+an authenticated address contract, or a uniquely verified registered signature
+domain. A member of the record, an unauthenticated caller label, or a field merely
+renamed to “trusted context” MUST NOT select the family, schema, or signature
+domain. The consumer MUST identify and verify the protocol-owned source it uses.
+
+For a reader pinned to this Standard revision and selecting the distinct #392
+candidate consumer where applicable, a full bundle then MUST carry exactly one
+of the four recognized selectors `bundleVersion`, `faultBundleVersion`,
+`evidenceBoundFaultBundleVersion`, and
+`finalityBoundEvidenceFaultBundleVersion`; that selector MUST be
+the one prescribed by the authenticated family and MUST carry the supported major
+literal `"1"`. Two recognized selectors, no supported selector, or an unsupported
+major is nonauthorizing before type-specific action. A pointer is admitted only
+under its distinct pointer operation and shape; `pointerKind` prevents an object
+that shares `bundleVersion` from being admitted as a full bundle.
+
+This is a pinned bundle-family rule, not a global discriminator-name registry.
+Unknown inert members remain preserved and hash-bound under SIG-5, and a suffix
+such as `*Version` or `*BundleVersion` confers no selector authority. Thus one
+current supported selector plus an unknown inert member remains a current record.
+A future registered bundle family instead replaces every predecessor selector
+with its own newly registered selector, so an older reader refuses a future-only
+record. No reader claims universal recognition of names that a future revision has
+not registered.
+
 **Registry freezing and growth.** v0.1 freezes the registries (claim schemes in DACS-1, methods/recipes in DACS-2, patterns in DACS-3, rails in DACS-4) as an immutable baseline. Later additions happen via minor-version registry updates released by the current steward, **appended to the same registry-index document** (`dacs2:registry:v0.1` / `dacs4:registry:v0.1`). That index address is the registry's **major-version line**: the `:v0.1` suffix denotes the v0.x line, not a content snapshot. The index document grows additively across minor versions and is re-addressed only on a major (v1 → v2) bump. A consumer therefore always resolves the same address and sees every v0.x entry; "frozen at v0.1" means the original baseline entries are immutable (never mutated in place), not that the index stops growing. Each entry carries its own `recipeVersion` / `railVersion` for per-session pinning (§7.4.3 / §9.4.3).
 
 #### 11.1.3 Conformance philosophy
@@ -1093,6 +1130,8 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
 **Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `revocationStateHeadVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `finalityObservationResponseVersion`, `participationAdmissionVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Verifier-local orchestration inputs such as `finalityResolutionContextVersion` use their own closed discriminator before acquisition or action. Unsigned derivation-data types use the same distinct-type rule: CUR-v1 carries only `currentUseReplayableDerivationVersion: "1"`, standalone AWT-v1 only `authenticatedWindowDerivationVersion: "1"`, and the composed current-use authenticated-window candidate only `currentUseAuthenticatedWindowDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+
+The distinct current DACS-4 `DeliveryEvidence` type carries its exclusive `deliveryEvidenceVersion: "1"` major-version signal; it never reuses `evidenceVersion` and is not an optional-field reinterpretation of historical `SettlementEvidence`.
 
 For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 

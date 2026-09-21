@@ -29455,12 +29455,30 @@
           },
           "verifiedReceiptByCanonicalRef": {
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df\"},\"contentHash\":\"98823225db90f511aeabf3ea28d41f5627db26409ac3aad54b6c8497c6a0a434\"}": {
+              "receiptVersion": "1",
+              "substrate": "demos-testnet",
+              "finalityProfile": "demos-bft-final",
               "logicalAddress": "dacs4:payment:FV-392-block-depth:fixture%3Ablock-depth:0",
               "nativeAddress": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df",
               "contentHash": "98823225db90f511aeabf3ea28d41f5627db26409ac3aad54b6c8497c6a0a434",
-              "transaction": "demos:test:3038824f173e4171b7046eac229378fe3300730208b7abd217062f6dcb1e9bcb",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "demos:test:3038824f173e4171b7046eac229378fe3300730208b7abd217062f6dcb1e9bcb"
+              },
               "writer": "did:demos:orchestrator",
-              "nonce": 0
+              "nonce": "0",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1900000000000,
+              "blockRef": {
+                "id": "block-3038824f173e4171b7046eac229378fe",
+                "height": "1000",
+                "timestamp": 1900000000000
+              },
+              "evidence": {
+                "kind": "fixture-demos-bft-proof",
+                "value": "23373bdc811d85ce2d3d68b54db5b2496c9609cbdf94e762abda7911dff70b4a"
+              }
             }
           },
           "finalityVerificationByCanonicalRef": {
@@ -29899,12 +29917,30 @@
           },
           "verifiedReceiptByCanonicalRef": {
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4\"},\"contentHash\":\"16b5f59243285957f2a595365c41fd085dbbd5fc134b210339bdc1e3d9cc0c00\"}": {
+              "receiptVersion": "1",
+              "substrate": "demos-testnet",
+              "finalityProfile": "demos-bft-final",
               "logicalAddress": "dacs4:payment:FV-392-commitment-level:fixture%3Acommitment-level:0",
               "nativeAddress": "stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4",
               "contentHash": "16b5f59243285957f2a595365c41fd085dbbd5fc134b210339bdc1e3d9cc0c00",
-              "transaction": "demos:test:7c1dafefa7effad16a392d8503f3dd731c7db2ac9562413e654019ba38d15838",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "demos:test:7c1dafefa7effad16a392d8503f3dd731c7db2ac9562413e654019ba38d15838"
+              },
               "writer": "did:demos:orchestrator",
-              "nonce": 0
+              "nonce": "0",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1900000000000,
+              "blockRef": {
+                "id": "block-7c1dafefa7effad16a392d8503f3dd73",
+                "height": "1000",
+                "timestamp": 1900000000000
+              },
+              "evidence": {
+                "kind": "fixture-demos-bft-proof",
+                "value": "203e3e0bffd137364eff489398df0609f1ec9eb77c17e87707f79e435f6d8ae3"
+              }
             }
           },
           "finalityVerificationByCanonicalRef": {
@@ -30340,12 +30376,30 @@
           },
           "verifiedReceiptByCanonicalRef": {
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136\"},\"contentHash\":\"46cd8f28edf0ccdea5fffed2bbaff30d97f0edf83a60fab2878c6ad5c979bf59\"}": {
+              "receiptVersion": "1",
+              "substrate": "demos-testnet",
+              "finalityProfile": "demos-bft-final",
               "logicalAddress": "dacs4:payment:FV-392-bft-final:fixture%3Abft-final:0",
               "nativeAddress": "stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136",
               "contentHash": "46cd8f28edf0ccdea5fffed2bbaff30d97f0edf83a60fab2878c6ad5c979bf59",
-              "transaction": "demos:test:a335628482366ca1e49f8dd0732a169e8f6538d370aab2ff699ace5a38446d86",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "demos:test:a335628482366ca1e49f8dd0732a169e8f6538d370aab2ff699ace5a38446d86"
+              },
               "writer": "did:demos:orchestrator",
-              "nonce": 0
+              "nonce": "0",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1900000000000,
+              "blockRef": {
+                "id": "block-a335628482366ca1e49f8dd0732a169e",
+                "height": "1000",
+                "timestamp": 1900000000000
+              },
+              "evidence": {
+                "kind": "fixture-demos-bft-proof",
+                "value": "d32490d9a4fe4f974dbffad97a1cd056e6df621a08e0f7035be0683d26a58932"
+              }
             }
           },
           "finalityVerificationByCanonicalRef": {
@@ -30808,12 +30862,30 @@
           },
           "verifiedReceiptByCanonicalRef": {
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766\"},\"contentHash\":\"4e4c44c486578422f09171ee703f86ae25016753046d979e4c538d63f3a2f0b8\"}": {
+              "receiptVersion": "1",
+              "substrate": "demos-testnet",
+              "finalityProfile": "demos-bft-final",
               "logicalAddress": "dacs4:payment:FV-392-provider-receipt:fixture%3Aprovider-receipt:0",
               "nativeAddress": "stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766",
               "contentHash": "4e4c44c486578422f09171ee703f86ae25016753046d979e4c538d63f3a2f0b8",
-              "transaction": "demos:test:233ec75f54f36d84eb771c55c7360b2491b21d6d696e69d71d373dc278c16b46",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "demos:test:233ec75f54f36d84eb771c55c7360b2491b21d6d696e69d71d373dc278c16b46"
+              },
               "writer": "did:demos:orchestrator",
-              "nonce": 0
+              "nonce": "0",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1900000000000,
+              "blockRef": {
+                "id": "block-233ec75f54f36d84eb771c55c7360b24",
+                "height": "1000",
+                "timestamp": 1900000000000
+              },
+              "evidence": {
+                "kind": "fixture-demos-bft-proof",
+                "value": "6e42e73c52d0cc1e423077714f172698220960f57e33c606479ac9a7ce6fad98"
+              }
             }
           },
           "finalityVerificationByCanonicalRef": {
@@ -31144,12 +31216,30 @@
           },
           "verifiedReceiptByCanonicalRef": {
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a\"},\"contentHash\":\"1e4081d1feb7a8765196266e6725602828a7d7668af1043dd8f6da4bc9f114f5\"}": {
+              "receiptVersion": "1",
+              "substrate": "demos-testnet",
+              "finalityProfile": "demos-bft-final",
               "logicalAddress": "dacs4:payment:FV-392-htlc-reveal:fixture%3Ahtlc-reveal:0",
               "nativeAddress": "stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a",
               "contentHash": "1e4081d1feb7a8765196266e6725602828a7d7668af1043dd8f6da4bc9f114f5",
-              "transaction": "demos:test:8cb3b76a30b745e056808e4455e374fa5d0b5d9b667d5b49bc49644fc365d30d",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "demos:test:8cb3b76a30b745e056808e4455e374fa5d0b5d9b667d5b49bc49644fc365d30d"
+              },
               "writer": "did:demos:orchestrator",
-              "nonce": 0
+              "nonce": "0",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1900000000000,
+              "blockRef": {
+                "id": "block-8cb3b76a30b745e056808e4455e374fa",
+                "height": "1000",
+                "timestamp": 1900000000000
+              },
+              "evidence": {
+                "kind": "fixture-demos-bft-proof",
+                "value": "57e445dc6778142255df926492846ab1095fab22d91954198025307509f47215"
+              }
             }
           },
           "finalityVerificationByCanonicalRef": {
@@ -32019,12 +32109,30 @@
           },
           "verifiedReceiptByCanonicalRef": {
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f\"},\"contentHash\":\"392c80ed80a4193888b40b74fe65df89e758fc2d8217f1ccb55eecdae22eea95\"}": {
+              "receiptVersion": "1",
+              "substrate": "demos-testnet",
+              "finalityProfile": "demos-bft-final",
               "logicalAddress": "dacs4:payment:FV-392-liquidity-tank:fixture%3Aliquidity-tank:0",
               "nativeAddress": "stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f",
               "contentHash": "392c80ed80a4193888b40b74fe65df89e758fc2d8217f1ccb55eecdae22eea95",
-              "transaction": "demos:test:3f3875262737ebfbea2a9111bd1750e8201a35f2c60514d7fef4e4359c60dae3",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "demos:test:3f3875262737ebfbea2a9111bd1750e8201a35f2c60514d7fef4e4359c60dae3"
+              },
               "writer": "did:demos:orchestrator",
-              "nonce": 0
+              "nonce": "0",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1900000000000,
+              "blockRef": {
+                "id": "block-3f3875262737ebfbea2a9111bd1750e8",
+                "height": "1000",
+                "timestamp": 1900000000000
+              },
+              "evidence": {
+                "kind": "fixture-demos-bft-proof",
+                "value": "e3ead4afaef189420148f7c3e4d4cdf712344c9514a612711b9a95cfa84743cb"
+              }
             }
           },
           "finalityVerificationByCanonicalRef": {

@@ -172,7 +172,7 @@
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 45,
+        "count": 46,
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -184,6 +184,7 @@
           "dacs-canonical-channel-message:v1:",
           "dacs-commitment:v1:",
           "dacs-composite:v1:",
+          "dacs-delivery-evidence:v1:",
           "dacs-entitlement:v1:",
           "dacs-evidence-bound-fault-bundle-pointer:v1:",
           "dacs-evidence-bound-fault-bundle:v1:",

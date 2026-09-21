@@ -465,6 +465,30 @@ class B2ConformanceHashTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("does not match the Listing §B.7 separator", result.stderr)
 
+    def test_lifecycle_wrapper_requires_one_matching_supported_selector(self):
+        module = load_vector_validator()
+        cases = (
+            ("DeliveryEvidence", {"deliveryEvidenceVersion": "1"}, True),
+            ("SettlementEvidence", {"evidenceVersion": "1"}, True),
+            ("DeliveryEvidence", {}, False),
+            ("DeliveryEvidence", {"evidenceVersion": "1"}, False),
+            ("DeliveryEvidence", {
+                "deliveryEvidenceVersion": "1", "evidenceVersion": "1",
+            }, False),
+            ("DeliveryEvidence", {"deliveryEvidenceVersion": "2"}, False),
+            ("SettlementEvidence", {}, False),
+            ("SettlementEvidence", {"deliveryEvidenceVersion": "1"}, False),
+            ("SettlementEvidence", {
+                "evidenceVersion": "1", "deliveryEvidenceVersion": "1",
+            }, False),
+            ("SettlementEvidence", {"evidenceVersion": "2"}, False),
+        )
+        for kind, artifact, expected in cases:
+            with self.subTest(kind=kind, artifact=artifact):
+                self.assertIs(
+                    module.lifecycle_evidence_kind_matches(kind, artifact), expected
+                )
+
     def test_non_ed25519_algorithm_recorded_as_fail(self):
         # C2: a non-ed25519 suite is unverifiable here -> observed 'fail' -> the
         # declared 'verify' pin mismatches. It must not crash or silently verify.

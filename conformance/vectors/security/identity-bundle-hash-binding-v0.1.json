@@ -23418,7 +23418,7 @@
     }
   },
   "count": 398,
-  "hash": "27874a45117b36237ff592983a37acb8c001b4c798ab85f9e74c212f83007bf4",
+  "hash": "58b71a4e2a4b809825b19b3a8eb78178704bbb92aafd64dbd620e17b5ec4459b",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -27524,7 +27524,7 @@
       "want": {
         "verdict": "fail",
         "authorizedAction": false,
-        "reason": "terminal-seb-invalid:settlement evidence signature does not verify"
+        "reason": "terminal-seb-invalid:evidence record has an unsupported or ambiguous discriminator"
       }
     },
     {

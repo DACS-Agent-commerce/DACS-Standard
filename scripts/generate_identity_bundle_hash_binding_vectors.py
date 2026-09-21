@@ -2865,7 +2865,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 "verifierContext", "terminalAuthority", "settlements", 0,
                 "record", "signature", "value",
             ], "AAAA")],
-            reason="terminal-seb-invalid:settlement evidence signature does not verify",
+            reason="terminal-seb-invalid:evidence record has an unsupported or ambiguous discriminator",
         ),
         vector(
             "historical-payment-explicitly-not-modeled", "indeterminate",

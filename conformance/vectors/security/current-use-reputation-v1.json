@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 8,
-  "hash": "172bcdea70d10a4be29e68b08251043c3878bfe89c65c362ea322d99f4c5ded1",
+  "hash": "3e077bbca69fa0150a76495b9cd772080d5bb12aee0fec70a3b39104f36f773e",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -371,12 +371,30 @@
               },
               "verifiedReceiptByCanonicalRef": {
                 "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df\"},\"contentHash\":\"f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1\"}": {
+                  "receiptVersion": "1",
+                  "substrate": "demos-testnet",
+                  "finalityProfile": "demos-bft-final",
                   "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAX:fixture%3Ablock-depth:0",
                   "nativeAddress": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df",
                   "contentHash": "f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1",
-                  "transaction": "demos:test:3038824f173e4171b7046eac229378fe3300730208b7abd217062f6dcb1e9bcb",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "demos:test:3038824f173e4171b7046eac229378fe3300730208b7abd217062f6dcb1e9bcb"
+                  },
                   "writer": "did:demos:orchestrator",
-                  "nonce": 0
+                  "nonce": "0",
+                  "state": "finalized",
+                  "observationDisposition": "established",
+                  "observedAt": 1900000000000,
+                  "blockRef": {
+                    "id": "block-3038824f173e4171b7046eac229378fe",
+                    "height": "1000",
+                    "timestamp": 1900000000000
+                  },
+                  "evidence": {
+                    "kind": "fixture-demos-bft-proof",
+                    "value": "23373bdc811d85ce2d3d68b54db5b2496c9609cbdf94e762abda7911dff70b4a"
+                  }
                 }
               },
               "finalityVerificationByCanonicalRef": {
@@ -1402,12 +1420,30 @@
               },
               "verifiedReceiptByCanonicalRef": {
                 "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4\"},\"contentHash\":\"7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912\"}": {
+                  "receiptVersion": "1",
+                  "substrate": "demos-testnet",
+                  "finalityProfile": "demos-bft-final",
                   "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAY:fixture%3Acommitment-level:0",
                   "nativeAddress": "stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4",
                   "contentHash": "7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912",
-                  "transaction": "demos:test:7c1dafefa7effad16a392d8503f3dd731c7db2ac9562413e654019ba38d15838",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "demos:test:7c1dafefa7effad16a392d8503f3dd731c7db2ac9562413e654019ba38d15838"
+                  },
                   "writer": "did:demos:orchestrator",
-                  "nonce": 0
+                  "nonce": "0",
+                  "state": "finalized",
+                  "observationDisposition": "established",
+                  "observedAt": 1900000000000,
+                  "blockRef": {
+                    "id": "block-7c1dafefa7effad16a392d8503f3dd73",
+                    "height": "1000",
+                    "timestamp": 1900000000000
+                  },
+                  "evidence": {
+                    "kind": "fixture-demos-bft-proof",
+                    "value": "203e3e0bffd137364eff489398df0609f1ec9eb77c17e87707f79e435f6d8ae3"
+                  }
                 }
               },
               "finalityVerificationByCanonicalRef": {
@@ -2415,12 +2451,30 @@
               },
               "verifiedReceiptByCanonicalRef": {
                 "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136\"},\"contentHash\":\"ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227\"}": {
+                  "receiptVersion": "1",
+                  "substrate": "demos-testnet",
+                  "finalityProfile": "demos-bft-final",
                   "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAZ:fixture%3Abft-final:0",
                   "nativeAddress": "stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136",
                   "contentHash": "ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227",
-                  "transaction": "demos:test:a335628482366ca1e49f8dd0732a169e8f6538d370aab2ff699ace5a38446d86",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "demos:test:a335628482366ca1e49f8dd0732a169e8f6538d370aab2ff699ace5a38446d86"
+                  },
                   "writer": "did:demos:orchestrator",
-                  "nonce": 0
+                  "nonce": "0",
+                  "state": "finalized",
+                  "observationDisposition": "established",
+                  "observedAt": 1900000000000,
+                  "blockRef": {
+                    "id": "block-a335628482366ca1e49f8dd0732a169e",
+                    "height": "1000",
+                    "timestamp": 1900000000000
+                  },
+                  "evidence": {
+                    "kind": "fixture-demos-bft-proof",
+                    "value": "d32490d9a4fe4f974dbffad97a1cd056e6df621a08e0f7035be0683d26a58932"
+                  }
                 }
               },
               "finalityVerificationByCanonicalRef": {
@@ -3459,12 +3513,30 @@
               },
               "verifiedReceiptByCanonicalRef": {
                 "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766\"},\"contentHash\":\"23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b\"}": {
+                  "receiptVersion": "1",
+                  "substrate": "demos-testnet",
+                  "finalityProfile": "demos-bft-final",
                   "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB0:fixture%3Aprovider-sr3:0",
                   "nativeAddress": "stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766",
                   "contentHash": "23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b",
-                  "transaction": "demos:test:233ec75f54f36d84eb771c55c7360b2491b21d6d696e69d71d373dc278c16b46",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "demos:test:233ec75f54f36d84eb771c55c7360b2491b21d6d696e69d71d373dc278c16b46"
+                  },
                   "writer": "did:demos:orchestrator",
-                  "nonce": 0
+                  "nonce": "0",
+                  "state": "finalized",
+                  "observationDisposition": "established",
+                  "observedAt": 1900000000000,
+                  "blockRef": {
+                    "id": "block-233ec75f54f36d84eb771c55c7360b24",
+                    "height": "1000",
+                    "timestamp": 1900000000000
+                  },
+                  "evidence": {
+                    "kind": "fixture-demos-bft-proof",
+                    "value": "6e42e73c52d0cc1e423077714f172698220960f57e33c606479ac9a7ce6fad98"
+                  }
                 }
               },
               "finalityVerificationByCanonicalRef": {
@@ -4532,12 +4604,30 @@
               },
               "verifiedReceiptByCanonicalRef": {
                 "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a\"},\"contentHash\":\"e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d\"}": {
+                  "receiptVersion": "1",
+                  "substrate": "demos-testnet",
+                  "finalityProfile": "demos-bft-final",
                   "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB1:fixture%3Ahtlc-reveal:0",
                   "nativeAddress": "stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a",
                   "contentHash": "e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d",
-                  "transaction": "demos:test:8cb3b76a30b745e056808e4455e374fa5d0b5d9b667d5b49bc49644fc365d30d",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "demos:test:8cb3b76a30b745e056808e4455e374fa5d0b5d9b667d5b49bc49644fc365d30d"
+                  },
                   "writer": "did:demos:orchestrator",
-                  "nonce": 0
+                  "nonce": "0",
+                  "state": "finalized",
+                  "observationDisposition": "established",
+                  "observedAt": 1900000000000,
+                  "blockRef": {
+                    "id": "block-8cb3b76a30b745e056808e4455e374fa",
+                    "height": "1000",
+                    "timestamp": 1900000000000
+                  },
+                  "evidence": {
+                    "kind": "fixture-demos-bft-proof",
+                    "value": "57e445dc6778142255df926492846ab1095fab22d91954198025307509f47215"
+                  }
                 }
               },
               "finalityVerificationByCanonicalRef": {
@@ -5979,12 +6069,30 @@
               },
               "verifiedReceiptByCanonicalRef": {
                 "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f\"},\"contentHash\":\"fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4\"}": {
+                  "receiptVersion": "1",
+                  "substrate": "demos-testnet",
+                  "finalityProfile": "demos-bft-final",
                   "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB2:fixture%3Aliquidity-tank:0",
                   "nativeAddress": "stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f",
                   "contentHash": "fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4",
-                  "transaction": "demos:test:3f3875262737ebfbea2a9111bd1750e8201a35f2c60514d7fef4e4359c60dae3",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "demos:test:3f3875262737ebfbea2a9111bd1750e8201a35f2c60514d7fef4e4359c60dae3"
+                  },
                   "writer": "did:demos:orchestrator",
-                  "nonce": 0
+                  "nonce": "0",
+                  "state": "finalized",
+                  "observationDisposition": "established",
+                  "observedAt": 1900000000000,
+                  "blockRef": {
+                    "id": "block-3f3875262737ebfbea2a9111bd1750e8",
+                    "height": "1000",
+                    "timestamp": 1900000000000
+                  },
+                  "evidence": {
+                    "kind": "fixture-demos-bft-proof",
+                    "value": "e3ead4afaef189420148f7c3e4d4cdf712344c9514a612711b9a95cfa84743cb"
+                  }
                 }
               },
               "finalityVerificationByCanonicalRef": {

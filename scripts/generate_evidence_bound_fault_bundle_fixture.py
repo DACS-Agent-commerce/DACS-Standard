@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from urllib.parse import quote
 
+import jcs
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "conformance" / "fixtures" / "evidence-bound-fault-bundle-compatibility-v0.4.json"
@@ -31,6 +33,9 @@ DOMAINS = {
 }
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
+ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
+PAYLOAD_ATTESTATION_DOMAIN = "dacs-payload-attestation:v1:"
 POINTER_DOMAINS = {
     "fault": "dacs-fault-bundle-pointer:v1:",
     "evidence-bound": "dacs-evidence-bound-fault-bundle-pointer:v1:",
@@ -55,7 +60,7 @@ EVIDENCE_PHASES = {
 
 
 def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return jcs.canonicalize(value).encode("utf-8")
 
 
 def b64u(value):
@@ -75,6 +80,17 @@ def listing_hash(listing):
 def evidence_hash(record):
     unsigned = {key: value for key, value in record.items() if key != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def sign_artifact(record, signing_key, signer, domain):
+    record["signature"] = {
+        "signer": signer,
+        "algorithm": "ed25519",
+        "value": "",
+    }
+    payload = (domain + evidence_hash(record)).encode("utf-8")
+    record["signature"]["value"] = b64u(signing_key.sign(payload))
+    return record
 
 
 def pointer_hash(pointer):
@@ -158,9 +174,11 @@ def settlement_finality(phase, observed_at):
 
 def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success", reason=None,
                   supersedes=None, label_suffix=""):
+    delivery = phase.startswith("deliver-")
     record = {
-        "evidenceVersion": "1",
+        ("deliveryEvidenceVersion" if delivery else "evidenceVersion"): "1",
         "jobId": job_id,
+        **({"phaseIndex": phase_index} if delivery else {}),
         "phase": phase,
         "outcome": outcome,
         "observedAt": 1785772799000 + phase_index,
@@ -175,20 +193,33 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
         record["deliverableContentHash"] = hashlib.sha256(
             f"deliverable:{job_id}:{phase_index}".encode()
         ).hexdigest()
-        if phase in {"deliver-storage-program", "deliver-attested-payload"}:
-            record["deliverableAnchor"] = {
-                "kind": "storage-program",
-                "locator": "stor-" + hashlib.sha256(
-                    f"deliverable-anchor:{job_id}:{phase_index}".encode()
-                ).hexdigest(),
-            }
+        deliverable_address = (
+            f"dacs4:entitlement:{job_id}:{phase_index}:0"
+            if phase == "deliver-entitlement"
+            else f"dacs4:deliverable:{job_id}:{phase_index}"
+        )
+        record["deliverableAnchor"] = {
+            "kind": "storage-program",
+            "locator": deliverable_address,
+        }
         if phase == "deliver-attested-payload":
-            record["attestationRef"] = reference(
-                f"payload-attestation:{job_id}:{phase_index}"
-            )
+            method_hash = hashlib.sha256(
+                f"verification-method:{job_id}:{phase_index}".encode()
+            ).hexdigest()
+            record["attestationRef"] = {
+                **reference(f"payload-attestation:{job_id}:{phase_index}"),
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": (
+                        f"dacs4:payload-attestation:{job_id}:{phase_index}:"
+                        f"{method_hash}:0"
+                    ),
+                },
+            }
     if supersedes is not None:
         record["supersedesEvidenceRef"] = copy.deepcopy(supersedes)
-    payload = (SETTLEMENT_EVIDENCE_DOMAIN + evidence_hash(record)).encode("utf-8")
+    domain = DELIVERY_EVIDENCE_DOMAIN if delivery else SETTLEMENT_EVIDENCE_DOMAIN
+    payload = (domain + evidence_hash(record)).encode("utf-8")
     record["signature"] = {
         "signer": CLAIMS["seller"],
         "algorithm": "ed25519",
@@ -205,13 +236,498 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
     return record, ref
 
 
+def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
+                                   outcome="success", reason=None, mutation=None):
+    """Create DeliveryEvidence plus the resolved, phase-specific inner closure."""
+    if outcome == "failure":
+        record, ref = make_evidence(
+            job_id, phase, phase_index, signing_keys, outcome=outcome, reason=reason
+        )
+        return record, ref, None, {}
+
+    closure = {}
+    fields = {}
+    if phase == "deliver-storage-program":
+        cleartext = f"storage delivery:{job_id}:{phase_index}"
+        digest = hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
+        address = f"dacs4:deliverable:{job_id}:{phase_index}"
+        fields = {
+            "deliverableContentHash": digest,
+            "deliverableAnchor": {"kind": "storage-program", "locator": address},
+        }
+        closure["deliverable"] = {
+            "logicalAddress": address,
+            "cleartextUtf8": cleartext,
+            "cleartextBytesBase64url": b64u(cleartext.encode("utf-8")),
+            "cleartextHash": digest,
+            "storedBytesBase64url": b64u(cleartext.encode("utf-8")),
+            "storedContentHash": digest,
+            "available": True,
+            "independentlyResolvable": True,
+            "_storageBinding": {
+                "effectiveAccessMode": "public",
+                "storedContentHash": digest,
+            },
+        }
+    elif phase == "deliver-entitlement":
+        renewal_seq = 0
+        credential_cleartext = f"credential:{job_id}:{phase_index}:{renewal_seq}"
+        credential_cleartext_hash = hashlib.sha256(
+            credential_cleartext.encode("utf-8")
+        ).hexdigest()
+        credential_ref = {
+            "ref": {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": (
+                        f"dacs4:credential:{job_id}:{phase_index}:{renewal_seq}"
+                    ),
+                },
+                "contentHash": credential_cleartext_hash,
+                "signer": CLAIMS["seller"],
+            },
+            "accessModel": "buyer-only",
+        }
+        entitlement = {
+            "entitlementVersion": "1",
+            "jobId": job_id,
+            "grantee": CLAIMS["buyer"],
+            "grantor": CLAIMS["seller"],
+            "startsAt": 1785772799000,
+            "endsAt": 1785859199000,
+            "scope": {"service": "https://service.example.test", "tier": "pro"},
+            "serviceEndpoint": "https://service.example.test/access",
+            "renewable": True,
+            "renewalSeq": renewal_seq,
+            "credentialRef": credential_ref,
+        }
+        if mutation == "entitlement-duration":
+            entitlement["endsAt"] = entitlement["startsAt"] + 1
+        elif mutation == "entitlement-renewable":
+            entitlement["renewable"] = False
+        sign_artifact(
+            entitlement,
+            signing_keys["seller"],
+            CLAIMS["seller"],
+            ENTITLEMENT_DOMAIN,
+        )
+        address = f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        fields = {
+            "deliverableContentHash": evidence_hash(entitlement),
+            "deliverableAnchor": {"kind": "storage-program", "locator": address},
+            "credentialDelivery": {
+                "credentialRef": copy.deepcopy(credential_ref),
+                "credentialCleartextHash": credential_cleartext_hash,
+                "renewalSeq": renewal_seq,
+            },
+        }
+        closure["entitlementRecord"] = {
+            "logicalAddress": address,
+            "artifact": entitlement,
+            "available": True,
+            "independentlyResolvable": True,
+        }
+        closure["credential"] = {
+            "credentialRef": copy.deepcopy(credential_ref),
+            "cleartextHash": credential_cleartext_hash,
+            "storedContentHash": credential_cleartext_hash,
+            "cleartextBytesBase64url": b64u(
+                credential_cleartext.encode("utf-8")
+            ),
+            "storedBytesBase64url": b64u(
+                credential_cleartext.encode("utf-8")
+            ),
+            "available": True,
+            "independentlyResolvable": True,
+            "_storageBinding": {
+                "effectiveAccessMode": "buyer-only",
+                "storedContentHash": credential_cleartext_hash,
+                "acl": {
+                    "mode": "restricted",
+                    "allowed": [CLAIMS["buyer"]],
+                },
+            },
+        }
+    elif phase == "deliver-attested-payload":
+        cleartext = f"attested payload:{job_id}:{phase_index}"
+        digest = hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
+        spec = delivery_spec(job_id, phase, phase_index)
+        method = spec["verificationMethod"]
+        method_hash = hashlib.sha256(canonical(method)).hexdigest()
+        agreement_hash = hashlib.sha256(
+            f"agreement:{job_id}".encode("utf-8")
+        ).hexdigest()
+        transaction_value = hashlib.sha256(
+            f"dahr:{job_id}:{phase_index}".encode("utf-8")
+        ).hexdigest()
+        trusted_transaction_value = transaction_value
+        if mutation == "native-transaction":
+            transaction_value = "ff" * 32
+        transaction_state = "included" if mutation == "native-terminal-included" else "finalized"
+        method_evidence = {
+            "kind": "demos-web2-request",
+            "request": {
+                "method": method["endpoint"]["method"],
+                "url": method["endpoint"]["urlTemplate"],
+            },
+            "response": {
+                "status": 200,
+                "data": cleartext,
+                "responseHash": digest,
+                "responseHeadersHash": "b2" * 32,
+            },
+            "transaction": {
+                "kind": "demos-web2-request",
+                "value": transaction_value,
+                "state": transaction_state,
+                "authenticated": True,
+            },
+            "proofValid": True,
+        }
+        method_address = f"dacs4:method-evidence:{job_id}:{phase_index}"
+        method_ref = {
+            "anchor": {"kind": "storage-program", "locator": method_address},
+            "contentHash": hashlib.sha256(canonical(method_evidence)).hexdigest(),
+            "signer": CLAIMS["orchestrator"],
+        }
+        payload_attestation = {
+            "payloadAttestationVersion": "1",
+            "jobId": job_id,
+            "agreementHash": agreement_hash,
+            "deliverableSpecHash": hashlib.sha256(canonical(spec)).hexdigest(),
+            "payloadFormat": spec["payloadFormat"],
+            "payloadContentHash": digest,
+            "verificationMethod": method["kind"],
+            "verificationMethodHash": method_hash,
+            "attempt": 0,
+            "decision": "pass",
+            "reason": "deterministic test proof",
+            "methodEvidenceRef": method_ref,
+            "methodTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": transaction_value,
+            },
+            "verifiedAt": 1785772800000 + phase_index,
+        }
+        sign_artifact(
+            payload_attestation,
+            signing_keys["orchestrator"],
+            CLAIMS["orchestrator"],
+            PAYLOAD_ATTESTATION_DOMAIN,
+        )
+        payload_address = f"dacs4:deliverable:{job_id}:{phase_index}"
+        attestation_address = (
+            f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:0"
+        )
+        attestation_ref = {
+            "anchor": {"kind": "storage-program", "locator": attestation_address},
+            "contentHash": evidence_hash(payload_attestation),
+            "signer": CLAIMS["orchestrator"],
+        }
+        fields = {
+            "deliverableContentHash": digest,
+            "deliverableAnchor": {
+                "kind": "storage-program",
+                "locator": payload_address,
+            },
+            "attestationRef": attestation_ref,
+        }
+        closure.update({
+            "agreementHash": agreement_hash,
+            "deliverable": {
+                "logicalAddress": payload_address,
+                "cleartextUtf8": cleartext,
+                "cleartextBytesBase64url": b64u(cleartext.encode("utf-8")),
+                "cleartextHash": digest,
+                "storedBytesBase64url": b64u(cleartext.encode("utf-8")),
+                "storedContentHash": digest,
+                "available": True,
+                "independentlyResolvable": True,
+                "_storageBinding": {
+                    "effectiveAccessMode": "public",
+                    "storedContentHash": digest,
+                },
+            },
+            "payloadAttestationRecord": {
+                "logicalAddress": attestation_address,
+                "artifact": payload_attestation,
+                "available": True,
+                "independentlyResolvable": True,
+            },
+            "methodEvidence": {
+                "logicalAddress": method_address,
+                "artifact": method_evidence,
+                "available": True,
+                "independentlyResolvable": True,
+            },
+        })
+        transaction_ref = payload_attestation["methodTransactionRef"]
+        trusted_transaction_ref = {
+            "kind": "demos-web2-request",
+            "value": trusted_transaction_value,
+        }
+        observed_transaction = copy.deepcopy(method_evidence["transaction"])
+        observed_transaction["value"] = trusted_transaction_value
+        observed_response = {
+            "status": method_evidence["response"]["status"],
+            "responseHash": method_evidence["response"]["responseHash"],
+            "responseHeadersHash": method_evidence["response"]["responseHeadersHash"],
+        }
+        if mutation == "native-observation-mismatch":
+            observed_response["responseHash"] = "00" * 32
+        observation = (
+            {"available": False}
+            if mutation == "native-observation-unavailable"
+            else {
+                "available": True,
+                "transaction": observed_transaction,
+                "verificationMethod": copy.deepcopy(method),
+                "request": copy.deepcopy(method_evidence["request"]),
+                "response": observed_response,
+            }
+        )
+        trusted_native_observations = {
+            canonical(trusted_transaction_ref).decode("utf-8"): observation
+        }
+    else:
+        raise ValueError(f"unsupported delivery phase: {phase}")
+
+    if phase != "deliver-attested-payload":
+        trusted_native_observations = {}
+
+    if mutation == "deliverable-locator":
+        fields["deliverableAnchor"]["locator"] = (
+            f"dacs4:deliverable:ATTACKER-JOB:{phase_index}"
+        )
+    elif mutation == "attestation-locator":
+        fields["attestationRef"]["anchor"]["locator"] = (
+            f"dacs4:payload-attestation:ATTACKER-JOB:{phase_index}:deadbeef:0"
+        )
+    elif mutation == "attestation-content-hash":
+        fields["attestationRef"]["contentHash"] = "de" * 32
+    elif mutation == "entitlement-locator":
+        fields["deliverableAnchor"]["locator"] = (
+            f"dacs4:entitlement:ATTACKER-JOB:{phase_index}:777"
+        )
+    elif mutation == "omit-credential-delivery":
+        fields.pop("credentialDelivery", None)
+    elif mutation in {
+        "entitlement-duration",
+        "entitlement-renewable",
+        "native-transaction",
+        "native-terminal-included",
+        "native-observation-mismatch",
+        "native-observation-unavailable",
+    }:
+        pass
+    elif mutation is not None:
+        raise ValueError(f"unsupported inner-artifact mutation: {mutation}")
+
+    record = {
+        "deliveryEvidenceVersion": "1",
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "phase": phase,
+        "outcome": "success",
+        **fields,
+        "observedAt": 1785772799000 + phase_index,
+    }
+    sign_artifact(
+        record,
+        signing_keys["seller"],
+        CLAIMS["seller"],
+        DELIVERY_EVIDENCE_DOMAIN,
+    )
+    label = f"{job_id}:{phase_index}:{phase}"
+    ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+        },
+        "contentHash": evidence_hash(record),
+    }
+    return record, ref, closure, trusted_native_observations
+
+
+def make_legacy_delivery_evidence(
+    job_id,
+    phase,
+    phase_index,
+    signing_keys,
+    *,
+    outcome="success",
+    reason=None,
+    self_signed=False,
+):
+    """Create a byte-stable SettlementEvidence delivery with unindexed closure."""
+    if outcome == "failure":
+        record = {
+            "evidenceVersion": "1",
+            "jobId": job_id,
+            "phase": phase,
+            "outcome": "failure",
+            "reason": reason or "permanent",
+            "observedAt": 1785772799000 + phase_index,
+        }
+        sign_artifact(
+            record,
+            signing_keys["seller"],
+            CLAIMS["seller"],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+        )
+        label = f"legacy:{job_id}:{phase_index}:{phase}"
+        ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+            },
+            "contentHash": evidence_hash(record),
+        }
+        return record, ref, None, {}
+
+    current, _, closure, native_observations = make_current_delivery_evidence(
+        job_id, phase, phase_index, signing_keys
+    )
+    fields = {
+        "deliverableContentHash": current["deliverableContentHash"],
+    }
+    if phase == "deliver-storage-program":
+        address = f"dacs4:deliverable:{job_id}"
+        closure["deliverable"]["logicalAddress"] = address
+        fields["deliverableAnchor"] = {
+            "kind": "storage-program",
+            "locator": address,
+        }
+    elif phase == "deliver-entitlement":
+        entitlement = closure["entitlementRecord"]["artifact"]
+        renewal_seq = entitlement["renewalSeq"]
+        credential_ref = entitlement.get("credentialRef")
+        if isinstance(credential_ref, dict) and isinstance(
+            credential_ref.get("ref"), dict
+        ):
+            credential_ref["ref"]["anchor"]["locator"] = (
+                f"dacs4:credential:{job_id}:{renewal_seq}"
+            )
+            sign_artifact(
+                entitlement,
+                signing_keys["seller"],
+                CLAIMS["seller"],
+                ENTITLEMENT_DOMAIN,
+            )
+            fields["deliverableContentHash"] = evidence_hash(entitlement)
+        address = f"dacs4:entitlement:{job_id}:{renewal_seq}"
+        closure["entitlementRecord"]["logicalAddress"] = address
+        # The credential may remain referenced by the historical entitlement,
+        # but no unsigned closure input can synthesize PDE-5's signed binding.
+        closure.pop("credential", None)
+        fields["deliverableAnchor"] = {
+            "kind": "storage-program",
+            "locator": address,
+        }
+    elif phase == "deliver-attested-payload":
+        payload = closure["deliverable"]
+        payload_record_entry = closure["payloadAttestationRecord"]
+        payload_record = payload_record_entry["artifact"]
+        if self_signed:
+            method = {"kind": "self-signed"}
+            spec = delivery_spec(job_id, phase, phase_index)
+            spec["verificationMethod"] = method
+            assertion = payload["cleartextUtf8"]
+            proof_key = signing_keys["seller"]
+            proof = {
+                "kind": "self-signed-payload",
+                "payloadContentHash": payload["cleartextHash"],
+                "methodInput": {
+                    "identifier": proof_key.public_key().public_bytes_raw().hex(),
+                    "assertion": assertion,
+                    "signature": b64u(proof_key.sign(assertion.encode("utf-8"))),
+                },
+            }
+            closure["methodEvidence"]["artifact"] = proof
+            payload_record["deliverableSpecHash"] = hashlib.sha256(
+                canonical(spec)
+            ).hexdigest()
+            payload_record["verificationMethod"] = method["kind"]
+            payload_record["verificationMethodHash"] = hashlib.sha256(
+                canonical(method)
+            ).hexdigest()
+            payload_record["methodEvidenceRef"]["contentHash"] = hashlib.sha256(
+                canonical(proof)
+            ).hexdigest()
+            payload_record.pop("methodTransactionRef")
+            sign_artifact(
+                payload_record,
+                signing_keys["orchestrator"],
+                CLAIMS["orchestrator"],
+                PAYLOAD_ATTESTATION_DOMAIN,
+            )
+            native_observations = {}
+
+        method_address = f"dacs4:method-evidence:{job_id}"
+        payload_record["methodEvidenceRef"]["anchor"]["locator"] = method_address
+        closure["methodEvidence"]["logicalAddress"] = method_address
+        sign_artifact(
+            payload_record,
+            signing_keys["orchestrator"],
+            CLAIMS["orchestrator"],
+            PAYLOAD_ATTESTATION_DOMAIN,
+        )
+        payload_address = f"dacs4:deliverable:{job_id}"
+        attestation_address = (
+            f"dacs4:payload-attestation:{job_id}:"
+            f"{payload_record['verificationMethodHash']}:{payload_record['attempt']}"
+        )
+        payload["logicalAddress"] = payload_address
+        payload_record_entry["logicalAddress"] = attestation_address
+        fields.update({
+            "deliverableAnchor": {
+                "kind": "storage-program",
+                "locator": payload_address,
+            },
+            "attestationRef": {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": attestation_address,
+                },
+                "contentHash": evidence_hash(payload_record),
+                "signer": payload_record["signature"]["signer"],
+            },
+        })
+    else:
+        raise ValueError(f"unsupported legacy delivery phase: {phase}")
+
+    record = {
+        "evidenceVersion": "1",
+        "jobId": job_id,
+        "phase": phase,
+        "outcome": "success",
+        **fields,
+        "observedAt": 1785772799000 + phase_index,
+    }
+    sign_artifact(
+        record,
+        signing_keys["seller"],
+        CLAIMS["seller"],
+        SETTLEMENT_EVIDENCE_DOMAIN,
+    )
+    label = f"legacy:{job_id}:{phase_index}:{phase}"
+    ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+        },
+        "contentHash": evidence_hash(record),
+    }
+    return record, ref, closure, native_observations
+
+
 def make_session_execution_authority(job_id, phase, phase_index, *, signer_role="seller",
                                      rail_id="test-rail"):
     signer = CLAIMS[signer_role]
     if phase.startswith("pay-"):
         execution_address = {}
     else:
-        execution_address = {"evidenceLogicalAddress": f"dacs4:evidence:{job_id}:{phase_index}"}
+        execution_address = {"evidenceLogicalAddress": f"dacs4:delivery:{job_id}:{phase_index}"}
     return {
         "jobId": job_id,
         "phaseIndex": phase_index,
@@ -221,10 +737,20 @@ def make_session_execution_authority(job_id, phase, phase_index, *, signer_role=
     }
 
 
-def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role="seller",
-                                 resolved=False, rail_id="test-rail"):
+def make_verified_anchor_receipt(
+    ref,
+    job_id,
+    phase,
+    phase_index,
+    *,
+    signer_role="seller",
+    resolved=False,
+    rail_id="test-rail",
+    logical_address=None,
+    state="finalized",
+):
     signer = CLAIMS[signer_role]
-    logical_address = (
+    derived_logical_address = (
         "dacs4:payment:%s:%s:%d%s" % (
             job_id,
             quote(rail_id, safe="-._~"),
@@ -232,28 +758,140 @@ def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role
             ":resolved" if resolved else "",
         )
         if phase.startswith("pay-")
-        else f"dacs4:evidence:{job_id}:{phase_index}"
+        else f"dacs4:delivery:{job_id}:{phase_index}"
     )
-    transaction = "demos-testnet:tx-" + hashlib.sha256(
+    logical_address = logical_address or derived_logical_address
+    transaction = "tx-" + hashlib.sha256(
         f"{job_id}:{phase_index}:{phase}:{'resolved' if resolved else 'ordinary'}".encode()
     ).hexdigest()[:32]
-    return {
+    receipt = {
+        "receiptVersion": "1",
+        "substrate": "demos-testnet",
+        "finalityProfile": "demos-bft-final",
         "logicalAddress": logical_address,
         "nativeAddress": ref["anchor"]["locator"],
         "contentHash": ref["contentHash"],
-        "transaction": transaction,
+        "transactionRef": {"kind": "demos-transaction", "value": transaction},
         "writer": signer,
-        "nonce": phase_index,
+        "nonce": str(phase_index),
+        "state": state,
+        "observationDisposition": "established",
+        "observedAt": 1785772800000 + phase_index,
+        "blockRef": {
+            "id": "block-" + hashlib.sha256(transaction.encode()).hexdigest()[:32],
+            "height": str(1000 + phase_index),
+            "timestamp": 1785772800000 + phase_index,
+        },
+        "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": hashlib.sha256(("proof:" + transaction).encode()).hexdigest(),
+        },
     }
+    return receipt
 
 
-def make_listing(signing_keys):
+def make_delivery_closure_receipts(record, closure, job_id, phase, phase_index):
+    """Bind every inner dependency to a full canonical ref and SR-2 receipt map."""
+    if not isinstance(closure, dict):
+        return {}
+    dependencies = []
+    anchor = record.get("deliverableAnchor")
+    content_hash = record.get("deliverableContentHash")
+    if phase in {"deliver-storage-program", "deliver-attested-payload"}:
+        dependencies.append((
+            "deliverable",
+            {"anchor": copy.deepcopy(anchor), "contentHash": content_hash},
+            "seller",
+        ))
+    elif phase == "deliver-entitlement":
+        dependencies.append((
+            "entitlementRecord",
+            {"anchor": copy.deepcopy(anchor), "contentHash": content_hash},
+            "seller",
+        ))
+        entitlement = closure.get("entitlementRecord", {}).get("artifact")
+        credential_ref = (
+            entitlement.get("credentialRef", {}).get("ref")
+            if isinstance(entitlement, dict) else None
+        )
+        if credential_ref is not None and "credential" in closure:
+            dependencies.append(("credential", credential_ref, "seller"))
+    if phase == "deliver-attested-payload":
+        dependencies.append((
+            "payloadAttestationRecord",
+            record.get("attestationRef"),
+            "orchestrator",
+        ))
+        payload_record = closure.get("payloadAttestationRecord", {}).get("artifact")
+        method_ref = (
+            payload_record.get("methodEvidenceRef")
+            if isinstance(payload_record, dict) else None
+        )
+        dependencies.append(("methodEvidence", method_ref, "orchestrator"))
+
+    receipts = {}
+    for dependency_name, ref, signer_role in dependencies:
+        entry = closure.get(dependency_name)
+        if not isinstance(entry, dict) or not isinstance(ref, dict):
+            continue
+        entry["nativeAddress"] = ref["anchor"]["locator"]
+        entry["independentlyResolvable"] = True
+        entry.pop("lifecycle", None)
+        storage_binding = entry.pop("_storageBinding", None)
+        receipt = make_verified_anchor_receipt(
+            ref,
+            job_id,
+            phase,
+            phase_index,
+            signer_role=signer_role,
+            logical_address=ref["anchor"]["locator"],
+        )
+        authority = {"receipt": receipt}
+        if storage_binding is not None:
+            authority["storageBinding"] = storage_binding
+        receipts[canonical(ref).decode("utf-8")] = authority
+    return receipts
+
+
+def delivery_spec(job_id, phase, phase_index):
+    if phase == "deliver-attested-payload":
+        return {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "GET",
+                    "urlTemplate": f"https://api.example.test/delivery/{job_id}/{phase_index}",
+                },
+            },
+        }
+    if phase == "deliver-entitlement":
+        return {
+            "kind": "entitlement",
+            "durationSec": 86400,
+            "renewable": True,
+        }
+    return {"kind": "storage-program", "payloadFormat": "application/octet-stream"}
+
+
+def make_listing(signing_keys, job_id="EBFAB-COMPAT-1", pipeline=None):
+    pipeline = list(pipeline or ["pay-dem"])
     listing = {
         "listingId": "listing-ebfab-compat",
         "listingVersion": 1,
         "sellerPrimaryClaim": CLAIMS["seller"],
-        "pipeline": [{"kind": "pay-dem"}],
+        "pipeline": [{"kind": phase} for phase in pipeline],
     }
+    delivery_steps = [
+        (index, phase) for index, phase in enumerate(pipeline)
+        if phase.startswith("deliver-")
+    ]
+    if delivery_steps:
+        phase_index, phase = delivery_steps[0]
+        listing["offering"] = {
+            "deliverable": delivery_spec(job_id, phase, phase_index),
+        }
     payload = (LISTING_DOMAIN + listing_hash(listing)).encode("utf-8")
     listing["signature"] = {
         "signer": CLAIMS["seller"],
@@ -453,7 +1091,7 @@ def generate():
             {"name": "stripped-to-fab-cross-type-replay", "bundle": stripped_to_fab, "want": {"type": "fault", "signaturesValid": False, "sebValid": False}},
             {"name": "dual-discriminator-reject", "bundle": dual_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
             {"name": "unknown-discriminator-reject", "bundle": unknown_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
-            {"name": "known-plus-unknown-discriminator-reject", "bundle": known_plus_unknown, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
+            {"name": "known-selector-plus-inert-unknown-member-pass", "bundle": known_plus_unknown, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": True}},
             {"name": "completed-bundle-accepted-lifecycle-reject", "bundle": ebfab_buyer, "bundleLifecycle": {"state": "accepted", "independentlyResolvable": False}, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": False}},
         ],
         "pairCases": [

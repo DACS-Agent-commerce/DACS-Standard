@@ -23,6 +23,7 @@ from dacs5_reference import (  # noqa: E402
     reconcile_authenticated_finality_copies,
     resolve_legacy_absolute_fault_pointer,
     validate_ebfab,
+    validate_legacy_ebfab,
     validate_finality_bound_ebfab,
 )
 from frozen_dacs5_v05_reader import (  # noqa: E402
@@ -578,6 +579,45 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("fail", result["decision"])
         self.assertIsNone(result["bundle"])
 
+    def test_archival_receipt_never_supplies_current_authority(self):
+        case = self.strong["block-depth"]
+        compatibility = self.data["dacs5"]["compatibility"]
+        older = compatibility["copies"]["evidence-bound"]
+        older_authority = compatibility["evidenceBoundAuthority"]
+        strong_entry = self.entry(case["bundle"], case["authority"])
+        older_entry = self.entry(older, older_authority)
+
+        # The frozen receipt can compare identities only after a complete,
+        # passing current copy has independently established authority.
+        positive = reconcile_authenticated_finality_copies(
+            [strong_entry, older_entry], self.pubkeys, self.trust
+        )
+        self.assertEqual("pass", positive["decision"], positive["reason"])
+        self.assertEqual("finality-bound", bundle_type(positive["bundle"]))
+
+        absent_trust = copy.deepcopy(self.trust)
+        absent_trust["copyDispositionByJobRole"] = {
+            case["bundle"]["jobId"] + ":buyer": "absent"
+        }
+        malformed = copy.deepcopy(older_entry)
+        receipt = next(iter(malformed["authority"]["verifiedReceiptByCanonicalRef"].values()))
+        receipt["transaction"] = None
+        absent = reconcile_authenticated_finality_copies(
+            [{"disposition": "absent", "expectedJobId": case["bundle"]["jobId"],
+              "expectedRole": "buyer"}, malformed], self.pubkeys, absent_trust
+        )
+        self.assertNotEqual("pass", absent["decision"])
+        self.assertIsNone(absent["bundle"])
+
+        invalid_strong = copy.deepcopy(strong_entry)
+        key = next(iter(invalid_strong["authority"]["finalityVerificationByCanonicalRef"]))
+        invalid_strong["authority"]["finalityVerificationByCanonicalRef"][key]["context"]["observation"]["transactionRef"]["txHash"] = "ff" * 32
+        invalid = reconcile_authenticated_finality_copies(
+            [invalid_strong, malformed], self.pubkeys, self.trust
+        )
+        self.assertNotEqual("pass", invalid["decision"])
+        self.assertIsNone(invalid["bundle"])
+
     def test_reconciliation_executes_conflict_absence_and_indeterminate_paths(self):
         case = self.strong["block-depth"]
         legacy = copy.deepcopy(self.data["dacs5"]["compatibility"]["copies"]["legacy"])
@@ -709,7 +749,18 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         compatibility = self.data["dacs5"]["compatibility"]
         bundle = compatibility["copies"]["evidence-bound"]
         authority = compatibility["evidenceBoundAuthority"]
-        ok, reason, keys = validate_ebfab(
+        current_ok, current_reason, _ = validate_ebfab(
+            bundle,
+            authority["listing"],
+            self.pubkeys,
+            authority["referenceValidationByCanonicalRef"],
+            authority["bundleLifecycle"],
+            authority["sessionExecutionAuthorityByPhaseKey"],
+            authority["verifiedReceiptByCanonicalRef"],
+        )
+        self.assertFalse(current_ok)
+        self.assertIn("receipt", current_reason)
+        ok, reason, keys = validate_legacy_ebfab(
             bundle,
             authority["listing"],
             self.pubkeys,

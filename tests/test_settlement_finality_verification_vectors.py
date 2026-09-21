@@ -89,7 +89,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             trust or self.trust,
         )
 
-    def entry(self, bundle, authority=None):
+    def entry(self, bundle, authority=None, *, evidence_receipt_contract=None):
         role = bundle["anchoredByRole"]
         party = next(item for item in bundle["parties"] if item["role"] == role)
         presence = {
@@ -100,13 +100,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.trust.setdefault("copyPresenceByJobRole", {})[
             bundle["jobId"] + ":" + role
         ] = copy.deepcopy(presence)
-        return {
+        entry = {
             "bundle": bundle,
             "expectedJobId": bundle["jobId"],
             "expectedRole": role,
             "copyPresence": presence,
             "authority": authority,
         }
+        if evidence_receipt_contract is not None:
+            entry["evidenceReceiptContract"] = evidence_receipt_contract
+        return entry
 
     def resign_bundle(self, bundle):
         digest = bundle_hash(bundle)
@@ -552,12 +555,22 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         pairs = [
             (second_strong, case["authority"]),
             (copies["evidence-bound"], old_authority),
-            (copies["fault"], None),
+            (copies["fault"], old_authority),
             (copies["legacy"], None),
         ]
         for older, authority in pairs:
+            receipt_contract = (
+                "archival" if bundle_type(older) == "evidence-bound" else None
+            )
             result = reconcile_authenticated_finality_copies(
-                [self.entry(case["bundle"], case["authority"]), self.entry(older, authority)],
+                [
+                    self.entry(case["bundle"], case["authority"]),
+                    self.entry(
+                        older,
+                        authority,
+                        evidence_receipt_contract=receipt_contract,
+                    ),
+                ],
                 self.pubkeys,
                 self.trust,
             )
@@ -585,7 +598,9 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         older = compatibility["copies"]["evidence-bound"]
         older_authority = compatibility["evidenceBoundAuthority"]
         strong_entry = self.entry(case["bundle"], case["authority"])
-        older_entry = self.entry(older, older_authority)
+        older_entry = self.entry(
+            older, older_authority, evidence_receipt_contract="archival"
+        )
 
         # The frozen receipt can compare identities only after a complete,
         # passing current copy has independently established authority.

@@ -864,11 +864,18 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         authority = R.trusted_current_context([
             R.trusted_role_authority(bundle["jobId"], role, signer)
         ])
+        fab_delivery_authority = {
+            "listing": self.data["listing"],
+            "referenceValidationByCanonicalRef": self.data[
+                "referenceValidationByCanonicalRef"
+            ],
+        }
         result = R.resolve_absolute_fault_pointer(
             pointer,
             bundle,
             binding=binding,
             pubkeys=self.current_key_authority,
+            ebfab_authority=fab_delivery_authority,
             trusted_contexts=authority,
             expected_jobid=bundle["jobId"],
             expected_role=role,
@@ -879,6 +886,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             pointer,
             bundle,
             pubkeys=self.current_key_authority,
+            ebfab_authority=fab_delivery_authority,
             trusted_contexts=authority,
             expected_jobid=bundle["jobId"],
             expected_role=role,

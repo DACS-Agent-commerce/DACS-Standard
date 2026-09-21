@@ -1875,7 +1875,10 @@ transfer, asset and amount binding.
 
 The same corpus executes the distinct DACS-5 finality-bound bundle and pointer,
 all six FV models, non-pass propagation, new/new and new/older authenticated
-reconciliation, no weaker fallback, and frozen-reader refusal. The separate
+reconciliation, no weaker fallback, and frozen-reader refusal. Each EBFAB
+reconciliation entry explicitly selects the verifier-owned `current` or
+`archival` evidence receipt contract; the consumer never infers it from a
+strong peer or retries under the other contract. The separate
 `current-use-reputation-v1.json` corpus composes that consumer with the #391
 historical arm. Existing EBFAB and reputation contracts remain unchanged. The
 synthetic fixture policy is not a registered live substrate policy; native

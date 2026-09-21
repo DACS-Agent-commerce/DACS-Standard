@@ -1069,6 +1069,7 @@ class FixtureFactory:
             self.sign_bundle(bundle, OLD_BUNDLE_DOMAINS[kind])
             copies[kind] = bundle
         old_authority.update({
+            "evidenceReceiptContract": "archival",
             "listing": listing,
             "bundleLifecycle": {"state": "finalized", "independentlyResolvable": True},
             "sessionExecutionAuthorityByPhaseKey": strong_case["authority"]["sessionExecutionAuthorityByPhaseKey"],

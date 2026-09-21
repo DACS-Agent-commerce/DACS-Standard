@@ -220,7 +220,7 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         })
         older = compatibility["copies"][kind]
         digest = bundle_hash(older)
-        if kind == "evidence-bound":
+        if kind in {"evidence-bound", "fault"}:
             self.fixture["dependencies"]["bundleAuthorityByContentHash"][digest] = (
                 compatibility["evidenceBoundAuthority"]
             )

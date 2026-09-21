@@ -33050,6 +33050,7 @@
             "nonce": 0
           }
         },
+        "evidenceReceiptContract": "archival",
         "listing": {
           "listingId": "listing-finality-fixture",
           "listingVersion": 1,

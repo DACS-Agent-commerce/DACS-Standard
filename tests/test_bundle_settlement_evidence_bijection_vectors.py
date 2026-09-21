@@ -369,6 +369,9 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             "cross-phase-semantic-method-proof-reuse": (
                 "method evidence proof is reused across distinct delivery phase keys"
             ),
+            "cross-phase-self-signed-alternate-encoding-reuse": (
+                "method evidence proof is reused across distinct delivery phase keys"
+            ),
         }
         for authority_name, expected_reason in expected_reasons.items():
             authority = self.data["executionAuthorities"][authority_name]
@@ -485,6 +488,76 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         self.assertEqual(
             semantic_records[0]["methodTransactionRef"],
             semantic_records[1]["methodTransactionRef"],
+        )
+
+        alternate_encoding = self.data["executionAuthorities"][
+            "cross-phase-self-signed-alternate-encoding-reuse"
+        ]["deliveryArtifactAuthorityByPhaseKey"]
+        alternate_closures = [
+            alternate_encoding[key] for key in sorted(alternate_encoding)
+        ]
+        alternate_records = [
+            closure["payloadAttestationRecord"]["artifact"]
+            for closure in alternate_closures
+        ]
+        alternate_proofs = [
+            closure["methodEvidence"]["artifact"]
+            for closure in alternate_closures
+        ]
+        self.assertNotEqual(
+            alternate_records[0]["methodEvidenceRef"],
+            alternate_records[1]["methodEvidenceRef"],
+        )
+        first_input = alternate_proofs[0]["methodInput"]
+        second_input = alternate_proofs[1]["methodInput"]
+        self.assertIn("assertion", first_input)
+        self.assertNotIn("assertionBytesBase64url", first_input)
+        self.assertNotIn("assertion", second_input)
+        self.assertIn("assertionBytesBase64url", second_input)
+        self.assertEqual(
+            first_input["assertion"].encode("utf-8"),
+            decode(second_input["assertionBytesBase64url"]),
+        )
+        for field in ("identifier", "signature"):
+            self.assertEqual(first_input[field], second_input[field])
+        self.assertEqual(
+            alternate_proofs[0]["payloadContentHash"],
+            alternate_proofs[1]["payloadContentHash"],
+        )
+
+        distinct = self.data["executionAuthorities"][
+            "repeated-self-signed-distinct-proof-completed"
+        ]
+        disposition, reason, phase_keys = derive_phase_disposition(
+            distinct, self.pubkeys
+        )
+        self.assertEqual(disposition, "pass", reason)
+        self.assertEqual(len(phase_keys), 2)
+        released_ok, released_reason, released_keys = R.validate_ebfab(
+            distinct.get("bundle"),
+            distinct.get("listing"),
+            self.pubkeys,
+            distinct.get("referenceValidationByCanonicalRef"),
+            distinct.get("bundleLifecycle"),
+            distinct.get("sessionExecutionAuthorityByPhaseKey"),
+            distinct.get("verifiedReceiptByCanonicalRef"),
+            distinct.get("deliveryArtifactAuthorityByPhaseKey"),
+            distinct.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        )
+        self.assertTrue(released_ok, released_reason)
+        self.assertEqual(len(released_keys), 2)
+        distinct_closures = distinct["deliveryArtifactAuthorityByPhaseKey"]
+        distinct_proofs = [
+            distinct_closures[key]["methodEvidence"]["artifact"]
+            for key in sorted(distinct_closures)
+        ]
+        self.assertNotEqual(
+            distinct_proofs[0]["methodInput"]["assertion"],
+            distinct_proofs[1]["methodInput"]["assertion"],
+        )
+        self.assertNotEqual(
+            distinct_proofs[0]["methodInput"]["signature"],
+            distinct_proofs[1]["methodInput"]["signature"],
         )
 
     def test_phase_authority_is_derived_not_caller_supplied(self):

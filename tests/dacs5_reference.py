@@ -8743,10 +8743,36 @@ def _current_delivery_inner_ownership(record, phase_key, closure, ledger):
         method_ref = payload_record.get("methodEvidenceRef")
         method_kind = payload_record.get("verificationMethod")
         if method_kind == "self-signed":
+            method_input = method_evidence.get("methodInput")
+            if not isinstance(method_input, dict):
+                return _closure_result(
+                    "error", "self-signed method proof identity is malformed"
+                )
+            assertion_result, assertion_bytes = _resolved_exact_bytes(
+                {
+                    **(
+                        {"cleartextUtf8": method_input.get("assertion")}
+                        if "assertion" in method_input else {}
+                    ),
+                    **(
+                        {
+                            "cleartextBytesBase64url": method_input.get(
+                                "assertionBytesBase64url"
+                            )
+                        }
+                        if "assertionBytesBase64url" in method_input else {}
+                    ),
+                },
+                "self-signed assertion",
+            )
+            if assertion_result[0] != "pass":
+                return assertion_result
             proof_identity = {
                 "kind": method_evidence.get("kind"),
                 "payloadContentHash": method_evidence.get("payloadContentHash"),
-                "methodInput": method_evidence.get("methodInput"),
+                "identifier": method_input.get("identifier"),
+                "assertionContentHash": hashlib.sha256(assertion_bytes).hexdigest(),
+                "signature": method_input.get("signature"),
             }
         else:
             proof_identity = {

@@ -333,6 +333,109 @@ def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
     )
 
 
+def _apply_repeated_self_signed_proofs(
+    authority, phase_keys, signing_keys, *, equivalent_assertion
+):
+    """Replace two current payload proofs with valid self-signed fixtures."""
+    listing = authority["listing"]
+    deliverable_spec = listing["offering"]["deliverable"]
+    method = {"kind": "self-signed"}
+    deliverable_spec["verificationMethod"] = method
+    listing_payload = (F.LISTING_DOMAIN + F.listing_hash(listing)).encode("utf-8")
+    listing["signature"] = {
+        "signer": F.CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": F.b64u(signing_keys["seller"].sign(listing_payload)),
+    }
+    authority["bundle"]["listingRef"]["contentHash"] = F.listing_hash(listing)
+
+    first_key, second_key = phase_keys
+    first = authority["deliveryArtifactAuthorityByPhaseKey"][first_key]
+    second = authority["deliveryArtifactAuthorityByPhaseKey"][second_key]
+    _, _, _, first_record = _delivery_resolution(authority, first_key)
+    _, _, _, second_record = _delivery_resolution(authority, second_key)
+    if equivalent_assertion:
+        second_address = second_record["deliverableAnchor"]["locator"]
+        second["deliverable"] = copy.deepcopy(first["deliverable"])
+        second["deliverable"]["logicalAddress"] = second_address
+        second["deliverable"]["nativeAddress"] = second_address
+        second["deliverable"]["_storageBinding"] = {
+            "effectiveAccessMode": "public",
+            "storedContentHash": second["deliverable"]["storedContentHash"],
+        }
+        second_record["deliverableContentHash"] = first_record[
+            "deliverableContentHash"
+        ]
+        second["agreementHash"] = first["agreementHash"]
+        authority["sessionExecutionAuthorityByPhaseKey"][second_key][
+            "agreementHash"
+        ] = first["agreementHash"]
+
+    method_hash = hashlib.sha256(F.canonical(method)).hexdigest()
+    deliverable_spec_hash = hashlib.sha256(F.canonical(deliverable_spec)).hexdigest()
+    proof_key = signing_keys["seller"]
+    proof_identifier = proof_key.public_key().public_bytes_raw().hex()
+    for position, phase_key in enumerate(phase_keys):
+        closure = authority["deliveryArtifactAuthorityByPhaseKey"][phase_key]
+        _, _, _, record = _delivery_resolution(authority, phase_key)
+        closure["deliverable"]["_storageBinding"] = {
+            "effectiveAccessMode": "public",
+            "storedContentHash": closure["deliverable"]["storedContentHash"],
+        }
+        payload_record_entry = closure["payloadAttestationRecord"]
+        payload_record = payload_record_entry["artifact"]
+        assertion = closure["deliverable"]["cleartextUtf8"]
+        assertion_bytes = assertion.encode("utf-8")
+        method_input = {
+            "identifier": proof_identifier,
+            "signature": F.b64u(proof_key.sign(assertion_bytes)),
+        }
+        if equivalent_assertion and position == 1:
+            method_input["assertionBytesBase64url"] = F.b64u(assertion_bytes)
+        else:
+            method_input["assertion"] = assertion
+        proof = {
+            "kind": "self-signed-payload",
+            "payloadContentHash": closure["deliverable"]["cleartextHash"],
+            "methodInput": method_input,
+        }
+        closure["methodEvidence"]["artifact"] = proof
+        payload_record["deliverableSpecHash"] = deliverable_spec_hash
+        payload_record["payloadContentHash"] = closure["deliverable"][
+            "cleartextHash"
+        ]
+        payload_record["verificationMethod"] = "self-signed"
+        payload_record["verificationMethodHash"] = method_hash
+        payload_record["methodEvidenceRef"]["contentHash"] = hashlib.sha256(
+            F.canonical(proof)
+        ).hexdigest()
+        payload_record.pop("methodTransactionRef", None)
+        F.sign_artifact(
+            payload_record,
+            signing_keys["orchestrator"],
+            F.CLAIMS["orchestrator"],
+            F.PAYLOAD_ATTESTATION_DOMAIN,
+        )
+        phase_index = int(phase_key.split(":", 1)[0])
+        attestation_address = (
+            f"dacs4:payload-attestation:{payload_record['jobId']}:"
+            f"{phase_index}:{method_hash}:{payload_record['attempt']}"
+        )
+        payload_record_entry["logicalAddress"] = attestation_address
+        payload_record_entry["nativeAddress"] = attestation_address
+        record["attestationRef"] = {
+            "anchor": {
+                "kind": "storage-program", "locator": attestation_address,
+            },
+            "contentHash": F.evidence_hash(payload_record),
+            "signer": payload_record["signature"]["signer"],
+        }
+
+    authority["trustedNativeTransactionObservationsByCanonicalRef"] = {}
+    for phase_key in phase_keys:
+        _refresh_current_delivery_authority(authority, phase_key, signing_keys)
+
+
 def apply_cross_phase_delivery_reuse(authority, mode, signing_keys):
     """Create exact negative authorities for bundle-wide PDE-6 ownership."""
     phase_keys = sorted(authority["deliveryArtifactAuthorityByPhaseKey"])
@@ -344,7 +447,16 @@ def apply_cross_phase_delivery_reuse(authority, mode, signing_keys):
     _, _, _, first_record = _delivery_resolution(authority, first_key)
     _, _, _, second_record = _delivery_resolution(authority, second_key)
 
-    if mode in {"credential-ref", "semantic-credential"}:
+    if mode in {
+        "self-signed-alternate-encoding", "self-signed-distinct-proof"
+    }:
+        _apply_repeated_self_signed_proofs(
+            authority,
+            phase_keys,
+            signing_keys,
+            equivalent_assertion=(mode == "self-signed-alternate-encoding"),
+        )
+    elif mode in {"credential-ref", "semantic-credential"}:
         first_entitlement = first["entitlementRecord"]["artifact"]
         second_entitlement = second["entitlementRecord"]["artifact"]
         if mode == "credential-ref":
@@ -461,7 +573,10 @@ def apply_cross_phase_delivery_reuse(authority, mode, signing_keys):
     else:
         raise ValueError("unsupported cross-phase reuse fixture: " + str(mode))
 
-    _refresh_current_delivery_authority(authority, second_key, signing_keys)
+    if mode not in {
+        "self-signed-alternate-encoding", "self-signed-distinct-proof"
+    }:
+        _refresh_current_delivery_authority(authority, second_key, signing_keys)
     F.sign_bundle(authority["bundle"], "evidence-bound", signing_keys)
 
 
@@ -578,6 +693,9 @@ def generate(source):
         "cross-phase-semantic-method-proof-reuse": (
             "deliver-attested-payload", "semantic-method-proof"
         ),
+        "cross-phase-self-signed-alternate-encoding-reuse": (
+            "deliver-attested-payload", "self-signed-alternate-encoding"
+        ),
     }
     for authority_name, (phase, reuse_mode) in cross_phase_delivery_reuse.items():
         definitions[authority_name] = {
@@ -589,6 +707,25 @@ def generate(source):
             ],
             "crossPhaseDeliveryReuse": reuse_mode,
         }
+    definitions["repeated-self-signed-distinct-proof-completed"] = {
+        **copy.deepcopy(current_completed),
+        "listingPipeline": [
+            "deliver-attested-payload", "deliver-attested-payload",
+        ],
+        "phaseSummary": [
+            {
+                "index": 0,
+                "kind": "deliver-attested-payload",
+                "outcome": "ok",
+            },
+            {
+                "index": 1,
+                "kind": "deliver-attested-payload",
+                "outcome": "ok",
+            },
+        ],
+        "crossPhaseDeliveryReuse": "self-signed-distinct-proof",
+    }
     if "invalid-bundle-signature" not in definitions:
         definitions["invalid-bundle-signature"] = copy.deepcopy(definitions["standard-completed"])
         definitions["invalid-bundle-signature"]["corruptBundleSignature"] = True
@@ -751,6 +888,38 @@ def generate(source):
                 "reasonCode": "execution-authority",
             },
         })
+
+    distinct_self_signed_vector = (
+        "bundle-settlement-bijection-repeated-self-signed-distinct-proof-pass"
+    )
+    distinct_self_signed_case = {
+        "name": distinct_self_signed_vector,
+        "expected": "pass",
+        "input": {
+            "executionAuthorityRef": (
+                "repeated-self-signed-distinct-proof-completed"
+            ),
+            "topLevelRefs": [
+                "ref-self-signed-0", "ref-self-signed-1",
+            ],
+            "resolvedReferencePhaseKeys": {
+                "ref-self-signed-0": "0:deliver-attested-payload",
+                "ref-self-signed-1": "1:deliver-attested-payload",
+            },
+            "pointerMap": {},
+            "unrelatedAuthorityDisposition": "verified",
+        },
+        "want": {"disposition": "verified", "reasonCode": "ok"},
+    }
+    existing_distinct_self_signed = next((
+        vector for vector in data["vectors"]
+        if vector["name"] == distinct_self_signed_vector
+    ), None)
+    if existing_distinct_self_signed is None:
+        data["vectors"].append(distinct_self_signed_case)
+    else:
+        existing_distinct_self_signed.clear()
+        existing_distinct_self_signed.update(distinct_self_signed_case)
 
     legacy_vector_definitions = (
         (

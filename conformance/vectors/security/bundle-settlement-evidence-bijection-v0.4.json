@@ -15027,10 +15027,1386 @@
         "state": "finalized",
         "independentlyResolvable": true
       }
+    },
+    "cross-phase-self-signed-alternate-encoding-reuse": {
+      "listing": {
+        "listingId": "listing-seb-cross-phase-self-signed-alternate-encoding-reuse",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "8QVjt_muJbykeycZomNH8FIJe_NXB3rR1wZ5nRq7u7g31Z8tlbYXT2W1Hta7RzZNTJ6hA4nXKbRkskJgZuaMCA"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-cross-phase-self-signed-alternate-encoding-reuse",
+          "version": 1,
+          "contentHash": "0eb3e1ecf8c989108858a42f2019a14d0614f8d41081f6357c9ad9a48ca3f5f6"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-f8ab1b9b404185a2a28d8b98d19220f099eadeb52957dc526061df28e3e807a7"
+              },
+              "contentHash": "8379659c7722bf3405c7f5560d4606b0b36b6463d00ef08b3b6d1b98f13ebdde"
+            }
+          },
+          {
+            "index": 1,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-c8f0e631ed6f2fdd97f60cd980eafef8ba9f85c4dc698a8385e87bfd10829161"
+              },
+              "contentHash": "d90ddedc55757f5d2e0fd32dda349c2c6662fe56da675fe96a3cde259c17906f"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-f8ab1b9b404185a2a28d8b98d19220f099eadeb52957dc526061df28e3e807a7"
+            },
+            "contentHash": "8379659c7722bf3405c7f5560d4606b0b36b6463d00ef08b3b6d1b98f13ebdde"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-c8f0e631ed6f2fdd97f60cd980eafef8ba9f85c4dc698a8385e87bfd10829161"
+            },
+            "contentHash": "d90ddedc55757f5d2e0fd32dda349c2c6662fe56da675fe96a3cde259c17906f"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "_76ntlqviG1mo3cycs6pMRRpHMPvcAXVe5MpQwcRFF8X6quRPPN_cR7urye7HcgludPYJuQoc3kjTKF_im8DAQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "eHZk9E2DcSPlcypphHTDNnnk80jXuY_O-N22kGd6d4YMAnbenpR_i2lLsU8pbBDGo-KOxCRSApJ_3xU0OTXvCA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-f8ab1b9b404185a2a28d8b98d19220f099eadeb52957dc526061df28e3e807a7\"},\"contentHash\":\"8379659c7722bf3405c7f5560d4606b0b36b6463d00ef08b3b6d1b98f13ebdde\"}": {
+          "record": {
+            "deliveryEvidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+            "phaseIndex": 0,
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+              },
+              "contentHash": "ca166ab14581f8bead40a2f090d133ce8c5a10ba0a5c584c8ee1199194d54feb",
+              "signer": "did:demos:orchestrator"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "AMAe3_ROF99JQi-AYGB-fJivV-XeK-Jf4CS0PoMGwY9EWQN4gsCCBjDlBNkQsnkiCm-PKhLc_4rqcBHL8IXVCQ"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c8f0e631ed6f2fdd97f60cd980eafef8ba9f85c4dc698a8385e87bfd10829161\"},\"contentHash\":\"d90ddedc55757f5d2e0fd32dda349c2c6662fe56da675fe96a3cde259c17906f\"}": {
+          "record": {
+            "deliveryEvidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+            "phaseIndex": 1,
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+              },
+              "contentHash": "f2d50088e4d131a49b87ee63d65fa040236b7b1033c749c75eb2dc73613c5eeb",
+              "signer": "did:demos:orchestrator"
+            },
+            "observedAt": 1785772799001,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "xHDbmi70lEWYN0CrOFSV7pXQuF6128SmyGTRjPOQh9Gs5nsy7DjtfDGH6-R1Oe-TpV2VcRhDTp0B11uLq0gLDg"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-attested-payload",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+          "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b"
+        },
+        "1:deliver-attested-payload": {
+          "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+          "phaseIndex": 1,
+          "phaseKind": "deliver-attested-payload",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+          "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0\"},\"contentHash\":\"075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "contentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-fab3913109ec636d4908601dbfa70c3f"
+            },
+            "writer": "did:demos:seller",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-7b72325ad43bfd81cc2cc7ab09794c02",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "e3abddac6c30db3d144217f6d24613399705839a4a8cd293b06ce03beb04cbc2"
+            }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:09f10607820b3301ec2d91c79452b77d6ae1396c565b81d7e4de3bd776cdee66:0\"},\"contentHash\":\"964afea0572508fba4c217710ae89c6e5bf6b82085fe76e351be43451e94c52f\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:09f10607820b3301ec2d91c79452b77d6ae1396c565b81d7e4de3bd776cdee66:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:09f10607820b3301ec2d91c79452b77d6ae1396c565b81d7e4de3bd776cdee66:0",
+            "contentHash": "964afea0572508fba4c217710ae89c6e5bf6b82085fe76e351be43451e94c52f",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-fab3913109ec636d4908601dbfa70c3f"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-7b72325ad43bfd81cc2cc7ab09794c02",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "e3abddac6c30db3d144217f6d24613399705839a4a8cd293b06ce03beb04cbc2"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0\"},\"contentHash\":\"5975b318fb3c8fba603bb6a9f7fa1636f26b4063c461dd6661438a189411ff3c\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "contentHash": "5975b318fb3c8fba603bb6a9f7fa1636f26b4063c461dd6661438a189411ff3c",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-fab3913109ec636d4908601dbfa70c3f"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-7b72325ad43bfd81cc2cc7ab09794c02",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "e3abddac6c30db3d144217f6d24613399705839a4a8cd293b06ce03beb04cbc2"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1\"},\"contentHash\":\"de8edf24a6f65811c5b940a18c09671b43dd2bd5be0902d821caff9ecd547cb4\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "contentHash": "de8edf24a6f65811c5b940a18c09671b43dd2bd5be0902d821caff9ecd547cb4",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+            },
+            "writer": "did:demos:seller",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-080ea0df24f31df0929f967a8a09fb48",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+            }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "de8edf24a6f65811c5b940a18c09671b43dd2bd5be0902d821caff9ecd547cb4"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:8f62df249f376a924b4996888cd8a608244fe00c2978519aad88368dfcc0e1ae:0\"},\"contentHash\":\"0cded84e6917b5a03cf7b23f8121da8ea861ae9030b72060c77d8185aa9232d2\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:8f62df249f376a924b4996888cd8a608244fe00c2978519aad88368dfcc0e1ae:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:8f62df249f376a924b4996888cd8a608244fe00c2978519aad88368dfcc0e1ae:0",
+            "contentHash": "0cded84e6917b5a03cf7b23f8121da8ea861ae9030b72060c77d8185aa9232d2",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-080ea0df24f31df0929f967a8a09fb48",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1\"},\"contentHash\":\"ed0991f82662f3eeb95c0ecc3d9cbf6c32ea2e55daa30fb5cd8dadb785ecdd9e\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "contentHash": "ed0991f82662f3eeb95c0ecc3d9cbf6c32ea2e55daa30fb5cd8dadb785ecdd9e",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-080ea0df24f31df0929f967a8a09fb48",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-f8ab1b9b404185a2a28d8b98d19220f099eadeb52957dc526061df28e3e807a7\"},\"contentHash\":\"8379659c7722bf3405c7f5560d4606b0b36b6463d00ef08b3b6d1b98f13ebdde\"}": {
+          "receiptVersion": "1",
+          "substrate": "demos-testnet",
+          "finalityProfile": "demos-bft-final",
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+          "nativeAddress": "stor-f8ab1b9b404185a2a28d8b98d19220f099eadeb52957dc526061df28e3e807a7",
+          "contentHash": "8379659c7722bf3405c7f5560d4606b0b36b6463d00ef08b3b6d1b98f13ebdde",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-fab3913109ec636d4908601dbfa70c3f"
+          },
+          "writer": "did:demos:seller",
+          "nonce": "0",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1785772800000,
+          "blockRef": {
+            "id": "block-7b72325ad43bfd81cc2cc7ab09794c02",
+            "height": "1000",
+            "timestamp": 1785772800000
+          },
+          "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": "e3abddac6c30db3d144217f6d24613399705839a4a8cd293b06ce03beb04cbc2"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0\"},\"contentHash\":\"ca166ab14581f8bead40a2f090d133ce8c5a10ba0a5c584c8ee1199194d54feb\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "contentHash": "ca166ab14581f8bead40a2f090d133ce8c5a10ba0a5c584c8ee1199194d54feb",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-fab3913109ec636d4908601dbfa70c3f"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-7b72325ad43bfd81cc2cc7ab09794c02",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "e3abddac6c30db3d144217f6d24613399705839a4a8cd293b06ce03beb04cbc2"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0\"},\"contentHash\":\"6630f0237e4ead44de53b5dd43fa998754b82c15eed602b12f22268fd6ac4cf2\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "contentHash": "6630f0237e4ead44de53b5dd43fa998754b82c15eed602b12f22268fd6ac4cf2",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-fab3913109ec636d4908601dbfa70c3f"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-7b72325ad43bfd81cc2cc7ab09794c02",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "e3abddac6c30db3d144217f6d24613399705839a4a8cd293b06ce03beb04cbc2"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c8f0e631ed6f2fdd97f60cd980eafef8ba9f85c4dc698a8385e87bfd10829161\"},\"contentHash\":\"d90ddedc55757f5d2e0fd32dda349c2c6662fe56da675fe96a3cde259c17906f\"}": {
+          "receiptVersion": "1",
+          "substrate": "demos-testnet",
+          "finalityProfile": "demos-bft-final",
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+          "nativeAddress": "stor-c8f0e631ed6f2fdd97f60cd980eafef8ba9f85c4dc698a8385e87bfd10829161",
+          "contentHash": "d90ddedc55757f5d2e0fd32dda349c2c6662fe56da675fe96a3cde259c17906f",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+          },
+          "writer": "did:demos:seller",
+          "nonce": "1",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1785772800001,
+          "blockRef": {
+            "id": "block-080ea0df24f31df0929f967a8a09fb48",
+            "height": "1001",
+            "timestamp": 1785772800001
+          },
+          "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1\"},\"contentHash\":\"075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "contentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+            },
+            "writer": "did:demos:seller",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-080ea0df24f31df0929f967a8a09fb48",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+            }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0\"},\"contentHash\":\"f2d50088e4d131a49b87ee63d65fa040236b7b1033c749c75eb2dc73613c5eeb\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "contentHash": "f2d50088e4d131a49b87ee63d65fa040236b7b1033c749c75eb2dc73613c5eeb",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-080ea0df24f31df0929f967a8a09fb48",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1\"},\"contentHash\":\"34dd93f40db9963f6524c3867deb0ecf6c908b920fc21ed8314782568fb44f6f\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "contentHash": "34dd93f40db9963f6524c3867deb0ecf6c908b920fc21ed8314782568fb44f6f",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-080ea0df24f31df0929f967a8a09fb48",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "dcd92f79bedb258dca816ab48c11c31d195cd941f2a39ff384f6f43666b8d8a4"
+            }
+          }
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b",
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "cleartextUtf8": "attested payload:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "cleartextBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLWNyb3NzLXBoYXNlLXNlbGYtc2lnbmVkLWFsdGVybmF0ZS1lbmNvZGluZy1yZXVzZTow",
+            "cleartextHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "storedBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLWNyb3NzLXBoYXNlLXNlbGYtc2lnbmVkLWFsdGVybmF0ZS1lbmNvZGluZy1yZXVzZTow",
+            "storedContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0"
+          },
+          "payloadAttestationRecord": {
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "artifact": {
+              "payloadAttestationVersion": "1",
+              "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+              "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b",
+              "deliverableSpecHash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff",
+              "payloadFormat": "application/octet-stream",
+              "payloadContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+              "verificationMethod": "self-signed",
+              "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+              "attempt": 0,
+              "decision": "pass",
+              "reason": "deterministic test proof",
+              "methodEvidenceRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0"
+                },
+                "contentHash": "6630f0237e4ead44de53b5dd43fa998754b82c15eed602b12f22268fd6ac4cf2",
+                "signer": "did:demos:orchestrator"
+              },
+              "verifiedAt": 1785772800000,
+              "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "9oQH5p31nCKVc8m83V1FvdaFqKwDWHUQc5J7nxdFeRkqyFQ-3MxXG5hconGXgmP5-Op5YUvYiAlNBErLCBeNDg"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+          },
+          "methodEvidence": {
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "artifact": {
+              "kind": "self-signed-payload",
+              "payloadContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+              "methodInput": {
+                "identifier": "d404bc44565aedbb899150e5b0b3b32b9441bf0cb7884c33130da8dbc27dd2cf",
+                "signature": "LCc5M6wjhqMbGZs-i20nUAwb0u9kPtj0iCWuL-g7WlEzM6-dBiIQ74CumapeSOail0CvcNd1Yv4-_4WF43f5Bw",
+                "assertion": "attested payload:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0"
+          }
+        },
+        "1:deliver-attested-payload": {
+          "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b",
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "cleartextUtf8": "attested payload:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
+            "cleartextBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLWNyb3NzLXBoYXNlLXNlbGYtc2lnbmVkLWFsdGVybmF0ZS1lbmNvZGluZy1yZXVzZTow",
+            "cleartextHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "storedBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLWNyb3NzLXBoYXNlLXNlbGYtc2lnbmVkLWFsdGVybmF0ZS1lbmNvZGluZy1yZXVzZTow",
+            "storedContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1"
+          },
+          "payloadAttestationRecord": {
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "artifact": {
+              "payloadAttestationVersion": "1",
+              "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
+              "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b",
+              "deliverableSpecHash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff",
+              "payloadFormat": "application/octet-stream",
+              "payloadContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+              "verificationMethod": "self-signed",
+              "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+              "attempt": 0,
+              "decision": "pass",
+              "reason": "deterministic test proof",
+              "methodEvidenceRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1"
+                },
+                "contentHash": "34dd93f40db9963f6524c3867deb0ecf6c908b920fc21ed8314782568fb44f6f",
+                "signer": "did:demos:orchestrator"
+              },
+              "verifiedAt": 1785772800001,
+              "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "kgvekZsLelNhU7Hna-CgGIvdj-L9xPTP8C3Dn3Nxul32tvaaEeUZO1r1U0SBm2CAVrssU8DLngtZDjkc4e4HCw"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+          },
+          "methodEvidence": {
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
+            "artifact": {
+              "kind": "self-signed-payload",
+              "payloadContentHash": "075498d63df4c70451cd24ab711a68e1322e757b51cfcc732f57bac8fe7c11e6",
+              "methodInput": {
+                "identifier": "d404bc44565aedbb899150e5b0b3b32b9441bf0cb7884c33130da8dbc27dd2cf",
+                "signature": "LCc5M6wjhqMbGZs-i20nUAwb0u9kPtj0iCWuL-g7WlEzM6-dBiIQ74CumapeSOail0CvcNd1Yv4-_4WF43f5Bw",
+                "assertionBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLWNyb3NzLXBoYXNlLXNlbGYtc2lnbmVkLWFsdGVybmF0ZS1lbmNvZGluZy1yZXVzZTow"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1"
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "repeated-self-signed-distinct-proof-completed": {
+      "listing": {
+        "listingId": "listing-seb-repeated-self-signed-distinct-proof-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "T6icBUCckzJeym-UXTvBQVq73BW5eJuWM2abCawcEZOdO7ud8_2DaVZzcKAuj_qql2CfvRgYrECx0SQQ0WLcAw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-repeated-self-signed-distinct-proof-completed",
+          "version": 1,
+          "contentHash": "f3eb77349940df62dfe519bf58e2d039938e6ba659da5a9eee79859ef9763578"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-0cbe4288537961b4a3ab390688693abe8140a93c021be3ef3058ecaedd4031f6"
+              },
+              "contentHash": "59d9ca9ae38d613b24e3a30242fe8cf866b500560ed0c27d537dbb46d37d16fa"
+            }
+          },
+          {
+            "index": 1,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-e0e3a7a38096795011ec9734f446aaff2730899efa6350f65529550321e8c594"
+              },
+              "contentHash": "a345887683adaf27a5d68b92030e674a923ce06568ab6942a03dd3854dc896a7"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-0cbe4288537961b4a3ab390688693abe8140a93c021be3ef3058ecaedd4031f6"
+            },
+            "contentHash": "59d9ca9ae38d613b24e3a30242fe8cf866b500560ed0c27d537dbb46d37d16fa"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-e0e3a7a38096795011ec9734f446aaff2730899efa6350f65529550321e8c594"
+            },
+            "contentHash": "a345887683adaf27a5d68b92030e674a923ce06568ab6942a03dd3854dc896a7"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "THmkAABGF-2P2ABnoCnCt2DgWQiowYrTzV5QaJCjH-eq-8cAP-OaglmtuN94FFy9qKQHCSj233J69v0-DpS6Aw"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "dDUH88h9503fQfwCkIMTKNkGfC9tw3PzvWyCV3vNkxZxhIqUf-sC2vHhe2_5ssJ8lZi9nWxq8S_SqzFiQLvZBg"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-0cbe4288537961b4a3ab390688693abe8140a93c021be3ef3058ecaedd4031f6\"},\"contentHash\":\"59d9ca9ae38d613b24e3a30242fe8cf866b500560ed0c27d537dbb46d37d16fa\"}": {
+          "record": {
+            "deliveryEvidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+            "phaseIndex": 0,
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+              },
+              "contentHash": "e084fc3cfea144cf845c72689306486e43622c0d47cc3a5951ee35dd96642b14",
+              "signer": "did:demos:orchestrator"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "6OkYa6IJyb7nPvR8wrRUnp90FEK-bG679s9fZBtouxmrG_2MFU5ps5RlV0YuRZCEkPCM1FMNs3WE_FONtijDCA"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e0e3a7a38096795011ec9734f446aaff2730899efa6350f65529550321e8c594\"},\"contentHash\":\"a345887683adaf27a5d68b92030e674a923ce06568ab6942a03dd3854dc896a7\"}": {
+          "record": {
+            "deliveryEvidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+            "phaseIndex": 1,
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+              },
+              "contentHash": "961d5db5beaffafb8d7f20ae1090de962745b0b3c552001914dac4e56203eb30",
+              "signer": "did:demos:orchestrator"
+            },
+            "observedAt": 1785772799001,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "d-rMgf72sQ0rByWNYC2rEA5OOraNCv-9edVZ4XClyGIudWhuHc3emQWUsGyVlePeB6ELwmekmOLOWv4PbFFzAw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-attested-payload",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+          "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00"
+        },
+        "1:deliver-attested-payload": {
+          "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+          "phaseIndex": 1,
+          "phaseKind": "deliver-attested-payload",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+          "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0\"},\"contentHash\":\"e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "contentHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
+            },
+            "writer": "did:demos:seller",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-e3b95c137b3ec1b0034af63ff437b27f",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3db054a3a4a10319d025f8c2c7253ff5547fabeb0229678d501a46e013521421"
+            }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:64e02d562a0d6a14415b3d66a3f862bee24820cdc7f80a7ea4fb1354fe3198e2:0\"},\"contentHash\":\"7cb59e8729d389af229e64deb40852f90bad3dc495a167e412bbd98e180ced60\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:64e02d562a0d6a14415b3d66a3f862bee24820cdc7f80a7ea4fb1354fe3198e2:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:64e02d562a0d6a14415b3d66a3f862bee24820cdc7f80a7ea4fb1354fe3198e2:0",
+            "contentHash": "7cb59e8729d389af229e64deb40852f90bad3dc495a167e412bbd98e180ced60",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-e3b95c137b3ec1b0034af63ff437b27f",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3db054a3a4a10319d025f8c2c7253ff5547fabeb0229678d501a46e013521421"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0\"},\"contentHash\":\"00b29a68e36099017d17627a4450430402994fc475b41ea797cdef50991ae4d9\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "contentHash": "00b29a68e36099017d17627a4450430402994fc475b41ea797cdef50991ae4d9",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-e3b95c137b3ec1b0034af63ff437b27f",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3db054a3a4a10319d025f8c2c7253ff5547fabeb0229678d501a46e013521421"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1\"},\"contentHash\":\"65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "contentHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-451c4798034e84967ac7ee22b0390691"
+            },
+            "writer": "did:demos:seller",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-6fa3b1d11dbe188f93c1e77c41cca6c4",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3f09c95f51e112c36f04c989512ca242ca337f05a9bf4b7fa5ca06fd20da5508"
+            }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:0bc8935f20aef82ca4f35ce4971c721c04b50bc609fa20cdc4cb98b851d57b34:0\"},\"contentHash\":\"b09dab1d6e73e1ac1103e6f4969f7f6e1d1ffe63ee601aa843016940a1379d99\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:0bc8935f20aef82ca4f35ce4971c721c04b50bc609fa20cdc4cb98b851d57b34:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:0bc8935f20aef82ca4f35ce4971c721c04b50bc609fa20cdc4cb98b851d57b34:0",
+            "contentHash": "b09dab1d6e73e1ac1103e6f4969f7f6e1d1ffe63ee601aa843016940a1379d99",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-451c4798034e84967ac7ee22b0390691"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-6fa3b1d11dbe188f93c1e77c41cca6c4",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3f09c95f51e112c36f04c989512ca242ca337f05a9bf4b7fa5ca06fd20da5508"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1\"},\"contentHash\":\"9f54beb6fac6f89cd4bce425b026fcbe143a666506d076b824a57ca0dc3e3ec5\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "contentHash": "9f54beb6fac6f89cd4bce425b026fcbe143a666506d076b824a57ca0dc3e3ec5",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-451c4798034e84967ac7ee22b0390691"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-6fa3b1d11dbe188f93c1e77c41cca6c4",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3f09c95f51e112c36f04c989512ca242ca337f05a9bf4b7fa5ca06fd20da5508"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-0cbe4288537961b4a3ab390688693abe8140a93c021be3ef3058ecaedd4031f6\"},\"contentHash\":\"59d9ca9ae38d613b24e3a30242fe8cf866b500560ed0c27d537dbb46d37d16fa\"}": {
+          "receiptVersion": "1",
+          "substrate": "demos-testnet",
+          "finalityProfile": "demos-bft-final",
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+          "nativeAddress": "stor-0cbe4288537961b4a3ab390688693abe8140a93c021be3ef3058ecaedd4031f6",
+          "contentHash": "59d9ca9ae38d613b24e3a30242fe8cf866b500560ed0c27d537dbb46d37d16fa",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
+          },
+          "writer": "did:demos:seller",
+          "nonce": "0",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1785772800000,
+          "blockRef": {
+            "id": "block-e3b95c137b3ec1b0034af63ff437b27f",
+            "height": "1000",
+            "timestamp": 1785772800000
+          },
+          "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": "3db054a3a4a10319d025f8c2c7253ff5547fabeb0229678d501a46e013521421"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0\"},\"contentHash\":\"e084fc3cfea144cf845c72689306486e43622c0d47cc3a5951ee35dd96642b14\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "contentHash": "e084fc3cfea144cf845c72689306486e43622c0d47cc3a5951ee35dd96642b14",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-e3b95c137b3ec1b0034af63ff437b27f",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3db054a3a4a10319d025f8c2c7253ff5547fabeb0229678d501a46e013521421"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0\"},\"contentHash\":\"a7cd851bcda5fee0904537cb7081ad5f3f5b1bfa5a8001f8bff9014eda4ddae0\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "contentHash": "a7cd851bcda5fee0904537cb7081ad5f3f5b1bfa5a8001f8bff9014eda4ddae0",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-e3b95c137b3ec1b0034af63ff437b27f",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3db054a3a4a10319d025f8c2c7253ff5547fabeb0229678d501a46e013521421"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e0e3a7a38096795011ec9734f446aaff2730899efa6350f65529550321e8c594\"},\"contentHash\":\"a345887683adaf27a5d68b92030e674a923ce06568ab6942a03dd3854dc896a7\"}": {
+          "receiptVersion": "1",
+          "substrate": "demos-testnet",
+          "finalityProfile": "demos-bft-final",
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+          "nativeAddress": "stor-e0e3a7a38096795011ec9734f446aaff2730899efa6350f65529550321e8c594",
+          "contentHash": "a345887683adaf27a5d68b92030e674a923ce06568ab6942a03dd3854dc896a7",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-451c4798034e84967ac7ee22b0390691"
+          },
+          "writer": "did:demos:seller",
+          "nonce": "1",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1785772800001,
+          "blockRef": {
+            "id": "block-6fa3b1d11dbe188f93c1e77c41cca6c4",
+            "height": "1001",
+            "timestamp": 1785772800001
+          },
+          "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": "3f09c95f51e112c36f04c989512ca242ca337f05a9bf4b7fa5ca06fd20da5508"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0\"},\"contentHash\":\"961d5db5beaffafb8d7f20ae1090de962745b0b3c552001914dac4e56203eb30\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "contentHash": "961d5db5beaffafb8d7f20ae1090de962745b0b3c552001914dac4e56203eb30",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-451c4798034e84967ac7ee22b0390691"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-6fa3b1d11dbe188f93c1e77c41cca6c4",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3f09c95f51e112c36f04c989512ca242ca337f05a9bf4b7fa5ca06fd20da5508"
+            }
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1\"},\"contentHash\":\"589b44821ef7f6a47d64dff89feac6f0c888d7b10e7dcff9af99d6b307a769af\",\"signer\":\"did:demos:orchestrator\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "contentHash": "589b44821ef7f6a47d64dff89feac6f0c888d7b10e7dcff9af99d6b307a769af",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-451c4798034e84967ac7ee22b0390691"
+            },
+            "writer": "did:demos:orchestrator",
+            "nonce": "1",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800001,
+            "blockRef": {
+              "id": "block-6fa3b1d11dbe188f93c1e77c41cca6c4",
+              "height": "1001",
+              "timestamp": 1785772800001
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "3f09c95f51e112c36f04c989512ca242ca337f05a9bf4b7fa5ca06fd20da5508"
+            }
+          }
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00",
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "cleartextUtf8": "attested payload:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "cleartextBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLXJlcGVhdGVkLXNlbGYtc2lnbmVkLWRpc3RpbmN0LXByb29mLWNvbXBsZXRlZDow",
+            "cleartextHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9",
+            "storedBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLXJlcGVhdGVkLXNlbGYtc2lnbmVkLWRpc3RpbmN0LXByb29mLWNvbXBsZXRlZDow",
+            "storedContentHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9",
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0"
+          },
+          "payloadAttestationRecord": {
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "artifact": {
+              "payloadAttestationVersion": "1",
+              "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+              "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00",
+              "deliverableSpecHash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff",
+              "payloadFormat": "application/octet-stream",
+              "payloadContentHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9",
+              "verificationMethod": "self-signed",
+              "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+              "attempt": 0,
+              "decision": "pass",
+              "reason": "deterministic test proof",
+              "methodEvidenceRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0"
+                },
+                "contentHash": "a7cd851bcda5fee0904537cb7081ad5f3f5b1bfa5a8001f8bff9014eda4ddae0",
+                "signer": "did:demos:orchestrator"
+              },
+              "verifiedAt": 1785772800000,
+              "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "Xfu_8YjQcWxTh0BiXn_9Dw-ZZq53-oL-g-JdNVytyK6jiEt3xOZVuK-TPKK76dlGVTVM9pL-gfTBiWvdQz2pBw"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+          },
+          "methodEvidence": {
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
+            "artifact": {
+              "kind": "self-signed-payload",
+              "payloadContentHash": "e9d8c7392f2f2712e073f1c363e1d60a5613151a263b0f305ee6a2d81f5750b9",
+              "methodInput": {
+                "identifier": "d404bc44565aedbb899150e5b0b3b32b9441bf0cb7884c33130da8dbc27dd2cf",
+                "signature": "QD9dLt4eBSWMHd5QHwBY0M6L-266J8dwQnR8RhRxM70Vbp0W6hos7uDNp3MUs2FW3_cvEX3YteVCzPJG1gf5Dw",
+                "assertion": "attested payload:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0"
+          }
+        },
+        "1:deliver-attested-payload": {
+          "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00",
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "cleartextUtf8": "attested payload:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "cleartextBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLXJlcGVhdGVkLXNlbGYtc2lnbmVkLWRpc3RpbmN0LXByb29mLWNvbXBsZXRlZDox",
+            "cleartextHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2",
+            "storedBytesBase64url": "YXR0ZXN0ZWQgcGF5bG9hZDpTRUItQVVUSE9SSVRZLXJlcGVhdGVkLXNlbGYtc2lnbmVkLWRpc3RpbmN0LXByb29mLWNvbXBsZXRlZDox",
+            "storedContentHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2",
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1"
+          },
+          "payloadAttestationRecord": {
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "artifact": {
+              "payloadAttestationVersion": "1",
+              "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+              "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00",
+              "deliverableSpecHash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff",
+              "payloadFormat": "application/octet-stream",
+              "payloadContentHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2",
+              "verificationMethod": "self-signed",
+              "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+              "attempt": 0,
+              "decision": "pass",
+              "reason": "deterministic test proof",
+              "methodEvidenceRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1"
+                },
+                "contentHash": "589b44821ef7f6a47d64dff89feac6f0c888d7b10e7dcff9af99d6b307a769af",
+                "signer": "did:demos:orchestrator"
+              },
+              "verifiedAt": 1785772800001,
+              "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "bipUB9j7Tem1Ce2q_2OnJT9KUcbNm9OIwZTPwDYhjz4WozUvcKLARffR0STPoVfWZo26G_8SsJowoWOAOJO-Aw"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:payload-attestation:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+          },
+          "methodEvidence": {
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
+            "artifact": {
+              "kind": "self-signed-payload",
+              "payloadContentHash": "65bdfc0d8130957b49bf160a16b4531766460249b4ea9175536efcd355a944f2",
+              "methodInput": {
+                "identifier": "d404bc44565aedbb899150e5b0b3b32b9441bf0cb7884c33130da8dbc27dd2cf",
+                "signature": "jxYochoj-STnkjnq8ibRFs2ikM2RTYQgd8NuBk77n6T02JCiH2qmzmE2TD456VJ8jmAqQBo58AIOighU04jVBw",
+                "assertion": "attested payload:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1"
+              }
+            },
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:method-evidence:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1"
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
     }
   },
-  "hash": "50fd013526bdd6ae153310f25b458b09152d998ff39d082f82a031ed360e4daa",
-  "count": 51,
+  "hash": "ccf33b465fbce38e44b8267fdddf5ec41fbb5c6e72c44bca1022a934802f4383",
+  "count": 53,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -16226,6 +17602,50 @@
         "disposition": "rejected",
         "reasonCode": "execution-authority"
       }
+    },
+    {
+      "name": "bundle-settlement-bijection-cross-phase-self-signed-alternate-encoding-reuse-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "cross-phase-self-signed-alternate-encoding-reuse",
+        "topLevelRefs": [],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {}
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-repeated-self-signed-distinct-proof-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "repeated-self-signed-distinct-proof-completed",
+        "topLevelRefs": [
+          "ref-self-signed-0",
+          "ref-self-signed-1"
+        ],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-self-signed-0": {
+            "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+            "phaseKey": "0:deliver-attested-payload",
+            "outcome": "success"
+          },
+          "ref-self-signed-1": {
+            "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
+            "phaseKey": "1:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
     }
   ],
   "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
@@ -17371,6 +18791,54 @@
         }
       ],
       "crossPhaseDeliveryReuse": "semantic-credential"
+    },
+    "cross-phase-self-signed-alternate-encoding-reuse": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "listingPipeline": [
+        "deliver-attested-payload",
+        "deliver-attested-payload"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "crossPhaseDeliveryReuse": "self-signed-alternate-encoding"
+    },
+    "repeated-self-signed-distinct-proof-completed": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "listingPipeline": [
+        "deliver-attested-payload",
+        "deliver-attested-payload"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "crossPhaseDeliveryReuse": "self-signed-distinct-proof"
     }
   }
 }

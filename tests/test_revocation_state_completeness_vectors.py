@@ -12,6 +12,7 @@ from scripts import generate_revocation_state_completeness_vectors as g
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from scripts.jcs import canonicalize as jcs_canonicalize
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,7 +49,7 @@ ZERO_HASH = "00" * 32
 
 
 def canonical_bytes(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return jcs_canonicalize(value).encode("utf-8")
 
 
 def hash_hex(value):
@@ -1370,6 +1371,135 @@ class RevocationStateCompletenessTests(unittest.TestCase):
         self.assertEqual(self.document["count"], len(vectors))
         self.assertEqual(self.document["hash"], hashlib.sha256(encoded).hexdigest())
         self.assertEqual(len({item["name"] for item in vectors}), len(vectors))
+
+    def test_jcs_canonical_bytes_parity_and_numeric_bounds(self):
+        cases = (
+            ({"n": 1.0}, b'{"n":1}'),
+            ({"n": -0.0}, b'{"n":0}'),
+            ({"s": "e\u0301"}, '{"s":"\u00e9"}'.encode("utf-8")),
+            ({"\ue000": 1, "\U00010000": 2}, '{"\U00010000":2,"\ue000":1}'.encode("utf-8")),
+        )
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(g.canonical_bytes(value), expected)
+                self.assertEqual(canonical_bytes(value), expected)
+
+        safe = {"issuedAt": 2 ** 53 - 1}
+        self.assertEqual(g.canonical_bytes(safe), b'{"issuedAt":9007199254740991}')
+        self.assertEqual(canonical_bytes(safe), b'{"issuedAt":9007199254740991}')
+        for unsupported in ({"issuedAt": 2 ** 53}, {"issuedAt": float("inf")}):
+            with self.subTest(unsupported=unsupported):
+                with self.assertRaises(ValueError):
+                    g.canonical_bytes(unsupported)
+                with self.assertRaises(ValueError):
+                    canonical_bytes(unsupported)
+
+    def test_sign_artifact_enforces_jcs_safe_integer_range(self):
+        safe = {"issuedAt": 2 ** 53 - 1}
+        signed = g.sign_artifact(safe, g.SELLER_KEY, g.SELLER, g.HEAD_DOMAIN)
+        self.assertTrue(verify_artifact(signed, g.public_hex(g.SELLER_KEY), g.HEAD_DOMAIN))
+        with self.assertRaises(ValueError):
+            g.sign_artifact(
+                {"issuedAt": 2 ** 53}, g.SELLER_KEY, g.SELLER, g.HEAD_DOMAIN
+            )
+
+    def test_legacy_sorted_json_unsupported_integer_is_rejected_end_to_end(self):
+        def legacy_sign(unsigned, domain):
+            encoded = json.dumps(
+                unsigned, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
+            digest = hashlib.sha256(encoded).hexdigest()
+            return ({
+                **unsigned,
+                "signature": {
+                    "algorithm": "ed25519",
+                    "signer": g.SELLER,
+                    "value": g.b64url(g.SELLER_KEY.sign((domain + digest).encode("ascii"))),
+                },
+            }, digest)
+
+        unsigned_head = {key: value for key, value in g.GENESIS.items() if key != "signature"}
+        unsigned_head["issuedAt"] = 2 ** 53
+        legacy_head, legacy_head_hash = legacy_sign(unsigned_head, g.HEAD_DOMAIN)
+        self.assertFalse(
+            verify_artifact(legacy_head, g.public_hex(g.SELLER_KEY), g.HEAD_DOMAIN)
+        )
+
+        # Rebind every surrounding receipt, listing checkpoint, authority
+        # attestation, and current-state signature to the legacy head digest.
+        # The exact unsupported head signature is therefore the only invalid
+        # primitive inside an otherwise authenticated admission envelope.
+        head_receipt = g.receipt(g.GENESIS, 0)
+        head_receipt["contentHash"] = legacy_head_hash
+        binding = {
+            "logicalAddress": g.LOGICAL_ADDRESS,
+            "nativeAddress": g.NATIVE_ADDRESS,
+            "contentHash": legacy_head_hash,
+            "writer": g.RECEIPT_WRITER,
+            "nonce": "40",
+        }
+        transaction_ref = {"kind": "demos-tx", "value": g.hash_hex(binding)}
+        head_receipt["transactionRef"] = transaction_ref
+        block_material = {
+            "height": head_receipt["blockRef"]["height"],
+            "timestamp": head_receipt["blockRef"]["timestamp"],
+            "orderedTransactions": [transaction_ref],
+        }
+        head_receipt["blockRef"]["id"] = g.hash_hex(block_material)
+        valid_at = head_receipt["blockRef"]["id"]
+        history = [{
+            "head": legacy_head,
+            "receipt": head_receipt,
+            "authority": {
+                "claim": g.SELLER,
+                "key": g.public_hex(g.SELLER_KEY),
+                "disposition": "verified",
+                "evidence": g.key_attestation(
+                    g.SELLER, g.public_hex(g.SELLER_KEY), valid_at
+                ),
+            },
+        }]
+        listing_unsigned = g.listing_unsigned()
+        listing_unsigned["revocationState"]["checkpointHeadHash"] = legacy_head_hash
+        listing = g.sign_artifact(
+            listing_unsigned, g.SELLER_KEY, g.SELLER, g.LISTING_DOMAIN
+        )
+        data = g.input_for(
+            g.GENESIS, {}, checkpoint=g.GENESIS, history=[g.history_item(g.GENESIS)]
+        )
+        data["listing"] = listing
+        context = data["resolutionContext"]
+        context["headRef"]["contentHash"] = legacy_head_hash
+        context["headReceipt"] = head_receipt
+        context["headReceiptHistory"] = [head_receipt]
+        context["headHistory"] = history
+        context["stateProof"]["headContentHash"] = legacy_head_hash
+        context["listingReceipt"] = g.listing_receipt(
+            listing,
+            valid_at,
+            head_receipt["blockRef"]["height"],
+            head_receipt["blockRef"]["timestamp"],
+        )
+        evidence = context["currentStateEvidence"]
+        evidence["finalizedStateId"] = valid_at
+        evidence["valueContentHash"] = legacy_head_hash
+        evidence["listingContentHash"] = g.artifact_hash(listing)
+        evidence["listingReceiptHash"] = g.hash_hex(context["listingReceipt"])
+        evidence["evidence"]["value"] = g.b64url(g.CURRENT_STATE_KEY.sign(
+            g.current_state_message(
+                context["headRef"], context["headReceipt"], valid_at,
+                evidence["listingContentHash"], context["listingReceipt"],
+                context["knownConflictingHeads"],
+            )
+        ))
+        outcome = evaluate(
+            data, self.document["publicKeys"], g.profile_admission()
+        )
+        self.assertEqual(
+            outcome,
+            ("indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}),
+        )
+        self.assertNotEqual(outcome, ("pass", {"revocationCheck": "absent", "session": "continue"}))
 
     def test_independent_evaluator(self):
         for vector in self.document["vectors"]:

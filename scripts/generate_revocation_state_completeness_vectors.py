@@ -11,6 +11,11 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+if __package__:
+    from scripts.jcs import canonicalize as jcs_canonicalize
+else:  # Direct execution from scripts/.
+    from jcs import canonicalize as jcs_canonicalize
+
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = (
@@ -31,7 +36,7 @@ ZERO_HASH = "00" * 32
 
 
 def canonical_bytes(value: object) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return jcs_canonicalize(value).encode("utf-8")
 
 
 def hash_hex(value: object) -> str:

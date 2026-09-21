@@ -18,6 +18,9 @@ Current enforced coverage is deliberately narrow:
   arm and both arm/body mismatches;
 - exact revocation-reference use across consumed, duplicated, shadowed,
   wrong-target, and unused references;
+- CORE §B.2 normative primitive parity for RSC hashing and signing, including
+  rejection of an artifact signed by the legacy sorted-JSON helper with an
+  unsupported integer magnitude;
 - selected existing round 10, 11, 12, and 14 named blocker regressions.
 
 The registry records reference reuse, selector exclusivity, and cross-module
@@ -31,6 +34,12 @@ This is targeted RSC/RB coverage, not a claim that every selector, reference,
 or module composition elsewhere in DACS is exhaustively enumerated. New protocol
 arms and new cross-module joins still require their own complete matrices before
 review.
+
+The JCS regression exercises the decoded object-model boundary. CORE CF-5 raw
+token admission (including duplicate member names and non-canonical numeric
+spellings) remains a separate upstream responsibility: externally supplied JSON
+bytes must pass the repository's strict raw-input profile before object-model
+canonicalization.
 
 Pre-review checklist:
 

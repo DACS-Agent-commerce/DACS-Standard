@@ -2937,6 +2937,25 @@ def build_vectors() -> list[dict[str, Any]]:
             operation="validate-selection-bound-agreement-commit",
             reason="verified",
         ))
+    demand_selection = selection_bound_commit_scenario(
+        "complete-demand-absent-auction-mode"
+    )
+    procurement_selection = selection_bound_commit_scenario(
+        "complete-lowest-price"
+    )
+    demand_publisher = demand_selection["listing"]["seller"]["identity"]["presentedBy"]
+    procurement_publisher = (
+        procurement_selection["listing"]["seller"]["identity"]["presentedBy"]
+    )
+    demand_counterparty = next(
+        party["primaryClaim"] for party in demand_selection["agreement"]["parties"]
+        if party["primaryClaim"] != demand_publisher
+    )
+    procurement_counterparty = next(
+        party["primaryClaim"]
+        for party in procurement_selection["agreement"]["parties"]
+        if party["primaryClaim"] != procurement_publisher
+    )
     vectors.extend([
         vector(
             "sealed-complete-demand-wrong-commit-phase-refused",
@@ -2966,6 +2985,85 @@ def build_vectors() -> list[dict[str, Any]]:
                 "listing", "pipeline", 1, "parameters", "candidateSetBinding"
             ])],
             reason="complete-sealed-binding-invalid",
+        ),
+        vector(
+            "sealed-complete-demand-empty-agreement-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(["agreement"], {})],
+            reason="selection-bound-agreement-mismatch",
+        ),
+        vector(
+            "sealed-complete-demand-procurement-agreement-substitution-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["agreement"],
+                procurement_selection["agreement"],
+            )],
+            reason="selection-bound-agreement-mismatch",
+        ),
+        vector(
+            "sealed-complete-procurement-demand-agreement-substitution-refused",
+            "fail",
+            scenario_name="selectionBoundProcurement",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["agreement"],
+                demand_selection["agreement"],
+            )],
+            reason="selection-bound-agreement-mismatch",
+        ),
+        vector(
+            "sealed-complete-demand-missing-publisher-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[delete_mutation([
+                "listing", "seller", "identity", "presentedBy"
+            ])],
+            reason="selection-bound-publisher-mismatch",
+        ),
+        vector(
+            "sealed-complete-demand-counterparty-publisher-substitution-refused",
+            "fail",
+            scenario_name="selectionBoundDemand",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "seller", "identity", "presentedBy"],
+                demand_counterparty,
+            )],
+            reason="selection-bound-publisher-mismatch",
+        ),
+        vector(
+            "sealed-complete-procurement-malformed-publisher-refused",
+            "fail",
+            scenario_name="selectionBoundProcurement",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "seller", "identity", "presentedBy"], 7
+            )],
+            reason="selection-bound-publisher-mismatch",
+        ),
+        vector(
+            "sealed-complete-procurement-counterparty-publisher-substitution-refused",
+            "fail",
+            scenario_name="selectionBoundProcurement",
+            stage="commit",
+            operation="validate-selection-bound-agreement-commit",
+            mutations=[set_mutation(
+                ["listing", "seller", "identity", "presentedBy"],
+                procurement_counterparty,
+            )],
+            reason="selection-bound-publisher-mismatch",
         ),
     ])
     # SE-1 new-session deadline gate over the signed commitDeadline against the

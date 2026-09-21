@@ -23417,8 +23417,8 @@
       }
     }
   },
-  "count": 387,
-  "hash": "dbf3dcded992697430639dfe8316ee36350b299bac41114da761d24b113fbb21",
+  "count": 394,
+  "hash": "9d1af691af0f55525d052a284076f931f1b4a230e1ec4c8fea65b93711fc00c5",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -27814,6 +27814,321 @@
         "verdict": "fail",
         "authorizedAction": false,
         "reason": "complete-sealed-binding-invalid"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-empty-agreement-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "agreement"
+          ],
+          "value": {}
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-agreement-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-procurement-agreement-substitution-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "agreement"
+          ],
+          "value": {
+            "sealedSelectionAgreementVersion": "1",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "parties": [
+              {
+                "role": "buyer",
+                "bundleHash": "4141414141414141414141414141414141414141414141414141414141414141",
+                "primaryClaim": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+                "vetRecordRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-vet-publisher"
+                  },
+                  "contentHash": "4242424242424242424242424242424242424242424242424242424242424242"
+                }
+              },
+              {
+                "role": "seller",
+                "bundleHash": "4343434343434343434343434343434343434343434343434343434343434343",
+                "primaryClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+                "vetRecordRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-vet-winner"
+                  },
+                  "contentHash": "4444444444444444444444444444444444444444444444444444444444444444"
+                }
+              }
+            ],
+            "terms": {
+              "deliverable": {
+                "deliverableType": "digital",
+                "hash": "abababababababababababababababababababababababababababababababab"
+              },
+              "price": {
+                "amount": "80",
+                "currency": "USD"
+              },
+              "deadline": 2000003720000,
+              "payoutBindings": []
+            },
+            "derivedFromPattern": "sealed-envelope",
+            "selectionReceiptRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-selection-ea89294a070ad8b4c92b204e"
+              },
+              "contentHash": "ea89294a070ad8b4c92b204ec30074dcf6504ead90555af0f63a3b55f7051d15",
+              "signer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695"
+            },
+            "generatedAt": 2000000127000,
+            "signatures": [
+              {
+                "algorithm": "ed25519",
+                "party": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+                "value": "iYYIGHAhDF7oQmpDywamsigweew2EdloPiYmlQ8plwqdwX_OadKG9pjnIYZytosnEijmr5yelbE8mqAcJnudDg"
+              },
+              {
+                "algorithm": "ed25519",
+                "party": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+                "value": "aQ3BqDmRpsM_Iy135_K5PXxgFS-0Cq8NPx_Uwhh_fiUETzZXYTqgo37fsgysmxU4d2N4ybruVEV_1USDVEjiCA"
+              }
+            ]
+          }
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-agreement-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-procurement-demand-agreement-substitution-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundProcurement",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "agreement"
+          ],
+          "value": {
+            "sealedSelectionAgreementVersion": "1",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "parties": [
+              {
+                "role": "seller",
+                "bundleHash": "4141414141414141414141414141414141414141414141414141414141414141",
+                "primaryClaim": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+                "vetRecordRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-vet-publisher"
+                  },
+                  "contentHash": "4242424242424242424242424242424242424242424242424242424242424242"
+                }
+              },
+              {
+                "role": "buyer",
+                "bundleHash": "4343434343434343434343434343434343434343434343434343434343434343",
+                "primaryClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+                "vetRecordRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-vet-winner"
+                  },
+                  "contentHash": "4444444444444444444444444444444444444444444444444444444444444444"
+                }
+              }
+            ],
+            "terms": {
+              "deliverable": {
+                "deliverableType": "digital",
+                "hash": "abababababababababababababababababababababababababababababababab"
+              },
+              "price": {
+                "amount": "80",
+                "currency": "USD"
+              },
+              "deadline": 2000003720000,
+              "payoutBindings": []
+            },
+            "derivedFromPattern": "sealed-envelope",
+            "selectionReceiptRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-selection-317b4a9cfa29fa5d5c14179d"
+              },
+              "contentHash": "317b4a9cfa29fa5d5c14179d238d1bc756a0c2c08b6ca6bbb4807238bdef5e8b",
+              "signer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695"
+            },
+            "generatedAt": 2000000127000,
+            "signatures": [
+              {
+                "algorithm": "ed25519",
+                "party": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+                "value": "7Q1Q_l1RUe6A6DR0gZlahptNqZvSSTqEF6cxd9Xh0ZsYcZGxEGnQpO1a6mpuiSZDJC5KAqhQWP5stEEwhDKkDQ"
+              },
+              {
+                "algorithm": "ed25519",
+                "party": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+                "value": "57U57fFysgLDyo7cedmoc-BPjmTN8MTVAlA6TTgR1Da4QGJh1cSaFexR-4wBoM6FPpCWWPjYllv4Mb0Vvgv-AQ"
+              }
+            ]
+          }
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-agreement-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-missing-publisher-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "delete",
+          "path": [
+            "listing",
+            "seller",
+            "identity",
+            "presentedBy"
+          ]
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-publisher-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-demand-counterparty-publisher-substitution-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundDemand",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "seller",
+            "identity",
+            "presentedBy"
+          ],
+          "value": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67"
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-publisher-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-procurement-malformed-publisher-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundProcurement",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "seller",
+            "identity",
+            "presentedBy"
+          ],
+          "value": 7
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-publisher-mismatch"
+      }
+    },
+    {
+      "name": "sealed-complete-procurement-counterparty-publisher-substitution-refused",
+      "operation": "validate-selection-bound-agreement-commit",
+      "scenario": "selectionBoundProcurement",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "seller",
+            "identity",
+            "presentedBy"
+          ],
+          "value": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67"
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "selection-bound-publisher-mismatch"
       }
     },
     {

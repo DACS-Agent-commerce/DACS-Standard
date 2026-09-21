@@ -602,16 +602,58 @@ def validate_selection_bound_commit(context: dict) -> tuple[str, str]:
         return "fail", "selection-bound-vector-ref-invalid"
     pipeline = context["listing"]["pipeline"]
     phase_step = pipeline[1]
+    presented_listing = context.get("listing")
+    presented_seller = (
+        presented_listing.get("seller")
+        if isinstance(presented_listing, dict) else None
+    )
+    presented_publisher_identity = (
+        presented_seller.get("identity")
+        if isinstance(presented_seller, dict) else None
+    )
+    selected_publisher = selected.get("listing", {}).get("publisherClaim")
+    presented_agreement = context.get("agreement")
+    selected_agreement = selected.get("agreement")
     if (
         phase_step.get("kind") != selected.get("listing", {}).get("phaseKind")
         or phase_step.get("parameters")
         != selected.get("listing", {}).get("parameters")
-        or selected.get("agreement", {}).get("sealedSelectionAgreementVersion") != "1"
     ):
         return "fail", "selection-bound-input-mismatch"
+    if (
+        not isinstance(presented_publisher_identity, dict)
+        or not isinstance(selected_publisher, str)
+    ):
+        return "fail", "selection-bound-publisher-mismatch"
+    try:
+        if generator.canonical_bytes(presented_publisher_identity) != (
+            generator.canonical_bytes({"presentedBy": selected_publisher})
+        ):
+            return "fail", "selection-bound-publisher-mismatch"
+    except (TypeError, ValueError):
+        return "fail", "selection-bound-publisher-mismatch"
+    if (
+        not isinstance(presented_agreement, dict)
+        or not isinstance(selected_agreement, dict)
+        or selected_agreement.get("sealedSelectionAgreementVersion") != "1"
+    ):
+        return "fail", "selection-bound-agreement-mismatch"
+    try:
+        presented_bytes = generator.canonical_bytes(presented_agreement)
+        selected_bytes = generator.canonical_bytes(selected_agreement)
+    except (TypeError, ValueError):
+        return "fail", "selection-bound-agreement-mismatch"
+    if (
+        presented_bytes != selected_bytes
+        or generator.hash_hex(presented_agreement)
+        != generator.hash_hex(selected_agreement)
+    ):
+        return "fail", "selection-bound-agreement-mismatch"
     import test_sealed_auction_completeness_vectors as sac_reference
 
-    verdict = sac_reference.Evaluator(copy.deepcopy(selected)).evaluate()
+    evaluated = copy.deepcopy(selected)
+    evaluated["agreement"] = copy.deepcopy(presented_agreement)
+    verdict = sac_reference.Evaluator(evaluated).evaluate()
     if verdict == "pass":
         return "pass", "verified"
     if verdict == "indeterminate":
@@ -3585,6 +3627,34 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             (
                 "sealed-complete-demand-missing-binding-refused",
                 "complete-sealed-binding-invalid",
+            ),
+            (
+                "sealed-complete-demand-empty-agreement-refused",
+                "selection-bound-agreement-mismatch",
+            ),
+            (
+                "sealed-complete-demand-procurement-agreement-substitution-refused",
+                "selection-bound-agreement-mismatch",
+            ),
+            (
+                "sealed-complete-procurement-demand-agreement-substitution-refused",
+                "selection-bound-agreement-mismatch",
+            ),
+            (
+                "sealed-complete-demand-missing-publisher-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-demand-counterparty-publisher-substitution-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-procurement-malformed-publisher-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-procurement-counterparty-publisher-substitution-refused",
+                "selection-bound-publisher-mismatch",
             ),
         ):
             with self.subTest(name=name):

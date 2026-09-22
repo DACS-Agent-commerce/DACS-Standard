@@ -127,6 +127,62 @@ PINNED_REVIEW_EVIDENCE = {
     ),
 }
 
+PINNED_UNIT_REGRESSIONS = {
+    "pr396-core-b2-jcs-unsupported-integer": {
+        "file": "tests/test_revocation_state_completeness_vectors.py",
+        "test": "RevocationStateCompletenessTests.test_legacy_sorted_json_unsupported_integer_is_rejected_end_to_end",
+    },
+    "prior-blocker-round10-lossy-signature-dedup": {
+        "file": "tests/test_round10_validation_predicate_vectors.py",
+        "test": "Round10ValidationPredicateTests.test_r10_2_duplicate_invalid_defect",
+    },
+    "prior-blocker-round11-four-probe-grid": {
+        "file": "tests/test_round11_receipt_ingress_vectors.py",
+        "test": "Round11ReceiptIngressTests.test_r11_grid_covers_randoms_four",
+    },
+    "prior-blocker-round12-replay-context-completeness": {
+        "file": "tests/test_round12_replay_completeness_vectors.py",
+        "test": "Round12ReplayCompletenessTests.test_T1_missing_resolution_context",
+    },
+    "prior-blocker-round14-full-standing-equivocation": {
+        "file": "tests/test_round14_hub_reproduction_vectors.py",
+        "test": "Round14VerificationCompletion.test_b_bb6_two_full_standing_forms_are_indeterminate",
+    },
+}
+
+EXACT_UNITTEST_RUNNER = """\
+import json
+import sys
+import unittest
+
+suite = unittest.defaultTestLoader.loadTestsFromName(sys.argv[1])
+result = unittest.TestResult()
+suite.run(result)
+summary = {
+    "testsRun": result.testsRun,
+    "failures": len(result.failures),
+    "errors": len(result.errors),
+    "skipped": len(result.skipped),
+    "expectedFailures": len(result.expectedFailures),
+    "unexpectedSuccesses": len(result.unexpectedSuccesses),
+}
+accepted = (
+    result.testsRun == 1
+    and result.wasSuccessful()
+    and not result.failures
+    and not result.errors
+    and not result.skipped
+    and not result.expectedFailures
+    and not result.unexpectedSuccesses
+)
+if not accepted:
+    print(
+        "exact unittest contract failed: " + json.dumps(summary, sort_keys=True),
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+"""
+
 REQUIRED_REVIEW_LENSES = {
     "hostile-json-type-totality": {
         "counterexampleEvidence": frozenset({
@@ -214,6 +270,8 @@ def _unittest_module(relative: str, test: str, label: str) -> str:
         raise GateError(
             f"{label}: test must be a safe dotted unittest identity"
         )
+    if not test_parts[-1].startswith("test_"):
+        raise GateError(f"{label}: final unittest identity must start with test_")
     return ".".join(module_parts)
 
 
@@ -341,6 +399,21 @@ def validate_manifest(manifest: object) -> None:
             regression["file"], regression["test"], regression["id"]
         )
         _within_test_root(regression["file"])
+        observed = {"file": regression["file"], "test": regression["test"]}
+        if PINNED_UNIT_REGRESSIONS.get(regression["id"]) != observed:
+            raise GateError(
+                f"{regression['id']}: regression does not match its "
+                "code-pinned declaration"
+            )
+
+    regression_ids = {regression["id"] for regression in regressions}
+    missing_regressions = PINNED_UNIT_REGRESSIONS.keys() - regression_ids
+    extra_regressions = regression_ids - PINNED_UNIT_REGRESSIONS.keys()
+    if missing_regressions or extra_regressions:
+        raise GateError(
+            "unit regressions do not match the code-pinned registry: "
+            f"missing={sorted(missing_regressions)}, extra={sorted(extra_regressions)}"
+        )
 
     covered_ids: set[str] = set()
     for item in covered:
@@ -643,7 +716,12 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
         module = _unittest_module(entry["file"], entry["test"], entry["id"])
         _within_test_root(entry["file"])
         completed = subprocess.run(
-            [sys.executable, "-m", "unittest", f"{module}.{entry['test']}"],
+            [
+                sys.executable,
+                "-c",
+                EXACT_UNITTEST_RUNNER,
+                f"{module}.{entry['test']}",
+            ],
             cwd=ROOT,
             text=True,
             capture_output=True,

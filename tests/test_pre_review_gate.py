@@ -115,6 +115,45 @@ class PreReviewGateTests(unittest.TestCase):
         ):
             self.gate._run_python_evidence(nonexistent, "review evidence")
 
+    def test_helper_and_alternate_passing_regression_retargets_are_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["unitRegressions"][0]["test"] = (
+            "RevocationStateCompletenessTests._fixture"
+        )
+        with self.assertRaisesRegex(
+            self.gate.GateError, "final unittest identity must start with test_"
+        ):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        manifest["unitRegressions"][0]["test"] = (
+            "RevocationStateCompletenessTests.test_metadata_and_hash"
+        )
+        with self.assertRaisesRegex(
+            self.gate.GateError, "regression does not match.*code-pinned"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_selected_skip_is_rejected(self):
+        entry = {
+            "id": "skip-probe",
+            "file": "tests/test_pre_review_gate.py",
+            "test": "PreReviewGateTests.test_skip_probe",
+        }
+        with mock.patch.dict(
+            os.environ, {"DACS_PRE_REVIEW_SKIP_PROBE": "1"}
+        ):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "skip-probe: independent review evidence.*failing",
+            ):
+                self.gate._run_python_evidence([entry], "review evidence")
+
+    def test_skip_probe(self):
+        if os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE") == "1":
+            self.skipTest("selected skips must not satisfy review evidence")
+        self.assertNotEqual(os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE"), "1")
+
     def test_runner_constructs_unittest_module_command(self):
         entry = self.manifest["independentReviewEvidence"][0]
         completed = mock.Mock(returncode=0, stdout="", stderr="")
@@ -125,7 +164,14 @@ class PreReviewGateTests(unittest.TestCase):
                 self.gate._run_python_evidence([entry], "review evidence"), 1
             )
         command = run.call_args.args[0]
-        self.assertEqual(command[:3], [self.gate.sys.executable, "-m", "unittest"])
+        self.assertEqual(
+            command[:3],
+            [
+                self.gate.sys.executable,
+                "-c",
+                self.gate.EXACT_UNITTEST_RUNNER,
+            ],
+        )
         self.assertEqual(
             command[3],
             "tests.test_pr333_fix_2."

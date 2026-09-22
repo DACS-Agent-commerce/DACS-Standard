@@ -545,9 +545,14 @@ def entitlement_case(renewals: tuple[int, int] = (0, 0)) -> dict:
     return case
 
 
-def credential_case(access_model: str = "buyer-only", include_credential: bool = True) -> dict:
-    index, renewal = 5, 0
-    cleartext = b"api-key:correct-horse-battery-staple"
+def credential_case(
+    access_model: str = "buyer-only",
+    include_credential: bool = True,
+    *,
+    index: int = 5,
+    cleartext: bytes = b"api-key:correct-horse-battery-staple",
+) -> dict:
+    renewal = 0
     clear_hash = bytes_hash(cleartext)
     ciphertext_hash = bytes_hash(b"ml-kem-aes:ciphertext")
     stored_bytes = (
@@ -638,6 +643,38 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
         )
     bundle(case)
     return case
+
+
+def credential_pair_case(
+    cleartexts: tuple[bytes, bytes] = (b"api-key:phase-five", b"api-key:phase-six"),
+) -> dict:
+    """Compose two independently valid current credential-entitlement phases."""
+    cases = [
+        credential_case(index=index, cleartext=cleartext)
+        for index, cleartext in zip((5, 6), cleartexts)
+    ]
+    combined = {
+        "pipeline": [],
+        "evidenceRecords": [],
+        "artifactRecords": [],
+        "credentials": [],
+        "deliveryAuthorities": [],
+        "verifiedReceiptByCanonicalRef": {},
+    }
+    for case in cases:
+        for field in (
+            "pipeline",
+            "evidenceRecords",
+            "artifactRecords",
+            "credentials",
+            "deliveryAuthorities",
+        ):
+            combined[field].extend(copy.deepcopy(case[field]))
+        combined["verifiedReceiptByCanonicalRef"].update(
+            copy.deepcopy(case["verifiedReceiptByCanonicalRef"])
+        )
+    bundle(combined)
+    return combined
 
 
 def payload_record(index: int, payload_text: str) -> tuple[dict, dict, dict, dict, dict]:
@@ -793,6 +830,118 @@ def attested_case(
             VERIFIER,
         )
     bundle(case)
+    return case
+
+
+def attested_entries(case: dict, position: int) -> tuple[dict, dict, dict]:
+    """Return the resolved payload, signed record, and method-proof entries."""
+    evidence_artifact = case["evidenceRecords"][position]["artifact"]
+    deliverable_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "deliverable"
+        and entry.get("logicalAddress")
+        == evidence_artifact["deliverableAnchor"]["locator"]
+    )
+    record_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "PayloadAttestationRecord"
+        and entry.get("logicalAddress")
+        == evidence_artifact["attestationRef"]["anchor"]["locator"]
+    )
+    method_ref = record_entry["artifact"]["methodEvidenceRef"]
+    method_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "methodEvidence"
+        and entry.get("logicalAddress") == method_ref["anchor"]["locator"]
+    )
+    return deliverable_entry, record_entry, method_entry
+
+
+def refresh_attested_authority(
+    case: dict,
+    position: int,
+    record_entry: dict,
+    method_entry: dict,
+) -> None:
+    """Rebind a modified current attested closure at its normative phase addresses."""
+    evidence_artifact = case["evidenceRecords"][position]["artifact"]
+    phase_index = evidence_artifact["phaseIndex"]
+    payload_record = record_entry["artifact"]
+    payload_record["methodEvidenceRef"]["contentHash"] = hash_hex(
+        method_entry["artifact"]
+    )
+    replace_dependency_receipt(
+        case,
+        method_entry,
+        payload_record["methodEvidenceRef"],
+        phase_index,
+        "deliver-attested-payload",
+        VERIFIER,
+    )
+    sign(payload_record, VERIFIER_SEED, PAYLOAD_DOMAIN)
+    record_address = (
+        f"dacs4:payload-attestation:{JOB}:{phase_index}:"
+        f"{payload_record['verificationMethodHash']}:{payload_record['attempt']}"
+    )
+    record_entry["logicalAddress"] = record_address
+    record_entry["nativeAddress"] = record_address
+    evidence_artifact["attestationRef"] = ref(record_address, payload_record)
+    replace_dependency_receipt(
+        case,
+        record_entry,
+        evidence_artifact["attestationRef"],
+        phase_index,
+        "deliver-attested-payload",
+        VERIFIER,
+    )
+    refresh_evidence(case, position)
+
+
+def self_signed_attested_case(
+    *, equivalent_representations: bool = False
+) -> dict:
+    """Build two current self-signed phases with distinct proof references."""
+    payload = b"same self-signed payload" if equivalent_representations else None
+    deliveries = (
+        (6, payload or b"self-signed payload one"),
+        (7, payload or b"self-signed payload two"),
+    )
+    case = attested_case(deliveries)
+    proof_key = Ed25519PrivateKey.from_private_bytes(SELLER_SEED)
+    identifier = proof_key.public_key().public_bytes_raw().hex()
+    case["trustedNativeTransactionObservationsByCanonicalRef"] = {}
+    for position in range(2):
+        deliverable_entry, record_entry, method_entry = attested_entries(
+            case, position
+        )
+        cleartext = deliverable_entry["cleartextUtf8"]
+        cleartext_bytes = cleartext.encode("utf-8")
+        method = {"kind": "self-signed"}
+        authority = case["deliveryAuthorities"][position]
+        authority["deliverable"]["verificationMethod"] = method
+        authority["agreement"]["deliverable"]["hash"] = hash_hex(
+            authority["deliverable"]
+        )
+        method_input = {
+            "identifier": identifier,
+            "signature": b64url(proof_key.sign(cleartext_bytes)),
+        }
+        if equivalent_representations and position == 1:
+            method_input["assertionBytesBase64url"] = b64url(cleartext_bytes)
+        else:
+            method_input["assertion"] = cleartext
+        method_entry["artifact"] = {
+            "kind": "self-signed-payload",
+            "payloadContentHash": deliverable_entry["cleartextHash"],
+            "methodInput": method_input,
+        }
+        record = record_entry["artifact"]
+        record["deliverableSpecHash"] = hash_hex(authority["deliverable"])
+        record["verificationMethod"] = "self-signed"
+        record["verificationMethodHash"] = hash_hex(method)
+        record.pop("methodTransactionRef", None)
+        refresh_attested_authority(case, position, record_entry, method_entry)
+    sign_bundle(case["bundle"])
     return case
 
 
@@ -1119,8 +1268,56 @@ def build_vectors() -> list[dict]:
         method_proof_wrong_address,
     ))
     vectors.append(make("legacy-credential-entitlement-cannot-claim-dv5", "fail", "legacy entitlement evidence is audit-only and cannot establish the DV-5 delivered gate", legacy_credential_case, requestedGate="dv5-verified"))
-    vectors.append(make("repeated-entitlements-each-renewal-zero", "pass", "phaseIndex separates two renewalSeq zero streams", entitlement_case))
+    vectors.append(make("repeated-entitlements-each-renewal-zero", "pass", "byte-identical signed entitlement records remain independent at distinct phase-indexed normative anchors", entitlement_case))
     vectors.append(make("entitlement-renewal-streams-independent", "pass", "each repeated phase can independently reach renewalSeq one", lambda: entitlement_case((1, 1))))
+
+    def reuse_complete_entitlement_reference(case: dict) -> None:
+        first = case["evidenceRecords"][0]["artifact"]
+        second = case["evidenceRecords"][1]["artifact"]
+        second["deliverableAnchor"] = copy.deepcopy(first["deliverableAnchor"])
+        second["deliverableContentHash"] = first["deliverableContentHash"]
+        refresh_evidence(case, 1)
+
+    vectors.append(make(
+        "entitlement-complete-reference-cross-phase-reuse",
+        "fail",
+        "the same signed entitlement reference cannot satisfy two phase-indexed invocations",
+        entitlement_case,
+        reuse_complete_entitlement_reference,
+    ))
+
+    vectors.append(make(
+        "credential-pair-independent",
+        "pass",
+        "distinct credential references and cleartext identities remain phase independent",
+        credential_pair_case,
+    ))
+
+    def reuse_credential_reference(case: dict) -> None:
+        first_record = case["artifactRecords"][0]["artifact"]
+        second_record = case["artifactRecords"][1]["artifact"]
+        first_credential = case["credentials"][0]
+        second_record["credentialRef"] = copy.deepcopy(first_record["credentialRef"])
+        second_evidence = case["evidenceRecords"][1]["artifact"]
+        second_evidence["credentialDelivery"] = copy.deepcopy(
+            case["evidenceRecords"][0]["artifact"]["credentialDelivery"]
+        )
+        case["credentials"] = [first_credential]
+        refresh_entitlement_chain(case, 1)
+
+    vectors.append(make(
+        "cross-phase-credential-ref-reuse",
+        "fail",
+        "an otherwise valid complete credentialRef is owned by only one current phase",
+        lambda: credential_pair_case((b"shared credential", b"shared credential")),
+        reuse_credential_reference,
+    ))
+    vectors.append(make(
+        "cross-phase-credential-semantic-identity-reuse",
+        "fail",
+        "distinct credential references cannot rebind the same cleartext identity across phases",
+        lambda: credential_pair_case((b"shared credential", b"shared credential")),
+    ))
 
     def unindexed_entitlement(case: dict) -> None:
         entry = case["evidenceRecords"][0]
@@ -1244,7 +1441,101 @@ def build_vectors() -> list[dict]:
         zero_entitlement,
     ))
 
-    vectors.append(make("repeated-attested-payload-each-attempt-zero", "pass", "phaseIndex separates identical attempt counters", attested_case))
+    vectors.append(make("repeated-attested-payload-each-attempt-zero", "pass", "phaseIndex separates identical attempt counters and distinct method proofs", attested_case))
+
+    def align_second_attested(case: dict, mode: str) -> None:
+        first_deliverable, first_record_entry, first_method_entry = attested_entries(
+            case, 0
+        )
+        _, second_record_entry, second_method_entry = attested_entries(case, 1)
+        first_record = first_record_entry["artifact"]
+        second_record = second_record_entry["artifact"]
+        case["deliveryAuthorities"][1] = copy.deepcopy(
+            case["deliveryAuthorities"][0]
+        )
+        case["deliveryAuthorities"][1]["phaseIndex"] = case[
+            "evidenceRecords"
+        ][1]["artifact"]["phaseIndex"]
+        second_record["deliverableSpecHash"] = first_record["deliverableSpecHash"]
+        second_record["verificationMethod"] = first_record["verificationMethod"]
+        second_record["verificationMethodHash"] = first_record[
+            "verificationMethodHash"
+        ]
+        second_record["methodTransactionRef"] = copy.deepcopy(
+            first_record["methodTransactionRef"]
+        )
+        if mode == "signed-inner":
+            second_record_entry["artifact"] = copy.deepcopy(first_record)
+            case["artifactRecords"].remove(second_method_entry)
+            method_entry = first_method_entry
+        elif mode == "method-ref":
+            second_record["methodEvidenceRef"] = copy.deepcopy(
+                first_record["methodEvidenceRef"]
+            )
+            case["artifactRecords"].remove(second_method_entry)
+            method_entry = first_method_entry
+        elif mode == "method-proof":
+            second_method_entry["artifact"] = copy.deepcopy(
+                first_method_entry["artifact"]
+            )
+            method_entry = second_method_entry
+        elif mode == "native-transaction":
+            proof = copy.deepcopy(first_method_entry["artifact"])
+            response = proof["response"]
+            response["dataBytesBase64url"] = b64url(
+                response.pop("data").encode("utf-8")
+            )
+            second_method_entry["artifact"] = proof
+            method_entry = second_method_entry
+        else:
+            raise ValueError("unknown attested ownership mode: " + mode)
+        case["evidenceRecords"][1]["artifact"]["deliverableContentHash"] = (
+            first_deliverable["cleartextHash"]
+        )
+        refresh_attested_authority(case, 1, second_record_entry, method_entry)
+
+    for name, mode, reason in (
+        (
+            "cross-phase-signed-inner-artifact-reuse",
+            "signed-inner",
+            "the same signed payload record cannot authorize two current phases",
+        ),
+        (
+            "cross-phase-method-evidence-ref-reuse",
+            "method-ref",
+            "one complete methodEvidenceRef is owned by only one current phase",
+        ),
+        (
+            "cross-phase-normalized-method-proof-reuse",
+            "method-proof",
+            "distinct method references cannot rebind one normalized proof",
+        ),
+        (
+            "cross-phase-native-transaction-reuse",
+            "native-transaction",
+            "distinct valid proof encodings cannot reuse one native transaction",
+        ),
+    ):
+        vectors.append(make(
+            name,
+            "fail",
+            reason,
+            lambda: attested_case(((6, b"shared payload"), (7, b"shared payload"))),
+            lambda case, mode=mode: align_second_attested(case, mode),
+        ))
+
+    vectors.append(make(
+        "repeated-self-signed-distinct-method-proofs",
+        "pass",
+        "independently signed payload assertions remain distinct across phases",
+        self_signed_attested_case,
+    ))
+    vectors.append(make(
+        "cross-phase-self-signed-equivalent-proof-reuse",
+        "fail",
+        "UTF-8 and Base64URL spellings of the same self-signed assertion are one proof identity",
+        lambda: self_signed_attested_case(equivalent_representations=True),
+    ))
 
     def arbitrary_native_transaction(case: dict) -> None:
         record = next(
@@ -1440,7 +1731,7 @@ def build_document() -> dict:
     return {
         "set": "phase-bound-delivery-evidence-v0.7",
         "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
-        "decisionModel": "Authenticated phase/domain context fixes the evidence family before its selector is read. Current delivery evidence signs exact phase identity; every inner dependency has a full-reference lifecycle receipt; arbitrary exact payload/stored bytes and authenticated ACL or encryption-recipient commitments close storage and credential delivery; standalone payload attestations bind the complete job/phase/method/attempt locator. Contradictions fail, malformed collections or members error without exceptions, and missing otherwise-valid authority remains indeterminate.",
+        "decisionModel": "Authenticated phase/domain context fixes the evidence family before its selector is read. Current delivery evidence signs exact phase identity; every inner dependency has a full-reference lifecycle receipt; arbitrary exact payload/stored bytes and authenticated ACL or encryption-recipient commitments close storage and credential delivery; standalone payload attestations bind the complete job/phase/method/attempt locator. One bundle-scoped ledger prevents current entitlement/credential/payload proof and native-transaction identities from being rebound across delivery phase keys, while byte-identical entitlements at distinct normative anchors, storage delivery, and the frozen historical arm remain compatible. Contradictions fail, malformed collections or members error without exceptions, and missing otherwise-valid authority remains indeterminate.",
         "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
         "hash": hash_hex(vectors),
         "count": len(vectors),

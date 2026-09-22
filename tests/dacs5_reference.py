@@ -9101,9 +9101,14 @@ def _current_delivery_inner_ownership(record, phase_key, closure, ledger):
         content_hash = _signed_envelope_content_hash(entitlement)
         if content_hash is None:
             return _closure_result("error", "signed entitlement identity is malformed")
+        signature = entitlement.get("signature")
+        signer = signature.get("signer") if isinstance(signature, dict) else None
         claims = [
             ("signed inner delivery artifact", {
-                "type": "EntitlementRecord", "contentHash": content_hash,
+                "type": "EntitlementRecord",
+                "anchor": record.get("deliverableAnchor"),
+                "contentHash": content_hash,
+                "signer": signer,
             }),
         ]
         if "credentialRef" in entitlement:

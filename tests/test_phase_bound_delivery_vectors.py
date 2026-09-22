@@ -218,7 +218,12 @@ def validate_entitlement_roles(bundle, record):
 
 
 def validate_delivery_artifact(
-    case, evidence, *, associated_phase_index=None, legacy=False
+    case,
+    evidence,
+    *,
+    associated_phase_index=None,
+    legacy=False,
+    validated_closure=None,
 ):
     job = evidence["jobId"]
     index = associated_phase_index if legacy else evidence["phaseIndex"]
@@ -282,6 +287,8 @@ def validate_delivery_artifact(
             return storage_status
         if "attestationRef" in evidence or "credentialDelivery" in evidence:
             return "fail"
+        if validated_closure is not None:
+            validated_closure["value"] = {"deliverable": stored}
         return "pass"
 
     if phase == "deliver-entitlement":
@@ -376,7 +383,13 @@ def validate_delivery_artifact(
                 return "error"
             return "fail" if case.get("requestedGate") == "dv5-verified" else "pass"
         if credential_ref is None:
-            return "fail" if binding is not None else "pass"
+            if binding is not None:
+                return "fail"
+            if validated_closure is not None:
+                validated_closure["value"] = {
+                    "entitlementRecord": record_entry,
+                }
+            return "pass"
         if binding is None:
             return "fail"
         if not isinstance(binding, dict):
@@ -420,13 +433,19 @@ def validate_delivery_artifact(
         )
         if availability[0] != "pass":
             return availability[0]
-        return R._validate_resolved_credential(
+        credential_status = R._validate_resolved_credential(
             credential,
             binding,
             credential_ref,
             authenticated_storage_binding=credential_receipt.get("storageBinding"),
             buyer=parties["buyer"],
         )[0]
+        if credential_status == "pass" and validated_closure is not None:
+            validated_closure["value"] = {
+                "entitlementRecord": record_entry,
+                "credential": credential,
+            }
+        return credential_status
 
     if phase == "deliver-attested-payload":
         payload_address = (
@@ -614,6 +633,13 @@ def validate_delivery_artifact(
             return method_disposition
         if "credentialDelivery" in evidence:
             return "fail"
+        if validated_closure is not None:
+            validated_closure["value"] = {
+                "agreementHash": record.get("agreementHash"),
+                "deliverable": payload,
+                "payloadAttestationRecord": record_entry,
+                "methodEvidence": method_entry,
+            }
         return "pass"
     return "error"
 
@@ -720,6 +746,7 @@ def evaluate(case):
     mapped = []
     used_entries = set()
     ref_for_mapping = {}
+    ownership = {}
     for supplied_ref in refs:
         status, position, entry = resolve_evidence(case, supplied_ref)
         if status != "pass":
@@ -766,10 +793,25 @@ def evaluate(case):
                 return "fail"
             if not verify_signature(artifact, DELIVERY_DOMAIN):
                 return "fail"
-            status = validate_delivery_artifact(case, artifact)
+            validated_closure = {}
+            status = validate_delivery_artifact(
+                case, artifact, validated_closure=validated_closure
+            )
             if status != "pass":
                 return status
             mapping = (index, kind)
+            closure = validated_closure.get("value")
+            if (
+                artifact.get("outcome") == "success"
+                and kind != "deliver-storage-program"
+            ):
+                if closure is None:
+                    return "error"
+                ownership_disposition, _ = R._current_delivery_inner_ownership(
+                    artifact, f"{index}:{kind}", closure, ownership
+                )
+                if ownership_disposition != "pass":
+                    return ownership_disposition
         elif evidence_type == "settlement":
             kind = artifact.get("phase")
             if kind not in DELIVERY_KINDS:
@@ -1107,6 +1149,80 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             R, "_phase_bound_deliverable_address", return_value=phase_one_address
         ):
             self.assertEqual(evaluate(vector), "pass")
+
+    def test_current_inner_ownership_negatives_are_load_bearing(self):
+        names = {
+            "cross-phase-signed-inner-artifact-reuse",
+            "cross-phase-credential-ref-reuse",
+            "cross-phase-credential-semantic-identity-reuse",
+            "cross-phase-method-evidence-ref-reuse",
+            "cross-phase-normalized-method-proof-reuse",
+            "cross-phase-self-signed-equivalent-proof-reuse",
+            "cross-phase-native-transaction-reuse",
+        }
+        vectors = {
+            vector["name"]: copy.deepcopy(vector)
+            for vector in self.data["vectors"]
+            if vector["name"] in names
+        }
+        self.assertEqual(set(vectors), names)
+        for name, vector in vectors.items():
+            with self.subTest(vector=name, guard="enabled"):
+                self.assertEqual(evaluate(vector), "fail")
+            with self.subTest(vector=name, guard="disabled"):
+                with mock.patch.object(
+                    R,
+                    "_current_delivery_inner_ownership",
+                    return_value=("pass", "ok"),
+                ):
+                    self.assertEqual(evaluate(vector), "pass")
+
+    def test_entitlement_identity_uses_complete_phase_indexed_reference(self):
+        distinct = next(
+            copy.deepcopy(vector) for vector in self.data["vectors"]
+            if vector["name"] == "repeated-entitlements-each-renewal-zero"
+        )
+        records = [
+            entry["artifact"] for entry in distinct["artifactRecords"]
+            if entry.get("kind") == "EntitlementRecord"
+        ]
+        evidence = [entry["artifact"] for entry in distinct["evidenceRecords"]]
+        self.assertEqual(records[0], records[1])
+        self.assertNotEqual(
+            evidence[0]["deliverableAnchor"], evidence[1]["deliverableAnchor"]
+        )
+        self.assertEqual(evaluate(distinct), "pass")
+
+        reused = next(
+            copy.deepcopy(vector) for vector in self.data["vectors"]
+            if vector["name"] == "entitlement-complete-reference-cross-phase-reuse"
+        )
+        self.assertEqual(
+            reused["evidenceRecords"][0]["artifact"]["deliverableAnchor"],
+            reused["evidenceRecords"][1]["artifact"]["deliverableAnchor"],
+        )
+        self.assertEqual(evaluate(reused), "fail")
+
+    def test_ownership_ledger_does_not_touch_storage_or_historical_delivery(self):
+        current_storage = G.make(
+            "storage-compatibility",
+            "pass",
+            "storage remains outside inner ownership",
+            G.storage_case,
+        )
+        historical = G.make(
+            "legacy-compatibility",
+            "pass",
+            "PDE-7 remains outside current ownership",
+            G.legacy_entitlement_case,
+        )
+        with mock.patch.object(
+            R,
+            "_current_delivery_inner_ownership",
+            side_effect=AssertionError("ownership guard must not run"),
+        ):
+            self.assertEqual(evaluate(current_storage), "pass")
+            self.assertEqual(evaluate(historical), "pass")
 
     def test_entitlement_known_schema_is_shared_and_extension_safe(self):
         valid = G.entitlement_record(3, 0)

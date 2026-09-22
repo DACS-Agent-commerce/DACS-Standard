@@ -483,7 +483,7 @@ Notes:
 
 Settlement runs as a `DemosWork` script with two sequential `WorkStep`s:
 1. an `xm` step that the Demos node auto-routes through the Liquidity Tank infrastructure (buyer pays USDC on Base; tank releases USDC on Solana to the seller),
-2. a follow-up step where the seller mints + anchors the EntitlementRecord and the orchestrator anchors `SettlementEvidence` for both phases.
+2. a follow-up step where the seller signs + anchors the EntitlementRecord and the phase orchestrator signs + anchors the current `DeliveryEvidence` for the delivery phase.
 
 This is the most important point of alignment: **there is no `tank.transfer()` SDK call**. Liquidity Tanks are an internal optimisation that the substrate applies to cross-chain `xm` steps that meet certain conditions (route exists, amount within tank capacity, source+dest assets both supported). The SDK surface is just `WorkStep` with `context: "xm"`.
 
@@ -600,6 +600,7 @@ async function settle(
     address: `stor-${sha256Hex(entitlementLogicalAddress)}`,
     value: JSON.stringify(entitlement),
   });
+  await sellerDemos.disconnect();
 
   const deliveryEvidence: DeliveryEvidence = {
     deliveryEvidenceVersion: "1",
@@ -612,15 +613,16 @@ async function settle(
     observedAt: Date.now(),
   };
   const deHash = sha256Hex(jcs(omitField(deliveryEvidence, "signature")));
-  deliveryEvidence.signature = await sellerDemos.sign(signedBytes("delivery-evidence", deHash));
+  deliveryEvidence.signature = await orchestratorDemos.sign(
+    signedBytes("delivery-evidence", deHash)
+  );
 
   const deliveryEvidenceLogicalAddress = `dacs4:delivery:${jobId}:1`;
-  await sellerDemos.storage.write({                                        // SR-2
+  await orchestratorDemos.storage.write({                                  // SR-2
     address: `stor-${sha256Hex(deliveryEvidenceLogicalAddress)}`,
     value: JSON.stringify(deliveryEvidence),
   });
 
-  await sellerDemos.disconnect();
   return { paymentEvidence, deliveryEvidence, entitlement };
 }
 ```
@@ -633,6 +635,11 @@ Notes:
   exact `credentialDelivery` ref/access model, cleartext digest, and
   `renewalSeq` required by §9.7 PDE-5; an off-chain hash-only key handover is
   not a conforming substitute.
+- **Delivery authority stays split.** The seller remains the grantor, signer,
+  and SR-2 writer of the `EntitlementRecord`. The authenticated phase
+  orchestrator is the signer and SR-2 writer of the enclosing current
+  `DeliveryEvidence`; a seller signature or seller write cannot substitute for
+  that phase authority, even though the seller produced the delivered record.
 - **One DemosWork per phase, or one per session?** The trace shows one `DemosWork` for the payment phase; the entitlement is anchored as a separate write. Production code can compose them into a single `DemosWork` if atomic execution is required, but the protocol allows independent anchoring (each phase produces its own evidence record).
 
 ---

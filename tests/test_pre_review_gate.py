@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,70 @@ class PreReviewGateTests(unittest.TestCase):
     def test_manifest_and_registered_vectors_execute(self):
         self.gate.validate_manifest(self.manifest)
         self.assertEqual(self.gate.run_vector_matrices(self.manifest), 22)
+        self.assertEqual(
+            self.gate.run_independent_review_evidence(self.manifest), 20
+        )
+
+    def test_required_independent_review_lens_cannot_be_removed(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewLenses"].pop()
+        with self.assertRaisesRegex(
+            self.gate.GateError, "do not match the required set"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_each_lens_requires_counterexample_and_control_evidence(self):
+        for role in ("counterexampleEvidence", "controlEvidence"):
+            with self.subTest(role=role):
+                manifest = copy.deepcopy(self.manifest)
+                manifest["independentReviewLenses"][0][role] = []
+                with self.assertRaisesRegex(self.gate.GateError, role):
+                    self.gate.validate_manifest(manifest)
+
+    def test_dangling_independent_review_evidence_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewLenses"][0]["counterexampleEvidence"] = [
+            "missing-evidence"
+        ]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "dangling independent review evidence"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_duplicate_independent_review_evidence_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["independentReviewEvidence"][0])
+        manifest["independentReviewEvidence"].append(duplicate)
+        with self.assertRaisesRegex(
+            self.gate.GateError, "evidence must be unique and runnable"
+        ):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["independentReviewEvidence"][0])
+        duplicate["id"] = "different-id-same-target"
+        manifest["independentReviewEvidence"].append(duplicate)
+        with self.assertRaisesRegex(
+            self.gate.GateError, "duplicate independent review evidence target"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_invalid_independent_review_evidence_shape_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewEvidence"][0]["surfaces"] = ["invented"]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "evidence must be unique and runnable"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_failing_independent_review_evidence_fails_the_gate(self):
+        failed = mock.Mock(returncode=1, stdout="", stderr="deliberate failure")
+        with mock.patch.object(self.gate.subprocess, "run", return_value=failed):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "type-totality-array-ebfab-counterexample: independent review evidence.*failing",
+            ):
+                self.gate.run_independent_review_evidence(self.manifest)
 
     def test_incomplete_matrix_is_rejected(self):
         manifest = copy.deepcopy(self.manifest)

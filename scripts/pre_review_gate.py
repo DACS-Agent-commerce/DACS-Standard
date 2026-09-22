@@ -14,6 +14,16 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "conformance" / "pre-review-invariants.json"
+REQUIRED_REVIEW_LENSES = {
+    "hostile-json-type-totality": {"public-api"},
+    "binding-axis-isolation-current-fab-delivery": {"composed-caller"},
+    "current-archival-downgrade-fallback": {"composed-caller"},
+    "direct-helper-composed-path-parity": {"direct-helper", "composed-caller"},
+    "compatibility-legitimate-positive-preservation": {"compatibility-path"},
+}
+EVIDENCE_SURFACES = {
+    "public-api", "direct-helper", "composed-caller", "compatibility-path",
+}
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -39,6 +49,8 @@ def validate_manifest(manifest: object) -> None:
     corpus_pins = manifest.get("corpusPins")
     covered = manifest.get("coveredInvariantClasses")
     planned = manifest.get("plannedInvariantClasses")
+    review_evidence = manifest.get("independentReviewEvidence")
+    review_lenses = manifest.get("independentReviewLenses")
     if not isinstance(matrices, list) or not matrices:
         raise GateError("vectorMatrices must be a nonempty list")
     if not isinstance(regressions, list) or not regressions:
@@ -49,6 +61,10 @@ def validate_manifest(manifest: object) -> None:
         raise GateError("coveredInvariantClasses must be a list")
     if not isinstance(planned, list):
         raise GateError("plannedInvariantClasses must be a list")
+    if not isinstance(review_evidence, list) or not review_evidence:
+        raise GateError("independentReviewEvidence must be a nonempty list")
+    if not isinstance(review_lenses, list) or not review_lenses:
+        raise GateError("independentReviewLenses must be a nonempty list")
 
     for corpus_name, pin in corpus_pins.items():
         if (
@@ -184,6 +200,94 @@ def validate_manifest(manifest: object) -> None:
             f"{sorted(unclaimed_matrix_classes)}"
         )
 
+    evidence_by_id: dict[str, dict] = {}
+    evidence_targets: set[tuple[str, str]] = set()
+    for evidence in review_evidence:
+        if not isinstance(evidence, dict) or set(evidence) != {
+            "id", "file", "test", "surfaces",
+        }:
+            raise GateError(
+                "independent review evidence requires id/file/test/surfaces"
+            )
+        evidence_id = evidence.get("id")
+        file_name = evidence.get("file")
+        test_name = evidence.get("test")
+        surfaces = evidence.get("surfaces")
+        if (
+            not isinstance(evidence_id, str) or not evidence_id
+            or evidence_id in evidence_by_id
+            or not isinstance(file_name, str) or not file_name
+            or not isinstance(test_name, str) or not test_name
+            or not isinstance(surfaces, list) or not surfaces
+            or not all(isinstance(surface, str) for surface in surfaces)
+            or len(set(surfaces)) != len(surfaces)
+            or not set(surfaces).issubset(EVIDENCE_SURFACES)
+        ):
+            raise GateError("independent review evidence must be unique and runnable")
+        target = (file_name, test_name)
+        if target in evidence_targets:
+            raise GateError(f"duplicate independent review evidence target: {target}")
+        evidence_targets.add(target)
+        evidence_by_id[evidence_id] = evidence
+
+    lenses_by_id: dict[str, dict] = {}
+    referenced_evidence: set[str] = set()
+    for lens in review_lenses:
+        if not isinstance(lens, dict) or set(lens) != {
+            "id", "counterexampleEvidence", "controlEvidence",
+        }:
+            raise GateError(
+                "independent review lenses require id/counterexampleEvidence/controlEvidence"
+            )
+        lens_id = lens.get("id")
+        if not isinstance(lens_id, str) or not lens_id or lens_id in lenses_by_id:
+            raise GateError("independent review lens ids must be unique strings")
+        lenses_by_id[lens_id] = lens
+        role_sets = []
+        for role in ("counterexampleEvidence", "controlEvidence"):
+            evidence_ids = lens.get(role)
+            if (
+                not isinstance(evidence_ids, list) or not evidence_ids
+                or not all(isinstance(item, str) and item for item in evidence_ids)
+                or len(set(evidence_ids)) != len(evidence_ids)
+            ):
+                raise GateError(f"{lens_id}: {role} must contain unique evidence ids")
+            missing = set(evidence_ids) - evidence_by_id.keys()
+            if missing:
+                raise GateError(
+                    f"{lens_id}: dangling independent review evidence {sorted(missing)}"
+                )
+            role_sets.append(set(evidence_ids))
+            referenced_evidence.update(evidence_ids)
+        if role_sets[0] & role_sets[1]:
+            raise GateError(
+                f"{lens_id}: counterexample and control evidence must be distinct"
+            )
+
+    missing_lenses = set(REQUIRED_REVIEW_LENSES) - lenses_by_id.keys()
+    extra_lenses = lenses_by_id.keys() - set(REQUIRED_REVIEW_LENSES)
+    if missing_lenses or extra_lenses:
+        raise GateError(
+            "independent review lenses do not match the required set: "
+            f"missing={sorted(missing_lenses)}, extra={sorted(extra_lenses)}"
+        )
+    orphaned_evidence = evidence_by_id.keys() - referenced_evidence
+    if orphaned_evidence:
+        raise GateError(
+            f"unclaimed independent review evidence: {sorted(orphaned_evidence)}"
+        )
+    for lens_id, required_surfaces in REQUIRED_REVIEW_LENSES.items():
+        lens = lenses_by_id[lens_id]
+        observed_surfaces = set()
+        for role in ("counterexampleEvidence", "controlEvidence"):
+            for evidence_id in lens[role]:
+                observed_surfaces.update(evidence_by_id[evidence_id]["surfaces"])
+        missing_surfaces = required_surfaces - observed_surfaces
+        if missing_surfaces:
+            raise GateError(
+                f"{lens_id}: missing required evidence surfaces {sorted(missing_surfaces)}"
+            )
+
 
 def _within_root(relative: str) -> Path:
     path = (ROOT / relative).resolve()
@@ -294,14 +398,18 @@ def run_vector_matrices(manifest: dict) -> int:
 
 
 def run_unit_regressions(manifest: dict) -> int:
+    return _run_python_evidence(manifest["unitRegressions"], "regression")
+
+
+def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join(
         part for part in (str(ROOT), str(ROOT / "tests"), os.environ.get("PYTHONPATH", ""))
         if part
     )
-    for regression in manifest["unitRegressions"]:
-        path = _within_root(regression["file"])
+    for entry in entries:
+        path = _within_root(entry["file"])
         completed = subprocess.run(
-            [sys.executable, str(path), regression["test"]],
+            [sys.executable, str(path), entry["test"]],
             cwd=ROOT,
             text=True,
             capture_output=True,
@@ -309,8 +417,20 @@ def run_unit_regressions(manifest: dict) -> int:
         )
         if completed.returncode:
             detail = (completed.stdout + completed.stderr).strip()
-            raise GateError(f"{regression['id']}: regression is missing or failing\n{detail}")
-    return len(manifest["unitRegressions"])
+            failure_kind = (
+                "regression" if label == "regression"
+                else "independent review evidence"
+            )
+            raise GateError(
+                f"{entry['id']}: {failure_kind} is missing or failing\n{detail}"
+            )
+    return len(entries)
+
+
+def run_independent_review_evidence(manifest: dict) -> int:
+    return _run_python_evidence(
+        manifest["independentReviewEvidence"], "review evidence"
+    )
 
 
 def main() -> int:
@@ -323,12 +443,15 @@ def main() -> int:
         manifest = load_manifest(args.manifest.resolve())
         matrix_count = run_vector_matrices(manifest)
         regression_count = run_unit_regressions(manifest)
+        review_evidence_count = run_independent_review_evidence(manifest)
     except (GateError, OSError, json.JSONDecodeError) as exc:
         print(f"pre-review gate FAILED: {exc}", file=sys.stderr)
         return 1
     print(
         f"pre-review gate OK ({matrix_count} matrix cases; "
-        f"{regression_count} prior blocker regressions)"
+        f"{regression_count} prior blocker regressions; "
+        f"{len(manifest['independentReviewLenses'])} independent review lenses; "
+        f"{review_evidence_count} independent review evidence tests)"
     )
     return 0
 

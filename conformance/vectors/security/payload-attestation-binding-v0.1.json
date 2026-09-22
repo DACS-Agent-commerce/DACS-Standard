@@ -3,8 +3,8 @@
   "spec": "DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3",
   "decisionModel": "A successful attested-payload delivery requires a distinct signed PayloadAttestationRecord, a passing exact-byte method proof, and matching listing/agreement/settlement bindings. Resolved contradictions fail; unavailable otherwise-valid evidence remains indeterminate.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "c8a066812238f96da3e5300a9fc74496f06d91fa754cac69d6bc63732c8833ef",
-  "count": 27,
+  "hash": "f1ccaf1f6639324e9f1319b5cb2004c8a37e2c9051918511c5942ef2a55fee0c",
+  "count": 28,
   "publicTestSeeds": {
     "verifierEd25519": "3131313131313131313131313131313131313131313131313131313131313131",
     "orchestratorEd25519": "3232323232323232323232323232323232323232323232323232323232323232"
@@ -2585,6 +2585,156 @@
       },
       "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
       "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "trustedMethodEvidenceByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"https\",\"locator\":\"https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"},\"contentHash\":\"dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f\",\"signer\":\"substrate-validator-set:demos-mainnet:42\"}": {
+          "available": false
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "non-observation is not a clean negative and cannot produce success"
+    },
+    {
+      "name": "method-evidence-unavailable-marker-hash-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
         "disposition": "unavailable"
       },
       "trustedMethodEvidenceByCanonicalRef": {
@@ -2694,8 +2844,8 @@
           "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
         }
       },
-      "expected": "indeterminate",
-      "reason": "non-observation is not a clean negative and cannot produce success"
+      "expected": "fail",
+      "reason": "an unauthenticated semantic marker cannot preempt method-evidence reference binding"
     },
     {
       "name": "dahr-transaction-reference-missing",

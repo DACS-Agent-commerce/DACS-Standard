@@ -1031,9 +1031,12 @@ def build_vectors() -> list[dict]:
     vectors.append(make("delivery-signer-not-authenticated-phase-orchestrator", "fail", "a valid signature by another session party is not phase authority", storage_case, wrong_authority))
 
     def wrong_payload_address(case: dict) -> None:
-        case["evidenceRecords"][1]["artifact"]["deliverableAnchor"]["locator"] = f"dacs4:deliverable:{JOB}:1"
+        first = case["evidenceRecords"][0]["artifact"]
+        replay = case["evidenceRecords"][1]["artifact"]
+        replay["deliverableAnchor"] = copy.deepcopy(first["deliverableAnchor"])
+        replay["deliverableContentHash"] = first["deliverableContentHash"]
         refresh_evidence(case, 1)
-    vectors.append(make("deliverable-address-cross-phase-replay", "fail", "deliverable anchor must carry the same phaseIndex", storage_case, wrong_payload_address))
+    vectors.append(make("deliverable-address-cross-phase-replay", "fail", "an otherwise valid resolved phase-1 deliverable cannot satisfy phase 2", storage_case, wrong_payload_address))
 
     vectors.append(make("legacy-single-delivery-readable", "pass", "one unambiguous legacy delivery remains readable unchanged", legacy_case))
     vectors.append(make("legacy-unindexed-evidence-cannot-cover-repetition", "fail", "legacy evidence never satisfies repeated delivery", lambda: legacy_case(True)))
@@ -1084,6 +1087,36 @@ def build_vectors() -> list[dict]:
         "an unresolved historical method proof cannot close attested delivery",
         legacy_attested_case,
         unavailable_artifact("methodEvidence"),
+    ))
+
+    def unauthenticated_method_marker(case: dict) -> None:
+        entry = next(
+            item for item in case["artifactRecords"]
+            if item.get("kind") == "methodEvidence"
+        )
+        entry["artifact"] = {"disposition": "unavailable"}
+
+    vectors.append(make(
+        "method-proof-unavailable-marker-hash-mismatch",
+        "fail",
+        "method-proof bytes cannot claim unavailability before their reference hash authenticates",
+        lambda: attested_case(((6, b"attested one"),)),
+        unauthenticated_method_marker,
+    ))
+
+    def method_proof_wrong_address(case: dict) -> None:
+        entry = next(
+            item for item in case["artifactRecords"]
+            if item.get("kind") == "methodEvidence"
+        )
+        entry["logicalAddress"] += ":other-phase"
+
+    vectors.append(make(
+        "method-proof-address-mismatch",
+        "fail",
+        "an otherwise matching method proof at another address cannot satisfy the signed reference",
+        lambda: attested_case(((6, b"attested one"),)),
+        method_proof_wrong_address,
     ))
     vectors.append(make("legacy-credential-entitlement-cannot-claim-dv5", "fail", "legacy entitlement evidence is audit-only and cannot establish the DV-5 delivered gate", legacy_credential_case, requestedGate="dv5-verified"))
     vectors.append(make("repeated-entitlements-each-renewal-zero", "pass", "phaseIndex separates two renewalSeq zero streams", entitlement_case))
@@ -1158,6 +1191,44 @@ def build_vectors() -> list[dict]:
         entitlement_case,
         fractional_entitlement,
     ))
+
+    def entitlement_schema_mutation(mutator: Callable[[dict], None]) -> Callable[[dict], None]:
+        def apply(case: dict) -> None:
+            record = case["artifactRecords"][0]["artifact"]
+            mutator(record)
+            refresh_entitlement_chain(case)
+        return apply
+
+    vectors.append(make(
+        "entitlement-known-schema-nonpositive-quotas-and-extensions",
+        "pass",
+        "known fields retain exact JSON types without unstated content restrictions",
+        entitlement_case,
+        entitlement_schema_mutation(lambda record: record.update({
+            "scope": {
+                "service": "",
+                "tier": "",
+                "quotas": {"zero": 0, "negative": -2, "fractional": 0.5},
+                "futureScopeLabel": {"preserved": True},
+            },
+            "serviceEndpoint": "",
+        })),
+    ))
+    for name, mutate in (
+        ("service-not-string", lambda record: record["scope"].update({"service": 7})),
+        ("tier-not-string", lambda record: record["scope"].update({"tier": False})),
+        ("quotas-not-object", lambda record: record["scope"].update({"quotas": []})),
+        ("quota-value-boolean", lambda record: record["scope"].update({"quotas": {"calls": True}})),
+        ("quota-value-not-number", lambda record: record["scope"].update({"quotas": {"calls": "10"}})),
+        ("service-endpoint-not-string", lambda record: record.update({"serviceEndpoint": {}})),
+    ):
+        vectors.append(make(
+            "entitlement-known-schema-" + name,
+            "error",
+            "EntitlementRecord known fields require their exact normative JSON types",
+            entitlement_case,
+            entitlement_schema_mutation(mutate),
+        ))
 
     def zero_entitlement(case: dict) -> None:
         authority = case["deliveryAuthorities"][0]["deliverable"]

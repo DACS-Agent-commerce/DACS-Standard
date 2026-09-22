@@ -5,10 +5,14 @@ import json
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -95,43 +99,17 @@ def authenticated_evidence_type(artifact):
 
 
 def verify_bundle_signatures(bundle):
-    if not isinstance(bundle, dict):
-        return False
-    if bundle.get("faultBundleVersion") != "1" or "bundleVersion" in bundle:
-        return False
-    parties = bundle.get("parties")
-    signatures = bundle.get("signatures")
-    if (
-        not isinstance(parties, list)
-        or any(
-            not isinstance(party, dict)
-            or not isinstance(party.get("role"), str)
-            or not isinstance(party.get("primaryClaim"), str)
-            for party in parties
-        )
-        or not isinstance(signatures, list)
-        or any(not isinstance(signature, dict) for signature in signatures)
-    ):
-        return False
-    unsigned = {k: v for k, v in bundle.items() if k not in {"signatures", "anchoredByRole"}}
     try:
-        payload = BUNDLE_DOMAIN.encode("ascii") + hash_hex(unsigned).encode("ascii")
-    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        pubkeys = {
+            party["primaryClaim"]: bytes.fromhex(
+                party["primaryClaim"].removeprefix("cci:")
+            )
+            for party in bundle["parties"]
+        }
+    except (KeyError, TypeError, ValueError):
         return False
-    required = {party.get("primaryClaim") for party in parties}
-    observed = set()
-    for signature in signatures:
-        party = signature.get("party")
-        value = signature.get("value")
-        if signature.get("algorithm") != "ed25519" or not isinstance(party, str) or not party.startswith("cci:"):
-            return False
-        try:
-            raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-            Ed25519PublicKey.from_public_bytes(bytes.fromhex(party.removeprefix("cci:"))).verify(raw, payload)
-        except (TypeError, ValueError, InvalidSignature):
-            return False
-        observed.add(party)
-    return observed == required
+    ok, _ = R._bundle_signatures_valid_for_family(bundle, pubkeys, "fault")
+    return ok
 
 
 def exact_ref_shape(value):
@@ -271,7 +249,7 @@ def validate_delivery_artifact(
     if phase == "deliver-storage-program":
         expected_address = (
             f"dacs4:deliverable:{job}"
-            if legacy else f"dacs4:deliverable:{job}:{index}"
+            if legacy else R._phase_bound_deliverable_address(job, index)
         )
         if address != expected_address:
             return "fail"
@@ -340,6 +318,8 @@ def validate_delivery_artifact(
                 or not R._delivery_inner_type_valid(record, "entitlementVersion")
                 or not verify_signature(record, ENTITLEMENT_DOMAIN)):
             return "fail"
+        if not R._entitlement_record_known_schema_valid(record):
+            return "error"
         role_status = validate_entitlement_roles(case.get("bundle"), record)
         if role_status != "pass":
             return role_status
@@ -451,7 +431,7 @@ def validate_delivery_artifact(
     if phase == "deliver-attested-payload":
         payload_address = (
             f"dacs4:deliverable:{job}"
-            if legacy else f"dacs4:deliverable:{job}:{index}"
+            if legacy else R._phase_bound_deliverable_address(job, index)
         )
         if address != payload_address:
             return "fail"
@@ -590,6 +570,17 @@ def validate_delivery_artifact(
         method_entry = find_artifact(
             case, method_ref["anchor"]["locator"], "methodEvidence"
         )
+        if method_entry is None:
+            records = case.get("artifactRecords")
+            if records is None:
+                return "indeterminate"
+            same_proof_elsewhere = any(
+                entry.get("kind") == "methodEvidence"
+                and isinstance(entry.get("artifact"), dict)
+                and hash_hex(entry["artifact"]) == method_ref.get("contentHash")
+                for entry in records
+            )
+            return "fail" if same_proof_elsewhere else "indeterminate"
         availability, method_entry, _ = R._resolved_delivery_dependency(
             method_entry,
             method_ref,
@@ -937,6 +928,8 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             "recipeRegistryVersion": 6,
             "railRegistryVersion": 7,
             "protocolVersion": "2",
+            "signatureVersion": "1",
+            "finalityProfileVersion": "1",
             "auditVersion": "inert-extension",
         }
         entitlement = {"entitlementVersion": "1", **contextual_versions}
@@ -963,6 +956,283 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             }),
             "entitlement",
         )
+
+    def test_current_artifact_discriminator_registry_is_independently_frozen(self):
+        expected = {
+            "receiptVersion", "bundleVersion", "requirementVersion", "dacsVersion",
+            "revocationStateRefVersion", "revocationStateHeadVersion",
+            "revocationStateProofVersion", "indexVersion", "registryIndexVersion",
+            "registryBootstrapVersion", "canonicalChannelMessageVersion",
+            "sealedAuctionRecordVersion", "sealedSelectionReceiptVersion",
+            "resultVersion", "recordVersion", "agreementVersion",
+            "payeeBoundAgreementVersion", "sealedSelectionAgreementVersion",
+            "identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion",
+            "finalityCommitmentVersion", "transcriptVersion",
+            "legacyAgreementCheckpointVersion", "legacyPaymentReservationVersion",
+            "entitlementVersion", "payloadAttestationVersion", "evidenceVersion",
+            "legacyTransitionEvidenceVersion", "finalityBoundEvidenceVersion",
+            "deliveryEvidenceVersion", "finalityObservationResponseVersion",
+            "finalityResolutionContextVersion", "amendmentVersion",
+            "priorPaymentDispositionVersion", "participationAdmissionVersion",
+            "obligationVersion", "timeoutMarkerVersion", "faultBundleVersion",
+            "evidenceBoundFaultBundleVersion",
+            "finalityBoundEvidenceFaultBundleVersion",
+            "legacyBundleCheckpointVersion", "legacyBundleCheckpointBindingVersion",
+            "bindingVersion", "derivationVersion", "replayableDerivationVersion",
+            "settlementVerifiedDerivationVersion",
+            "replayableSettlementVerifiedDerivationVersion",
+            "currentUseReplayableDerivationVersion",
+            "jobBoundReplayableDerivationVersion",
+            "authenticatedWindowDerivationVersion",
+            "currentUseAuthenticatedWindowDerivationVersion", "ratingVersion",
+            "manifestVersion",
+        }
+        self.assertEqual(
+            set(R._CURRENT_ARTIFACT_TYPE_BY_DISCRIMINATOR), expected
+        )
+        self.assertIs(
+            R._DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR,
+            R._CURRENT_ARTIFACT_TYPE_BY_DISCRIMINATOR,
+        )
+        for selector in expected - {"entitlementVersion"}:
+            with self.subTest(selector=selector):
+                self.assertFalse(R._delivery_inner_type_valid(
+                    {"entitlementVersion": "1", selector: "1"},
+                    "entitlementVersion",
+                ))
+
+    def test_bundle_signer_policy_and_sig6_share_one_validator(self):
+        keys = {
+            G.BUYER: Ed25519PrivateKey.from_private_bytes(
+                G.BUYER_SEED
+            ).public_key().public_bytes_raw(),
+            G.SELLER: Ed25519PrivateKey.from_private_bytes(
+                G.SELLER_SEED
+            ).public_key().public_bytes_raw(),
+            G.ORCHESTRATOR: Ed25519PrivateKey.from_private_bytes(
+                G.ORCHESTRATOR_SEED
+            ).public_key().public_bytes_raw(),
+        }
+
+        def bundle_for(outcome, signer=None):
+            bundle = G.storage_case()["bundle"]
+            bundle["outcome"] = outcome
+            G.sign_bundle(bundle)
+            if signer is not None:
+                bundle["signatures"] = [
+                    signature for signature in bundle["signatures"]
+                    if signature["party"] == signer
+                ]
+            return bundle
+
+        for outcome in ("aborted-by-self", "aborted-by-other"):
+            with self.subTest(outcome=outcome, standing="single"):
+                bundle = bundle_for(outcome, G.BUYER)
+                self.assertEqual(
+                    R._bundle_signatures_valid_for_family(
+                        bundle, keys, "fault"
+                    ),
+                    (True, "ok"),
+                )
+                self.assertTrue(verify_bundle_signatures(bundle))
+            with self.subTest(outcome=outcome, standing="co-signed"):
+                bundle = bundle_for(outcome)
+                self.assertEqual(
+                    R._bundle_signatures_valid_for_family(
+                        bundle, keys, "fault"
+                    ),
+                    (True, "ok"),
+                )
+
+        for outcome in ("completed", "failed-counterparty", "failed-substrate"):
+            with self.subTest(outcome=outcome):
+                ok, _ = R._bundle_signatures_valid_for_family(
+                    bundle_for(outcome, G.BUYER), keys, "fault"
+                )
+                self.assertFalse(ok)
+
+        anchored_mismatch = bundle_for("aborted-by-self", G.SELLER)
+        self.assertFalse(R._bundle_signatures_valid_for_family(
+            anchored_mismatch, keys, "fault"
+        )[0])
+
+        canonical = bundle_for("aborted-by-self", G.BUYER)
+        canonical_value = canonical["signatures"][0]["value"]
+        standard_base64_value = canonical_value.replace("-", "+").replace("_", "/")
+        self.assertNotEqual(standard_base64_value, canonical_value)
+        for supplied_keys in (None, keys):
+            with self.subTest(spelling="canonical", keys=supplied_keys is not None):
+                self.assertTrue(R._bundle_signatures_valid_for_family(
+                    canonical, supplied_keys, "fault"
+                )[0])
+            for spelling, value in (
+                ("padded", canonical_value + "="),
+                ("malformed", "A"),
+                ("standard-base64", standard_base64_value),
+            ):
+                candidate = copy.deepcopy(canonical)
+                candidate["signatures"][0]["value"] = value
+                with self.subTest(spelling=spelling, keys=supplied_keys is not None):
+                    self.assertFalse(R._bundle_signatures_valid_for_family(
+                        candidate, supplied_keys, "fault"
+                    )[0])
+            unsupported = copy.deepcopy(canonical)
+            unsupported["signatures"][0]["algorithm"] = "ecdsa-secp256k1"
+            with self.subTest(algorithm="unsupported", keys=supplied_keys is not None):
+                self.assertFalse(R._bundle_signatures_valid_for_family(
+                    unsupported, supplied_keys, "fault"
+                )[0])
+
+    def test_cross_phase_replay_is_resolved_and_phase_guard_is_load_bearing(self):
+        vector = next(
+            copy.deepcopy(item) for item in self.data["vectors"]
+            if item["name"] == "deliverable-address-cross-phase-replay"
+        )
+        replay = vector["evidenceRecords"][1]["artifact"]
+        replay_ref = {
+            "anchor": replay["deliverableAnchor"],
+            "contentHash": replay["deliverableContentHash"],
+        }
+        self.assertIsNotNone(find_artifact(
+            vector, replay_ref["anchor"]["locator"], "deliverable"
+        ))
+        self.assertIn(
+            canonical_bytes(replay_ref).decode("utf-8"),
+            vector["verifiedReceiptByCanonicalRef"],
+        )
+        self.assertEqual(evaluate(vector), "fail")
+
+        phase_one_address = replay_ref["anchor"]["locator"]
+        with mock.patch.object(
+            R, "_phase_bound_deliverable_address", return_value=phase_one_address
+        ):
+            self.assertEqual(evaluate(vector), "pass")
+
+    def test_entitlement_known_schema_is_shared_and_extension_safe(self):
+        valid = G.entitlement_record(3, 0)
+        valid["scope"] = {
+            "service": "", "tier": "",
+            "quotas": {"zero": 0, "negative": -1, "fractional": 0.25},
+            "futureScopeLabel": {"preserved": True},
+        }
+        valid["serviceEndpoint"] = ""
+        valid["laterMinorAuditLabel"] = "preserve-me"
+        self.assertTrue(R._entitlement_record_known_schema_valid(valid))
+
+        for field, mutate in (
+            ("service", lambda record: record["scope"].update({"service": None})),
+            ("tier", lambda record: record["scope"].update({"tier": 1})),
+            ("quotas", lambda record: record["scope"].update({"quotas": []})),
+            ("quota-bool", lambda record: record["scope"].update({"quotas": {"x": True}})),
+            ("quota-string", lambda record: record["scope"].update({"quotas": {"x": "1"}})),
+            ("endpoint", lambda record: record.update({"serviceEndpoint": []})),
+        ):
+            candidate = G.entitlement_record(3, 0)
+            mutate(candidate)
+            with self.subTest(field=field):
+                self.assertFalse(
+                    R._entitlement_record_known_schema_valid(candidate)
+                )
+
+        case = G.entitlement_case()
+        evidence = case["evidenceRecords"][0]["artifact"]
+        authority = case["deliveryAuthorities"][0]
+        entry = case["artifactRecords"][0]
+        record = entry["artifact"]
+        record["scope"].update({
+            "service": "",
+            "quotas": {"zero": 0, "negative": -1, "fractional": 0.25},
+            "futureScopeLabel": "preserved",
+        })
+        record["serviceEndpoint"] = ""
+        record["laterMinorAuditLabel"] = "preserve-me"
+        G.refresh_entitlement_chain(case)
+        seller_key = Ed25519PrivateKey.from_private_bytes(
+            G.SELLER_SEED
+        ).public_key().public_bytes_raw()
+
+        def validate_main_closure():
+            return R._validate_delivery_artifact_closure_disposition(
+                evidence,
+                "3:deliver-entitlement",
+                {"offering": {"deliverable": authority["deliverable"]}},
+                case["bundle"],
+                {G.SELLER: seller_key},
+                {
+                    "jobId": G.JOB,
+                    "phaseIndex": 3,
+                    "phaseKind": "deliver-entitlement",
+                },
+                {"entitlementRecord": entry},
+                case["verifiedReceiptByCanonicalRef"],
+                {},
+                legacy=False,
+            )
+
+        self.assertEqual(validate_main_closure()[0], "pass")
+        record["scope"]["quotas"] = {"calls": True}
+        self.assertEqual(validate_main_closure()[0], "error")
+
+    def test_main_closure_authenticates_method_identity_before_semantics(self):
+        case = G.attested_case(((6, b"attested one"),))
+        evidence = case["evidenceRecords"][0]["artifact"]
+        authority = case["deliveryAuthorities"][0]
+        payload = next(
+            entry for entry in case["artifactRecords"]
+            if entry.get("kind") == "deliverable"
+        )
+        payload_record = next(
+            entry for entry in case["artifactRecords"]
+            if entry.get("kind") == "PayloadAttestationRecord"
+        )
+        method = next(
+            entry for entry in case["artifactRecords"]
+            if entry.get("kind") == "methodEvidence"
+        )
+        verifier_key = Ed25519PrivateKey.from_private_bytes(
+            G.VERIFIER_SEED
+        ).public_key().public_bytes_raw()
+        closure = {
+            "agreementHash": G.AGREEMENT_HASH,
+            "deliverable": payload,
+            "payloadAttestationRecord": payload_record,
+            "methodEvidence": method,
+        }
+
+        def validate():
+            return R._validate_delivery_artifact_closure_disposition(
+                evidence,
+                "6:deliver-attested-payload",
+                {"offering": {"deliverable": authority["deliverable"]}},
+                case["bundle"],
+                {G.VERIFIER: verifier_key},
+                {
+                    "jobId": G.JOB,
+                    "phaseIndex": 6,
+                    "phaseKind": "deliver-attested-payload",
+                    "agreementHash": G.AGREEMENT_HASH,
+                },
+                closure,
+                case["verifiedReceiptByCanonicalRef"],
+                case["trustedNativeTransactionObservationsByCanonicalRef"],
+                legacy=False,
+            )
+
+        self.assertEqual(validate()[0], "pass")
+
+        original = copy.deepcopy(method)
+        method["artifact"] = {"disposition": "unavailable"}
+        self.assertEqual(validate()[0], "fail")
+
+        method.clear()
+        method.update(original)
+        method["logicalAddress"] += ":wrong"
+        self.assertEqual(validate()[0], "fail")
+
+        method.clear()
+        method.update(original)
+        method["available"] = False
+        self.assertEqual(validate()[0], "indeterminate")
 
     def test_storage_delivery_hashes_exact_utf8_in_current_and_legacy_arms(self):
         for factory in (G.storage_case, G.legacy_case):

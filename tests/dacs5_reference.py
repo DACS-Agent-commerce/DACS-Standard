@@ -1014,10 +1014,22 @@ def _bundle_signatures_valid_for_family(bundle, pubkeys, family):
                 return (False, "§10.4.1 required signer %r (%s) has no signature for a non-abort "
                                "outcome %r" % (role, claim, bundle.get("outcome")))
 
-    # F2/F3/F4: EVERY carried signature entry (the RAW list, duplicates included) must be canonical,
-    # carry a supported algorithm, and verify. Crypto-gated exactly like the prior implementation
-    # (callers pass pubkeys=None to skip crypto); SIG-6 canonicality + algorithm dispatch run right
-    # before verify_sig at this same site.
+    # F3/F4 are wire-envelope requirements, not optional cryptographic checks.
+    # Enforce the registered algorithm and SIG-6 spelling for EVERY raw entry even
+    # in the explicitly retained structural-only legacy mode (pubkeys=None).
+    for s in raw_sigs:
+        party = s.get("party")
+        alg = s.get("algorithm")
+        if not _string_member(alg, SUPPORTED_SIGNATURE_ALGORITHMS):
+            return (False, "§10.4.1/SIG-6 unsupported or missing signature algorithm %r for bundle "
+                    "signer %r" % (alg, party))
+        ok_c, reason_c = sig6_canonical(s.get("value", ""))
+        if not ok_c:
+            return (False, "%s for bundle signer %r" % (reason_c, party))
+
+    # F2 remains optional only for the named historical structural replay path.
+    # Current callers supply independently authenticated keys and verify every raw
+    # entry, including duplicates, after the unconditional envelope gate above.
     if pubkeys is not None and HAVE_CRYPTO:
         h = bundle_hash(bundle)
         dom = _BUNDLE_DOMAIN_BY_FAMILY[family]
@@ -1026,14 +1038,7 @@ def _bundle_signatures_valid_for_family(bundle, pubkeys, family):
             pk = pubkeys.get(party)
             if pk is None:
                 return (False, "no public key for bundle signer %r" % (party,))
-            alg = s.get("algorithm")                              # F3: dispatch on the declared label
-            if not _string_member(alg, SUPPORTED_SIGNATURE_ALGORITHMS):
-                return (False, "§10.4.1/SIG-6 unsupported or missing signature algorithm %r for bundle "
-                               "signer %r" % (alg, party))
-            ok_c, reason_c = sig6_canonical(s.get("value", ""))   # F4: SIG-6 BEFORE verify_sig
-            if not ok_c:
-                return (False, "%s for bundle signer %r" % (reason_c, party))
-            if not verify_sig(pk, dom, h, s.get("value", "")):    # F2: every entry must verify
+            if not verify_sig(pk, dom, h, s["value"]):
                 return (False, "§10.4.1 bundle signature does not verify for signer %r" % (party,))
     return (True, "ok")
 
@@ -9668,6 +9673,48 @@ def _canonical_method_transaction_ref(transaction_ref):
     except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
         return None
 
+def _phase_bound_deliverable_address(job_id, phase_index):
+    """PDE-3 address for one current storage or attested-payload invocation."""
+    if (
+        not _nonempty_jcs_string(job_id)
+        or isinstance(phase_index, bool)
+        or not isinstance(phase_index, int)
+        or phase_index < 0
+        or phase_index > _MAX_SAFE_JSON_INTEGER
+    ):
+        return None
+    return f"dacs4:deliverable:{job_id}:{phase_index}"
+
+def _entitlement_record_known_schema_valid(record):
+    """Validate EntitlementRecord's known fields without rejecting extensions.
+
+    SIG-5 keeps unknown signed members inert and hash-bound. The known ``scope``
+    members use their exact normative JSON types; strings may be empty and quota
+    numbers may be zero, negative, or fractional, but never Boolean or non-finite.
+    """
+    if not isinstance(record, dict):
+        return False
+    scope = record.get("scope")
+    if not isinstance(scope, dict) or not isinstance(scope.get("service"), str):
+        return False
+    if "tier" in scope and not isinstance(scope["tier"], str):
+        return False
+    if "quotas" in scope:
+        quotas = scope["quotas"]
+        if not isinstance(quotas, dict) or any(
+            not isinstance(key, str)
+            or isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or (isinstance(value, float) and not math.isfinite(value))
+            for key, value in quotas.items()
+        ):
+            return False
+    if "serviceEndpoint" in record and not isinstance(
+        record["serviceEndpoint"], str
+    ):
+        return False
+    return True
+
 def _delivery_artifact_type(record):
     """Return a syntactic current selector for diagnostics, never admission."""
     if not isinstance(record, dict):
@@ -10023,7 +10070,7 @@ def _validate_delivery_artifact_closure_disposition(
         results.append(_closure_result("fail", "delivery closure phase key does not match signed evidence"))
     deliverable_address = (
         f"dacs4:deliverable:{job_id}"
-        if legacy else f"dacs4:deliverable:{job_id}:{phase_index}"
+        if legacy else _phase_bound_deliverable_address(job_id, phase_index)
     )
     anchor = record.get("deliverableAnchor")
     role_status, parties = authenticated_delivery_roles(bundle)
@@ -10135,6 +10182,11 @@ def _validate_delivery_artifact_closure_disposition(
         if entitlement is None:
             return _combine_closure_results(results)
 
+        if not _entitlement_record_known_schema_valid(entitlement):
+            results.append(_closure_result(
+                "error", "resolved entitlement record known schema is malformed"
+            ))
+
         renewal_seq = entitlement.get("renewalSeq")
         entitlement_address = (
             f"dacs4:entitlement:{job_id}:{renewal_seq}"
@@ -10166,7 +10218,7 @@ def _validate_delivery_artifact_closure_disposition(
             or not _non_boolean_number(entitlement.get("startsAt"))
             or not _non_boolean_number(entitlement.get("endsAt"))
             or entitlement.get("endsAt", 0) < entitlement.get("startsAt", 0)
-            or not isinstance(entitlement.get("scope"), dict)
+            or not _entitlement_record_known_schema_valid(entitlement)
             or not isinstance(entitlement.get("renewable"), bool)
             or not terms_match
             or not _signed_inner_artifact_valid(
@@ -10469,17 +10521,28 @@ def _validate_delivery_artifact_closure_disposition(
     )
     results.append(method_dependency_result)
     method_evidence = method_entry.get("artifact") if method_entry is not None else None
+    method_identity_authenticated = False
     if method_entry is not None and not isinstance(method_evidence, dict):
         results.append(_closure_result("error", "resolved method evidence is malformed"))
         method_evidence = None
     if not _attestation_ref_shape_valid(method_ref):
         results.append(_closure_result("error", "method evidence reference is malformed"))
-    elif method_entry is not None and (
-        method_entry.get("logicalAddress") != method_ref.get("anchor", {}).get("locator")
-        or method_ref.get("contentHash") != _complete_object_hash(method_evidence)
-    ):
-        results.append(_closure_result("fail", "method evidence does not match its authenticated reference"))
-    if method_evidence is not None and cleartext_bytes is not None:
+    elif method_entry is not None and method_evidence is not None:
+        if (
+            method_dependency_result[0] != "pass"
+            or method_entry.get("logicalAddress")
+            != method_ref.get("anchor", {}).get("locator")
+            or method_ref.get("contentHash")
+            != _complete_object_hash(method_evidence)
+        ):
+            results.append(_closure_result(
+                "fail", "method evidence does not match its authenticated reference"
+            ))
+        else:
+            method_identity_authenticated = True
+    # Do not inspect or dispatch on method-proof bytes until their complete
+    # reference, address, receipt, and content hash have authenticated them.
+    if method_identity_authenticated and cleartext_bytes is not None:
         results.append(validate_delivery_method_evidence(
             method,
             method_evidence,
@@ -11178,32 +11241,64 @@ _CLOSURE_DISPOSITION_PRIORITY = {
     "error": 3,
 }
 
-_DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR = {
+_CURRENT_ARTIFACT_TYPE_BY_DISCRIMINATOR = {
     "receiptVersion": "receipt",
     "bundleVersion": "bundle",
     "requirementVersion": "requirement",
     "dacsVersion": "dacs",
+    "revocationStateRefVersion": "revocation-state-ref",
+    "revocationStateHeadVersion": "revocation-state-head",
+    "revocationStateProofVersion": "revocation-state-proof",
     "indexVersion": "index",
+    "registryIndexVersion": "registry-index",
+    "registryBootstrapVersion": "registry-bootstrap",
+    "canonicalChannelMessageVersion": "canonical-channel-message",
+    "sealedAuctionRecordVersion": "sealed-auction-record",
+    "sealedSelectionReceiptVersion": "sealed-selection-receipt",
     "resultVersion": "result",
     "recordVersion": "record",
     "agreementVersion": "agreement",
     "payeeBoundAgreementVersion": "payee-bound-agreement",
+    "sealedSelectionAgreementVersion": "sealed-selection-agreement",
+    "identityBoundAgreementVersion": "identity-bound-agreement",
+    "identityBoundPayeeAgreementVersion": "identity-bound-payee-agreement",
     "finalityCommitmentVersion": "finality-commitment",
     "transcriptVersion": "transcript",
+    "legacyAgreementCheckpointVersion": "legacy-agreement-checkpoint",
+    "legacyPaymentReservationVersion": "legacy-payment-reservation",
     "entitlementVersion": "entitlement",
     "payloadAttestationVersion": "payload-attestation",
     "evidenceVersion": "settlement",
+    "legacyTransitionEvidenceVersion": "legacy-transition-settlement",
+    "finalityBoundEvidenceVersion": "finality-bound-settlement",
     "deliveryEvidenceVersion": "delivery",
+    "finalityObservationResponseVersion": "finality-observation-response",
+    "finalityResolutionContextVersion": "finality-resolution-context",
     "amendmentVersion": "amendment",
     "priorPaymentDispositionVersion": "prior-payment-disposition",
+    "participationAdmissionVersion": "participation-admission",
+    "obligationVersion": "participation-obligation",
+    "timeoutMarkerVersion": "timeout-marker",
     "faultBundleVersion": "fault-bundle",
     "evidenceBoundFaultBundleVersion": "evidence-bound-fault-bundle",
+    "finalityBoundEvidenceFaultBundleVersion": "finality-bound-evidence-fault-bundle",
+    "legacyBundleCheckpointVersion": "legacy-bundle-checkpoint",
+    "legacyBundleCheckpointBindingVersion": "legacy-bundle-checkpoint-binding",
     "bindingVersion": "binding",
     "derivationVersion": "derivation",
     "replayableDerivationVersion": "replayable-derivation",
     "settlementVerifiedDerivationVersion": "settlement-verified-derivation",
     "replayableSettlementVerifiedDerivationVersion": "replayable-settlement-verified-derivation",
+    "currentUseReplayableDerivationVersion": "current-use-replayable-derivation",
     "jobBoundReplayableDerivationVersion": "job-bound-replayable-derivation",
+    "authenticatedWindowDerivationVersion": "authenticated-window-derivation",
+    "currentUseAuthenticatedWindowDerivationVersion": "current-use-authenticated-window-derivation",
     "ratingVersion": "rating",
     "manifestVersion": "manifest",
 }
+
+# Compatibility name for the focused delivery consumers. The contents are the
+# complete explicit current registry; callers never infer selectors by suffix.
+_DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR = (
+    _CURRENT_ARTIFACT_TYPE_BY_DISCRIMINATOR
+)

@@ -210,10 +210,12 @@ def _evaluate_admitted_projection(vector, seeds):
     if (resolved.get("reference") != method_ref
             or canonical_bytes(resolved.get("artifact")) != canonical_bytes(method_evidence)):
         return "fail"
-    if method_evidence.get("disposition") == "unavailable":
-        return "indeterminate"
+    # Authenticate the complete reference (including address) and content hash
+    # before any semantic dispatch on the resolved method-proof bytes.
     if method_ref.get("contentHash") != hash_hex(method_evidence):
         return "fail"
+    if method_evidence.get("disposition") == "unavailable":
+        return "indeterminate"
     method_disposition, _ = R.validate_delivery_method_evidence(
         method,
         method_evidence,

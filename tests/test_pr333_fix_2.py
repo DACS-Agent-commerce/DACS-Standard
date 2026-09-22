@@ -1,12 +1,12 @@
-"""Regression tests for _authenticated_evidence_wire_type algorithm validation.
+"""Regression tests for total signature-algorithm validation.
 
 Repro: standard-completed authority, resolved deliver-attested-payload
 signature.algorithm=[] -> both validate_ebfab and validate_ebfab_disposition
 raise unhashable-list TypeError.
 
 Acceptance: arrays, objects, null, booleans, numbers, unsupported strings
-rejected without exceptions; valid signatures preserved; both public APIs
-exercised.
+rejected without exceptions; valid signatures preserved; evidence and full-bundle
+entry points exercised.
 """
 
 import copy
@@ -139,6 +139,32 @@ class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):
         disposition, reason, keys = self._call_validate_ebfab_disposition(authority)
         self.assertEqual(disposition, "pass", reason)
         self.assertIsNotNone(keys)
+
+    def test_bundle_signature_algorithms_are_total_on_wrapper_and_family_paths(self):
+        for malformed in ([], {}, None, True, 123, "rsa-sha256"):
+            authority = self._get_authority()
+            bundle = authority["bundle"]
+            bundle["signatures"][0]["algorithm"] = malformed
+            family = R.bundle_type(bundle)
+            with self.subTest(malformed=malformed, path="wrapper"):
+                ok, _reason = R._bundle_signatures_valid(bundle, self.pubkeys)
+                self.assertFalse(ok)
+            with self.subTest(malformed=malformed, path="direct-family"):
+                ok, reason = R._bundle_signatures_valid_for_family(
+                    bundle, self.pubkeys, family
+                )
+                self.assertFalse(ok)
+                self.assertIn("unsupported or missing signature algorithm", reason)
+
+    def test_valid_bundle_signature_algorithm_is_preserved(self):
+        authority = self._get_authority()
+        bundle = authority["bundle"]
+        family = R.bundle_type(bundle)
+        self.assertEqual((True, "ok"), R._bundle_signatures_valid(bundle, self.pubkeys))
+        self.assertEqual(
+            (True, "ok"),
+            R._bundle_signatures_valid_for_family(bundle, self.pubkeys, family),
+        )
 
 
 if __name__ == "__main__":

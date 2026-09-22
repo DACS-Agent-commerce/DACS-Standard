@@ -418,6 +418,32 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual("error", result.get("disposition"), result["reason"])
 
+    def test_pointer_signature_algorithms_refuse_without_exceptions(self):
+        for malformed in ([], {}, None, True, 123, "rsa-sha256"):
+            value = self._fixture()
+            value["pointer"]["signature"]["algorithm"] = malformed
+            with self.subTest(malformed=malformed, path="current"):
+                result = self._resolve(value)
+                self.assertFalse(result["ok"])
+                self.assertEqual(
+                    "absolute-pointer family cannot be authenticated before parsing",
+                    result["reason"],
+                )
+            with self.subTest(malformed=malformed, path="legacy"):
+                result = R.resolve_legacy_absolute_fault_pointer(
+                    value["pointer"],
+                    value["bundle"],
+                    pubkeys=self.pubkeys,
+                    ebfab_authority=value["authority"],
+                    expected_jobid=CURRENT_JOB,
+                    expected_role=value["role"],
+                )
+                self.assertFalse(result["ok"])
+                self.assertEqual(
+                    "absolute-pointer family cannot be authenticated before parsing",
+                    result["reason"],
+                )
+
 class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

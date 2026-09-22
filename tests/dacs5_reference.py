@@ -1027,7 +1027,7 @@ def _bundle_signatures_valid_for_family(bundle, pubkeys, family):
             if pk is None:
                 return (False, "no public key for bundle signer %r" % (party,))
             alg = s.get("algorithm")                              # F3: dispatch on the declared label
-            if alg not in SUPPORTED_SIGNATURE_ALGORITHMS:
+            if not _string_member(alg, SUPPORTED_SIGNATURE_ALGORITHMS):
                 return (False, "§10.4.1/SIG-6 unsupported or missing signature algorithm %r for bundle "
                                "signer %r" % (alg, party))
             ok_c, reason_c = sig6_canonical(s.get("value", ""))   # F4: SIG-6 BEFORE verify_sig
@@ -1066,7 +1066,9 @@ def _authenticated_bundle_signature_family(bundle, pubkeys):
             canonical_ok, _ = sig6_canonical(value)
             if (
                 not isinstance(party, str)
-                or signature.get("algorithm") not in SUPPORTED_SIGNATURE_ALGORITHMS
+                or not _string_member(
+                    signature.get("algorithm"), SUPPORTED_SIGNATURE_ALGORITHMS
+                )
                 or not canonical_ok
                 or party not in pubkeys
                 or not verify_sig(pubkeys[party], domain, content_hash, value)
@@ -3442,7 +3444,9 @@ def _authenticated_pointer_signature_family(pointer, pubkeys):
     if (
         not isinstance(signer, str)
         or signer not in pubkeys
-        or signature.get("algorithm") not in SUPPORTED_SIGNATURE_ALGORITHMS
+        or not _string_member(
+            signature.get("algorithm"), SUPPORTED_SIGNATURE_ALGORITHMS
+        )
         or not canonical_ok
     ):
         return None

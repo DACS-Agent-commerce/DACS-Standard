@@ -62,6 +62,7 @@ class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):
             authority.get("verifiedReceiptByCanonicalRef"),
             authority.get("deliveryArtifactAuthorityByPhaseKey"),
             authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            **R._legacy_agreement_authority_kwargs(authority),
         )
 
     def _call_validate_ebfab_disposition(self, authority):
@@ -75,6 +76,7 @@ class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):
             authority.get("verifiedReceiptByCanonicalRef"),
             authority.get("deliveryArtifactAuthorityByPhaseKey"),
             authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            **R._legacy_agreement_authority_kwargs(authority),
         )
 
     def test_algorithm_array_rejected_without_exception_ebfab(self):

@@ -649,6 +649,12 @@ effect is not authority. `amount` MUST equal `agreement.terms.price`; `railId` a
 identity, job, session, agreement, Listing, terms, and rail hash MUST match the
 independently resolved source. `idempotencyKey` is
 `sha256(UTF8("dacs-laa-reservation-idem:v1:" || jobId || ":" || bare_integer(phaseIndex)))`.
+Both pre-effect authorization and post-effect transition consumption MUST first
+require the presented key to be a non-empty NFC string with no leading or
+trailing whitespace. An empty, whitespace-only, non-NFC, padded, or non-string
+key is malformed and returns `error`; a well-formed canonical key that differs
+from the value recomputed above returns `fail`. Neither condition authorizes a
+payment or transition completion.
 
 The canonical form omits `signatures`. Each required signer signs
 `"dacs-legacy-payment-reservation:v1:" || sha256(canonical_form)`. The exact

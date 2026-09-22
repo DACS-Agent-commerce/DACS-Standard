@@ -51,6 +51,58 @@ def authority_reference(name, phase_key):
     }
 
 
+def current_laa_phase_carrier(
+    bundle, listing, phase_key, record, ref, receipt, execution
+):
+    """Build deterministic authenticated current-agreement authority for SEB."""
+    agreement_hash = hashlib.sha256(
+        ("current-agreement:" + bundle["jobId"] + ":" + phase_key).encode()
+    ).hexdigest()
+    session_id = "session-" + hashlib.sha256(
+        (bundle["jobId"] + ":" + phase_key).encode()
+    ).hexdigest()
+    orchestrator = execution["phaseOrchestrator"]
+    laa = {
+        "operation": "authorize-payment",
+        "pipelineHasPayment": True,
+        "agreement": {
+            "artifact": "payee-bound",
+            "shape": "valid",
+            "partySignaturesValid": True,
+            "contentHash": agreement_hash,
+            "jobId": bundle["jobId"],
+            "phase": record["phase"],
+            "listingRef": copy.deepcopy(bundle["listingRef"]),
+            "pbVerified": True,
+        },
+        "sessionAuthority": {
+            "state": "verified",
+            "jobId": bundle["jobId"],
+            "sessionId": session_id,
+            "orchestratorPrimaryClaim": orchestrator,
+        },
+    }
+    binding = {
+        "laaContentHash": hashlib.sha256(F.canonical(laa)).hexdigest(),
+        "bundleContentHash": F.bundle_hash(bundle),
+        "listingRef": copy.deepcopy(bundle["listingRef"]),
+        "listingContentHash": F.listing_hash(listing),
+        "agreementContentHash": agreement_hash,
+        "jobId": bundle["jobId"],
+        "sessionId": session_id,
+        "phaseKey": phase_key,
+        "phaseIndex": execution["phaseIndex"],
+        "phase": record["phase"],
+        "phaseOrchestrator": orchestrator,
+        "evidenceSigner": record["signature"]["signer"],
+        "evidenceContentHash": F.evidence_hash(record),
+        "evidenceRef": copy.deepcopy(ref),
+        "evidenceReceiptHash": hashlib.sha256(F.canonical(receipt)).hexdigest(),
+        "receiptWriter": receipt["writer"],
+    }
+    return {"laa": laa, "binding": binding}
+
+
 def make_authority(name, definition, signing_keys):
     job_id = f"SEB-AUTHORITY-{name}"
     listing = make_listing(
@@ -290,6 +342,33 @@ def make_authority(name, definition, signing_keys):
         ),
         "bundleLifecycle": bundle_lifecycle,
     }
+    current_laa_by_phase_key = {}
+    for ref in settlement_evidence:
+        ref_key = F.canonical(ref).decode("utf-8")
+        record = reference_validation_by_canonical_ref[ref_key]["record"]
+        if (
+            record.get("phase", "").startswith("pay-")
+            and record.get("outcome") == "success"
+        ):
+            phase_key = next(
+                key for key, execution in session_execution_authority_by_phase_key.items()
+                if execution.get("phaseIndex")
+                == next(
+                    entry["index"] for entry in phase_summary
+                    if entry.get("attestationRef") == ref
+                )
+                and execution.get("phaseKind") == record.get("phase")
+            )
+            current_laa_by_phase_key[phase_key] = current_laa_phase_carrier(
+                bundle,
+                listing,
+                phase_key,
+                record,
+                ref,
+                verified_receipt_by_canonical_ref[ref_key],
+                session_execution_authority_by_phase_key[phase_key],
+            )
+    authority["legacyAgreementAuthorityByPhaseKey"] = current_laa_by_phase_key
     cross_phase_reuse = definition.get("crossPhaseDeliveryReuse")
     if cross_phase_reuse is not None:
         apply_cross_phase_delivery_reuse(

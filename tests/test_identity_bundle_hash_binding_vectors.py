@@ -2348,12 +2348,91 @@ def _terminal_listing_admission_gate(
     return mapped, f"terminal-listing-admission-{reason}"
 
 
+def _current_terminal_laa_carriers(
+    context: dict,
+    bundle: dict,
+    listing: dict,
+    reference_validation: dict[str, dict],
+    execution_by_phase: dict[str, dict],
+    verified_receipts: dict[str, dict],
+) -> dict[str, dict]:
+    """Close the IBH fixture's authenticated current agreement over each payment."""
+    agreement = context.get("agreement")
+    if not isinstance(agreement, dict):
+        return {}
+    artifact = next((
+        artifact_name
+        for discriminator, artifact_name in (
+            ("identityBoundPayeeAgreementVersion", "identity-bound-payee"),
+            ("payeeBoundAgreementVersion", "payee-bound"),
+            ("identityBoundAgreementVersion", "identity-bound"),
+        )
+        if discriminator in agreement
+    ), None)
+    if artifact is None:
+        return {}
+    carriers = {}
+    for phase_key, execution in execution_by_phase.items():
+        if not phase_key.split(":", 1)[-1].startswith("pay-"):
+            continue
+        reference = next((
+            candidate
+            for candidate in bundle.get("settlementEvidence", [])
+            if canonical_key(candidate) in reference_validation
+            and reference_validation[canonical_key(candidate)]["record"].get("phase")
+            == execution.get("phaseKind")
+        ), None)
+        if reference is None:
+            continue
+        reference_key = canonical_key(reference)
+        record = reference_validation[reference_key]["record"]
+        if record.get("outcome") != "success":
+            continue
+        orchestrator = execution.get("phaseOrchestrator")
+        agreement_hash = bundle.get("agreementRef", {}).get("contentHash")
+        laa = {
+            "operation": "authorize-payment",
+            "pipelineHasPayment": True,
+            "agreement": {
+                "artifact": artifact,
+                "shape": "valid",
+                "partySignaturesValid": True,
+                "contentHash": agreement_hash,
+                "jobId": bundle.get("jobId"),
+                "phase": record.get("phase"),
+                "listingRef": copy.deepcopy(bundle.get("listingRef")),
+                "pbVerified": artifact in {"payee-bound", "identity-bound-payee"},
+                "ibhVerified": artifact in {"identity-bound", "identity-bound-payee"},
+            },
+            "sessionAuthority": {
+                "state": "verified",
+                "jobId": bundle.get("jobId"),
+                "sessionId": "session:" + str(bundle.get("jobId")),
+                "orchestratorPrimaryClaim": orchestrator,
+            },
+        }
+        carrier = reputation_reference.make_laa_phase_carrier(
+            laa,
+            bundle,
+            listing,
+            phase_key,
+            record,
+            reference,
+            verified_receipts.get(reference_key),
+            execution,
+        )
+        if carrier is not None:
+            carriers[phase_key] = carrier
+    return carriers
+
+
 def validate_terminal_authority(
     context: dict,
     bundle: dict,
     phase: str,
     effective: list[dict] | None = None,
-    *, trusted_contexts=None, listing_admission=None, require_listing_admission=True
+    *, trusted_contexts=None, listing_admission=None,
+    require_listing_admission=True, archival=False,
 ) -> tuple[str, str]:
     verifier_context = context.get("verifierContext")
     authority = (
@@ -2592,7 +2671,23 @@ def validate_terminal_authority(
             public_keys[party["primaryClaim"]] = key_bytes(party["primaryClaim"])
     except (KeyError, TypeError, ValueError):
         return "error", "malformed-input"
-    seb_disposition, seb_reason, _ = reputation_reference.validate_ebfab_disposition(
+    seb_validator = (
+        reputation_reference.validate_archival_audit_ebfab_disposition
+        if archival else reputation_reference.validate_ebfab_disposition
+    )
+    seb_kwargs = {}
+    if not archival:
+        seb_kwargs["legacy_agreement_authority_by_phase_key"] = (
+            _current_terminal_laa_carriers(
+                context,
+                bundle,
+                context.get("listing"),
+                reference_validation,
+                execution_by_phase,
+                verified_receipts,
+            )
+        )
+    seb_disposition, seb_reason, _ = seb_validator(
         bundle,
         context.get("listing"),
         public_keys,
@@ -2612,6 +2707,7 @@ def validate_terminal_authority(
         additional_commit_phase=(
             phase if phase != generator.PHASES["agreement"] else None
         ),
+        **seb_kwargs,
     )
     if seb_disposition != "pass":
         return seb_disposition, f"terminal-seb-invalid:{seb_reason}"
@@ -2751,6 +2847,7 @@ def validate_historical_stage(
             context, bundle, generator.PHASES[artifact],
             trusted_contexts=trusted_contexts,
             require_listing_admission=False,
+            archival=True,
         )
         if status != "pass":
             return status, reason
@@ -3047,6 +3144,16 @@ def terminal_reputation_authority(context: dict, artifact: str) -> dict:
         ),
         "additionalCommitPhase": generator.PHASES[artifact],
     }
+    result["legacyAgreementAuthorityByPhaseKey"] = (
+        _current_terminal_laa_carriers(
+            context,
+            bundle,
+            context["listing"],
+            reference_validation,
+            execution_by_phase,
+            verified_receipts,
+        )
+    )
     if any(
         step.get("kind") == "pay-alternative"
         for step in context["listing"]["pipeline"]

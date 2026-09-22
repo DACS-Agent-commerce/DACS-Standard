@@ -6,10 +6,12 @@ import hashlib
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import dacs5_reference as R
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from test_bundle_settlement_evidence_bijection_vectors import (
+    refreshed_laa_phase_carriers,
     replace_top_record,
     resign_inner_artifact,
 )
@@ -499,6 +501,50 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
                 "blockRef": {"id": "fixture-current-block"},
                 "evidence": {"kind": "fixture-proof", "value": "verified"},
             })
+        authority = entry["authority"]
+        bundle = entry["bundle"]
+        phase_key, execution = next(iter(
+            authority["sessionExecutionAuthorityByPhaseKey"].items()
+        ))
+        ref = bundle["phaseSummary"][execution["phaseIndex"]]["attestationRef"]
+        ref_key = R.canonical(ref).decode("utf-8")
+        record = authority["referenceValidationByCanonicalRef"][ref_key]["record"]
+        receipt = authority["verifiedReceiptByCanonicalRef"][ref_key]
+        agreement_hash = hashlib.sha256(
+            (bundle["jobId"] + ":current-agreement").encode()
+        ).hexdigest()
+        laa = {
+            "operation": "authorize-payment",
+            "pipelineHasPayment": True,
+            "agreement": {
+                "artifact": "payee-bound",
+                "shape": "valid",
+                "partySignaturesValid": True,
+                "contentHash": agreement_hash,
+                "jobId": bundle["jobId"],
+                "phase": record["phase"],
+                "listingRef": copy.deepcopy(bundle["listingRef"]),
+                "pbVerified": True,
+            },
+            "sessionAuthority": {
+                "state": "verified",
+                "jobId": bundle["jobId"],
+                "sessionId": bundle["jobId"] + ":session",
+                "orchestratorPrimaryClaim": execution["phaseOrchestrator"],
+            },
+        }
+        authority["legacyAgreementAuthorityByPhaseKey"] = {
+            phase_key: R.make_laa_phase_carrier(
+                laa,
+                bundle,
+                authority["listing"],
+                phase_key,
+                record,
+                ref,
+                receipt,
+                execution,
+            )
+        }
         return entry
 
     def _with_authenticated_absence(self, present_entry):
@@ -659,8 +705,13 @@ class EntitlementCredentialRefBoundaryTests(unittest.TestCase):
             authority["deliveryArtifactAuthorityByPhaseKey"],
             authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         )
-        boolean_result = R.validate_ebfab(*args)
-        disposition_result = R.validate_ebfab_disposition(*args)
+        kwargs = {
+            "legacy_agreement_authority_by_phase_key": (
+                refreshed_laa_phase_carriers(authority)
+            )
+        }
+        boolean_result = R.validate_ebfab(*args, **kwargs)
+        disposition_result = R.validate_ebfab_disposition(*args, **kwargs)
         return boolean_result, disposition_result
 
     def _mutate_entitlement(self, authority, mutation, *, credential_free=False):
@@ -862,6 +913,49 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
                 )
                 self.assertEqual("fail", decision)
                 self.assertIn("not authenticated", reason)
+
+    def test_current_use_historical_branch_propagates_four_state_disposition(self):
+        job = {
+            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "substrate": "fixture",
+            "roles": {"buyer": {}, "seller": {}},
+        }
+        bundle = {
+            "evidenceBoundFaultBundleVersion": "1",
+            "jobId": job["jobId"],
+            "outcome": "completed",
+        }
+        resolved = {
+            "decision": "pass",
+            "disposition": "present",
+            "bundle": bundle,
+        }
+        for disposition in ("error", "indeterminate", "fail"):
+            with self.subTest(disposition=disposition), patch(
+                "dacs5_reference._resolve_current_use_role",
+                side_effect=[copy.deepcopy(resolved), copy.deepcopy(resolved)],
+            ), patch(
+                "dacs5_reference._job_successful_payment_without_strong_finality",
+                return_value=True,
+            ), patch(
+                "dacs5_reference._authority_for_bundle", return_value={}
+            ), patch(
+                "dacs5_reference.validate_legacy_ebfab_disposition",
+                return_value=(disposition, "archival disposition", None),
+            ) as disposition_validator, patch(
+                "dacs5_reference.validate_legacy_ebfab",
+                side_effect=AssertionError("boolean wrapper must not be called"),
+            ):
+                result = R._resolve_current_use_job(
+                    job,
+                    {},
+                    {"publicKeys": self.pubkeys},
+                    {},
+                    {},
+                )
+                self.assertEqual(disposition, result["decision"])
+                self.assertIn("archival disposition", result["reason"])
+                disposition_validator.assert_called_once()
 
 
 if __name__ == "__main__":

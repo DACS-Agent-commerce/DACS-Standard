@@ -614,24 +614,46 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         absent_trust["copyDispositionByJobRole"] = {
             case["bundle"]["jobId"] + ":buyer": "absent"
         }
-        malformed = copy.deepcopy(older_entry)
-        receipt = next(iter(malformed["authority"]["verifiedReceiptByCanonicalRef"].values()))
-        receipt["transaction"] = None
         absent = reconcile_authenticated_finality_copies(
             [{"disposition": "absent", "expectedJobId": case["bundle"]["jobId"],
-              "expectedRole": "buyer"}, malformed], self.pubkeys, absent_trust
+              "expectedRole": "buyer"}, copy.deepcopy(older_entry)],
+            self.pubkeys,
+            absent_trust,
         )
-        self.assertNotEqual("pass", absent["decision"])
+        self.assertEqual("indeterminate", absent["decision"])
+        self.assertEqual(
+            "archival EBFAB requires independently passing finality-bound authority",
+            absent["reason"],
+        )
         self.assertIsNone(absent["bundle"])
 
         invalid_strong = copy.deepcopy(strong_entry)
         key = next(iter(invalid_strong["authority"]["finalityVerificationByCanonicalRef"]))
         invalid_strong["authority"]["finalityVerificationByCanonicalRef"][key]["context"]["observation"]["transactionRef"]["txHash"] = "ff" * 32
         invalid = reconcile_authenticated_finality_copies(
-            [invalid_strong, malformed], self.pubkeys, self.trust
+            [invalid_strong, copy.deepcopy(older_entry)], self.pubkeys, self.trust
         )
-        self.assertNotEqual("pass", invalid["decision"])
+        self.assertEqual("fail", invalid["decision"])
+        self.assertEqual(
+            "FV rejected successful payment: observation transaction reference differs from signed evidence",
+            invalid["reason"],
+        )
         self.assertIsNone(invalid["bundle"])
+
+        malformed = copy.deepcopy(older_entry)
+        receipt = next(
+            iter(malformed["authority"]["verifiedReceiptByCanonicalRef"].values())
+        )
+        receipt["transaction"] = None
+        malformed_archival = reconcile_authenticated_finality_copies(
+            [strong_entry, malformed], self.pubkeys, self.trust
+        )
+        self.assertEqual("fail", malformed_archival["decision"])
+        self.assertEqual(
+            "evidence does not resolve to exactly one authenticated phase receipt",
+            malformed_archival["reason"],
+        )
+        self.assertIsNone(malformed_archival["bundle"])
 
     def test_reconciliation_executes_conflict_absence_and_indeterminate_paths(self):
         case = self.strong["block-depth"]

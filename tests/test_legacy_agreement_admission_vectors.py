@@ -98,7 +98,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertNotIn("reservationHash", case["input"]["settlementEvidence"])
         transition = case["input"]["transitionEvidence"]
         self.assertEqual(
-            transition["discriminator"], "legacyTransitionEvidenceVersion:1"
+            transition["legacyTransitionEvidenceVersion"], "1"
         )
         self.assertNotIn("evidenceVersion", transition)
         self.assertEqual(

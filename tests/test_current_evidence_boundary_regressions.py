@@ -122,7 +122,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         record["deliverableAnchor"]["locator"] = (
             "dacs4:deliverable:%s:0" % CURRENT_JOB
         )
-        self._resign_record(record)
+        self._resign_record(record, signer_role="orchestrator")
         new_ref = copy.deepcopy(old_ref)
         new_ref["contentHash"] = R.delivery_evidence_hash(record)
         new_key = R.canonical(new_ref).decode("utf-8")

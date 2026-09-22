@@ -2,7 +2,7 @@
   "set": "bundle-settlement-evidence-bijection-v0.4",
   "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
   "artifactType": "EvidenceBoundFaultAttestationBundle",
-  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. authenticatedRecordByRef represents independently resolved, job-bound evidence content; the authenticated phase and uniquely verified signature domain fix its family before the selector is checked. Payment members are SettlementEvidence, current delivery members are DeliveryEvidence, and PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, entitlement/credential, or payload-attestation/method-proof closure required before successful current or legacy delivery evidence can authorize its phase; legacy closure retains its original unindexed addresses and cannot synthesize credential binding. Each inner dependency is keyed by its complete canonical reference in the authenticated receipt map, with exact lifecycle, storage-byte, ACL, or encryption-recipient authority. trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the complete canonical methodTransactionRef; it is not a portable consensus-proof format. The record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
+  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. authenticatedRecordByRef represents independently resolved, job-bound evidence content; the authenticated phase and uniquely verified signature domain fix its family before the selector is checked. Payment members are SettlementEvidence, current delivery members are DeliveryEvidence, and current DeliveryEvidence plus its top-level receipt are controlled by the authenticated phase orchestrator even when that role is distinct from the seller that writes deliverables, EntitlementRecords, and credentials; PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, entitlement/credential, or payload-attestation/method-proof closure required before successful current or legacy delivery evidence can authorize its phase; legacy closure retains its original unindexed addresses and cannot synthesize credential binding. Each inner dependency is keyed by its complete canonical reference in the authenticated receipt map, with exact lifecycle, storage-byte, ACL, or encryption-recipient authority. trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the complete canonical methodTransactionRef; it is not a portable consensus-proof format. The record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
   "reasonCodes": [
     "ok",
     "execution-authority",
@@ -220,9 +220,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "anubV5XtP4akDSLZaVdDTi2W2PMEBeyG1_1jsNy3aIqHLAifO0ZAyKQ4x9_HKRZwgbxuAaet9B0KaRu2KrEGBA"
+              "value": "rtrwmGXYXJhlNa24iZqGTJfqPwwQL8QnP8PgEBaT38DHrRfbhMyomkMjCuM_CrRDNsmZ0YuMYb7DNVHaSIeGCg"
             }
           },
           "lifecycle": {
@@ -243,7 +243,7 @@
           "jobId": "SEB-AUTHORITY-standard-completed",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-standard-completed:3",
           "agreementHash": "0b45453c0952a91fada8100c84158f0b22f47c8348acd1b1ee152e377fc78878"
         }
@@ -374,7 +374,7 @@
             "kind": "demos-transaction",
             "value": "tx-a4bc042030c5bf89ed8b3993acb65a63"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -974,9 +974,9 @@
             },
             "observedAt": 1785772799002,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "EdyPtsJqFg7WyacPPRqgOFCkbUM_3ek7CCXJFHaUQZZ8USmzbRBCTWqmjbfjgO5MQ_F2erpOlijTVTqYHpaECg"
+              "value": "5uSmbm8N107gNaGLaf4i0vGnO-1LHTDN7y9QJvq83qY6ZowQsoTPXw40xdhjGDW-qaa3kYNEwAI56kAXLutDAg"
             }
           },
           "lifecycle": {
@@ -1004,7 +1004,7 @@
           "jobId": "SEB-AUTHORITY-repeated-pay-completed",
           "phaseIndex": 2,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-pay-completed:2"
         }
       },
@@ -1138,7 +1138,7 @@
             "kind": "demos-transaction",
             "value": "tx-af2ff7ad447826b9813cb5fc485707c3"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "2",
           "state": "finalized",
           "observationDisposition": "established",
@@ -1322,9 +1322,9 @@
             "observedAt": 1785772799000,
             "reason": "permanent",
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "QyULKsJKdmRnYKj5uVzzQCx3mNVOCBbqpkP4H8S1kVCRKGvmdpXMm4CqKcJ-guzrT-0WcsezjvxKY-KZy37fBg"
+              "value": "UO0OS3eLZIfeldoR1UiwvNf5-YMAPsoSsNOikU6faAsc_IaqLGVKFJCOVsxQe5rf0jaNEvvq4u8qOelxpWe3DQ"
             }
           },
           "lifecycle": {
@@ -1338,7 +1338,7 @@
           "jobId": "SEB-AUTHORITY-failed-delivery",
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-failed-delivery:0"
         }
       },
@@ -1354,7 +1354,7 @@
             "kind": "demos-transaction",
             "value": "tx-2d5a9b4d461d155cc1066956ed543b5f"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "included",
           "observationDisposition": "established",
@@ -1811,9 +1811,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "9_KtVtqVodNMsM5tSH9lD3ZzIJ3hsS0pp27Pfi1Mpd4vVDLNSCsfuy72zKPnCLhU1mb2j8btIBFxjYobglbBDw"
+              "value": "HVAawlcJugbFxnOYxEWQqKUsaXSLss5HQ-ncfxepkSF1_p7y8SC3Z6lv2ilJu-pSFccl9RPupFYNIy3fwwtmBw"
             }
           },
           "lifecycle": {
@@ -1834,7 +1834,7 @@
           "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-bundle-signature:3",
           "agreementHash": "bcb3196b4f7c46bc44df1d6d2722fd920ba42bdbee6e896f8926457b00fce412"
         }
@@ -1965,7 +1965,7 @@
             "kind": "demos-transaction",
             "value": "tx-48f2c6557c828e600059772bc64075eb"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -2282,9 +2282,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "rqrFlksmB9VMnfdxbrdJ8s-RAXn3gDic8I6jSC-VGymt69N03tqbk_fViWgJLqQo6xq4eDflMssRQvmobjh3Bg"
+              "value": "vqlzDtq1YeZ1vYnXCiaxDGSnxsOznvim-0keYiPaNMd9qR8i7XJkUEdy0qCY8pWPu_PQ1DBCpcTu0Z6cWfJfDg"
             }
           },
           "lifecycle": {
@@ -2305,7 +2305,7 @@
           "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-mismatched-listing-signer:3",
           "agreementHash": "15660e54217fe594d53d3ceb73922d5ab0cb6ccc9477f23372decfb5cb1df752"
         }
@@ -2436,7 +2436,7 @@
             "kind": "demos-transaction",
             "value": "tx-7315dc9158019c4a8e1043355c43d69a"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -2753,9 +2753,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "DkbOubLA2nl8piVcjFZHsQQDs-0J94lNHPufrIW79KoyJ1PCuGwQN_WHqQ0Mj1yoSzoxKb_AKslEZSLhxPRhAw"
+              "value": "HUk3nIeKueAGSAi4RsmGkNhWbLKUO4Xdbg-8y4r2EyPld98Axc4Lzy8K0LyLgTutLypcCvphaB9AcCFCfMIQAA"
             }
           },
           "lifecycle": {
@@ -2776,7 +2776,7 @@
           "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3",
           "agreementHash": "bc68fd268cd97fc1982a67e13d50185a8c50ea3fcc2d43d5dd4625edbe773fab"
         }
@@ -2907,7 +2907,7 @@
             "kind": "demos-transaction",
             "value": "tx-fe722aecfe3224fb2233011b1d01aa96"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -3729,9 +3729,9 @@
             "observedAt": 1785772799000,
             "reason": "substrate",
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "tk3YELadDF8pk7Tl8crmvFdbercGBtAT2Fe0qGc6osnjUk8sBsWMh3KlX2E6Xp6dYgRpZvGnokenSfoJTk-LAA"
+              "value": "Fht0f2G2KuOk2nNEhuJAEcNT7PZ9FVMzzCxbgXS2KkkCVh8wjGgUbiS56-K0CYtGsRuTuzIzMkoRNWVxQYQoDQ"
             }
           },
           "lifecycle": {
@@ -3745,7 +3745,7 @@
           "jobId": "SEB-AUTHORITY-invalid-failed-outcome-error-class",
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-failed-outcome-error-class:0"
         }
       },
@@ -3761,7 +3761,7 @@
             "kind": "demos-transaction",
             "value": "tx-642c53df13711d3962a7937f1cdcb42f"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "included",
           "observationDisposition": "established",
@@ -4051,9 +4051,9 @@
             "observedAt": 1785772799000,
             "reason": "transient",
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "K-QbyUpbniHvJpV3qgq9FGOJXRNMrXZe4HXoA6VOwVbgZCta_GC098wEQOvWJSST-SQE0w9XYM1uZVLPOz7CCA"
+              "value": "bxxIgv4rtBrOWQkt6FLt0inALse5RBirq7SFoHVQ5wPIAuCZQ4Cq4CyFhKp06TE38UkBRd0CkmqTCeWpDCs7AQ"
             }
           },
           "lifecycle": {
@@ -4067,7 +4067,7 @@
           "jobId": "SEB-AUTHORITY-transient-retry-exhausted",
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-transient-retry-exhausted:0"
         }
       },
@@ -4083,7 +4083,7 @@
             "kind": "demos-transaction",
             "value": "tx-8467ddc27477fc30b53a32e80a7ab9be"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "included",
           "observationDisposition": "established",
@@ -4207,9 +4207,9 @@
             "observedAt": 1785772799000,
             "reason": "transient",
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "LSlpJJLC-ndfJ6aOtZIKcqSduU155iGiCg7aE7o-RrPFbzgDQ9oXWeVfIIpfpQfr-Bkk9KUlXbtRRQdTR1EsCg"
+              "value": "1wThKxmaGSWei4gS5fNx7vivY5Y9pJDUzjYvVVhaFlsH70oTNdr4ioOQtXR8IquLTHOcuk46ymDpslwRI3JZCg"
             }
           },
           "lifecycle": {
@@ -4223,7 +4223,7 @@
           "jobId": "SEB-AUTHORITY-invalid-transient-not-exhausted",
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-transient-not-exhausted:0"
         }
       },
@@ -4239,7 +4239,7 @@
             "kind": "demos-transaction",
             "value": "tx-7f6da1e0b550b6f8797f0397474ab80e"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "included",
           "observationDisposition": "established",
@@ -5122,9 +5122,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "p4NKDy65JVnNgr2SOPdHHykSMcjw_JmfznATRZn7c4-qxNT1RO--7Y3ktoSDA6gZThMJarvMPu5xXxPFdDgJCg"
+              "value": "mf4RjgmCG-zfLsSu-n73AA_YUwQ_CG2KgWcH0jBfHrRrmUl27dRZTY07R0JBB2kYC3DTeUgHcSlhy6UNkdgpDw"
             }
           },
           "lifecycle": {
@@ -5145,7 +5145,7 @@
           "jobId": "SEB-AUTHORITY-invalid-deliverable-locator-closure",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-deliverable-locator-closure:3",
           "agreementHash": "f35e48ce03b976614ee6e10cf6e9a8e081baf232dc405095cb9fd360245cc239"
         }
@@ -5276,7 +5276,7 @@
             "kind": "demos-transaction",
             "value": "tx-e2c9780f244054b943838c9b94483f91"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -5593,9 +5593,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "169xYYeir10DfhGa_x1Fla3Mkc2Bew7bXh3Ny1eWUjolkxv_3gTLMlDq4kt0WGZE-P-k3llQUhFPkxx1agjlBw"
+              "value": "Sku7l4jAqznBv5kRftMa5Zv_9r5ZJggSmO6hRby-8LP1UQLXAiBb0La5MgUxGyB6e_CejJPYP8qLqCgkd7-WCQ"
             }
           },
           "lifecycle": {
@@ -5616,7 +5616,7 @@
           "jobId": "SEB-AUTHORITY-invalid-attestation-locator-closure",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-attestation-locator-closure:3",
           "agreementHash": "d3a3c5ddc90dfbc5c4e3c0ebddac6967d1323aadf449e0e38e0a57d3d99d902b"
         }
@@ -5747,7 +5747,7 @@
             "kind": "demos-transaction",
             "value": "tx-eac06f54daf323274d32bf5ae8f1aa03"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -6064,9 +6064,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "opp3I7il9uzOBCUEJ5FPUlK3boa4xmiHBaF2wYZMECQEtS0NUrOzmO-RRHdXTfkxeA3YEZDR-Qt5fq6BQO6KDA"
+              "value": "8Gds9tAxjPNw5ou6rE2-r6YwDnab8xNah2kDgwtDU1cC62ISC6bVcLV8IFi0yRp99zY7bcM6VyKRQwx_Ee5tCw"
             }
           },
           "lifecycle": {
@@ -6087,7 +6087,7 @@
           "jobId": "SEB-AUTHORITY-invalid-attestation-content-hash-closure",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-attestation-content-hash-closure:3",
           "agreementHash": "2b0cfad9c9aae61844a10434f59f03274f967d5241b1756a6159b7a97ce71911"
         }
@@ -6218,7 +6218,7 @@
             "kind": "demos-transaction",
             "value": "tx-dda5f68c787dab133d3039fed7cfb13e"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -6575,9 +6575,9 @@
             },
             "observedAt": 1785772799002,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "T50NHGNr5nIleun1hcX_GQBn5fSc52lm8pV9CpN7sz-_cXEIzBa86i7GjEjfO8D1n5eTlP8HSKv5NxLNs80BDg"
+              "value": "8IsaBvQknOlOT2gRi0pCLxQCAqXJc_ZgT9mPePYkZ9ulW-FYQqg1F6dAIpaZ6ejFuj13FWuLEarbDHu8hpWmCA"
             }
           },
           "lifecycle": {
@@ -6605,7 +6605,7 @@
           "jobId": "SEB-AUTHORITY-invalid-entitlement-locator-closure",
           "phaseIndex": 2,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-entitlement-locator-closure:2"
         }
       },
@@ -6739,7 +6739,7 @@
             "kind": "demos-transaction",
             "value": "tx-ca0b4c88210831f0d992ec8ead78f64e"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "2",
           "state": "finalized",
           "observationDisposition": "established",
@@ -7037,9 +7037,9 @@
             },
             "observedAt": 1785772799002,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "lPtnnsYb6w7i0venRUIb3ny-X2ZPscx9PBSn2vonYlZWTm2oDTYKLi7DRxZYabWj2iTKWyzUu1s9EbATeBf4AA"
+              "value": "VYxTwZFSABT4K1Z4NXYnnLch7kzBdW_eGbgyFpSs__x_VJjtmMeZ2PFoZAuJ-Sq25szen2VVCKb4toVr7un6BQ"
             }
           },
           "lifecycle": {
@@ -7067,7 +7067,7 @@
           "jobId": "SEB-AUTHORITY-invalid-credential-delivery-omitted",
           "phaseIndex": 2,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-credential-delivery-omitted:2"
         }
       },
@@ -7201,7 +7201,7 @@
             "kind": "demos-transaction",
             "value": "tx-86885d08e007178f3a376e17912fe101"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "2",
           "state": "finalized",
           "observationDisposition": "established",
@@ -7388,9 +7388,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "FqZPw0PTkem7XSjeBfFlkN1Cu-A9kl_mJyDuqrBhGSjvSLiDzwvdwbEU0i-rezUDxli96ObAbysxZfuNsyLKBA"
+              "value": "M-bRDi8sjlxc6FGTRBxbGRAw8yJyK15K9X6zbtjCQ-K1cXP0Unascf6xvhF3GiWJI6ayX54iXmh5UsXpb2QzCg"
             }
           },
           "lifecycle": {
@@ -7404,7 +7404,7 @@
           "jobId": "SEB-AUTHORITY-completed-storage-delivery",
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-completed-storage-delivery:0"
         }
       },
@@ -7452,7 +7452,7 @@
             "kind": "demos-transaction",
             "value": "tx-8d0f5b0cbe197661268ab729cac64e2f"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -7719,9 +7719,9 @@
             },
             "observedAt": 1785772799002,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "iswt6H5p9C9SKYKLBgjHxvqu0r80mE7iCr18lv3j1Vf8GUR7lGuEhPMyaG3UezIgnKd88vJnqQq_sHpm7j3FAQ"
+              "value": "C5EQuLj7DZE7-G2nqAuUYyaEW-U_agF7oET-wku_dg3KgRRzaUDCCCRurPxKHojf5hHmp_K8Jarwfb3g4gAIAQ"
             }
           },
           "lifecycle": {
@@ -7749,7 +7749,7 @@
           "jobId": "SEB-AUTHORITY-invalid-entitlement-duration-closure",
           "phaseIndex": 2,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-entitlement-duration-closure:2"
         }
       },
@@ -7883,7 +7883,7 @@
             "kind": "demos-transaction",
             "value": "tx-fefe88628f6c18e59eaec038619ca42a"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "2",
           "state": "finalized",
           "observationDisposition": "established",
@@ -8196,9 +8196,9 @@
             },
             "observedAt": 1785772799002,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "EDJPECZ7Xo7-ktMf_hyBg4GEB5ACxOF2cBGgd8njhePHyN5Og5RtahhfHnpUEOJk9DScpzGrQERZsBPajageBA"
+              "value": "ACEe7ekjdRpcuUx5WSAms0rFNp7MsewbKiGsYf0NsML-uH8FJAUucp-fPzJ-FjNjw3LAgHZ3azVbu33aAR1WDw"
             }
           },
           "lifecycle": {
@@ -8226,7 +8226,7 @@
           "jobId": "SEB-AUTHORITY-invalid-entitlement-renewable-closure",
           "phaseIndex": 2,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-entitlement-renewable-closure:2"
         }
       },
@@ -8360,7 +8360,7 @@
             "kind": "demos-transaction",
             "value": "tx-f54d04c62cf1fc9ddb425ef052c8ef8e"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "2",
           "state": "finalized",
           "observationDisposition": "established",
@@ -8633,9 +8633,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "IvqFshRvpa9B03O4ITt7CNbb0kPiLBhzKbyd3fdBHdArYBswRyPvrLyRqJ-9k-ibOt0n5krQ6dPKASSXfzW3BQ"
+              "value": "rVKHTqwaxsBLsm8jKkW2zWtLgiWW7oCfux-Qx-MPffmxSI0M0Fh8ijXrkYgTZRmC2NKOx1-7DUwRMbjNnZ1XAw"
             }
           },
           "lifecycle": {
@@ -8656,7 +8656,7 @@
           "jobId": "SEB-AUTHORITY-unavailable-native-transaction-observation",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-unavailable-native-transaction-observation:3",
           "agreementHash": "cefc70155005b89630c8823f047f50c8c1dd6203b81666de4e075dfb1fcc5fa1"
         }
@@ -8787,7 +8787,7 @@
             "kind": "demos-transaction",
             "value": "tx-5003873f19d3410ccefae9d8131c8584"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -9082,9 +9082,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "Hrbd1zciFS3avjGV5DkZJvCwi5Nn2RP1aCU5KfoceTC1jIpklCbpSP4CjlC6l7XFkETOYJXu9_tO1TgHBzRKAA"
+              "value": "8_onL4OYLrlPFQesnBgDBza-kivyUh_5IKf8dP95SIUwr1O1yKM_w1hHSjgKRP3uLnawN_67fxkfr0pFJfwhBQ"
             }
           },
           "lifecycle": {
@@ -9105,7 +9105,7 @@
           "jobId": "SEB-AUTHORITY-unobserved-resigned-native-transaction",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-unobserved-resigned-native-transaction:3",
           "agreementHash": "841f3f1753005b12de144cab2c10f3052bac331b1391f4246f99a1350fc4c0b7"
         }
@@ -9236,7 +9236,7 @@
             "kind": "demos-transaction",
             "value": "tx-c640ab476f3bffbbc02b36760afc3baa"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -9553,9 +9553,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "l1it1lNLNNudfMB6HuXMEMXi0Xo4IqlfnjwQ-KFH2sZnEHyufKEoobul-0z65ajGVxRRreAIqV_KJz89kolcAw"
+              "value": "GzU6aRJ-5pvYUG-RGAD4MMWZHRHGlzVJZfszMr2Ijqx4TiRYh3WqSaBNahRD1XBBa6fctQTa9iKGVUG_yMVJCQ"
             }
           },
           "lifecycle": {
@@ -9576,7 +9576,7 @@
           "jobId": "SEB-AUTHORITY-invalid-native-transaction-observation",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-native-transaction-observation:3",
           "agreementHash": "2e2445a6c1581a80c59bd383b1c13a1e03a002fdced9252edb591f7e6cc5d14e"
         }
@@ -9707,7 +9707,7 @@
             "kind": "demos-transaction",
             "value": "tx-0ace4eaba2131ac5effafe14f70d82d8"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -10024,9 +10024,9 @@
             },
             "observedAt": 1785772799003,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "gpvjiB9j-3Xa8b3uShuXVP9qvJASd-Kh08zWKgJQ7VAKKk4f_NSwVxJJkO82vitnjk87c_lqNj2X1pNbaLvjCA"
+              "value": "wKqRA4gxw9xTPyvDtxooXRguM_f60AQjSRe82pJEFZLcCHug9d4BQWp-fCoMfc1QDhcp3eMiTnC1ADL3vyIcBA"
             }
           },
           "lifecycle": {
@@ -10047,7 +10047,7 @@
           "jobId": "SEB-AUTHORITY-invalid-terminal-included-native-transaction",
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-terminal-included-native-transaction:3",
           "agreementHash": "b3f3041a49cc13e8becd425a1b9565a759274872609136bda18ed62dd271b1bf"
         }
@@ -10178,7 +10178,7 @@
             "kind": "demos-transaction",
             "value": "tx-99058c2acec122bb571e6e1c1da04e4c"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "3",
           "state": "finalized",
           "observationDisposition": "established",
@@ -11892,9 +11892,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "JatjBBYbiAYgIbyR6FTFdzet6hf0zJc0gOEBVhtGa4uQZIH_G2nxacT8k1HfxhtLH0IrEz39vMLVSyCukatDCA"
+              "value": "Myr0-FbDhohm-iVSAMXDqsVjuVNftBvkV27DdfpVQDZu6GQ3d5S4xGLce0IhaR8wh2lwzZkZpc4LYan3bq9kDg"
             }
           },
           "lifecycle": {
@@ -11931,9 +11931,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "R5a122pfkC-iRmvAH7gEWXd1Esnf0i8hd7Ujl2_vA3tDpLaBSdzQm_zXHcIK5jTiZ1TOWfUkZkXnKR-TRmzUDw"
+              "value": "CaI_gmgJVVrskmQnKohjUEYagUlBO1fBkiey55NtdBaj3rfM2W5pgDM2Vf7jJ_yv30l9HKw3s-gSN-JQfE_pBA"
             }
           },
           "lifecycle": {
@@ -11947,14 +11947,14 @@
           "jobId": "SEB-AUTHORITY-cross-phase-credential-ref-reuse",
           "phaseIndex": 0,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-credential-ref-reuse:0"
         },
         "1:deliver-entitlement": {
           "jobId": "SEB-AUTHORITY-cross-phase-credential-ref-reuse",
           "phaseIndex": 1,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-credential-ref-reuse:1"
         }
       },
@@ -12036,7 +12036,7 @@
             "kind": "demos-transaction",
             "value": "tx-0d7288034a6f64a5d043178dc59d6170"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -12128,7 +12128,7 @@
             "kind": "demos-transaction",
             "value": "tx-dcdf149b15980cfaf2a320187242cdeb"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -12440,9 +12440,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "3huQnUdF2k9RpT6wc--owGCvm2Q56Ewol260caL0JCW2HfNmkbkIoUY1aUIYZzTmQ5GO0UhAiuhTwyvytnG8AQ"
+              "value": "izrstIwnGw3bZyksBEZdObdMejFd4tmoppearl7bh44qpt1pTuGGKnl9fNP18WaALhUl_qUdT42R_pclFibqDg"
             }
           },
           "lifecycle": {
@@ -12472,9 +12472,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "sN7JUxg90LRSBpdCU1hZSz4KuzDkPZGnmiEMz21F4B8mHHybdFNAw8gCB4ZZzGrQf6vLH5svi2ifdpWdsfKdCg"
+              "value": "oBfs7Jr4pR6gCwIG2vPOJ5IH3cUOi7WMoYQ6gMUzu3JTXNqetCe9MybSHyucC2L5NiZAxXMoUbAfzoaZTW0QAQ"
             }
           },
           "lifecycle": {
@@ -12488,7 +12488,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-signed-payload-reuse",
           "phaseIndex": 0,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-signed-payload-reuse:0",
           "agreementHash": "88129bb3fa425cd5c529de6c91fc14e2060e297c23c16b74eb5a0315eed086d2"
         },
@@ -12496,7 +12496,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-signed-payload-reuse",
           "phaseIndex": 1,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-signed-payload-reuse:1",
           "agreementHash": "88129bb3fa425cd5c529de6c91fc14e2060e297c23c16b74eb5a0315eed086d2"
         }
@@ -12601,7 +12601,7 @@
             "kind": "demos-transaction",
             "value": "tx-76962cfb32d0a0a044a147390edb14e9"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -12715,7 +12715,7 @@
             "kind": "demos-transaction",
             "value": "tx-8f813dd31eb27a8ff6c87fce5de477c6"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -13145,9 +13145,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "lvX9Xw6XI1NUn3BVDy-E22nQlC8HRJj9Ibc3IQLBGIXyXosKaKU5ynTHTSviAWIxOmKywwBorYCAylwNv5nrBQ"
+              "value": "4-tz6An0-mXYPPyEzN2MzaVKV1G11AYTMNawHsz9TOdoIABbNfu77-aR7_Pes-JdhPraoNLGsemXAAitgL4wAQ"
             }
           },
           "lifecycle": {
@@ -13177,9 +13177,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "2wZg0Yq0gYfzIpguOnipjOtOGWz63JOUDRRfK_n62IGIhZDy_-muvpEQ4o4-y4qsZs8H9Kp8CC5tvnG7e7FpBw"
+              "value": "v_uYiJ9ileVq4QzzS3VyBiCe0s3e_sqeJHBGl7eCZo2-BAz35SzG5qb6U4Vvn9ifAFgVwMkQjBCHy5qX3yFDAA"
             }
           },
           "lifecycle": {
@@ -13193,7 +13193,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-literal-method-ref-reuse",
           "phaseIndex": 0,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-literal-method-ref-reuse:0",
           "agreementHash": "53ec345e2711630a6d8d548c934daa4fbe8c820f1c161766a39ade7d59844a7e"
         },
@@ -13201,7 +13201,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-literal-method-ref-reuse",
           "phaseIndex": 1,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-literal-method-ref-reuse:1",
           "agreementHash": "53ec345e2711630a6d8d548c934daa4fbe8c820f1c161766a39ade7d59844a7e"
         }
@@ -13306,7 +13306,7 @@
             "kind": "demos-transaction",
             "value": "tx-9c1f31d9eb730c5de7342b8d7d3b3dde"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -13420,7 +13420,7 @@
             "kind": "demos-transaction",
             "value": "tx-9115bd01ac37d557652073fa3b9dc296"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -13850,9 +13850,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "LMzxfqGP8LNYsaViGP0s1fSjYrrXvXpSoTeXVz8irv4-18dwVjrAHzzlsyO6K-t_btmrGHoYyqcaK4TDk8PYAw"
+              "value": "ibmm_JPorjBPCn_H1-pvKVkvrrBfkM3-R-bR_sRWxHjMFj2OyjKiZSauZxuuUuHAQlHiCcnK-t9MoCbYQoj4Dg"
             }
           },
           "lifecycle": {
@@ -13882,9 +13882,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "xTobzrZzr05G-37U7vokowx46aWL07YCEsxkl6Yyi9wMt8bAPMkkX_aYu_nin3AiUWo2dWNCManVyXTKAqIwAw"
+              "value": "mE7xQT24Duqs6lLB-UXtLPga_HbaFJ52TtUur9IJQo6iSMvjTK_C1dejbISQvLOH_Eyj4MYvOZEwcTtUTUpJAQ"
             }
           },
           "lifecycle": {
@@ -13898,7 +13898,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-semantic-method-proof-reuse",
           "phaseIndex": 0,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-semantic-method-proof-reuse:0",
           "agreementHash": "0a45cb4dd0083e3693a79c74b4e6f388a4865003436d31e86c4b7ce6de31d3e0"
         },
@@ -13906,7 +13906,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-semantic-method-proof-reuse",
           "phaseIndex": 1,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-semantic-method-proof-reuse:1",
           "agreementHash": "0a45cb4dd0083e3693a79c74b4e6f388a4865003436d31e86c4b7ce6de31d3e0"
         }
@@ -14011,7 +14011,7 @@
             "kind": "demos-transaction",
             "value": "tx-8456f52f76782fd879e3df846f63c419"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -14125,7 +14125,7 @@
             "kind": "demos-transaction",
             "value": "tx-cd5aaa598104cdd2962515bacfcfd07a"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -14584,9 +14584,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "9D7TZJr5P4Hqyf4_LcSdEHcXHdEdlsPc_zGypazFzDkQtABTU2FoJRRj3NoyVjIQ6QT8mY-KKXdLjHlN3wd0BA"
+              "value": "YFS-eJVunSDlJO__cPuZJta3oI-0k-mhq4a6sHXmwC8LbwqE03Cdn-UpUQUDzNsOEq3C8K3eb0TUoyKB9EB_DA"
             }
           },
           "lifecycle": {
@@ -14623,9 +14623,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "eD0BWkbtzKB8_IfZqHDRdvgcBXWHdwbFQ-Gw1-VjJ8q5v2njtfh_ryCVcaonUxO-dnXK3O371EGS7b5vY_cCBw"
+              "value": "3Of8rlmawBZtci7rl43yQWPsPzp0N5PauYvSLHFf1icMkJo084sVNwUoKr4dGyING4vwEGQcTk7zmo-0NoBNAw"
             }
           },
           "lifecycle": {
@@ -14639,14 +14639,14 @@
           "jobId": "SEB-AUTHORITY-cross-phase-semantic-credential-reuse",
           "phaseIndex": 0,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-semantic-credential-reuse:0"
         },
         "1:deliver-entitlement": {
           "jobId": "SEB-AUTHORITY-cross-phase-semantic-credential-reuse",
           "phaseIndex": 1,
           "phaseKind": "deliver-entitlement",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-semantic-credential-reuse:1"
         }
       },
@@ -14728,7 +14728,7 @@
             "kind": "demos-transaction",
             "value": "tx-48a861ae20a2539903bf28cd6c018446"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -14820,7 +14820,7 @@
             "kind": "demos-transaction",
             "value": "tx-40fd57a4e4750c06b73e03ef75e761bc"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -15165,9 +15165,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "AMAe3_ROF99JQi-AYGB-fJivV-XeK-Jf4CS0PoMGwY9EWQN4gsCCBjDlBNkQsnkiCm-PKhLc_4rqcBHL8IXVCQ"
+              "value": "ma-8umRE-Skc-gYH2HMRV5THDasWPSQ9nrqL8AGFHgPVmsUMewMkQttAuBrt8kqHZp2f8tlakVag0AzgSQT9DA"
             }
           },
           "lifecycle": {
@@ -15197,9 +15197,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "xHDbmi70lEWYN0CrOFSV7pXQuF6128SmyGTRjPOQh9Gs5nsy7DjtfDGH6-R1Oe-TpV2VcRhDTp0B11uLq0gLDg"
+              "value": "4QV4eOq5aUrl92YE26Uv5-IEf9Advr5hlMrDnhqEdZ49wR2gp5NVu7wi3GpoRo40IpzaA05EkJobd1-zYo_ODg"
             }
           },
           "lifecycle": {
@@ -15213,7 +15213,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
           "phaseIndex": 0,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:0",
           "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b"
         },
@@ -15221,7 +15221,7 @@
           "jobId": "SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse",
           "phaseIndex": 1,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-cross-phase-self-signed-alternate-encoding-reuse:1",
           "agreementHash": "98c369d8e3e2146bfe8ad69593ef5467aa27bc57eea4bdf3ffc44f44215d4c1b"
         }
@@ -15414,7 +15414,7 @@
             "kind": "demos-transaction",
             "value": "tx-fab3913109ec636d4908601dbfa70c3f"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -15496,7 +15496,7 @@
             "kind": "demos-transaction",
             "value": "tx-2eaa20d9b621fa83aea757b710f26ed9"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -15869,9 +15869,9 @@
             },
             "observedAt": 1785772799000,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "6OkYa6IJyb7nPvR8wrRUnp90FEK-bG679s9fZBtouxmrG_2MFU5ps5RlV0YuRZCEkPCM1FMNs3WE_FONtijDCA"
+              "value": "nEr6tQ1xkTFKk9Kd8bsOcgvcabJUdYK_WLSccDTb-cv2RuFzp9QZGx0cMkBPQKwiz13I04kr4VEr36dyaVM0Dg"
             }
           },
           "lifecycle": {
@@ -15901,9 +15901,9 @@
             },
             "observedAt": 1785772799001,
             "signature": {
-              "signer": "did:demos:seller",
+              "signer": "did:demos:orchestrator",
               "algorithm": "ed25519",
-              "value": "d-rMgf72sQ0rByWNYC2rEA5OOraNCv-9edVZ4XClyGIudWhuHc3emQWUsGyVlePeB6ELwmekmOLOWv4PbFFzAw"
+              "value": "2aRQBWNriEbWQiDMoPuNEosgWJHqC3pSvZY8Ec1LoqrwcOqiGepIDKdWsqimsH10tzbx-0an-gphEDar2QGmCA"
             }
           },
           "lifecycle": {
@@ -15917,7 +15917,7 @@
           "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
           "phaseIndex": 0,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:0",
           "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00"
         },
@@ -15925,7 +15925,7 @@
           "jobId": "SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed",
           "phaseIndex": 1,
           "phaseKind": "deliver-attested-payload",
-          "phaseOrchestrator": "did:demos:seller",
+          "phaseOrchestrator": "did:demos:orchestrator",
           "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-self-signed-distinct-proof-completed:1",
           "agreementHash": "86d81ccf4d1e7ca561f6ad82fdcaf4efbf0b6ca999f8c7b1f58b425b99672e00"
         }
@@ -16118,7 +16118,7 @@
             "kind": "demos-transaction",
             "value": "tx-b173f7104c2617f9a7f4de2234bf2e77"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "0",
           "state": "finalized",
           "observationDisposition": "established",
@@ -16200,7 +16200,7 @@
             "kind": "demos-transaction",
             "value": "tx-451c4798034e84967ac7ee22b0390691"
           },
-          "writer": "did:demos:seller",
+          "writer": "did:demos:orchestrator",
           "nonce": "1",
           "state": "finalized",
           "observationDisposition": "established",
@@ -16403,10 +16403,215 @@
         "state": "finalized",
         "independentlyResolvable": true
       }
+    },
+    "seller-substituted-current-delivery": {
+      "listing": {
+        "listingId": "listing-seb-seller-substituted-current-delivery",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-storage-program"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "storage-program",
+            "payloadFormat": "application/octet-stream"
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "0HOvqF0WiOFxHcFE-aW3SuVqJDwXD220VF7om61wu6odegfLqmvVN7S9nUsa5qyHgCL33SHmKSDcpRjitxoYDw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-seller-substituted-current-delivery",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-seller-substituted-current-delivery",
+          "version": 1,
+          "contentHash": "e289880de1f463bacda17bf46056b7abce9853a88a44e629889f13231e89ea95"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-ccc82312ed38622167598467acddf325b6b5de9ecbd4476af4de4aec1727ea51"
+              },
+              "contentHash": "1539acca2553fa5e03cbb7cd7eb7a6dc8e53e092816b9a7b4a17e130d3d64123"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ccc82312ed38622167598467acddf325b6b5de9ecbd4476af4de4aec1727ea51"
+            },
+            "contentHash": "1539acca2553fa5e03cbb7cd7eb7a6dc8e53e092816b9a7b4a17e130d3d64123"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "3MZV6UpKZZXQR22983HkfFtlvXYQlNhRUT-enZeVSmek_QllAJ2JofYeLdUk7jGQPdGMQqQv_zaCBQoeuZXFBQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "2BX4XrihdyDv3gYRe0_VmgaUubDeGPEFUDCTHRXGUXWdgJzSTdgsbMbwC_J2jVfnl_2ET1XzT1kJQXiJGDp7Cg"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ccc82312ed38622167598467acddf325b6b5de9ecbd4476af4de4aec1727ea51\"},\"contentHash\":\"1539acca2553fa5e03cbb7cd7eb7a6dc8e53e092816b9a7b4a17e130d3d64123\"}": {
+          "record": {
+            "deliveryEvidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-seller-substituted-current-delivery",
+            "phaseIndex": 0,
+            "phase": "deliver-storage-program",
+            "outcome": "success",
+            "deliverableContentHash": "bafee1c40740b8811f3fb1d7867c36f184b6d66a842c66eb48934a6ab1b89996",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-seller-substituted-current-delivery:0"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "EsnjTmuDjVPvZbaiiYUo_xRi_joDQ_R6MVHKdcWMCQ_hjANtEwG5gPqJHX2NBxsppd-H5ftG1UCwxQ4vjjoMAw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-storage-program": {
+          "jobId": "SEB-AUTHORITY-seller-substituted-current-delivery",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-storage-program",
+          "phaseOrchestrator": "did:demos:orchestrator",
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-seller-substituted-current-delivery:0"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"dacs4:deliverable:SEB-AUTHORITY-seller-substituted-current-delivery:0\"},\"contentHash\":\"bafee1c40740b8811f3fb1d7867c36f184b6d66a842c66eb48934a6ab1b89996\"}": {
+          "receipt": {
+            "receiptVersion": "1",
+            "substrate": "demos-testnet",
+            "finalityProfile": "demos-bft-final",
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-seller-substituted-current-delivery:0",
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-seller-substituted-current-delivery:0",
+            "contentHash": "bafee1c40740b8811f3fb1d7867c36f184b6d66a842c66eb48934a6ab1b89996",
+            "transactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-68e23e5fa924dd3b7c2984464d51e65c"
+            },
+            "writer": "did:demos:seller",
+            "nonce": "0",
+            "state": "finalized",
+            "observationDisposition": "established",
+            "observedAt": 1785772800000,
+            "blockRef": {
+              "id": "block-c53765cee5987119f5dc61a1623a7193",
+              "height": "1000",
+              "timestamp": 1785772800000
+            },
+            "evidence": {
+              "kind": "fixture-demos-bft-proof",
+              "value": "207936fc79989f8a48199cf9b4f27eb8d7c5488e768dd72b491d59c6759fee99"
+            }
+          },
+          "storageBinding": {
+            "effectiveAccessMode": "public",
+            "storedContentHash": "bafee1c40740b8811f3fb1d7867c36f184b6d66a842c66eb48934a6ab1b89996"
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ccc82312ed38622167598467acddf325b6b5de9ecbd4476af4de4aec1727ea51\"},\"contentHash\":\"1539acca2553fa5e03cbb7cd7eb7a6dc8e53e092816b9a7b4a17e130d3d64123\"}": {
+          "receiptVersion": "1",
+          "substrate": "demos-testnet",
+          "finalityProfile": "demos-bft-final",
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-seller-substituted-current-delivery:0",
+          "nativeAddress": "stor-ccc82312ed38622167598467acddf325b6b5de9ecbd4476af4de4aec1727ea51",
+          "contentHash": "1539acca2553fa5e03cbb7cd7eb7a6dc8e53e092816b9a7b4a17e130d3d64123",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-68e23e5fa924dd3b7c2984464d51e65c"
+          },
+          "writer": "did:demos:orchestrator",
+          "nonce": "0",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1785772800000,
+          "blockRef": {
+            "id": "block-c53765cee5987119f5dc61a1623a7193",
+            "height": "1000",
+            "timestamp": 1785772800000
+          },
+          "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": "207936fc79989f8a48199cf9b4f27eb8d7c5488e768dd72b491d59c6759fee99"
+          }
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-storage-program": {
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-seller-substituted-current-delivery:0",
+            "cleartextUtf8": "storage delivery:SEB-AUTHORITY-seller-substituted-current-delivery:0",
+            "cleartextBytesBase64url": "c3RvcmFnZSBkZWxpdmVyeTpTRUItQVVUSE9SSVRZLXNlbGxlci1zdWJzdGl0dXRlZC1jdXJyZW50LWRlbGl2ZXJ5OjA",
+            "cleartextHash": "bafee1c40740b8811f3fb1d7867c36f184b6d66a842c66eb48934a6ab1b89996",
+            "storedBytesBase64url": "c3RvcmFnZSBkZWxpdmVyeTpTRUItQVVUSE9SSVRZLXNlbGxlci1zdWJzdGl0dXRlZC1jdXJyZW50LWRlbGl2ZXJ5OjA",
+            "storedContentHash": "bafee1c40740b8811f3fb1d7867c36f184b6d66a842c66eb48934a6ab1b89996",
+            "available": true,
+            "independentlyResolvable": true,
+            "nativeAddress": "dacs4:deliverable:SEB-AUTHORITY-seller-substituted-current-delivery:0"
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
     }
   },
-  "hash": "ccf33b465fbce38e44b8267fdddf5ec41fbb5c6e72c44bca1022a934802f4383",
-  "count": 53,
+  "hash": "50ab3c82933de0f09a3e10ff6f204d8e0d86242dcf68e80eec6692e1eb68169f",
+  "count": 54,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -17646,6 +17851,21 @@
         "disposition": "verified",
         "reasonCode": "ok"
       }
+    },
+    {
+      "name": "bundle-settlement-bijection-seller-substituted-current-delivery-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "seller-substituted-current-delivery",
+        "topLevelRefs": [],
+        "authenticatedRecordByRef": {},
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
     }
   ],
   "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
@@ -18839,6 +19059,24 @@
         }
       ],
       "crossPhaseDeliveryReuse": "self-signed-distinct-proof"
+    },
+    "seller-substituted-current-delivery": {
+      "listingPipeline": [
+        "deliver-storage-program"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-storage-program",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "deliveryEvidenceSignerRole": "seller"
     }
   }
 }

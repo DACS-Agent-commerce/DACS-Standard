@@ -53,6 +53,7 @@ EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
 FINALITY_BOUND_EVIDENCE_FAULT_BUNDLE_DOMAIN = "dacs-finality-bound-evidence-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN = "dacs-legacy-transition-evidence:v1:"
 FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN = "dacs-finality-bound-evidence:v1:"
 DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
 ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
@@ -64,6 +65,7 @@ FINALITY_BOUND_EVIDENCE_FAULT_POINTER_DOMAIN = "dacs-finality-bound-evidence-fau
 LEGACY_BUNDLE_CHECKPOINT_DOMAIN = "dacs-legacy-bundle-checkpoint:v1:"
 LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN = "dacs-legacy-bundle-checkpoint-binding:v1:"
 RATING_DOMAIN = "dacs-rating:v1:"
+_LAA_AUTHORITY_UNSPECIFIED = object()
 
 # These two domains are deliberately fixture-only.  They authenticate the synthetic
 # native observations used by this offline executable reference; they are not DACS
@@ -1564,6 +1566,73 @@ def _settlement_evidence_shape_valid(record):
     return True
 
 
+def _legacy_transition_settlement_evidence_shape_valid(record):
+    """Closed DACS-4 v0.8 LegacyTransitionSettlementEvidence wire shape."""
+    if not isinstance(record, dict):
+        return False
+    required = {
+        "legacyTransitionEvidenceVersion", "jobId", "sessionId",
+        "agreementHash", "phase", "phaseIndex", "outcome", "paymentTxRefs",
+        "paymentAmount", "settlementFinality", "reservationRef", "observedAt",
+        "signature",
+    }
+    optional = {
+        "paymentFee", "amendmentRefs", "supersedesEvidenceRef",
+    }
+    recognized_selectors = {
+        "evidenceVersion", "legacyTransitionEvidenceVersion",
+        "finalityBoundEvidenceVersion", "deliveryEvidenceVersion",
+    }
+    if (
+        not required <= set(record)
+        or set(record) - required - optional
+        or [key for key in recognized_selectors if key in record]
+        != ["legacyTransitionEvidenceVersion"]
+        or record.get("legacyTransitionEvidenceVersion") != "1"
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or not _nonempty_jcs_string(record.get("sessionId"))
+        or not _nonempty_jcs_string(record.get("agreementHash"))
+        or not _string_member(record.get("phase"), PAYMENT_PHASES)
+        or not _safe_nonnegative_integer(record.get("phaseIndex"))
+        or record.get("outcome") != "success"
+        or not isinstance(record.get("paymentTxRefs"), list)
+        or not record["paymentTxRefs"]
+        or any(not _chain_tx_ref_shape_valid(ref) for ref in record["paymentTxRefs"])
+        or len({_canon_sha(ref) for ref in record["paymentTxRefs"]})
+        != len(record["paymentTxRefs"])
+        or not _payment_tx_refs_match_phase(
+            record["phase"], record["paymentTxRefs"], success=True
+        )
+        or not _price_term_shape_valid(record.get("paymentAmount"))
+        or not _settlement_finality_shape_valid(record.get("settlementFinality"))
+        or not _settlement_finality_matches_phase(
+            record["phase"], record["settlementFinality"], record["paymentTxRefs"]
+        )
+        or not _attestation_ref_shape_valid(record.get("reservationRef"))
+        or not _non_boolean_number(record.get("observedAt"))
+    ):
+        return False
+    if "paymentFee" in record and not _price_term_shape_valid(record["paymentFee"]):
+        return False
+    if "amendmentRefs" in record and (
+        not isinstance(record["amendmentRefs"], list)
+        or any(not _attestation_ref_shape_valid(ref) for ref in record["amendmentRefs"])
+    ):
+        return False
+    if "supersedesEvidenceRef" in record and not _attestation_ref_shape_valid(
+        record["supersedesEvidenceRef"]
+    ):
+        return False
+    signature = record.get("signature")
+    return (
+        isinstance(signature, dict)
+        and set(signature) == {"algorithm", "signer", "value"}
+        and signature.get("algorithm") == "ed25519"
+        and _claim_reference_shape_valid(signature.get("signer"))
+        and _nonempty_jcs_string(signature.get("value"))
+    )
+
+
 def _finality_bound_settlement_evidence_shape_valid(record):
     """Closed shape for the distinct #392 successful-payment evidence type.
 
@@ -1652,6 +1721,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
         return (False, "evidence record lacks a verified SR-2 receipt", None)
     matches = []
     current_delivery = evidence_type == "delivery"
+    signed_phase_index = evidence_type in {"delivery", "legacy-transition"}
     for phase_key, execution in session_execution_authority_by_phase_key.items():
         if not isinstance(execution, dict):
             continue
@@ -1664,7 +1734,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
             or phase_key != f"{phase_index}:{phase_kind}"
             or execution.get("jobId") != bundle.get("jobId")
             or phase_kind != record.get("phase")
-            or (current_delivery and phase_index != record.get("phaseIndex"))
+            or (signed_phase_index and phase_index != record.get("phaseIndex"))
             or execution.get("phaseOrchestrator") != signer
         ):
             continue
@@ -1778,6 +1848,7 @@ def _validate_bound_fault_bundle(
     expected_kind,
     effective_pipeline=None,
     additional_commit_phase=None,
+    legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
     _receipt_validator=_validate_current_evidence_receipt,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
@@ -2028,6 +2099,7 @@ def _validate_bound_fault_bundle(
     authenticated_records = []
     actual_keys = []
     pending_closure_result = None
+    legacy_agreement_eligibility = {}
     delivery_dependency_owners = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
@@ -2037,6 +2109,9 @@ def _validate_bound_fault_bundle(
         if evidence_type == "settlement":
             shape_valid = _settlement_evidence_shape_valid(record)
             evidence_domain = SETTLEMENT_EVIDENCE_DOMAIN
+        elif evidence_type == "legacy-transition":
+            shape_valid = _legacy_transition_settlement_evidence_shape_valid(record)
+            evidence_domain = LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN
         elif evidence_type == "delivery":
             shape_valid = _delivery_evidence_shape_valid(record)
             evidence_domain = DELIVERY_EVIDENCE_DOMAIN
@@ -2058,9 +2133,15 @@ def _validate_bound_fault_bundle(
             and record_phase in PAYMENT_PHASES
             and record.get("outcome") == "success"
         )
-        if record_phase in PAYMENT_PHASES and evidence_type != (
-            "finality-bound" if record_is_finality_bound else "settlement"
-        ):
+        expected_payment_types = (
+            {"finality-bound"} if record_is_finality_bound
+            else (
+                {"settlement", "legacy-transition"}
+                if expected_kind == "evidence-bound"
+                else {"settlement"}
+            )
+        )
+        if record_phase in PAYMENT_PHASES and evidence_type not in expected_payment_types:
             return (False, "payment phase resolves to the wrong evidence family", None)
         if record_phase in DELIVERY_PHASES:
             if evidence_type not in {"delivery", "settlement"}:
@@ -2112,6 +2193,22 @@ def _validate_bound_fault_bundle(
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "evidence record contradicts the signed phase result", None)
+        if record_phase in PAYMENT_PHASES and record.get("outcome") == "success":
+            laa_disposition_value, laa_reason, eligibility = (
+                _qualify_legacy_agreement_evidence(
+                    record,
+                    evidence_type,
+                    phase_key,
+                    legacy_agreement_authority_by_phase_key,
+                )
+            )
+            if laa_disposition_value != "pass":
+                return (
+                    False,
+                    _DispositionReason(laa_reason, laa_disposition_value),
+                    None,
+                )
+            legacy_agreement_eligibility[phase_key] = eligibility
         if record_phase in DELIVERY_PHASES:
             delivery_authority = (
                 delivery_artifact_authority_by_phase_key
@@ -2331,7 +2428,11 @@ def _validate_bound_fault_bundle(
     if pending_closure_result is not None:
         disposition, reason = pending_closure_result
         return (False, _DispositionReason(reason, disposition), None)
-    return (True, "ok", expected_keys)
+    return (
+        True,
+        "ok",
+        _AuthenticatedPhaseKeys(expected_keys, legacy_agreement_eligibility),
+    )
 
 
 def validate_ebfab(
@@ -2347,6 +2448,7 @@ def validate_ebfab(
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
 ):
     """Execute the released EvidenceBoundFaultAttestationBundle contract unchanged."""
     return _validate_bound_fault_bundle(
@@ -2362,6 +2464,9 @@ def validate_ebfab(
         expected_kind="evidence-bound",
         effective_pipeline=effective_pipeline,
         additional_commit_phase=additional_commit_phase,
+        legacy_agreement_authority_by_phase_key=(
+            legacy_agreement_authority_by_phase_key
+        ),
     )
 
 
@@ -2622,7 +2727,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                 if receipt_contract == "current"
                 else validate_legacy_ebfab_disposition
             )
-            disposition, reason, _ = ebfab_verifier(
+            disposition, reason, phase_keys = ebfab_verifier(
                 bundle,
                 authority.get("listing"),
                 pubkeys,
@@ -2634,10 +2739,20 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                 authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
                 effective_pipeline=authority.get("effectivePipeline"),
                 additional_commit_phase=authority.get("additionalCommitPhase"),
+                **_legacy_agreement_authority_kwargs(authority),
             )
             if disposition != "pass":
                 nonpasses.append((kind, disposition, reason))
                 continue
+            eligibility = getattr(
+                phase_keys,
+                "legacy_agreement_eligibility_by_phase_key",
+                {},
+            )
+            current_eligible = not any(
+                value in {"historical-only", "transition-only"}
+                for value in eligibility.values()
+            )
         else:
             shape_ok = (
                 _absolute_fault_bundle_shape_valid(bundle)
@@ -2667,6 +2782,9 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
             "bundle": bundle,
             "kind": kind,
             "evidenceReceiptContract": receipt_contract,
+            "currentEligible": (
+                current_eligible if kind == "evidence-bound" else True
+            ),
         })
 
     # A present strong copy that cannot establish its required proof is never
@@ -2717,17 +2835,30 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
     passing_strong = [
         item for item in authenticated if item["kind"] == "finality-bound"
     ]
+    current_ineligible_ebfabs = [
+        item for item in authenticated
+        if item["kind"] == "evidence-bound" and not item["currentEligible"]
+    ]
     if archival_ebfabs and not passing_strong:
         return {
             "decision": "indeterminate",
             "reason": "archival EBFAB requires independently passing finality-bound authority",
             "bundle": None,
         }
+    if current_ineligible_ebfabs and not passing_strong:
+        return {
+            "decision": "indeterminate",
+            "reason": "legacy-agreement EBFAB is audit-valid but current-ineligible",
+            "bundle": None,
+        }
     selectable = [
         item for item in authenticated
         if not (
             item["kind"] == "evidence-bound"
-            and item["evidenceReceiptContract"] == "archival"
+            and (
+                item["evidenceReceiptContract"] == "archival"
+                or not item["currentEligible"]
+            )
         )
     ]
     winner = max(
@@ -2783,6 +2914,7 @@ def _tagged_legacy_copy_validation_for_derive(tagged):
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
         additional_commit_phase=authority.get("additionalCommitPhase"),
+        **_legacy_agreement_authority_kwargs(authority),
     )
     return (disposition, reason)
 
@@ -3824,6 +3956,7 @@ def _resolve_absolute_fault_pointer_payload(
         return {"ok": False, "reason": "invalid absolute fault attribution context: %s" % exc}
     if dereferenced_bundle.get("faultedParty") not in permissible_faults:
         return {"ok": False, "reason": "faultedParty is outside the §10.4.1 permissible set"}
+    pointer_legacy_eligibility = {}
     if pointer_kind == "fault" and validate_current_fab_delivery:
         try:
             delivery_disposition, delivery_reason = _validate_current_fab_delivery_admission(
@@ -3846,7 +3979,7 @@ def _resolve_absolute_fault_pointer_payload(
                 "disposition": "indeterminate",
                 "reason": "EBFAB pointer lacks SEB validation authority",
             }
-        seb_disposition, seb_reason, _ = ebfab_validator(
+        seb_disposition, seb_reason, seb_phase_keys = ebfab_validator(
             dereferenced_bundle,
             ebfab_authority.get("listing"),
             keys,
@@ -3858,10 +3991,16 @@ def _resolve_absolute_fault_pointer_payload(
             ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
             effective_pipeline=ebfab_authority.get("effectivePipeline"),
             additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
+            **_legacy_agreement_authority_kwargs(ebfab_authority),
         )
         if seb_disposition != "pass":
             return {"ok": False, "disposition": seb_disposition,
                     "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
+        pointer_legacy_eligibility = getattr(
+            seb_phase_keys,
+            "legacy_agreement_eligibility_by_phase_key",
+            {},
+        )
     elif pointer_kind == "finality-bound":
         if not isinstance(finality_bound_authority, dict):
             return {
@@ -3930,6 +4069,13 @@ def _resolve_absolute_fault_pointer_payload(
         "ok": True,
         "disposition": "pass",
         "reason": "pointer type, signature, and triple identity hold",
+        "currentEligible": not any(
+            value in {"historical-only", "transition-only"}
+            for value in pointer_legacy_eligibility.values()
+        ),
+        "legacyAgreementEligibilityByPhaseKey": dict(
+            pointer_legacy_eligibility
+        ),
     }
 
 
@@ -3988,7 +4134,7 @@ def resolve_absolute_fault_pointer(
             "ok": False,
             "reason": "absolute-pointer family cannot be authenticated before parsing",
         }
-    return _resolve_absolute_fault_pointer_payload(
+    result = _resolve_absolute_fault_pointer_payload(
         family,
         pointer,
         dereferenced_bundle,
@@ -4003,6 +4149,17 @@ def resolve_absolute_fault_pointer(
         ebfab_validator=validate_ebfab_disposition,
         validate_current_fab_delivery=True,
     )
+    if result.get("ok") and result.get("currentEligible") is False:
+        return {
+            "ok": False,
+            "disposition": "indeterminate",
+            "reason": "legacy-agreement EBFAB pointer is audit-valid but current-ineligible",
+            "currentEligible": False,
+            "legacyAgreementEligibilityByPhaseKey": result.get(
+                "legacyAgreementEligibilityByPhaseKey", {}
+            ),
+        }
+    return result
 
 
 def resolve_legacy_absolute_fault_pointer(
@@ -6869,6 +7026,7 @@ def _resolve_current_use_job(
                 authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
                 effective_pipeline=authority.get("effectivePipeline"),
                 additional_commit_phase=authority.get("additionalCommitPhase"),
+                **_legacy_agreement_authority_kwargs(authority),
             )
             if not archival_ok:
                 return {"decision": "fail", "reason": "invalid historical EBFAB: " + archival_reason}
@@ -8167,11 +8325,20 @@ def _laa_validate_transition_evidence(value, substrate, order_domain,
         return "indeterminate"
     if resolution != "verified":
         return "error"
-    if (evidence.get("shape") != "valid"
-            or evidence.get("discriminator") != LAA_TRANSITION_EVIDENCE_DISCRIMINATOR):
+    if (
+        evidence.get("shape") != "valid"
+        or evidence.get("legacyTransitionEvidenceVersion") != "1"
+    ):
         return "error"
     # Structurally exclusive: never coerce ordinary or finality-bound evidence.
-    if "evidenceVersion" in evidence or "finalityBoundEvidenceVersion" in evidence:
+    if any(
+        selector in evidence
+        for selector in (
+            "evidenceVersion",
+            "deliveryEvidenceVersion",
+            "finalityBoundEvidenceVersion",
+        )
+    ):
         return "error"
     if evidence.get("signatureDomain") != LAA_TRANSITION_EVIDENCE_DOMAIN:
         return "fail"
@@ -8636,6 +8803,144 @@ def laa_want(value):
         "derivationAdmission": {path: admission for path in LAA_DERIVATION_PATHS},
         "currentMetricEligible": admission == "current-eligible",
     }
+
+
+class _AuthenticatedPhaseKeys(list):
+    """List-compatible SEB result carrying verifier-derived LAA eligibility."""
+
+    def __init__(self, values, legacy_agreement_eligibility_by_phase_key=None):
+        super().__init__(values)
+        self.legacy_agreement_eligibility_by_phase_key = dict(
+            legacy_agreement_eligibility_by_phase_key or {}
+        )
+
+
+def _laa_input_from_phase_carrier(carrier):
+    if not isinstance(carrier, dict):
+        return None
+    for field in ("laa", "laaInput"):
+        if field in carrier:
+            return carrier.get(field) if isinstance(carrier.get(field), dict) else None
+    return carrier
+
+
+def _qualify_legacy_agreement_evidence(
+    record,
+    evidence_type,
+    phase_key,
+    legacy_agreement_authority_by_phase_key,
+):
+    """Apply LAA without letting record content select the agreement era.
+
+    The optional map is verifier-owned. Omission preserves the frozen pre-LAA
+    validation entry point. Once a caller supplies the map, every successful
+    payment phase must have one authenticated carrier; absence is uncertainty,
+    not an implicit current-agreement classification.
+    """
+    if legacy_agreement_authority_by_phase_key is _LAA_AUTHORITY_UNSPECIFIED:
+        return ("pass", "legacy agreement authority not selected", "current-eligible")
+    if legacy_agreement_authority_by_phase_key is None:
+        return ("indeterminate", "legacy agreement authority is unavailable", None)
+    if not isinstance(legacy_agreement_authority_by_phase_key, dict):
+        return ("error", "legacy agreement authority is malformed", None)
+    if phase_key not in legacy_agreement_authority_by_phase_key:
+        return ("indeterminate", "phase legacy agreement authority is unavailable", None)
+    carrier = legacy_agreement_authority_by_phase_key.get(phase_key)
+    laa = _laa_input_from_phase_carrier(carrier)
+    if not isinstance(laa, dict):
+        return ("error", "phase legacy agreement authority is malformed", None)
+    agreement = laa.get("agreement")
+    if not isinstance(agreement, dict):
+        return ("error", "authenticated agreement authority is malformed", None)
+    artifact = agreement.get("artifact")
+    if artifact not in LAA_ARTIFACTS:
+        return ("error", "authenticated agreement artifact is unsupported", None)
+
+    # Only authenticated agreement/LAA authority classifies the era. The
+    # evidence record can prove its exclusive wire type, but cannot declare that
+    # the underlying agreement is legacy or current.
+    if artifact == "legacy":
+        operation = laa.get("operation")
+        if evidence_type == "legacy-transition":
+            if operation != "transition-audit":
+                return ("fail", "transition evidence lacks transition-audit authority", None)
+            transition = laa.get("transitionEvidence")
+            if not isinstance(transition, dict):
+                return ("indeterminate", "transition LAA evidence authority is unavailable", None)
+            reservation = laa.get("reservation")
+            reservation_ref = transition.get("reservationRef")
+            if (
+                transition.get("legacyTransitionEvidenceVersion") != "1"
+                or transition.get("signatureDomain")
+                != LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN
+                or transition.get("job") != record.get("jobId")
+                or transition.get("session") != record.get("sessionId")
+                or transition.get("agreementHash") != record.get("agreementHash")
+                or transition.get("phase") != record.get("phase")
+                or transition.get("phaseIndex") != record.get("phaseIndex")
+                or transition.get("outcome") != record.get("outcome")
+                or transition.get("paymentTxRefs") != record.get("paymentTxRefs")
+                or transition.get("paymentAmount") != record.get("paymentAmount")
+                or reservation_ref != record.get("reservationRef")
+                or not isinstance(reservation, dict)
+                or reservation_ref is None
+                or reservation_ref.get("contentHash") != reservation.get("contentHash")
+            ):
+                return ("fail", "transition evidence contradicts authenticated LAA authority", None)
+        elif evidence_type == "settlement":
+            if operation != "historical-audit":
+                return ("fail", "ordinary SettlementEvidence cannot substitute for transition evidence", None)
+            settlement = laa.get("settlementEvidence")
+            session = laa.get("sessionAuthority")
+            if not isinstance(settlement, dict) or not isinstance(session, dict):
+                return ("indeterminate", "historical LAA evidence authority is unavailable", None)
+            if (
+                settlement.get("job") != record.get("jobId")
+                or settlement.get("session") != session.get("sessionId")
+                or settlement.get("phase") != record.get("phase")
+                or settlement.get("agreementHash") != agreement.get("contentHash")
+            ):
+                return ("fail", "ordinary evidence contradicts authenticated historical LAA authority", None)
+        else:
+            return ("fail", "legacy agreement uses the wrong evidence wire type", None)
+    elif evidence_type == "legacy-transition":
+        return ("fail", "transition evidence is not authorized by a legacy agreement", None)
+
+    verdict = laa_admission(laa)
+    want = laa_want(laa)
+    if verdict not in {"pass", "fail", "error", "indeterminate"}:
+        return ("error", "LAA returned an unsupported verdict", None)
+    if verdict != "pass":
+        return (verdict, "LAA admission returned " + verdict, None)
+    eligibility = want.get("dacs5Admission")
+    if artifact == "legacy":
+        expected = (
+            "transition-only" if evidence_type == "legacy-transition"
+            else "historical-only"
+        )
+        if eligibility != expected:
+            return ("fail", "LAA eligibility contradicts the authenticated evidence era", None)
+    elif eligibility != "current-eligible":
+        return ("fail", "current agreement lacks current-eligible LAA admission", None)
+    return ("pass", "LAA admission passed", eligibility)
+
+
+def _legacy_agreement_authority_kwargs(authority):
+    """Thread the optional verifier-owned per-phase carrier without inventing it."""
+    if not isinstance(authority, dict):
+        return {}
+    names = (
+        "legacyAgreementAuthorityByPhaseKey",
+        "legacyAgreementAdmissionByPhaseKey",
+        "laaAuthorityByPhaseKey",
+    )
+    present = [name for name in names if name in authority]
+    if not present:
+        return {}
+    first = authority[present[0]]
+    if any(authority[name] != first for name in present[1:]):
+        first = "conflicting legacy agreement authority aliases"
+    return {"legacy_agreement_authority_by_phase_key": first}
 
 
 class LegacyAgreementLedger:
@@ -9771,6 +10076,7 @@ def _authenticated_evidence_wire_type(record, pubkeys):
     candidates = []
     for family, domain in (
         ("settlement", SETTLEMENT_EVIDENCE_DOMAIN),
+        ("legacy-transition", LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN),
         ("delivery", DELIVERY_EVIDENCE_DOMAIN),
         ("finality-bound", FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN),
     ):
@@ -9781,13 +10087,15 @@ def _authenticated_evidence_wire_type(record, pubkeys):
     family = candidates[0]
     expected_selector = {
         "settlement": "evidenceVersion",
+        "legacy-transition": "legacyTransitionEvidenceVersion",
         "delivery": "deliveryEvidenceVersion",
         "finality-bound": "finalityBoundEvidenceVersion",
     }[family]
     present = [
         selector
         for selector in (
-            "evidenceVersion", "deliveryEvidenceVersion", "finalityBoundEvidenceVersion"
+            "evidenceVersion", "legacyTransitionEvidenceVersion",
+            "deliveryEvidenceVersion", "finalityBoundEvidenceVersion"
         )
         if selector in record
     ]
@@ -10573,6 +10881,7 @@ def _validate_ebfab_boolean(
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
     _receipt_validator=_validate_current_evidence_receipt,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
@@ -10814,6 +11123,7 @@ def _validate_ebfab_boolean(
     actual_keys = []
     pending_closure_result = None
     delivery_dependency_owners = {}
+    legacy_agreement_eligibility = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
         if not isinstance(record, dict):
@@ -10822,6 +11132,9 @@ def _validate_ebfab_boolean(
         if evidence_type == "settlement":
             shape_valid = _settlement_evidence_shape_valid(record)
             evidence_domain = SETTLEMENT_EVIDENCE_DOMAIN
+        elif evidence_type == "legacy-transition":
+            shape_valid = _legacy_transition_settlement_evidence_shape_valid(record)
+            evidence_domain = LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN
         elif evidence_type == "delivery":
             shape_valid = _delivery_evidence_shape_valid(record)
             evidence_domain = DELIVERY_EVIDENCE_DOMAIN
@@ -10835,7 +11148,9 @@ def _validate_ebfab_boolean(
             else settlement_evidence_hash(record)
         )
         record_phase = record.get("phase")
-        if record_phase in PAYMENT_PHASES and evidence_type != "settlement":
+        if record_phase in PAYMENT_PHASES and evidence_type not in {
+            "settlement", "legacy-transition"
+        }:
             return (False, "payment phase does not resolve to SettlementEvidence", None)
         if record_phase in DELIVERY_PHASES:
             if evidence_type == "settlement" and pipeline_kinds.count(record_phase) != 1:
@@ -10885,6 +11200,22 @@ def _validate_ebfab_boolean(
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "evidence record contradicts the signed phase result", None)
+        if record_phase in PAYMENT_PHASES and record.get("outcome") == "success":
+            laa_disposition_value, laa_reason, eligibility = (
+                _qualify_legacy_agreement_evidence(
+                    record,
+                    evidence_type,
+                    phase_key,
+                    legacy_agreement_authority_by_phase_key,
+                )
+            )
+            if laa_disposition_value != "pass":
+                return (
+                    False,
+                    _DispositionReason(laa_reason, laa_disposition_value),
+                    None,
+                )
+            legacy_agreement_eligibility[phase_key] = eligibility
         if record_phase in DELIVERY_PHASES:
             delivery_authority = (
                 delivery_artifact_authority_by_phase_key
@@ -11103,7 +11434,11 @@ def _validate_ebfab_boolean(
     if pending_closure_result is not None:
         disposition, reason = pending_closure_result
         return (False, _DispositionReason(reason, disposition), None)
-    return (True, "ok", expected_keys)
+    return (
+        True,
+        "ok",
+        _AuthenticatedPhaseKeys(expected_keys, legacy_agreement_eligibility),
+    )
 
 def _validate_ebfab_disposition_with_receipts(receipt_validator, args, kwargs):
     selected = dict(kwargs)
@@ -11194,6 +11529,7 @@ def _tagged_copy_validation_for_derive(
         ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=ebfab_authority.get("effectivePipeline"),
         additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
+        **_legacy_agreement_authority_kwargs(ebfab_authority),
     )
     return (disposition, reason)
 

@@ -1220,11 +1220,13 @@ pipeline `phaseIndex`.
 2. Seller constructs the deliverable payload conforming to `deliverable.schemaUrl` (if specified). The contracted payload is an arbitrary byte string; a textual media type does not authorize a consumer to re-encode it.
 3. Write a Storage Program at address `dacs4:deliverable:{jobId}:{phaseIndex}` with those exact bytes as value (or, for an encrypted mode, the exact ciphertext bytes prescribed below).
 4. Compute `contentHash = sha256(exact_cleartext_payload_bytes)`.
-5. Construct `DeliveryEvidence` with the exact `phaseIndex`,
+5. The authenticated phase orchestrator constructs and signs `DeliveryEvidence`
+   with the exact `phaseIndex`,
    `deliverableContentHash = contentHash`, and `deliverableAnchor = {kind:
    "storage-program", locator: "dacs4:deliverable:{jobId}:{phaseIndex}"}`;
-   anchor it at `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2 and return
-   success.
+   the phase orchestrator anchors it at
+   `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2 and returns success. The
+   seller remains the writer of the deliverable payload.
 
 **Soft limit.** Storage Programs have a 128 KB cap. Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
 
@@ -1283,12 +1285,17 @@ type EntitlementRecord = {
 5. Seller anchors the EntitlementRecord via SR-2 at
    `dacs4:entitlement:{jobId}:{phaseIndex}:{renewalSeq}`, with `renewalSeq = 0`
    for the original grant of this phase invocation.
-6. Seller constructs `DeliveryEvidence` whose `phaseIndex` identifies this
+6. The authenticated phase orchestrator constructs and signs `DeliveryEvidence`
+   whose `phaseIndex` identifies this
    invocation, whose `deliverableContentHash` is the EntitlementRecord's §B.2
    content hash, and whose `deliverableAnchor` is the exact entitlement logical
    address. If the record carries `credentialRef`, the evidence also carries
-   the exact `credentialDelivery` binding required by PDE-5. The seller anchors
-   the evidence at `dacs4:delivery:{jobId}:{phaseIndex}` and returns success.
+   the exact `credentialDelivery` binding required by PDE-5. The phase
+   orchestrator anchors the evidence at
+   `dacs4:delivery:{jobId}:{phaseIndex}` and returns success. The seller remains
+   the constructor, signer, and SR-2 writer of the `EntitlementRecord` and any
+   delivered credential; those seller-owned dependencies do not make the seller
+   the `DeliveryEvidence` authority when the roles are distinct.
 
 **Exercising the entitlement.** Buyer presents the EntitlementRecord (or its hash + anchor) at the record's `serviceEndpoint` to access the entitled service. The record is a self-contained receipt — it names the grantee, the scope, the validity window, and where to exercise it — so the buyer needs nothing beyond the record itself. The service endpoint verifies the signature and anchor, checks now is within [startsAt, endsAt], and serves accordingly.
 
@@ -1484,8 +1491,9 @@ through PDE-7.
    create, sign, and anchor a `PayloadAttestationRecord` satisfying DPA-2..DPA-5.
 5. Write the exact payload bytes to
    `dacs4:deliverable:{jobId}:{phaseIndex}`.
-6. Construct `DeliveryEvidence` satisfying DPA-6 and PDE-1..PDE-4, anchor it
-   at `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2, and
+6. The authenticated phase orchestrator constructs and signs
+   `DeliveryEvidence` satisfying DPA-6 and PDE-1..PDE-4, anchors it at
+   `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2, and
    return success only after both records and the deliverable are independently
    resolvable. CORE §5.1 finalization remains required for terminal DACS-5
    bundle production.

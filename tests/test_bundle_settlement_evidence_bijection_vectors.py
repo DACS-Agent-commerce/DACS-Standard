@@ -9,6 +9,7 @@ from pathlib import Path
 
 import dacs5_reference as R
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from scripts import generate_legacy_agreement_admission_vectors as LAA
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -131,7 +132,12 @@ def replace_top_record(authority, phase, mutate, seeds):
             old_inner_refs = delivery_record_refs(record)
             mutate(record)
             try:
-                resign_evidence(record, seeds["seller"])
+                signer_role = {
+                    "did:demos:buyer": "buyer",
+                    "did:demos:seller": "seller",
+                    "did:demos:orchestrator": "orchestrator",
+                }[record["signature"]["signer"]]
+                resign_evidence(record, seeds[signer_role])
                 replacement_hash = R.settlement_evidence_hash(record)
             except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
                 # Malformed/non-JCS records cannot honestly be re-signed. Keep the
@@ -190,6 +196,101 @@ def relink_payload_attestation(authority, seeds):
     replace_top_record(
         authority, "deliver-attested-payload", relink, seeds
     )
+
+
+def laa_authority_for_bundle(authority, *, operation):
+    """Adapt the deterministic LAA source authority to one EBFAB payment phase."""
+    value = LAA.base_input(operation=operation)
+    job_id = authority["bundle"]["jobId"]
+    payment_record = next(
+        resolution["record"]
+        for resolution in authority["referenceValidationByCanonicalRef"].values()
+        if resolution.get("record", {}).get("phase") == "pay-dem"
+    )
+    payment_amount = copy.deepcopy(payment_record["paymentAmount"])
+    value["agreement"]["terms"]["price"] = payment_amount
+    value["paymentEffect"]["amount"] = copy.deepcopy(payment_amount)
+    value["transitionEvidence"]["paymentAmount"] = copy.deepcopy(payment_amount)
+    for container, field in (
+        (value["sessionAuthority"], "jobId"),
+        (value["agreement"], "jobId"),
+        (value["settlementEvidence"], "job"),
+        (value["transitionEvidence"], "job"),
+        (value["paymentEffect"], "jobId"),
+    ):
+        container[field] = job_id
+    projection_disposition, projection = R.laa_transition_projection(value)
+    if projection_disposition != "pass":
+        raise AssertionError("could not build LAA projection")
+    reservation = value["reservation"]
+    reservation["projection"] = projection
+    reservation["logicalAddress"] = R._laa_reservation_address(job_id, 2)
+    reservation["contentHash"] = hashlib.sha256(R.canonical(projection)).hexdigest()
+    reservation_ref = value["transitionEvidence"]["reservationRef"]
+    reservation_ref["anchor"]["locator"] = reservation["logicalAddress"]
+    reservation_ref["contentHash"] = reservation["contentHash"]
+    value["paymentAuthority"]["idempotencyKey"] = projection["idempotencyKey"]
+    if operation == "transition-audit":
+        value["paymentAuthority"]["idempotencyResolution"] = "consumed"
+    return value
+
+
+def replace_payment_with_transition_evidence(authority, laa, seeds):
+    phase_key = "2:pay-dem"
+    old_ref = next(
+        ref for ref in authority["bundle"]["settlementEvidence"]
+        if authority["referenceValidationByCanonicalRef"][
+            R.canonical(ref).decode("utf-8")
+        ]["record"].get("phase") == "pay-dem"
+    )
+    old_key = R.canonical(old_ref).decode("utf-8")
+    resolution = authority["referenceValidationByCanonicalRef"].pop(old_key)
+    receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_key)
+    transition = laa["transitionEvidence"]
+    record = {
+        "legacyTransitionEvidenceVersion": "1",
+        "jobId": transition["job"],
+        "sessionId": transition["session"],
+        "agreementHash": transition["agreementHash"],
+        "phase": transition["phase"],
+        "phaseIndex": transition["phaseIndex"],
+        "outcome": "success",
+        "paymentTxRefs": copy.deepcopy(transition["paymentTxRefs"]),
+        "paymentAmount": copy.deepcopy(transition["paymentAmount"]),
+        "settlementFinality": {
+            "model": "bft-final",
+            "finalityObservedAt": transition["observedAt"],
+        },
+        "reservationRef": copy.deepcopy(transition["reservationRef"]),
+        "observedAt": transition["observedAt"],
+    }
+    signer = "did:demos:orchestrator"
+    record["signature"] = {"signer": signer, "algorithm": "ed25519", "value": ""}
+    digest = R.settlement_evidence_hash(record)
+    signature = Ed25519PrivateKey.from_private_bytes(
+        bytes.fromhex(seeds["orchestrator"])
+    ).sign((R.LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN + digest).encode("ascii"))
+    record["signature"]["value"] = encode(signature)
+    new_ref = copy.deepcopy(old_ref)
+    new_ref["contentHash"] = digest
+    new_key = R.canonical(new_ref).decode("utf-8")
+    resolution["record"] = record
+    authority["referenceValidationByCanonicalRef"][new_key] = resolution
+    receipt["contentHash"] = digest
+    receipt["writer"] = signer
+    authority["verifiedReceiptByCanonicalRef"][new_key] = receipt
+    authority["sessionExecutionAuthorityByPhaseKey"][phase_key][
+        "phaseOrchestrator"
+    ] = signer
+    authority["bundle"]["settlementEvidence"] = [
+        new_ref if ref == old_ref else ref
+        for ref in authority["bundle"]["settlementEvidence"]
+    ]
+    for entry in authority["bundle"]["phaseSummary"]:
+        if entry.get("attestationRef") == old_ref:
+            entry["attestationRef"] = new_ref
+    resign_ebfab(authority["bundle"], seeds)
+    return record
 
 
 def valid_htlc_tx_refs():
@@ -677,6 +778,36 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         self.assertEqual(delivery.get("phaseIndex"), 3)
         self.assertTrue(R._delivery_evidence_shape_valid(delivery))
         self.assertEqual(
+            delivery["signature"]["signer"], "did:demos:orchestrator"
+        )
+        delivery_ref = next(
+            ref for ref in authority["bundle"]["settlementEvidence"]
+            if authority["referenceValidationByCanonicalRef"][
+                R.canonical(ref).decode("utf-8")
+            ]["record"].get("deliveryEvidenceVersion") == "1"
+        )
+        delivery_receipt = authority["verifiedReceiptByCanonicalRef"][
+            R.canonical(delivery_ref).decode("utf-8")
+        ]
+        self.assertEqual(delivery_receipt["writer"], "did:demos:orchestrator")
+        closure = authority["deliveryArtifactAuthorityByPhaseKey"][
+            "3:deliver-attested-payload"
+        ]
+        deliverable_ref = {
+            "anchor": delivery["deliverableAnchor"],
+            "contentHash": delivery["deliverableContentHash"],
+        }
+        self.assertEqual(
+            authority["verifiedReceiptByCanonicalRef"][
+                R.canonical(deliverable_ref).decode("utf-8")
+            ]["receipt"]["writer"],
+            "did:demos:seller",
+        )
+        self.assertEqual(
+            closure["payloadAttestationRecord"]["artifact"]["signature"]["signer"],
+            "did:demos:orchestrator",
+        )
+        self.assertEqual(
             derive_phase_keys(authority, self.pubkeys),
             ["2:pay-dem", "3:deliver-attested-payload"],
         )
@@ -695,6 +826,190 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             )
             with self.subTest(unknown_top_level_field=field):
                 self.assertIsNone(derive_phase_keys(mutated, self.pubkeys))
+
+    def test_seller_cannot_substitute_for_distinct_delivery_orchestrator(self):
+        authority = self.data["executionAuthorities"][
+            "seller-substituted-current-delivery"
+        ]
+        phase_key = "0:deliver-storage-program"
+        record = next(
+            resolution["record"]
+            for resolution in authority["referenceValidationByCanonicalRef"].values()
+        )
+        self.assertEqual(record["signature"]["signer"], "did:demos:seller")
+        self.assertEqual(
+            authority["sessionExecutionAuthorityByPhaseKey"][phase_key][
+                "phaseOrchestrator"
+            ],
+            "did:demos:orchestrator",
+        )
+        disposition, reason, phase_keys = derive_phase_disposition(
+            authority, self.pubkeys
+        )
+        self.assertEqual(disposition, "fail", reason)
+        self.assertIsNone(phase_keys)
+
+    def _validate_with_laa(self, authority, laa_by_phase):
+        return R.validate_ebfab_disposition(
+            authority.get("bundle"),
+            authority.get("listing"),
+            self.pubkeys,
+            authority.get("referenceValidationByCanonicalRef"),
+            authority.get("bundleLifecycle"),
+            authority.get("sessionExecutionAuthorityByPhaseKey"),
+            authority.get("verifiedReceiptByCanonicalRef"),
+            authority.get("deliveryArtifactAuthorityByPhaseKey"),
+            authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            legacy_agreement_authority_by_phase_key=laa_by_phase,
+        )
+
+    def _reconcile_laa_only_ebfab(self, authority, laa):
+        authority["legacyAgreementAuthorityByPhaseKey"] = {"2:pay-dem": laa}
+        entries = []
+        trust = {"copyPresenceByJobRole": {}}
+        for role in ("buyer", "seller"):
+            bundle = copy.deepcopy(authority["bundle"])
+            bundle["anchoredByRole"] = role
+            resign_ebfab(bundle, self.data["seeds"])
+            writer = next(
+                party["primaryClaim"]
+                for party in bundle["parties"]
+                if party["role"] == role
+            )
+            presence = {
+                "bundleHash": R.bundle_hash(bundle),
+                "nativeAddress": "fixture:legacy-agreement:" + role,
+                "writer": writer,
+            }
+            trust["copyPresenceByJobRole"][bundle["jobId"] + ":" + role] = (
+                copy.deepcopy(presence)
+            )
+            entries.append({
+                "bundle": bundle,
+                "expectedJobId": bundle["jobId"],
+                "expectedRole": role,
+                "copyPresence": presence,
+                "authority": authority,
+                "evidenceReceiptContract": "current",
+            })
+        return R.reconcile_authenticated_finality_copies(
+            entries, self.pubkeys, trust
+        )
+
+    def test_seb3_transition_completion_is_audit_valid_but_current_ineligible(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        laa = laa_authority_for_bundle(authority, operation="transition-audit")
+        record = replace_payment_with_transition_evidence(
+            authority, laa, self.data["seeds"]
+        )
+        self.assertTrue(R._legacy_transition_settlement_evidence_shape_valid(record))
+        self.assertEqual(
+            R._authenticated_evidence_wire_type(record, self.pubkeys),
+            "legacy-transition",
+        )
+        disposition, reason, phase_keys = self._validate_with_laa(
+            authority, {"2:pay-dem": laa}
+        )
+        self.assertEqual("pass", disposition, reason)
+        self.assertEqual(
+            phase_keys.legacy_agreement_eligibility_by_phase_key["2:pay-dem"],
+            "transition-only",
+        )
+
+    def test_seb3_precheckpoint_ordinary_settlement_is_historical_only(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        laa = laa_authority_for_bundle(authority, operation="historical-audit")
+        disposition, reason, phase_keys = self._validate_with_laa(
+            authority, {"2:pay-dem": laa}
+        )
+        self.assertEqual("pass", disposition, reason)
+        self.assertEqual(
+            phase_keys.legacy_agreement_eligibility_by_phase_key["2:pay-dem"],
+            "historical-only",
+        )
+
+    def test_seb3_audit_only_passes_never_become_current_bundle_authority(self):
+        for operation, transition in (
+            ("historical-audit", False),
+            ("transition-audit", True),
+        ):
+            authority = copy.deepcopy(
+                self.data["executionAuthorities"]["standard-completed"]
+            )
+            laa = laa_authority_for_bundle(authority, operation=operation)
+            if transition:
+                replace_payment_with_transition_evidence(
+                    authority, laa, self.data["seeds"]
+                )
+            result = self._reconcile_laa_only_ebfab(authority, laa)
+            with self.subTest(operation=operation):
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertEqual(
+                    "legacy-agreement EBFAB is audit-valid but current-ineligible",
+                    result["reason"],
+                )
+                self.assertIsNone(result["bundle"])
+
+    def test_seb3_refuses_ordinary_settlement_coercion_and_idempotency_gaps(self):
+        ordinary = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        transition_laa = laa_authority_for_bundle(
+            ordinary, operation="transition-audit"
+        )
+        disposition, reason, phase_keys = self._validate_with_laa(
+            ordinary, {"2:pay-dem": transition_laa}
+        )
+        self.assertEqual("fail", disposition)
+        self.assertIn("cannot substitute", reason)
+        self.assertIsNone(phase_keys)
+
+        base = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        laa = laa_authority_for_bundle(base, operation="transition-audit")
+        replace_payment_with_transition_evidence(base, laa, self.data["seeds"])
+        cases = (
+            (
+                "missing",
+                lambda value: value["paymentAuthority"].pop("idempotencyKey"),
+                "error",
+            ),
+            (
+                "unused",
+                lambda value: value["paymentAuthority"].__setitem__(
+                    "idempotencyResolution", "unused"
+                ),
+                "fail",
+            ),
+            (
+                "wrong",
+                lambda value: value["paymentAuthority"].__setitem__(
+                    "idempotencyKey", "wrong-idempotency-key"
+                ),
+                "fail",
+            ),
+            (
+                "unavailable",
+                lambda value: value["paymentAuthority"].__setitem__(
+                    "resolution", "unavailable"
+                ),
+                "indeterminate",
+            ),
+        )
+        for name, mutate, expected in cases:
+            candidate = copy.deepcopy(laa)
+            mutate(candidate)
+            disposition, _reason, phase_keys = self._validate_with_laa(
+                copy.deepcopy(base), {"2:pay-dem": candidate}
+            )
+            with self.subTest(case=name):
+                self.assertEqual(expected, disposition)
+                self.assertIsNone(phase_keys)
 
     def test_current_delivery_requires_the_resolved_phase_specific_inner_closure(self):
         valid = {

@@ -132,8 +132,18 @@ def make_authority(name, definition, signing_keys):
             if definition.get("evidenceReasonOverride") is not None:
                 evidence_reason = definition["evidenceReasonOverride"]
             legacy_delivery = False
+            execution_authority_role = "seller"
+            evidence_writer_role = "seller"
             if entry["kind"].startswith("deliver-"):
                 legacy_delivery = definition.get("legacyDeliveryEvidence") is True
+                execution_authority_role = (
+                    definition.get("deliveryExecutionAuthorityRole", "orchestrator")
+                    if not legacy_delivery
+                    else "seller"
+                )
+                evidence_writer_role = definition.get(
+                    "deliveryEvidenceSignerRole", execution_authority_role
+                )
                 if legacy_delivery:
                     record, ref, delivery_closure, native_observations = (
                         F.make_legacy_delivery_evidence(
@@ -157,6 +167,7 @@ def make_authority(name, definition, signing_keys):
                         outcome="success" if entry["outcome"] == "ok" else "failure",
                         reason=evidence_reason,
                         mutation=definition.get("innerArtifactMutation"),
+                        execution_authority_role=evidence_writer_role,
                     )
             else:
                 record, ref = F.make_evidence(
@@ -176,7 +187,10 @@ def make_authority(name, definition, signing_keys):
             settlement_evidence.append(ref)
             phase_key = f"{entry['index']}:{entry['kind']}"
             execution_authority = F.make_session_execution_authority(
-                job_id, entry["kind"], entry["index"]
+                job_id,
+                entry["kind"],
+                entry["index"],
+                signer_role=execution_authority_role,
             )
             legacy_evidence_address = None
             if entry["kind"].startswith("deliver-") and legacy_delivery:
@@ -208,6 +222,7 @@ def make_authority(name, definition, signing_keys):
                 entry["index"],
                 resolved=st8_resolved,
                 state=default_lifecycle["state"],
+                signer_role=execution_authority_role,
             )
             if legacy_evidence_address is not None:
                 receipt["logicalAddress"] = legacy_evidence_address
@@ -306,10 +321,16 @@ def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
     old_key = F.canonical(old_ref).decode("utf-8")
     top_receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_key)
     authority["referenceValidationByCanonicalRef"].pop(old_key)
+    signer = authority["sessionExecutionAuthorityByPhaseKey"][phase_key][
+        "phaseOrchestrator"
+    ]
+    signer_role = next(
+        role for role, claim in F.CLAIMS.items() if claim == signer
+    )
     F.sign_artifact(
         record,
-        signing_keys["seller"],
-        F.CLAIMS["seller"],
+        signing_keys[signer_role],
+        signer,
         F.DELIVERY_EVIDENCE_DOMAIN,
     )
     new_ref = copy.deepcopy(old_ref)
@@ -604,7 +625,10 @@ def generate(source):
         "authenticatedRecordByRef represents independently resolved, job-bound evidence content; "
         "the authenticated phase and uniquely verified signature domain fix its family before the "
         "selector is checked. Payment members are SettlementEvidence, current delivery members are DeliveryEvidence, "
-        "and PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. "
+        "and current DeliveryEvidence plus its top-level receipt are controlled by the authenticated "
+        "phase orchestrator even when that role is distinct from the seller that writes deliverables, "
+        "EntitlementRecords, and credentials; PDE-7 permits only a single unambiguous "
+        "delivery-shaped SettlementEvidence. "
         "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, "
         "entitlement/credential, or payload-attestation/method-proof closure required "
         "before successful current or legacy delivery evidence can authorize its phase; legacy "
@@ -637,6 +661,12 @@ def generate(source):
             "independentlyResolvable": True,
         },
     }
+    definitions["seller-substituted-current-delivery"] = copy.deepcopy(
+        definitions["completed-storage-delivery"]
+    )
+    definitions["seller-substituted-current-delivery"][
+        "deliveryEvidenceSignerRole"
+    ] = "seller"
     legacy_completed = {
         "bundleOutcome": "completed",
         "defaultReferenceLifecycle": {
@@ -868,6 +898,34 @@ def generate(source):
                 ),
             },
         })
+
+    seller_substitution_vector = (
+        "bundle-settlement-bijection-seller-substituted-current-delivery-reject"
+    )
+    seller_substitution_case = {
+        "name": seller_substitution_vector,
+        "expected": "fail",
+        "input": {
+            "executionAuthorityRef": "seller-substituted-current-delivery",
+            "topLevelRefs": [],
+            "authenticatedRecordByRef": {},
+            "pointerMap": {},
+            "unrelatedAuthorityDisposition": "verified",
+        },
+        "want": {
+            "disposition": "rejected",
+            "reasonCode": "execution-authority",
+        },
+    }
+    existing_seller_substitution = next((
+        vector for vector in data["vectors"]
+        if vector["name"] == seller_substitution_vector
+    ), None)
+    if existing_seller_substitution is None:
+        data["vectors"].append(seller_substitution_case)
+    else:
+        existing_seller_substitution.clear()
+        existing_seller_substitution.update(seller_substitution_case)
 
     for authority_name in cross_phase_delivery_reuse:
         vector_name = f"bundle-settlement-bijection-{authority_name}-reject"

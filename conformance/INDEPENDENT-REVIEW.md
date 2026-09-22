@@ -23,6 +23,11 @@ and executes every named test. Missing lenses, missing or duplicated roles,
 dangling evidence, unclaimed evidence, invalid surface declarations, and failing
 tests fail the gate.
 
+The mandatory evidence IDs, unittest targets, lens roles, and declared surfaces
+are also pinned in `scripts/pre_review_gate.py`. Adding or replacing a trust-boundary
+assertion therefore requires a reviewed update to both the executable registry
+contract and the manifest; changing manifest labels alone cannot claim coverage.
+
 The mandatory lenses cover hostile JSON/type totality at public APIs, independent
 binding-axis mutation for current FAB delivery, current-versus-archival downgrade
 and fallback behavior, direct-helper versus composed-caller parity, and preservation

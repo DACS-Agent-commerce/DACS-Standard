@@ -8,21 +8,183 @@ import itertools
 import json
 import os
 from pathlib import Path
+from pathlib import PurePosixPath
 import subprocess
 import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "conformance" / "pre-review-invariants.json"
-REQUIRED_REVIEW_LENSES = {
-    "hostile-json-type-totality": {"public-api"},
-    "binding-axis-isolation-current-fab-delivery": {"composed-caller"},
-    "current-archival-downgrade-fallback": {"composed-caller"},
-    "direct-helper-composed-path-parity": {"direct-helper", "composed-caller"},
-    "compatibility-legitimate-positive-preservation": {"compatibility-path"},
-}
 EVIDENCE_SURFACES = {
     "public-api", "direct-helper", "composed-caller", "compatibility-path",
+}
+
+
+def _pinned(file: str, test: str, *surfaces: str) -> dict:
+    return {"file": file, "test": test, "surfaces": frozenset(surfaces)}
+
+
+PINNED_REVIEW_EVIDENCE = {
+    "type-totality-array-ebfab-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_array_rejected_without_exception_ebfab",
+        "public-api",
+    ),
+    "type-totality-array-disposition-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_array_rejected_without_exception_disposition",
+        "public-api",
+    ),
+    "type-totality-object-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_object_rejected_without_exception",
+        "public-api",
+    ),
+    "type-totality-null-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_null_rejected_without_exception",
+        "public-api",
+    ),
+    "type-totality-boolean-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_boolean_rejected_without_exception",
+        "public-api",
+    ),
+    "type-totality-number-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_number_rejected_without_exception",
+        "public-api",
+    ),
+    "type-totality-unsupported-string-counterexample": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_unsupported_string_rejected_without_exception",
+        "public-api",
+    ),
+    "type-totality-control": _pinned(
+        "tests/test_pr333_fix_2.py",
+        "AuthenticatedEvidenceWireTypeAlgorithmTests.test_valid_algorithm_preserved",
+        "public-api",
+    ),
+    "credential-ref-type-counterexample": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "EntitlementCredentialRefBoundaryTests.test_present_malformed_credential_ref_is_typed_error_on_both_apis",
+        "public-api",
+    ),
+    "credential-ref-positive-control": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "EntitlementCredentialRefBoundaryTests.test_absent_and_valid_private_credential_modes_still_pass",
+        "public-api", "compatibility-path",
+    ),
+    "delivery-binding-counterexample": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "CurrentFabDeliveryAdmissionTests.test_current_fab_delivery_exact_bindings_are_load_bearing",
+        "composed-caller",
+    ),
+    "delivery-binding-control": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "CurrentFabDeliveryAdmissionTests.test_genuine_current_fab_delivery_closure_passes",
+        "composed-caller",
+    ),
+    "era-downgrade-counterexample": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "ExplicitReconciliationReceiptContractTests.test_archival_ebfab_is_comparison_only",
+        "composed-caller",
+    ),
+    "era-downgrade-control": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "ExplicitReconciliationReceiptContractTests.test_current_ebfab_remains_selectable_but_dual_era_refuses",
+        "composed-caller", "compatibility-path",
+    ),
+    "helper-composition-counterexample": _pinned(
+        "tests/test_settlement_finality_verification_vectors.py",
+        "SettlementFinalityVerificationVectorTests.test_provider_attestation_map_boundary_is_typed_on_direct_and_composed_paths",
+        "direct-helper", "composed-caller",
+    ),
+    "helper-composition-control": _pinned(
+        "tests/test_settlement_finality_verification_vectors.py",
+        "SettlementFinalityVerificationVectorTests.test_actual_dacs5_strong_bundle_consumer_passes_all_six_models",
+        "composed-caller",
+    ),
+    "historical-helper-binding-counterexample": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "HistoricalEvidenceBindingTests.test_wrong_job_and_malformed_historical_evidence_refuse_without_throwing",
+        "direct-helper", "compatibility-path",
+    ),
+    "historical-helper-binding-control": _pinned(
+        "tests/test_current_evidence_boundary_regressions.py",
+        "HistoricalEvidenceBindingTests.test_legitimate_historical_fab_binding_passes_without_type_error",
+        "direct-helper", "compatibility-path",
+    ),
+    "compatibility-counterexample": _pinned(
+        "tests/test_settlement_finality_verification_vectors.py",
+        "SettlementFinalityVerificationVectorTests.test_historical_pointer_fixture_cannot_bypass_current_profile_admission",
+        "compatibility-path",
+    ),
+    "compatibility-control": _pinned(
+        "tests/test_settlement_finality_verification_vectors.py",
+        "SettlementFinalityVerificationVectorTests.test_new_new_and_all_new_older_reconciliation_paths_execute",
+        "compatibility-path", "composed-caller",
+    ),
+}
+
+REQUIRED_REVIEW_LENSES = {
+    "hostile-json-type-totality": {
+        "counterexampleEvidence": frozenset({
+            "type-totality-array-ebfab-counterexample",
+            "type-totality-array-disposition-counterexample",
+            "type-totality-object-counterexample",
+            "type-totality-null-counterexample",
+            "type-totality-boolean-counterexample",
+            "type-totality-number-counterexample",
+            "type-totality-unsupported-string-counterexample",
+            "credential-ref-type-counterexample",
+        }),
+        "controlEvidence": frozenset({
+            "type-totality-control", "credential-ref-positive-control",
+        }),
+        "requiredSurfaces": {
+            "counterexampleEvidence": {"public-api"},
+            "controlEvidence": {"public-api"},
+        },
+    },
+    "binding-axis-isolation-current-fab-delivery": {
+        "counterexampleEvidence": frozenset({"delivery-binding-counterexample"}),
+        "controlEvidence": frozenset({"delivery-binding-control"}),
+        "requiredSurfaces": {
+            "counterexampleEvidence": {"composed-caller"},
+            "controlEvidence": {"composed-caller"},
+        },
+    },
+    "current-archival-downgrade-fallback": {
+        "counterexampleEvidence": frozenset({"era-downgrade-counterexample"}),
+        "controlEvidence": frozenset({"era-downgrade-control"}),
+        "requiredSurfaces": {
+            "counterexampleEvidence": {"composed-caller"},
+            "controlEvidence": {"composed-caller"},
+        },
+    },
+    "direct-helper-composed-path-parity": {
+        "counterexampleEvidence": frozenset({
+            "helper-composition-counterexample",
+            "historical-helper-binding-counterexample",
+        }),
+        "controlEvidence": frozenset({
+            "helper-composition-control",
+            "historical-helper-binding-control",
+        }),
+        "requiredSurfaces": {
+            "counterexampleEvidence": {"direct-helper", "composed-caller"},
+            "controlEvidence": {"direct-helper", "composed-caller"},
+        },
+    },
+    "compatibility-legitimate-positive-preservation": {
+        "counterexampleEvidence": frozenset({"compatibility-counterexample"}),
+        "controlEvidence": frozenset({"compatibility-control"}),
+        "requiredSurfaces": {
+            "counterexampleEvidence": {"compatibility-path"},
+            "controlEvidence": {"compatibility-path"},
+        },
+    },
 }
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -30,6 +192,29 @@ if str(ROOT) not in sys.path:
 
 class GateError(ValueError):
     pass
+
+
+def _unittest_module(relative: str, test: str, label: str) -> str:
+    """Validate a manifest unittest target and return its importable module."""
+    path = PurePosixPath(relative)
+    module_parts = (*path.parts[:-1], path.stem)
+    if (
+        path.is_absolute()
+        or len(path.parts) < 2
+        or path.parts[0] != "tests"
+        or path.suffix != ".py"
+        or not path.name.startswith("test_")
+        or not all(part.isidentifier() for part in module_parts)
+    ):
+        raise GateError(
+            f"{label}: file must name an importable test_*.py module under tests/"
+        )
+    test_parts = test.split(".")
+    if len(test_parts) < 2 or not all(part.isidentifier() for part in test_parts):
+        raise GateError(
+            f"{label}: test must be a safe dotted unittest identity"
+        )
+    return ".".join(module_parts)
 
 
 def load_manifest(path: Path) -> dict:
@@ -152,6 +337,10 @@ def validate_manifest(manifest: object) -> None:
         if regression["id"] in ids:
             raise GateError(f"duplicate invariant id: {regression['id']}")
         ids.add(regression["id"])
+        _unittest_module(
+            regression["file"], regression["test"], regression["id"]
+        )
+        _within_test_root(regression["file"])
 
     covered_ids: set[str] = set()
     for item in covered:
@@ -224,14 +413,34 @@ def validate_manifest(manifest: object) -> None:
             or not set(surfaces).issubset(EVIDENCE_SURFACES)
         ):
             raise GateError("independent review evidence must be unique and runnable")
+        _unittest_module(file_name, test_name, evidence_id)
+        _within_test_root(file_name)
+        pinned = PINNED_REVIEW_EVIDENCE.get(evidence_id)
+        observed = {
+            "file": file_name,
+            "test": test_name,
+            "surfaces": frozenset(surfaces),
+        }
+        if pinned != observed:
+            raise GateError(
+                f"{evidence_id}: evidence does not match its code-pinned declaration"
+            )
         target = (file_name, test_name)
         if target in evidence_targets:
             raise GateError(f"duplicate independent review evidence target: {target}")
         evidence_targets.add(target)
         evidence_by_id[evidence_id] = evidence
 
+    missing_evidence = PINNED_REVIEW_EVIDENCE.keys() - evidence_by_id.keys()
+    extra_evidence = evidence_by_id.keys() - PINNED_REVIEW_EVIDENCE.keys()
+    if missing_evidence or extra_evidence:
+        raise GateError(
+            "independent review evidence does not match the code-pinned registry: "
+            f"missing={sorted(missing_evidence)}, extra={sorted(extra_evidence)}"
+        )
+
     lenses_by_id: dict[str, dict] = {}
-    referenced_evidence: set[str] = set()
+    evidence_owners: dict[str, tuple[str, str]] = {}
     for lens in review_lenses:
         if not isinstance(lens, dict) or set(lens) != {
             "id", "counterexampleEvidence", "controlEvidence",
@@ -258,7 +467,14 @@ def validate_manifest(manifest: object) -> None:
                     f"{lens_id}: dangling independent review evidence {sorted(missing)}"
                 )
             role_sets.append(set(evidence_ids))
-            referenced_evidence.update(evidence_ids)
+            for evidence_id in evidence_ids:
+                if evidence_id in evidence_owners:
+                    owner = evidence_owners[evidence_id]
+                    raise GateError(
+                        f"{evidence_id}: evidence belongs to both "
+                        f"{owner[0]}/{owner[1]} and {lens_id}/{role}"
+                    )
+                evidence_owners[evidence_id] = (lens_id, role)
         if role_sets[0] & role_sets[1]:
             raise GateError(
                 f"{lens_id}: counterexample and control evidence must be distinct"
@@ -271,22 +487,31 @@ def validate_manifest(manifest: object) -> None:
             "independent review lenses do not match the required set: "
             f"missing={sorted(missing_lenses)}, extra={sorted(extra_lenses)}"
         )
-    orphaned_evidence = evidence_by_id.keys() - referenced_evidence
+    orphaned_evidence = evidence_by_id.keys() - evidence_owners.keys()
     if orphaned_evidence:
         raise GateError(
             f"unclaimed independent review evidence: {sorted(orphaned_evidence)}"
         )
-    for lens_id, required_surfaces in REQUIRED_REVIEW_LENSES.items():
+    for lens_id, contract in REQUIRED_REVIEW_LENSES.items():
         lens = lenses_by_id[lens_id]
-        observed_surfaces = set()
         for role in ("counterexampleEvidence", "controlEvidence"):
+            observed_ids = set(lens[role])
+            if observed_ids != contract[role]:
+                raise GateError(
+                    f"{lens_id}/{role}: evidence set does not match "
+                    "the code-pinned registry contract"
+                )
+            observed_surfaces = set()
             for evidence_id in lens[role]:
                 observed_surfaces.update(evidence_by_id[evidence_id]["surfaces"])
-        missing_surfaces = required_surfaces - observed_surfaces
-        if missing_surfaces:
-            raise GateError(
-                f"{lens_id}: missing required evidence surfaces {sorted(missing_surfaces)}"
+            missing_surfaces = (
+                contract["requiredSurfaces"][role] - observed_surfaces
             )
+            if missing_surfaces:
+                raise GateError(
+                    f"{lens_id}/{role}: missing required evidence surfaces "
+                    f"{sorted(missing_surfaces)}"
+                )
 
 
 def _within_root(relative: str) -> Path:
@@ -295,6 +520,14 @@ def _within_root(relative: str) -> Path:
         raise GateError(f"path escapes repository: {relative}")
     if not path.is_file():
         raise GateError(f"required file disappeared: {relative}")
+    return path
+
+
+def _within_test_root(relative: str) -> Path:
+    path = _within_root(relative)
+    test_root = (ROOT / "tests").resolve()
+    if test_root not in path.parents:
+        raise GateError(f"unittest file escapes tests/: {relative}")
     return path
 
 
@@ -407,9 +640,10 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
         if part
     )
     for entry in entries:
-        path = _within_root(entry["file"])
+        module = _unittest_module(entry["file"], entry["test"], entry["id"])
+        _within_test_root(entry["file"])
         completed = subprocess.run(
-            [sys.executable, str(path), entry["test"]],
+            [sys.executable, "-m", "unittest", f"{module}.{entry['test']}"],
             cwd=ROOT,
             text=True,
             capture_output=True,

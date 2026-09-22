@@ -220,6 +220,7 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
         text = SPEC.read_text(encoding="utf-8")
         self.assertRegex(text, r"\*\*DACS-5 v0\.(?:[5-9]|[1-9][0-9]+)\*\*")
         self.assertIn("makes APR-7 effective-pipeline recomputation mandatory", text)
+        self.assertIn("v0.4 adds", text)
         self.assertIn('settlementVerifiedDerivationVersion: "1"', text)
         self.assertIn('replayableSettlementVerifiedDerivationVersion: "1"', text)
         self.assertIn("Existing discriminators retain their released meaning.", text)

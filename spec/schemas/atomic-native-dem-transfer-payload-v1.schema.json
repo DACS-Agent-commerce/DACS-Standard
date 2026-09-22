@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-native-dem-transfer-payload-v1.schema.json",
+  "title": "AtomicNativeDemTransferPayloadV1",
+  "type": "object",
+  "required": ["from", "to", "asset", "amount"],
+  "properties": {
+    "from": {
+      "description": "Signed transfer source, independently derived and cross-checked against authenticated execution-profile, payer, and rail inputs; never authority by self-assertion.",
+      "type": "string",
+      "minLength": 1
+    },
+    "to": {
+      "description": "Signed transfer destination, independently derived and cross-checked against the verified agreement, execution profile, payment input, and rail; never authority by self-assertion.",
+      "type": "string",
+      "minLength": 1
+    },
+    "asset": { "type": "string", "minLength": 1 },
+    "amount": {
+      "type": "string",
+      "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]*[1-9])?|0\\.[0-9]*[1-9])$"
+    }
+  },
+  "additionalProperties": false
+}

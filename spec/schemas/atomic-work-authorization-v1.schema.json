@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-work-authorization-v1.schema.json",
+  "title": "AtomicWorkAuthorizationV1",
+  "type": "object",
+  "required": [
+    "authorizationVersion",
+    "algorithm",
+    "workId",
+    "executionProfile",
+    "networkId",
+    "railId",
+    "jobId",
+    "phaseIndex",
+    "operationId",
+    "operationIndex",
+    "operationKind",
+    "role",
+    "signer",
+    "value"
+  ],
+  "properties": {
+    "authorizationVersion": { "const": "1" },
+    "algorithm": { "const": "ed25519" },
+    "workId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "executionProfile": { "type": "string", "minLength": 1 },
+    "networkId": { "type": "string", "minLength": 1 },
+    "railId": { "type": "string", "minLength": 1 },
+    "jobId": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "phaseIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "operationId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "operationIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "operationKind": {
+      "enum": [
+        "assert-artifact",
+        "storage-program-put",
+        "payment-slot-cas",
+        "native-dem-transfer",
+        "assert-work-receipt"
+      ]
+    },
+    "role": {
+      "enum": ["buyer", "seller", "orchestrator", "payer"]
+    },
+    "signer": { "$ref": "#/$defs/claimReference" },
+    "value": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{85}[AQgw]$"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "claimReference": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9-]*:[^\\s?]+(?:\\?(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*(?:&(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*)*)?$"
+    }
+  }
+}

@@ -196,7 +196,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "e3263ea732057871ea8e841ed79c752f7174ab28d841048c59d41de76069d8f8",
+          "sessionId": "session-cfc9df69aef15ba2dfc8bd5f56fdf7a9db06afb88071dffa3462c67dcae631b8"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"411e60921d7563c0e21a25001a7374f65d9e6e0a078dd5c085f4260528ba1bbe\"}": {
           "record": {
@@ -727,7 +729,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "0a24e52d6bdcc79f778a48b21d1d5fcc5082b3ca04accdcdb5cc1fd2dd5509ab",
+          "sessionId": "session-44470d4ac2606dc54261241d85db3c1b969de08495a6b7feaf1b41e0075ad178"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -1022,7 +1026,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "800e7c27c84dc4e720bbb9d3b4d438fae128921a9a5e592e28ef4b901b5c24f1",
+          "sessionId": "session-c8f7d18f174ae60a6cf0373f2f68218d925ed36b133d582456ca237e3e46630c"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e032ca7d3a59a2a5a03d47e330a3e60b0684a1648908975c8e7f9cc809e86c15\"},\"contentHash\":\"6a21d2205eb5a9aaeafe820878cf328b4922094ca7a119ddbd12216cf36e580e\"}": {
           "record": {
@@ -1055,7 +1061,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "05bedd59e4642fa40e6459984e52be70c416a6b2cb76f623bc8c6a41b0d21b36",
+          "sessionId": "session-e032ca7d3a59a2a5a03d47e330a3e60b0684a1648908975c8e7f9cc809e86c15"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"41d150ed5097c1ccd51a288c3ec3f45d892ade2bdd4b5f6eb58314a3906657b8\"}": {
           "record": {
@@ -1798,7 +1806,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "c24728f7e5d32338a8c8a1fb01b07a23e15d9f6aa5215abfcfc86864158bacfc",
+          "sessionId": "session-5dda0d76ef6dc616d6d9d16bbc05a02d2acba7010c04451ab08a4b97678beb50"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -2067,7 +2077,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "bb07f5ab90be2e76268c495a4ef2aff5654b8e18f8c138a6e574996ca335ea25",
+          "sessionId": "session-f6f1e60d1eeb80653edd86d917d180abbde37e1f716d9f23dfb42dd9bc852aeb"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"8de5530b64f8bee6c0b93a1d9808b6279ecddeb0e39083c04b96e3ac4035cb36\"}": {
           "record": {
@@ -2594,7 +2606,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "3f71f31d74cf2ca4cec8acc38ec7f031b4c91dd3f13506ae50db13a16b8b5d89",
+          "sessionId": "session-5d9a165fd6e2f08ad486a29acb428c3c7636fe189999876100aef2bad7cc4216"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"12f17e8cce9d264df0c76529dfe573e7a4beb60c32ce0a0e213cff3f89efe7d7\"}": {
           "record": {
@@ -3121,7 +3135,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "c472a6b859e77909c4c76709c9dda229a8959fe7b553d0be4e66ecd6053e4577",
+          "sessionId": "session-7831fa6ded704b926430ba071e11f66e5af6e824510e38b6f376c9a1250eb5d0"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"a4b2e6f538e9112bfa744fcb61bf28795007b29806f3b6f9129ca0d20d0718df\"}": {
           "record": {
@@ -3600,7 +3616,9 @@
           "lifecycle": {
             "state": "included",
             "independentlyResolvable": false
-          }
+          },
+          "agreementHash": "8a11fd2b3ed008eb769151226e681d4937eca2da9e828f77df50db5000951c96",
+          "sessionId": "session-e44093ac12ba1672817f1226d1dd2e69916bf0e7baa94354e12ffeebbb331d9d"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -3872,7 +3890,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "d3472f88d8591d81a2d3cfd6b2a5ade046d0afa8aee5f8c65a64b20a1a687b36",
+          "sessionId": "session-78a4ad2e32e3e9d95269c09dac98da825a67df3f2f0d41c914ef02b711b9a5ba"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -4032,7 +4052,9 @@
           "lifecycle": {
             "state": "included",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "e424b3a4675e9291b515c0aa3b0995984a6d307309ba9ac9db34a9d588577c48",
+          "sessionId": "session-b3696e686ab59123ea0c7fe219635a990a03199c5eb8faa49c2ba63e3b42b790"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -4355,7 +4377,9 @@
           "lifecycle": {
             "state": "included",
             "independentlyResolvable": false
-          }
+          },
+          "agreementHash": "235a57a1fe7abe1adf07ddabd229de9a9cee18b6229c02cabb9ed78887e2bf43",
+          "sessionId": "session-2d3cbc9069720521c2b364a3f587dc0585a2f4512c1b21b8e98ba6c049e0c3fb"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -4888,7 +4912,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "f5f4bdadf26d88508c3d8939b78e348d4ba082a8eea507f0ffbc2b09a98122cc",
+          "sessionId": "session-3606f9fe67c62bb04ebf1c168c7764fabeb3c51db2913f8917e8dfcd0149da46"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -5180,7 +5206,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "fbf0f152e1c173fdad920730d3dcadbb4278d1e20e8939871220c5e3c91fbb48",
+          "sessionId": "session-733b26e84a8f92f750c02ae4d66b74dcb76559644c5016ff5c32e1e81702b98f"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -5453,7 +5481,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "67587e42f45c10a991b8b55d98f383424a3d36ea2f6c06fe0f3895e9f812b9d6",
+          "sessionId": "session-1d27196fb69476001410221916123d8bf78c6499422f669a90cc98a830ebfda7"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -5722,7 +5752,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "6c601cc97e8c8536e4bccb4b64739acdf0e5a9c5b43662dbe2096b149f4b80e9",
+          "sessionId": "session-8750306b4555f75a2471a190f5a30dcda4f9d78eeec7dc9d0017acc9b532114c"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-af56627fec417c23f92304b86178087a9fb9c76344c1fa6586774d074b20edc8\"},\"contentHash\":\"6aaffba2ae105b72edcbc999087c4007e465d50687dccc273d6bf4e22ea3bdc3\"}": {
           "record": {
@@ -6249,7 +6281,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "e3b24a34847ffbbe328301b8bb7ad33e0825af2e2e38dad0f39e84b80eec80d0",
+          "sessionId": "session-33f11f42aaa74deb100468f24b02d1cd1b2040320adbdf3c75f807e53b8edf13"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aca8ef0577582508458bdbaacda407771205d2335409ebbb6ad5245764be81ea\"},\"contentHash\":\"e6d7f684ec5bc2830df3e1641ac442ffbe5f7d78af12be02c6ee42fda7fae1a8\"}": {
           "record": {
@@ -6776,7 +6810,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "6b20daeab5c1063dd69f496ded13b8715e30e1e99ff36f92416d1b3c7382bb23",
+          "sessionId": "session-b83fbcf0bc6a54a1681c83178e32c8307f5331b660e45fc8f14a444f826185ef"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-28653a3a22f09f151ab561843e2ba738e5f26221d14ed558a54e14c36a7208c4\"},\"contentHash\":\"7142a239a5ff0af7dbd0eca8955d22eb33b184bfaed8fcfb36ff2beb1b883ed8\"}": {
           "record": {
@@ -7303,7 +7339,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "208b08498c3a8cd7c5fdaadefe7f14bf0d15896f230afc46021ec0c55f7d171f",
+          "sessionId": "session-77a46485c2e871405e9e861b6a02d7fd9ed98a7d13b31d11b940aed92d7045ba"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-156fc7bcb76928ecb7b4918da8341ed7c84f44d94454c722eb36cc5260b2b6d3\"},\"contentHash\":\"476818c9bf3dd44c405573ade441c8c7a0ecfdb958647b72531167abcc986d13\"}": {
           "record": {
@@ -7336,7 +7374,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "fe12d60e98e8ecd59d94fbd2767311bb2720a65f146fd20a268ec1de98d31bd2",
+          "sessionId": "session-156fc7bcb76928ecb7b4918da8341ed7c84f44d94454c722eb36cc5260b2b6d3"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-40d3861281b3271c1703fc901b6929a0303af13c2baebb3623cd941a184c3797\"},\"contentHash\":\"72345d6f302ff56da8fc4637ee99cdc664c489aaac9c581089ea7fa1c7fedf77\"}": {
           "record": {
@@ -7890,7 +7930,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "054321c28a3a624947403a78737ab702801f2840192a2596a6573ba51d66366a",
+          "sessionId": "session-da51491b3316fc37a33932c48d06c1736aa4189850cd1cef3e1e9d9ffa3cb3f0"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-85874500877c84ae925b29eda59b2cc57c327df79c5cde4f1dfaf2045dfbedf9\"},\"contentHash\":\"7e01863182c476301dadba98d450b6d60729735d40326b611d74634b203193c8\"}": {
           "record": {
@@ -7923,7 +7965,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "bad8cf527dff05ec9cb06e0dd4a0fca7d9a16c3e332906c8eea2e484317ff5d2",
+          "sessionId": "session-85874500877c84ae925b29eda59b2cc57c327df79c5cde4f1dfaf2045dfbedf9"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-8425ebba60b33fca18c994c365098c89c66308800ef358b44f0174eba685b77f\"},\"contentHash\":\"4bcb413ce27eac51b0900dfc2c77cb2826c23ffb8dbeae78d0a6041b146609e8\"}": {
           "record": {
@@ -8668,7 +8712,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "b7f34b99ed8f520d745a1f75ad8c8d5aa2028c7ab70fb231b3b4c5660f802acc",
+          "sessionId": "session-6fda26bf73261c7ef788fe1f760bd693324925bcd1c7c32a702a906236c4f3ad"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3e7ff19e9991ce41543e54d64906f97ebc5aec8cd86f334b5a2763f1c152e2ef\"},\"contentHash\":\"290d6e35fe5a390af20958bc1e22bcb17b47d91e98d0698959729da0d6fe9720\"}": {
           "record": {
@@ -8701,7 +8747,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "dcf854d6ed3b8a25e178bccb9aa2765d7924c3f98b137e2f492320f9444789f1",
+          "sessionId": "session-3e7ff19e9991ce41543e54d64906f97ebc5aec8cd86f334b5a2763f1c152e2ef"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-0c43a1744aad6d6b60c3b36ce3e153bb86c291d551d7d3639282ac2fe7909f59\"},\"contentHash\":\"8209b8dd8dc341a50d143542a5eaa0936767b4cc7a1a2a1fdab7cf7a711eb142\"}": {
           "record": {
@@ -9255,7 +9303,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "b048863047439eaccfe06a6a35f80dc08f4ec791211d0e11b599e61f0cd5b034",
+          "sessionId": "session-d5e9b5ca9caa97f6a3b8e718018a9c9fed45f59bba9a9baa64e00090af439687"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-27edbd7a25ae0495705087480c8160de4cd5798df13e890e88d6d48c0c02b0cf\"},\"contentHash\":\"40072db8f36260aa1b304391fb966617d7a56c01c86148e8105069bb12f4369c\"}": {
           "record": {
@@ -9288,7 +9338,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "2a5802d842c2ffd866cefe4c02004778fc3d60e87112836e972991006afb934a",
+          "sessionId": "session-27edbd7a25ae0495705087480c8160de4cd5798df13e890e88d6d48c0c02b0cf"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-8dd963aa759dcee9f0c6aa719a9d4d93527de709c6a3099f2018f011bb8fe525\"},\"contentHash\":\"e62f84927e7685f5816fe779995dbfff07eb34db89d7da3d25220d2134c26066\"}": {
           "record": {
@@ -9842,7 +9894,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "dd6957a9cf1233ec1bd299c83e91caa9b51b8ab1cc4a2b6d0559a6dbd43ccbbd",
+          "sessionId": "session-02424e2ec84b8fa907ea1608184c81841139caea70d8726eeaf601eaa529aa6b"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-fc81d1279a5ce9e80c2dc1b9b84d986dffdd5296be0545c82d3f81f62b67082e\"},\"contentHash\":\"b70024714fefbda774dc8833150181dd96bde4e0525bd8bae5bbbcf5d3d257b7\"}": {
           "record": {
@@ -10347,7 +10401,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "c0cca6b193f761749c6a689701c808ac754e30bca168a8a4ad2e3e8b89a185f7",
+          "sessionId": "session-42b641c51f483cdab0c939e6f4f9a1c9975f8b60d4a0be6b2b6a0b116e89b0a5"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-31dce8d0f301dd29e4787df35c9e8f130592a52b1a3ec294500de5441bbd90ef\"},\"contentHash\":\"1d1edd3fba6a6d52cb0287b5d06e6e93af7d62bccf78afe20d8445b132259458\"}": {
           "record": {
@@ -10874,7 +10930,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "5b5a580e149459b689314532f08afc5f78c78bece176acb31d6c8a250d76bfc4",
+          "sessionId": "session-b656af926000fe98fc6767474f402884fbd1dd617b52e0bddc4e991860b75168"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-fefcc1cdb4f640fa197186ce6a8f02a4645c95f8e5e956cb8ee289fd5d1147b3\"},\"contentHash\":\"e64fa05697195013dde295980d2f7f8c984c5a39cf99e5a274a6e305d0e13f45\"}": {
           "record": {
@@ -11401,7 +11459,9 @@
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
-          }
+          },
+          "agreementHash": "7beb50e488a150fe1c84228cd6c1c652d82eca59c9a3b02f68a0fe7f6aa7bddc",
+          "sessionId": "session-84c20add6750e18c6de9906f1388c711c255c018e09746aa7ec9af23d5352920"
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bc791387b6fa4a6f53e2bade5668f1a29b6f134631dcbe3e4d5534c6b13c140f\"},\"contentHash\":\"19adcba18e3fdf91fb219a39419b8c75dbcbff579a25d350e24ed068efcf65f6\"}": {
           "record": {

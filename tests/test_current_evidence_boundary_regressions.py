@@ -533,6 +533,10 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
                 "orchestratorPrimaryClaim": execution["phaseOrchestrator"],
             },
         }
+        authority["referenceValidationByCanonicalRef"][ref_key].update({
+            "agreementHash": agreement_hash,
+            "sessionId": laa["sessionAuthority"]["sessionId"],
+        })
         authority["legacyAgreementAuthorityByPhaseKey"] = {
             phase_key: R.make_laa_phase_carrier(
                 laa,

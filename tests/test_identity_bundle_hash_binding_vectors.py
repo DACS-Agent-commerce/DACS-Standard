@@ -2390,6 +2390,9 @@ def _current_terminal_laa_carriers(
             continue
         orchestrator = execution.get("phaseOrchestrator")
         agreement_hash = bundle.get("agreementRef", {}).get("contentHash")
+        session_id = "session:" + str(bundle.get("jobId"))
+        reference_validation[reference_key]["agreementHash"] = agreement_hash
+        reference_validation[reference_key]["sessionId"] = session_id
         laa = {
             "operation": "authorize-payment",
             "pipelineHasPayment": True,
@@ -2407,7 +2410,7 @@ def _current_terminal_laa_carriers(
             "sessionAuthority": {
                 "state": "verified",
                 "jobId": bundle.get("jobId"),
-                "sessionId": "session:" + str(bundle.get("jobId")),
+                "sessionId": session_id,
                 "orchestratorPrimaryClaim": orchestrator,
             },
         }

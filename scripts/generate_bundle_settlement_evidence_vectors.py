@@ -51,16 +51,24 @@ def authority_reference(name, phase_key):
     }
 
 
+def current_agreement_hash(job_id, phase_key):
+    return hashlib.sha256(
+        ("current-agreement:" + job_id + ":" + phase_key).encode()
+    ).hexdigest()
+
+
+def current_session_id(job_id, phase_key):
+    return "session-" + hashlib.sha256(
+        (job_id + ":" + phase_key).encode()
+    ).hexdigest()
+
+
 def current_laa_phase_carrier(
     bundle, listing, phase_key, record, ref, receipt, execution
 ):
     """Build deterministic authenticated current-agreement authority for SEB."""
-    agreement_hash = hashlib.sha256(
-        ("current-agreement:" + bundle["jobId"] + ":" + phase_key).encode()
-    ).hexdigest()
-    session_id = "session-" + hashlib.sha256(
-        (bundle["jobId"] + ":" + phase_key).encode()
-    ).hexdigest()
+    agreement_hash = current_agreement_hash(bundle["jobId"], phase_key)
+    session_id = current_session_id(bundle["jobId"], phase_key)
     orchestrator = execution["phaseOrchestrator"]
     laa = {
         "operation": "authorize-payment",
@@ -279,10 +287,18 @@ def make_authority(name, definition, signing_keys):
             if legacy_evidence_address is not None:
                 receipt["logicalAddress"] = legacy_evidence_address
             verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = receipt
-            reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
+            record_authority = {
                 "record": record,
                 "lifecycle": copy.deepcopy(default_lifecycle),
             }
+            if entry["kind"].startswith("pay-"):
+                record_authority.update({
+                    "agreementHash": current_agreement_hash(job_id, phase_key),
+                    "sessionId": current_session_id(job_id, phase_key),
+                })
+            reference_validation_by_canonical_ref[
+                F.canonical(ref).decode("utf-8")
+            ] = record_authority
         phase_summary.append(entry)
 
     bundle = {

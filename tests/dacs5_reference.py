@@ -2212,6 +2212,7 @@ def _validate_bound_fault_bundle(
                     phase_execution=session_execution_authority_by_phase_key.get(
                         phase_key
                     ),
+                    authenticated_record_authority=resolution,
                 )
             )
             if laa_disposition_value != "pass":
@@ -8974,6 +8975,7 @@ def _qualify_legacy_agreement_evidence(
     evidence_ref,
     evidence_receipt,
     phase_execution,
+    authenticated_record_authority,
 ):
     """Apply LAA without letting record content select the agreement era.
 
@@ -9032,6 +9034,36 @@ def _qualify_legacy_agreement_evidence(
         return ("fail", "LAA carrier contradicts the authenticated SEB closure", None)
     session = laa.get("sessionAuthority")
     signature = record.get("signature")
+    if not isinstance(session, dict):
+        return ("indeterminate", "authenticated session authority is unavailable", None)
+    if session.get("state") != "verified":
+        return ("indeterminate", "authenticated session authority is not verified", None)
+    if not isinstance(authenticated_record_authority, dict):
+        return ("indeterminate", "authenticated evidence record authority is unavailable", None)
+    record_agreement_hash = authenticated_record_authority.get("agreementHash")
+    record_session_id = authenticated_record_authority.get("sessionId")
+    if not _canonical_identity_string(record_agreement_hash) or not _canonical_identity_string(
+        record_session_id
+    ):
+        return ("error", "authenticated evidence record authority is malformed", None)
+    if evidence_type == "legacy-transition" and (
+        record.get("agreementHash") != record_agreement_hash
+        or record.get("sessionId") != record_session_id
+    ):
+        return (
+            "fail",
+            "transition evidence contradicts authenticated record authority",
+            None,
+        )
+    if (
+        agreement.get("contentHash") != record_agreement_hash
+        or session.get("sessionId") != record_session_id
+    ):
+        return (
+            "fail",
+            "agreement or session contradicts authenticated evidence record authority",
+            None,
+        )
     orchestrator = (
         session.get("orchestratorPrimaryClaim")
         if isinstance(session, dict) else None
@@ -11473,6 +11505,7 @@ def _validate_ebfab_boolean(
                     phase_execution=session_execution_authority_by_phase_key.get(
                         phase_key
                     ),
+                    authenticated_record_authority=resolution,
                 )
             )
             if laa_disposition_value != "pass":
@@ -11724,9 +11757,8 @@ def validate_ebfab_disposition(*args, **kwargs):
 def validate_legacy_ebfab_disposition(*args, **kwargs):
     """Validate frozen EBFAB fixtures with the named historical receipt contract."""
     selected = dict(kwargs)
-    selected.setdefault(
-        "legacy_agreement_authority_by_phase_key",
-        _LAA_ARCHIVAL_AUDIT_UNSPECIFIED,
+    selected["legacy_agreement_authority_by_phase_key"] = (
+        _LAA_ARCHIVAL_AUDIT_UNSPECIFIED
     )
     return _validate_ebfab_disposition_with_receipts(
         _validate_legacy_evidence_receipt, args, selected
@@ -11735,9 +11767,8 @@ def validate_legacy_ebfab_disposition(*args, **kwargs):
 def validate_archival_audit_ebfab_disposition(*args, **kwargs):
     """Named non-authorizing pre-LAA audit lane for current receipt envelopes."""
     selected = dict(kwargs)
-    selected.setdefault(
-        "legacy_agreement_authority_by_phase_key",
-        _LAA_ARCHIVAL_AUDIT_UNSPECIFIED,
+    selected["legacy_agreement_authority_by_phase_key"] = (
+        _LAA_ARCHIVAL_AUDIT_UNSPECIFIED
     )
     return _validate_ebfab_disposition_with_receipts(
         _validate_current_evidence_receipt, args, selected

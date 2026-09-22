@@ -1986,7 +1986,11 @@ it preserves historical audit but cannot satisfy a current bundle or contribute
 current reputation or volume. Current direct, pointer, reconciliation,
 current-use, and derivation consumers require the verifier-owned carrier
 described by SEB-3; omitted authority is `indeterminate`, never an implicit
-pre-LAA pass. An LAA-3 completion is explicitly
+pre-LAA pass. The carrier's session authority MUST be `verified`, and the
+agreement content hash and session id MUST exactly equal the independently
+authenticated evidence-record authority before either a current or legacy
+artifact classification can be used; recomputing a self-consistent carrier
+cannot replace that independent join. An LAA-3 completion is explicitly
 `transition-only` only after the consumer verifies the activation checkpoint,
 the strictly pre-checkpoint commitment and co-signed
 `LegacyPaymentReservation`, and the exclusive signed

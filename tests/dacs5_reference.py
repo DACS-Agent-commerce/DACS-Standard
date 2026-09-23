@@ -7051,10 +7051,9 @@ def _resolve_current_use_job(
             return result
         resolved[role] = result
 
-    # A completed older payment cannot obtain current-use finality solely by
-    # presenting two older copies. Audit any EBFAB through its named frozen
-    # verifier first so a malformed archival receipt is still a failure; a
-    # valid historical record remains indeterminate without a strong copy.
+    # A completed payment cannot obtain current-use finality solely by
+    # presenting two EBFAB copies. Audit each copy under its verifier-owned
+    # receipt contract before retaining the missing-strong-finality hold.
     present_bundles = [
         item["bundle"] for item in resolved.values()
         if item.get("disposition") == "present"
@@ -7070,7 +7069,20 @@ def _resolve_current_use_job(
             authority = _authority_for_bundle(bundle, dependencies)
             if not isinstance(authority, dict):
                 return {"decision": "indeterminate", "reason": "historical EBFAB authority is unavailable"}
-            archival_disposition, archival_reason, _ = validate_legacy_ebfab_disposition(
+            if "evidenceReceiptContract" not in authority:
+                return {
+                    "decision": "indeterminate",
+                    "reason": "EBFAB evidence receipt contract authority is unavailable",
+                }
+            receipt_contract = authority["evidenceReceiptContract"]
+            if not _string_member(receipt_contract, {"current", "archival"}):
+                return {"decision": "error", "reason": "EBFAB evidence receipt contract is malformed"}
+            ebfab_validator = (
+                validate_ebfab_disposition
+                if receipt_contract == "current"
+                else validate_legacy_ebfab_disposition
+            )
+            disposition, reason, _ = ebfab_validator(
                 bundle, authority.get("listing"), verifier_config.get("publicKeys"),
                 authority.get("referenceValidationByCanonicalRef"),
                 authority.get("bundleLifecycle"),
@@ -7082,10 +7094,10 @@ def _resolve_current_use_job(
                 additional_commit_phase=authority.get("additionalCommitPhase"),
                 **_legacy_agreement_authority_kwargs(authority),
             )
-            if archival_disposition != "pass":
+            if disposition != "pass":
                 return {
-                    "decision": archival_disposition,
-                    "reason": "invalid historical EBFAB: " + archival_reason,
+                    "decision": disposition,
+                    "reason": "invalid historical EBFAB: " + reason,
                 }
         return {"decision": "indeterminate", "reason": "successful historical payment lacks exact stronger finality"}
 

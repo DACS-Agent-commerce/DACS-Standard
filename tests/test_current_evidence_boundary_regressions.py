@@ -688,6 +688,90 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
         self.assertEqual("indeterminate", dual_era["decision"])
         self.assertIsNone(dual_era["bundle"])
 
+    def _current_use_ebfab_pair(self):
+        compatibility = self.data["dacs5"]["compatibility"]
+        seller = self._current_entry(
+            compatibility["copies"]["evidence-bound"],
+            compatibility["evidenceBoundAuthority"],
+        )
+        seller["authority"]["evidenceReceiptContract"] = "current"
+        buyer = copy.deepcopy(seller)
+        buyer["bundle"]["anchoredByRole"] = "buyer"
+        buyer["expectedRole"] = "buyer"
+        buyer["copyPresence"]["nativeAddress"] = (
+            "dacs5:bundle:%s:buyer" % buyer["bundle"]["jobId"]
+        )
+        buyer["copyPresence"]["writer"] = "did:demos:buyer"
+        job = {
+            "jobId": seller["bundle"]["jobId"],
+            "substrate": "fixture",
+            "roles": {"buyer": {}, "seller": {}},
+        }
+        return job, buyer, seller
+
+    def test_current_use_preflight_audits_two_current_ebfabs_once_each(self):
+        job, buyer, seller = self._current_use_ebfab_pair()
+        dependencies = {
+            "bundleAuthorityByContentHash": {
+                R.bundle_hash(seller["bundle"]): seller["authority"],
+            },
+        }
+        resolved = [
+            {"decision": "pass", "disposition": "present", "bundle": entry["bundle"]}
+            for entry in (buyer, seller)
+        ]
+        current_validator = R.validate_ebfab_disposition
+        with patch(
+            "dacs5_reference._resolve_current_use_role", side_effect=resolved
+        ), patch(
+            "dacs5_reference.validate_ebfab_disposition", wraps=current_validator
+        ) as current, patch(
+            "dacs5_reference.validate_legacy_ebfab_disposition",
+            side_effect=AssertionError("current receipt must not use archival validation"),
+        ) as archival:
+            result = R._resolve_current_use_job(
+                job, dependencies, {"publicKeys": self.pubkeys}, {}, {}
+            )
+        self.assertEqual("indeterminate", result["decision"], result["reason"])
+        self.assertIn("lacks exact stronger finality", result["reason"])
+        self.assertEqual(2, current.call_count)
+        self.assertEqual(
+            ["buyer", "seller"],
+            [call.args[0]["anchoredByRole"] for call in current.call_args_list],
+        )
+        archival.assert_not_called()
+
+    def test_current_use_preflight_requires_typed_verifier_contract_before_audit(self):
+        job, buyer, seller = self._current_use_ebfab_pair()
+        for contract, expected in ((None, "indeterminate"), ("legacy", "error")):
+            authority = copy.deepcopy(seller["authority"])
+            if contract is None:
+                authority.pop("evidenceReceiptContract")
+            else:
+                authority["evidenceReceiptContract"] = contract
+            dependencies = {
+                "bundleAuthorityByContentHash": {
+                    R.bundle_hash(seller["bundle"]): authority,
+                },
+            }
+            resolved = [
+                {"decision": "pass", "disposition": "present", "bundle": entry["bundle"]}
+                for entry in (buyer, seller)
+            ]
+            with self.subTest(contract=contract), patch(
+                "dacs5_reference._resolve_current_use_role", side_effect=resolved
+            ), patch(
+                "dacs5_reference.validate_ebfab_disposition"
+            ) as current, patch(
+                "dacs5_reference.validate_legacy_ebfab_disposition"
+            ) as archival:
+                result = R._resolve_current_use_job(
+                    job, dependencies, {"publicKeys": self.pubkeys}, {}, {}
+                )
+                self.assertEqual(expected, result["decision"], result["reason"])
+                current.assert_not_called()
+                archival.assert_not_called()
+
 
 class EntitlementCredentialRefBoundaryTests(unittest.TestCase):
     @classmethod
@@ -942,11 +1026,15 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
                 "dacs5_reference._job_successful_payment_without_strong_finality",
                 return_value=True,
             ), patch(
-                "dacs5_reference._authority_for_bundle", return_value={}
+                "dacs5_reference._authority_for_bundle",
+                return_value={"evidenceReceiptContract": "archival"},
             ), patch(
                 "dacs5_reference.validate_legacy_ebfab_disposition",
                 return_value=(disposition, "archival disposition", None),
             ) as disposition_validator, patch(
+                "dacs5_reference.validate_ebfab_disposition",
+                side_effect=AssertionError("archival receipt must not use current validation"),
+            ) as current_validator, patch(
                 "dacs5_reference.validate_legacy_ebfab",
                 side_effect=AssertionError("boolean wrapper must not be called"),
             ):
@@ -960,6 +1048,7 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
                 self.assertEqual(disposition, result["decision"])
                 self.assertIn("archival disposition", result["reason"])
                 disposition_validator.assert_called_once()
+                current_validator.assert_not_called()
 
 
 if __name__ == "__main__":

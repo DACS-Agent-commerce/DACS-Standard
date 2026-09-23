@@ -709,6 +709,7 @@ class CurrentUseFixtureFactory:
             bundle["ratingRefs"] = [rating_ref]
             self.dependencies["ratingsByCanonicalRef"][canonical(rating_ref).decode("utf-8")] = rating
         self.finality.sign_bundle(bundle, FINALITY_BUNDLE_DOMAIN)
+        self.finality.bind_current_laa_authority(bundle, authority)
         digest = bundle_hash(bundle)
         self.dependencies["bundleAuthorityByContentHash"][digest] = authority
         self.dependencies["agreementsByCanonicalRef"][canonical(agreement_ref).decode("utf-8")] = agreement

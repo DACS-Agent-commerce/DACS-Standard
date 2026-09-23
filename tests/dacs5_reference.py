@@ -2195,8 +2195,7 @@ def _validate_bound_fault_bundle(
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "evidence record contradicts the signed phase result", None)
         if (
-            expected_kind == "evidence-bound"
-            and record_phase in PAYMENT_PHASES
+            record_phase in PAYMENT_PHASES
             and record.get("outcome") == "success"
         ):
             laa_disposition_value, laa_reason, eligibility = (
@@ -2222,6 +2221,19 @@ def _validate_bound_fault_bundle(
                     None,
                 )
             legacy_agreement_eligibility[phase_key] = eligibility
+            if (
+                expected_kind == "finality-bound"
+                and eligibility in {"historical-only", "transition-only"}
+            ):
+                return (
+                    False,
+                    _DispositionReason(
+                        "authenticated payment phase is " + eligibility
+                        + " and cannot establish current finality authority",
+                        "fail",
+                    ),
+                    None,
+                )
         if record_phase in DELIVERY_PHASES:
             delivery_authority = (
                 delivery_artifact_authority_by_phase_key
@@ -2498,6 +2510,7 @@ def validate_finality_bound_ebfab(
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
 ):
     """Execute the distinct finality-bound bundle consumer and propagate FV decisions.
 
@@ -2538,12 +2551,18 @@ def validate_finality_bound_ebfab(
         expected_kind="finality-bound",
         effective_pipeline=effective_pipeline,
         additional_commit_phase=additional_commit_phase,
+        legacy_agreement_authority_by_phase_key=(
+            legacy_agreement_authority_by_phase_key
+        ),
     )
     if not ok:
         if reason == "missing listing, key, exact reference, or bundle-lifecycle authority":
             return ("indeterminate", "shared SEB authority is unavailable", None)
-        malformed = reason.startswith(("not the expected", "malformed", "pipeline or"))
-        return ("error" if malformed else "fail", reason, None)
+        disposition = getattr(reason, "disposition", None)
+        if disposition not in {"error", "fail", "indeterminate"}:
+            malformed = reason.startswith(("not the expected", "malformed", "pipeline or"))
+            disposition = "error" if malformed else "fail"
+        return (disposition, str(reason), None)
 
     results = []
     for ref in bundle.get("settlementEvidence", []):
@@ -2712,6 +2731,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                     authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
                     effective_pipeline=authority.get("effectivePipeline"),
                     additional_commit_phase=authority.get("additionalCommitPhase"),
+                    **_legacy_agreement_authority_kwargs(authority),
                 )
             if result[0] != "pass":
                 nonpasses.append((kind, result[0], result[1]))
@@ -4040,6 +4060,7 @@ def _resolve_absolute_fault_pointer_payload(
             finality_bound_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
             effective_pipeline=finality_bound_authority.get("effectivePipeline"),
             additional_commit_phase=finality_bound_authority.get("additionalCommitPhase"),
+            **_legacy_agreement_authority_kwargs(finality_bound_authority),
         )
         if decision != "pass":
             return {
@@ -6452,7 +6473,8 @@ def _validate_current_use_type_authority(bundle, dependencies, verifier_config):
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
-        additional_commit_phase=authority.get("additionalCommitPhase"))
+        additional_commit_phase=authority.get("additionalCommitPhase"),
+        **_legacy_agreement_authority_kwargs(authority))
     if decision != "pass":
         return (decision, reason, None)
 

@@ -808,6 +808,31 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         self.assertEqual("fail", result["decision"])
         self.assertIsNone(result["derivation"])
 
+    def test_current_use_excludes_missing_or_malformed_finality_laa_authority(self):
+        for name, replacement, expected in (
+            ("missing", None, "indeterminate"),
+            ("malformed", [], "error"),
+        ):
+            with self.subTest(name=name):
+                self.setUp()
+                request = self.fixture["currentRequestsByModel"]["block-depth"]
+                buyer_binding = request["roles"]["buyer"][
+                    "selectionContext"
+                ]["candidateBindings"][0]
+                bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][
+                    buyer_binding["nativeAddress"]
+                ]
+                authority = self.fixture["dependencies"][
+                    "bundleAuthorityByContentHash"
+                ][bundle_hash(bundle)]
+                if replacement is None:
+                    authority.pop("legacyAgreementAuthorityByPhaseKey")
+                else:
+                    authority["legacyAgreementAuthorityByPhaseKey"] = replacement
+                result = self.derive([request])
+                self.assertEqual(expected, result["decision"])
+                self.assertIsNone(result["derivation"])
+
     def test_absent_and_indeterminate_role_dispositions_are_not_conflated(self):
         request = self.fixture["currentRequestsByModel"]["block-depth"]
         self._authenticate_absence(request, "seller")

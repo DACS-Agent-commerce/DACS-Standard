@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 8,
-  "hash": "3e077bbca69fa0150a76495b9cd772080d5bb12aee0fec70a3b39104f36f773e",
+  "hash": "4c378f695891dbc237c0a5feab123420a40b9e7712d7314cb46c65cf446fb286",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -353,7 +353,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                  "sessionId": "session-finality-2a3d0dbd1243cdf41561ade8fbc276d34198dd200375347dccffd3e0dff39a2f"
                 }
               },
               "bundleLifecycle": {
@@ -686,6 +688,62 @@
                         ]
                       }
                     }
+                  }
+                }
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "0:pay-evm-erc20": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                      "phase": "pay-evm-erc20",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                      "sessionId": "session-finality-2a3d0dbd1243cdf41561ade8fbc276d34198dd200375347dccffd3e0dff39a2f",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "b236be9d40542eae5692553c637ee6e15c545b9a8a5cdd17739392b6845beef1",
+                    "bundleContentHash": "9dee0514cd2bea4a480dc8f147b9884fd4396f51762cc818541225d0b81f89f6",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0"
+                    },
+                    "listingContentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+                    "agreementContentHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                    "sessionId": "session-finality-2a3d0dbd1243cdf41561ade8fbc276d34198dd200375347dccffd3e0dff39a2f",
+                    "phaseKey": "0:pay-evm-erc20",
+                    "phaseIndex": 0,
+                    "phase": "pay-evm-erc20",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df"
+                      },
+                      "contentHash": "f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1"
+                    },
+                    "evidenceReceiptHash": "5eaffd89d5dfbdf6358988139e6596aab14e1bda379af8ff57f31c0dc69d54e7",
+                    "receiptWriter": "did:demos:orchestrator"
                   }
                 }
               }
@@ -1402,7 +1460,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                  "sessionId": "session-finality-e9de916d7b28311dbc41b663aaf620774b0b8981f10d5faf485111eb410f7e80"
                 }
               },
               "bundleLifecycle": {
@@ -1734,6 +1794,62 @@
                         ]
                       }
                     }
+                  }
+                }
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "0:pay-solana-spl": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+                      "phase": "pay-solana-spl",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+                      "sessionId": "session-finality-e9de916d7b28311dbc41b663aaf620774b0b8981f10d5faf485111eb410f7e80",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "1754edd7ee4ba87909c5b6a3759f896a577cda0a873752c4ee0c90b635074eb4",
+                    "bundleContentHash": "6fa072b406b3a2d10c1b5818f891a621febd75af040f8eb630a9bc8dc20ea380",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0"
+                    },
+                    "listingContentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0",
+                    "agreementContentHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+                    "sessionId": "session-finality-e9de916d7b28311dbc41b663aaf620774b0b8981f10d5faf485111eb410f7e80",
+                    "phaseKey": "0:pay-solana-spl",
+                    "phaseIndex": 0,
+                    "phase": "pay-solana-spl",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4"
+                      },
+                      "contentHash": "7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912"
+                    },
+                    "evidenceReceiptHash": "e544b09dec788e8e06f7b3558ed4926c7958fb53780b91a196b9dd9b86cde44f",
+                    "receiptWriter": "did:demos:orchestrator"
                   }
                 }
               }
@@ -2433,7 +2549,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                  "sessionId": "session-finality-13a7cf2670a7b408596aab4da6e6e56bcfef23e694c195c1bca8c1839e385857"
                 }
               },
               "bundleLifecycle": {
@@ -2784,6 +2902,62 @@
                         ]
                       }
                     }
+                  }
+                }
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "0:pay-dem": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+                      "phase": "pay-dem",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+                      "sessionId": "session-finality-13a7cf2670a7b408596aab4da6e6e56bcfef23e694c195c1bca8c1839e385857",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "c155b9a688e52db9453afa55fa42c73eff4ea04e9b156424340d5ede04693484",
+                    "bundleContentHash": "1f2ce47fc48991544f0c82ebb0a146c3acfb7a8b70e3cd8af2c4a4dc79fc4446",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2"
+                    },
+                    "listingContentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2",
+                    "agreementContentHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+                    "sessionId": "session-finality-13a7cf2670a7b408596aab4da6e6e56bcfef23e694c195c1bca8c1839e385857",
+                    "phaseKey": "0:pay-dem",
+                    "phaseIndex": 0,
+                    "phase": "pay-dem",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136"
+                      },
+                      "contentHash": "ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227"
+                    },
+                    "evidenceReceiptHash": "fef4fdb628456b032d113648ef8da25e697d4d4a213340f2310a4c79e81ef3d3",
+                    "receiptWriter": "did:demos:orchestrator"
                   }
                 }
               }
@@ -3495,7 +3669,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                  "sessionId": "session-finality-16b776c4a4f17312b360a72a98b40b346d0997faac02860df3176b617fc9c746"
                 }
               },
               "bundleLifecycle": {
@@ -3853,6 +4029,62 @@
                         ]
                       }
                     }
+                  }
+                }
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "0:pay-ap2": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                      "phase": "pay-ap2",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                      "sessionId": "session-finality-16b776c4a4f17312b360a72a98b40b346d0997faac02860df3176b617fc9c746",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "906147d8d8d245bc7413fd23bf97334a1b75b5b0edfdd175e5eccc8b59066691",
+                    "bundleContentHash": "4f5f1c935351f1f8f7fefab8a3028733a53fb6ccc626aac5c1f3ed3ade4f5104",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+                    },
+                    "listingContentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d",
+                    "agreementContentHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                    "sessionId": "session-finality-16b776c4a4f17312b360a72a98b40b346d0997faac02860df3176b617fc9c746",
+                    "phaseKey": "0:pay-ap2",
+                    "phaseIndex": 0,
+                    "phase": "pay-ap2",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766"
+                      },
+                      "contentHash": "23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b"
+                    },
+                    "evidenceReceiptHash": "2e436bd76223ad33bf862b15bfd5f75f6e60202d337ca75c63245971bef00399",
+                    "receiptWriter": "did:demos:orchestrator"
                   }
                 }
               }
@@ -4586,7 +4818,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                  "sessionId": "session-finality-a2ff2a1cbac6e445b2ffd62b982f8e9348441db71b6ba71bacfa2df793383efb"
                 }
               },
               "bundleLifecycle": {
@@ -5351,6 +5585,62 @@
                     }
                   }
                 }
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "0:pay-cross-chain-htlc": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+                      "phase": "pay-cross-chain-htlc",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+                      "sessionId": "session-finality-a2ff2a1cbac6e445b2ffd62b982f8e9348441db71b6ba71bacfa2df793383efb",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "8276a628d2a96f5ce643d7e398d21a9f2471ca7a4141e8fce84653108579a78b",
+                    "bundleContentHash": "b546d21a99fa9a6046a2d68b16ee94707fb644bd84ea285b28d3685e1e9cd8f0",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8"
+                    },
+                    "listingContentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8",
+                    "agreementContentHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+                    "sessionId": "session-finality-a2ff2a1cbac6e445b2ffd62b982f8e9348441db71b6ba71bacfa2df793383efb",
+                    "phaseKey": "0:pay-cross-chain-htlc",
+                    "phaseIndex": 0,
+                    "phase": "pay-cross-chain-htlc",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a"
+                      },
+                      "contentHash": "e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d"
+                    },
+                    "evidenceReceiptHash": "579dcc0d450b0cc6bb1c9a35b392a2d26f45683ea93b57df47424ab615f5c158",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
@@ -6051,7 +6341,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                  "sessionId": "session-finality-7ea9358fce2011f2d9ccc525ae4114445056243046689c90e447ce18b6660c89"
                 }
               },
               "bundleLifecycle": {
@@ -6702,6 +6994,62 @@
                         ]
                       }
                     }
+                  }
+                }
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "0:pay-cross-chain-liquidity-tank": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+                      "phase": "pay-cross-chain-liquidity-tank",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+                      "sessionId": "session-finality-7ea9358fce2011f2d9ccc525ae4114445056243046689c90e447ce18b6660c89",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "b6a365e22ddf4caab10d07a2c1daf63ac9bef7b2bf014845894db74507d539ce",
+                    "bundleContentHash": "78b84247bb572d8da2b9e940a6114b3d6114f7f6d4232aa3cf46f1cd7009b330",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2"
+                    },
+                    "listingContentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2",
+                    "agreementContentHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+                    "sessionId": "session-finality-7ea9358fce2011f2d9ccc525ae4114445056243046689c90e447ce18b6660c89",
+                    "phaseKey": "0:pay-cross-chain-liquidity-tank",
+                    "phaseIndex": 0,
+                    "phase": "pay-cross-chain-liquidity-tank",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f"
+                      },
+                      "contentHash": "fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4"
+                    },
+                    "evidenceReceiptHash": "b0bc381cfd9c64805f1fb904613401d8a911790fa6ceb1a24f37910e99f23dc1",
+                    "receiptWriter": "did:demos:orchestrator"
                   }
                 }
               }

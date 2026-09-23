@@ -1887,8 +1887,12 @@ Liquidity-tank verifies coordinator, source and destination arms and exact bridg
 transfer, asset and amount binding.
 
 The same corpus executes the distinct DACS-5 finality-bound bundle and pointer,
-all six FV models, non-pass propagation, new/new and new/older authenticated
-reconciliation, no weaker fallback, and frozen-reader refusal. Each EBFAB
+all six FV models, exact per-successful-payment authenticated LAA carriers,
+four-state LAA non-pass propagation, new/new and new/older authenticated
+reconciliation, no weaker fallback, and frozen-reader refusal. Strong finality
+does not supply agreement-era authority: missing carrier authority is
+indeterminate, malformed authority is error, contradiction is fail, and only a
+passing current-agreement carrier is current-eligible. Each EBFAB
 reconciliation entry explicitly selects the verifier-owned `current` or
 `archival` evidence receipt contract; the consumer never infers it from a
 strong peer or retries under the other contract. An archival selection is

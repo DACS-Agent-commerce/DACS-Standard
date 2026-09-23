@@ -19,7 +19,7 @@
     "generator": "scripts/generate_legacy_agreement_admission_vectors.py"
   },
   "count": 166,
-  "hash": "3fce1d273030e3fe1a9b932574968915392a357fe41533f580f96327cff861d5",
+  "hash": "376a6190905549516b1f67d620d88ba426c4568990bc40f436bd249a68356d2c",
   "vectors": [
     {
       "name": "laa-current-payee-bound-success",
@@ -1608,19 +1608,19 @@
         "paymentSideEffects": false,
         "commitmentPermitted": true,
         "legacyBytesCryptographicallyInspectable": false,
-        "dacs5Admission": "current-eligible",
+        "dacs5Admission": "commit-permitted",
         "bundleAdmission": {
-          "attestationBundle": "current-eligible",
-          "faultAttestationBundle": "current-eligible",
-          "evidenceBoundFaultAttestationBundle": "current-eligible"
+          "attestationBundle": "commit-permitted",
+          "faultAttestationBundle": "commit-permitted",
+          "evidenceBoundFaultAttestationBundle": "commit-permitted"
         },
         "derivationAdmission": {
-          "derive": "current-eligible",
-          "deriveJobBound": "current-eligible",
-          "deriveSettlementVerified": "current-eligible",
-          "replay": "current-eligible"
+          "derive": "commit-permitted",
+          "deriveJobBound": "commit-permitted",
+          "deriveSettlementVerified": "commit-permitted",
+          "replay": "commit-permitted"
         },
-        "currentMetricEligible": true
+        "currentMetricEligible": false
       }
     },
     {

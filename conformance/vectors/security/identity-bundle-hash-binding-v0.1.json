@@ -23418,7 +23418,7 @@
     }
   },
   "count": 398,
-  "hash": "58b71a4e2a4b809825b19b3a8eb78178704bbb92aafd64dbd620e17b5ec4459b",
+  "hash": "990b5fb031129a08c4b921d3d24ad994f08f2edf915f7653f8687f33230acf24",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -24549,11 +24549,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-seb-invalid:current payment agreement lacks payee binding"
       }
     },
     {
@@ -27222,11 +27222,11 @@
         "terminal-settlement-observation:0"
       ],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-seb-invalid:current payment agreement lacks payee binding"
       }
     },
     {
@@ -27700,11 +27700,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-seb-invalid:current payment agreement lacks payee binding"
       }
     },
     {

@@ -333,6 +333,10 @@ def validate_delivery_artifact(
         renewal = record.get("renewalSeq")
         if isinstance(renewal, bool) or not isinstance(renewal, int) or renewal < 0:
             return "error"
+        if not legacy and renewal > 0:
+            # The vector's closure supplies no authenticated predecessor or
+            # repayment for a claimed renewal within this invocation.
+            return "fail"
         expected_address = (
             f"dacs4:entitlement:{job}:{renewal}"
             if legacy else f"dacs4:entitlement:{job}:{index}:{renewal}"

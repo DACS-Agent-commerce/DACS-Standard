@@ -261,9 +261,28 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         value = self._fixture()
         result = self._resolve(value)
         self.assertTrue(result["ok"], result["reason"])
-
         reconciled = self._reconcile(value)
         self.assertEqual("pass", reconciled["decision"], reconciled["reason"])
+
+    def test_genuine_current_delivery_is_historical_nonpayment_evidence(self):
+        value = self._fixture()
+        bundle = value["bundle"]
+        claims = {
+            party["role"]: party["primaryClaim"] for party in bundle["parties"]
+        }
+        dependencies = {
+            "bundleAuthorityByContentHash": {
+                R.bundle_hash(bundle): value["authority"]
+            }
+        }
+        config = {
+            "publicKeys": self.pubkeys,
+            "partyRolesByJob": {bundle["jobId"]: claims},
+        }
+        decision, reason = R._validate_current_use_historical_nonpayment(
+            bundle, dependencies, config
+        )
+        self.assertEqual("pass", decision, reason)
 
     def test_reconciliation_uses_the_same_current_fab_delivery_gate(self):
         value = self._fixture()
@@ -362,9 +381,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual("indeterminate", result.get("disposition"), result["reason"])
 
-    def test_evidence_without_signed_delivery_row_does_not_activate_gate(self):
+    def test_missing_signed_delivery_row_cannot_bypass_authenticated_pipeline(self):
         value = self._fixture()
         value["bundle"]["phaseSummary"] = []
+        value["bundle"]["settlementEvidence"] = []
         self._resign_bundle_and_pointer(value)
         without_authority = R.resolve_absolute_fault_pointer(
             value["pointer"],
@@ -374,10 +394,12 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             expected_jobid=CURRENT_JOB,
             expected_role=value["role"],
         )
-        self.assertTrue(without_authority["ok"], without_authority["reason"])
+        self.assertFalse(without_authority["ok"])
+        self.assertEqual("indeterminate", without_authority.get("disposition"))
 
         with_authority = self._resolve(value)
-        self.assertTrue(with_authority["ok"], with_authority["reason"])
+        self.assertFalse(with_authority["ok"])
+        self.assertEqual("fail", with_authority.get("disposition"))
 
     def test_current_fab_malformed_authority_and_member_are_errors(self):
         for field in (
@@ -616,7 +638,7 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
         self.assertEqual("fail", no_fallback["decision"])
         self.assertIn("receipt", no_fallback["reason"])
 
-    def test_payment_only_fab_does_not_activate_delivery_admission(self):
+    def test_payment_only_fab_requires_current_agreement_authority(self):
         compatibility = self.data["dacs5"]["compatibility"]
         payment_only = self._entry(
             compatibility["copies"]["fault"], None
@@ -625,8 +647,46 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
         result = R.reconcile_authenticated_finality_copies(
             [payment_only, absent], self.pubkeys, trust
         )
-        self.assertEqual("pass", result["decision"], result["reason"])
-        self.assertEqual("fault", R.bundle_type(result["bundle"]))
+        self.assertEqual("indeterminate", result["decision"], result["reason"])
+
+    def test_current_payment_only_fab_agreement_gate_has_positive_and_negative_controls(self):
+        compatibility = self.data["dacs5"]["compatibility"]
+        present = self._current_entry(
+            compatibility["copies"]["fault"],
+            compatibility["evidenceBoundAuthority"],
+        )
+        present["authority"]["evidenceReceiptContract"] = "current"
+        absent, trust = self._with_authenticated_absence(present)
+        self.assertEqual(
+            "pass", R.reconcile_authenticated_finality_copies(
+                [present, absent], self.pubkeys, trust
+            )["decision"]
+        )
+
+        missing = copy.deepcopy(present)
+        missing["authority"].pop("legacyAgreementAuthorityByPhaseKey")
+        self.assertEqual(
+            "indeterminate", R.reconcile_authenticated_finality_copies(
+                [missing, absent], self.pubkeys, trust
+            )["decision"]
+        )
+
+        malformed = copy.deepcopy(present)
+        phase_key = next(iter(malformed["authority"]["legacyAgreementAuthorityByPhaseKey"]))
+        malformed["authority"]["legacyAgreementAuthorityByPhaseKey"][phase_key] = []
+        self.assertEqual(
+            "error", R.reconcile_authenticated_finality_copies(
+                [malformed, absent], self.pubkeys, trust
+            )["decision"]
+        )
+
+        archival = copy.deepcopy(present)
+        archival["authority"]["evidenceReceiptContract"] = "archival"
+        archival_result = R.reconcile_authenticated_finality_copies(
+            [archival, absent], self.pubkeys, trust
+        )
+        self.assertEqual("indeterminate", archival_result["decision"])
+        self.assertIn("comparison-only", archival_result["reason"])
 
     def test_archival_ebfab_is_comparison_only(self):
         case = next(
@@ -717,7 +777,8 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
             },
         }
         resolved = [
-            {"decision": "pass", "disposition": "present", "bundle": entry["bundle"]}
+            {"decision": "pass", "disposition": "present", "bundle": entry["bundle"],
+             "presence": entry["copyPresence"]}
             for entry in (buyer, seller)
         ]
         current_validator = R.validate_ebfab_disposition
@@ -730,7 +791,7 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
             side_effect=AssertionError("current receipt must not use archival validation"),
         ) as archival:
             result = R._resolve_current_use_job(
-                job, dependencies, {"publicKeys": self.pubkeys}, {}, {}
+                job, dependencies, {"publicKeys": self.pubkeys, "finalityTrust": copy.deepcopy(self.trust)}, {}, {}
             )
         self.assertEqual("indeterminate", result["decision"], result["reason"])
         self.assertIn("lacks exact stronger finality", result["reason"])
@@ -755,7 +816,8 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
                 },
             }
             resolved = [
-                {"decision": "pass", "disposition": "present", "bundle": entry["bundle"]}
+                {"decision": "pass", "disposition": "present", "bundle": entry["bundle"],
+                 "presence": entry["copyPresence"]}
                 for entry in (buyer, seller)
             ]
             with self.subTest(contract=contract), patch(
@@ -766,11 +828,32 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
                 "dacs5_reference.validate_legacy_ebfab_disposition"
             ) as archival:
                 result = R._resolve_current_use_job(
-                    job, dependencies, {"publicKeys": self.pubkeys}, {}, {}
+                    job, dependencies, {"publicKeys": self.pubkeys, "finalityTrust": copy.deepcopy(self.trust)}, {}, {}
                 )
                 self.assertEqual(expected, result["decision"], result["reason"])
                 current.assert_not_called()
                 archival.assert_not_called()
+
+    def test_copy_conflict_precedes_missing_stronger_finality_hold(self):
+        job, buyer, seller = self._current_use_ebfab_pair()
+        resolved = [
+            {"decision": "pass", "disposition": "present", "bundle": entry["bundle"],
+             "presence": entry["copyPresence"]}
+            for entry in (buyer, seller)
+        ]
+        with patch("dacs5_reference._resolve_current_use_role", side_effect=resolved), patch(
+            "dacs5_reference._job_successful_payment_without_strong_finality",
+            return_value=True,
+        ), patch("dacs5_reference._authority_for_bundle", return_value=seller["authority"]), patch(
+            "dacs5_reference.reconcile_authenticated_finality_copies",
+            return_value={"decision": "fail", "reason": "authenticated copies conflict"},
+        ) as reconciler:
+            result = R._resolve_current_use_job(
+                job, {}, {"publicKeys": self.pubkeys, "finalityTrust": copy.deepcopy(self.trust)}, {}, {}
+            )
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("copies conflict", result["reason"])
+        reconciler.assert_called_once()
 
 
 class EntitlementCredentialRefBoundaryTests(unittest.TestCase):
@@ -1002,6 +1085,21 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
                 self.assertEqual("fail", decision)
                 self.assertIn("not authenticated", reason)
 
+    def test_missing_historical_resolution_is_indeterminate_not_tamper(self):
+        for mutation, expected in (("missing", "indeterminate"), ("tampered", "fail")):
+            bundle, authority, dependencies, config = self._fixture()
+            ref = bundle["settlementEvidence"][0]
+            key = R.canonical(ref).decode("utf-8")
+            if mutation == "missing":
+                del authority["referenceValidationByCanonicalRef"][key]
+            else:
+                authority["referenceValidationByCanonicalRef"][key]["record"]["jobId"] = "different-job"
+            with self.subTest(mutation=mutation):
+                decision, _reason = R._validate_current_use_historical_nonpayment(
+                    bundle, dependencies, config
+                )
+                self.assertEqual(expected, decision)
+
     def test_current_use_historical_branch_propagates_four_state_disposition(self):
         job = {
             "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
@@ -1017,6 +1115,7 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
             "decision": "pass",
             "disposition": "present",
             "bundle": bundle,
+            "presence": {"bundleHash": "fixture", "nativeAddress": "fixture", "writer": "fixture"},
         }
         for disposition in ("error", "indeterminate", "fail"):
             with self.subTest(disposition=disposition), patch(
@@ -1029,26 +1128,19 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
                 "dacs5_reference._authority_for_bundle",
                 return_value={"evidenceReceiptContract": "archival"},
             ), patch(
-                "dacs5_reference.validate_legacy_ebfab_disposition",
-                return_value=(disposition, "archival disposition", None),
-            ) as disposition_validator, patch(
-                "dacs5_reference.validate_ebfab_disposition",
-                side_effect=AssertionError("archival receipt must not use current validation"),
-            ) as current_validator, patch(
-                "dacs5_reference.validate_legacy_ebfab",
-                side_effect=AssertionError("boolean wrapper must not be called"),
-            ):
+                "dacs5_reference.reconcile_authenticated_finality_copies",
+                return_value={"decision": disposition, "reason": "archival disposition"},
+            ) as reconciler:
                 result = R._resolve_current_use_job(
                     job,
                     {},
-                    {"publicKeys": self.pubkeys},
+                    {"publicKeys": self.pubkeys, "finalityTrust": {}},
                     {},
                     {},
                 )
                 self.assertEqual(disposition, result["decision"])
                 self.assertIn("archival disposition", result["reason"])
-                disposition_validator.assert_called_once()
-                current_validator.assert_not_called()
+                reconciler.assert_called_once()
 
 
 if __name__ == "__main__":

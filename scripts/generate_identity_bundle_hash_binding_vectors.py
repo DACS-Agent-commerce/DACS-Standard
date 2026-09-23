@@ -2061,9 +2061,13 @@ def build_vectors() -> list[dict[str, Any]]:
             ))
     for artifact in ("identityBoundAgreement", "identityBoundPayeeAgreement"):
         for stage in ("commit", "payment", "terminal"):
+            identity_only_terminal = artifact == "identityBoundAgreement" and stage == "terminal"
             vectors.append(vector(
-                f"{artifact}-{stage}-verified", "pass",
-                scenario_name=artifact, stage=stage, reason="verified",
+                f"{artifact}-{stage}-verified",
+                "fail" if identity_only_terminal else "pass",
+                scenario_name=artifact, stage=stage,
+                reason=("terminal-seb-invalid:current payment agreement lacks payee binding"
+                        if identity_only_terminal else "verified"),
             ))
     vectors.extend([
         vector(
@@ -2749,7 +2753,7 @@ def build_vectors() -> list[dict[str, Any]]:
             reason="terminal-settlement-receipt-invalid",
         ),
         vector(
-            "terminal-alternate-payer-and-payee-endpoints-verified", "pass",
+            "terminal-alternate-payer-and-payee-endpoints-verified", "fail",
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[
                 set_mutation(
@@ -2770,7 +2774,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 ], "demos:runtime-payee-destination"),
             ],
             resign=["payment-authorization", "terminal-settlement-observation:0"],
-            reason="verified",
+            reason="terminal-seb-invalid:current payment agreement lacks payee binding",
         ),
         vector(
             "payee-bound-alternate-signed-destination-verified", "pass",
@@ -2920,10 +2924,11 @@ def build_vectors() -> list[dict[str, Any]]:
     for stage in ("payment", "terminal"):
         vectors.append(vector(
             f"identity-bound-sealed-envelope-losing-bidder-{stage}",
-            "pass",
+            "fail" if stage == "terminal" else "pass",
             scenario_name="identityBoundSealed",
             stage=stage,
-            reason="verified",
+            reason=("terminal-seb-invalid:current payment agreement lacks payee binding"
+                    if stage == "terminal" else "verified"),
         ))
     for label, scenario_name in (
         ("demand", "selectionBoundDemand"),

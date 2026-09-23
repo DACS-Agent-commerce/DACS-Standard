@@ -357,6 +357,9 @@ def make_authority(name, definition, signing_keys):
             trusted_native_transaction_observations_by_canonical_ref
         ),
         "bundleLifecycle": bundle_lifecycle,
+        "deliveryEvidenceProfile": (
+            "archival" if definition.get("legacyDeliveryEvidence") is True else "current"
+        ),
     }
     current_laa_by_phase_key = {}
     for ref in settlement_evidence:

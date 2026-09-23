@@ -78,11 +78,21 @@ def evaluate_semantic(vector):
 
     included = expected == "accept" and not historical_only
     completed = included and input_data["outcome"] == "completed"
-    payment = (
-        input_data["presentedEvidenceCount"] > 0
-        and input_data.get("evidencePhase", "pay-dem") in PAYMENT_PHASE_TYPES
-        and input_data.get("evidenceOutcome", "success") == "success"
-    )
+    presented = input_data.get("presentedEvidence")
+    if presented is None:
+        # Released single-member corpus compatibility.
+        payment = (
+            input_data["presentedEvidenceCount"] > 0
+            and input_data.get("evidencePhase", "pay-dem") in PAYMENT_PHASE_TYPES
+            and input_data.get("evidenceOutcome", "success") == "success"
+        )
+    else:
+        payment = any(
+            item.get("phase") in PAYMENT_PHASE_TYPES
+            and item.get("outcome") == "success"
+            and item.get("family") in {"SettlementEvidence", "FinalityBoundSettlementEvidence"}
+            for item in presented
+        )
     volume = completed and payment
     if historical_only:
         disposition = "historical-only"
@@ -215,6 +225,31 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
                 self.assertEqual(result["want"]["volumeByCurrency"], [])
                 self.assertEqual(result["want"]["transactionCountByCurrency"], [])
                 self.assertEqual(result["want"]["disposition"], "eligible-non-volume")
+
+    def test_mixed_payment_and_delivery_counts_payment_only(self):
+        base = {
+            "outcome": "completed",
+            "authorityDisposition": "verified",
+            "presentedEvidence": [
+                {"family": "SettlementEvidence", "phase": "pay-dem", "outcome": "success"},
+                {"family": "DeliveryEvidence", "phase": "deliver-entitlement", "outcome": "success"},
+            ],
+        }
+        mixed = evaluate_semantic({"input": base})
+        self.assertEqual("accept", mixed["expected"])
+        self.assertEqual(["5 DEM"], mixed["want"]["volumeByCurrency"])
+        self.assertEqual([{"currency": "DEM", "count": 1}], mixed["want"]["transactionCountByCurrency"])
+
+        delivery_only = evaluate_semantic({"input": {
+            **base, "presentedEvidence": base["presentedEvidence"][1:],
+        }})
+        self.assertEqual("accept", delivery_only["expected"])
+        self.assertEqual([], delivery_only["want"]["volumeByCurrency"])
+        self.assertEqual([], delivery_only["want"]["transactionCountByCurrency"])
+
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("`DeliveryEvidence` for a current delivery", spec)
+        self.assertIn("A verified delivery member can establish delivery validity but never payment volume", spec)
 
     def test_new_discriminators_preserve_released_v1_meaning(self):
         text = SPEC.read_text(encoding="utf-8")

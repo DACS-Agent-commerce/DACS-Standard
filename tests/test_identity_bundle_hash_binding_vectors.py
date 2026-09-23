@@ -2882,7 +2882,7 @@ def apply_mutation(context: dict, mutation: dict) -> None:
 
 
 def propagate_fixture_delivery_authority(context: dict) -> None:
-    """Upgrade frozen fixture records to their current exact delivery addresses.
+    """Upgrade current fixtures without silently upgrading archival delivery.
 
     The committed vectors predate delivery-closure authority.  This adapter runs on
     a private materialized copy, re-signs every affected archival evidence record,
@@ -2891,6 +2891,7 @@ def propagate_fixture_delivery_authority(context: dict) -> None:
     """
     bundle = context["terminalInput"]["bundle"]
     authority = context["verifierContext"]["terminalAuthority"]
+    archival = context.get("artifact") == "agreement"
     delivery_artifact_authority = {}
     delivery_receipts = {}
     changed = False
@@ -2907,7 +2908,14 @@ def propagate_fixture_delivery_authority(context: dict) -> None:
             continue
         phase_index = execution["phaseIndex"]
         job_id = record["jobId"]
-        indexed = "deliveryEvidenceVersion" in record
+        indexed = not archival
+        if indexed:
+            record.pop("evidenceVersion", None)
+            record["deliveryEvidenceVersion"] = "1"
+            record["phaseIndex"] = phase_index
+            execution["evidenceLogicalAddress"] = (
+                f"dacs4:delivery:{job_id}:{phase_index}"
+            )
         deliverable_address = (
             f"dacs4:deliverable:{job_id}:{phase_index}"
             if indexed else f"dacs4:deliverable:{job_id}"
@@ -3250,10 +3258,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
 
     def test_terminal_profile_context_propagates_delivery_closure(self):
         for name in (
-            "identityBoundAgreement-terminal-verified",
             "identityBoundPayeeAgreement-terminal-verified",
             "replacement-projection-preserves-signed-slot",
-            "identity-bound-sealed-envelope-losing-bidder-terminal",
         ):
             vector = self.cases[name]
             self.assertFalse(vector.get("mutations"))
@@ -3279,7 +3285,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
 
     def test_missing_delivery_closure_stops_before_reputation_consumer(self):
         context = materialize(self.data, {
-            "scenario": "identityBoundAgreement",
+            "scenario": "identityBoundPayeeAgreement",
             "commitment": "finality", "stage": "terminal",
         })
         authority = context["verifierContext"]["terminalAuthority"]
@@ -3295,7 +3301,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             context, set(), generator.CLAIMS["buyer"], tag,
             generator.NOW - 100_000, generator.NOW + 100_000,
             trusted_contexts=fixture_profile_contexts(),
-            listing_admission=retained_positive_admission("identityBoundAgreement"),
+            listing_admission=retained_positive_admission("identityBoundPayeeAgreement"),
         )
         self.assertEqual(verdict, "indeterminate")
         self.assertIn("delivery artifact authority is unavailable", reason)
@@ -3329,7 +3335,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         from ibh_listing_admission_fixture import retained_positive_admission
 
         context = materialize(self.data, {
-            "scenario": "identityBoundAgreement",
+            "scenario": "identityBoundPayeeAgreement",
             "commitment": "finality", "stage": "terminal",
         })
         tag = {
@@ -3362,7 +3368,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 generator.NOW - 100_000, generator.NOW + 100_000,
                 trusted_contexts=fixture_profile_contexts(),
                 listing_admission=retained_positive_admission(
-                    "identityBoundAgreement"
+                    "identityBoundPayeeAgreement"
                 ),
             )
             self.assertEqual(verdict, "pass")
@@ -3386,9 +3392,12 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     }
                     expected = (
                         "pass"
-                        if artifact in generator.STRONG_ARTIFACTS or stage == "commit"
+                        if (artifact in generator.STRONG_ARTIFACTS or stage == "commit")
+                        and not (artifact == "identityBoundAgreement" and stage == "terminal")
                         else "indeterminate"
                     )
+                    if artifact == "identityBoundAgreement" and stage == "terminal":
+                        expected = "fail"
                     listing_admission = (
                         retained_admission_for_context(context)
                         if artifact in generator.STRONG_ARTIFACTS and stage == "terminal"
@@ -3486,7 +3495,10 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         for stage in ("commit", "payment", "terminal"):
             with self.subTest(stage=stage):
                 case = self.cases[f"identityBoundAgreement-{stage}-verified"]
-                self.assertEqual(evaluate_with_fixture_admission(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "pass")
+                self.assertEqual(
+                    evaluate_with_fixture_admission(self.data, case, trusted_contexts=fixture_profile_contexts())[0],
+                    "fail" if stage == "terminal" else "pass",
+                )
         self.assertEqual(
             evaluate(
                 self.data, self.cases["retained-admission-authority-unavailable"],
@@ -3737,7 +3749,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 trusted_contexts=fixture_profile_contexts(),
                 listing_admission=agreement_admission,
             )[0],
-            "pass",
+            "fail",
         )
 
         for field, value in (
@@ -3769,7 +3781,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def test_reputation_counting_executes_only_after_identity_admission(self):
         from ibh_listing_admission_fixture import retained_positive_admission
 
-        for artifact in generator.STRONG_ARTIFACTS:
+        for artifact in ("identityBoundPayeeAgreement",):
             context = materialize(self.data, {
                 "scenario": artifact, "commitment": "finality", "stage": "terminal",
             })
@@ -3977,7 +3989,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def test_cvr_requirement_and_aggregate_are_replayed(self):
         for name, expected in (
             ("identityBoundAgreement-commit-verified", "pass"),
-            ("identityBoundAgreement-terminal-verified", "pass"),
+            ("identityBoundAgreement-terminal-verified", "fail"),
+            ("identityBoundPayeeAgreement-terminal-verified", "pass"),
             ("signed-listing-requirement-does-not-match-cvr", "fail"),
             ("signed-cvr-overall-decision-disagrees-with-replay", "fail"),
         ):
@@ -4029,7 +4042,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     self.data,
                     self.cases[f"identity-bound-sealed-envelope-losing-bidder-{stage}"],
                  trusted_contexts=fixture_profile_contexts())[0],
-                "pass",
+                "fail" if stage == "terminal" else "pass",
             )
 
     def test_sealed_deadline_gate_boundary_and_trusted_session_time(self):

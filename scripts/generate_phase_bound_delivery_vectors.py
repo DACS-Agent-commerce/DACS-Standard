@@ -1269,7 +1269,8 @@ def build_vectors() -> list[dict]:
     ))
     vectors.append(make("legacy-credential-entitlement-cannot-claim-dv5", "fail", "legacy entitlement evidence is audit-only and cannot establish the DV-5 delivered gate", legacy_credential_case, requestedGate="dv5-verified"))
     vectors.append(make("repeated-entitlements-each-renewal-zero", "pass", "byte-identical signed entitlement records remain independent at distinct phase-indexed normative anchors", entitlement_case))
-    vectors.append(make("entitlement-renewal-streams-independent", "pass", "each repeated phase can independently reach renewalSeq one", lambda: entitlement_case((1, 1))))
+    vectors.append(make("entitlement-renewal-streams-independent", "pass", "each repeated phase starts its independent renewal stream at zero", lambda: entitlement_case((0, 0))))
+    vectors.append(make("entitlement-renewal-without-predecessor", "fail", "a nonzero renewalSeq without authenticated predecessor and repayment cannot establish the initial grant", lambda: entitlement_case((1, 1))))
 
     def reuse_complete_entitlement_reference(case: dict) -> None:
         first = case["evidenceRecords"][0]["artifact"]

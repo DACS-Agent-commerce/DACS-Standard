@@ -38,7 +38,7 @@ from urllib.parse import quote, urlsplit
 
 from scripts import jcs
 from scripts.jcs import canonicalize as jcs_canonicalize
-from scripts.settlement_finality_reference import verify_finality
+from scripts.settlement_finality_reference import artifact_hash as finality_artifact_hash, verify_finality
 
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -2600,6 +2600,10 @@ def validate_finality_bound_ebfab(
             results.append((decision, "FV rejected successful payment: " + detail))
         elif finality_class not in {"profile-final", "provisional-provider-capture"}:
             results.append(("error", "FV returned an unsupported passing finality class"))
+        elif resolution.get("agreementHash") != finality_artifact_hash(
+            agreement, "signatures"
+        ):
+            results.append(("fail", "LAA agreement differs from the FV-authenticated agreement"))
 
     for precedence in ("error", "fail", "indeterminate"):
         for decision, detail in results:

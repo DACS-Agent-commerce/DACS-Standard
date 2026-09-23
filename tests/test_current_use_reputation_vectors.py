@@ -14,6 +14,7 @@ for path in (str(ROOT), str(ROOT / "tests"), str(ROOT / "scripts")):
         sys.path.insert(0, path)
 
 import generate_current_use_reputation_vectors as generator  # noqa: E402
+import dacs5_reference as D5  # noqa: E402
 from dacs5_reference import (  # noqa: E402
     BUNDLE_DOMAIN,
     CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN,
@@ -806,6 +807,38 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         candidate["context"]["observation"]["transactionRef"]["txHash"] = "ff" * 32
         result = self.derive([request])
         self.assertEqual("fail", result["decision"])
+        self.assertIsNone(result["derivation"])
+
+    def test_cross_agreement_strong_copy_cannot_enter_current_use(self):
+        request = self.fixture["currentRequestsByModel"]["block-depth"]
+        self.assertEqual("pass", self.derive([request])["decision"])
+        buyer_binding = request["roles"]["buyer"]["selectionContext"][
+            "candidateBindings"
+        ][0]
+        bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][
+            buyer_binding["nativeAddress"]
+        ]
+        authority = self.fixture["dependencies"]["bundleAuthorityByContentHash"][
+            bundle_hash(bundle)
+        ]
+        ref = bundle["settlementEvidence"][0]
+        ref_key = D5.canonical(ref).decode("utf-8")
+        resolution = authority["referenceValidationByCanonicalRef"][ref_key]
+        phase_key = "0:" + resolution["record"]["phase"]
+        resolution["agreementHash"] = "33" * 32
+        laa = authority["legacyAgreementAuthorityByPhaseKey"][phase_key]["laa"]
+        laa["agreement"]["contentHash"] = resolution["agreementHash"]
+        authority["legacyAgreementAuthorityByPhaseKey"][phase_key] = (
+            D5.make_laa_phase_carrier(
+                laa, bundle, authority["listing"], phase_key,
+                resolution["record"], ref,
+                authority["verifiedReceiptByCanonicalRef"][ref_key],
+                authority["sessionExecutionAuthorityByPhaseKey"][phase_key],
+            )
+        )
+        result = self.derive([request])
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("LAA agreement differs", result["reason"])
         self.assertIsNone(result["derivation"])
 
     def test_current_use_excludes_missing_or_malformed_finality_laa_authority(self):

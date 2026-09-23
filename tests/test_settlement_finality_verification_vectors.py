@@ -117,6 +117,29 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             entry["evidenceReceiptContract"] = evidence_receipt_contract
         return entry
 
+    @staticmethod
+    def cross_agreement_authority(case):
+        """Reclose LAA around a different verifier-owned agreement than FV trusts."""
+        authority = copy.deepcopy(case["authority"])
+        bundle = case["bundle"]
+        ref = bundle["settlementEvidence"][0]
+        ref_key = canonicalize(ref)
+        resolution = authority["referenceValidationByCanonicalRef"][ref_key]
+        phase_key = "0:" + resolution["record"]["phase"]
+        alternate_hash = "33" * 32
+        resolution["agreementHash"] = alternate_hash
+        laa = authority["legacyAgreementAuthorityByPhaseKey"][phase_key]["laa"]
+        laa["agreement"]["contentHash"] = alternate_hash
+        authority["legacyAgreementAuthorityByPhaseKey"][phase_key] = (
+            D5.make_laa_phase_carrier(
+                laa, bundle, authority["listing"], phase_key,
+                resolution["record"], ref,
+                authority["verifiedReceiptByCanonicalRef"][ref_key],
+                authority["sessionExecutionAuthorityByPhaseKey"][phase_key],
+            )
+        )
+        return authority
+
     def resign_bundle(self, bundle):
         digest = bundle_hash(bundle)
         seed_names = {
@@ -702,6 +725,57 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         decision, reason, phase_keys = self.strong_result(case, authority=authority)
         self.assertEqual("fail", decision)
         self.assertIn("different listing", reason)
+        self.assertIsNone(phase_keys)
+
+    def test_finality_bound_joins_laa_and_fv_agreements(self):
+        case = self.strong["block-depth"]
+        self.assertEqual("pass", self.strong_result(case)[0])
+        authority = self.cross_agreement_authority(case)
+        decision, reason, phase_keys = self.strong_result(
+            case, authority=authority
+        )
+        self.assertEqual("fail", decision, reason)
+        self.assertIn("LAA agreement differs", reason)
+        self.assertIsNone(phase_keys)
+
+        pointer_authority = {**authority, "finalityTrust": self.trust}
+        pointer = resolve_legacy_absolute_fault_pointer(
+            self.data["dacs5"]["pointer"], case["bundle"],
+            pubkeys=self.pubkeys, finality_bound_authority=pointer_authority,
+        )
+        self.assertFalse(pointer["ok"])
+        self.assertEqual("fail", pointer["decision"])
+
+        legacy = self.data["dacs5"]["compatibility"]["copies"]["legacy"]
+        reconciled = reconcile_authenticated_finality_copies(
+            [self.entry(case["bundle"], authority), self.entry(legacy)],
+            self.pubkeys, self.trust,
+        )
+        self.assertEqual("fail", reconciled["decision"])
+        self.assertIsNone(reconciled["bundle"])
+
+    def test_missing_finality_authority_keeps_indeterminate_on_cross_agreement(self):
+        case = self.strong["block-depth"]
+        authority = self.cross_agreement_authority(case)
+        trust = copy.deepcopy(self.trust)
+        trust.pop("sessionAuthorityByJob")
+        decision, _, phase_keys = self.strong_result(
+            case, authority=authority, trust=trust
+        )
+        self.assertEqual("indeterminate", decision)
+        self.assertIsNone(phase_keys)
+
+    def test_unsupported_passing_finality_class_precedes_agreement_mismatch(self):
+        case = self.strong["block-depth"]
+        authority = self.cross_agreement_authority(case)
+        with patch.object(D5, "verify_finality", return_value={
+            "decision": "pass", "reason": "synthetic", "finalityClass": "unsupported",
+        }):
+            decision, reason, phase_keys = self.strong_result(
+                case, authority=authority
+            )
+        self.assertEqual("error", decision, reason)
+        self.assertIn("unsupported passing finality class", reason)
         self.assertIsNone(phase_keys)
 
     def test_dacs5_refuses_malformed_finality_agreement_without_exception(self):

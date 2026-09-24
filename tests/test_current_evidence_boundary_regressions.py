@@ -264,6 +264,30 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         reconciled = self._reconcile(value)
         self.assertEqual("pass", reconciled["decision"], reconciled["reason"])
 
+    def test_current_fab_rejects_authenticated_listing_with_wrong_publisher_role(self):
+        value = self._fixture()
+        listing = value["authority"]["listing"]
+        buyer = next(
+            party["primaryClaim"] for party in value["bundle"]["parties"]
+            if party["role"] == "buyer"
+        )
+        listing["sellerPrimaryClaim"] = buyer
+        listing["signature"] = {
+            "signer": buyer,
+            "algorithm": "ed25519",
+            "value": "",
+        }
+        listing["signature"]["value"] = self._sign(
+            "buyer", R.LISTING_DOMAIN, R.listing_hash(listing)
+        )
+        value["bundle"]["listingRef"]["contentHash"] = R.listing_hash(listing)
+        self._resign_bundle_and_pointer(value)
+        result = self._resolve(value)
+        self.assertFalse(result["ok"])
+        self.assertIn("Listing publisher differs", result["reason"])
+        reconciled = self._reconcile(value)
+        self.assertEqual("fail", reconciled["decision"])
+
     def test_genuine_current_delivery_is_historical_nonpayment_evidence(self):
         value = self._fixture()
         bundle = value["bundle"]

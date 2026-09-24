@@ -2070,6 +2070,128 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             derive_phase_disposition(authority, self.pubkeys)[0], "pass"
         )
 
+    def test_authenticated_listing_publisher_must_match_ordinary_bundle_seller(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        self.assertEqual(derive_phase_disposition(authority, self.pubkeys)[0], "pass")
+        buyer = next(
+            party["primaryClaim"] for party in authority["bundle"]["parties"]
+            if party["role"] == "buyer"
+        )
+        authority["listing"]["sellerPrimaryClaim"] = buyer
+        resign_listing(authority["listing"], self.data["seeds"]["buyer"])
+        authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+            authority["listing"]
+        )
+        resign_ebfab(authority["bundle"], self.data["seeds"])
+        disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+        self.assertEqual(disposition, "fail", reason)
+        self.assertIn("Listing publisher differs", reason)
+        accepted, direct_reason, _ = R.validate_ebfab(
+            authority["bundle"],
+            authority["listing"],
+            self.pubkeys,
+            authority["referenceValidationByCanonicalRef"],
+            authority["bundleLifecycle"],
+            authority["sessionExecutionAuthorityByPhaseKey"],
+            authority["verifiedReceiptByCanonicalRef"],
+            authority["deliveryArtifactAuthorityByPhaseKey"],
+            authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            legacy_agreement_authority_by_phase_key=refreshed_laa_phase_carriers(
+                authority
+            ),
+        )
+        self.assertFalse(accepted)
+        self.assertIn("Listing publisher differs", direct_reason)
+
+    def test_listing_seller_join_allows_one_actor_in_both_bundle_roles(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        bundle = authority["bundle"]
+        seller = next(
+            party["primaryClaim"] for party in bundle["parties"]
+            if party["role"] == "seller"
+        )
+        next(
+            party for party in bundle["parties"] if party["role"] == "buyer"
+        )["primaryClaim"] = seller
+        bundle["signatures"] = []
+        payload = (R.EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN + R.bundle_hash(bundle)).encode(
+            "utf-8"
+        )
+        signature = encode(Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(self.data["seeds"]["seller"])
+        ).sign(payload))
+        bundle["signatures"] = [
+            {"party": seller, "algorithm": "ed25519", "value": signature},
+            {"party": seller, "algorithm": "ed25519", "value": signature},
+        ]
+        disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+    def test_encrypted_storage_rejects_exact_plaintext_bytes(self):
+        cleartext_hash = hashlib.sha256(b"fixture cleartext").hexdigest()
+        binding = {
+            "effectiveAccessMode": "encrypt-to-buyer",
+            "storedContentHash": cleartext_hash,
+            "encryption": {
+                "recipient": "did:demos:buyer",
+                "ciphertextContentHash": cleartext_hash,
+            },
+        }
+        disposition, reason = R._validate_authenticated_storage_binding(
+            binding, "encrypt-to-buyer", "did:demos:buyer",
+            cleartext_hash, cleartext_hash, "storage deliverable",
+        )
+        self.assertEqual(disposition, "fail", reason)
+        self.assertIn("plaintext bytes", reason)
+        self.assertEqual(
+            R._validate_authenticated_storage_binding(
+                None, "encrypt-to-buyer", "did:demos:buyer",
+                cleartext_hash, cleartext_hash, "storage deliverable",
+            )[0],
+            "indeterminate",
+        )
+
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        listing = authority["listing"]
+        listing["offering"]["deliverable"]["accessModel"] = "encrypt-to-buyer"
+        resign_listing(listing, self.data["seeds"]["seller"])
+        authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(listing)
+        resign_ebfab(authority["bundle"], self.data["seeds"])
+        storage_authority = next(
+            receipt for receipt in authority["verifiedReceiptByCanonicalRef"].values()
+            if "storageBinding" in receipt
+        )
+        cleartext_hash = storage_authority["storageBinding"]["storedContentHash"]
+        storage_authority["storageBinding"] = {
+            "effectiveAccessMode": "encrypt-to-buyer",
+            "storedContentHash": cleartext_hash,
+            "encryption": {
+                "recipient": "did:demos:buyer",
+                "ciphertextContentHash": cleartext_hash,
+            },
+        }
+        disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+        self.assertEqual(disposition, "fail", reason)
+        self.assertIn("plaintext bytes", reason)
+
+        untrusted = copy.deepcopy(authority)
+        untrusted_receipt = next(
+            receipt for receipt in untrusted["verifiedReceiptByCanonicalRef"].values()
+            if "storageBinding" in receipt
+        )
+        untrusted["deliveryArtifactAuthorityByPhaseKey"][
+            "0:deliver-storage-program"
+        ]["deliverable"]["storageBinding"] = untrusted_receipt.pop("storageBinding")
+        disposition, reason, _ = derive_phase_disposition(untrusted, self.pubkeys)
+        self.assertEqual(disposition, "indeterminate", reason)
+        self.assertIn("authenticated storage authority is unavailable", reason)
+
     def test_complete_deliverable_and_method_hashes_preserve_signature_named_extensions(self):
         authority = copy.deepcopy(
             self.data["executionAuthorities"]["standard-completed"]

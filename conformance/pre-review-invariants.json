@@ -255,6 +255,26 @@
       "id": "prior-blocker-round14-full-standing-equivocation",
       "file": "tests/test_round14_hub_reproduction_vectors.py",
       "test": "Round14VerificationCompletion.test_b_bb6_two_full_standing_forms_are_indeterminate"
+    },
+    {
+      "id": "pr333-ordinary-listing-publisher-role-join",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_authenticated_listing_publisher_must_match_ordinary_bundle_seller"
+    },
+    {
+      "id": "pr333-listing-publisher-join-preserves-shared-actor-roles",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_listing_seller_join_allows_one_actor_in_both_bundle_roles"
+    },
+    {
+      "id": "pr333-current-fab-listing-publisher-role-join",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_rejects_authenticated_listing_with_wrong_publisher_role"
+    },
+    {
+      "id": "pr333-encrypted-stored-byte-separation",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_encrypted_storage_rejects_exact_plaintext_bytes"
     }
   ],
   "coveredInvariantClasses": [

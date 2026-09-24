@@ -1934,6 +1934,12 @@ def _validate_bound_fault_bundle(
     ):
         return (False, "listingRef does not bind the signed listing", None)
 
+    role_status, role_reason = _bounded_listing_publisher_role_join(
+        bundle, seller_primary_claim
+    )
+    if role_status != "pass":
+        return (False, _DispositionReason(role_reason, role_status), None)
+
     signed_pipeline = listing.get("pipeline")
     pipeline = signed_pipeline
     if effective_pipeline is not None:
@@ -3731,6 +3737,12 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
         or listing_ref.get("contentHash") != listing_digest
     ):
         return ("fail", "FAB listingRef does not bind the authenticated listing")
+
+    role_status, role_reason = _bounded_listing_publisher_role_join(
+        bundle, seller_primary_claim
+    )
+    if role_status != "pass":
+        return (role_status, role_reason)
 
     signed_pipeline = listing.get("pipeline")
     pipeline = signed_pipeline
@@ -9721,6 +9733,22 @@ def authenticated_delivery_roles(bundle):
         claims_by_role[role] = claim
     return "pass", claims_by_role
 
+
+def _bounded_listing_publisher_role_join(bundle, publisher):
+    """Join a verified Listing publisher to this oracle's ordinary-session roster.
+
+    The bounded SEB/FAB oracle does not admit procurement Listings. DACS-1 maps
+    their publisher to the buyer, so a full Listing adapter must use its
+    authenticated negotiation mode rather than reusing this ordinary-only join.
+    """
+    status, parties = authenticated_delivery_roles(bundle)
+    if status != "pass":
+        return "error", "authenticated bundle buyer/seller roster is ambiguous"
+    if publisher != parties["seller"]:
+        return "fail", "Listing publisher differs from authenticated bundle seller"
+    return "pass", "ok"
+
+
 def _complete_object_hash(value):
     """Hash every member of a complete, non-envelope object as received."""
     if not isinstance(value, dict):
@@ -10233,6 +10261,8 @@ def _validate_authenticated_storage_binding(
         return _closure_result("indeterminate", subject + " authenticated buyer is unavailable")
     if effective_access_model in {"public", "buyer-only"} and stored_hash != cleartext_hash:
         return _closure_result("fail", subject + " storage does not contain the plaintext bytes")
+    if effective_access_model == "encrypt-to-buyer" and stored_hash == cleartext_hash:
+        return _closure_result("fail", subject + " purported ciphertext is the plaintext bytes")
     if effective_access_model == "buyer-only" and (
         acl["mode"] != "restricted" or acl["allowed"] != [buyer]
     ):
@@ -11416,6 +11446,12 @@ def _validate_ebfab_boolean(
         or listing_ref.get("contentHash") != content_hash
     ):
         return (False, "listingRef does not bind the signed listing", None)
+
+    role_status, role_reason = _bounded_listing_publisher_role_join(
+        bundle, seller_primary_claim
+    )
+    if role_status != "pass":
+        return (False, _DispositionReason(role_reason, role_status), None)
 
     signed_pipeline = listing.get("pipeline")
     pipeline = signed_pipeline

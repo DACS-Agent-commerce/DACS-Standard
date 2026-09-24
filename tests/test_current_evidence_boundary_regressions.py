@@ -614,6 +614,76 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         )
         self.assertEqual("pass", decision, reason)
 
+    def _ordinary_current_delivery(self, value):
+        bundle = value["bundle"]
+        bundle.pop("faultBundleVersion")
+        bundle.pop("faultedParty")
+        bundle["bundleVersion"] = "1"
+        claims = {
+            party["role"]: party["primaryClaim"] for party in bundle["parties"]
+        }
+        bundle["signatures"] = []
+        digest = R.bundle_hash(bundle)
+        bundle["signatures"] = [
+            {
+                "party": claims[role],
+                "algorithm": "ed25519",
+                "value": self._sign(role, R.BUNDLE_DOMAIN, digest),
+            }
+            for role in R._required_bundle_signers(bundle)
+        ]
+        signed, reason = R._bundle_signatures_valid_for_family(
+            bundle, self.pubkeys, "legacy"
+        )
+        self.assertTrue(signed, reason)
+        dependencies = {
+            "bundleAuthorityByContentHash": {R.bundle_hash(bundle): value["authority"]}
+        }
+        config = {
+            "publicKeys": self.pubkeys,
+            "partyRolesByJob": {bundle["jobId"]: claims},
+        }
+        return bundle, value["authority"], dependencies, config
+
+    def test_ordinary_current_delivery_passes_historical_nonpayment_gate(self):
+        bundle, _authority, dependencies, config = self._ordinary_current_delivery(
+            self._fixture()
+        )
+        decision, reason = R._validate_current_use_historical_nonpayment(
+            bundle, dependencies, config
+        )
+        self.assertEqual("pass", decision, reason)
+
+    def test_ordinary_current_delivery_rejects_authenticated_wrong_job(self):
+        value = self._fixture()
+        self._replace_record(
+            value, lambda record: record.__setitem__("jobId", "different-job"),
+            signer_role="orchestrator",
+        )
+        bundle, _authority, dependencies, config = self._ordinary_current_delivery(
+            value
+        )
+        decision, reason = R._validate_current_use_historical_nonpayment(
+            bundle, dependencies, config
+        )
+        self.assertEqual("fail", decision, reason)
+
+    def test_ordinary_current_delivery_missing_authority_is_indeterminate(self):
+        for missing in ("resolution", "receipt"):
+            bundle, authority, dependencies, config = self._ordinary_current_delivery(
+                self._fixture()
+            )
+            ref_key = R.canonical(bundle["settlementEvidence"][0]).decode("utf-8")
+            if missing == "resolution":
+                del authority["referenceValidationByCanonicalRef"][ref_key]
+            else:
+                del authority["verifiedReceiptByCanonicalRef"][ref_key]
+            with self.subTest(missing=missing):
+                decision, reason = R._validate_current_use_historical_nonpayment(
+                    bundle, dependencies, config
+                )
+                self.assertEqual("indeterminate", decision, reason)
+
     def test_reconciliation_uses_the_same_current_fab_delivery_gate(self):
         value = self._fixture()
         self._replace_record(
@@ -1345,7 +1415,7 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
             claim: _decode(value) for claim, value in cls.data["publicKeys"].items()
         }
 
-    def _sign_bundle(self, bundle):
+    def _sign_bundle(self, bundle, *, domain=R.FAULT_BUNDLE_DOMAIN):
         claims = {
             party["role"]: party["primaryClaim"] for party in bundle["parties"]
         }
@@ -1359,7 +1429,7 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
                 "party": claims[role],
                 "algorithm": "ed25519",
                 "value": _encode(private.sign(
-                    (R.FAULT_BUNDLE_DOMAIN + digest).encode("utf-8")
+                    (domain + digest).encode("utf-8")
                 )),
             })
 
@@ -1390,6 +1460,31 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
 
     def test_legitimate_historical_fab_binding_passes_without_type_error(self):
         bundle, _authority, dependencies, config = self._fixture()
+        decision, reason = R._validate_current_use_historical_nonpayment(
+            bundle, dependencies, config
+        )
+        self.assertEqual("pass", decision, reason)
+
+    def test_unrelated_current_resolution_does_not_reclassify_ordinary_historical_delivery(self):
+        bundle, authority, _dependencies, config = self._fixture()
+        bundle.pop("faultBundleVersion")
+        bundle.pop("faultedParty")
+        bundle["bundleVersion"] = "1"
+        self._sign_bundle(bundle, domain=R.BUNDLE_DOMAIN)
+        dependencies = {
+            "bundleAuthorityByContentHash": {R.bundle_hash(bundle): authority}
+        }
+        baseline, reason = R._validate_current_use_historical_nonpayment(
+            bundle, dependencies, config
+        )
+        self.assertEqual("pass", baseline, reason)
+
+        unrelated = self.data["executionAuthorities"]["completed-storage-delivery"]
+        unrelated_ref = unrelated["bundle"]["settlementEvidence"][0]
+        unrelated_key = R.canonical(unrelated_ref).decode("utf-8")
+        authority["referenceValidationByCanonicalRef"][unrelated_key] = copy.deepcopy(
+            unrelated["referenceValidationByCanonicalRef"][unrelated_key]
+        )
         decision, reason = R._validate_current_use_historical_nonpayment(
             bundle, dependencies, config
         )

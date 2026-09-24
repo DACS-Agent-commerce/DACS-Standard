@@ -3663,13 +3663,16 @@ def _authenticated_pointer_signature_family(pointer, pubkeys):
     return candidates[0] if len(candidates) == 1 else None
 
 
-def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
+def _validate_current_fab_delivery_admission(
+    bundle, authority, pubkeys, *, delivery_only=False
+):
     """Validate current delivery and payment evidence carried by a current FAB.
 
     FAB keeps its released payment-membership semantics. This gate derives the
     delivery invocation set from the authenticated listing pipeline and signed
     execution trace, then admits each current delivery record and inner closure
-    under the current receipt contract.
+    under the current receipt contract. Ordinary AttestationBundle callers use
+    delivery_only so their payment members retain the historical payment gate.
     """
     summary = bundle.get("phaseSummary")
     if not isinstance(summary, list):
@@ -3837,6 +3840,17 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
         if not isinstance(resolution, dict):
             return ("error", "FAB evidence reference resolution is malformed")
         record = resolution.get("record")
+        if (
+            delivery_only
+            and isinstance(record, dict)
+            and record.get("phase") in PAYMENT_PHASES
+            and "deliveryEvidenceVersion" not in record
+            and canonical(ref) not in pointer_ids
+        ):
+            # Do not apply FAB payment-family classification or its admission
+            # rules to an ordinary bundle. The historical payment gate below
+            # validates this member against its own signed execution result.
+            continue
         evidence_type = _authenticated_evidence_wire_type(record, pubkeys)
         if evidence_type is None:
             return ("error", "FAB evidence member cannot be authenticated and classified")
@@ -3848,6 +3862,10 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
                     "fail",
                     "FAB current delivery member is malformed or uses the wrong evidence family",
                 )
+            if delivery_only:
+                # The ordinary bundle's payment contract is checked by the
+                # historical nonpayment path after current delivery admission.
+                continue
             if isinstance(record, dict) and record.get("phase") in PAYMENT_PHASES:
                 if evidence_type not in {"settlement", "legacy-transition"}:
                     return ("fail", "FAB payment member uses the wrong evidence family")
@@ -4145,7 +4163,7 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
                 pending_reason or "FAB delivery reference resolution is unavailable",
             )
         return ("fail", "FAB DeliveryEvidence is not the exact delivery invocation set")
-    if set(payment_success_keys) != set(payment_expected_by_key):
+    if not delivery_only and set(payment_success_keys) != set(payment_expected_by_key):
         if pending_reason is not None or unavailable_resolution:
             return ("indeterminate", pending_reason or "FAB payment evidence authority is unavailable")
         return ("fail", "FAB successful payment evidence is not the exact invocation set")
@@ -7151,18 +7169,25 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
     expected_entries = [entry for entry in summary if entry.get("kind") in EVIDENCE_PHASES]
     delivery_entries = [entry for entry in expected_entries if entry.get("kind") in DELIVERY_PHASES]
     resolutions = authority.get("referenceValidationByCanonicalRef")
-    current_delivery = (
-        kind == "fault" and bool(delivery_entries) and isinstance(resolutions, dict)
-        and any(
-            isinstance(resolution, dict)
-            and isinstance(resolution.get("record"), dict)
-            and resolution["record"].get("deliveryEvidenceVersion") == "1"
-            for resolution in resolutions.values()
-        )
-    )
+    current_delivery = False
+    if (
+        kind in {"legacy", "fault"} and delivery_entries
+        and isinstance(resolutions, dict)
+    ):
+        for ref in evidence_refs:
+            if not _attestation_ref_shape_valid(ref):
+                continue
+            resolution = resolutions.get(canonical(ref).decode("utf-8"))
+            if (
+                isinstance(resolution, dict)
+                and isinstance(resolution.get("record"), dict)
+                and resolution["record"].get("deliveryEvidenceVersion") == "1"
+            ):
+                current_delivery = True
+                break
     if current_delivery:
         delivery_disposition, delivery_reason = _validate_current_fab_delivery_admission(
-            bundle, authority, public_keys
+            bundle, authority, public_keys, delivery_only=kind == "legacy"
         )
         if delivery_disposition != "pass":
             return (delivery_disposition, delivery_reason)

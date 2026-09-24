@@ -905,6 +905,47 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
 
+    def test_legacy_repetition_fails_only_after_both_phase_authorities_exist(self):
+        single = G.make(
+            "legacy-single-control", "pass", "single invocation control",
+            G.legacy_case,
+        )
+        repeated = G.make(
+            "legacy-repeated-control", "fail",
+            "one unindexed record cannot cover two invocations",
+            lambda: G.legacy_case(True),
+        )
+        self.assertEqual([1], [
+            item["phaseIndex"] for item in single["deliveryAuthorities"]
+        ])
+        self.assertEqual({1, 2}, {
+            item["phaseIndex"] for item in repeated["deliveryAuthorities"]
+        })
+        self.assertEqual(1, len(repeated["evidenceRecords"]))
+        legacy_record = repeated["evidenceRecords"][0]["artifact"]
+        for phase_index in (1, 2):
+            self.assertEqual("pass", storage_access_model(repeated, phase_index)[0])
+            self.assertEqual(
+                "pass",
+                validate_delivery_artifact(
+                    repeated, legacy_record,
+                    associated_phase_index=phase_index, legacy=True,
+                ),
+            )
+        self.assertEqual("pass", evaluate(single))
+        self.assertEqual("fail", evaluate(repeated))
+
+        generated = next(
+            vector for vector in self.data["vectors"]
+            if vector["name"]
+            == "legacy-unindexed-evidence-cannot-cover-repetition"
+        )
+        self.assertEqual(
+            "one unindexed legacy record cannot cover two otherwise-authorized "
+            "delivery invocations",
+            generated["reason"],
+        )
+
     def test_positive_current_artifacts_match_spec_top_level_shapes(self):
         spec_text = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "spec").glob("*.md"))
         types = parse_type_fields(spec_text)

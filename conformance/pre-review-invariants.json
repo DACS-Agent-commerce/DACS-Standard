@@ -275,6 +275,26 @@
       "id": "pr333-encrypted-stored-byte-separation",
       "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
       "test": "BundleSettlementEvidenceBijectionTests.test_encrypted_storage_rejects_exact_plaintext_bytes"
+    },
+    {
+      "id": "pr333-boolean-archival-delivery-compatibility",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_boolean_and_disposition_legacy_delivery_profiles_agree"
+    },
+    {
+      "id": "pr333-repeated-legacy-vector-discrimination",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_legacy_repetition_fails_only_after_both_phase_authorities_exist"
+    },
+    {
+      "id": "pr333-current-fab-failed-payment-control",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_failed_payment_admission_and_omission"
+    },
+    {
+      "id": "pr333-current-fab-presented-payment-bindings",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_presented_payment_members_are_fully_bound"
     }
   ],
   "coveredInvariantClasses": [

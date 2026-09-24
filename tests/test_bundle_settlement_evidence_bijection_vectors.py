@@ -1882,6 +1882,114 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             self_signed["trustedNativeTransactionObservationsByCanonicalRef"], {}
         )
 
+    def test_boolean_and_disposition_legacy_delivery_profiles_agree(self):
+        def boolean_result(authority):
+            return R.validate_ebfab(
+                authority["bundle"],
+                authority["listing"],
+                self.pubkeys,
+                authority["referenceValidationByCanonicalRef"],
+                authority["bundleLifecycle"],
+                authority["sessionExecutionAuthorityByPhaseKey"],
+                authority["verifiedReceiptByCanonicalRef"],
+                authority["deliveryArtifactAuthorityByPhaseKey"],
+                authority["trustedNativeTransactionObservationsByCanonicalRef"],
+            )
+
+        def disposition_result(authority, *, archival):
+            verifier = (
+                R.validate_archival_audit_ebfab_disposition
+                if archival else R.validate_ebfab_disposition
+            )
+            return verifier(
+                authority["bundle"],
+                authority["listing"],
+                self.pubkeys,
+                authority["referenceValidationByCanonicalRef"],
+                authority["bundleLifecycle"],
+                authority["sessionExecutionAuthorityByPhaseKey"],
+                authority["verifiedReceiptByCanonicalRef"],
+                authority["deliveryArtifactAuthorityByPhaseKey"],
+                authority["trustedNativeTransactionObservationsByCanonicalRef"],
+            )
+
+        for authority_name in (
+            "legacy-storage-completed",
+            "legacy-entitlement-completed",
+            "legacy-attested-completed",
+        ):
+            authority = self.data["executionAuthorities"][authority_name]
+            with self.subTest(authority=authority_name, api="boolean"):
+                accepted, reason, phase_keys = boolean_result(authority)
+                self.assertTrue(accepted, reason)
+                self.assertIsNotNone(phase_keys)
+            with self.subTest(authority=authority_name, api="archival-disposition"):
+                disposition, reason, disposition_keys = disposition_result(
+                    authority, archival=True
+                )
+                self.assertEqual("pass", disposition, reason)
+                self.assertEqual(phase_keys, disposition_keys)
+            with self.subTest(authority=authority_name, api="current-disposition"):
+                disposition, reason, disposition_keys = disposition_result(
+                    authority, archival=False
+                )
+                self.assertEqual("fail", disposition, reason)
+                self.assertIsNone(disposition_keys)
+
+        repeated = self.data["executionAuthorities"][
+            "legacy-repeated-storage-invalid"
+        ]
+        accepted, reason, phase_keys = boolean_result(repeated)
+        self.assertFalse(accepted)
+        self.assertIn("single unambiguous invocation", reason)
+        self.assertIsNone(phase_keys)
+        disposition, reason, phase_keys = disposition_result(
+            repeated, archival=True
+        )
+        self.assertEqual("fail", disposition)
+        self.assertIn("single unambiguous invocation", reason)
+        self.assertIsNone(phase_keys)
+
+        finality = copy.deepcopy(
+            self.data["executionAuthorities"]["legacy-storage-completed"]
+        )
+        finality_bundle = finality["bundle"]
+        finality_bundle.pop("evidenceBoundFaultBundleVersion")
+        finality_bundle["finalityBoundEvidenceFaultBundleVersion"] = "1"
+        finality_bundle["signatures"] = []
+        digest = R.bundle_hash(finality_bundle)
+        claims_by_role = {
+            party["role"]: party["primaryClaim"]
+            for party in finality_bundle["parties"]
+        }
+        finality_bundle["signatures"] = [
+            {
+                "party": claims_by_role[role],
+                "algorithm": "ed25519",
+                "value": encode(
+                    Ed25519PrivateKey.from_private_bytes(
+                        bytes.fromhex(self.data["seeds"][role])
+                    ).sign((R.FINALITY_BOUND_EVIDENCE_FAULT_BUNDLE_DOMAIN + digest).encode("utf-8"))
+                ),
+            }
+            for role in R._required_bundle_signers(finality_bundle)
+        ]
+        accepted, reason, phase_keys = R._validate_bound_fault_bundle(
+            finality_bundle,
+            finality["listing"],
+            self.pubkeys,
+            finality["referenceValidationByCanonicalRef"],
+            finality["bundleLifecycle"],
+            finality["sessionExecutionAuthorityByPhaseKey"],
+            finality["verifiedReceiptByCanonicalRef"],
+            finality["deliveryArtifactAuthorityByPhaseKey"],
+            finality["trustedNativeTransactionObservationsByCanonicalRef"],
+            expected_kind="finality-bound",
+        )
+        self.assertFalse(accepted)
+        self.assertEqual("current delivery requires DeliveryEvidence", reason)
+        self.assertIsNone(phase_keys)
+
     def test_legacy_receipt_alone_never_replaces_required_delivery_closure(self):
         dependencies = (
             ("legacy-storage-completed", "0:deliver-storage-program", "deliverable"),

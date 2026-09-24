@@ -972,6 +972,10 @@ def legacy_case(repeated: bool = False) -> dict:
             },
         }],
     }
+    if repeated:
+        repeated_authority = copy.deepcopy(case["deliveryAuthorities"][0])
+        repeated_authority["phaseIndex"] = 2
+        case["deliveryAuthorities"].append(repeated_authority)
     attach_dependency_receipt(
         case,
         case["artifactRecords"][0],
@@ -1188,7 +1192,12 @@ def build_vectors() -> list[dict]:
     vectors.append(make("deliverable-address-cross-phase-replay", "fail", "an otherwise valid resolved phase-1 deliverable cannot satisfy phase 2", storage_case, wrong_payload_address))
 
     vectors.append(make("legacy-single-delivery-readable", "pass", "one unambiguous legacy delivery remains readable unchanged", legacy_case))
-    vectors.append(make("legacy-unindexed-evidence-cannot-cover-repetition", "fail", "legacy evidence never satisfies repeated delivery", lambda: legacy_case(True)))
+    vectors.append(make(
+        "legacy-unindexed-evidence-cannot-cover-repetition",
+        "fail",
+        "one unindexed legacy record cannot cover two otherwise-authorized delivery invocations",
+        lambda: legacy_case(True),
+    ))
     vectors.append(make(
         "legacy-entitlement-closure-readable",
         "pass",

@@ -3,7 +3,7 @@
   "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
   "decisionModel": "Authenticated phase/domain context fixes the evidence family before its selector is read. Current delivery evidence signs exact phase identity; every inner dependency has a full-reference lifecycle receipt; arbitrary exact payload/stored bytes and authenticated ACL or encryption-recipient commitments close storage and credential delivery; standalone payload attestations bind the complete job/phase/method/attempt locator. One bundle-scoped ledger prevents current entitlement/credential/payload proof and native-transaction identities from being rebound across delivery phase keys, while byte-identical entitlements at distinct normative anchors, storage delivery, and the frozen historical arm remain compatible. Contradictions fail, malformed collections or members error without exceptions, and missing otherwise-valid authority remains indeterminate.",
   "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
-  "hash": "af8afb4b216efed681ddfb376e5f755023e0e0b6bf1a49d29dbf9fd3c0bc38b2",
+  "hash": "b833d0811ac44267e7a85c7a4b06f4055cbf8a9faf135582978e0a400a3f8a00",
   "count": 83,
   "publicTestSeeds": {
     "orchestratorEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
@@ -2604,6 +2604,13 @@
             "kind": "storage-program",
             "accessModel": "public"
           }
+        },
+        {
+          "phaseIndex": 2,
+          "deliverable": {
+            "kind": "storage-program",
+            "accessModel": "public"
+          }
         }
       ],
       "verifiedReceiptByCanonicalRef": {
@@ -2724,7 +2731,7 @@
         "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
       },
       "expected": "fail",
-      "reason": "legacy evidence never satisfies repeated delivery"
+      "reason": "one unindexed legacy record cannot cover two otherwise-authorized delivery invocations"
     },
     {
       "name": "legacy-entitlement-closure-readable",

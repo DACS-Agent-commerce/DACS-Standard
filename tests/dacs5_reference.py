@@ -2158,7 +2158,7 @@ def _validate_bound_fault_bundle(
         if record_phase in DELIVERY_PHASES:
             if evidence_type not in {"delivery", "settlement"}:
                 return (False, "delivery phase resolves to the wrong evidence family", None)
-            if evidence_type == "settlement":
+            if evidence_type == "settlement" and expected_kind != "evidence-bound":
                 return (False, "current delivery requires DeliveryEvidence", None)
             if evidence_type == "settlement" and pipeline_kinds.count(record_phase) != 1:
                 return (False, "legacy delivery evidence is not a single unambiguous invocation", None)
@@ -3800,6 +3800,10 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
         for entry in summary
         if entry.get("kind") in PAYMENT_PHASES and entry.get("outcome") == "ok"
     }
+    payment_summary_by_key = {
+        "%d:%s" % (entry["index"], entry["kind"]): entry
+        for entry in summary if entry.get("kind") in PAYMENT_PHASES
+    }
     pointer_by_key = {
         key: entry["attestationRef"]
         for key, entry in expected_by_key.items()
@@ -3818,6 +3822,7 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
     actual_keys = []
     actual_ref_by_key = {}
     payment_actual_keys = []
+    payment_success_keys = []
     pending_reason = None
     unavailable_resolution = False
     ownership = {}
@@ -3843,7 +3848,7 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
                     "fail",
                     "FAB current delivery member is malformed or uses the wrong evidence family",
                 )
-            if isinstance(record, dict) and record.get("phase") in PAYMENT_PHASES and record.get("outcome") == "success":
+            if isinstance(record, dict) and record.get("phase") in PAYMENT_PHASES:
                 if evidence_type not in {"settlement", "legacy-transition"}:
                     return ("fail", "FAB payment member uses the wrong evidence family")
                 shape_valid = (
@@ -3878,31 +3883,157 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
                 if not isinstance(execution, dict) or not isinstance(receipts, dict):
                     pending_reason = pending_reason or "FAB payment execution or receipt authority is unavailable"
                     continue
+                if ref_key not in receipts:
+                    pending_reason = pending_reason or "FAB payment receipt authority is unavailable"
+                    continue
+                if not isinstance(receipts[ref_key], dict):
+                    return ("error", "FAB payment receipt authority is malformed")
+                receipt_shape_ok, _ = _validate_current_evidence_receipt(
+                    receipts[ref_key], None
+                )
+                if not receipt_shape_ok:
+                    return ("error", "FAB payment receipt authority is malformed")
                 binding_ok, binding_result, authenticated_receipt = _resolve_authenticated_evidence_binding(
                     ref, record, payment_signature["signer"], bundle, execution,
                     receipts, evidence_type,
                     receipt_validator=_validate_current_evidence_receipt,
                 )
                 if not binding_ok:
+                    receipt_logical_address = receipts[ref_key].get(
+                        "logicalAddress"
+                    )
+                    payment_address_prefix = "dacs4:payment:%s:" % bundle.get(
+                        "jobId"
+                    )
+                    payment_execution_keys = [
+                        key for key, entry in payment_summary_by_key.items()
+                        if entry.get("kind") == record.get("phase")
+                        and isinstance(receipt_logical_address, str)
+                        and receipt_logical_address.startswith(
+                            payment_address_prefix
+                        )
+                        and (
+                            receipt_logical_address.endswith(
+                                ":%d" % entry["index"]
+                            )
+                            or receipt_logical_address.endswith(
+                                ":%d:resolved" % entry["index"]
+                            )
+                        )
+                    ]
+                    if any(key not in execution for key in payment_execution_keys):
+                        pending_reason = pending_reason or "FAB payment execution authority is unavailable"
+                        continue
+                    if any(
+                        not isinstance(execution[key], dict)
+                        or not _nonempty_jcs_string(execution[key].get("jobId"))
+                        or not _safe_nonnegative_integer(
+                            execution[key].get("phaseIndex")
+                        )
+                        or not _string_member(
+                            execution[key].get("phaseKind"), PAYMENT_PHASES
+                        )
+                        or not _claim_reference_shape_valid(
+                            execution[key].get("phaseOrchestrator")
+                        )
+                        or not _nonempty_jcs_string(
+                            execution[key].get("railId")
+                        )
+                        or (
+                            "anchorNonce" in execution[key]
+                            and not _nonempty_jcs_string(
+                                execution[key].get("anchorNonce")
+                            )
+                        )
+                        for key in payment_execution_keys
+                    ):
+                        return ("error", "FAB payment execution authority is malformed")
                     return ("fail", binding_result)
                 phase_key, resolved = binding_result
-                if resolved or phase_key not in payment_expected_by_key:
+                lifecycle = resolution.get("lifecycle")
+                if "lifecycle" not in resolution:
+                    return ("indeterminate", "FAB payment lifecycle authority is unavailable")
+                if not isinstance(lifecycle, dict):
+                    return ("error", "FAB payment lifecycle authority is malformed")
+                state = lifecycle.get("state")
+                receipt_ok, _ = _validate_current_evidence_receipt(
+                    authenticated_receipt, None, expected_state=state
+                )
+                if not receipt_ok:
+                    return ("fail", "FAB payment lifecycle contradicts its verified receipt")
+                if bundle.get("outcome") == "completed":
+                    if state != "finalized" or lifecycle.get("independentlyResolvable") is not True:
+                        return ("fail", "completed FAB payment is not finalized and independently resolvable")
+                elif not _string_member(state, {"included", "finalized"}):
+                    return ("fail", "terminal FAB payment is not included or finalized")
+                summary_entry = payment_summary_by_key.get(phase_key)
+                expected_record_outcome = (
+                    "success"
+                    if isinstance(summary_entry, dict)
+                    and summary_entry.get("outcome") == "ok"
+                    else "failure"
+                )
+                if (
+                    resolved
+                    or not isinstance(summary_entry, dict)
+                    or record.get("outcome") != expected_record_outcome
+                ):
                     return ("fail", "FAB payment evidence contradicts the signed phase result")
+                st8_reason_by_phase = {
+                    "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
+                    "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
+                }
+                expected_st8_reason = st8_reason_by_phase.get(record.get("phase"))
+                supersedes = record.get("supersedesEvidenceRef")
+                expired_st8 = (
+                    record.get("phase") == "pay-cross-chain-htlc"
+                    and summary_entry.get("errorClass") == "settlement-atomicity"
+                ) or (
+                    record.get("phase") == "pay-cross-chain-liquidity-tank"
+                    and summary_entry.get("errorClass") == "substrate"
+                    and record.get("reason") == expected_st8_reason
+                )
+                if expired_st8:
+                    if (
+                        record.get("outcome") != "failure"
+                        or expected_st8_reason is None
+                        or record.get("reason") != expected_st8_reason
+                        or supersedes is not None
+                    ):
+                        return ("fail", "expired ST-8 record has the wrong authenticated terminal class")
+                    if _known_authenticated_st8_successor(
+                        ref,
+                        record,
+                        phase_key,
+                        bundle,
+                        pubkeys,
+                        resolutions,
+                        execution,
+                        receipts,
+                        _validate_current_evidence_receipt,
+                    ):
+                        return ("fail", "expired ST-8 record suppresses a known authenticated successor")
+                elif record.get("reason") in set(st8_reason_by_phase.values()):
+                    return ("fail", "ST-8 interim reason contradicts the signed phase result")
+                if supersedes is not None and not resolved:
+                    return ("fail", "ST-8 supersession edge is not bound to a resolved anchor")
                 if phase_key in payment_actual_keys:
                     return ("fail", "FAB reuses a payment invocation")
-                laa_disposition_value, laa_reason, eligibility = _qualify_legacy_agreement_evidence(
-                    record, evidence_type, phase_key,
-                    authority.get("legacyAgreementAuthorityByPhaseKey", _LAA_AUTHORITY_UNSPECIFIED),
-                    bundle=bundle, listing=listing, evidence_ref=ref,
-                    evidence_receipt=authenticated_receipt,
-                    phase_execution=execution.get(phase_key),
-                    authenticated_record_authority=resolution,
-                )
-                if laa_disposition_value != "pass":
-                    return (laa_disposition_value, laa_reason)
-                if eligibility != "current-eligible":
-                    return ("fail", "FAB payment agreement is not current-eligible")
                 payment_actual_keys.append(phase_key)
+                if record.get("outcome") == "success":
+                    laa_disposition_value, laa_reason, eligibility = _qualify_legacy_agreement_evidence(
+                        record, evidence_type, phase_key,
+                        authority.get("legacyAgreementAuthorityByPhaseKey", _LAA_AUTHORITY_UNSPECIFIED),
+                        bundle=bundle, listing=listing, evidence_ref=ref,
+                        evidence_receipt=authenticated_receipt,
+                        phase_execution=execution.get(phase_key),
+                        authenticated_record_authority=resolution,
+                    )
+                    if laa_disposition_value != "pass":
+                        return (laa_disposition_value, laa_reason)
+                    if eligibility != "current-eligible":
+                        return ("fail", "FAB payment agreement is not current-eligible")
+                    payment_success_keys.append(phase_key)
             continue
         if not _delivery_evidence_shape_valid(record):
             return ("error", "FAB current DeliveryEvidence has a malformed closed shape")
@@ -4014,7 +4145,7 @@ def _validate_current_fab_delivery_admission(bundle, authority, pubkeys):
                 pending_reason or "FAB delivery reference resolution is unavailable",
             )
         return ("fail", "FAB DeliveryEvidence is not the exact delivery invocation set")
-    if set(payment_actual_keys) != set(payment_expected_by_key):
+    if set(payment_success_keys) != set(payment_expected_by_key):
         if pending_reason is not None or unavailable_resolution:
             return ("indeterminate", pending_reason or "FAB payment evidence authority is unavailable")
         return ("fail", "FAB successful payment evidence is not the exact invocation set")

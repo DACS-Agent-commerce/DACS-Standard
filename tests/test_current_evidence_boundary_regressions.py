@@ -72,6 +72,28 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             R.delivery_evidence_hash(record),
         )
 
+    def _resign_payment_record(self, record, *, signer_role=None):
+        if signer_role is None:
+            current_signer = record.get("signature", {}).get("signer")
+            signer_role = next(
+                role for role in ("buyer", "seller", "orchestrator")
+                if isinstance(current_signer, str)
+                and current_signer.endswith(":" + role)
+            )
+        signer = next(
+            claim for claim in self.pubkeys if claim.endswith(":" + signer_role)
+        )
+        record["signature"] = {
+            "signer": signer,
+            "algorithm": "ed25519",
+            "value": "",
+        }
+        record["signature"]["value"] = self._sign(
+            signer_role,
+            R.SETTLEMENT_EVIDENCE_DOMAIN,
+            R.settlement_evidence_hash(record),
+        )
+
     def _resign_bundle_and_pointer(self, value):
         bundle = value["bundle"]
         claims = {
@@ -188,6 +210,86 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self._resign_bundle_and_pointer(value)
         return value
 
+    def _failed_payment_fixture(self):
+        source = copy.deepcopy(
+            self.data["executionAuthorities"]["single-htlc-expired"]
+        )
+        bundle = source["bundle"]
+        old_ref = bundle["settlementEvidence"][0]
+        old_key = R.canonical(old_ref).decode("utf-8")
+        resolution = source["referenceValidationByCanonicalRef"].pop(old_key)
+        receipt = source["verifiedReceiptByCanonicalRef"].pop(old_key)
+        record = resolution["record"]
+        bundle["jobId"] = CURRENT_JOB
+        record["jobId"] = CURRENT_JOB
+        self._resign_payment_record(record)
+        new_ref = copy.deepcopy(old_ref)
+        new_ref["contentHash"] = R.settlement_evidence_hash(record)
+        new_key = R.canonical(new_ref).decode("utf-8")
+        receipt["logicalAddress"] = (
+            "dacs4:payment:%s:test-rail:2" % CURRENT_JOB
+        )
+        receipt["contentHash"] = new_ref["contentHash"]
+        source["referenceValidationByCanonicalRef"][new_key] = resolution
+        source["verifiedReceiptByCanonicalRef"][new_key] = receipt
+        source["sessionExecutionAuthorityByPhaseKey"][
+            "2:pay-cross-chain-htlc"
+        ]["jobId"] = CURRENT_JOB
+        bundle["settlementEvidence"] = [new_ref]
+        bundle["phaseSummary"][-1]["attestationRef"] = copy.deepcopy(new_ref)
+        bundle.pop("evidenceBoundFaultBundleVersion")
+        bundle["faultBundleVersion"] = "1"
+        pointer = {
+            "faultBundleVersion": "1",
+            "pointerKind": "extended",
+            "fullBundleUrl": "fixture:current-fab-payment",
+            "fullBundleContentHash": "",
+            "signature": {},
+        }
+        role = bundle["anchoredByRole"]
+        signer = next(
+            party["primaryClaim"] for party in bundle["parties"]
+            if party["role"] == role
+        )
+        value = {
+            "bundle": bundle,
+            "pointer": pointer,
+            "authority": source,
+            "role": role,
+            "trusted": R.trusted_profile_context(
+                bundle["jobId"], signer, role=role
+            ),
+            "keys": R.trusted_verification_keys(copy.deepcopy(self.pubkeys)),
+        }
+        self._resign_bundle_and_pointer(value)
+        return value
+
+    def _replace_payment_record(
+        self, value, mutate, *, update_ref=True, update_receipt=True
+    ):
+        authority = value["authority"]
+        bundle = value["bundle"]
+        old_ref = bundle["settlementEvidence"][0]
+        old_key = R.canonical(old_ref).decode("utf-8")
+        resolution = authority["referenceValidationByCanonicalRef"].pop(old_key)
+        receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_key)
+        record = resolution["record"]
+        mutate(record)
+        self._resign_payment_record(record)
+        new_ref = copy.deepcopy(old_ref)
+        if update_ref:
+            new_ref["contentHash"] = R.settlement_evidence_hash(record)
+        new_key = R.canonical(new_ref).decode("utf-8")
+        if update_receipt:
+            receipt["contentHash"] = new_ref["contentHash"]
+        authority["referenceValidationByCanonicalRef"][new_key] = resolution
+        authority["verifiedReceiptByCanonicalRef"][new_key] = receipt
+        bundle["settlementEvidence"] = [new_ref]
+        for entry in bundle["phaseSummary"]:
+            if entry.get("attestationRef") == old_ref:
+                entry["attestationRef"] = copy.deepcopy(new_ref)
+        self._resign_bundle_and_pointer(value)
+
     def _replace_record(self, value, mutate, *, signer_role="seller"):
         authority = value["authority"]
         bundle = value["bundle"]
@@ -214,7 +316,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             pubkeys=value["keys"],
             ebfab_authority=value["authority"],
             trusted_contexts=value["trusted"],
-            expected_jobid=CURRENT_JOB,
+            expected_jobid=value["bundle"]["jobId"],
             expected_role=value["role"],
         )
 
@@ -263,6 +365,210 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self.assertTrue(result["ok"], result["reason"])
         reconciled = self._reconcile(value)
         self.assertEqual("pass", reconciled["decision"], reconciled["reason"])
+
+    def _assert_payment_admission_paths(self, value, expected):
+        direct, reason = R._validate_current_fab_delivery_admission(
+            value["bundle"], value["authority"], self.pubkeys
+        )
+        self.assertEqual(expected, direct, reason)
+        resolved = self._resolve(value)
+        if expected == "pass":
+            self.assertTrue(resolved["ok"], resolved["reason"])
+        else:
+            self.assertFalse(resolved["ok"], resolved["reason"])
+            self.assertEqual(expected, resolved.get("disposition"), resolved)
+        reconciled = self._reconcile(value)
+        self.assertEqual(expected, reconciled["decision"], reconciled["reason"])
+
+    def test_current_fab_failed_payment_admission_and_omission(self):
+        self._assert_payment_admission_paths(
+            self._failed_payment_fixture(), "pass"
+        )
+
+        counterparty_failure = self._failed_payment_fixture()
+        self._replace_payment_record(
+            counterparty_failure,
+            lambda record: record.__setitem__("reason", "operator-declined"),
+        )
+        counterparty_failure["bundle"]["phaseSummary"][-1][
+            "errorClass"
+        ] = "counterparty"
+        self._resign_bundle_and_pointer(counterparty_failure)
+        self._assert_payment_admission_paths(counterparty_failure, "pass")
+
+        omitted = self._failed_payment_fixture()
+        omitted["bundle"]["settlementEvidence"] = []
+        omitted["bundle"]["phaseSummary"][-1].pop("attestationRef", None)
+        self._resign_bundle_and_pointer(omitted)
+        self._assert_payment_admission_paths(omitted, "pass")
+
+    def test_current_fab_presented_payment_members_are_fully_bound(self):
+        cases = []
+
+        wrong_job = self._failed_payment_fixture()
+        self._replace_payment_record(
+            wrong_job,
+            lambda record: record.__setitem__(
+                "jobId", "SEB-AUTHORITY-other-payment-job"
+            ),
+        )
+        cases.append(("job", wrong_job, "fail"))
+
+        stale_hash = self._failed_payment_fixture()
+        self._replace_payment_record(
+            stale_hash,
+            lambda record: record.__setitem__(
+                "observedAt", record["observedAt"] + 1
+            ),
+            update_ref=False,
+        )
+        cases.append(("hash", stale_hash, "fail"))
+
+        wrong_phase = self._failed_payment_fixture()
+        self._replace_payment_record(
+            wrong_phase,
+            lambda record: record.__setitem__("phase", "pay-dem"),
+        )
+        cases.append(("phase", wrong_phase, "fail"))
+
+        wrong_st8_reason = self._failed_payment_fixture()
+        self._replace_payment_record(
+            wrong_st8_reason,
+            lambda record: record.__setitem__("reason", "operator-declined"),
+        )
+        cases.append(("st8-reason", wrong_st8_reason, "fail"))
+
+        wrong_st8_class = self._failed_payment_fixture()
+        wrong_st8_class["bundle"]["phaseSummary"][-1][
+            "errorClass"
+        ] = "counterparty"
+        self._resign_bundle_and_pointer(wrong_st8_class)
+        cases.append(("st8-class", wrong_st8_class, "fail"))
+
+        failed_supersession = self._failed_payment_fixture()
+        self._replace_payment_record(
+            failed_supersession,
+            lambda record: record.__setitem__(
+                "supersedesEvidenceRef",
+                {
+                    "anchor": {
+                        "kind": "storage-program",
+                        "locator": "dacs4:payment:unrelated",
+                    },
+                    "contentHash": "11" * 32,
+                },
+            ),
+        )
+        cases.append(("failed-supersession", failed_supersession, "fail"))
+
+        wrong_receipt = self._failed_payment_fixture()
+        receipt_key = R.canonical(
+            wrong_receipt["bundle"]["settlementEvidence"][0]
+        ).decode("utf-8")
+        wrong_receipt["authority"]["verifiedReceiptByCanonicalRef"][receipt_key][
+            "logicalAddress"
+        ] = "dacs4:payment:%s:test-rail:3" % wrong_receipt["bundle"]["jobId"]
+        cases.append(("receipt-index", wrong_receipt, "fail"))
+
+        wrong_lifecycle = self._failed_payment_fixture()
+        lifecycle_key = R.canonical(
+            wrong_lifecycle["bundle"]["settlementEvidence"][0]
+        ).decode("utf-8")
+        wrong_lifecycle["authority"]["referenceValidationByCanonicalRef"][lifecycle_key][
+            "lifecycle"
+        ]["state"] = "pending"
+        cases.append(("lifecycle-receipt", wrong_lifecycle, "fail"))
+
+        unavailable_lifecycle = self._failed_payment_fixture()
+        lifecycle_key = R.canonical(
+            unavailable_lifecycle["bundle"]["settlementEvidence"][0]
+        ).decode("utf-8")
+        unavailable_lifecycle["authority"]["referenceValidationByCanonicalRef"][lifecycle_key].pop(
+            "lifecycle"
+        )
+        cases.append(("lifecycle-authority", unavailable_lifecycle, "indeterminate"))
+
+        malformed_lifecycle = self._failed_payment_fixture()
+        lifecycle_key = R.canonical(
+            malformed_lifecycle["bundle"]["settlementEvidence"][0]
+        ).decode("utf-8")
+        malformed_lifecycle["authority"]["referenceValidationByCanonicalRef"][lifecycle_key][
+            "lifecycle"
+        ] = []
+        cases.append(("lifecycle-malformed", malformed_lifecycle, "error"))
+
+        wrong_outcome = self._failed_payment_fixture()
+        success_source = copy.deepcopy(
+            self.data["executionAuthorities"]["single-htlc-direct-completed"]
+        )
+        success_ref = success_source["bundle"]["settlementEvidence"][0]
+        success_record = success_source["referenceValidationByCanonicalRef"][
+            R.canonical(success_ref).decode("utf-8")
+        ]["record"]
+
+        def make_success(record):
+            record.pop("reason", None)
+            record["outcome"] = "success"
+            for field in (
+                "paymentTxRefs", "paymentAmount", "paymentFee",
+                "settlementFinality",
+            ):
+                if field in success_record:
+                    record[field] = copy.deepcopy(success_record[field])
+                else:
+                    record.pop(field, None)
+
+        self._replace_payment_record(wrong_outcome, make_success)
+        cases.append(("outcome", wrong_outcome, "fail"))
+
+        malformed = self._failed_payment_fixture()
+        self._replace_payment_record(
+            malformed,
+            lambda record: record.__setitem__("outcome", "unknown"),
+        )
+        cases.append(("shape", malformed, "error"))
+
+        unavailable = self._failed_payment_fixture()
+        unavailable["authority"].pop("sessionExecutionAuthorityByPhaseKey")
+        cases.append(("execution-authority", unavailable, "indeterminate"))
+
+        unavailable_receipt = self._failed_payment_fixture()
+        unavailable_receipt["authority"].pop("verifiedReceiptByCanonicalRef")
+        cases.append(("receipt-authority", unavailable_receipt, "indeterminate"))
+
+        missing_exact_receipt = self._failed_payment_fixture()
+        exact_ref_key = R.canonical(
+            missing_exact_receipt["bundle"]["settlementEvidence"][0]
+        ).decode("utf-8")
+        missing_exact_receipt["authority"][
+            "verifiedReceiptByCanonicalRef"
+        ].pop(exact_ref_key)
+        cases.append(("exact-receipt-missing", missing_exact_receipt, "indeterminate"))
+
+        malformed_exact_receipt = self._failed_payment_fixture()
+        exact_ref_key = R.canonical(
+            malformed_exact_receipt["bundle"]["settlementEvidence"][0]
+        ).decode("utf-8")
+        malformed_exact_receipt["authority"][
+            "verifiedReceiptByCanonicalRef"
+        ][exact_ref_key] = []
+        cases.append(("exact-receipt-malformed", malformed_exact_receipt, "error"))
+
+        missing_exact_execution = self._failed_payment_fixture()
+        missing_exact_execution["authority"][
+            "sessionExecutionAuthorityByPhaseKey"
+        ].pop("2:pay-cross-chain-htlc")
+        cases.append(("exact-execution-missing", missing_exact_execution, "indeterminate"))
+
+        malformed_exact_execution = self._failed_payment_fixture()
+        malformed_exact_execution["authority"][
+            "sessionExecutionAuthorityByPhaseKey"
+        ]["2:pay-cross-chain-htlc"] = []
+        cases.append(("exact-execution-malformed", malformed_exact_execution, "error"))
+
+        for name, value, expected in cases:
+            with self.subTest(binding=name):
+                self._assert_payment_admission_paths(value, expected)
 
     def test_current_fab_rejects_authenticated_listing_with_wrong_publisher_role(self):
         value = self._fixture()

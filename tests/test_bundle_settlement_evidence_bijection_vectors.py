@@ -585,11 +585,23 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
 
     def test_all_expected_dispositions_and_reason_codes(self):
+        verdict_for_disposition = {
+            "verified": "pass",
+            "rejected": "fail",
+            "indeterminate": "indeterminate",
+        }
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
+                actual_disposition, actual_reason = evaluate(
+                    vector["input"], self.data["executionAuthorities"], self.pubkeys
+                )
                 self.assertEqual(
-                    evaluate(vector["input"], self.data["executionAuthorities"], self.pubkeys),
+                    (actual_disposition, actual_reason),
                     (vector["want"]["disposition"], vector["want"]["reasonCode"]),
+                )
+                self.assertIn(actual_disposition, verdict_for_disposition)
+                self.assertEqual(
+                    vector["expected"], verdict_for_disposition[actual_disposition]
                 )
 
     def test_cross_phase_inner_dependency_ownership_is_load_bearing(self):

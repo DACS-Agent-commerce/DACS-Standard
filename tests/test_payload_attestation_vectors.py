@@ -253,6 +253,7 @@ class PayloadAttestationVectorTests(unittest.TestCase):
 
     def test_vector_hash_count_and_unique_names(self):
         vectors = self.data["vectors"]
+        self.assertEqual(self.data["hashRecipe"], "sha256(RFC 8785 JCS of vectors)")
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(
             self.data["hash"],

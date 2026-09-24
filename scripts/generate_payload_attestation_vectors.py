@@ -639,7 +639,7 @@ def build_document() -> dict:
             "matching listing/agreement/settlement bindings. Resolved contradictions "
             "fail; unavailable otherwise-valid evidence remains indeterminate."
         ),
-        "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+        "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),
         "count": len(vectors),
         "publicTestSeeds": {

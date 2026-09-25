@@ -3801,7 +3801,7 @@ def _validate_current_fab_delivery_admission(
     payment_expected_by_key = {
         "%d:%s" % (entry["index"], entry["kind"]): entry
         for entry in summary
-        if entry.get("kind") in PAYMENT_PHASES and entry.get("outcome") == "ok"
+        if entry.get("kind") in PAYMENT_PHASES
     }
     payment_summary_by_key = {
         "%d:%s" % (entry["index"], entry["kind"]): entry
@@ -4163,10 +4163,19 @@ def _validate_current_fab_delivery_admission(
                 pending_reason or "FAB delivery reference resolution is unavailable",
             )
         return ("fail", "FAB DeliveryEvidence is not the exact delivery invocation set")
-    if not delivery_only and set(payment_success_keys) != set(payment_expected_by_key):
-        if pending_reason is not None or unavailable_resolution:
-            return ("indeterminate", pending_reason or "FAB payment evidence authority is unavailable")
-        return ("fail", "FAB successful payment evidence is not the exact invocation set")
+    if not delivery_only:
+        extra_payment = set(payment_actual_keys) - set(payment_expected_by_key)
+        missing_payment = set(payment_expected_by_key) - set(payment_actual_keys)
+        if extra_payment:
+            return ("fail", "FAB payment evidence is not the exact invocation set")
+        if missing_payment:
+            if pending_reason is not None or unavailable_resolution:
+                return ("indeterminate", pending_reason or "FAB payment evidence authority is unavailable")
+            if not isinstance(execution, dict) or not isinstance(receipts, dict):
+                return ("indeterminate", "FAB payment evidence authority is unavailable")
+            if any(key not in execution for key in missing_payment) or not receipts:
+                return ("indeterminate", "FAB payment evidence authority is unavailable")
+            return ("fail", "FAB payment evidence is not the exact invocation set")
     if unavailable_resolution:
         return ("indeterminate", "FAB evidence classification authority is unavailable")
     if pending_reason is not None:

@@ -400,7 +400,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         omitted["bundle"]["settlementEvidence"] = []
         omitted["bundle"]["phaseSummary"][-1].pop("attestationRef", None)
         self._resign_bundle_and_pointer(omitted)
-        self._assert_payment_admission_paths(omitted, "pass")
+        self._assert_payment_admission_paths(omitted, "fail")
 
     def test_current_fab_presented_payment_members_are_fully_bound(self):
         cases = []

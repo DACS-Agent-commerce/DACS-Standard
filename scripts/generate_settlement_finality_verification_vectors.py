@@ -906,6 +906,82 @@ class FixtureFactory:
             for role in ("buyer", "seller")
         ]
 
+    def bind_current_laa_authority(self, bundle: dict, authority: dict) -> None:
+        """Bind one verifier-owned current-agreement carrier per successful payment."""
+        listing = authority["listing"]
+        resolutions = authority["referenceValidationByCanonicalRef"]
+        receipts = authority["verifiedReceiptByCanonicalRef"]
+        executions = authority["sessionExecutionAuthorityByPhaseKey"]
+        finality_inputs = authority["finalityVerificationByCanonicalRef"]
+        carriers = {}
+        for summary in bundle["phaseSummary"]:
+            if summary.get("outcome") != "ok" or summary.get("kind") not in MODEL_PHASE.values():
+                continue
+            evidence_ref = summary.get("attestationRef")
+            if not isinstance(evidence_ref, dict):
+                continue
+            canonical_ref = canonicalize(evidence_ref)
+            resolution = resolutions[canonical_ref]
+            evidence = resolution["record"]
+            if evidence.get("outcome") != "success":
+                continue
+            phase_key = "%d:%s" % (summary["index"], summary["kind"])
+            execution = executions[phase_key]
+            receipt = receipts[canonical_ref]
+            finality_input = finality_inputs[canonical_ref]
+            agreement_hash = artifact_hash(finality_input["agreement"], "signatures")
+            session_id = "session-finality-" + hashlib.sha256(
+                (evidence["jobId"] + ":" + phase_key).encode()
+            ).hexdigest()
+            laa = {
+                "operation": "authorize-payment",
+                "pipelineHasPayment": True,
+                "agreement": {
+                    "artifact": "payee-bound",
+                    "shape": "valid",
+                    "partySignaturesValid": True,
+                    "contentHash": agreement_hash,
+                    "jobId": evidence["jobId"],
+                    "phase": evidence["phase"],
+                    "listingRef": copy.deepcopy(bundle["listingRef"]),
+                    "pbVerified": True,
+                },
+                "sessionAuthority": {
+                    "state": "verified",
+                    "jobId": evidence["jobId"],
+                    "sessionId": session_id,
+                    "orchestratorPrimaryClaim": execution["phaseOrchestrator"],
+                },
+            }
+            resolution.update({
+                "agreementHash": agreement_hash,
+                "sessionId": session_id,
+            })
+            carriers[phase_key] = {
+                "laa": laa,
+                "binding": {
+                    "laaContentHash": hashlib.sha256(canonical_bytes(laa)).hexdigest(),
+                    "bundleContentHash": self.bundle_hash(bundle),
+                    "listingRef": copy.deepcopy(bundle["listingRef"]),
+                    "listingContentHash": artifact_hash(listing, "signature"),
+                    "agreementContentHash": agreement_hash,
+                    "jobId": evidence["jobId"],
+                    "sessionId": session_id,
+                    "phaseKey": phase_key,
+                    "phaseIndex": execution["phaseIndex"],
+                    "phase": evidence["phase"],
+                    "phaseOrchestrator": execution["phaseOrchestrator"],
+                    "evidenceSigner": evidence["signature"]["signer"],
+                    "evidenceContentHash": artifact_hash(evidence, "signature"),
+                    "evidenceRef": copy.deepcopy(evidence_ref),
+                    "evidenceReceiptHash": hashlib.sha256(
+                        canonical_bytes(receipt)
+                    ).hexdigest(),
+                    "receiptWriter": receipt["writer"],
+                },
+            }
+        authority["legacyAgreementAuthorityByPhaseKey"] = carriers
+
     def strong_bundle_case(
         self, model: str, *, job_id: str | None = None, value: dict | None = None
     ) -> dict:
@@ -970,18 +1046,37 @@ class FixtureFactory:
             },
             "verifiedReceiptByCanonicalRef": {
                 canonical_ref: {
+                    "receiptVersion": "1",
+                    "substrate": "demos-testnet",
+                    "finalityProfile": "demos-bft-final",
                     "logicalAddress": "dacs4:payment:%s:%s:0" % (evidence["jobId"], quote(rail_id, safe="-._~")),
                     "nativeAddress": evidence_ref["anchor"]["locator"],
                     "contentHash": evidence_ref["contentHash"],
-                    "transaction": "demos:test:" + hashlib.sha256((model + ":anchor").encode()).hexdigest(),
+                    "transactionRef": {
+                        "kind": "demos-transaction",
+                        "value": "demos:test:" + hashlib.sha256((model + ":anchor").encode()).hexdigest(),
+                    },
                     "writer": CLAIMS["orchestrator"],
-                    "nonce": 0,
+                    "nonce": "0",
+                    "state": "finalized",
+                    "observationDisposition": "established",
+                    "observedAt": OBSERVED_AT,
+                    "blockRef": {
+                        "id": "block-" + hashlib.sha256((model + ":anchor").encode()).hexdigest()[:32],
+                        "height": "1000",
+                        "timestamp": OBSERVED_AT,
+                    },
+                    "evidence": {
+                        "kind": "fixture-demos-bft-proof",
+                        "value": hashlib.sha256((model + ":receipt-proof").encode()).hexdigest(),
+                    },
                 }
             },
             "finalityVerificationByCanonicalRef": {
                 canonical_ref: value,
             },
         }
+        self.bind_current_laa_authority(bundle, authority)
         return {"model": model, "bundle": bundle, "authority": authority}
 
     def pointer(self, bundle: dict) -> dict:
@@ -1051,6 +1146,7 @@ class FixtureFactory:
             self.sign_bundle(bundle, OLD_BUNDLE_DOMAINS[kind])
             copies[kind] = bundle
         old_authority.update({
+            "evidenceReceiptContract": "archival",
             "listing": listing,
             "bundleLifecycle": {"state": "finalized", "independentlyResolvable": True},
             "sessionExecutionAuthorityByPhaseKey": strong_case["authority"]["sessionExecutionAuthorityByPhaseKey"],

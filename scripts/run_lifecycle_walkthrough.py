@@ -57,7 +57,7 @@ STAGE_LINKS = {
     },
     "DACS-4": {
         "operation": "Settle",
-        "rules": ["PC-1", "PC-2", "PC-3", "PC-6", "FP-1", "FP-2", "FP-3", "FP-4", "PIPE-1", "PIPE-3", "SIG-6"],
+        "rules": ["PC-1", "PC-2", "PC-3", "PC-6", "FP-1", "FP-2", "FP-3", "FP-4", "PDE-1", "PDE-2", "PDE-3", "PDE-4", "PIPE-1", "PIPE-3", "SIG-6"],
         "vectorIds": ["settlement-payment-pass", "settlement-delivery-pass"],
     },
     "DACS-5": {
@@ -75,6 +75,7 @@ DOMAINS = {
     "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
     "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
+    "DeliveryEvidence": "dacs-delivery-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
 
@@ -669,8 +670,9 @@ def evaluate_delivery_after_payment(
     if payment.get("outcome") != "success":
         raise ValueError("delivery transition requires successful payment evidence")
     evidence = {
-        "evidenceVersion": "1",
+        "deliveryEvidenceVersion": "1",
         "jobId": payment["jobId"],
+        "phaseIndex": 4,
         "phase": "deliver-storage-program",
         "observedAt": NOW + 6000,
     }
@@ -1041,7 +1043,7 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
     deliverable_bytes = canonical_json(
         {"jobId": JOB_ID, "result": "minimum lifecycle completed", "rows": 1}
     )
-    deliverable_logical = f"dacs4:deliverable:{JOB_ID}"
+    deliverable_logical = f"dacs4:deliverable:{JOB_ID}:4"
     deliverable_binding = substrate.publish(
         deliverable_logical, deliverable_bytes, "seller"
     )
@@ -1052,19 +1054,19 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
             "deliverableContentHash": sha256_hex(deliverable_bytes),
             "deliverableAnchor": {
                 "kind": "storage-program",
-                "locator": deliverable_binding["nativeAddress"],
+                "locator": deliverable_logical,
             },
         },
     )
     delivery = signed_single(
-        "SettlementEvidence", delivery_transition["evidenceUnsigned"], "orchestrator"
+        "DeliveryEvidence", delivery_transition["evidenceUnsigned"], "orchestrator"
     )
     delivery_trace, delivery_ref = trace_artifact(
         stage="DACS-4",
-        artifact_id="settlement-delivery-success",
-        kind="SettlementEvidence",
+        artifact_id="delivery-evidence-success",
+        kind="DeliveryEvidence",
         artifact=delivery,
-        logical_address=f"dacs4:evidence:deliverable:{JOB_ID}",
+        logical_address=f"dacs4:delivery:{JOB_ID}:4",
         publisher="orchestrator",
         substrate=substrate,
     )
@@ -1146,6 +1148,7 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
         "paymentTrace": payment_trace,
         "paymentRef": payment_ref,
         "delivery": delivery,
+        "deliveryTrace": delivery_trace,
         "deliveryRef": delivery_ref,
         "bundleBase": bundle_base,
         "bundleCopies": bundle_copies,
@@ -1227,6 +1230,49 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
         raise ValueError("payment evidence does not match its bundle phase")
     if delivery["jobId"] != JOB_ID or delivery["phase"] != delivery_entry["kind"]:
         raise ValueError("delivery evidence does not match its bundle phase")
+    delivery_index = require_phase_index(
+        delivery.get("phaseIndex"), label="delivery evidence phaseIndex"
+    )
+    if delivery_index != require_phase_index(
+        delivery_entry.get("index"), label="delivery phaseSummary index"
+    ):
+        raise ValueError("delivery evidence does not match its bundle phase index")
+    delivery_trace = context["deliveryTrace"]
+    if delivery_trace["logicalAddress"] != (
+        f"dacs4:delivery:{JOB_ID}:{delivery_index}"
+    ):
+        raise ValueError("delivery evidence is not at its phase-indexed address")
+    if (
+        delivery_trace["publishedBinding"]["logicalAddress"]
+        != delivery_trace["logicalAddress"]
+    ):
+        raise ValueError("delivery evidence logical address diverges from its published binding")
+    if (
+        delivery_trace["publishedBinding"]["nativeAddress"]
+        != context["deliveryRef"]["anchor"]["locator"]
+    ):
+        raise ValueError("delivery evidence reference diverges from its published binding")
+    if delivery_trace["artifactHash"] != context["deliveryRef"]["contentHash"]:
+        raise ValueError("delivery evidence reference does not bind the signed artifact")
+    delivered_object = stages[3]["deliveredObject"]
+    expected_deliverable = f"dacs4:deliverable:{JOB_ID}:{delivery_index}"
+    if delivered_object["logicalAddress"] != expected_deliverable:
+        raise ValueError("delivered object is not at its phase-indexed address")
+    if delivered_object["publishedBinding"]["logicalAddress"] != expected_deliverable:
+        raise ValueError("delivered object binding does not use the phase-indexed address")
+    if delivered_object["publishedBinding"]["contentSha256"] != sha256_hex(
+        delivered_object["canonicalBytes"].encode("utf-8")
+    ):
+        raise ValueError("delivered object binding does not commit to the delivered bytes")
+    if delivery.get("deliverableAnchor") != {
+        "kind": "storage-program",
+        "locator": expected_deliverable,
+    }:
+        raise ValueError("delivery evidence does not bind the phase-indexed deliverable")
+    if delivery.get("deliverableContentHash") != sha256_hex(
+        delivered_object["canonicalBytes"].encode("utf-8")
+    ):
+        raise ValueError("delivery evidence does not bind the delivered bytes")
     if bundle["agreementRef"] != context["agreementRef"]:
         raise ValueError("bundle does not reference the committed agreement")
     if bundle["vetRecords"] != list(context["vetRefs"].values()):
@@ -1367,14 +1413,14 @@ def delivery_failure_case(context: dict[str, Any]) -> dict[str, Any]:
     )
     substrate = FakeSubstrate()
     failure_evidence = signed_single(
-        "SettlementEvidence", transition["evidenceUnsigned"], "orchestrator"
+        "DeliveryEvidence", transition["evidenceUnsigned"], "orchestrator"
     )
     evidence_trace, evidence_ref = trace_artifact(
         stage="DACS-4",
-        artifact_id="settlement-delivery-counterparty-failure",
-        kind="SettlementEvidence",
+        artifact_id="delivery-evidence-counterparty-failure",
+        kind="DeliveryEvidence",
         artifact=failure_evidence,
-        logical_address=f"dacs4:evidence:delivery-failure:{JOB_ID}",
+        logical_address=f"dacs4:delivery:{JOB_ID}:4",
         publisher="orchestrator",
         substrate=substrate,
     )

@@ -5,9 +5,9 @@
 ## Chapter 9 — DACS-4: Settle
 
 **Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; and adds the governed legacy-agreement activation checkpoint and LAA-1..LAA-7, including the distinct signed reservation and transition-evidence types, requiring payee-bound agreements for current pay-bearing sessions while retaining authenticated historical legacy audit; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
-**Unallocated compatibility proposal (#392).** The finality-bound evidence type, rail profile, and FV-1..FV-10 verifier below are candidate additive contracts. They do not allocate a DACS-4 minor or reinterpret any existing `SettlementEvidence` bytes.
-
 The current composed v0.8 candidate also separates the AP2 provider-status attestation from the selected SR-3 binding's native transaction reference through the `ap2-sr3` `ChainTxRef` arm, freezes the existing `ap2` arm, defines the Demos DAHR `demos-web2-request` form, and requires numeric rail-registry selection with authenticated definition matching and no older-version fallback.
+
+Its v0.7 delivery addition is the distinct signed, phase-indexed `DeliveryEvidence` type and PDE-1..PDE-8; historical delivery-shaped `SettlementEvidence` remains readable only under PDE-7 and is never silently rewritten.
 
 **Unallocated compatibility proposal (#392).** The finality-bound evidence type, rail profile, and FV-1..FV-10 verifier below are candidate additive contracts. They do not allocate a DACS-4 minor or reinterpret any existing `SettlementEvidence` bytes.
 
@@ -17,9 +17,9 @@ DACS-4 specifies how value is exchanged and the deliverable provided once a DACS
 
 - A **payment rail registry** — a versioned, anchored set of payment rails. Each rail is a typed envelope identifying the chain or network, the asset, the settlement contract or protocol, and any rail-specific parameters.
 - A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402, pay-dem. Each is a phase with a uniform PhaseHandlerResult shape. The distinct `pay-alternative` Listing phase is only a signed pre-agreement projection instruction and is never executed.
-- A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each produces settlement evidence the rest of the stack consumes.
+- A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each current invocation produces phase-bound `DeliveryEvidence` the rest of the stack consumes.
 - A **payload-attestation record** — a signed, addressable binding from exact delivered bytes and method-native proof to the job, committed agreement, DeliverableSpec, verification method, and immutable attempt number.
-- A **uniform settlement-evidence family** — structurally distinct legacy and finality-bound records share the common commerce fields consumed by DACS-5, while an exclusive discriminator prevents an older reader from treating an unverified producer report as finality proof.
+- Distinct **payment and delivery evidence shapes** — `SettlementEvidence` for payment and the minor-safe `DeliveryEvidence` for delivery; both are substrate-anchored audit units referenced by DACS-5.
 - A **cross-chain coordination layer** — atomic settlement primitives (HTLC, Liquidity Tank) so a payment on chain A and a delivery on chain B succeed together or not at all.
 
 Payment and delivery are decoupled: a listing’s pipeline composes one or more payment phases with one or more delivery phases, in any order the seller deems safe. The DACS-3 agreement document carries the chosen rail and deliverable references; DACS-4 phases consume them and produce evidence DACS-5 anchors.
@@ -33,9 +33,9 @@ Settlement is the stage where the most working open standards exist. Stablecoin 
 - **ERC-20 / SPL** specify on-chain token transfer — not cross-chain coordination, delivery binding, or evidence.
 - **HTLC contracts** specify atomic cross-chain swaps — coordination only, not the rest of the lifecycle.
 
-DACS-4 composes these standards into a uniform settlement layer. The payment rail registry routes each rail to its appropriate phase handler. The settlement-evidence family lets DACS-5 anchor the result regardless of which rail was used. The cross-chain coordination layer extends to settlements that span chains.
+DACS-4 composes these standards into a uniform settlement layer. The payment rail registry routes each rail to its appropriate phase handler. The evidence shapes let DACS-5 anchor payment and delivery results without losing the identity of a repeated phase invocation. The cross-chain coordination layer extends to settlements that span chains.
 
-A second motivation is **scope discipline**: DACS-4 does not specify new payment cryptography. It composes existing protocols, adds the registry and evidence schemas, and provides cross-chain coordination via substrate primitives (SR-5). The new bytes-on-the-wire are limited to the rail registry, the settlement-evidence family, and the phase-handler contracts.
+A second motivation is **scope discipline**: DACS-4 does not specify new payment cryptography. It composes existing protocols, adds the registry and evidence schemas, and provides cross-chain coordination via substrate primitives (SR-5). The new bytes-on-the-wire are limited to the rail registry, the payment/delivery evidence shapes, and the phase-handler contracts.
 
 ### 9.3 Shared types
 
@@ -649,6 +649,12 @@ effect is not authority. `amount` MUST equal `agreement.terms.price`; `railId` a
 identity, job, session, agreement, Listing, terms, and rail hash MUST match the
 independently resolved source. `idempotencyKey` is
 `sha256(UTF8("dacs-laa-reservation-idem:v1:" || jobId || ":" || bare_integer(phaseIndex)))`.
+Both pre-effect authorization and post-effect transition consumption MUST first
+require the presented key to be a non-empty NFC string with no leading or
+trailing whitespace. An empty, whitespace-only, non-NFC, padded, or non-string
+key is malformed and returns `error`; a well-formed canonical key that differs
+from the value recomputed above returns `fail`. Neither condition authorizes a
+payment or transition completion.
 
 The canonical form omits `signatures`. Each required signer signs
 `"dacs-legacy-payment-reservation:v1:" || sha256(canonical_form)`. The exact
@@ -1203,30 +1209,43 @@ Native-DEM transfer on the Demos substrate: settle the agreed price in DEM direc
 
 ### 9.6 Delivery phases
 
-The v0.1 closed set. Each consumes the agreement’s DeliverableRef and produces SettlementEvidence.
+The v0.1 closed set. Each consumes the agreement’s DeliverableRef and, under
+DACS-4 v0.7, produces the phase-bound `DeliveryEvidence` defined in §9.7.
+Historical delivery-shaped `SettlementEvidence` remains readable only through
+the PDE-7 legacy arm.
 
 #### 9.6.1 deliver-storage-program
 
-Seller writes a Storage Program (SR-2) containing the deliverable payload. Address derived from jobId.
+Seller writes a Storage Program (SR-2) containing the deliverable payload. Its
+current logical address is derived from both `jobId` and the authenticated
+pipeline `phaseIndex`.
 
 **Procedure.**
 
 1. Validate `agreement.terms.deliverable.deliverableType == "storage-program"`.
-2. Seller constructs the deliverable payload conforming to `deliverable.schemaUrl` (if specified).
-3. Write a Storage Program at address `dacs4:deliverable:{jobId}` with the payload as value.
-4. Compute `contentHash = sha256(canonical_payload)`.
-5. Construct SettlementEvidence with `deliverableContentHash = contentHash`, `deliverableAnchor = {kind: "storage-program", locator: …}`; anchor via SR-2; return success.
+2. Seller constructs the deliverable payload conforming to `deliverable.schemaUrl` (if specified). The contracted payload is an arbitrary byte string; a textual media type does not authorize a consumer to re-encode it.
+3. Write a Storage Program at address `dacs4:deliverable:{jobId}:{phaseIndex}` with those exact bytes as value (or, for an encrypted mode, the exact ciphertext bytes prescribed below).
+4. Compute `contentHash = sha256(exact_cleartext_payload_bytes)`.
+5. The authenticated phase orchestrator constructs and signs `DeliveryEvidence`
+   with the exact `phaseIndex`,
+   `deliverableContentHash = contentHash`, and `deliverableAnchor = {kind:
+   "storage-program", locator: "dacs4:deliverable:{jobId}:{phaseIndex}"}`;
+   the phase orchestrator anchors it at
+   `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2 and returns success. The
+   seller remains the writer of the deliverable payload.
 
 **Soft limit.** Storage Programs have a 128 KB cap. Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
 
 **Private delivery (`accessModel`).** A `storage-program` deliverable MAY be delivered privately when `deliverable.accessModel` (declared in the agreement, hash-bound per §8.5.2) is non-`public`:
 - `buyer-only` — the Storage Program is written with a `restricted` ACL listing the buyer's address in `allowed`; reads are node-enforced.
-- `encrypt-to-buyer` — the payload is sealed to the buyer's encryption key and the ciphertext anchored (which MAY itself be public, since only the holder can open it).
+- `encrypt-to-buyer` — the producer seals the payload to the buyer's encryption key (the agreement-bound buyer's `AgreementParty.encryptionKey` when declared) and anchors the ciphertext, which MAY itself be public because only the key holder can open it. That sealing is a producer obligation. DV-3 verifies only that authenticated encryption evidence names the buyer as recipient and commits to the exact ciphertext; it does not establish which key sealed the envelope, that the envelope is valid, that it decrypts to the DV-1 cleartext, or that the buyer received it (see the encrypted-delivery evidence note below).
 
-- (DV-1) **Content-hash invariant.** `deliverableContentHash` MUST be the sha256 of the **cleartext** canonical payload — byte-identical across all `accessModel` values, never the ciphertext — so settlement evidence (§9.7) binds the same digest regardless of access mode.
-- (DV-2) **Access-mode fidelity.** The delivered access mode MUST match the agreement's declared `accessModel`. A consumer resolving a declared non-`public` deliverable as delivered `public` MUST emit `indeterminate` (a provenanced confidentiality-downgrade flag), never `pass`; over-provision (declared `public`, delivered private) is NOT a violation.
-- (DV-3) **Buyer binding.** Under `buyer-only`, the ACL `allowed` entry MUST be the buyer address resolved from the agreement-bound buyer `AgreementParty` (§8.5), not a separately-presented address. Under `encrypt-to-buyer`, the payload MUST be sealed to that party's `AgreementParty.encryptionKey`.
-- (DV-4) **ACL-mutation auditability.** Under `buyer-only` the owner CAN later mutate the ACL (add/remove readers). Each mutation SHOULD be recorded as an anchored, signed record so the buyer can detect a post-delivery reader addition — and MUST be recorded for a `credentialRef`-backed entitlement (§9.6.2).
+- (DV-1) **Exact-byte content invariant.** `deliverableContentHash` MUST be the sha256 of the **exact cleartext bytes delivered to the buyer** — byte-identical across all `accessModel` values, never a text re-encoding, parsed value, ciphertext, or storage envelope. Arbitrary binary and text payloads are both valid. If an adapter exposes both a UTF-8 text view and an exact Base64URL byte view, the Base64URL spelling MUST be canonical unpadded RFC 4648 §5 and both views MUST decode to identical bytes; a contradiction is `fail`, a malformed representation is `error`, and unavailable exact bytes are `indeterminate`. These adapter representations are resolver metadata and do not add fields to a signed DACS artifact.
+- (DV-2) **Authenticated access-mode fidelity.** A consumer MUST obtain the effective access mode from the authenticated storage receipt/binding produced by its protocol-owned SR-2 adapter, not from resolver content, a caller label, or the agreement value echoed back as proof. A declared non-`public` mode MUST be realized exactly; a proven contradiction is `fail` and missing authority is `indeterminate`. Over-provision (declared `public`, authenticated effective private storage) remains valid.
+- (DV-3) **Authenticated buyer binding.** Under `buyer-only`, the authenticated effective ACL MUST be `restricted` to the buyer resolved from the authenticated bundle/agreement party authority; a separately presented buyer address is not authority. Under `encrypt-to-buyer`, authenticated encryption evidence MUST bind that same buyer as recipient and bind the exact ciphertext commitment. Missing authority is `indeterminate`; malformed evidence is `error`; a different recipient, ACL, or commitment is `fail`.
+- (DV-4) **Stored-byte binding and ACL-mutation auditability.** The authenticated storage receipt/binding MUST commit to the exact stored bytes. For `public` and `buyer-only` the stored-byte digest MUST equal the DV-1 cleartext digest; for `encrypt-to-buyer` it MUST equal the authenticated ciphertext digest while `deliverableContentHash` remains the cleartext digest. The resolved exact stored bytes MUST reproduce that commitment. Under `buyer-only` the owner CAN later mutate the ACL (add/remove readers). Each mutation SHOULD be recorded as an anchored, signed record so the buyer can detect a post-delivery reader addition — and MUST be recorded for a `credentialRef`-backed entitlement (§9.6.2). The receipt/binding input MUST come from successful binding-defined proof verification under CORE SR2-4; the name of an adapter map or an untrusted Boolean does not authenticate it, and this rule does not invent a substrate proof codec.
+
+> **Note (non-normative — encrypted-delivery evidence limit).** For `encrypt-to-buyer`, DV-1..DV-4 authenticate a claimed cleartext digest, the intended buyer recipient label, and the exact stored bytes presented as ciphertext. They do not establish that those bytes form a valid encrypted envelope, decrypt under the buyer's key to the claimed cleartext, or were obtained by the buyer. A passing storage/recipient-commitment check is not independent proof of decryptability or buyer receipt; for a `credentialRef` entitlement, it also cannot assert the separate DV-5 `valid` or DV-6 `readable` gates. A seller-provided cleartext view or an adapter Boolean cannot close this gap. A future buyer-authenticated decryption acknowledgement or independently verifiable envelope proof would need its own closed, context-bound rule; this note does not change any current normative disposition or wire format.
 
 > **Note (non-normative — confidentiality tiers).** `buyer-only` is node-enforced: confidential against the public and other users, but the owner can re-open the ACL and node operators can see the bytes ("private until the owner changes the ACL"). `encrypt-to-buyer` is a cryptographic one-shot seal (operator-blind, non-revocable). The normative envelope is the native post-quantum `UnifiedCrypto` (`ml-kem-aes`); an external envelope (HPKE/age) MAY be used only as a cross-substrate profile and is classical-not-PQC.
 
@@ -1261,7 +1280,7 @@ type EntitlementRecord = {
 
   renewable: boolean
 
-  renewalSeq: number                   // 0 for the original grant; incremented per renewal (address discriminator)
+  renewalSeq: number                   // 0 for the original grant; incremented per renewal within one phase invocation (not a phase identity)
 
   credentialRef?: { ref: AttestationRef; accessModel: "buyer-only" | "encrypt-to-buyer" }   // optional access credential delivered via §9.6.1 private delivery; default buyer-only (the only revocable mode)
 
@@ -1271,22 +1290,44 @@ type EntitlementRecord = {
 ```
 
 4. Seller signs the EntitlementRecord over the domain-separated payload "dacs-entitlement:v1:" || sha256(canonical_JCS(record_without_signature)) per §B.7.
-5. Seller anchors the EntitlementRecord via SR-2 at dacs4:entitlement:{jobId}:{renewalSeq}, with renewalSeq = 0 for the original grant.
-6. Seller constructs SettlementEvidence; returns success.
+5. Seller anchors the EntitlementRecord via SR-2 at
+   `dacs4:entitlement:{jobId}:{phaseIndex}:{renewalSeq}`, with `renewalSeq = 0`
+   for the original grant of this phase invocation.
+6. The authenticated phase orchestrator constructs and signs `DeliveryEvidence`
+   whose `phaseIndex` identifies this
+   invocation, whose `deliverableContentHash` is the EntitlementRecord's §B.2
+   content hash, and whose `deliverableAnchor` is the exact entitlement logical
+   address. If the record carries `credentialRef`, the evidence also carries
+   the exact `credentialDelivery` binding required by PDE-5. The phase
+   orchestrator anchors the evidence at
+   `dacs4:delivery:{jobId}:{phaseIndex}` and returns success. The seller remains
+   the constructor, signer, and SR-2 writer of the `EntitlementRecord` and any
+   delivered credential; those seller-owned dependencies do not make the seller
+   the `DeliveryEvidence` authority when the roles are distinct.
 
 **Exercising the entitlement.** Buyer presents the EntitlementRecord (or its hash + anchor) at the record's `serviceEndpoint` to access the entitled service. The record is a self-contained receipt — it names the grantee, the scope, the validity window, and where to exercise it — so the buyer needs nothing beyond the record itself. The service endpoint verifies the signature and anchor, checks now is within [startsAt, endsAt], and serves accordingly.
 
 > **Note (non-normative).** `serviceEndpoint` carries *where* to access. *How* an access **credential / token** is delivered (vs. presenting the record itself as the bearer proof) is the optional `credentialRef` defined below — delivered via §9.6.1 private delivery (DV-5 / DV-6).
 
-**Renewal.** If renewable: true and the buyer re-pays before endsAt, the seller MAY issue a new EntitlementRecord with extended endsAt, the same jobId, and an **incremented renewalSeq**, anchored at dacs4:entitlement:{jobId}:{renewalSeq}. The renewalSeq discriminator gives each renewal a distinct SR-2 address so it does not collide with or overwrite the original grant (the address is otherwise fully determined by jobId on immutable content-addressed storage). A consumer resolves the current grant by reading the highest renewalSeq present for the jobId.
+**Renewal.** If `renewable: true` and the buyer re-pays before `endsAt`, the
+seller MAY issue a new EntitlementRecord with extended `endsAt`, the same
+`jobId`, and an **incremented `renewalSeq`**, anchored at
+`dacs4:entitlement:{jobId}:{phaseIndex}:{renewalSeq}`. `renewalSeq` is scoped to
+one authenticated delivery invocation: every independent
+`deliver-entitlement` phase begins at zero, and renewing one phase MUST NOT
+advance or supersede another phase's sequence. A consumer resolves the current
+grant for `(jobId, phaseIndex)` by reading the highest `renewalSeq` in that
+phase's independently authenticated stream. Historical unindexed entitlement
+addresses retain the PDE-7 legacy meaning and MUST NOT be reinterpreted as
+having a phase index.
 
 **Access-credential handover (`credentialRef`).** An EntitlementRecord MAY carry a `credentialRef` — an access credential (e.g. an API key / token) delivered to the grantee via §9.6.1 private delivery, default `buyer-only` (the only mode that can be revoked when the entitlement ends). It is private content, so it follows DV-1..DV-4. Because the credential lives behind a mutable ACL while the entitlement's validity is its signed window, the two can diverge — so the verification questions MUST be kept separate:
 
 - (DV-5) **Three gates, never collapsed.** For a `credentialRef` entitlement:
-  - **delivered** — `SettlementEvidence` binds the `credentialRef` and the credential's cleartext digest (DV-1) at the settled `renewalSeq`. Settlement evidence asserts ONLY this.
+  - **delivered** — current `DeliveryEvidence.credentialDelivery` binds the exact `credentialRef` and the credential's cleartext digest (DV-1) at the settled `renewalSeq`; PDE-5 defines the wire shape and exact comparisons. Delivery evidence asserts ONLY this. Historical delivery-shaped `SettlementEvidence` cannot establish this gate and MUST NOT be reported as DV-5-verified.
   - **valid** — the signed `[startsAt, endsAt]` window at the highest `renewalSeq`. Read from the record, NOT from the ACL.
   - **readable** — the ACL read at access time.
-  `SettlementEvidence` MUST NOT assert `valid` or `readable`: a credential being *delivered* is neither the entitlement being *valid* nor the credential being *currently readable*.
+  `DeliveryEvidence` MUST NOT assert `valid` or `readable`: a credential being *delivered* is neither the entitlement being *valid* nor the credential being *currently readable*.
 - (DV-6) **Readability verdict (do-not-collapse).** A consumer checking whether the buyer can currently read the credential MUST distinguish: in `allowed` and not blacklisted → **readable**; entitlement window lapsed → **clean negative** (lifecycle); buyer dropped from `allowed` / blacklisted → **ACL-dropped (channel-unreadable)**; ACL or storage unresolvable → **`indeterminate`** — a transient outage MUST NOT be read as channel-unreadable. An ACL-drop is **channel-provable** (the anchored ACL mutation, DV-4) and proves the credential is unreadable **via storage** — it is NOT by itself credential **invalidation**: a bearer credential the grantee already fetched keeps authenticating at the `serviceEndpoint` until rotated. Full revocation therefore requires **endpoint-side credential rotation** (endpoint-attested, off-DACS-scope) in addition to the ACL-drop; the anchored trail proves only the channel half.
 
 #### 9.6.3 deliver-attested-payload
@@ -1344,11 +1385,16 @@ The record follows the CORE §B.2 canonical-form template, omitting only
 signed_bytes := "dacs-payload-attestation:v1:" || payload_attestation_hash
 ```
 
-It is anchored via SR-2 at the logical address
-`dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}`. The
-method's native evidence remains separately addressable through
-`methodEvidenceRef`; the payload itself is stored at
-`dacs4:deliverable:{jobId}` and is bound by `payloadContentHash`.
+It is anchored via SR-2 at the current logical address
+`dacs4:payload-attestation:{jobId}:{phaseIndex}:{verificationMethodHash}:{attempt}`.
+`phaseIndex` is not silently added to the byte-stable
+`PayloadAttestationRecord`; the signed `DeliveryEvidence.attestationRef`
+cross-reference binds the record hash to that exact phase-indexed address
+(PDE-2/PDE-4). The method's native evidence remains separately addressable
+through `methodEvidenceRef`; the payload itself is stored at
+`dacs4:deliverable:{jobId}:{phaseIndex}` and is bound by
+`payloadContentHash`. Historical unindexed addresses remain readable only
+through PDE-7.
 
 **Payload-attestation rules.**
 
@@ -1363,8 +1409,9 @@ method's native evidence remains separately addressable through
   is `indeterminate`/`error` under the method rules, never permission to omit
   attestation.
 - (DPA-2) **Exact-byte digest.** `payloadContentHash` is sha256 over the exact
-  cleartext bytes the buyer receives and MUST equal
-  `SettlementEvidence.deliverableContentHash`. `payloadFormat` labels those
+  cleartext bytes the buyer receives and MUST equal current
+  `DeliveryEvidence.deliverableContentHash` (or a PDE-7 legacy
+  `SettlementEvidence.deliverableContentHash`). `payloadFormat` labels those
   bytes; it does not silently transform them. In particular,
   `application/json` is not automatically reserialised as JCS. A profile that
   canonicalises or transforms a payload MUST do so before verification and
@@ -1390,13 +1437,24 @@ method's native evidence remains separately addressable through
   MUST NOT be collapsed to pass. Retry behaviour follows the selected method's
   DACS-2 semantics; a retry increments `attempt` and emits a new immutable
   record rather than mutating an anchored result.
-- (DPA-6) **Settlement-evidence closure.** A success-outcome
-  `SettlementEvidence` whose phase is `deliver-attested-payload` MUST carry all
+- (DPA-6) **Delivery-evidence closure.** A success-outcome
+  `DeliveryEvidence` whose phase is `deliver-attested-payload` MUST carry all
   three of `deliverableContentHash`, `deliverableAnchor`, and
   `attestationRef`. The `attestationRef` MUST resolve to a valid
   `PayloadAttestationRecord` with `decision == "pass"` and matching
-  `jobId`/`payloadContentHash`; it points to that DACS record, not directly to
-  a raw DAHR/TLSNotary/zkTLS response.
+  `jobId`/`payloadContentHash`; its anchor locator MUST be the exact PDE-3
+  phase-indexed payload-attestation address. It points to that DACS record, not
+  directly to a raw DAHR/TLSNotary/zkTLS response. A PDE-7 legacy
+  `SettlementEvidence` follows its frozen unindexed closure rules only when the
+  pipeline has one unambiguous matching delivery invocation.
+  Standalone resolution MUST validate the complete canonical
+  `AttestationRef` and derive the exact locator from authenticated session
+  `jobId`, executed phase index/kind, the complete signed-listing verification
+  method hash, and the record's non-negative `attempt`. Equality between two
+  caller-supplied copies of those values is not authority. The reference content
+  hash and optional signer MUST bind the resolved signed record. Missing locator
+  authority is `indeterminate`, malformed context is `error`, and a complete but
+  contradictory binding is `fail`.
 - (DPA-7) **Resolution outcomes.** A resolved contradiction (bad signature,
   wrong hash, wrong job/agreement/spec/method, missing required proof or
   transaction, or a conclusive non-pass decision) is `fail`. Inability to
@@ -1405,16 +1463,20 @@ method's native evidence remains separately addressable through
   it MUST NOT produce success evidence. A producer MAY anchor failure evidence
   for audit, but MUST classify the phase as failed.
 - (DPA-8) **No self-assertion shortcut or replay.** The phase-orchestrator
-  signature on `SettlementEvidence` is not payload-authenticity evidence and
+  signature on `DeliveryEvidence` (or legacy `SettlementEvidence`) is not payload-authenticity evidence and
   MUST NOT substitute for the DPA-3 method proof. A `self-signed`
   verification method remains permitted as its explicitly disclosed
   minimal-trust tier, but it still requires a real method proof and the complete
   payload-bound record. Binding `jobId`, `agreementHash`, and
   `deliverableSpecHash` makes a valid record for one session invalid in every
   other session.
-- (DPA-9) **Minor-safe type distinction.** A consumer MUST classify a payload
-  attestation by `payloadAttestationVersion` before interpreting any other
-  field. A `PayloadAttestationRecord` MUST NOT carry `resultVersion` or
+- (DPA-9) **Minor-safe type distinction.** The authenticated
+  `deliver-attested-payload` operation and signed-listing method establish that
+  a payload-attestation dependency is expected; the consumer MUST verify its
+  registered signature domain and then require exactly
+  `payloadAttestationVersion: "1"` before interpreting type-specific fields. A
+  record member or caller label cannot select that family or domain. A
+  `PayloadAttestationRecord` MUST NOT carry `resultVersion` or
   `evidenceVersion`, and a DACS-2 `VerifyResult` or `SettlementEvidence` MUST
   NOT be coerced into this type. Unsupported payload-attestation versions are
   rejected as unsupported under CORE §11.1.2. The legacy optional spelling of
@@ -1435,29 +1497,27 @@ method's native evidence remains separately addressable through
    payload bytes.
 4. Execute the declared verification method, retain its native evidence, and
    create, sign, and anchor a `PayloadAttestationRecord` satisfying DPA-2..DPA-5.
-5. Write the exact payload bytes to `dacs4:deliverable:{jobId}`.
-6. Construct `SettlementEvidence` satisfying DPA-6, anchor it via SR-2, and
+5. Write the exact payload bytes to
+   `dacs4:deliverable:{jobId}:{phaseIndex}`.
+6. The authenticated phase orchestrator constructs and signs
+   `DeliveryEvidence` satisfying DPA-6 and PDE-1..PDE-4, anchors it at
+   `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2, and
    return success only after both records and the deliverable are independently
    resolvable. CORE §5.1 finalization remains required for terminal DACS-5
    bundle production.
 
-### 9.7 Settlement evidence
+### 9.7 Payment and delivery evidence
 
-Settlement evidence is anchored on the substrate and referenced by DACS-5.
-The existing `SettlementEvidence` shape and every existing producer/consumer
-meaning remain unchanged. A producer explicitly claiming the unallocated #392
-consumer-finality contract uses the structurally distinct
-`FinalityBoundSettlementEvidence`, so an older reader rejects the unknown
-action-bearing type instead of accepting a producer confirmation count without
-FV verification. An LAA-3 post-checkpoint completion uses the structurally
-distinct `LegacyTransitionSettlementEvidence`; the ordinary
-`SettlementEvidence` shape is not extended with an optional reservation field.
-Failure and delivery evidence remain `SettlementEvidence`.
+Current payment phases produce `SettlementEvidence`; current delivery phases
+produce the structurally distinct `DeliveryEvidence`. Both are anchored on the
+substrate and referenced by DACS-5. `SettlementEvidence` retains its historical
+delivery fields solely so existing signed bytes remain readable under PDE-7;
+new DACS-4 v0.7 producers MUST NOT emit it for a delivery phase.
 
 ```
 type SettlementEvidence = {
 
-  evidenceVersion: "1"
+  evidenceVersion: "1"                       // current payment evidence; historical records may carry a delivery phase under PDE-7
 
   jobId: string
 
@@ -1543,17 +1603,50 @@ type SettlementEvidenceRecord =
   | SettlementEvidence
   | LegacyTransitionSettlementEvidence
   | FinalityBoundSettlementEvidence
+  | DeliveryEvidence
 
-The finality-bound shape is closed. A #392 producer MUST first authenticate the
-selected Agreement/session/phase and the exact steward-signed rail revision,
-then execute FV against independently acquired proof authority. It emits the
-new type only on `pass`; `error`, `fail`, or `indeterminate` cannot produce a
-successful finality-bound record. This candidate producer path is additive to,
-and does not replace, the existing handler procedures above.
+type CredentialDeliveryBinding = {
+
+  credentialRef: { ref: AttestationRef; accessModel: "buyer-only" | "encrypt-to-buyer" }
+
+  credentialCleartextHash: string            // sha256 hex of the exact cleartext credential payload; never ciphertext or anchor hash
+
+  renewalSeq: number                         // non-negative integer; equals the signed EntitlementRecord and its logical-address discriminator
+
+}
+
+type DeliveryEvidence = {
+
+  deliveryEvidenceVersion: "1"               // structural discriminator; never evidenceVersion
+
+  jobId: string
+
+  phaseIndex: number                         // non-negative integer; exact authenticated listing/BundlePhaseEntry.index
+
+  phase: DeliveryPhaseType
+
+  outcome: "success" | "failure"
+
+  reason?: string                            // when outcome == "failure"
+
+  deliverableContentHash?: string            // REQUIRED on success; type-specific meaning in PDE-4
+
+  deliverableAnchor?: { kind: string; locator: string }   // REQUIRED on success; exact phase-indexed artifact address
+
+  attestationRef?: AttestationRef            // REQUIRED only for successful deliver-attested-payload (DPA-6/PDE-4)
+
+  credentialDelivery?: CredentialDeliveryBinding   // exact delivered-only credential binding (PDE-5)
+
+  observedAt: number                         // unix ms; observer time is not phase identity
+
+  signature: ComponentSignature              // signer is the phase orchestrator
+
+}
 
 // Producer report of the finality model/values applied when the phase handler declared
 // the payment confirmed. Never proves canonicality, depth, commitment, or irreversibility;
 // current consumers independently execute FV-1..FV-10 from the signed rail profile.
+// Records the finality model applied when the phase handler declared the payment confirmed.
 // Populated by payment phases only (pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc,
 // pay-cross-chain-liquidity-tank, pay-ap2, pay-x402); delivery phases MUST omit it.
 type SettlementFinalityRecord = {
@@ -1603,6 +1696,13 @@ type ComponentSignature = {
 }
 ```
 
+The finality-bound shape is closed. A #392 producer MUST first authenticate the
+selected Agreement/session/phase and the exact steward-signed rail revision,
+then execute FV against independently acquired proof authority. It emits the
+new type only on `pass`; `error`, `fail`, or `indeterminate` cannot produce a
+successful finality-bound record. This candidate producer path is additive to,
+and does not replace, the existing handler procedures above.
+
 Every anchored record that carries a `signature: ComponentSignature` field MUST populate it with this shape:
 
 - `signer` MUST be a ClaimReference whose role is fixed by the artifact's inline comment;
@@ -1651,12 +1751,13 @@ the signature payload from the exclusive discriminator:
 signed_bytes := "dacs-evidence:v1:" || evidence_hash                 // SettlementEvidence
 signed_bytes := "dacs-legacy-transition-evidence:v1:" || evidence_hash // LegacyTransitionSettlementEvidence
 signed_bytes := "dacs-finality-bound-evidence:v1:" || evidence_hash  // FinalityBoundSettlementEvidence
+signed_bytes := "dacs-delivery-evidence:v1:" || evidence_hash        // DeliveryEvidence
 ```
 
-A consumer MUST reject a record carrying none or more than one of the three
+A consumer MUST reject a record carrying none or more than one of the four
 discriminators, an unsupported discriminator, or a signature made under the
 other type's domain. It MUST NOT remove `finalityBoundEvidenceVersion`,
-`legacyTransitionEvidenceVersion`, `railDefinitionRef`, or `reservationRef`
+`legacyTransitionEvidenceVersion`, `deliveryEvidenceVersion`, `railDefinitionRef`, or `reservationRef`
 and retry the object as legacy `SettlementEvidence`.
 
 #### 9.7.0 Consumer-verifiable finality (FV-1..FV-10)
@@ -2084,6 +2185,134 @@ not make the new FV claim and MUST NOT be relabelled, projected, re-signed, or
 fed through the finality-bound verifier as though it carried the new type and
 domain. A separate historical audit cannot report a #392 FV pass.
 
+For `DeliveryEvidence`, apply the same template while omitting only
+`signature`. In particular, `phaseIndex`, every `credentialDelivery` member,
+and every reference/address are inside the signed scope. The signature is:
+
+```
+signed_bytes := "dacs-delivery-evidence:v1:" || delivery_evidence_hash
+```
+
+`DeliveryEvidence` is anchored at the canonical logical address
+`dacs4:delivery:{jobId}:{phaseIndex}`.
+
+**Phase-bound delivery-evidence rules.**
+
+- (PDE-1) **Minor-safe type boundary.** A current producer MUST emit
+  `DeliveryEvidence` for every delivery invocation and `SettlementEvidence` for
+  every payment invocation. A `DeliveryEvidence` carries
+  `deliveryEvidenceVersion: "1"` and MUST NOT carry `evidenceVersion`; a
+  `SettlementEvidence` carries `evidenceVersion: "1"` and MUST NOT carry
+  `deliveryEvidenceVersion`. Before interpreting either selector or any
+  type-specific member, a consumer MUST establish the expected evidence family
+  from the authenticated phase operation and uniquely verified registered
+  signature domain; a record member or unauthenticated caller label cannot
+  select the family or domain. It then requires exactly the matching supported
+  selector and MUST reject an unsupported, multiply selected, or cross-coerced
+  type. Existing `SettlementEvidence` signed bytes, hashes, and meanings remain
+  frozen; its historical delivery arm is read-only under PDE-7.
+- (PDE-2) **Authenticated invocation identity.** `DeliveryEvidence.jobId`,
+  `phaseIndex`, and `phase` MUST equal the authenticated session job, the exact
+  signed-listing pipeline index, and the delivery phase kind at that index.
+  `phaseIndex` MUST be a non-negative safe integer. The evidence MUST be
+  anchored at `dacs4:delivery:{jobId}:{phaseIndex}`; its authenticated SR-2
+  receipt MUST match that complete logical address, its content hash, and the
+  exact signed artifact. `signature` MUST verify and `signature.signer` (and the
+  receipt writer, where the binding identifies it) MUST equal the phase
+  orchestrator established by the authenticated session execution context.
+  `observedAt`, array position, an SDK session name, or a caller-supplied
+  association MUST NOT establish phase identity or signer authority.
+- (PDE-3) **Phase-indexed artifact addresses and independent counters.** A
+  current delivery invocation MUST use these exact logical addresses:
+  `dacs4:deliverable:{jobId}:{phaseIndex}` for a storage-program or attested
+  payload; `dacs4:entitlement:{jobId}:{phaseIndex}:{renewalSeq}` for an
+  entitlement; and
+  `dacs4:payload-attestation:{jobId}:{phaseIndex}:{verificationMethodHash}:{attempt}`
+  for a payload-attestation record. `renewalSeq` and `attempt` are non-negative
+  counters scoped inside one `(jobId, phaseIndex)` stream and both begin at
+  zero independently for repeated phases. Neither counter is, or may be
+  inferred as, `phaseIndex`.
+- (PDE-4) **Successful-delivery closure.** Every success-outcome
+  `DeliveryEvidence` MUST carry `deliverableContentHash` and
+  `deliverableAnchor`; the anchor locator MUST equal the PDE-3 address for the
+  evidence's exact `(jobId, phaseIndex)`. For `deliver-storage-program`, the
+  hash is DV-1's sha256 of the exact delivered cleartext payload. For
+  `deliver-entitlement`, the hash is the signed `EntitlementRecord`'s §B.2
+  content hash and the anchor is its exact phase-indexed entitlement address.
+  For `deliver-attested-payload`, the hash is DPA-2's exact cleartext payload
+  digest, the deliverable anchor is the exact phase-indexed payload address,
+  and `attestationRef` is REQUIRED and MUST resolve at the exact
+  phase-indexed payload-attestation address through DPA-3..DPA-9. Other phase
+  kinds MUST omit `attestationRef`.
+  Every referenced inner deliverable, entitlement, credential, payload
+  attestation, and method-evidence dependency MUST have a verified SR-2 receipt
+  keyed by its complete canonical `AttestationRef`. The unchanged CORE
+  `AnchorReceipt` MUST bind the exact logical and native addresses, content
+  hash, transaction, and writer, and MUST be evaluated only within the
+  independently authenticated job/phase execution context. A completed bundle additionally requires
+  `finalized` and independently resolvable dependencies; a failed or aborted
+  terminal requires `included` or `finalized` for each dependency it relies on.
+- (PDE-5) **Exact credential-delivery binding; delivered only.** A successful
+  `deliver-entitlement` evidence record MUST carry `credentialDelivery` if and
+  only if the resolved, valid signed `EntitlementRecord` carries
+  `credentialRef`. `credentialDelivery.credentialRef` MUST be canonically equal
+  to the record's complete `credentialRef`, including the complete normative
+  `AttestationRef` and `accessModel`.
+  `credentialDelivery.credentialCleartextHash` MUST be the 64-character
+  lowercase-hex sha256 of the exact cleartext credential payload delivered
+  under DV-1 — never the ciphertext, stored-envelope, anchor, or entitlement-
+  record hash.
+  `credentialDelivery.renewalSeq` MUST equal both the signed
+  `EntitlementRecord.renewalSeq` and the renewal discriminator in its
+  authenticated PDE-3 logical address. This binding establishes **delivered**
+  only. Members that purport to assert `valid`, `readable`, or an `asserts`
+  gate are action-bearing extensions and MUST be rejected as unsupported; DV-5
+  and DV-6 continue to derive validity from the signed time window and
+  readability from a live ACL evaluation.
+- (PDE-6) **Resolution and replay outcomes.** An exact resolved chain satisfying
+  PDE-1..PDE-5 supports `pass` for the delivered gate. A resolved wrong job,
+  phase, index, address, reference, content/cleartext hash, access model,
+  renewal, signature, or attempted reuse of one evidence/reference for two
+  invocations is `fail`. A malformed candidate is `error`. An otherwise
+  well-formed candidate whose required private credential, artifact, anchor,
+  exact bytes, authenticated storage authority, authenticated session
+  execution authority, or authenticated receipt cannot currently be resolved
+  is `indeterminate`. A receipt embedded beside resolver
+  content or supplied under an authority-sounding caller field is not
+  authenticated lifecycle evidence; the consumer's protocol-owned SR-2 adapter
+  MUST first verify the binding-defined proof. Malformed dependency collections
+  or members are `error`, authenticated contradictions are `fail`, and an
+  evaluator MUST produce a disposition without an uncaught exception.
+  None of these outcomes supplies a `valid` or `readable` verdict.
+- (PDE-7) **Legacy read arm.** A historical delivery-shaped
+  `SettlementEvidence` and its unindexed artifact addresses MAY remain
+  readable only when the authenticated legacy pipeline contains exactly one
+  matching delivery invocation and the evidence/artifact mapping is otherwise
+  unambiguous. It MUST NOT satisfy a repeated delivery phase, MUST NOT be
+  rewritten, upgraded, or assigned a synthetic `phaseIndex`, and its
+  `renewalSeq`/`attempt` MUST NOT be reinterpreted as one. Historical
+  credential entitlements lacking PDE-5's signed binding are audit data only:
+  consumers MUST NOT report their delivered gate as DV-5-verified. This read
+  arm is available only through an explicitly named archival/audit verifier;
+  even an unambiguous historical delivery MUST NOT yield current bundle,
+  settlement, delivery, metric, reputation, or volume authority. Current
+  delivery admission requires `DeliveryEvidence` under the authenticated
+  current-delivery phase and cannot select this arm from the record itself.
+  A current consumer that authenticates such a record on a released bundle
+  type reports it as audit-valid but current-ineligible under DACS-5 §10.4.3,
+  RSV-2, and CUR-5, never as a pass. It first applies the archival verifier's
+  own checks: exactly one matching step in the authenticated pipeline, the
+  unindexed evidence address, and the legacy artifact closure. A failed check
+  is a rejection, not a classification. A current `EvidenceBoundFaultAttestationBundle`
+  or finality-bound bundle carrying it is rejected.
+- (PDE-8) **DACS-5 exact mapping.** A bundle consumer MUST apply the §10.4.3
+  one-to-one mapping between authenticated executed delivery invocations and
+  delivery-evidence references. A current `DeliveryEvidence` maps only to the
+  single entry whose `index` and `kind` exactly equal its signed `phaseIndex`
+  and `phase`; neither one evidence record nor one artifact reference may
+  satisfy two entries. The optional per-phase `attestationRef` may repeat the
+  authoritative top-level reference but cannot replace or weaken this mapping.
+
 #### Final settlement data and propagation
 
 An implementation may prepare an in-memory evidence draft before a payment rail returns its final transaction or receipt data. That draft is not a `SettlementEvidence` record and is outside the protocol until finalised as follows:
@@ -2346,8 +2575,8 @@ not a caller-supplied identity.
 - (PIPE-2) Phase ordering MUST be deterministic; the listing's declared order is normative, and APR-4 can replace only the one projection entry without moving it.
 - (PIPE-3) If an effective concrete pay-* phase is followed by a deliver-* phase, the deliver-* phase MUST NOT execute until the pay-* phase returns ok: true.
 - (PIPE-4) If a deliver-* phase is followed by an effective concrete pay-* phase, the pay-* phase MUST NOT execute until the deliver-* phase returns ok: true.
-- (PIPE-5) Pipelines MAY repeat a concrete phase; each invocation produces independent SettlementEvidence. APR-1 forbids repeating `pay-alternative` and forbids combining it with another payment phase. In v0.1 each repeated concrete pay-* invocation settles the **same** agreement price (`PaymentPhaseInput.amount` = `agreement.terms.price`). The payment contract carries no per-phase amount override, fee, or split, so a **fee-split** (distinct amounts to distinct payees, e.g. buyer + platform fee) is NOT representable in v0.1 and is a roadmap item (fee-split / multi-payee settlement model). Repetition is for genuinely identical settlements, not for splitting one price across payees.
-- (PIPE-6) Before executing any pay-* phase or any delivery whose disclosure, access grant, or external side effect is irreversible, the orchestrator MUST verify the DACS-3 commitment's CORE §5.1 receipt is `finalized` and matches the session's `jobId`, agreement hash, listing reference, and logical address. `submitted`, `accepted`, index-visible, or an unverified `included` state is insufficient. A binding whose declared finality profile makes inclusion final MAY satisfy both states with one receipt.
+- (PIPE-5) Pipelines MAY repeat a concrete phase; each invocation produces independent phase-bound evidence — `SettlementEvidence` at the PC-2 phase-indexed payment address for pay-* and `DeliveryEvidence` at the PDE-2 phase-indexed delivery address for deliver-*. Repeated delivery invocations also use the PDE-3 phase-indexed artifact addresses and independent per-invocation counters. APR-1 forbids repeating `pay-alternative` and forbids combining it with another payment phase. In v0.1 each repeated concrete pay-* invocation settles the **same** agreement price (`PaymentPhaseInput.amount` = `agreement.terms.price`). The payment contract carries no per-phase amount override, fee, or split, so a **fee-split** (distinct amounts to distinct payees, e.g. buyer + platform fee) is NOT representable in v0.1 and is a roadmap item (fee-split / multi-payee settlement model). Repetition is for genuinely identical settlements, not for splitting one price across payees.
+- (PIPE-6) Before executing any effective concrete pay-* phase or any delivery whose disclosure, access grant, or external side effect is irreversible, the orchestrator MUST verify the DACS-3 commitment's CORE §5.1 receipt is `finalized` and matches the session's `jobId`, agreement hash, listing reference, and logical address. `submitted`, `accepted`, index visibility, or an unverified `included` state is insufficient. A binding whose declared finality profile makes inclusion final MAY satisfy both states with one receipt.
 
 > **Note (non-normative).** PIPE-1 is deliberately aligned with §6.3.4(8): a reader of either chapter reaches the same accept decision for a pay-less pipeline.
 
@@ -2359,7 +2588,8 @@ not a caller-supplied identity.
 | Listing publisher / reader | DACS-1 §6.3.4 LRR-1 through LRR-6 |
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
 | Payment phase handler | Exact five-way signed Listing phase/artifact/domain dispatch; CORE IBH-1..IBH-6 for either identity-bound agreement; SAC-8 for the independent selection-bound agreement; PC-1 through PC-7; PB-1 through PB-3 for all three payout-bearing agreements; phase-specific procedure |
-| Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |
+| Delivery phase handler | §9.6 per-kind procedure; PDE-1 through PDE-8 for phase-bound delivery evidence and credential binding; DPA-1 through DPA-9 for attested payloads; `DeliveryEvidence` emission |
+| Evidence consumer | Canonical hash recomputation; discriminator/domain/signature validation; PDE-1 through PDE-8 for delivery evidence; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (payment amendment chain following) |
 | Alternative-payment producer / reader / auditor | APR-1 through APR-8 |
 | Pipeline executor | PIPE-1 through PIPE-6 |
 | Settlement-evidence consumer | Classify the exclusive evidence discriminator and verify its matching domain; for `LegacyTransitionSettlementEvidence`, verify the exact reservation reference and LAA-3/LAA-4 authority and retain `transition-only`; for `FinalityBoundSettlementEvidence`, execute FV-1 through FV-10 from the exact signed rail profile and raw authenticated proof context; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
@@ -2368,7 +2598,13 @@ not a caller-supplied identity.
 
 **Closed rail registry vs open.** Open registries make conformance untestable (a listing could name a rail no orchestrator implements). The closed v0.1 set covers the dominant production paths; new rails ship via the DACS-4 version process under the registry steward.
 
-**Uniform SettlementEvidence vs rail-specific evidence shapes.** Rail-specific shapes would force every downstream consumer (DACS-5, auditors, analytics) to handle N shapes. The uniform shape with a discriminated txRefs union keeps consumption simple while preserving per-rail detail.
+**Distinct delivery evidence vs changing SettlementEvidence in place.** A
+required signed phase index and credential-delivery binding are action-bearing;
+adding them to `evidenceVersion: "1"` would let an older consumer discard the
+new security boundary and still act. The separate `DeliveryEvidence`
+discriminator/domain preserves historical payment/delivery bytes and gives an
+older reader a mandatory unsupported-type refusal. Payment rails remain uniform
+inside `SettlementEvidence` through the discriminated `ChainTxRef` union.
 
 **PayloadAttestationRecord vs a DACS-2 VerifyResult.** A VerifyResult answers
 whether an identity/credential claim identified by `(scheme, identifier)` is
@@ -2407,6 +2643,17 @@ but it is a deliberate fail-earlier compatibility change. An older reader that
 does not support the new record rejects its unknown discriminator; it MUST NOT
 reinterpret it as a VerifyResult or accept the enclosing delivery without
 validating the target of `attestationRef`.
+
+**Delivery evidence across minor versions.** `DeliveryEvidence` is a new
+DACS-4 v0.7 artifact with its own `deliveryEvidenceVersion` discriminator and
+`dacs-delivery-evidence:v1:` domain. It does not add required fields to or
+reinterpret `SettlementEvidence`, `EntitlementRecord`, or
+`PayloadAttestationRecord`. The signed evidence instead binds each byte-stable
+supporting record's content hash to its exact phase-indexed address. An older
+reader rejects the unknown evidence type before acting. A current reader keeps
+historical unindexed records byte-for-byte unchanged and applies only PDE-7's
+single-unambiguous-delivery arm; it never synthesizes a phase or credential
+binding.
 
 **Settlement event references across minor versions.** DACS-4 v0.6 does not
 add a required field to the frozen legacy `evm`, `solana`, or `x402`
@@ -2514,6 +2761,22 @@ that the orchestrator's evidence signature is not a substitute. A deliberately
 selected `self-signed` method remains a transparent minimal-trust tier rather
 than being silently upgraded to independent authority evidence.
 
+**Delivery evidence replay across repeated phases.** *Threat:* one delivery,
+entitlement grant, credential handover, or payload proof is counted under two
+same-kind pipeline entries, or independent `renewalSeq`/`attempt` counters
+collide. *Mitigation:* PDE-1..PDE-4 sign the exact phase index and bind it to
+phase-indexed evidence and artifact addresses; PDE-6 rejects reference reuse;
+PDE-8 maps current delivery evidence one-to-one in DACS-5. Legacy unindexed
+evidence never satisfies repetition (PDE-7).
+
+**Credential handover substitution.** *Threat:* a seller substitutes a stale
+credential ref, a different renewal, or a ciphertext/anchor hash for the
+cleartext credential digest, then treats delivery as proof of ongoing validity
+or readability. *Mitigation:* PDE-4/PDE-5 bind the exact signed entitlement
+hash/address, complete credential ref/access mode, cleartext digest, and
+renewal in `DeliveryEvidence`; DV-5/DV-6 keep validity/readability separate and
+unresolved private state `indeterminate`.
+
 **Refund laundering.** *Threat:* a seller refunds to quietly unwind a failed delivery without recording failure. *Mitigation:* SettlementAmendments are anchored, signed, and included in DACS-5 bundles, so the trail shows both the original payment and the later refund; reputation derivation MUST treat refunded sessions appropriately. The inverse — a refund against a non-existent/failure-outcome record, or an over-refund — is guarded by AMEND-1..4 (§9.7.1).
 
 **Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Rail authors MUST specify `decimals` exactly, and phase handlers MUST validate `amount.amount` precision against `rail.asset.decimals` (excess precision is an error).
@@ -2522,7 +2785,9 @@ than being silently upgraded to independent authority evidence.
 
 ### 9.14 Phase parameters reference card
 
-A single-table summary of phase types, their parameters (from listing PhaseStep), and the SettlementEvidence they produce, for implementers.
+A single-table summary of phase types, their parameters (from listing
+`PhaseStep`), and the payment or delivery evidence they produce, for
+implementers.
 
 | Phase type | Parameters (PhaseStep) | Evidence txRef kind |
 | --- | --- | --- |
@@ -2534,6 +2799,6 @@ A single-table summary of phase types, their parameters (from listing PhaseStep)
 | pay-x402 | {rail: railId} | x402-event (`protocolVersion`, receipt hash, settlement transaction, chain, and log index required; legacy read: x402) |
 | pay-dem | {rail: railId} | demos |
 | pay-alternative | {alternatives: PaymentRailRef[]} | none — APR-4 projects it before execution; it is not a PaymentPhaseType |
-| deliver-storage-program | none (driven by listing.offering.deliverable) | n/a (deliverableContentHash + deliverableAnchor instead) |
-| deliver-entitlement | none (driven by listing.offering.deliverable) | n/a |
-| deliver-attested-payload | none (driven by listing.offering.deliverable; verificationMethod conditionally required by DPA-1) | deliverableContentHash + deliverableAnchor + attestationRef → PayloadAttestationRecord (DPA-6) |
+| deliver-storage-program | none (driven by listing.offering.deliverable) | DeliveryEvidence at `dacs4:delivery:{jobId}:{phaseIndex}` → phase-indexed deliverable anchor + cleartext hash |
+| deliver-entitlement | none (driven by listing.offering.deliverable) | DeliveryEvidence → phase-indexed EntitlementRecord hash/anchor + conditional exact `credentialDelivery` (PDE-4/PDE-5) |
+| deliver-attested-payload | none (driven by listing.offering.deliverable; verificationMethod conditionally required by DPA-1) | DeliveryEvidence → phase-indexed payload anchor + attestationRef → phase-indexed PayloadAttestationRecord (DPA-6/PDE-4) |

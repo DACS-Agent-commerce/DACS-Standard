@@ -2348,12 +2348,94 @@ def _terminal_listing_admission_gate(
     return mapped, f"terminal-listing-admission-{reason}"
 
 
+def _current_terminal_laa_carriers(
+    context: dict,
+    bundle: dict,
+    listing: dict,
+    reference_validation: dict[str, dict],
+    execution_by_phase: dict[str, dict],
+    verified_receipts: dict[str, dict],
+) -> dict[str, dict]:
+    """Close the IBH fixture's authenticated current agreement over each payment."""
+    agreement = context.get("agreement")
+    if not isinstance(agreement, dict):
+        return {}
+    artifact = next((
+        artifact_name
+        for discriminator, artifact_name in (
+            ("identityBoundPayeeAgreementVersion", "identity-bound-payee"),
+            ("payeeBoundAgreementVersion", "payee-bound"),
+            ("identityBoundAgreementVersion", "identity-bound"),
+        )
+        if discriminator in agreement
+    ), None)
+    if artifact is None:
+        return {}
+    carriers = {}
+    for phase_key, execution in execution_by_phase.items():
+        if not phase_key.split(":", 1)[-1].startswith("pay-"):
+            continue
+        reference = next((
+            candidate
+            for candidate in bundle.get("settlementEvidence", [])
+            if canonical_key(candidate) in reference_validation
+            and reference_validation[canonical_key(candidate)]["record"].get("phase")
+            == execution.get("phaseKind")
+        ), None)
+        if reference is None:
+            continue
+        reference_key = canonical_key(reference)
+        record = reference_validation[reference_key]["record"]
+        if record.get("outcome") != "success":
+            continue
+        orchestrator = execution.get("phaseOrchestrator")
+        agreement_hash = bundle.get("agreementRef", {}).get("contentHash")
+        session_id = "session:" + str(bundle.get("jobId"))
+        reference_validation[reference_key]["agreementHash"] = agreement_hash
+        reference_validation[reference_key]["sessionId"] = session_id
+        laa = {
+            "operation": "authorize-payment",
+            "pipelineHasPayment": True,
+            "agreement": {
+                "artifact": artifact,
+                "shape": "valid",
+                "partySignaturesValid": True,
+                "contentHash": agreement_hash,
+                "jobId": bundle.get("jobId"),
+                "phase": record.get("phase"),
+                "listingRef": copy.deepcopy(bundle.get("listingRef")),
+                "pbVerified": artifact in {"payee-bound", "identity-bound-payee"},
+                "ibhVerified": artifact in {"identity-bound", "identity-bound-payee"},
+            },
+            "sessionAuthority": {
+                "state": "verified",
+                "jobId": bundle.get("jobId"),
+                "sessionId": session_id,
+                "orchestratorPrimaryClaim": orchestrator,
+            },
+        }
+        carrier = reputation_reference.make_laa_phase_carrier(
+            laa,
+            bundle,
+            listing,
+            phase_key,
+            record,
+            reference,
+            verified_receipts.get(reference_key),
+            execution,
+        )
+        if carrier is not None:
+            carriers[phase_key] = carrier
+    return carriers
+
+
 def validate_terminal_authority(
     context: dict,
     bundle: dict,
     phase: str,
     effective: list[dict] | None = None,
-    *, trusted_contexts=None, listing_admission=None, require_listing_admission=True
+    *, trusted_contexts=None, listing_admission=None,
+    require_listing_admission=True, archival=False,
 ) -> tuple[str, str]:
     verifier_context = context.get("verifierContext")
     authority = (
@@ -2451,6 +2533,16 @@ def validate_terminal_authority(
     reference_validation: dict[str, dict] = {}
     execution_by_phase: dict[str, dict] = {}
     verified_receipts: dict[str, dict] = {}
+    delivery_artifact_authority = authority.get(
+        "deliveryArtifactAuthorityByPhaseKey"
+    )
+    delivery_receipts = authority.get("verifiedDeliveryReceiptByCanonicalRef")
+    if delivery_artifact_authority is not None and not isinstance(
+        delivery_artifact_authority, dict
+    ):
+        return "error", "terminal-delivery-authority-malformed"
+    if delivery_receipts is not None and not isinstance(delivery_receipts, dict):
+        return "error", "terminal-delivery-authority-malformed"
     for reference in settlement_refs:
         if not valid_ref(reference):
             return "error", "malformed-input"
@@ -2529,14 +2621,9 @@ def validate_terminal_authority(
             "lifecycle": lifecycle,
         }
         execution_by_phase[phase_key] = execution
-        verified_receipts[reference_key] = {
-            "logicalAddress": receipt["logicalAddress"],
-            "nativeAddress": receipt["nativeAddress"],
-            "contentHash": receipt["contentHash"],
-            "transaction": receipt["transactionRef"]["value"],
-            "writer": receipt["writer"],
-            "nonce": receipt["nonce"],
-        }
+        verified_receipts[reference_key] = copy.deepcopy(receipt)
+    if isinstance(delivery_receipts, dict):
+        verified_receipts.update(copy.deepcopy(delivery_receipts))
 
     bundle_authority = authority.get("bundle")
     if not isinstance(bundle_authority, dict):
@@ -2587,7 +2674,23 @@ def validate_terminal_authority(
             public_keys[party["primaryClaim"]] = key_bytes(party["primaryClaim"])
     except (KeyError, TypeError, ValueError):
         return "error", "malformed-input"
-    ok, seb_reason, _ = reputation_reference.validate_ebfab(
+    seb_validator = (
+        reputation_reference.validate_archival_audit_ebfab_disposition
+        if archival else reputation_reference.validate_ebfab_disposition
+    )
+    seb_kwargs = {}
+    if not archival:
+        seb_kwargs["legacy_agreement_authority_by_phase_key"] = (
+            _current_terminal_laa_carriers(
+                context,
+                bundle,
+                context.get("listing"),
+                reference_validation,
+                execution_by_phase,
+                verified_receipts,
+            )
+        )
+    seb_disposition, seb_reason, _ = seb_validator(
         bundle,
         context.get("listing"),
         public_keys,
@@ -2595,6 +2698,7 @@ def validate_terminal_authority(
         bundle_lifecycle,
         execution_by_phase,
         verified_receipts,
+        delivery_artifact_authority,
         effective_pipeline=(
             effective
             if any(
@@ -2606,9 +2710,10 @@ def validate_terminal_authority(
         additional_commit_phase=(
             phase if phase != generator.PHASES["agreement"] else None
         ),
+        **seb_kwargs,
     )
-    if not ok:
-        return "fail", f"terminal-seb-invalid:{seb_reason}"
+    if seb_disposition != "pass":
+        return seb_disposition, f"terminal-seb-invalid:{seb_reason}"
     return "pass", "verified"
 
 
@@ -2745,6 +2850,7 @@ def validate_historical_stage(
             context, bundle, generator.PHASES[artifact],
             trusted_contexts=trusted_contexts,
             require_listing_admission=False,
+            archival=True,
         )
         if status != "pass":
             return status, reason
@@ -2775,6 +2881,127 @@ def apply_mutation(context: dict, mutation: dict) -> None:
         raise ValueError("unknown mutation")
 
 
+def propagate_fixture_delivery_authority(context: dict) -> None:
+    """Upgrade current fixtures without silently upgrading archival delivery.
+
+    The committed vectors predate delivery-closure authority.  This adapter runs on
+    a private materialized copy, re-signs every affected archival evidence record,
+    and propagates its new hash through references and independently attested
+    receipts before any vector mutation is applied.
+    """
+    bundle = context["terminalInput"]["bundle"]
+    authority = context["verifierContext"]["terminalAuthority"]
+    archival = context.get("artifact") == "agreement"
+    delivery_artifact_authority = {}
+    delivery_receipts = {}
+    changed = False
+    for entry in authority.get("settlements", []):
+        record = entry.get("record")
+        execution = entry.get("executionAuthority")
+        old_ref = entry.get("ref")
+        if (
+            not isinstance(record, dict)
+            or record.get("phase") != "deliver-storage-program"
+            or not isinstance(execution, dict)
+            or not isinstance(old_ref, dict)
+        ):
+            continue
+        phase_index = execution["phaseIndex"]
+        job_id = record["jobId"]
+        indexed = not archival
+        if indexed:
+            record.pop("evidenceVersion", None)
+            record["deliveryEvidenceVersion"] = "1"
+            record["phaseIndex"] = phase_index
+            execution["evidenceLogicalAddress"] = (
+                f"dacs4:delivery:{job_id}:{phase_index}"
+            )
+        deliverable_address = (
+            f"dacs4:deliverable:{job_id}:{phase_index}"
+            if indexed else f"dacs4:deliverable:{job_id}"
+        )
+        record["deliverableAnchor"] = {
+            "kind": "storage-program", "locator": deliverable_address,
+        }
+        domain = (
+            reputation_reference.DELIVERY_EVIDENCE_DOMAIN
+            if indexed else generator.SETTLEMENT_EVIDENCE_DOMAIN
+        )
+        record["signature"] = generator.component_signature(
+            record, domain, "orchestrator"
+        )
+        new_ref = copy.deepcopy(old_ref)
+        new_ref["contentHash"] = generator.artifact_hash(record, "signature")
+        entry["ref"] = new_ref
+        old_receipt = entry.get("receipt", {})
+        entry["receipt"] = generator.finalized_dependency_receipt(
+            logical_address=(
+                execution.get("evidenceLogicalAddress")
+                or old_receipt.get("logicalAddress")
+            ),
+            native_address=new_ref["anchor"]["locator"],
+            content_hash=new_ref["contentHash"],
+            writer=execution["phaseOrchestrator"],
+            nonce=execution["anchorNonce"],
+            timestamp=old_receipt.get("observedAt", generator.NOW),
+        )
+        for index, reference in enumerate(bundle.get("settlementEvidence", [])):
+            if reference == old_ref:
+                bundle["settlementEvidence"][index] = copy.deepcopy(new_ref)
+        for summary in bundle.get("phaseSummary", []):
+            if isinstance(summary, dict) and summary.get("attestationRef") == old_ref:
+                summary["attestationRef"] = copy.deepcopy(new_ref)
+        exact_bytes = generator.canonical_bytes({"deliverable": job_id})
+        deliverable_ref = {
+            "anchor": copy.deepcopy(record["deliverableAnchor"]),
+            "contentHash": record["deliverableContentHash"],
+        }
+        deliverable_key = canonical_key(deliverable_ref)
+        seller = next(
+            party["primaryClaim"] for party in bundle["parties"]
+            if party.get("role") == "seller"
+        )
+        deliverable_receipt = generator.finalized_dependency_receipt(
+            logical_address=deliverable_address,
+            native_address=deliverable_address,
+            content_hash=deliverable_ref["contentHash"],
+            writer=seller,
+            nonce=generator.hash_hex({
+                "deliverable": job_id, "phaseIndex": phase_index,
+            }),
+            timestamp=record.get("observedAt", generator.NOW),
+        )
+        delivery_receipts[deliverable_key] = {
+            "receipt": deliverable_receipt,
+            "storageBinding": {
+                "effectiveAccessMode": "public",
+                "storedContentHash": deliverable_ref["contentHash"],
+            },
+        }
+        delivery_artifact_authority[
+            f"{phase_index}:deliver-storage-program"
+        ] = {
+            "deliverable": {
+                "available": True,
+                "logicalAddress": deliverable_address,
+                "nativeAddress": deliverable_address,
+                "independentlyResolvable": True,
+                "cleartextBytesBase64url": generator.b64url(exact_bytes),
+                "cleartextHash": deliverable_ref["contentHash"],
+                "storedBytesBase64url": generator.b64url(exact_bytes),
+                "storedContentHash": deliverable_ref["contentHash"],
+            }
+        }
+        changed = True
+    if changed:
+        authority["deliveryArtifactAuthorityByPhaseKey"] = (
+            delivery_artifact_authority
+        )
+        authority["verifiedDeliveryReceiptByCanonicalRef"] = delivery_receipts
+        generator.resign_terminal(bundle)
+        generator.refresh_terminal_bundle_receipt(context)
+
+
 def materialize(data: dict, vector: dict) -> dict:
     context = copy.deepcopy(data["scenarios"][vector["scenario"]])
     if vector.get("operation", "").startswith("validate-selection-bound-"):
@@ -2783,6 +3010,7 @@ def materialize(data: dict, vector: dict) -> dict:
         if vector.get("resign"):
             raise ValueError("selection-bound adapter has no producer resign action")
         return context
+    propagate_fixture_delivery_authority(context)
     context["commitment"] = copy.deepcopy(
         context["commitments"][vector["commitment"]]
     )
@@ -2904,14 +3132,10 @@ def terminal_reputation_authority(context: dict, artifact: str) -> dict:
             "lifecycle": copy.deepcopy(entry["lifecycle"]),
         }
         execution_by_phase[phase_key] = copy.deepcopy(execution)
-        verified_receipts[key] = {
-            "logicalAddress": receipt["logicalAddress"],
-            "nativeAddress": receipt["nativeAddress"],
-            "contentHash": receipt["contentHash"],
-            "transaction": receipt["transactionRef"]["value"],
-            "writer": receipt["writer"],
-            "nonce": receipt["nonce"],
-        }
+        verified_receipts[key] = copy.deepcopy(receipt)
+    verified_receipts.update(copy.deepcopy(
+        authority.get("verifiedDeliveryReceiptByCanonicalRef", {})
+    ))
     public_keys = {
         party["primaryClaim"]: key_bytes(party["primaryClaim"])
         for party in bundle["parties"]
@@ -2926,8 +3150,21 @@ def terminal_reputation_authority(context: dict, artifact: str) -> dict:
         "bundleLifecycle": copy.deepcopy(authority["bundle"]["lifecycle"]),
         "sessionExecutionAuthorityByPhaseKey": execution_by_phase,
         "verifiedReceiptByCanonicalRef": verified_receipts,
+        "deliveryArtifactAuthorityByPhaseKey": copy.deepcopy(
+            authority.get("deliveryArtifactAuthorityByPhaseKey")
+        ),
         "additionalCommitPhase": generator.PHASES[artifact],
     }
+    result["legacyAgreementAuthorityByPhaseKey"] = (
+        _current_terminal_laa_carriers(
+            context,
+            bundle,
+            context["listing"],
+            reference_validation,
+            execution_by_phase,
+            verified_receipts,
+        )
+    )
     if any(
         step.get("kind") == "pay-alternative"
         for step in context["listing"]["pipeline"]
@@ -3019,21 +3256,20 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 generator.resign_agreement(changed, "identityBoundAgreement")
                 self.assertEqual(verify_agreement(changed, "identityBoundAgreement"), ("error", "malformed-input"))
 
-    def test_terminal_profile_context_is_explicit_and_preserves_valid_paths(self):
+    def test_terminal_profile_context_propagates_delivery_closure(self):
         for name in (
-            "identityBoundAgreement-terminal-verified",
             "identityBoundPayeeAgreement-terminal-verified",
             "replacement-projection-preserves-signed-slot",
-            "identity-bound-sealed-envelope-losing-bidder-terminal",
         ):
             vector = self.cases[name]
             self.assertFalse(vector.get("mutations"))
             self.assertFalse(vector.get("resign"))
             with self.subTest(name=name):
-                self.assertEqual(
-                    evaluate_with_fixture_admission(self.data, vector, trusted_contexts=fixture_profile_contexts())[0],
-                    "pass",
+                current = evaluate_with_fixture_admission(
+                    self.data, vector, trusted_contexts=fixture_profile_contexts()
                 )
+                self.assertEqual(current[0], "pass")
+                self.assertEqual(current[1]["reason"], "verified")
                 result = evaluate(self.data, vector)
                 self.assertEqual(result[0], "indeterminate")
                 self.assertEqual(result[1]["reason"], "terminal-current-profile-unavailable")
@@ -3047,25 +3283,29 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     missing[1]["reason"], "terminal-listing-admission-unavailable"
                 )
 
-    def test_valid_terminal_profile_context_reaches_reputation_consumer(self):
+    def test_missing_delivery_closure_stops_before_reputation_consumer(self):
         context = materialize(self.data, {
-            "scenario": "identityBoundAgreement",
+            "scenario": "identityBoundPayeeAgreement",
             "commitment": "finality", "stage": "terminal",
         })
+        authority = context["verifierContext"]["terminalAuthority"]
+        authority.pop("deliveryArtifactAuthorityByPhaseKey")
+        authority.pop("verifiedDeliveryReceiptByCanonicalRef")
         tag = {
             "bundle": context["terminalInput"]["bundle"],
             "resolvedRole": "buyer", "counterpartyDisposition": "absent",
         }
         from ibh_listing_admission_fixture import retained_positive_admission
 
-        verdict, _, receipt = derive_identity_bound_reputation(
+        verdict, reason, receipt = derive_identity_bound_reputation(
             context, set(), generator.CLAIMS["buyer"], tag,
             generator.NOW - 100_000, generator.NOW + 100_000,
             trusted_contexts=fixture_profile_contexts(),
-            listing_admission=retained_positive_admission("identityBoundAgreement"),
+            listing_admission=retained_positive_admission("identityBoundPayeeAgreement"),
         )
-        self.assertEqual(verdict, "pass")
-        self.assertEqual(receipt["bundleCount"], 1)
+        self.assertEqual(verdict, "indeterminate")
+        self.assertIn("delivery artifact authority is unavailable", reason)
+        self.assertIsNone(receipt)
 
     def test_terminal_listing_admission_gate_is_fail_closed(self):
         from ibh_listing_admission_fixture import retained_positive_admission
@@ -3095,7 +3335,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         from ibh_listing_admission_fixture import retained_positive_admission
 
         context = materialize(self.data, {
-            "scenario": "identityBoundAgreement",
+            "scenario": "identityBoundPayeeAgreement",
             "commitment": "finality", "stage": "terminal",
         })
         tag = {
@@ -3128,7 +3368,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 generator.NOW - 100_000, generator.NOW + 100_000,
                 trusted_contexts=fixture_profile_contexts(),
                 listing_admission=retained_positive_admission(
-                    "identityBoundAgreement"
+                    "identityBoundPayeeAgreement"
                 ),
             )
             self.assertEqual(verdict, "pass")
@@ -3152,9 +3392,12 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     }
                     expected = (
                         "pass"
-                        if artifact in generator.STRONG_ARTIFACTS or stage == "commit"
+                        if (artifact in generator.STRONG_ARTIFACTS or stage == "commit")
+                        and not (artifact == "identityBoundAgreement" and stage == "terminal")
                         else "indeterminate"
                     )
+                    if artifact == "identityBoundAgreement" and stage == "terminal":
+                        expected = "fail"
                     listing_admission = (
                         retained_admission_for_context(context)
                         if artifact in generator.STRONG_ARTIFACTS and stage == "terminal"
@@ -3252,7 +3495,10 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         for stage in ("commit", "payment", "terminal"):
             with self.subTest(stage=stage):
                 case = self.cases[f"identityBoundAgreement-{stage}-verified"]
-                self.assertEqual(evaluate_with_fixture_admission(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "pass")
+                self.assertEqual(
+                    evaluate_with_fixture_admission(self.data, case, trusted_contexts=fixture_profile_contexts())[0],
+                    "fail" if stage == "terminal" else "pass",
+                )
         self.assertEqual(
             evaluate(
                 self.data, self.cases["retained-admission-authority-unavailable"],
@@ -3503,7 +3749,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 trusted_contexts=fixture_profile_contexts(),
                 listing_admission=agreement_admission,
             )[0],
-            "pass",
+            "fail",
         )
 
         for field, value in (
@@ -3535,7 +3781,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def test_reputation_counting_executes_only_after_identity_admission(self):
         from ibh_listing_admission_fixture import retained_positive_admission
 
-        for artifact in generator.STRONG_ARTIFACTS:
+        for artifact in ("identityBoundPayeeAgreement",):
             context = materialize(self.data, {
                 "scenario": artifact, "commitment": "finality", "stage": "terminal",
             })
@@ -3743,7 +3989,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def test_cvr_requirement_and_aggregate_are_replayed(self):
         for name, expected in (
             ("identityBoundAgreement-commit-verified", "pass"),
-            ("identityBoundAgreement-terminal-verified", "pass"),
+            ("identityBoundAgreement-terminal-verified", "fail"),
+            ("identityBoundPayeeAgreement-terminal-verified", "pass"),
             ("signed-listing-requirement-does-not-match-cvr", "fail"),
             ("signed-cvr-overall-decision-disagrees-with-replay", "fail"),
         ):
@@ -3795,7 +4042,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     self.data,
                     self.cases[f"identity-bound-sealed-envelope-losing-bidder-{stage}"],
                  trusted_contexts=fixture_profile_contexts())[0],
-                "pass",
+                "fail" if stage == "terminal" else "pass",
             )
 
     def test_sealed_deadline_gate_boundary_and_trusted_session_time(self):

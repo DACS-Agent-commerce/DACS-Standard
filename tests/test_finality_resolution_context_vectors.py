@@ -605,6 +605,9 @@ class FinalityResolutionContextTests(unittest.TestCase):
             authority["verifiedReceiptByCanonicalRef"],
             authority["finalityVerificationByCanonicalRef"],
             self.trust(self.authority()),
+            legacy_agreement_authority_by_phase_key=authority[
+                "legacyAgreementAuthorityByPhaseKey"
+            ],
         )
         self.assertEqual("pass", decision, reason)
         self.assertEqual(["0:pay-evm-erc20"], phase_keys)

@@ -196,6 +196,70 @@ The format used per release:
   replay, makes policy-defined equal-order serialization explicit without adding
   causal authority, and exercises an old outcome with publication inside the
   requested recent window.
+### Fixed — authenticated bundle/pointer and delivery authority
+
+- **Protocol-owned family admission** (#333) — requires fixed operation,
+  authenticated address, or uniquely verified registered-domain context before
+  a bundle, pointer, or delivery-evidence selector can choose a schema. Full
+  bundles require one supported recognized selector; pointers cannot be
+  promoted through shared `bundleVersion`; inert unknown signed members remain
+  SIG-5 hash-bound. FAB/EBFAB pointer domains and all legacy signed bytes remain
+  unchanged. The unresolved generic `BundleExtendedPointer` domain is recorded
+  without inventing a fallback, and unsupported shared-address dispatch refuses.
+- **Delivery authority closure** (#333) — binds every inner dependency to its
+  complete canonical reference and authenticated lifecycle receipt, verifies
+  effective ACL/encryption recipient and exact stored/ciphertext commitments,
+  supports arbitrary exact bytes, makes malformed alternate-dependency inputs
+  total, and derives standalone payload-attestation locators from authenticated
+  job/phase/method/attempt context. Missing authority remains indeterminate;
+  malformed input errors and authenticated contradictions fail.
+- **Legacy delivery and released-bundle payment membership** (#333) — PDE-7
+  delivery-shaped `SettlementEvidence` is readable only by a named
+  archival/audit verifier. Current EBFAB and finality-bound admission reject
+  it. An authenticated, exactly mapped legacy delivery on a released
+  `AttestationBundle` or `FaultAttestationBundle` is audit-valid but
+  current-ineligible: comparison-only in reconciliation, `indeterminate` for
+  pointer and current-use consumers. So is a successful payment whose LAA
+  pass is only `historical-only` or `transition-only`. Every consumer and
+  both archival lanes apply the same PDE-7 checks, so a repeated pipeline
+  kind, an indexed evidence address, or a legacy-closure contradiction fails.
+  Released-bundle payment membership stays a producer obligation, so a
+  payment record a copy omits never changes its disposition, even one
+  anchored later; omission detection requires an EBFAB. Every presented
+  payment member of an AttestationBundle or FAB is still fully validated; an
+  authentic ST-8 `:resolved` success passes under the SEB-3 edge rules, and
+  an `ok` row without a member is `indeterminate`. The reconciliation entry
+  now holds the receipt-contract label for every copy kind. A well-formed
+  indeterminate receipt observation is `indeterminate`, and unavailable
+  execution authority is distinguished from malformed. Current-use counts
+  only a copy's own listed members and signed rows toward the CUR-5 hold. An
+  AttestationBundle without current `DeliveryEvidence` is `indeterminate`
+  rather than failing the FAB-only delivery gate. Unavailable ST-8 interim
+  authority on a released copy is `indeterminate`, not `fail`; only the phase
+  orchestrator's own nonce- and reference-bound receipt at the ordinary PC-2
+  address can contradict the edge, so another writer's receipt there is inert.
+  An outage on a member that cannot fill a missing delivery invocation no
+  longer masks an incomplete released delivery set as `indeterminate`. An EBFAB or
+  finality-bound bundle or Listing that JCS cannot hash is a typed `error` on
+  direct, pointer and reconciliation paths. The released-copy verdict no
+  longer depends on member order. The `encrypt-to-buyer`
+  text now separates the producer's sealing duty from DV-3's
+  recipient/ciphertext check, and THREAT-MODEL records decryptability as a
+  residual.
+
+### Fixed — delivery closure reference validation
+
+- **Signed-format and legacy closure parity** (#333) — the executable DACS-4/DACS-5
+  reference consumers now hash exact delivered UTF-8 bytes, bind entitlement
+  grant roles to authenticated bundle parties, classify current registered artifact
+  discriminators without consuming contextual or inert version extensions, preserve
+  self-signed payload closure without a native transaction, and distinguish complete
+  DeliverableSpec/VerificationMethod hashes from signature-omitted envelope hashes.
+  Current `DeliveryEvidence` and PDE-7 legacy delivery-shaped `SettlementEvidence`
+  now share the same phase-specific inner closure checks while legacy reads retain
+  their signed unindexed addresses, never synthesize PDE-5 credential binding, and
+  remain indeterminate when required artifact or native authority is unavailable.
+
 ### Fixed — DACS-3 sealed-auction candidate completeness
 
 - **Complete sealed-envelope profile (SAC-1..SAC-10; #376)** — adds new
@@ -922,6 +986,26 @@ The format used per release:
   including mocked, disabled new/in-flight behavior, stale and forged
   definitions, missing authority, signed-scope mutation, untrusted mode input,
   and contradictory discovery hints.
+
+### Added — DACS-4 v0.7 / DACS-5 v0.5
+
+- **Phase-bound delivery evidence and exact credential handover — PDE-1..PDE-8**
+  (§9.6, §9.7, §10.4.3, CORE §B.1/§B.7; #329, #330) — introduces the
+  structurally distinct `DeliveryEvidence` artifact under
+  `dacs-delivery-evidence:v1:` so every delivery result signs its exact
+  `phaseIndex`. Current evidence, deliverable, entitlement, and payload-
+  attestation addresses are phase-indexed; renewal and attempt counters remain
+  independent within each invocation. Successful entitlement evidence binds
+  the exact EntitlementRecord hash/anchor and, when present, the complete
+  credential reference/access model, cleartext credential digest, and renewal
+  sequence while asserting delivered only. DACS-5 now verifies a one-to-one
+  phase/evidence mapping even when optional per-phase pointers are absent.
+  Historical unindexed delivery-shaped `SettlementEvidence` remains
+  byte-stable and readable only for one unambiguous matching delivery; it
+  cannot satisfy repetition or be reported as DV-5-verified. Adds deterministic
+  signed vectors for repeated storage/entitlement/attested delivery, address
+  and cross-phase replay, credential mismatch/substitution, legacy reads,
+  discriminator/domain separation, and unresolved evidence.
 
 ### Added — DACS-4 v0.6
 

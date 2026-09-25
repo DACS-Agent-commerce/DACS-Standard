@@ -12,7 +12,7 @@ This non-normative index maps commonly referenced DACS terms to their canonical 
 | ClaimReference | [§B.1](../spec/CORE.md#b1-claim-references-and-identity) | Canonical identifier format for identity claims. |
 | CompositeVerificationRecord | [§7.7](../spec/DACS-2-VET.md#77-composite-verification-record) | DACS-2 composite output for Vet. |
 | FinalityBoundEvidenceFaultAttestationBundle | [§10.4.1](../spec/DACS-5-VERIFY.md#1041-canonical-serialisation-hash-and-domain-separated-signature) | Distinct unallocated #392 outer bundle whose successful payment evidence passes FV. |
-| FinalityBoundSettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-settlement-evidence) | Distinct unallocated #392 payment-success evidence accepted only after FV. |
+| FinalityBoundSettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-payment-and-delivery-evidence) | Distinct unallocated #392 payment-success evidence accepted only after FV. |
 | Finality verification (FV) | [§9.7.0](../spec/DACS-4-SETTLE.md#970-consumer-verifiable-finality-fv-1fv-10) | Consumer recomputation from authenticated raw proof and verifier-local trust; four-value result. |
 | IdentityBundle | [§6.3.2](../spec/DACS-1-IDENTIFY.md#632-identity-bundle) | Ordered self-presented claim set with presentation signature. |
 | Listing | [§6.3](../spec/DACS-1-IDENTIFY.md#63-specification) | DACS-1 signed service advertisement. |
@@ -22,7 +22,8 @@ This non-normative index maps commonly referenced DACS terms to their canonical 
 | RatingRecord | [§10.6](../spec/DACS-5-VERIFY.md#106-the-rate-phase-optional) | Optional per-direction counterparty rating artifact. |
 | SessionParticipationAdmission | [§10.3.2](../spec/DACS-5-VERIFY.md#1032-signed-participation-admission-spa-1spa-8) | Target-signed active-obligation evidence required for current-profile one-sided blame against an absent non-signer. |
 | RevocationStateHead | [§6.3.4](../spec/DACS-1-IDENTIFY.md#634-service-listing) | Listing-bound append-only head used for current revocation inclusion and non-membership proofs. |
-| SettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-settlement-evidence) | Anchored DACS-4 evidence produced by settle/deliver phases. |
+| DeliveryEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-payment-and-delivery-evidence) | Signed, phase-bound evidence produced by current DACS-4 delivery phases. |
+| SettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-payment-and-delivery-evidence) | Anchored DACS-4 payment evidence; historical delivery records remain a restricted legacy arm. |
 | VerifyResult | [§7.5](../spec/DACS-2-VET.md#75-verifyresult) | DACS-2 single-method verification result. |
 
 ## Maintenance notes

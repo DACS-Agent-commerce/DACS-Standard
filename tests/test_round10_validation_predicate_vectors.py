@@ -263,7 +263,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         n_so = native_address(j, "seller", 0)
         bind_so = make_binding(j, "seller", "seller", n_so, h_so)
         self.assertEqual(
-            R._post_fetch_valid(seller_only, bind_so, PUBKEYS),
+            R._post_fetch_legacy_valid(seller_only, bind_so, PUBKEYS),
             (False, "§10.4.1 required signer 'buyer' (did:demos:buyer) has no signature for a non-abort outcome 'completed'"))
         pd = build_absent(j, sign_roles=["seller"])
         self.assertEqual(
@@ -275,7 +275,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         j = "R10-1c"
         full = make_fab(j, "completed", "none", "seller", ["buyer", "seller"])
         bind_f = make_binding(j, "seller", "seller", native_address(j, "seller", 0), bundle_hash(full))
-        self.assertEqual(R._post_fetch_valid(full, bind_f, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(full, bind_f, PUBKEYS), (True, "ok"))
         self.assertEqual(vrc(build_absent(j)), (True, []))
 
     # ============================================================ R10-2 lossy dedup
@@ -301,16 +301,16 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         bind2, buyer_sig, seller_valid, seller_invalid = self._r10_2_parts()
         sig_fail = "§10.4.1 bundle signature does not verify for signer 'did:demos:seller'"
         # A: invalid THEN valid.
-        self.assertEqual(R._post_fetch_valid(self._r10_2_variant([buyer_sig, seller_invalid, seller_valid]), bind2, PUBKEYS),
+        self.assertEqual(R._post_fetch_legacy_valid(self._r10_2_variant([buyer_sig, seller_invalid, seller_valid]), bind2, PUBKEYS),
                          (False, sig_fail))
         # B: valid THEN invalid.
-        self.assertEqual(R._post_fetch_valid(self._r10_2_variant([buyer_sig, seller_valid, seller_invalid]), bind2, PUBKEYS),
+        self.assertEqual(R._post_fetch_legacy_valid(self._r10_2_variant([buyer_sig, seller_valid, seller_invalid]), bind2, PUBKEYS),
                          (False, sig_fail))
 
     def test_r10_2_single_valid_control(self):
         """CONTROL: one valid signature per party passes."""
         bind2, buyer_sig, seller_valid, _ = self._r10_2_parts()
-        self.assertEqual(R._post_fetch_valid(self._r10_2_variant([buyer_sig, seller_valid]), bind2, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(self._r10_2_variant([buyer_sig, seller_valid]), bind2, PUBKEYS), (True, "ok"))
 
     # ============================================================ R10-3 algorithm dispatch
     def _r10_3_parts(self):
@@ -325,13 +325,13 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         for s in relabelled["signatures"]:
             s["algorithm"] = "ecdsa-secp256k1"
         self.assertEqual(
-            R._post_fetch_valid(relabelled, bind3, PUBKEYS),
+            R._post_fetch_legacy_valid(relabelled, bind3, PUBKEYS),
             (False, "§10.4.1/SIG-6 unsupported or missing signature algorithm 'ecdsa-secp256k1' for bundle signer 'did:demos:buyer'"))
 
     def test_r10_3_labelled_control(self):
         """CONTROL: correctly labelled ed25519 passes."""
         base, bind3 = self._r10_3_parts()
-        self.assertEqual(R._post_fetch_valid(base, bind3, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(base, bind3, PUBKEYS), (True, "ok"))
 
     # ============================================================ R10-4 SIG-6 canonical
     NONCANON = "SIG-6: signature value is non-canonical (padding, whitespace, or non-URL-safe alphabet)"
@@ -348,7 +348,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         padded = copy.deepcopy(base)
         for s in padded["signatures"]:
             s["value"] = s["value"] + "=="
-        self.assertEqual(R._post_fetch_valid(padded, bind4, PUBKEYS),
+        self.assertEqual(R._post_fetch_legacy_valid(padded, bind4, PUBKEYS),
                          (False, "%s for bundle signer 'did:demos:buyer'" % self.NONCANON))
 
     def test_r10_4_padded_binding_defect(self):
@@ -363,7 +363,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
     def test_r10_4_unpadded_controls(self):
         """CONTROL: unpadded canonical values pass on both surfaces."""
         base, h4, bind4 = self._r10_4_parts()
-        self.assertEqual(R._post_fetch_valid(base, bind4, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(base, bind4, PUBKEYS), (True, "ok"))
         self.assertEqual(
             R.verify_legacy_binding(bind4, PUBKEYS, expected_jobid="R10-4", expected_role="seller", expected_content_hash=h4),
             {"ok": True, "reason": "binding valid"})
@@ -467,7 +467,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         h = bundle_hash(legacy)
         bindL = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
         self.assertEqual(R._bundle_signatures_valid(legacy, PUBKEYS), (False, self.LEGACY_SINGLE_REASON))
-        self.assertEqual(R._post_fetch_valid(legacy, bindL, PUBKEYS), (False, self.LEGACY_SINGLE_REASON))
+        self.assertEqual(R._post_fetch_legacy_valid(legacy, bindL, PUBKEYS), (False, self.LEGACY_SINGLE_REASON))
 
     def test_r10_6_legacy_fully_signed_control(self):
         """CONTROL: a fully-signed completed legacy AttestationBundle passes both surfaces."""
@@ -476,7 +476,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         h = bundle_hash(legacy)
         bindL = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
         self.assertEqual(R._bundle_signatures_valid(legacy, PUBKEYS), (True, "ok"))
-        self.assertEqual(R._post_fetch_valid(legacy, bindL, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(legacy, bindL, PUBKEYS), (True, "ok"))
 
     def test_r10_6_legacy_single_signed_abort_control(self):
         """CONTROL: a single-signed aborted-by-self legacy AttestationBundle passes (abort MAY be
@@ -486,7 +486,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         h = bundle_hash(legacy)
         bindL = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
         self.assertEqual(R._bundle_signatures_valid(legacy, PUBKEYS), (True, "ok"))
-        self.assertEqual(R._post_fetch_valid(legacy, bindL, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(legacy, bindL, PUBKEYS), (True, "ok"))
 
     # ============================================================ R10-1 orchestrator-distinctness limb
     def test_r10_1_orchestrator_unsigned_defect(self):
@@ -498,7 +498,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         h = bundle_hash(fab)
         bindL = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
         self.assertEqual(
-            R._post_fetch_valid(fab, bindL, PUBKEYS),
+            R._post_fetch_legacy_valid(fab, bindL, PUBKEYS),
             (False, "§10.4.1 required signer 'orchestrator' (did:demos:orchestrator) has no signature for a non-abort outcome 'completed'"))
 
     def test_r10_1_orchestrator_controls(self):
@@ -509,11 +509,11 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         ji = "R10-1Obi"
         fab_i = make_fab3(ji, "completed", "none", "seller", CLAIM["buyer"], ["buyer", "seller"])
         bind_i = make_binding(ji, "seller", "seller", native_address(ji, "seller", 0), bundle_hash(fab_i))
-        self.assertEqual(R._post_fetch_valid(fab_i, bind_i, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(fab_i, bind_i, PUBKEYS), (True, "ok"))
         jii = "R10-1Obii"
         fab_ii = make_fab3(jii, "completed", "none", "seller", CLAIM["orchestrator"], ["buyer", "seller", "orchestrator"])
         bind_ii = make_binding(jii, "seller", "seller", native_address(jii, "seller", 0), bundle_hash(fab_ii))
-        self.assertEqual(R._post_fetch_valid(fab_ii, bind_ii, PUBKEYS), (True, "ok"))
+        self.assertEqual(R._post_fetch_legacy_valid(fab_ii, bind_ii, PUBKEYS), (True, "ok"))
 
     def test_r10_1_orchestrator_none_claim_shape(self):
         """SHAPE: a winner FAB whose roster carries orchestrator primaryClaim=None, driven through the

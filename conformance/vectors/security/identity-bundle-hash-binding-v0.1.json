@@ -23418,7 +23418,7 @@
     }
   },
   "count": 398,
-  "hash": "27874a45117b36237ff592983a37acb8c001b4c798ab85f9e74c212f83007bf4",
+  "hash": "990b5fb031129a08c4b921d3d24ad994f08f2edf915f7653f8687f33230acf24",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -24549,11 +24549,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-seb-invalid:current payment agreement lacks payee binding"
       }
     },
     {
@@ -27222,11 +27222,11 @@
         "terminal-settlement-observation:0"
       ],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-seb-invalid:current payment agreement lacks payee binding"
       }
     },
     {
@@ -27524,7 +27524,7 @@
       "want": {
         "verdict": "fail",
         "authorizedAction": false,
-        "reason": "terminal-seb-invalid:settlement evidence signature does not verify"
+        "reason": "terminal-seb-invalid:evidence record has an unsupported or ambiguous discriminator"
       }
     },
     {
@@ -27700,11 +27700,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-seb-invalid:current payment agreement lacks payee binding"
       }
     },
     {

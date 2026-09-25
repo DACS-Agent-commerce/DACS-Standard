@@ -2887,6 +2887,62 @@
           }
         }
       },
+      "legacyAgreementAuthorityByPhaseKey": {
+        "0:pay-evm-erc20": {
+          "binding": {
+            "agreementContentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+            "bundleContentHash": "00481f57f1020edb22b947f7f667daca0f5974186f27b175d4055db25f2b3755",
+            "evidenceContentHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787",
+            "evidenceReceiptHash": "9d35d7652cb332deec8af3092f1db097adecc39f114e8001752b8ea956ba9cc0",
+            "evidenceRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df"
+              },
+              "contentHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787"
+            },
+            "evidenceSigner": "did:demos:orchestrator",
+            "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
+            "laaContentHash": "97e279a7b77f76a343fdeb2a6cbb1fd557f37d8eaa16b4ee06f468527624e45a",
+            "listingContentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+            "listingRef": {
+              "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+              "listingId": "listing-finality-fixture",
+              "version": 1
+            },
+            "phase": "pay-evm-erc20",
+            "phaseIndex": 0,
+            "phaseKey": "0:pay-evm-erc20",
+            "phaseOrchestrator": "did:demos:orchestrator",
+            "receiptWriter": "did:demos:orchestrator",
+            "sessionId": "session-finality-ba87196beca094d7d5add3a702c32799f42e2a8d32e1a2d93ebece58b7d4e737"
+          },
+          "laa": {
+            "agreement": {
+              "artifact": "payee-bound",
+              "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+              "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
+              "listingRef": {
+                "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+                "listingId": "listing-finality-fixture",
+                "version": 1
+              },
+              "partySignaturesValid": true,
+              "pbVerified": true,
+              "phase": "pay-evm-erc20",
+              "shape": "valid"
+            },
+            "operation": "authorize-payment",
+            "pipelineHasPayment": true,
+            "sessionAuthority": {
+              "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
+              "orchestratorPrimaryClaim": "did:demos:orchestrator",
+              "sessionId": "session-finality-ba87196beca094d7d5add3a702c32799f42e2a8d32e1a2d93ebece58b7d4e737",
+              "state": "verified"
+            }
+          }
+        }
+      },
       "listing": {
         "listingId": "listing-finality-fixture",
         "listingVersion": 1,
@@ -2904,6 +2960,7 @@
       },
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df\"},\"contentHash\":\"87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787\"}": {
+          "agreementHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
           "lifecycle": {
             "independentlyResolvable": true,
             "state": "finalized"
@@ -2945,7 +3002,8 @@
               "signer": "did:demos:orchestrator",
               "value": "w0nNDM0Om4QYZ4dGTvgM61s_C2BezF4eDNXOIRxuWcJbKWXdJffwLHieZTtAnocAbDLJhzC_l8xoNrGEsL11Bg"
             }
-          }
+          },
+          "sessionId": "session-finality-ba87196beca094d7d5add3a702c32799f42e2a8d32e1a2d93ebece58b7d4e737"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
@@ -2959,11 +3017,29 @@
       },
       "verifiedReceiptByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df\"},\"contentHash\":\"87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787\"}": {
+          "blockRef": {
+            "height": "1000",
+            "id": "block-3038824f173e4171b7046eac229378fe",
+            "timestamp": 1900000000000
+          },
           "contentHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787",
+          "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": "23373bdc811d85ce2d3d68b54db5b2496c9609cbdf94e762abda7911dff70b4a"
+          },
+          "finalityProfile": "demos-bft-final",
           "logicalAddress": "dacs4:payment:01K50M2V4W8Z7J6N5P3T1H9GQC:fixture%3Ablock-depth:0",
           "nativeAddress": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df",
-          "nonce": 0,
-          "transaction": "demos:test:3038824f173e4171b7046eac229378fe3300730208b7abd217062f6dcb1e9bcb",
+          "nonce": "0",
+          "observationDisposition": "established",
+          "observedAt": 1900000000000,
+          "receiptVersion": "1",
+          "state": "finalized",
+          "substrate": "demos-testnet",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "demos:test:3038824f173e4171b7046eac229378fe3300730208b7abd217062f6dcb1e9bcb"
+          },
           "writer": "did:demos:orchestrator"
         }
       }

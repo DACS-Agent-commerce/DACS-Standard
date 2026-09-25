@@ -297,6 +297,173 @@
       "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_presented_payment_members_are_fully_bound"
     }
   ],
+  "independentReviewEvidence": [
+    {
+      "id": "type-totality-array-ebfab-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_array_rejected_without_exception_ebfab",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-array-disposition-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_array_rejected_without_exception_disposition",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-object-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_object_rejected_without_exception",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-null-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_null_rejected_without_exception",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-boolean-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_boolean_rejected_without_exception",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-number-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_number_rejected_without_exception",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-unsupported-string-counterexample",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_algorithm_unsupported_string_rejected_without_exception",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "type-totality-control",
+      "file": "tests/test_pr333_fix_2.py",
+      "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_valid_algorithm_preserved",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "credential-ref-type-counterexample",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "EntitlementCredentialRefBoundaryTests.test_present_malformed_credential_ref_is_typed_error_on_both_apis",
+      "surfaces": ["public-api"]
+    },
+    {
+      "id": "credential-ref-positive-control",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "EntitlementCredentialRefBoundaryTests.test_absent_and_valid_private_credential_modes_still_pass",
+      "surfaces": ["public-api", "compatibility-path"]
+    },
+    {
+      "id": "delivery-binding-counterexample",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_delivery_exact_bindings_are_load_bearing",
+      "surfaces": ["composed-caller"]
+    },
+    {
+      "id": "delivery-binding-control",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_genuine_current_fab_delivery_closure_passes",
+      "surfaces": ["composed-caller"]
+    },
+    {
+      "id": "era-downgrade-counterexample",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "ExplicitReconciliationReceiptContractTests.test_archival_ebfab_is_comparison_only",
+      "surfaces": ["composed-caller"]
+    },
+    {
+      "id": "era-downgrade-control",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "ExplicitReconciliationReceiptContractTests.test_current_ebfab_remains_selectable_but_dual_era_refuses",
+      "surfaces": ["composed-caller", "compatibility-path"]
+    },
+    {
+      "id": "helper-composition-counterexample",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_provider_attestation_map_boundary_is_typed_on_direct_and_composed_paths",
+      "surfaces": ["direct-helper", "composed-caller"]
+    },
+    {
+      "id": "helper-composition-control",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_actual_dacs5_strong_bundle_consumer_passes_all_six_models",
+      "surfaces": ["composed-caller"]
+    },
+    {
+      "id": "historical-helper-binding-counterexample",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "HistoricalEvidenceBindingTests.test_wrong_job_and_malformed_historical_evidence_refuse_without_throwing",
+      "surfaces": ["direct-helper", "compatibility-path"]
+    },
+    {
+      "id": "historical-helper-binding-control",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "HistoricalEvidenceBindingTests.test_legitimate_historical_fab_binding_passes_without_type_error",
+      "surfaces": ["direct-helper", "compatibility-path"]
+    },
+    {
+      "id": "compatibility-counterexample",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_historical_pointer_fixture_cannot_bypass_current_profile_admission",
+      "surfaces": ["compatibility-path"]
+    },
+    {
+      "id": "compatibility-control",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_new_new_and_all_new_older_reconciliation_paths_execute",
+      "surfaces": ["compatibility-path", "composed-caller"]
+    }
+  ],
+  "independentReviewLenses": [
+    {
+      "id": "hostile-json-type-totality",
+      "counterexampleEvidence": [
+        "type-totality-array-ebfab-counterexample",
+        "type-totality-array-disposition-counterexample",
+        "type-totality-object-counterexample",
+        "type-totality-null-counterexample",
+        "type-totality-boolean-counterexample",
+        "type-totality-number-counterexample",
+        "type-totality-unsupported-string-counterexample",
+        "credential-ref-type-counterexample"
+      ],
+      "controlEvidence": [
+        "type-totality-control",
+        "credential-ref-positive-control"
+      ]
+    },
+    {
+      "id": "binding-axis-isolation-current-fab-delivery",
+      "counterexampleEvidence": ["delivery-binding-counterexample"],
+      "controlEvidence": ["delivery-binding-control"]
+    },
+    {
+      "id": "current-archival-downgrade-fallback",
+      "counterexampleEvidence": ["era-downgrade-counterexample"],
+      "controlEvidence": ["era-downgrade-control"]
+    },
+    {
+      "id": "direct-helper-composed-path-parity",
+      "counterexampleEvidence": [
+        "helper-composition-counterexample",
+        "historical-helper-binding-counterexample"
+      ],
+      "controlEvidence": [
+        "helper-composition-control",
+        "historical-helper-binding-control"
+      ]
+    },
+    {
+      "id": "compatibility-legitimate-positive-preservation",
+      "counterexampleEvidence": ["compatibility-counterexample"],
+      "controlEvidence": ["compatibility-control"]
+    }
+  ],
   "coveredInvariantClasses": [
     {"id": "same-sequence-conflict", "matrixIds": ["pr396-rsc7-same-sequence"]},
     {"id": "closed-schema", "matrixIds": ["pr396-rsc2-closed-head-schema"]},

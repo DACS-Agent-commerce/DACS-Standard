@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,201 @@ class PreReviewGateTests(unittest.TestCase):
     def test_manifest_and_registered_vectors_execute(self):
         self.gate.validate_manifest(self.manifest)
         self.assertEqual(self.gate.run_vector_matrices(self.manifest), 22)
+        self.assertEqual(
+            self.gate.run_independent_review_evidence(self.manifest), 20
+        )
+
+    def test_required_independent_review_lens_cannot_be_removed(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewLenses"].pop()
+        with self.assertRaisesRegex(
+            self.gate.GateError, "do not match the required set"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_each_lens_requires_counterexample_and_control_evidence(self):
+        for role in ("counterexampleEvidence", "controlEvidence"):
+            with self.subTest(role=role):
+                manifest = copy.deepcopy(self.manifest)
+                manifest["independentReviewLenses"][0][role] = []
+                with self.assertRaisesRegex(self.gate.GateError, role):
+                    self.gate.validate_manifest(manifest)
+
+    def test_dangling_independent_review_evidence_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewLenses"][0]["counterexampleEvidence"] = [
+            "missing-evidence"
+        ]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "dangling independent review evidence"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_duplicate_independent_review_evidence_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["independentReviewEvidence"][0])
+        manifest["independentReviewEvidence"].append(duplicate)
+        with self.assertRaisesRegex(
+            self.gate.GateError, "evidence must be unique and runnable"
+        ):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["independentReviewEvidence"][0])
+        duplicate["id"] = "different-id-same-target"
+        manifest["independentReviewEvidence"].append(duplicate)
+        with self.assertRaisesRegex(
+            self.gate.GateError, "code-pinned declaration"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_arbitrary_zero_exit_script_cannot_substitute_for_unittest(self):
+        for registry in ("unitRegressions", "independentReviewEvidence"):
+            with self.subTest(registry=registry):
+                manifest = copy.deepcopy(self.manifest)
+                manifest[registry][0]["file"] = "scripts/jcs.py"
+                with self.assertRaisesRegex(
+                    self.gate.GateError, "test_.*under tests"
+                ):
+                    self.gate.validate_manifest(manifest)
+
+        entries = [{
+            "id": "zero-exit-substitution",
+            "file": "scripts/jcs.py",
+            "test": "PlausibleTests.test_claimed_evidence",
+        }]
+        with self.assertRaisesRegex(self.gate.GateError, "test_.*under tests"):
+            self.gate._run_python_evidence(entries, "review evidence")
+
+    def test_unittest_identity_is_safe_and_nonexistent_target_fails(self):
+        unsafe = [{
+            "id": "unsafe-target",
+            "file": "tests/test_pr333_fix_2.py",
+            "test": "--help",
+        }]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "safe dotted unittest identity"
+        ):
+            self.gate._run_python_evidence(unsafe, "review evidence")
+
+        nonexistent = [{
+            "id": "nonexistent-target",
+            "file": "tests/test_pr333_fix_2.py",
+            "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_does_not_exist",
+        }]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "nonexistent-target: independent review evidence.*failing"
+        ):
+            self.gate._run_python_evidence(nonexistent, "review evidence")
+
+    def test_helper_and_alternate_passing_regression_retargets_are_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["unitRegressions"][0]["test"] = (
+            "RevocationStateCompletenessTests._fixture"
+        )
+        with self.assertRaisesRegex(
+            self.gate.GateError, "final unittest identity must start with test_"
+        ):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        manifest["unitRegressions"][0]["test"] = (
+            "RevocationStateCompletenessTests.test_metadata_and_hash"
+        )
+        with self.assertRaisesRegex(
+            self.gate.GateError, "regression does not match.*code-pinned"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_selected_skip_is_rejected(self):
+        entry = {
+            "id": "skip-probe",
+            "file": "tests/test_pre_review_gate.py",
+            "test": "PreReviewGateTests.test_skip_probe",
+        }
+        with mock.patch.dict(
+            os.environ, {"DACS_PRE_REVIEW_SKIP_PROBE": "1"}
+        ):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "skip-probe: independent review evidence.*failing",
+            ):
+                self.gate._run_python_evidence([entry], "review evidence")
+
+    def test_skip_probe(self):
+        if os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE") == "1":
+            self.skipTest("selected skips must not satisfy review evidence")
+        self.assertNotEqual(os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE"), "1")
+
+    def test_runner_constructs_unittest_module_command(self):
+        entry = self.manifest["independentReviewEvidence"][0]
+        completed = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(
+            self.gate.subprocess, "run", return_value=completed
+        ) as run:
+            self.assertEqual(
+                self.gate._run_python_evidence([entry], "review evidence"), 1
+            )
+        command = run.call_args.args[0]
+        self.assertEqual(
+            command[:3],
+            [
+                self.gate.sys.executable,
+                "-c",
+                self.gate.EXACT_UNITTEST_RUNNER,
+            ],
+        )
+        self.assertEqual(
+            command[3],
+            "tests.test_pr333_fix_2."
+            "AuthenticatedEvidenceWireTypeAlgorithmTests."
+            "test_algorithm_array_rejected_without_exception_ebfab",
+        )
+
+    def test_two_tests_cannot_claim_every_lens_and_surface(self):
+        manifest = copy.deepcopy(self.manifest)
+        counter = manifest["independentReviewEvidence"][0]["id"]
+        control = next(
+            item["id"] for item in manifest["independentReviewEvidence"]
+            if item["id"] == "type-totality-control"
+        )
+        for lens in manifest["independentReviewLenses"]:
+            lens["counterexampleEvidence"] = [counter]
+            lens["controlEvidence"] = [control]
+        with self.assertRaisesRegex(self.gate.GateError, "evidence belongs to both"):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(manifest)
+        for evidence in manifest["independentReviewEvidence"]:
+            if evidence["id"] in {counter, control}:
+                evidence["surfaces"] = sorted(self.gate.EVIDENCE_SURFACES)
+        with self.assertRaisesRegex(self.gate.GateError, "code-pinned declaration"):
+            self.gate.validate_manifest(manifest)
+
+    def test_pinned_evidence_id_cannot_be_retargeted(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewEvidence"][0]["test"] = (
+            "AuthenticatedEvidenceWireTypeAlgorithmTests.test_valid_algorithm_preserved"
+        )
+        with self.assertRaisesRegex(self.gate.GateError, "code-pinned declaration"):
+            self.gate.validate_manifest(manifest)
+
+    def test_invalid_independent_review_evidence_shape_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewEvidence"][0]["surfaces"] = ["invented"]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "evidence must be unique and runnable"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_failing_independent_review_evidence_fails_the_gate(self):
+        failed = mock.Mock(returncode=1, stdout="", stderr="deliberate failure")
+        with mock.patch.object(self.gate.subprocess, "run", return_value=failed):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "type-totality-array-ebfab-counterexample: independent review evidence.*failing",
+            ):
+                self.gate.run_independent_review_evidence(self.manifest)
 
     def test_incomplete_matrix_is_rejected(self):
         manifest = copy.deepcopy(self.manifest)

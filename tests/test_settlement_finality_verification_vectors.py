@@ -693,6 +693,86 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("pass", decision, reason)
         self.assertEqual([], keys)
 
+    def test_malformed_strong_listing_is_typed_error_in_reconciliation(self):
+        # F-D: a producer-authored Listing that JCS cannot hash is malformed
+        # input for the finality-bound lane, never an escaping exception.
+        case = copy.deepcopy(self.strong["block-depth"])
+        absent = {
+            "disposition": "absent",
+            "expectedJobId": case["bundle"]["jobId"],
+            "expectedRole": "seller",
+        }
+        for name, mutate, expected in (
+            ("control", lambda listing: None, "pass"),
+            ("unsafe-integer", lambda listing: listing.__setitem__("listingVersion", 2 ** 53), "error"),
+            ("lone-surrogate", lambda listing: listing["pipeline"][0].__setitem__("kind", "\ud800"), "error"),
+        ):
+            authority = copy.deepcopy(case["authority"])
+            mutate(authority["listing"])
+            # entry() registers the copy presence in the shared trust, so copy
+            # the trust only afterwards; the test must not depend on suite order.
+            present = self.entry(case["bundle"], authority)
+            absent_trust = copy.deepcopy(self.trust)
+            absent_trust["copyDispositionByJobRole"] = {
+                case["bundle"]["jobId"] + ":seller": "absent"
+            }
+            with self.subTest(case=name):
+                result = reconcile_authenticated_finality_copies(
+                    [present, absent],
+                    self.pubkeys,
+                    absent_trust,
+                )
+                self.assertEqual(expected, result["decision"], result["reason"])
+
+    def test_finality_bound_seb5_pointer_must_equal_its_top_level_member(self):
+        phase_key = "0:pay-evm-erc20"
+        for mutation in ("omitted", "exact", "dangling", "malformed"):
+            case = copy.deepcopy(self.strong["block-depth"])
+            bundle = case["bundle"]
+            authority = case["authority"]
+            entry = bundle["phaseSummary"][0]
+            if mutation == "omitted":
+                entry.pop("attestationRef")
+            elif mutation == "dangling":
+                entry["attestationRef"]["contentHash"] = "0" * 64
+            elif mutation == "malformed":
+                entry["attestationRef"] = {"anchor": [], "contentHash": "0" * 64}
+            finality_fixtures.FixtureFactory().sign_bundle(
+                bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN
+            )
+            # The LAA carrier commits to the exact bundle; refresh it so only
+            # the pointer can decide the verdict.
+            ref = bundle["settlementEvidence"][0]
+            key = D5.canonical(ref).decode("utf-8")
+            authority["legacyAgreementAuthorityByPhaseKey"][phase_key] = (
+                D5.make_laa_phase_carrier(
+                    D5._laa_input_from_phase_carrier(
+                        authority["legacyAgreementAuthorityByPhaseKey"][phase_key]
+                    ),
+                    bundle,
+                    authority["listing"],
+                    phase_key,
+                    authority["referenceValidationByCanonicalRef"][key]["record"],
+                    ref,
+                    authority["verifiedReceiptByCanonicalRef"][key],
+                    authority["sessionExecutionAuthorityByPhaseKey"][phase_key],
+                )
+            )
+            with self.subTest(mutation=mutation):
+                decision, reason, keys = self.strong_result(case)
+                if mutation in {"omitted", "exact"}:
+                    self.assertEqual("pass", decision, reason)
+                elif mutation == "dangling":
+                    self.assertEqual("fail", decision, reason)
+                    self.assertEqual(
+                        "optional phase pointer contradicts settlementEvidence",
+                        str(reason),
+                    )
+                    self.assertIsNone(keys)
+                else:
+                    self.assertEqual("error", decision, reason)
+                    self.assertIsNone(keys)
+
     def test_finality_bound_never_coerces_ordinary_payment_wire_type(self):
         case = copy.deepcopy(self.strong["block-depth"])
         compatibility = self.data["dacs5"]["compatibility"]
@@ -745,6 +825,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         )
         self.assertFalse(pointer["ok"])
         self.assertEqual("fail", pointer["decision"])
+        # Every pointer family reports the same typed "disposition" key.
+        self.assertEqual("fail", pointer["disposition"])
+        malformed_authority = copy.deepcopy(pointer_authority)
+        malformed_authority["listing"]["listingVersion"] = 2 ** 53
+        malformed = resolve_legacy_absolute_fault_pointer(
+            self.data["dacs5"]["pointer"], case["bundle"],
+            pubkeys=self.pubkeys, finality_bound_authority=malformed_authority,
+        )
+        self.assertFalse(malformed["ok"])
+        self.assertEqual("error", malformed["disposition"], malformed["reason"])
 
         legacy = self.data["dacs5"]["compatibility"]["copies"]["legacy"]
         reconciled = reconcile_authenticated_finality_copies(
@@ -896,8 +986,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.trust,
             )
             with self.subTest(kind=bundle_type(older)):
-                self.assertEqual("pass", result["decision"], result["reason"])
-                self.assertEqual("finality-bound", bundle_type(result["bundle"]))
+                if bundle_type(older) == "legacy":
+                    self.assertEqual("indeterminate", result["decision"], result["reason"])
+                    self.assertIn("authority is unavailable", result["reason"])
+                    self.assertIsNone(result["bundle"])
+                else:
+                    self.assertEqual("pass", result["decision"], result["reason"])
+                    self.assertEqual("finality-bound", bundle_type(result["bundle"]))
 
     def test_invalid_strong_copy_cannot_fall_back_to_valid_legacy_copy(self):
         case = self.strong["block-depth"]

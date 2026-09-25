@@ -441,15 +441,26 @@ def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
     authority["bundle"]["phaseSummary"][position]["attestationRef"] = new_ref
 
     closure = authority["deliveryArtifactAuthorityByPhaseKey"][phase_key]
-    authority["verifiedReceiptByCanonicalRef"].update(
-        F.make_delivery_closure_receipts(
-            record,
-            closure,
-            record["jobId"],
-            record["phase"],
-            record["phaseIndex"],
-        )
+    refreshed_receipts = F.make_delivery_closure_receipts(
+        record,
+        closure,
+        record["jobId"],
+        record["phase"],
+        record["phaseIndex"],
     )
+    refreshed_anchors = {
+        F.canonical(json.loads(key)["anchor"])
+        for key in refreshed_receipts
+    }
+    # A mutated phase replaces its former SR-2 commitment at the same signed
+    # address. Leaving both makes the fixture fail receipt selection before
+    # the cross-phase ownership invariant can be exercised.
+    for key in list(authority["verifiedReceiptByCanonicalRef"]):
+        if key not in refreshed_receipts and (
+            F.canonical(json.loads(key)["anchor"]) in refreshed_anchors
+        ):
+            del authority["verifiedReceiptByCanonicalRef"][key]
+    authority["verifiedReceiptByCanonicalRef"].update(refreshed_receipts)
 
 
 def _apply_repeated_self_signed_proofs(

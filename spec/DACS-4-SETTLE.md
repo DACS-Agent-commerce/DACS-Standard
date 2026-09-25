@@ -1238,12 +1238,14 @@ pipeline `phaseIndex`.
 
 **Private delivery (`accessModel`).** A `storage-program` deliverable MAY be delivered privately when `deliverable.accessModel` (declared in the agreement, hash-bound per §8.5.2) is non-`public`:
 - `buyer-only` — the Storage Program is written with a `restricted` ACL listing the buyer's address in `allowed`; reads are node-enforced.
-- `encrypt-to-buyer` — the payload is sealed to the buyer's encryption key and the ciphertext anchored (which MAY itself be public, since only the holder can open it).
+- `encrypt-to-buyer` — the producer seals the payload to the buyer's encryption key (the agreement-bound buyer's `AgreementParty.encryptionKey` when declared) and anchors the ciphertext, which MAY itself be public because only the key holder can open it. That sealing is a producer obligation. DV-3 verifies only that authenticated encryption evidence names the buyer as recipient and commits to the exact ciphertext; it does not establish which key sealed the envelope, that the envelope is valid, that it decrypts to the DV-1 cleartext, or that the buyer received it (see the encrypted-delivery evidence note below).
 
 - (DV-1) **Exact-byte content invariant.** `deliverableContentHash` MUST be the sha256 of the **exact cleartext bytes delivered to the buyer** — byte-identical across all `accessModel` values, never a text re-encoding, parsed value, ciphertext, or storage envelope. Arbitrary binary and text payloads are both valid. If an adapter exposes both a UTF-8 text view and an exact Base64URL byte view, the Base64URL spelling MUST be canonical unpadded RFC 4648 §5 and both views MUST decode to identical bytes; a contradiction is `fail`, a malformed representation is `error`, and unavailable exact bytes are `indeterminate`. These adapter representations are resolver metadata and do not add fields to a signed DACS artifact.
 - (DV-2) **Authenticated access-mode fidelity.** A consumer MUST obtain the effective access mode from the authenticated storage receipt/binding produced by its protocol-owned SR-2 adapter, not from resolver content, a caller label, or the agreement value echoed back as proof. A declared non-`public` mode MUST be realized exactly; a proven contradiction is `fail` and missing authority is `indeterminate`. Over-provision (declared `public`, authenticated effective private storage) remains valid.
 - (DV-3) **Authenticated buyer binding.** Under `buyer-only`, the authenticated effective ACL MUST be `restricted` to the buyer resolved from the authenticated bundle/agreement party authority; a separately presented buyer address is not authority. Under `encrypt-to-buyer`, authenticated encryption evidence MUST bind that same buyer as recipient and bind the exact ciphertext commitment. Missing authority is `indeterminate`; malformed evidence is `error`; a different recipient, ACL, or commitment is `fail`.
 - (DV-4) **Stored-byte binding and ACL-mutation auditability.** The authenticated storage receipt/binding MUST commit to the exact stored bytes. For `public` and `buyer-only` the stored-byte digest MUST equal the DV-1 cleartext digest; for `encrypt-to-buyer` it MUST equal the authenticated ciphertext digest while `deliverableContentHash` remains the cleartext digest. The resolved exact stored bytes MUST reproduce that commitment. Under `buyer-only` the owner CAN later mutate the ACL (add/remove readers). Each mutation SHOULD be recorded as an anchored, signed record so the buyer can detect a post-delivery reader addition — and MUST be recorded for a `credentialRef`-backed entitlement (§9.6.2). The receipt/binding input MUST come from successful binding-defined proof verification under CORE SR2-4; the name of an adapter map or an untrusted Boolean does not authenticate it, and this rule does not invent a substrate proof codec.
+
+> **Note (non-normative — encrypted-delivery evidence limit).** For `encrypt-to-buyer`, DV-1..DV-4 authenticate a claimed cleartext digest, the intended buyer recipient label, and the exact stored bytes presented as ciphertext. They do not establish that those bytes form a valid encrypted envelope, decrypt under the buyer's key to the claimed cleartext, or were obtained by the buyer. A passing storage/recipient-commitment check is not independent proof of decryptability or buyer receipt; for a `credentialRef` entitlement, it also cannot assert the separate DV-5 `valid` or DV-6 `readable` gates. A seller-provided cleartext view or an adapter Boolean cannot close this gap. A future buyer-authenticated decryption acknowledgement or independently verifiable envelope proof would need its own closed, context-bound rule; this note does not change any current normative disposition or wire format.
 
 > **Note (non-normative — confidentiality tiers).** `buyer-only` is node-enforced: confidential against the public and other users, but the owner can re-open the ACL and node operators can see the bytes ("private until the owner changes the ACL"). `encrypt-to-buyer` is a cryptographic one-shot seal (operator-blind, non-revocable). The normative envelope is the native post-quantum `UnifiedCrypto` (`ml-kem-aes`); an external envelope (HPKE/age) MAY be used only as a cross-substrate profile and is classical-not-PQC.
 
@@ -2273,8 +2275,9 @@ signed_bytes := "dacs-delivery-evidence:v1:" || delivery_evidence_hash
   renewal, signature, or attempted reuse of one evidence/reference for two
   invocations is `fail`. A malformed candidate is `error`. An otherwise
   well-formed candidate whose required private credential, artifact, anchor,
-  exact bytes, authenticated storage authority, or authenticated receipt cannot
-  currently be resolved is `indeterminate`. A receipt embedded beside resolver
+  exact bytes, authenticated storage authority, authenticated session
+  execution authority, or authenticated receipt cannot currently be resolved
+  is `indeterminate`. A receipt embedded beside resolver
   content or supplied under an authority-sounding caller field is not
   authenticated lifecycle evidence; the consumer's protocol-owned SR-2 adapter
   MUST first verify the binding-defined proof. Malformed dependency collections
@@ -2289,7 +2292,19 @@ signed_bytes := "dacs-delivery-evidence:v1:" || delivery_evidence_hash
   rewritten, upgraded, or assigned a synthetic `phaseIndex`, and its
   `renewalSeq`/`attempt` MUST NOT be reinterpreted as one. Historical
   credential entitlements lacking PDE-5's signed binding are audit data only:
-  consumers MUST NOT report their delivered gate as DV-5-verified.
+  consumers MUST NOT report their delivered gate as DV-5-verified. This read
+  arm is available only through an explicitly named archival/audit verifier;
+  even an unambiguous historical delivery MUST NOT yield current bundle,
+  settlement, delivery, metric, reputation, or volume authority. Current
+  delivery admission requires `DeliveryEvidence` under the authenticated
+  current-delivery phase and cannot select this arm from the record itself.
+  A current consumer that authenticates such a record on a released bundle
+  type reports it as audit-valid but current-ineligible under DACS-5 §10.4.3,
+  RSV-2, and CUR-5, never as a pass. It first applies the archival verifier's
+  own checks: exactly one matching step in the authenticated pipeline, the
+  unindexed evidence address, and the legacy artifact closure. A failed check
+  is a rejection, not a classification. A current `EvidenceBoundFaultAttestationBundle`
+  or finality-bound bundle carrying it is rejected.
 - (PDE-8) **DACS-5 exact mapping.** A bundle consumer MUST apply the §10.4.3
   one-to-one mapping between authenticated executed delivery invocations and
   delivery-evidence references. A current `DeliveryEvidence` maps only to the

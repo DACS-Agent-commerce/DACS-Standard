@@ -795,8 +795,13 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
                 self.setUp()
                 request = self._replace_role_with_older_copy(kind)
                 result = self.derive([request])
-                self.assertEqual("pass", result["decision"], result["reason"])
-                self.assertEqual("finality-bound", result["derivation"]["resolutionContext"][0]["bundleType"])
+                if kind == "legacy":
+                    self.assertEqual("indeterminate", result["decision"], result["reason"])
+                    self.assertIn("authority is unavailable", result["reason"])
+                    self.assertIsNone(result["derivation"])
+                else:
+                    self.assertEqual("pass", result["decision"], result["reason"])
+                    self.assertEqual("finality-bound", result["derivation"]["resolutionContext"][0]["bundleType"])
 
     def test_invalid_new_copy_never_falls_back_to_older_copy(self):
         request = self._replace_role_with_older_copy("legacy")

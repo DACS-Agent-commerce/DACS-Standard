@@ -189,6 +189,14 @@ def storage_access_model(case, phase_index):
     return "pass", access_model
 
 
+_STATUS_PRIORITY = {"pass": 0, "indeterminate": 1, "fail": 2, "error": 3}
+
+
+def worst_status(*statuses):
+    """Combine closure statuses with the primary's error > fail > indeterminate order."""
+    return max(statuses, key=_STATUS_PRIORITY.__getitem__)
+
+
 def validate_delivered_cleartext(
     stored, expected_hash, access_model, subject, storage_binding, buyer
 ):
@@ -259,9 +267,14 @@ def validate_delivery_artifact(
         if address != expected_address:
             return "fail"
         stored = find_artifact(case, address, "deliverable")
+        stored_ref_status, stored_ref = R._authenticated_stored_delivery_ref(
+            anchor, receipts
+        )
+        if stored_ref_status[0] != "pass":
+            return stored_ref_status[0]
         dependency, stored, receipt = R._resolved_delivery_dependency(
             stored,
-            {"anchor": anchor, "contentHash": content_hash},
+            stored_ref,
             receipts,
             completed,
             "storage deliverable",
@@ -272,17 +285,26 @@ def validate_delivery_artifact(
         )
         if dependency[0] != "pass":
             return dependency[0]
+        if not R._sha256_hex(stored.get("storedContentHash")):
+            return "error"
+        # A receipt/commitment contradiction is combined with, not returned
+        # ahead of, malformed storage authority, matching the primary closure.
+        commitment_status = (
+            "fail"
+            if stored_ref["contentHash"] != stored.get("storedContentHash")
+            else "pass"
+        )
         access_status, access_model = storage_access_model(case, index)
         if access_status != "pass":
-            return access_status
-        storage_status = validate_delivered_cleartext(
+            return worst_status(commitment_status, access_status)
+        storage_status = worst_status(commitment_status, validate_delivered_cleartext(
             stored,
             content_hash,
             access_model,
             "storage deliverable",
             receipt.get("storageBinding"),
             parties["buyer"],
-        )
+        ))
         if storage_status != "pass":
             return storage_status
         if "attestationRef" in evidence or "credentialDelivery" in evidence:
@@ -459,9 +481,14 @@ def validate_delivery_artifact(
         if address != payload_address:
             return "fail"
         payload = find_artifact(case, payload_address, "deliverable")
+        payload_ref_status, payload_ref = R._authenticated_stored_delivery_ref(
+            anchor, receipts
+        )
+        if payload_ref_status[0] != "pass":
+            return payload_ref_status[0]
         payload_availability, payload, payload_receipt = R._resolved_delivery_dependency(
             payload,
-            {"anchor": anchor, "contentHash": content_hash},
+            payload_ref,
             receipts,
             completed,
             "attested payload",
@@ -472,6 +499,30 @@ def validate_delivery_artifact(
         )
         if payload_availability[0] != "pass":
             return payload_availability[0]
+        if not R._sha256_hex(payload.get("storedContentHash")):
+            return "error"
+        if payload_ref["contentHash"] != payload.get("storedContentHash"):
+            # Malformed stored-byte authority outranks this contradiction, as
+            # in the primary closure combiner.
+            authority_status, authority = delivery_authority(case, index)
+            deliverable = (
+                authority.get("deliverable")
+                if authority_status == "pass" and isinstance(authority, dict)
+                else None
+            )
+            if not isinstance(deliverable, dict):
+                return "fail"
+            return worst_status("fail", validate_delivered_cleartext(
+                payload,
+                content_hash,
+                deliverable.get("accessModel", "public"),
+                "attested payload",
+                (
+                    payload_receipt.get("storageBinding")
+                    if isinstance(payload_receipt, dict) else None
+                ),
+                parties["buyer"],
+            ))
         if payload is not None and "storedHash" in payload:
             return "error"
         if payload is not None and content_hash != payload.get("cleartextHash"):
@@ -648,6 +699,122 @@ def validate_delivery_artifact(
     return "error"
 
 
+def authenticated_inner_identity_claims(case, evidence):
+    """Identities a current success delivery signs, authenticated on their own.
+
+    PDE-6 makes reuse of an authenticated identity a fail even when an
+    unrelated dependency of the same phase is unavailable. This oracle
+    therefore authenticates each identity-bearing inner record independently
+    of the rest of the closure, with the same lookups and checks as
+    validate_delivery_artifact, and returns what it can already claim.
+    """
+    job, index, phase = evidence["jobId"], evidence["phaseIndex"], evidence["phase"]
+    anchor = evidence.get("deliverableAnchor")
+    receipts = case.get("verifiedReceiptByCanonicalRef")
+    completed = case.get("bundle", {}).get("outcome") == "completed"
+    role_status, parties = authenticated_delivery_roles(case.get("bundle"))
+    if role_status != "pass" or not isinstance(anchor, dict):
+        return []
+    if phase == "deliver-entitlement":
+        address = anchor.get("locator")
+        record_entry = find_artifact(case, address, "EntitlementRecord")
+        if record_entry is None:
+            return []
+        dependency, record_entry, _ = R._resolved_delivery_dependency(
+            record_entry,
+            {"anchor": anchor, "contentHash": evidence.get("deliverableContentHash")},
+            receipts, completed, "entitlement record",
+            job_id=job, phase_index=index, phase_kind=phase,
+            expected_writer=parties["seller"],
+        )
+        record = record_entry.get("artifact") if isinstance(record_entry, dict) else None
+        if (
+            dependency[0] != "pass"
+            or not isinstance(record, dict)
+            or not R._delivery_inner_type_valid(record, "entitlementVersion")
+            or not verify_signature(record, ENTITLEMENT_DOMAIN)
+            or not R._entitlement_record_known_schema_valid(record)
+            or record.get("jobId") != job
+            or evidence.get("deliverableContentHash") != artifact_hash(record)
+        ):
+            return []
+        claims = [("signed inner delivery artifact", {
+            "type": "EntitlementRecord",
+            "anchor": anchor,
+            "contentHash": R._signed_envelope_content_hash(record),
+            "signer": record["signature"]["signer"],
+        })]
+        credential_ref = record.get("credentialRef")
+        if isinstance(credential_ref, dict) and exact_ref_shape(credential_ref.get("ref")):
+            claims.append(("credentialRef", credential_ref["ref"]))
+        return claims
+    if phase != "deliver-attested-payload":
+        return []
+    supplied = evidence.get("attestationRef")
+    if not exact_ref_shape(supplied):
+        return []
+    record_address = supplied["anchor"]["locator"]
+    record_entry = find_artifact(case, record_address, "PayloadAttestationRecord")
+    if record_entry is None:
+        return []
+    artifact = record_entry.get("artifact")
+    signature = artifact.get("signature") if isinstance(artifact, dict) else None
+    dependency, record_entry, _ = R._resolved_delivery_dependency(
+        record_entry, supplied, receipts, completed, "payload attestation record",
+        job_id=job, phase_index=index, phase_kind=phase,
+        expected_writer=signature.get("signer") if isinstance(signature, dict) else None,
+    )
+    record = record_entry.get("artifact") if isinstance(record_entry, dict) else None
+    if (
+        dependency[0] != "pass"
+        or not isinstance(record, dict)
+        or not R._delivery_inner_type_valid(record, "payloadAttestationVersion")
+        or not R._payload_attestation_record_shape_valid(record)
+        or not verify_signature(record, PAYLOAD_DOMAIN)
+        or record.get("jobId") != job
+        or record_address != "dacs4:payload-attestation:%s:%s:%s:%s" % (
+            job, index, record.get("verificationMethodHash"), record.get("attempt")
+        )
+    ):
+        return []
+    expected_ref = artifact_ref(record_address, record)
+    if expected_ref is None:
+        return []
+    if "signer" not in supplied:
+        expected_ref.pop("signer", None)
+    if supplied != expected_ref:
+        return []
+    record_result, record_claims = R._attested_record_identity_claims(record)
+    if record_result[0] != "pass":
+        return []
+    claims = list(record_claims[:2])
+    method_ref = record.get("methodEvidenceRef")
+    method_entry = (
+        find_artifact(case, method_ref["anchor"]["locator"], "methodEvidence")
+        if exact_ref_shape(method_ref) else None
+    )
+    if method_entry is not None:
+        availability, method_entry, _ = R._resolved_delivery_dependency(
+            method_entry, method_ref, receipts, completed, "method evidence",
+            job_id=job, phase_index=index, phase_kind=phase,
+            expected_writer=method_ref.get("signer"),
+        )
+        method_evidence = (
+            method_entry.get("artifact") if isinstance(method_entry, dict) else None
+        )
+        if (
+            availability[0] == "pass"
+            and isinstance(method_evidence, dict)
+            and method_ref.get("contentHash") == hash_hex(method_evidence)
+        ):
+            proof_result, proof_identity = R._method_proof_identity(
+                record, method_evidence
+            )
+            if proof_result[0] == "pass":
+                claims.append(("method evidence proof", proof_identity))
+    return claims + list(record_claims[2:])
+
+
 def exact_delivery_evidence_shape(evidence):
     return R._delivery_evidence_shape_valid(
         evidence,
@@ -657,6 +824,24 @@ def exact_delivery_evidence_shape(evidence):
 
 
 def evaluate(case):
+    """Classify malformed presented data instead of leaking parser exceptions."""
+    if not isinstance(case, dict):
+        return "error"
+    try:
+        return _evaluate_admitted_case(case)
+    except (
+        AttributeError,
+        KeyError,
+        OverflowError,
+        RecursionError,
+        TypeError,
+        ValueError,
+        UnicodeError,
+    ):
+        return "error"
+
+
+def _evaluate_admitted_case(case):
     if not isinstance(case, dict):
         return "error"
     pipeline = case.get("pipeline")
@@ -751,6 +936,7 @@ def evaluate(case):
     used_entries = set()
     ref_for_mapping = {}
     ownership = {}
+    pending = False
     for supplied_ref in refs:
         status, position, entry = resolve_evidence(case, supplied_ref)
         if status != "pass":
@@ -801,21 +987,33 @@ def evaluate(case):
             status = validate_delivery_artifact(
                 case, artifact, validated_closure=validated_closure
             )
-            if status != "pass":
+            if status in {"fail", "error"}:
                 return status
+            if status == "indeterminate":
+                # Defer the outage: a later deterministic contradiction,
+                # including cross-phase reuse, still outranks it.
+                pending = True
             mapping = (index, kind)
-            closure = validated_closure.get("value")
             if (
                 artifact.get("outcome") == "success"
                 and kind != "deliver-storage-program"
             ):
-                if closure is None:
-                    return "error"
-                ownership_disposition, _ = R._current_delivery_inner_ownership(
-                    artifact, f"{index}:{kind}", closure, ownership
+                claim_disposition, _ = R._claim_phase_bound_identities(
+                    ownership,
+                    authenticated_inner_identity_claims(case, artifact),
+                    f"{index}:{kind}",
                 )
-                if ownership_disposition != "pass":
-                    return ownership_disposition
+                if claim_disposition != "pass":
+                    return claim_disposition
+                if status == "pass":
+                    closure = validated_closure.get("value")
+                    if closure is None:
+                        return "error"
+                    ownership_disposition, _ = R._current_delivery_inner_ownership(
+                        artifact, f"{index}:{kind}", closure, ownership
+                    )
+                    if ownership_disposition != "pass":
+                        return ownership_disposition
         elif evidence_type == "settlement":
             kind = artifact.get("phase")
             if kind not in DELIVERY_KINDS:
@@ -851,8 +1049,10 @@ def evaluate(case):
                 associated_phase_index=mapping[0],
                 legacy=True,
             )
-            if status != "pass":
+            if status in {"fail", "error"}:
                 return status
+            if status == "indeterminate":
+                pending = True
         else:
             return "error"
         if mapping in mapped:
@@ -877,7 +1077,7 @@ def evaluate(case):
         pair = (summary.get("index"), summary.get("kind"))
         if pointer is not None and pointer != ref_for_mapping.get(pair):
             return "fail"
-    return "pass"
+    return "indeterminate" if pending else "pass"
 
 
 class PhaseBoundDeliveryVectorTests(unittest.TestCase):
@@ -897,6 +1097,32 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector), vector["expected"])
+
+    def test_malformed_nested_attested_members_are_errors(self):
+        def malformed_agreement_deliverable(case):
+            case["deliveryAuthorities"][0]["agreement"]["deliverable"] = []
+
+        def malformed_method_artifact(case):
+            method_entry = next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "methodEvidence"
+            )
+            method_entry["logicalAddress"] += ":elsewhere"
+            method_entry["artifact"]["malformedExtension"] = chr(0xD800)
+
+        for name, mutate in (
+            ("agreement-deliverable", malformed_agreement_deliverable),
+            ("method-artifact", malformed_method_artifact),
+        ):
+            case = G.make(
+                f"malformed-{name}",
+                "error",
+                "malformed nested input is classified without an exception",
+                lambda: G.attested_case(((6, b"attested one"),)),
+            )
+            mutate(case)
+            with self.subTest(member=name):
+                self.assertEqual(evaluate(case), "error")
 
     def test_generator_is_byte_deterministic(self):
         result = subprocess.run(
@@ -1214,13 +1440,58 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         for name, vector in vectors.items():
             with self.subTest(vector=name, guard="enabled"):
                 self.assertEqual(evaluate(vector), "fail")
+            # Early and full ownership claims share one ledger primitive;
+            # disabling it must turn every reuse negative into a pass.
             with self.subTest(vector=name, guard="disabled"):
                 with mock.patch.object(
                     R,
-                    "_current_delivery_inner_ownership",
+                    "_claim_phase_bound_identity",
                     return_value=("pass", "ok"),
                 ):
                     self.assertEqual(evaluate(vector), "pass")
+
+    def test_oracle_reuse_is_not_masked_by_unrelated_outages(self):
+        """PDE-6 precedence: reuse of an authenticated identity is fail.
+
+        An outage elsewhere in either reusing phase is deferred, so the
+        oracle agrees with the primary consumer
+        (test_attested_reuse_is_not_masked_by_unrelated_outages). Only an
+        outage of the record that carries the reused identity leaves it
+        undetermined. A method-proof outage still fails where both signed
+        records also commit to one native transaction.
+        """
+        carriers = {
+            "cross-phase-signed-inner-artifact-reuse": {"PayloadAttestationRecord"},
+            "cross-phase-method-evidence-ref-reuse": {"PayloadAttestationRecord"},
+            "cross-phase-normalized-method-proof-reuse": {"PayloadAttestationRecord"},
+            "cross-phase-native-transaction-reuse": {"PayloadAttestationRecord"},
+            "cross-phase-self-signed-equivalent-proof-reuse": {
+                "PayloadAttestationRecord", "methodEvidence",
+            },
+            "cross-phase-credential-ref-reuse": {"EntitlementRecord"},
+            "cross-phase-credential-semantic-identity-reuse": {
+                "EntitlementRecord", "credential",
+            },
+        }
+        seen = set()
+        for vector in self.data["vectors"]:
+            if vector["name"] not in carriers:
+                continue
+            seen.add(vector["name"])
+            self.assertEqual("fail", evaluate(copy.deepcopy(vector)))
+            for key in ("artifactRecords", "credentials"):
+                for index, entry in enumerate(vector.get(key) or []):
+                    if not isinstance(entry, dict) or "available" not in entry:
+                        continue
+                    kind = "credential" if key == "credentials" else entry.get("kind")
+                    expected = (
+                        "indeterminate" if kind in carriers[vector["name"]] else "fail"
+                    )
+                    case = copy.deepcopy(vector)
+                    case[key][index]["available"] = False
+                    with self.subTest(vector=vector["name"], outage=(kind, index)):
+                        self.assertEqual(expected, evaluate(case))
+        self.assertEqual(set(carriers), seen)
 
     def test_entitlement_identity_uses_complete_phase_indexed_reference(self):
         distinct = next(
@@ -1443,7 +1714,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                         resolved,
                         {
                             "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
-                            "contentHash": evidence["deliverableContentHash"],
+                            "contentHash": resolved["storedContentHash"],
                         },
                         phase_index,
                         "deliver-storage-program",
@@ -1454,6 +1725,61 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                     factory=factory.__name__, access_model=access_model
                 ):
                     self.assertEqual(evaluate(private), "pass")
+                if access_model == "encrypt-to-buyer":
+                    wrong_commitment = copy.deepcopy(private)
+                    for position, resolved in enumerate(wrong_commitment["artifactRecords"]):
+                        phase_index = wrong_commitment["deliveryAuthorities"][position]["phaseIndex"]
+                        evidence = wrong_commitment["evidenceRecords"][position]["artifact"]
+                        G.replace_dependency_receipt(
+                            wrong_commitment,
+                            resolved,
+                            {
+                                "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+                                "contentHash": evidence["deliverableContentHash"],
+                            },
+                            phase_index,
+                            "deliver-storage-program",
+                            G.SELLER,
+                            storage_binding={
+                                "effectiveAccessMode": "encrypt-to-buyer",
+                                "storedContentHash": resolved["storedContentHash"],
+                                "encryption": {
+                                    "recipient": G.BUYER,
+                                    "ciphertextContentHash": resolved["storedContentHash"],
+                                },
+                            },
+                        )
+                    with self.subTest(factory=factory.__name__, commitment="cleartext"):
+                        self.assertEqual(evaluate(wrong_commitment), "fail")
+                    # Two defects: malformed encryption evidence is error even
+                    # beside the receipt-commitment contradiction.
+                    two_defect = copy.deepcopy(wrong_commitment)
+                    for position, resolved in enumerate(two_defect["artifactRecords"]):
+                        phase_index = two_defect["deliveryAuthorities"][position]["phaseIndex"]
+                        evidence = two_defect["evidenceRecords"][position]["artifact"]
+                        G.replace_dependency_receipt(
+                            two_defect,
+                            resolved,
+                            {
+                                "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+                                "contentHash": evidence["deliverableContentHash"],
+                            },
+                            phase_index,
+                            "deliver-storage-program",
+                            G.SELLER,
+                            storage_binding={
+                                "effectiveAccessMode": "encrypt-to-buyer",
+                                "storedContentHash": resolved["storedContentHash"],
+                                "encryption": {
+                                    "ciphertextContentHash": resolved["storedContentHash"],
+                                },
+                            },
+                        )
+                    with self.subTest(
+                        factory=factory.__name__,
+                        commitment="cleartext+malformed-encryption",
+                    ):
+                        self.assertEqual(evaluate(two_defect), "error")
 
             unavailable = G.make(
                 "storage-unavailable", "indeterminate", "unavailable", factory
@@ -1758,6 +2084,109 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         }
         self.assertEqual(authority["storageBinding"], expected_binding)
         self.assertEqual(evaluate(canonical_case), "pass")
+
+        def encrypted_case():
+            case = G.attested_case(((6, b"attested one"),))
+            authority = case["deliveryAuthorities"][0]
+            deliverable = authority["deliverable"]
+            deliverable["accessModel"] = "encrypt-to-buyer"
+            authority["agreement"]["deliverable"]["hash"] = hash_hex(deliverable)
+            payload_entry = next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "PayloadAttestationRecord"
+            )
+            method_entry = next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "methodEvidence"
+            )
+            payload_entry["artifact"]["deliverableSpecHash"] = hash_hex(deliverable)
+            G.refresh_attested_authority(case, 0, payload_entry, method_entry)
+            stored = next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "deliverable"
+            )
+            ciphertext = b"attested ciphertext"
+            stored["storedBytesBase64url"] = G.b64url(ciphertext)
+            stored["storedContentHash"] = hashlib.sha256(ciphertext).hexdigest()
+            evidence = case["evidenceRecords"][0]["artifact"]
+            G.replace_dependency_receipt(
+                case,
+                stored,
+                {
+                    "anchor": copy.deepcopy(evidence["deliverableAnchor"]),
+                    "contentHash": stored["storedContentHash"],
+                },
+                6,
+                "deliver-attested-payload",
+                G.SELLER,
+                storage_binding={
+                    "effectiveAccessMode": "encrypt-to-buyer",
+                    "storedContentHash": stored["storedContentHash"],
+                    "encryption": {
+                        "recipient": G.BUYER,
+                        "ciphertextContentHash": stored["storedContentHash"],
+                    },
+                },
+            )
+            return case
+
+        encrypted = G.make(
+            "payload-encrypted", "pass", "authenticated ciphertext commitment", encrypted_case
+        )
+        self.assertEqual(evaluate(encrypted), "pass")
+        wrong_ref = copy.deepcopy(encrypted)
+        wrong_stored = next(
+            entry for entry in wrong_ref["artifactRecords"]
+            if entry.get("kind") == "deliverable"
+        )
+        wrong_evidence = wrong_ref["evidenceRecords"][0]["artifact"]
+        G.replace_dependency_receipt(
+            wrong_ref,
+            wrong_stored,
+            {
+                "anchor": copy.deepcopy(wrong_evidence["deliverableAnchor"]),
+                "contentHash": wrong_evidence["deliverableContentHash"],
+            },
+            6,
+            "deliver-attested-payload",
+            G.SELLER,
+            storage_binding={
+                "effectiveAccessMode": "encrypt-to-buyer",
+                "storedContentHash": wrong_stored["storedContentHash"],
+                "encryption": {
+                    "recipient": G.BUYER,
+                    "ciphertextContentHash": wrong_stored["storedContentHash"],
+                },
+            },
+        )
+        self.assertEqual(evaluate(wrong_ref), "fail")
+        # Two defects: the receipt contradiction must not shadow malformed
+        # encryption evidence, which the primary closure reports as error.
+        two_defect = copy.deepcopy(wrong_ref)
+        two_defect_stored = next(
+            entry for entry in two_defect["artifactRecords"]
+            if entry.get("kind") == "deliverable"
+        )
+        two_defect_evidence = two_defect["evidenceRecords"][0]["artifact"]
+        G.replace_dependency_receipt(
+            two_defect,
+            two_defect_stored,
+            {
+                "anchor": copy.deepcopy(two_defect_evidence["deliverableAnchor"]),
+                "contentHash": two_defect_evidence["deliverableContentHash"],
+            },
+            6,
+            "deliver-attested-payload",
+            G.SELLER,
+            storage_binding={
+                "effectiveAccessMode": "encrypt-to-buyer",
+                "storedContentHash": two_defect_stored["storedContentHash"],
+                "encryption": {
+                    "ciphertextContentHash": two_defect_stored["storedContentHash"],
+                },
+            },
+        )
+        self.assertEqual(evaluate(two_defect), "error")
 
         missing = fresh_case()
         payload_authority(missing).pop("storageBinding")

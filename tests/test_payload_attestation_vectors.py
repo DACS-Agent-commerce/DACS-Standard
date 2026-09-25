@@ -102,7 +102,15 @@ def evaluate(vector, seeds):
         return "error"
     try:
         return _evaluate_admitted_projection(vector, seeds)
-    except (KeyError, TypeError, ValueError, UnicodeError):
+    except (
+        AttributeError,
+        KeyError,
+        OverflowError,
+        RecursionError,
+        TypeError,
+        ValueError,
+        UnicodeError,
+    ):
         return "error"
 
 
@@ -267,6 +275,25 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector, seeds), vector["expected"])
+
+    def test_malformed_nested_projection_members_are_errors(self):
+        import generate_payload_attestation_vectors as G
+
+        seeds = self.data["publicTestSeeds"]
+        for name, mutate in (
+            (
+                "listing-offering",
+                lambda case: case["listing"].__setitem__("offering", []),
+            ),
+            (
+                "agreement-deliverable",
+                lambda case: case["agreement"].__setitem__("deliverable", []),
+            ),
+        ):
+            case = G.base_case()
+            mutate(case)
+            with self.subTest(member=name):
+                self.assertEqual(evaluate(case, seeds), "error")
 
     def test_generator_is_byte_deterministic(self):
         result = subprocess.run(

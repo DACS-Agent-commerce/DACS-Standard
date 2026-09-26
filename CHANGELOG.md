@@ -274,8 +274,8 @@ The format used per release:
   the row's execution entry is unavailable, a present receipt binds the
   only entry that could admit it, as on EBFAB, and its ST-8 edge decides
   only where that entry would, unpinned or pinned to the receipt's own
-  nonce. An unavailable ST-8 interim no longer skips the member's LAA
-  checks.
+  nonce; a receipt whose address no entry could bind is rejected. An
+  unavailable ST-8 interim no longer skips the member's LAA checks.
   Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts

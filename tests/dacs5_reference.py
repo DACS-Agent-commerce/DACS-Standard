@@ -4651,8 +4651,9 @@ def _released_st8_edge_failure(record, resolved, phase_key, bundle, pubkeys, res
     A synthesized admitting entry pins no nonce, but a real entry that admits
     the member may pin the member receipt's own nonce, which makes an
     other-nonce receipt at the interim's ordinary address inert and binds
-    only a same-nonce interim. Such a row is decided only where both
-    completions agree; otherwise its edge stays pending.
+    only a same-nonce interim. A rejection both completions reach decides the
+    row, as ``fail`` when they disagree on its class; otherwise its edge
+    stays pending.
     """
     def edge(authority):
         return _st8_supersession_edge_failure(
@@ -5370,7 +5371,7 @@ def _validate_current_fab_delivery_admission(
                     # at the rows the receipt names still outranks that fail.
                     row_failure = _released_pending_payment_failure(
                         record, ref, resolution, evidence_type, bundle, listing,
-                        pubkeys, resolutions, execution, receipts,
+                        pubkeys, resolutions, member_execution, receipts,
                         payment_summary_by_key, actual_refs,
                         authority.get(
                             "legacyAgreementAuthorityByPhaseKey",
@@ -5381,24 +5382,19 @@ def _validate_current_fab_delivery_admission(
                             receipt_logical_address.endswith(":resolved")
                             if isinstance(receipt_logical_address, str) else None
                         ),
+                        execution_overrides=execution_overrides,
                     )
                     if row_failure is not None and row_failure[0] == "error":
                         return row_failure
-                    if execution_overrides:
-                        return ("fail", binding_result)
-                    if any(key not in execution for key in payment_execution_keys):
-                        # No admitting entry follows from this receipt's
-                        # address, but it still names the rows this member
-                        # could fill, and their receipt-independent checks run.
-                        if row_failure is not None:
-                            return row_failure
-                        pending_reason = pending_reason or "FAB payment execution authority is unavailable"
-                        return None
                     if any(
-                        _released_payment_execution_malformed(execution[key])
+                        key in execution
+                        and _released_payment_execution_malformed(execution[key])
                         for key in payment_execution_keys
                     ):
                         return ("error", "FAB payment execution authority is malformed")
+                    # Either the only entry that could admit the member was
+                    # synthesized from this address and fails to bind it, or
+                    # the address names no invocation any entry could bind.
                     return ("fail", binding_result)
                 phase_key, resolved = binding_result
                 lifecycle = resolution.get("lifecycle")

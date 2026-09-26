@@ -2114,6 +2114,20 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 "lifecycle"
             ] = "not-an-object"
 
+        def railless_address(value, kind):
+            # No SB-1 entry binds a payment address without a rail segment.
+            receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+            for key, resolution in value["authority"][
+                "referenceValidationByCanonicalRef"
+            ].items():
+                if resolution["record"]["phase"] == "pay-dem":
+                    receipts[key]["logicalAddress"] = "dacs4:payment:%s:2" % (
+                        value["bundle"]["jobId"]
+                    )
+            value["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(value["authority"])
+            )
+
         def successor_receipt_writer(value, kind):
             receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
             receipts[self._key(value["bundle"]["settlementEvidence"][0])]["writer"] = (
@@ -2147,6 +2161,12 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             ("carrier names another receipt, row execution authority unavailable",
              payment(other_receipt_hash, without_entry),
              ("fail", "indeterminate", "indeterminate")),
+            ("receipt address without a rail, row execution authority unavailable",
+             payment(railless_address, without_entry), ("fail", "indeterminate", "fail")),
+            ("unbound successor receipt, malformed interim lifecycle, "
+             "row execution authority unavailable",
+             successor(interim_lifecycle_malformed, successor_receipt_writer,
+                       without_successor_entry), ("error", "indeterminate", "error")),
             ("ST-8 interim dependency not finalized, row execution authority unavailable",
              successor(interim_not_finalized, without_successor_entry),
              ("fail", "indeterminate", "fail")),

@@ -54,8 +54,8 @@
     "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "ebf1f7ea3ac115b1eb408393a9e0e292f65f677a3842ba8574a5785d74d549ca",
-      "gitBlob": "a57246ea49625f9d6815f3f3ac24d0f5f1dfac9e"
+      "sha256": "3ea6d7b10c0608d29dc9b906e6d366b68d8dfc2689904fb8fc3fec3b8e64a320",
+      "gitBlob": "0e62e3a4be5fd84ad27520a46913a9108d3baa3f"
     },
     "wrappedStandard": {
       "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",

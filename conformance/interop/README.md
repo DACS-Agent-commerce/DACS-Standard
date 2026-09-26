@@ -16,6 +16,11 @@ tree, and the sha256 of each of the four repository modules it executes in its
 own source, so the metadata `revision` (the adapter's sha256) covers the code
 that runs; the descriptor must repeat exactly those pins, and the metadata
 `releaseDescriptorSha256` binds the descriptor text the handshake echoes.
+`revision` does not cover the descriptor's prose (its limitations and case
+notes): the release validator, not the adapter, rejects an edited claim, so a
+consumer that pins this release must pin both values. The adapter and the
+validator read the descriptor as strict JSON, so a repeated member name, whose
+raw text and parsed value could claim different things, is refused.
 Before executing anything it wraps, the adapter checks that it and the
 descriptor are the committed HEAD blobs, that the single `remote.origin.url` in
 this checkout's own Git configuration is the pinned origin and the URL Git would
@@ -86,17 +91,22 @@ The executable operations are:
 `verifyBundle` and legacy import are not advertised. Unknown operations and
 unrecognised artifact shapes return controlled errors. The input loop caps each
 request at 1 MiB (excluding its newline) and five parameters, accepts only
-strict UTF-8 JSON (no `NaN`
-or `Infinity` literals and no duplicate member names), reports every
-request-decoding failure as `INVALID_JSON`, emits one response line per input
-line, and writes one bounded line of printable ASCII per diagnostic, only to
-stderr. A rejection by a wrapped primitive is `OPERATION_FAILED`; any other
+strict UTF-8 JSON (no `NaN` or `Infinity` literals and no duplicate member
+names), reports every request-decoding failure as `INVALID_JSON`, emits and
+flushes one response line per input line (so a runner that keeps one process
+alive receives each response before it sends the next request), and writes one
+bounded line of printable ASCII per diagnostic, only to stderr. Responses are
+not capped separately: the largest is about 6.8 times its request (a 1 MiB array
+of `9e15` values yields about 7.1 MB of hex), inside the runner's default 8 MiB
+output budget for one process and one request; a runner with a smaller budget,
+or one that keeps a process alive across requests, must size its budget
+accordingly. A rejection by a wrapped primitive is `OPERATION_FAILED`; any other
 fault is `INTERNAL_ERROR`, which a runner must never score as an expected
 rejection. Requests are bounded in size, not time. CPython's NFC normalization
 is quadratic in long runs of combining marks (a 200 KB string took roughly 8 to
 17 seconds in review, depending on hardware), so callers must enforce a
-per-request timeout, as the shared runner does by default; a timeout is never
-a result. NFC output also depends on the interpreter's Unicode database, whose
+per-request timeout, as the shared runner does by default; a timeout is never a
+result. NFC output also depends on the interpreter's Unicode database, whose
 version the metadata reports under `hostRuntime` with the Python version.
 
 The canonicalization descriptor partitions all 25 source cases: six are
@@ -135,10 +145,13 @@ Standard's existing Listing golden: the message is the 64 ASCII lowercase-hex
 artifact hash, the separator is exactly `dacs-listing:v1:`, and no intermediate
 hash is present. It pins signing output, successful verification, and the
 in-profile negative control where one lowercase-hex message digit changes while
-the signature stays fixed. Verification decides the separator first: a
-separator that does not begin with `dacs` is outside the closed CORE §B.7
-registry and returns `false` whatever the message bytes are, as the reference
-adapter does.
+the signature stays fixed. Once the parameter types and the intermediate hash
+have been checked (below), verification decides the separator before the
+message grammar: a separator that does not begin with `dacs` is outside the
+closed CORE §B.7 registry and returns `false` whatever the message bytes are, as
+the reference adapter does. The separator and the message must match exactly:
+a separator that merely begins with `dacs-listing:v1:`, or a message with any
+byte before or after its 64 lowercase-hex digits, is outside the profile.
 
 The existing Standard test showing that the golden signature does not verify
 over the 32 raw digest bytes remains pinned as a primitive-level control. Raw

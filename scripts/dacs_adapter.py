@@ -245,6 +245,19 @@ def _bounded_text(value: object, limit: int) -> bool:
     return isinstance(value, str) and 0 < len(value) <= limit
 
 
+def _reject_json_constant(name: str) -> None:
+    raise ValueError(f"{name} is not a JSON value")
+
+
+def _unique_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    members: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in members:
+            raise ValueError(f"duplicate member name {name!r}")
+        members[name] = value
+    return members
+
+
 def _verify_provenance() -> tuple[dict[str, Any], str, str, dict[str, bytes]]:
     if Path(_git("rev-parse", "--show-toplevel")).resolve() != ROOT:
         raise RuntimeError("adapter checkout is not the root of its Git work tree")
@@ -272,8 +285,14 @@ def _verify_provenance() -> tuple[dict[str, Any], str, str, dict[str, bytes]]:
     if _git_blob_id(descriptor_bytes) != _git("rev-parse", f"HEAD:{descriptor_relative}"):
         raise RuntimeError("adapter release descriptor is not committed at HEAD")
     try:
-        descriptor = json.loads(descriptor_bytes.decode("utf-8"))
-    except (UnicodeError, json.JSONDecodeError) as exc:
+        # Strict JSON, as for requests: a repeated member would let the raw text
+        # claim one thing while the parsed descriptor (the last value) says another.
+        descriptor = json.loads(
+            descriptor_bytes.decode("utf-8"),
+            object_pairs_hook=_unique_members,
+            parse_constant=_reject_json_constant,
+        )
+    except (ValueError, RecursionError) as exc:
         raise RuntimeError(f"cannot read adapter release descriptor: {_clean_message(exc)}") from exc
 
     if descriptor.get("schema") != "dacs-adapter-release-proposal/1":
@@ -653,19 +672,6 @@ def _safe_request_id(value: Any) -> bool:
     except UnicodeEncodeError:
         return False
     return not any(unicodedata.category(character) == "Cc" for character in value)
-
-
-def _reject_json_constant(name: str) -> None:
-    raise ValueError(f"{name} is not a JSON value")
-
-
-def _unique_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    members: dict[str, Any] = {}
-    for name, value in pairs:
-        if name in members:
-            raise ValueError(f"duplicate member name {name!r}")
-        members[name] = value
-    return members
 
 
 def _parse_request(line: bytes) -> Any:

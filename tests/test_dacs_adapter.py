@@ -7,11 +7,14 @@ import json
 import os
 import py_compile
 import re
+import select
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -763,6 +766,79 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
                 completed, _ = run_adapter([METADATA], root=root)
                 self.assertTrue(unavailable(completed), completed)
 
+    def test_the_adapter_runs_only_as_its_pinned_committed_source(self):
+        """An edited adapter runs only once it is committed and re-pinned, under a new revision."""
+
+        descriptor = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))
+        family = next(item for item in descriptor["families"] if item["id"] == "domain-separated-signing")
+        mismatch = next(
+            case for case in family["cases"] if case["caseId"] == "signing::reject-mismatched-ascii-hex-hash"
+        )
+        probe = execute(
+            "mismatch",
+            "domainSepVerify",
+            [
+                byte_tag(mismatch["messageBytesHex"]),
+                mismatch["separator"],
+                byte_tag(mismatch["signatureBytesHex"]),
+                byte_tag(mismatch["publicKeyHex"]),
+            ],
+        )
+        genuine = "        return _verify_ed25519(public_key, signature, payload)\n"
+        for variant in ("uncommitted", "committed-not-repinned", "pinned-bytes-not-at-head", "repinned"):
+            with self.subTest(variant=variant):
+                clone = committed_clone(self)
+                adapter = clone / "scripts" / "dacs_adapter.py"
+                original = adapter.read_bytes()
+                self.assertEqual(original.decode("utf-8").count(genuine), 1)
+                adapter.write_text(
+                    original.decode("utf-8").replace(genuine, "        return True\n"), encoding="utf-8"
+                )
+                if variant != "uncommitted":
+                    commit_all(clone, "edit the adapter")
+                if variant == "pinned-bytes-not-at-head":
+                    # The working file is the pinned one again, but HEAD carries the edit.
+                    adapter.write_bytes(original)
+                if variant == "repinned":
+                    edited = pin_of(clone, "scripts/dacs_adapter.py")
+                    commit_descriptor(clone, lambda descriptor: descriptor["adapter"].update(source=edited))
+                completed, responses = run_adapter([METADATA, probe], root=clone)
+                if variant == "repinned":
+                    # The control: the edit is visible, and only under another revision.
+                    self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+                    self.assertEqual(responses[0]["result"]["revision"], "sha256:" + edited["sha256"])
+                    self.assertNotEqual(edited["sha256"], hashlib.sha256(original).hexdigest())
+                    self.assertIs(responses[1]["result"], True)
+                else:
+                    self.assertTrue(unavailable(completed), (completed, responses))
+
+    def test_a_descriptor_with_a_repeated_member_is_refused(self):
+        """Its raw text could claim one thing while its parsed value says another."""
+
+        clone = committed_clone(self)
+        path = clone / DESCRIPTOR_RELATIVE
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(text.count('"adapter": {'), 1)
+        path.write_text(
+            text.replace('"adapter": {', '"adapter": {\n    "limitations": ["normative and complete"],', 1),
+            encoding="utf-8",
+        )
+        commit_all(clone, "repeat a member")
+        completed, _ = run_adapter([METADATA], root=clone)
+        self.assertTrue(unavailable(completed), completed)
+        self.assertIn(b"duplicate member name", completed.stderr)
+        validator = subprocess.run(
+            [sys.executable, str(clone / "scripts" / "validate_dacs_adapter_release.py")],
+            cwd=clone,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertEqual(validator.returncode, 1, validator.stdout)
+        self.assertIn("duplicate member name", validator.stderr)
+
     def test_later_edits_to_wrapped_files_change_neither_what_runs_nor_whether_it_runs(self):
         """The release is read from Git objects, so ordinary repository work cannot break it."""
 
@@ -1074,6 +1150,72 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         self.assertTrue(unavailable(completed), completed)
         self.assertIn(b"too large", completed.stderr)
 
+    def test_a_kept_alive_process_answers_each_request_in_bounded_memory(self):
+        """The protocol lets a runner keep one process alive for several requests."""
+
+        process = subprocess.Popen(
+            [sys.executable, str(pinned_adapter())],
+            cwd=pinned_checkout(),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.addCleanup(process.stderr.close)
+        self.addCleanup(process.stdout.close)
+        self.addCleanup(process.kill)
+        pending = bytearray()
+
+        def next_line():
+            deadline = time.monotonic() + 60
+            while b"\n" not in pending:
+                remaining = deadline - time.monotonic()
+                ready = select.select([process.stdout], [], [], max(remaining, 0))[0] if remaining > 0 else []
+                if not ready:
+                    self.fail("no response line before the deadline")
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    self.fail("the adapter closed its output")
+                pending.extend(chunk)
+            line, _, rest = bytes(pending).partition(b"\n")
+            pending[:] = rest
+            return json.loads(line)
+
+        process.stdin.write(json.dumps(METADATA).encode() + b"\n")
+        process.stdin.flush()
+        # Each response is flushed as it is written, not when the process exits.
+        self.assertTrue(next_line()["ok"])
+
+        # Startup, including every Git call, is over.  Where the host can limit a
+        # running process (Linux), the adapter may now use only 64 MiB more address
+        # space, far less than the oversized line below; elsewhere this checks recovery.
+        import resource
+
+        status = Path(f"/proc/{process.pid}/status")
+        if hasattr(resource, "prlimit") and status.exists():
+            size = int(re.search(r"^VmSize:\s+(\d+) kB", status.read_text(), re.MULTILINE).group(1)) * 1024
+            limit = size + 64 * 1_048_576
+            resource.prlimit(process.pid, resource.RLIMIT_AS, (limit, limit))
+
+        def feed():
+            chunk = b"a" * 1_048_576
+            try:
+                for _ in range(192):
+                    process.stdin.write(chunk)
+                process.stdin.write(b"\n" + json.dumps(execute("after", "canonicalize", [{"b": 1, "a": 2}])).encode() + b"\n")
+                process.stdin.flush()
+            except BrokenPipeError:
+                pass
+
+        writer = threading.Thread(target=feed, daemon=True)
+        writer.start()
+        oversized = next_line()
+        self.assertEqual(oversized["error"]["code"], "REQUEST_TOO_LARGE")
+        self.assertEqual(next_line()["result"], {"hex": b'{"a":2,"b":1}'.hex()})
+        writer.join(timeout=60)
+        process.stdin.close()
+        self.assertEqual(process.wait(timeout=60), 0)
+        self.assertNotIn(b"Traceback", process.stderr.read())
+
     def test_failing_standard_streams_fail_closed_with_one_line(self):
         good = json.dumps(METADATA).encode() + b"\n"
         with tempfile.TemporaryDirectory() as directory:
@@ -1338,6 +1480,41 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
                 self.assertEqual(response["error"]["code"], code)
         self.assertEqual(len(responses), len(requests))
         self.assertIs(responses[-1]["result"], False)
+
+    def test_bounded_f5_separator_and_message_match_exactly(self):
+        """A separator or message that merely contains the profile's is outside it."""
+
+        verify = self.cases["signing::verify-ascii-hex-hash"]
+        sign = self.cases["signing::sign-ascii-hex-hash"]
+        digits = bytes.fromhex(verify["messageBytesHex"])
+        signature = byte_tag(verify["signatureBytesHex"])
+        public_key = byte_tag(verify["publicKeyHex"])
+        seed = byte_tag(sign["privateKeyBytesHex"])
+        self.assertNotEqual(digits.upper(), digits)
+        inputs = [
+            (digits, separator)
+            for separator in ("dacs-listing:v1:extra:", "dacs-listing:v1::", "dacs-listing:v1", "dacs-listing:v2:")
+        ] + [
+            (message, "dacs-listing:v1:")
+            for message in (digits + b"\x00", digits + b"0", digits + b"\n", b" " + digits, digits[:-1], digits.upper())
+        ]
+        requests = []
+        for index, (message, separator) in enumerate(inputs):
+            requests.append(execute(f"sign-{index}", "domainSepSign", [byte_tag(message.hex()), separator, seed]))
+            requests.append(
+                execute(f"verify-{index}", "domainSepVerify", [byte_tag(message.hex()), separator, signature, public_key])
+            )
+        requests.append(
+            execute("exact", "domainSepVerify", [byte_tag(digits.hex()), "dacs-listing:v1:", signature, public_key])
+        )
+        completed, responses = run_adapter(requests)
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual(len(responses), len(requests))
+        for sent, response in zip(requests[:-1], responses[:-1]):
+            with self.subTest(case=sent["id"], params=sent["params"][:2]):
+                self.assertFalse(response["ok"], response)
+                self.assertEqual(response["error"]["code"], "UNSUPPORTED_CASE")
+        self.assertIs(responses[-1]["result"], True)
 
     def test_non_json_constants_and_decode_limits_are_invalid_json(self):
         prefix = (
@@ -1664,6 +1841,29 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def undeclared_member_in_expected(descriptor):
             self.family(descriptor, "canonicalization")["cases"][0]["expected"]["normative"] = True
 
+        def error_code_on_passing_case(descriptor):
+            case = next(
+                item for item in self.family(descriptor, "canonicalization")["cases"]
+                if item["sourceExpected"] == "pass"
+            )
+            case["sourceExpectedErrorCode"] = "NUMBER_OUT_OF_RANGE"
+
+        def signing_material_on_verify_case(descriptor):
+            sign = f5_case(descriptor, "cases", "signing::sign-ascii-hex-hash")
+            mismatch = f5_case(descriptor, "cases", "signing::reject-mismatched-ascii-hex-hash")
+            mismatch["privateKeyBytesHex"] = sign["privateKeyBytesHex"]
+            mismatch["artifactHashHex"] = sign["artifactHashHex"]
+
+        def verification_material_on_sign_case(descriptor):
+            verify = f5_case(descriptor, "cases", "signing::verify-ascii-hex-hash")
+            f5_case(descriptor, "cases", "signing::sign-ascii-hex-hash")["publicKeyHex"] = "00" * 32
+            f5_case(descriptor, "cases", "signing::sign-ascii-hex-hash")["signatureBytesHex"] = verify[
+                "signatureBytesHex"
+            ]
+
+        def sig6_case_without_source_verdict(descriptor):
+            self.family(descriptor, "sig6-wire")["cases"][0].pop("sourceExpected")
+
         def adapter_source_digest_wrong(descriptor):
             descriptor["adapter"]["source"]["sha256"] = "0" * 64
 
@@ -1692,6 +1892,10 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             duplicated_f5_operations,
             undeclared_member_in_expected,
             adapter_source_digest_wrong,
+            error_code_on_passing_case,
+            signing_material_on_verify_case,
+            verification_material_on_sign_case,
+            sig6_case_without_source_verdict,
             option_shaped_source_revision,
             traversing_source_path,
             canonicalization_dispatched_elsewhere,

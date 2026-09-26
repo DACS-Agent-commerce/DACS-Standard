@@ -88,26 +88,45 @@ FAMILY_KEYS = {
         "requiredHandoffQuestion",
     },
 }
-ENTRY_KEYS = {
-    ("canonicalization", "cases"): {"caseId", "sourceExpected", "expected", "sourceExpectedErrorCode", "expectedErrorCode"},
-    ("canonicalization", "unsupportedSourceCases"): {
-        "caseId", "sourceExpected", "sourceExpectedErrorCode", "adapterErrorCode", "reason",
-    },
-    ("canonicalization", "excludedSourceCases"): {"caseId", "sourceTag", "reason"},
-    ("signed-scope", "cases"): {"caseId", "kind", "sourceExpected", "expected"},
-    ("sig6-wire", "cases"): {"caseId", "sourceExpected", "expected"},
-    ("sig6-wire", "excludedSourceCases"): {"caseId", "reason"},
-    ("domain-separated-signing", "cases"): {
-        "caseId", "operation", "separator", "artifactHashHex", "messageBytesHex", "privateKeyBytesHex",
-        "sourceExpected", "expected", "signatureBytesHex", "publicKeyHex", "derivation",
-    },
-    ("domain-separated-signing", "primitiveControls"): {
-        "caseId", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex", "expected", "scope",
-    },
-    ("domain-separated-signing", "unsupportedCases"): {
-        "caseId", "operation", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex",
-        "primitiveVerification", "adapterErrorCode", "reason",
-    },
+# The exact members of each entry, by role: (required, optional).  A member that
+# belongs to another role (an error code on a passing case, a key or signature
+# on a case that never uses one) is an unchecked claim, so it is rejected.
+ENTRY_SHAPES = {
+    ("canonicalization", "cases", "pass"): ({"caseId", "sourceExpected", "expected"}, set()),
+    ("canonicalization", "cases", "reject"): (
+        {"caseId", "sourceExpected", "sourceExpectedErrorCode", "expectedErrorCode"},
+        set(),
+    ),
+    ("canonicalization", "unsupportedSourceCases", "entry"): (
+        {"caseId", "sourceExpected", "sourceExpectedErrorCode", "adapterErrorCode", "reason"},
+        set(),
+    ),
+    ("canonicalization", "excludedSourceCases", "entry"): ({"caseId", "reason"}, {"sourceTag"}),
+    ("signed-scope", "cases", "entry"): ({"caseId", "kind", "sourceExpected", "expected"}, set()),
+    ("sig6-wire", "cases", "entry"): ({"caseId", "sourceExpected", "expected"}, set()),
+    ("sig6-wire", "excludedSourceCases", "entry"): ({"caseId", "reason"}, set()),
+    ("domain-separated-signing", "cases", "sign"): (
+        {
+            "caseId", "operation", "separator", "artifactHashHex", "messageBytesHex",
+            "privateKeyBytesHex", "sourceExpected", "expected",
+        },
+        set(),
+    ),
+    ("domain-separated-signing", "cases", "verify"): (
+        {"caseId", "operation", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex", "expected"},
+        {"derivation"},
+    ),
+    ("domain-separated-signing", "primitiveControls", "entry"): (
+        {"caseId", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex", "expected", "scope"},
+        set(),
+    ),
+    ("domain-separated-signing", "unsupportedCases", "entry"): (
+        {
+            "caseId", "operation", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex",
+            "primitiveVerification", "adapterErrorCode", "reason",
+        },
+        set(),
+    ),
 }
 # sha256 of the reviewed prose claims and of the neutral-protocol pins, which
 # cannot be checked offline.  Changing any of them is a deliberate, visible edit
@@ -341,11 +360,33 @@ def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
         raise ValueError("bounded F5 control test no longer rejects the raw-digest preimage")
 
 
+def _unique_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    members: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in members:
+            raise ValueError(f"duplicate member name {name!r}")
+        members[name] = value
+    return members
+
+
+def _reject_json_constant(name: str) -> None:
+    raise ValueError(f"{name} is not a JSON value")
+
+
+def _strict_json(data: bytes) -> Any:
+    """The descriptor as strict JSON: a repeated member would let its raw text and
+    its parsed value (the last one) make different claims."""
+
+    return json.loads(
+        data.decode("utf-8"), object_pairs_hook=_unique_members, parse_constant=_reject_json_constant
+    )
+
+
 def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
     if not descriptor_path.is_file():
         raise ValueError("release descriptor is not a regular file")
     descriptor_bytes = descriptor_path.read_bytes()
-    descriptor = json.loads(descriptor_bytes)
+    descriptor = _strict_json(descriptor_bytes)
     origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
     effective = _git("remote", "get-url", "--all", "origin").splitlines()
     same_repository = {
@@ -374,6 +415,14 @@ def _closed(value: Any, allowed: set[str], where: str) -> None:
         raise ValueError(f"{where}: unexpected descriptor members {extra}")
 
 
+def _entry_role(family_id: str, key: str, entry: dict[str, Any]) -> str:
+    if (family_id, key) == ("canonicalization", "cases"):
+        return "pass" if entry.get("sourceExpected") == "pass" else "reject"
+    if (family_id, key) == ("domain-separated-signing", "cases"):
+        return "sign" if entry.get("operation") == "domainSepSign" else "verify"
+    return "entry"
+
+
 def _check_closed_schema(descriptor: dict[str, Any]) -> None:
     _closed(descriptor, DESCRIPTOR_KEYS, "descriptor")
     _closed(descriptor["protocol"], PROTOCOL_KEYS, "protocol")
@@ -394,12 +443,22 @@ def _check_closed_schema(descriptor: dict[str, Any]) -> None:
         if family_id not in FAMILY_KEYS:
             raise ValueError(f"unknown release family {family_id!r}")
         _closed(family, FAMILY_KEYS[family_id], f"family {family_id}")
-        for (owner, key), allowed in ENTRY_KEYS.items():
-            if owner == family_id:
-                for entry in family.get(key, []):
-                    _closed(entry, allowed, f"{family_id}.{key}")
-                    if isinstance(entry.get("expected"), dict):
-                        _closed(entry["expected"], {"hex"}, f"{family_id}.{key}.expected")
+        for key in sorted({key for owner, key, _ in ENTRY_SHAPES if owner == family_id}):
+            entries = family.get(key, [])
+            if not isinstance(entries, list):
+                raise ValueError(f"{family_id}.{key} must be a list")
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    raise ValueError(f"{family_id}.{key}: entries must be objects")
+                required, optional = ENTRY_SHAPES[(family_id, key, _entry_role(family_id, key, entry))]
+                missing, extra = required - set(entry), set(entry) - required - optional
+                if missing or extra:
+                    raise ValueError(
+                        f"{family_id}.{key} {entry.get('caseId')!r}: missing members {sorted(missing)}, "
+                        f"members of another role {sorted(extra)}"
+                    )
+                if isinstance(entry.get("expected"), dict):
+                    _closed(entry["expected"], {"hex"}, f"{family_id}.{key}.expected")
         if "controlSource" in family:
             _closed(family["controlSource"], SOURCE_KEYS | {"test", "lines"}, "control source")
 

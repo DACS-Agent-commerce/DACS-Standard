@@ -3,8 +3,8 @@
   "spec": "DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef",
   "tier": "golden",
   "description": "Exact positive and negative wire-shape cases for every normative AttestationRef anchor kind and every ChainTxRef discriminator.",
-  "count": 23,
-  "hash": "155ef1e2ab1aa0dbb4dba23d1e1ee20b854bab8034029b4ebd0c87ad4014f858",
+  "count": 26,
+  "hash": "3465f37dc3dc757cad3ac5ec0f8bfe176dda55ce2c89f57e5ac950bd4ae4b674",
   "vectors": [
     {
       "name": "attestation-storage-program",
@@ -130,6 +130,28 @@
             "locator": "https://provider.test/receipts/308"
           },
           "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      }
+    },
+    {
+      "name": "txref-ap2-sr3",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "ap2-sr3",
+        "mandateId": "mandate-308",
+        "providerRef": "provider-receipt-308",
+        "protocolVersion": "1",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://provider.test/receipts/308"
+          },
+          "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "0xdahr308"
         }
       }
     },
@@ -271,6 +293,42 @@
           "kind": "dacs-4-evidence",
           "name": "provider-receipt-308",
           "contentHash": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      }
+    },
+    {
+      "name": "txref-ap2-extension-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "ap2",
+        "mandateId": "mandate-malformed-308",
+        "providerRef": "provider-malformed-308",
+        "protocolVersion": "1",
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "0xdahr308"
+        }
+      }
+    },
+    {
+      "name": "txref-ap2-sr3-malformed-receipt-transaction-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "ap2-sr3",
+        "mandateId": "mandate-malformed-308",
+        "providerRef": "provider-malformed-308",
+        "protocolVersion": "1",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://provider.test/receipts/308"
+          },
+          "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request"
         }
       }
     }

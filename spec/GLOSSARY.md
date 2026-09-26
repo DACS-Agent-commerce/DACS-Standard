@@ -10,7 +10,7 @@ A single alphabetical glossary across all five per-stage standards and the front
 
 A single alphabetical glossary across all five per-stage standards, the front matter, and the back matter. Terms defined in multiple chapters are cross-referenced. This glossary is informative; per-chapter definitions are normative.
 
-- **AgreementArtifact.** One of four DACS-3 signed agreement types: the frozen-meaning `AgreementDocument` and `PayeeBoundAgreementDocument`, or the additive `IdentityBoundAgreementDocument` and `IdentityBoundPayeeAgreementDocument`. The identity-bound types are selected only by `commit-identity-bound-agreement` and `commit-identity-bound-payee-agreement`, respectively. Defined in §8.5.
+- **AgreementArtifact.** One of five DACS-3 signed agreement types: the frozen-meaning `AgreementDocument` and `PayeeBoundAgreementDocument`, the additive `IdentityBoundAgreementDocument` and `IdentityBoundPayeeAgreementDocument`, or the independent complete-auction `SealedSelectionAgreementDocument`. Each is selected only by its matching commitment phase; no combined selection-and-identity artifact is defined. Defined in §8.5.
 - **AgreementDocument.** The legacy DACS-3 signed agreement artifact. It preserves pre-payee-binding semantics and does not carry payout bindings. Defined in §8.5.
 - **Anchor / Anchored.** Stored on the substrate such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve canonical content and verify integrity. Realised by SR-2.
 - **AttestationBundle.** The frozen end-of-session artifact, signed by all parties, anchored via SR-2. The DACS-5 audit unit. Defined in §10.4. Legacy fault semantics: fault is read role-relatively from `outcome`. See FaultAttestationBundle.
@@ -19,6 +19,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Auto-accept commitment.** A pre-issued seller-side commitment authorising auto-acceptance of buyer signatures under negotiate-fixed-price. Defined in §8.4.1.
 - **Bundle (identity bundle).** An ordered set of claims a party presents about itself, each independently verifiable, plus a presentation signature. Defined in §6.3.2.
 - **BundleParty.** A party reference within a DACS-5 AttestationBundle. Defined in §10.4.
+- **Business-outcome occurrence time.** The time an applicable verifier-selected binding or rail policy independently proves for the exact reconciled session outcome. It is distinct from bundle publication, audit finalization, observer time, and producer clocks. Defined by DACS-5 AWT-2..AWT-7.
 - **Canonical form.** RFC 8785 JCS serialisation of a document with signature field(s) omitted.
 - **Catalog.** An off-chain index aggregating DACS-1 listings across many sellers for discovery. Defined in §6.3.6.
 - **CCI (Cross-Context Identities).** The Demos implementation of SR-1 — cross-substrate identity aggregation. Demos product feature; not a DACS specification term.
@@ -29,6 +30,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Commit-identity-bound-agreement.** The DACS-3 phase that commits an `IdentityBoundAgreementDocument`; it does not change the frozen non-payee destination meaning of `AgreementDocument`. Defined in §8.6.
 - **Commit-identity-bound-payee-agreement.** The DACS-3 phase that commits an `IdentityBoundPayeeAgreementDocument`, retaining all payee payout and replacement obligations. Defined in §8.6.
 - **Commit-payee-bound-agreement.** The DACS-3 phase that anchors a PayeeBoundAgreementDocument hash on the public chain. Defined in §8.6.
+- **Commit-selection-bound-agreement.** The DACS-3 phase that anchors a SealedSelectionAgreementDocument after independently reproducing its complete auction selection receipt. Defined in §8.4.4/§8.6.
 - **CommitmentRecord.** The on-chain record produced by either DACS-3 agreement commitment phase. Defined in §8.6.
 - **CompositeVerificationRecord.** The document the DACS-2 vet-credentials phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.
 - **Content hash.** sha256 hex of the canonical form of a document.
@@ -42,6 +44,9 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Evidence (SettlementEvidence).** The uniform record produced by every DACS-4 payment and delivery phase. Defined in §9.7.
 - **Extended-pointer pattern.** A pattern for handling artifacts larger than the substrate’s anchored-storage cap: the canonical address contains a pointer with externalUrl + externalContentHash; payload is hosted externally. Used by deliverables (§9.6.1) and bundles (§10.4.2).
 - **FaultAttestationBundle.** The v0.3 end-of-session artifact carrying absolute hashed `faultedParty` fault attribution; structurally distinguished from the legacy AttestationBundle by its `faultBundleVersion` literal and signed under its own `dacs-fault-bundle:v1:` domain. Defined in §10.4/§10.4.1.
+- **FinalityBoundEvidenceFaultAttestationBundle.** Unallocated #392 candidate DACS-5 bundle type whose successful payment members are finality-bound and pass FV; its distinct pointer and bundle domains prevent EBFAB or outer signatures from implying that guarantee. §10.4.1–§10.4.3.
+- **FinalityBoundSettlementEvidence.** Unallocated #392 candidate payment-success type whose exclusive discriminator and signature domain bind the exact signed rail profile; acceptance requires consumer execution of FV-1..FV-10. It does not change or upgrade `SettlementEvidence`. §9.7.
+- **Finality verification (FV).** Four-value consumer recomputation over signed evidence, rail and agreement plus independently trusted raw proof authority. The repository reference codec is synthetic-conformance-only; unavailable production-native proof remains `indeterminate`. §9.7.0.
 - **Fixed-price negotiation.** DACS-3 pattern in which the buyer accepts the listed terms. Defined in §8.4.1.
 - **HKDF.** The key derivation function specified in RFC 5869; used in HTLC preimage derivation per §9.5.4.
 - **HTLC.** Hash Time-Locked Contract; the generic atomic-swap pattern used by pay-cross-chain-htlc. §9.5.4.
@@ -71,11 +76,15 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **RatingRecord.** A signed rating from one party about another. §10.6.
 - **Recipe.** A DACS-2 binding of claim scheme to verification method, parsing rules, and defaults. §7.4.
 - **Recipe availability.** A normative field on every Recipe declaring operational status: live | operator_gated | closed_data | bilateral | mocked | disabled | failed. Verifiers MUST inspect before running. §7.4.5.
+- **RevocationStateHead.** The seller-signed, append-only sparse-Merkle head stored on the stable revocation state line bound into a Listing; current new-session readers require an authenticated latest-value proof plus exact tuple inclusion or non-membership under RSC-1..RSC-10. Defined in §6.3.4.
 - **Rail availability.** A normative field on every RailDefinition declaring operational status, with the same value set and semantics as recipe availability. Orchestrators MUST inspect before selecting. §9.4.4.
 - **RFQ (Request For Quote).** DACS-3 bilateral negotiation pattern; bounded multi-turn offer-and-counter. §8.4.2.
 - **Sealed-envelope.** DACS-3 sealed-bid procurement pattern. §8.4.3.
+- **SealedSelectionAgreementDocument.** The DACS-3 agreement type that binds a finalized, independently reproducible complete sealed-auction selection receipt and payee destinations under the parties' signatures. §8.4.4/§8.5.
+- **SealedSelectionReceipt.** The orchestrator-signed DACS-3 receipt whose independently verified inputs enumerate the complete current finalized commit/reveal set, account for every record, and reproduce the built-in price-rule winner. §8.4.4.
 - **Session.** A per-transaction lifecycle from Identify through Verify.
 - **SessionContext.** The context object every phase handler receives. §B.5 (front matter).
+- **SessionParticipationAdmission.** The obligor-signed DACS-5 current-profile artifact binding an exact job, Listing, globally unique roster, completed prefix, verifier-issued session challenge, and typed source-backed obligation. Admission plus deadline does not prove nonresponse; SPA-6 separately requires trusted exact outcome evidence before timeout blame. Defined in §10.3.2.
 - **SessionRecord.** The orchestrator’s mutable working-state document. §10.3.
 - **settle-asymmetric.** Non-terminal DACS-5 session state for the HTLC-9 cross-chain open case (payer claimed the destination, payee's source claim not yet final); resolves forward to settle-completed on a final htlc-claim, or to settle-failed on window expiry. §10.3.1 (ST-8).
 - **SettlementAmendment.** A post-settlement record for refunds and corrections. §9.7.1.
@@ -86,6 +95,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Substrate.** The underlying blockchain or protocol stack that hosts a DACS implementation. Demos is the v0.1 reference substrate.
 - **Substrate-validator-set claim.** A ClaimReference identifying a substrate validator-set epoch; used as the signer for consensus-backed-proxy attestations. §7.5.
 - **supersedesEvidenceRef.** SettlementEvidence field on an ST-8 `:resolved` success record pointing to the interim failure record it supersedes; a same-phase supersession, not a refund amendment. §9.7 / ST-8.
+- **TimeoutMarker.** The closed DACS-5 audit marker carrying the exact `ParticipationObligation`, deadline, policy, and clock asserted for an ST-9 timeout. It is not outcome or nonresponse authority. §10.3.2/§10.4.
 - **TxRef / ChainTxRef.** Discriminated union of on-chain transaction references. §9.3.
 - **Universal signature scheme.** The cross-stack domain-separation scheme requiring every DACS signature to bind to a per-artifact-kind separator. §B.7.
 - **ULID.** Universally Unique Lexicographically Sortable Identifier; its 26-character uppercase Crockford form is the required DACS `jobId` format (CORE JID-1).

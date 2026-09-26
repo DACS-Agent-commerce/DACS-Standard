@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import unittest
+import unicodedata
 from pathlib import Path
 from urllib.parse import quote, unquote_to_bytes
 
@@ -54,6 +55,8 @@ def parse_payment_anchor(value):
         rail_id = unquote_to_bytes(encoded_rail_id).decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError("railId is not UTF-8") from exc
+    if unicodedata.normalize("NFC", rail_id) != rail_id:
+        raise ValueError("railId is not NFC")
     if quote(rail_id, safe="-._~") != encoded_rail_id:
         raise ValueError("railId is not canonical CF-4")
     if not phase_text.isascii() or not phase_text.isdecimal():
@@ -408,6 +411,11 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
         cls.historical_collision_vectors = set(
             cls.document["conformanceProfile"]["historicalCollisionVectors"]
         )
+
+    def test_payment_anchor_rejects_non_nfc_rail(self):
+        self.assertEqual(parse_payment_anchor("dacs4:payment:job:pay-dem:3"), ("job", "pay-dem", 3))
+        with self.assertRaisesRegex(ValueError, "NFC"):
+            parse_payment_anchor("dacs4:payment:job:e%CC%81:3")
 
     def test_generator_is_deterministic(self):
         subprocess.run(

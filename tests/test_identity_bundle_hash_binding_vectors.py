@@ -25,6 +25,8 @@ import dacs5_reference as reputation_reference  # noqa: E402
 VECTORS = ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json"
 PAYEE_VECTORS = ROOT / "conformance/vectors/security/payee-destination-binding-v0.1.json"
 HEX = re.compile(r"[0-9a-f]{64}\Z")
+SEALED_DEADLINE_LEAD_MS = 60_000
+COMMITTED_BOUNDARY = "past-authenticated-agreement-commitment"
 
 
 
@@ -381,7 +383,7 @@ def listing_phase(
         return "fail", "unsupported-phase", None
     phase_indexes = [
         index for index, step in enumerate(pipeline)
-        if step["kind"] in generator.PHASES.values()
+        if step["kind"] in generator.COMMITMENT_PHASES
     ]
     if not phase_indexes:
         return "error", "malformed-input", None
@@ -403,6 +405,8 @@ def listing_phase(
         "sealed-envelope": {
             "negotiate-sealed-envelope",
             "negotiate-sealed-envelope-procurement",
+            "negotiate-sealed-envelope-complete",
+            "negotiate-sealed-envelope-procurement-complete",
         },
     }.get(pattern)
     if (
@@ -419,6 +423,259 @@ def listing_phase(
     if bundle_result != "pass":
         return bundle_result, bundle_reason, None
     return "pass", "verified", pipeline[phase_indexes[0]]["kind"]
+
+
+def sealed_deadline_gate(context: dict) -> tuple[str, str | None]:
+    """SE-1 new-session gate for sealed-envelope demand and procurement.
+
+    The listing's signed ``commitDeadline`` MUST be at least 60 seconds after the
+    verifier-trusted session start time (``authenticatedSessionContext.startedAt``),
+    never a producer-controlled listing evaluation time. This is a *new-session
+    commitment admission* gate only: it runs before the first commit of a current
+    corrective-profile session, and is never re-run against a session already past
+    its authenticated commitment (payment/terminal) or a historical pre-correction
+    session — those continue under their signed original terms.
+    """
+    listing = context.get("listing")
+    if not isinstance(listing, dict):
+        return "error", "malformed-input"
+    pipeline = listing.get("pipeline")
+    if not isinstance(pipeline, list):
+        return "error", "malformed-input"
+    sealed_steps = [
+        step for step in pipeline
+        if isinstance(step, dict)
+        and step.get("kind") in {
+            "negotiate-sealed-envelope",
+            "negotiate-sealed-envelope-procurement",
+            "negotiate-sealed-envelope-complete",
+            "negotiate-sealed-envelope-procurement-complete",
+        }
+    ]
+    if not sealed_steps:
+        return "pass", None
+    verifier_context = context.get("verifierContext")
+    session_context = (
+        verifier_context.get("authenticatedSessionContext")
+        if isinstance(verifier_context, dict) else None
+    )
+    session_started_at = (
+        session_context.get("startedAt")
+        if isinstance(session_context, dict) else None
+    )
+    if not isinstance(session_started_at, int) or isinstance(session_started_at, bool):
+        return "indeterminate", "sealed-session-start-unavailable"
+    for step in sealed_steps:
+        parameters = step.get("parameters")
+        commit_deadline = (
+            parameters.get("commitDeadline") if isinstance(parameters, dict) else None
+        )
+        if not isinstance(commit_deadline, int) or isinstance(commit_deadline, bool):
+            return "fail", "sealed-deadline-invalid"
+        if commit_deadline < session_started_at + SEALED_DEADLINE_LEAD_MS:
+            return "fail", "sealed-deadline-too-soon"
+    return "pass", None
+
+
+def sealed_auction_mode_gate(context: dict) -> tuple[str, str | None]:
+    """SE-8 sealed-envelope mode assignment, enforced before the SE-1 deadline gate.
+
+    ``negotiate-sealed-envelope`` is the demand phase: an absent ``auctionMode``
+    and a present ``"demand"`` have identical demand semantics. The
+    ``negotiate-sealed-envelope-procurement`` phase MUST carry
+    ``parameters.auctionMode == "procurement"``; a missing or unresolvable
+    ``auctionMode`` is never coerced to demand and refuses with a recorded
+    ``unresolvable-auctionMode`` reason.
+    """
+    listing = context.get("listing")
+    if not isinstance(listing, dict):
+        return "error", "malformed-input"
+    pipeline = listing.get("pipeline")
+    if not isinstance(pipeline, list):
+        return "error", "malformed-input"
+    for step in pipeline:
+        if not isinstance(step, dict):
+            continue
+        kind = step.get("kind")
+        if kind not in {
+            "negotiate-sealed-envelope",
+            "negotiate-sealed-envelope-procurement",
+            "negotiate-sealed-envelope-complete",
+            "negotiate-sealed-envelope-procurement-complete",
+        }:
+            continue
+        parameters = step.get("parameters")
+        mode = parameters.get("auctionMode") if isinstance(parameters, dict) else None
+        if kind in {
+            "negotiate-sealed-envelope-procurement",
+            "negotiate-sealed-envelope-procurement-complete",
+        }:
+            if mode != "procurement":
+                return "fail", "unresolvable-auctionMode"
+        elif mode is not None and mode != "demand":
+            return "fail", "unresolvable-auctionMode"
+    return "pass", None
+
+
+def sealed_session_profile_gate(context: dict) -> tuple[str, str | None]:
+    """SAC-1/PS-2 new-session structural gate, independent of the producer."""
+    listing = context.get("listing")
+    pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
+    if not isinstance(pipeline, list):
+        return "error", "malformed-input"
+    sealed = [
+        (index, step) for index, step in enumerate(pipeline)
+        if isinstance(step, dict)
+        and step.get("kind") in (
+            generator.HISTORICAL_SEALED_PHASES | generator.COMPLETE_SEALED_PHASES
+        )
+    ]
+    if not sealed:
+        return "pass", None
+    if len(sealed) != 1:
+        return "fail", "sealed-profile-pairing-invalid"
+    index, step = sealed[0]
+    kind = step.get("kind")
+    if kind in generator.HISTORICAL_SEALED_PHASES:
+        return "fail", "historical-sealed-new-session-forbidden"
+    if (
+        index + 1 >= len(pipeline)
+        or not isinstance(pipeline[index + 1], dict)
+        or pipeline[index + 1].get("kind") != generator.SELECTION_BOUND_PHASE
+    ):
+        return "fail", "sealed-profile-pairing-invalid"
+    parameters = step.get("parameters")
+    binding = (
+        parameters.get("candidateSetBinding")
+        if isinstance(parameters, dict) else None
+    )
+    if (
+        not isinstance(binding, dict)
+        or set(binding) != {"bindingId", "bindingVersion", "definitionRef"}
+        or not isinstance(binding.get("bindingId"), str)
+        or not binding["bindingId"]
+        or not isinstance(binding.get("bindingVersion"), str)
+        or re.fullmatch(r"[1-9][0-9]*", binding["bindingVersion"]) is None
+        or not (
+            valid_ref(binding.get("definitionRef"))
+            or valid_signed_ref(binding.get("definitionRef"))
+        )
+    ):
+        return "fail", "complete-sealed-binding-invalid"
+    if not isinstance(parameters, dict) or parameters.get("selectionRule") not in {
+        "lowest-price", "highest-price"
+    }:
+        return "fail", "complete-sealed-selection-rule-invalid"
+    return "pass", None
+
+
+def validate_selection_bound_commit(context: dict) -> tuple[str, str]:
+    """Validate a real SAC selection receipt + agreement at commit admission."""
+    for gate in (
+        sealed_session_profile_gate,
+        sealed_auction_mode_gate,
+        sealed_deadline_gate,
+    ):
+        verdict, reason = gate(context)
+        if verdict != "pass":
+            return verdict, reason or "malformed-input"
+    reference = context.get("sealedSelectionVectorRef")
+    if (
+        not isinstance(reference, dict)
+        or set(reference) != {"corpus", "name", "sha256"}
+        or reference.get("corpus")
+        != "conformance/vectors/security/sealed-auction-completeness-v0.6.json"
+        or not isinstance(reference.get("name"), str)
+        or not isinstance(reference.get("sha256"), str)
+        or HEX.fullmatch(reference["sha256"]) is None
+    ):
+        return "fail", "selection-bound-vector-ref-invalid"
+    document = json.loads((ROOT / reference["corpus"]).read_text(encoding="utf-8"))
+    candidates = [
+        item for item in document.get("vectors", [])
+        if item.get("name") == reference["name"]
+    ]
+    if len(candidates) != 1:
+        return "fail", "selection-bound-vector-ref-invalid"
+    selected = candidates[0]
+    if generator.hash_hex(selected) != reference["sha256"]:
+        return "fail", "selection-bound-vector-ref-invalid"
+    pipeline = context["listing"]["pipeline"]
+    selected_listing = selected.get("listing")
+    presented_listing = context.get("listing")
+    presented_seller = (
+        presented_listing.get("seller")
+        if isinstance(presented_listing, dict) else None
+    )
+    presented_publisher_identity = (
+        presented_seller.get("identity")
+        if isinstance(presented_seller, dict) else None
+    )
+    selected_publisher = (
+        selected_listing.get("publisherClaim")
+        if isinstance(selected_listing, dict) else None
+    )
+    presented_agreement = context.get("agreement")
+    selected_agreement = selected.get("agreement")
+    expected_pipeline = (
+        [
+            {"kind": "vet-credentials"},
+            {
+                "kind": selected_listing.get("phaseKind"),
+                "parameters": selected_listing.get("parameters"),
+            },
+            {"kind": generator.SELECTION_BOUND_PHASE},
+        ]
+        if isinstance(selected_listing, dict) else None
+    )
+    try:
+        if (
+            expected_pipeline is None
+            or generator.canonical_bytes(pipeline)
+            != generator.canonical_bytes(expected_pipeline)
+        ):
+            return "fail", "selection-bound-pipeline-mismatch"
+    except (TypeError, ValueError):
+        return "fail", "selection-bound-pipeline-mismatch"
+    if (
+        not isinstance(presented_publisher_identity, dict)
+        or not isinstance(selected_publisher, str)
+    ):
+        return "fail", "selection-bound-publisher-mismatch"
+    try:
+        if generator.canonical_bytes(presented_publisher_identity) != (
+            generator.canonical_bytes({"presentedBy": selected_publisher})
+        ):
+            return "fail", "selection-bound-publisher-mismatch"
+    except (TypeError, ValueError):
+        return "fail", "selection-bound-publisher-mismatch"
+    if (
+        not isinstance(presented_agreement, dict)
+        or not isinstance(selected_agreement, dict)
+        or selected_agreement.get("sealedSelectionAgreementVersion") != "1"
+    ):
+        return "fail", "selection-bound-agreement-mismatch"
+    try:
+        presented_bytes = generator.canonical_bytes(presented_agreement)
+        selected_bytes = generator.canonical_bytes(selected_agreement)
+    except (TypeError, ValueError):
+        return "fail", "selection-bound-agreement-mismatch"
+    if (
+        presented_bytes != selected_bytes
+        or generator.hash_hex(presented_agreement)
+        != generator.hash_hex(selected_agreement)
+    ):
+        return "fail", "selection-bound-agreement-mismatch"
+    import test_sealed_auction_completeness_vectors as sac_reference
+
+    evaluated = copy.deepcopy(selected)
+    evaluated["agreement"] = copy.deepcopy(presented_agreement)
+    verdict = sac_reference.Evaluator(evaluated).evaluate()
+    if verdict == "pass":
+        return "pass", "verified"
+    if verdict == "indeterminate":
+        return "indeterminate", "selection-bound-authority-unavailable"
+    return "fail", "selection-bound-agreement-invalid"
 
 
 def artifact_type(agreement: object) -> tuple[str, str | None]:
@@ -442,6 +699,7 @@ def verify_agreement(agreement: object, artifact: str) -> tuple[str, str]:
     parties = agreement.get("parties")
     if (
         not isinstance(agreement.get("jobId"), str)
+        or re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", agreement["jobId"]) is None
         or not isinstance(agreement.get("listingRef"), dict)
         or not isinstance(agreement.get("terms"), dict)
         or not isinstance(parties, list)
@@ -754,6 +1012,64 @@ def verify_commitment(context: dict) -> tuple[str, str, str | None]:
     return "pass", "verified", signer
 
 
+def sealed_envelope_phase_kind(context: dict) -> tuple[str, str | None]:
+    listing = context.get("listing")
+    if not isinstance(listing, dict):
+        return "error", None
+    pipeline = listing.get("pipeline")
+    if not isinstance(pipeline, list):
+        return "error", None
+    for step in pipeline:
+        if isinstance(step, dict) and step.get("kind") in {
+            "negotiate-sealed-envelope",
+            "negotiate-sealed-envelope-procurement",
+            "negotiate-sealed-envelope-complete",
+            "negotiate-sealed-envelope-procurement-complete",
+        }:
+            return "pass", step["kind"]
+    return "pass", None
+
+
+def sealed_role_direction(context: dict) -> tuple[str, str]:
+    """DACS-3 §8.6 step 8 / SE-8 publisher-to-agreement-role assignment.
+
+    For demand (and fixed-price/RFQ), the listing publisher is the agreement
+    `seller`. For procurement, the listing publisher is the agreement `buyer`
+    and the winning bidder is the `seller`. The mode marker alone never
+    authorizes: an inverted role assignment is rejected regardless of
+    ``auctionMode``.
+    """
+    listing = context.get("listing")
+    agreement = context.get("agreement")
+    if not isinstance(listing, dict) or not isinstance(agreement, dict):
+        return "error", "malformed-input"
+    publisher = listing.get("seller", {}).get("identity", {}).get("presentedBy")
+    parties = agreement.get("parties")
+    if not isinstance(publisher, str) or not isinstance(parties, list):
+        return "error", "malformed-input"
+    kind_status, kind = sealed_envelope_phase_kind(context)
+    if kind_status != "pass":
+        return "error", "malformed-input"
+    procurement = kind in {
+        "negotiate-sealed-envelope-procurement",
+        "negotiate-sealed-envelope-procurement-complete",
+    }
+    expected_role = "buyer" if procurement else "seller"
+    expected = next(
+        (
+            party for party in parties
+            if isinstance(party, dict) and party.get("role") == expected_role
+        ),
+        None,
+    )
+    if (
+        not isinstance(expected, dict)
+        or expected.get("primaryClaim") != publisher
+    ):
+        return "fail", "sealed-role-direction-invalid"
+    return "pass", "verified"
+
+
 def dispatch(context: dict) -> tuple[str, str, str | None, str | None]:
     status, reason, phase = listing_phase(context)
     if status != "pass":
@@ -768,19 +1084,9 @@ def dispatch(context: dict) -> tuple[str, str, str | None, str | None]:
         return status, reason, artifact, phase
     listing = context["listing"]
     agreement = context["agreement"]
-    seller_identity = listing.get("seller", {}).get("identity", {})
-    seller = next(
-        (
-            party for party in agreement["parties"]
-            if party.get("role") == "seller"
-        ),
-        None,
-    )
-    if (
-        not isinstance(seller, dict)
-        or seller.get("primaryClaim") != seller_identity.get("presentedBy")
-    ):
-        return "fail", "agreement-role-invalid", artifact, phase
+    role_status, role_reason = sealed_role_direction(context)
+    if role_status != "pass":
+        return role_status, role_reason, artifact, phase
     try:
         expected_ref = generator.listing_ref(listing)
     except (KeyError, TypeError, ValueError):
@@ -2016,12 +2322,38 @@ def verify_terminal_signatures(
     return "pass", "verified"
 
 
+def _terminal_listing_admission_gate(
+    context: dict, listing_admission: object
+) -> tuple[str, str]:
+    """Fail-closed DACS-1 Listing admission before the terminal action-bound use.
+
+    A missing capability is indeterminate; a substituted/stale listing, wrong
+    publisher/key, or capacity failure is a permanent rejection. The retained
+    capability is verifier-owned and never decodes authority from caller data.
+    """
+    if listing_admission is None:
+        return "indeterminate", "terminal-listing-admission-unavailable"
+    listing = context.get("listing")
+    agreement = context.get("agreement")
+    if not isinstance(listing, dict) or not isinstance(agreement, dict):
+        return "error", "malformed-input"
+    if not hasattr(listing_admission, "verify"):
+        return "indeterminate", "terminal-listing-admission-unavailable"
+    verdict, reason, _ = listing_admission.verify(
+        listing, agreement.get("listingRef"), COMMITTED_BOUNDARY
+    )
+    if verdict == "verified":
+        return "pass", "verified"
+    mapped = "fail" if verdict == "rejected" else "indeterminate"
+    return mapped, f"terminal-listing-admission-{reason}"
+
+
 def validate_terminal_authority(
     context: dict,
     bundle: dict,
     phase: str,
     effective: list[dict] | None = None,
-    *, trusted_contexts=None
+    *, trusted_contexts=None, listing_admission=None, require_listing_admission=True
 ) -> tuple[str, str]:
     verifier_context = context.get("verifierContext")
     authority = (
@@ -2228,6 +2560,12 @@ def validate_terminal_authority(
     )
     if admitted_identity != expected_identity:
         return "fail", "terminal-current-profile-role-mismatch"
+    if require_listing_admission:
+        listing_gate, listing_gate_reason = _terminal_listing_admission_gate(
+            context, listing_admission
+        )
+        if listing_gate != "pass":
+            return listing_gate, listing_gate_reason
     bundle_address = reputation_reference.logical_address(
         job_id, bundle.get("anchoredByRole"), trusted_contexts=trusted_contexts
     )
@@ -2275,7 +2613,7 @@ def validate_terminal_authority(
 
 
 def validate_terminal(
-    context: dict, artifact: str, phase: str, unavailable: set[str], *, trusted_contexts=None
+    context: dict, artifact: str, phase: str, unavailable: set[str], *, trusted_contexts=None, listing_admission=None
 ) -> tuple[str, str]:
     terminal_input = context.get("terminalInput")
     if not isinstance(terminal_input, dict):
@@ -2350,7 +2688,10 @@ def validate_terminal(
             or parties[role].get("bundleHash") != digests[expected_claims[role]]
         ):
             return "fail", "terminal-party-mismatch"
-    return validate_terminal_authority(context, bundle, phase, effective, trusted_contexts=trusted_contexts)
+    return validate_terminal_authority(
+        context, bundle, phase, effective,
+        trusted_contexts=trusted_contexts, listing_admission=listing_admission,
+    )
 
 
 def modeled_old_reader(context: dict) -> tuple[str, str]:
@@ -2403,6 +2744,7 @@ def validate_historical_stage(
         status, reason = validate_terminal_authority(
             context, bundle, generator.PHASES[artifact],
             trusted_contexts=trusted_contexts,
+            require_listing_admission=False,
         )
         if status != "pass":
             return status, reason
@@ -2435,6 +2777,12 @@ def apply_mutation(context: dict, mutation: dict) -> None:
 
 def materialize(data: dict, vector: dict) -> dict:
     context = copy.deepcopy(data["scenarios"][vector["scenario"]])
+    if vector.get("operation", "").startswith("validate-selection-bound-"):
+        for mutation in vector.get("mutations", []):
+            apply_mutation(context, mutation)
+        if vector.get("resign"):
+            raise ValueError("selection-bound adapter has no producer resign action")
+        return context
     context["commitment"] = copy.deepcopy(
         context["commitments"][vector["commitment"]]
     )
@@ -2453,9 +2801,24 @@ def materialize(data: dict, vector: dict) -> dict:
     return context
 
 
-def evaluate(data: dict, vector: dict, *, trusted_contexts=None) -> tuple[str, dict]:
+def evaluate(data: dict, vector: dict, *, trusted_contexts=None, listing_admission=None) -> tuple[str, dict]:
     try:
         context = materialize(data, vector)
+        operation = vector.get("operation")
+        if operation == "validate-selection-bound-agreement-commit":
+            if vector.get("stage") != "commit":
+                return outcome("error", "malformed-input")
+            verdict, reason = validate_selection_bound_commit(context)
+            return outcome(verdict, reason)
+        if operation == "validate-selection-bound-session-admission":
+            if vector.get("stage") != "session-admission":
+                return outcome("error", "malformed-input")
+            verdict, reason = sealed_session_profile_gate(context)
+            if verdict == "pass":
+                verdict, reason = sealed_auction_mode_gate(context)
+            if verdict == "pass":
+                verdict, reason = sealed_deadline_gate(context)
+            return outcome(verdict, reason or "verified")
         if vector.get("stage") == "old-reader":
             verdict, reason = modeled_old_reader(context)
             return outcome(verdict, reason)
@@ -2471,18 +2834,49 @@ def evaluate(data: dict, vector: dict, *, trusted_contexts=None) -> tuple[str, d
             )
             return outcome(verdict, reason)
         if stage == "commit":
-            verdict, reason, _, _ = pre_action_gate(
-                context, artifact, "commit", unavailable
-            )
+            verdict, reason = sealed_session_profile_gate(context)
+            if verdict == "pass":
+                verdict, reason, _, _ = pre_action_gate(
+                    context, artifact, "commit", unavailable
+                )
+            if verdict == "pass":
+                # SE-8: procurement mode assignment is enforced before the SE-1
+                # deadline gate, so a missing/unresolvable auctionMode refuses
+                # with unresolvable-auctionMode rather than a deadline result.
+                auction_verdict, auction_reason = sealed_auction_mode_gate(context)
+                if auction_verdict != "pass":
+                    verdict, reason = auction_verdict, auction_reason
+                else:
+                    # SE-1: the >=60s trusted-start deadline gate runs only at
+                    # new-session commitment admission, never on an already-committed
+                    # or historical session.
+                    deadline_verdict, deadline_reason = sealed_deadline_gate(context)
+                    if deadline_verdict != "pass":
+                        verdict, reason = deadline_verdict, deadline_reason
         elif stage == "payment":
             verdict, reason = validate_payment(context, artifact, unavailable)
         elif stage == "terminal":
-            verdict, reason = validate_terminal(context, artifact, phase, unavailable, trusted_contexts=trusted_contexts)
+            verdict, reason = validate_terminal(
+                context, artifact, phase, unavailable,
+                trusted_contexts=trusted_contexts, listing_admission=listing_admission,
+            )
         else:
             return outcome("error", "malformed-input")
         return outcome(verdict, reason)
     except (AttributeError, IndexError, KeyError, TypeError, ValueError):
         return outcome("error", "malformed-input")
+
+
+def evaluate_with_fixture_admission(data: dict, vector: dict, *, trusted_contexts=None) -> tuple[str, dict]:
+    """Supply the retained positive Listing admission before terminal materialization."""
+    listing_admission = None
+    if vector.get("stage") == "terminal":
+        from ibh_listing_admission_fixture import retained_positive_admission
+
+        listing_admission = retained_positive_admission(vector["scenario"])
+    return evaluate(
+        data, vector, trusted_contexts=trusted_contexts, listing_admission=listing_admission
+    )
 
 
 def phase_result(verdict: str) -> dict:
@@ -2549,7 +2943,7 @@ def derive_identity_bound_reputation(
     role_tag: dict,
     window_start: int,
     window_end: int,
-    *, trusted_contexts=None
+    *, trusted_contexts=None, listing_admission=None
 ) -> tuple[str, str, dict | None]:
     """Execute IBH admission before the existing DACS-5 metric consumer.
 
@@ -2564,7 +2958,10 @@ def derive_identity_bound_reputation(
             return verdict, reason, None
         if artifact not in generator.STRONG_ARTIFACTS or phase is None:
             return "fail", "stronger-agreement-required", None
-        verdict, reason = validate_terminal(context, artifact, phase, unavailable, trusted_contexts=trusted_contexts)
+        verdict, reason = validate_terminal(
+            context, artifact, phase, unavailable,
+            trusted_contexts=trusted_contexts, listing_admission=listing_admission,
+        )
         if verdict != "pass":
             return verdict, reason, None
         bundle = context["terminalInput"]["bundle"]
@@ -2592,6 +2989,36 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
 
+    def test_scenario_job_ids_are_distinct_canonical_jid1(self):
+        ids = [scenario["agreement"]["jobId"] for scenario in self.data["scenarios"].values()]
+        for job_id in ids:
+            with self.subTest(job_id=job_id):
+                self.assertRegex(job_id, r"\A[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
+        self.assertEqual(
+            self.data["scenarios"]["identityBoundProcurement"]["agreement"]["jobId"],
+            generator.JOB_IDS["identityBoundProcurement"],
+        )
+        self.assertNotEqual(
+            generator.JOB_IDS["identityBoundProcurement"],
+            generator.JOB_IDS["identityBoundSealed"],
+        )
+        with self.assertRaisesRegex(ValueError, "noncanonical JID-1"):
+            generator.scenario("identityBoundAgreement", "01KTY8ZJ00CW7KSECW3FS6PQ0I")
+
+    def test_resigned_noncanonical_agreement_is_error_before_action(self):
+        agreement = copy.deepcopy(self.data["scenarios"]["identityBoundProcurement"]["agreement"])
+        self.assertEqual(verify_agreement(agreement, "identityBoundAgreement"), ("pass", "verified"))
+        for malformed in (
+            "01KTY8ZJ00CW7KSECW3FS6PQ0I",  # Crockford decode alias
+            "01kty8zj00cw7ksecw3fs6pq0j",  # case folding forbidden
+            "81KTY8ZJ00CW7KSECW3FS6PQ0J",  # ULID overflow
+        ):
+            with self.subTest(job_id=malformed):
+                changed = copy.deepcopy(agreement)
+                changed["jobId"] = malformed
+                generator.resign_agreement(changed, "identityBoundAgreement")
+                self.assertEqual(verify_agreement(changed, "identityBoundAgreement"), ("error", "malformed-input"))
+
     def test_terminal_profile_context_is_explicit_and_preserves_valid_paths(self):
         for name in (
             "identityBoundAgreement-terminal-verified",
@@ -2604,12 +3031,21 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             self.assertFalse(vector.get("resign"))
             with self.subTest(name=name):
                 self.assertEqual(
-                    evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())[0],
+                    evaluate_with_fixture_admission(self.data, vector, trusted_contexts=fixture_profile_contexts())[0],
                     "pass",
                 )
                 result = evaluate(self.data, vector)
                 self.assertEqual(result[0], "indeterminate")
                 self.assertEqual(result[1]["reason"], "terminal-current-profile-unavailable")
+                # A valid corrective-profile context without the retained DACS-1
+                # Listing admission still fails closed at the terminal boundary.
+                missing = evaluate(
+                    self.data, vector, trusted_contexts=fixture_profile_contexts()
+                )
+                self.assertEqual(missing[0], "indeterminate")
+                self.assertEqual(
+                    missing[1]["reason"], "terminal-listing-admission-unavailable"
+                )
 
     def test_valid_terminal_profile_context_reaches_reputation_consumer(self):
         context = materialize(self.data, {
@@ -2620,15 +3056,88 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "bundle": context["terminalInput"]["bundle"],
             "resolvedRole": "buyer", "counterpartyDisposition": "absent",
         }
+        from ibh_listing_admission_fixture import retained_positive_admission
+
         verdict, _, receipt = derive_identity_bound_reputation(
             context, set(), generator.CLAIMS["buyer"], tag,
             generator.NOW - 100_000, generator.NOW + 100_000,
             trusted_contexts=fixture_profile_contexts(),
+            listing_admission=retained_positive_admission("identityBoundAgreement"),
         )
         self.assertEqual(verdict, "pass")
         self.assertEqual(receipt["bundleCount"], 1)
 
+    def test_terminal_listing_admission_gate_is_fail_closed(self):
+        from ibh_listing_admission_fixture import retained_positive_admission
+
+        admission = retained_positive_admission("identityBoundAgreement")
+        context = materialize(self.data, {
+            "scenario": "identityBoundAgreement",
+            "commitment": "finality", "stage": "terminal",
+        })
+        self.assertEqual(
+            _terminal_listing_admission_gate(context, admission),
+            ("pass", "verified"),
+        )
+        self.assertEqual(
+            _terminal_listing_admission_gate(context, None),
+            ("indeterminate", "terminal-listing-admission-unavailable"),
+        )
+        substituted = copy.deepcopy(context)
+        substituted["listing"]["offering"]["title"] = "substituted offering"
+        verdict, reason = _terminal_listing_admission_gate(
+            substituted, admission
+        )
+        self.assertEqual(verdict, "fail")
+        self.assertIn("listing-admission", reason)
+
+    def test_terminal_listing_admission_gates_reputation_replay(self):
+        from ibh_listing_admission_fixture import retained_positive_admission
+
+        context = materialize(self.data, {
+            "scenario": "identityBoundAgreement",
+            "commitment": "finality", "stage": "terminal",
+        })
+        tag = {
+            "bundle": context["terminalInput"]["bundle"],
+            "resolvedRole": "buyer", "counterpartyDisposition": "absent",
+        }
+        # Without the retained DACS-1 Listing admission the DACS-5 counting
+        # consumer is never reached, even with a valid corrective-profile context.
+        with mock.patch.object(
+            reputation_reference, "derive_job_bound"
+        ) as derive:
+            verdict, reason, receipt = derive_identity_bound_reputation(
+                context, set(), generator.CLAIMS["buyer"], tag,
+                generator.NOW - 100_000, generator.NOW + 100_000,
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "indeterminate")
+            self.assertEqual(reason, "terminal-listing-admission-unavailable")
+            self.assertIsNone(receipt)
+            derive.assert_not_called()
+        # With the retained admission the same replay reaches the counting
+        # consumer exactly once and reproduces the pinned bundle count.
+        with mock.patch.object(
+            reputation_reference,
+            "derive_job_bound",
+            wraps=reputation_reference.derive_job_bound,
+        ) as derive:
+            verdict, _, receipt = derive_identity_bound_reputation(
+                context, set(), generator.CLAIMS["buyer"], tag,
+                generator.NOW - 100_000, generator.NOW + 100_000,
+                trusted_contexts=fixture_profile_contexts(),
+                listing_admission=retained_positive_admission(
+                    "identityBoundAgreement"
+                ),
+            )
+            self.assertEqual(verdict, "pass")
+            self.assertEqual(receipt["bundleCount"], 1)
+            derive.assert_called_once()
+
     def test_listing_publication_does_not_require_a_session_nonce(self):
+        from ibh_listing_admission_fixture import retained_admission_for_context
+
         for artifact in generator.ARTIFACTS:
             context = copy.deepcopy(self.data["scenarios"][artifact])
             publication = context["listing"]["seller"]["identity"]
@@ -2646,7 +3155,19 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         if artifact in generator.STRONG_ARTIFACTS or stage == "commit"
                         else "indeterminate"
                     )
-                    self.assertEqual(evaluate(data, vector, trusted_contexts=fixture_profile_contexts())[0], expected)
+                    listing_admission = (
+                        retained_admission_for_context(context)
+                        if artifact in generator.STRONG_ARTIFACTS and stage == "terminal"
+                        else None
+                    )
+                    self.assertEqual(
+                        evaluate(
+                            data, vector,
+                            trusted_contexts=fixture_profile_contexts(),
+                            listing_admission=listing_admission,
+                        )[0],
+                        expected,
+                    )
             if artifact in generator.STRONG_ARTIFACTS:
                 fresh = context["commitInput"]["identityBindingCompanions"][0]["identityBundle"]
                 self.assertEqual(validate_identity_bundle(fresh, "wrong-nonce")[0], "fail")
@@ -2731,7 +3252,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         for stage in ("commit", "payment", "terminal"):
             with self.subTest(stage=stage):
                 case = self.cases[f"identityBoundAgreement-{stage}-verified"]
-                self.assertEqual(evaluate(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "pass")
+                self.assertEqual(evaluate_with_fixture_admission(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "pass")
         self.assertEqual(
             evaluate(
                 self.data, self.cases["retained-admission-authority-unavailable"],
@@ -2740,7 +3261,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "indeterminate",
         )
         self.assertEqual(
-            evaluate(
+            evaluate_with_fixture_admission(
                 self.data,
                 self.cases[
                     "changed-resigned-presentation-cannot-reuse-admitted-nonce"
@@ -2784,14 +3305,14 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         )
         for stage in ("commit", "payment", "terminal"):
             with self.subTest(stage=stage):
-                verdict, _ = evaluate(self.data, {
+                verdict, _ = evaluate_with_fixture_admission(self.data, {
                     "scenario": "identityBoundPayeeReplacement",
                     "commitment": "finality",
                     "stage": stage,
                 }, trusted_contexts=fixture_profile_contexts())
                 self.assertEqual(verdict, "pass")
         self.assertEqual(
-            evaluate(
+            evaluate_with_fixture_admission(
                 self.data,
                 self.cases[
                     "replacement-prior-selection-cannot-use-synthetic-slot"
@@ -2824,9 +3345,12 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "terminal-outer-signature-cannot-upgrade-missing-proof",
         ):
             with self.subTest(name=name):
-                self.assertEqual(evaluate(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], "fail")
+                self.assertEqual(evaluate_with_fixture_admission(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], "fail")
 
     def test_new_authority_helpers_are_total_on_malformed_shapes(self):
+        from ibh_listing_admission_fixture import retained_positive_admission
+
+        listing_admission = retained_positive_admission("identityBoundAgreement")
         probes = [
             ("commit", ["verifierContext", "identityAdmissionAuthority", "records"]),
             ("commit", ["verifierContext", "railRegistry", "resolutions"]),
@@ -2855,6 +3379,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         verdict, _ = validate_terminal(
                             context, artifact, phase, set(),
                             trusted_contexts=fixture_profile_contexts(),
+                            listing_admission=listing_admission,
                         )
                     self.assertNotEqual(verdict, "pass")
 
@@ -2901,6 +3426,9 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     )
 
     def test_terminal_payment_observation_binds_actual_parties_and_amount(self):
+        from ibh_listing_admission_fixture import retained_positive_admission
+
+        payee_admission = retained_positive_admission("identityBoundPayeeAgreement")
         context = materialize(self.data, {
             "scenario": "identityBoundPayeeAgreement",
             "commitment": "finality",
@@ -2909,7 +3437,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         verdict, _, artifact, phase = dispatch(context)
         self.assertEqual(verdict, "pass")
         self.assertEqual(
-            validate_terminal(context, artifact, phase, set(), trusted_contexts=fixture_profile_contexts())[0], "pass"
+            validate_terminal(context, artifact, phase, set(), trusted_contexts=fixture_profile_contexts(), listing_admission=payee_admission)[0], "pass"
         )
         for field, value in (
             ("payer", "key:" + "12" * 32),
@@ -2927,7 +3455,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     generator.fixture_settlement_observation(event)
                 )
                 self.assertEqual(
-                    validate_terminal(changed, artifact, phase, set(), trusted_contexts=fixture_profile_contexts())[0],
+                    validate_terminal(changed, artifact, phase, set(), trusted_contexts=fixture_profile_contexts(), listing_admission=payee_admission)[0],
                     "fail",
                 )
 
@@ -2936,6 +3464,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             "commitment": "finality",
             "stage": "terminal",
         })
+        agreement_admission = retained_positive_admission("identityBoundAgreement")
         runtime_destination = "demos:runtime-payee-destination"
         changed["paymentInput"]["payer"]["payingKey"] = (
             generator.SECONDARY_PAYER_CLAIM
@@ -2972,6 +3501,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 changed, "identityBoundAgreement",
                 generator.PHASES["identityBoundAgreement"], set(),
                 trusted_contexts=fixture_profile_contexts(),
+                listing_admission=agreement_admission,
             )[0],
             "pass",
         )
@@ -2998,15 +3528,18 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     generator.fixture_settlement_observation(event)
                 )
                 self.assertEqual(
-                    validate_terminal(changed, artifact, phase, set(), trusted_contexts=fixture_profile_contexts())[0],
+                    validate_terminal(changed, artifact, phase, set(), trusted_contexts=fixture_profile_contexts(), listing_admission=payee_admission)[0],
                     "fail",
                 )
 
     def test_reputation_counting_executes_only_after_identity_admission(self):
+        from ibh_listing_admission_fixture import retained_positive_admission
+
         for artifact in generator.STRONG_ARTIFACTS:
             context = materialize(self.data, {
                 "scenario": artifact, "commitment": "finality", "stage": "terminal",
             })
+            listing_admission = retained_positive_admission(artifact)
             tag = {
                 "bundle": context["terminalInput"]["bundle"],
                 "resolvedRole": "buyer", "counterpartyDisposition": "absent",
@@ -3023,6 +3556,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 verdict, _, receipt = derive_identity_bound_reputation(
                     context, set(), *arguments,
                     trusted_contexts=fixture_profile_contexts(),
+                    listing_admission=listing_admission,
                 )
                 self.assertEqual(verdict, "pass")
                 self.assertEqual(receipt["bundleCount"], 1)
@@ -3034,6 +3568,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 verdict, _, receipt = derive_identity_bound_reputation(
                     context, missing, *arguments,
                     trusted_contexts=fixture_profile_contexts(),
+                    listing_admission=listing_admission,
                 )
                 self.assertEqual(verdict, "indeterminate")
                 self.assertIsNone(receipt)
@@ -3046,6 +3581,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 verdict, _, receipt = derive_identity_bound_reputation(
                     invalid, set(), *arguments,
                     trusted_contexts=fixture_profile_contexts(),
+                    listing_admission=listing_admission,
                 )
                 self.assertNotEqual(verdict, "pass")
                 self.assertIsNone(receipt)
@@ -3057,7 +3593,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def test_every_vector_executes_to_pinned_result_without_exception(self):
         for vector in self.data["vectors"]:
             with self.subTest(name=vector["name"]):
-                verdict, want = evaluate(self.data, vector, trusted_contexts=fixture_profile_contexts())
+                verdict, want = evaluate_with_fixture_admission(self.data, vector, trusted_contexts=fixture_profile_contexts())
                 self.assertEqual(vector["expected"], verdict)
                 self.assertEqual(vector["want"], want)
 
@@ -3075,11 +3611,93 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             {
                 "commit-identity-bound-agreement",
                 "commit-identity-bound-payee-agreement",
+                "commit-selection-bound-agreement",
+                "negotiate-sealed-envelope-complete",
+                "negotiate-sealed-envelope-procurement-complete",
             },
         )
         for stage in ("commit", "payment", "terminal"):
             case = self.cases[f"signed-listing-unknown-phase-refused-at-{stage}"]
             self.assertEqual(evaluate(self.data, case, trusted_contexts=fixture_profile_contexts())[0], "fail")
+
+    def test_current_sealed_session_requires_complete_selection_bound_profile(self):
+        for name in (
+            "sealed-complete-demand-profile-admitted",
+            "sealed-complete-procurement-profile-admitted",
+        ):
+            with self.subTest(name=name):
+                verdict, want = evaluate(
+                    self.data, self.cases[name],
+                    trusted_contexts=fixture_profile_contexts(),
+                )
+                self.assertEqual(verdict, "pass")
+                self.assertTrue(want["authorizedAction"])
+        for name, reason in (
+            (
+                "identity-bound-historical-sealed-new-session-refused",
+                "historical-sealed-new-session-forbidden",
+            ),
+            (
+                "sealed-complete-demand-wrong-commit-phase-refused",
+                "sealed-profile-pairing-invalid",
+            ),
+            (
+                "sealed-complete-demand-missing-binding-refused",
+                "complete-sealed-binding-invalid",
+            ),
+            (
+                "sealed-complete-demand-empty-agreement-refused",
+                "selection-bound-agreement-mismatch",
+            ),
+            (
+                "sealed-complete-demand-procurement-agreement-substitution-refused",
+                "selection-bound-agreement-mismatch",
+            ),
+            (
+                "sealed-complete-procurement-demand-agreement-substitution-refused",
+                "selection-bound-agreement-mismatch",
+            ),
+            (
+                "sealed-complete-demand-missing-publisher-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-demand-counterparty-publisher-substitution-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-procurement-malformed-publisher-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-procurement-counterparty-publisher-substitution-refused",
+                "selection-bound-publisher-mismatch",
+            ),
+            (
+                "sealed-complete-demand-commit-parameters-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+            (
+                "sealed-complete-demand-commit-unexpected-member-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+            (
+                "sealed-complete-demand-unknown-predecessor-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+            (
+                "sealed-complete-demand-vet-parameters-refused",
+                "selection-bound-pipeline-mismatch",
+            ),
+        ):
+            with self.subTest(name=name):
+                verdict, want = evaluate(
+                    self.data, self.cases[name],
+                    trusted_contexts=fixture_profile_contexts(),
+                )
+                self.assertEqual(verdict, "fail")
+                self.assertFalse(want["authorizedAction"])
+                self.assertEqual(want["reason"], reason)
 
     def test_references_use_signature_omitted_artifact_hashes(self):
         scenario = self.data["scenarios"]["identityBoundAgreement"]
@@ -3130,7 +3748,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             ("signed-cvr-overall-decision-disagrees-with-replay", "fail"),
         ):
             with self.subTest(name=name):
-                self.assertEqual(evaluate(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], expected)
+                self.assertEqual(evaluate_with_fixture_admission(self.data, self.cases[name], trusted_contexts=fixture_profile_contexts())[0], expected)
 
     def test_sealed_envelope_losing_bidder_compatibility(self):
         historical = self.data["scenarios"]["historicalSealed"]["agreement"]
@@ -3156,14 +3774,260 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
              trusted_contexts=fixture_profile_contexts())[0],
             "pass",
         )
-        for stage in ("commit", "payment", "terminal"):
+        self.assertEqual(
+            evaluate(
+                self.data,
+                self.cases["identity-bound-historical-sealed-new-session-refused"],
+                trusted_contexts=fixture_profile_contexts(),
+            ),
+            (
+                "fail",
+                {
+                    "verdict": "fail",
+                    "authorizedAction": False,
+                    "reason": "historical-sealed-new-session-forbidden",
+                },
+            ),
+        )
+        for stage in ("payment", "terminal"):
             self.assertEqual(
-                evaluate(
+                evaluate_with_fixture_admission(
                     self.data,
                     self.cases[f"identity-bound-sealed-envelope-losing-bidder-{stage}"],
                  trusted_contexts=fixture_profile_contexts())[0],
                 "pass",
             )
+
+    def test_sealed_deadline_gate_boundary_and_trusted_session_time(self):
+        names = {vector["name"] for vector in self.data["vectors"]}
+        for name in (
+            "sealed-deadline-exact-boundary",
+            "sealed-deadline-59_999-short",
+            "sealed-deadline-13_000-ms",
+            "sealed-deadline-at-session-start",
+            "sealed-deadline-missing",
+            "sealed-deadline-malformed",
+            "sealed-deadline-procurement-13_000-ms",
+            "sealed-deadline-session-start-moved",
+        ):
+            self.assertIn(name, names)
+        # exact 60_000 ms lead admits a new session
+        self.assertEqual(
+            evaluate(self.data, self.cases["sealed-deadline-exact-boundary"],
+                     trusted_contexts=fixture_profile_contexts())[0],
+            "pass",
+        )
+        # one millisecond short (59,999 ms) and the existing 13,000 ms gap refuse
+        for name in ("sealed-deadline-59_999-short", "sealed-deadline-13_000-ms"):
+            verdict, want = evaluate(
+                self.data, self.cases[name],
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertEqual(want["reason"], "sealed-deadline-too-soon")
+        for name, reason in (
+            ("sealed-deadline-missing", "sealed-deadline-invalid"),
+            ("sealed-deadline-malformed", "sealed-deadline-invalid"),
+            ("sealed-deadline-procurement-13_000-ms", "sealed-deadline-too-soon"),
+            ("sealed-deadline-session-start-moved", "sealed-deadline-too-soon"),
+        ):
+            verdict, want = evaluate(
+                self.data, self.cases[name],
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertEqual(want["reason"], reason)
+
+    def test_committed_historical_sealed_deadline_not_regated(self):
+        # The immutable 13-second committed fixture bytes stay in place: the
+        # historical sealed-envelope session carries commitDeadline = NOW - 7_000
+        # (13 seconds after its trusted session start) and is never re-gated by
+        # SE-1, because its commitment was already authenticated under the signed
+        # original terms.
+        scenario = self.data["scenarios"]["historicalSealed"]
+        deadline = scenario["listing"]["pipeline"][1]["parameters"]["commitDeadline"]
+        started = scenario["commitInput"]["sessionContext"]["startedAt"]
+        self.assertEqual(deadline, generator.NOW - 7_000)
+        self.assertEqual(deadline - started, 13_000)
+        for name in (
+            "historical-sealed-envelope-losing-bidder-legacy",
+            "historical-sealed-envelope-losing-bidder-finality",
+            "modeled-old-reader-historical-sealed-envelope-losing-bidder",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(
+                    evaluate(self.data, self.cases[name],
+                             trusted_contexts=fixture_profile_contexts())[0],
+                    "pass",
+                )
+        # the current new-session complete scenario carries a >=60s lead
+        current = self.data["scenarios"]["selectionBoundDemand"]
+        current_deadline = current["listing"]["pipeline"][1]["parameters"]["commitDeadline"]
+        current_started = current["verifierContext"]["authenticatedSessionContext"]["startedAt"]
+        self.assertGreaterEqual(current_deadline - current_started, 60_000)
+
+    def test_deadline_gate_reads_trusted_session_start_not_listing_time(self):
+        context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])
+        self.assertEqual(sealed_deadline_gate(context), ("pass", None))
+        # a listing producer cannot bypass the gate with a listing-side time: the
+        # gate compares commitDeadline only against the retained session start
+        context["listing"]["pipeline"][1]["parameters"]["commitDeadline"] = (
+            generator.NOW + 100_000
+        )
+        context["verifierContext"]["authenticatedSessionContext"]["startedAt"] = (
+            generator.NOW + 200_000
+        )
+        self.assertEqual(sealed_deadline_gate(context), ("fail", "sealed-deadline-too-soon"))
+
+    def test_deadline_gate_missing_or_malformed_trusted_start_refuses(self):
+        context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])
+        session_context = context["verifierContext"]["authenticatedSessionContext"]
+        for mutate in (
+            lambda c: c.pop("startedAt"),
+            lambda c: c.__setitem__("startedAt", "soon"),
+            lambda c: c.__setitem__("startedAt", True),
+            lambda c: c.__setitem__("startedAt", None),
+        ):
+            with self.subTest(mutate=mutate.__name__):
+                changed = copy.deepcopy(context)
+                mutate(changed["verifierContext"]["authenticatedSessionContext"])
+                self.assertEqual(
+                    sealed_deadline_gate(changed),
+                    ("indeterminate", "sealed-session-start-unavailable"),
+                )
+
+    def test_sealed_deadline_procurement_matrix(self):
+        names = {vector["name"] for vector in self.data["vectors"]}
+        for name in (
+            "sealed-deadline-procurement-exact-boundary",
+            "sealed-deadline-procurement-59_999-short",
+            "sealed-deadline-procurement-at-session-start",
+            "sealed-deadline-procurement-13_000-ms",
+            "sealed-deadline-procurement-missing",
+            "sealed-deadline-procurement-malformed",
+        ):
+            self.assertIn(name, names)
+        # exact 60_000 ms lead admits a new procurement session
+        self.assertEqual(
+            evaluate(self.data, self.cases["sealed-deadline-procurement-exact-boundary"],
+                     trusted_contexts=fixture_profile_contexts())[0],
+            "pass",
+        )
+        for name in (
+            "sealed-deadline-procurement-59_999-short",
+            "sealed-deadline-procurement-at-session-start",
+            "sealed-deadline-procurement-13_000-ms",
+        ):
+            verdict, want = evaluate(
+                self.data, self.cases[name],
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertEqual(want["reason"], "sealed-deadline-too-soon")
+        for name in (
+            "sealed-deadline-procurement-missing",
+            "sealed-deadline-procurement-malformed",
+        ):
+            verdict, want = evaluate(
+                self.data, self.cases[name],
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertEqual(want["reason"], "sealed-deadline-invalid")
+        # SE-8 refuses a procurement phase whose auctionMode is missing or
+        # unresolvable before the SE-1 deadline gate runs.
+        for name in (
+            "sealed-deadline-procurement-missing-auctionMode",
+            "sealed-deadline-procurement-malformed-auctionMode",
+        ):
+            self.assertIn(name, names)
+            verdict, want = evaluate(
+                self.data, self.cases[name],
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertEqual(want["reason"], "unresolvable-auctionMode")
+
+    def test_procurement_deadline_gate_missing_or_malformed_trusted_start_refuses(self):
+        context = copy.deepcopy(self.data["scenarios"]["selectionBoundProcurement"])
+        for mutate in (
+            lambda c: c.pop("startedAt"),
+            lambda c: c.__setitem__("startedAt", "soon"),
+            lambda c: c.__setitem__("startedAt", True),
+            lambda c: c.__setitem__("startedAt", None),
+        ):
+            with self.subTest(mutate=mutate.__name__):
+                changed = copy.deepcopy(context)
+                mutate(changed["verifierContext"]["authenticatedSessionContext"])
+                self.assertEqual(
+                    sealed_deadline_gate(changed),
+                    ("indeterminate", "sealed-session-start-unavailable"),
+                )
+
+    def test_sealed_role_direction_assignment(self):
+        # SE-8: procurement assigns the listing publisher as the agreement
+        # buyer and the winning bidder as the agreement seller; demand keeps
+        # the publisher as the agreement seller. The mode marker alone never
+        # authorizes a wrong role assignment.
+        procurement = self.data["scenarios"]["selectionBoundProcurement"]
+        publisher = procurement["listing"]["seller"]["identity"]["presentedBy"]
+        roles = {party["role"]: party["primaryClaim"] for party in procurement["agreement"]["parties"]}
+        self.assertEqual(roles["buyer"], publisher)
+        self.assertNotEqual(roles["seller"], publisher)
+        self.assertEqual(sealed_role_direction(procurement), ("pass", "verified"))
+        demand = self.data["scenarios"]["selectionBoundDemand"]
+        demand_publisher = demand["listing"]["seller"]["identity"]["presentedBy"]
+        demand_roles = {
+            party["role"]: party["primaryClaim"]
+            for party in demand["agreement"]["parties"]
+        }
+        self.assertEqual(demand_roles["seller"], demand_publisher)
+        self.assertEqual(sealed_role_direction(demand), ("pass", "verified"))
+        # The mode marker alone cannot authorize: flipping a demand scenario's
+        # phase kind + auctionMode to procurement without swapping roles fails.
+        names = {vector["name"] for vector in self.data["vectors"]}
+        for name in (
+            "sealed-deadline-procurement-marker-alone-no-role-swap",
+            "sealed-deadline-procurement-buyer-role-mismatched",
+        ):
+            self.assertIn(name, names)
+            verdict, want = evaluate(
+                self.data, self.cases[name],
+                trusted_contexts=fixture_profile_contexts(),
+            )
+            self.assertEqual(verdict, "fail")
+            self.assertEqual(want["reason"], "sealed-role-direction-invalid")
+
+    def test_sealed_auction_mode_gate_enforced_before_deadline(self):
+        context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])
+        step = context["listing"]["pipeline"][1]
+        step["kind"] = "negotiate-sealed-envelope-procurement-complete"
+        # Valid procurement mode passes SE-8 regardless of the deadline lead.
+        step["parameters"]["auctionMode"] = "procurement"
+        self.assertEqual(sealed_auction_mode_gate(context), ("pass", None))
+        # Missing and unresolvable auctionMode refuse with unresolvable-auctionMode,
+        # never coerced to demand, even though the deadline lead is valid.
+        for mode in (None, "demand", "sealed-bid", 7, []):
+            with self.subTest(mode=mode):
+                changed = copy.deepcopy(context)
+                if mode is None:
+                    changed["listing"]["pipeline"][1]["parameters"].pop("auctionMode")
+                else:
+                    changed["listing"]["pipeline"][1]["parameters"]["auctionMode"] = mode
+                self.assertEqual(
+                    sealed_auction_mode_gate(changed),
+                    ("fail", "unresolvable-auctionMode"),
+                )
+        # Demand (absent or "demand") remains valid.
+        demand = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])
+        self.assertEqual(sealed_auction_mode_gate(demand), ("pass", None))
+        demand["listing"]["pipeline"][1]["parameters"]["auctionMode"] = "demand"
+        self.assertEqual(sealed_auction_mode_gate(demand), ("pass", None))
+        # A demand phase carrying the procurement marker is unresolvable.
+        demand["listing"]["pipeline"][1]["parameters"]["auctionMode"] = "procurement"
+        self.assertEqual(
+            sealed_auction_mode_gate(demand), ("fail", "unresolvable-auctionMode")
+        )
 
     def test_fixture_receipt_authority_is_independent_and_tamper_checked(self):
         evidence = self.data["provenance"]["receiptAuthorityEvidence"]

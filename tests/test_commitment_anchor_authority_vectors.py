@@ -106,7 +106,7 @@ class CommitmentAnchorAuthorityVectorTests(unittest.TestCase):
         self.assertIn("(CA-6) **Commitment authority.**", spec)
         self.assertIn("(CA-7) **Agreement binding.**", spec)
         self.assertIn("transaction submitter, deployer, owner, and native address MUST NOT", spec)
-        self.assertIn("CA-1..CA-9", plan)
+        self.assertRegex(plan, r"CA-1\.\.CA-(?:9|[1-9][0-9]+)")
         self.assertIn(VECTORS.name, plan)
 
     @unittest.skipUnless(HAVE_CRYPTO, "cryptography package not installed")

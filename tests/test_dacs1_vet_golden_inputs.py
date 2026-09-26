@@ -809,6 +809,14 @@ def verify_bundle(bundle, admission=None):
         not isinstance(claims, list)
         or not claims
         or any(not isinstance(item, dict) for item in claims)
+        # The claim times feed both matching and the §6.3.2 window, so a
+        # non-integer value must not read as expired in one and absent in the
+        # other (same rule as the presence-only reference consumer).
+        or any(
+            field in item and not exact_safe_integer(item[field], minimum=0)
+            for item in claims
+            for field in ("issuedAt", "expiresAt")
+        )
     ):
         return False
     try:
@@ -4094,6 +4102,38 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 "vet-cross-accumulator-fail-over-error", stale_bogus, "fail"
             ),
         )
+
+    def test_claim_times_are_exact_integers_for_matching_and_control(self):
+        # A non-integer expiresAt previously read as expired for matching but
+        # as absent for the control/selector window (control "pass").
+        _, evaluation = self._case_evaluation("vet-ma3-verified-accept")
+        now = self.document["trustedContext"]["vetInvocations"][
+            evaluation["input"]["authority"]["invocation"]
+        ]["trustedNow"]
+        presenter = fixture_private_key("presenter")
+
+        def control(field, value):
+            changed = copy.deepcopy(evaluation)
+            changed["operation"] = "control-decision"
+            bundle = changed["input"]["bundle"]
+            next(c for c in bundle["claims"] if c["ref"] == bundle["presentedBy"])[
+                field
+            ] = value
+            changed["input"]["bundle"] = resign_bundle(
+                bundle, presenter, public_ref(presenter)
+            )
+            return execute_once(changed, self.document)
+
+        self.assertEqual("pass", control("expiresAt", now))
+        self.assertEqual("fail", control("expiresAt", now - 1))
+        for field, value in (
+            ("expiresAt", now - 86_400_000.5), ("expiresAt", "expired"),
+            ("expiresAt", None), ("expiresAt", -1), ("issuedAt", "yesterday"),
+        ):
+            with self.subTest(field=field, value=value):
+                self.assertEqual("error", control(field, value))
+        # An integral float spelling is the same JSON value (CF-5(4)).
+        self.assertEqual("fail", control("expiresAt", float(now - 1)))
 
     def test_stale_pass_does_not_participate_beside_a_current_non_pass(self):
         # CRQ-2: a result outside its window "does not participate,

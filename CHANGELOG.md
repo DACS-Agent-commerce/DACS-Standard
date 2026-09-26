@@ -640,8 +640,10 @@ The format used per release:
   exception. Replay refuses an unsupported or missing
   `CompositeVerificationRecord.recordVersion` or `VerifyResult.resultVersion`,
   a `VerifyResult` whose `decision`, `reason` or `data` violates §7.5 (even
-  when it is also stale), and a malformed `warnings` list, enforces the CORE CF-5(5) 128-level nesting
-  bound per artifact without leaking recursion errors, does not let the JSON
+  when its own validity window has passed), a claim `issuedAt` or `expiresAt`
+  that is not an exact non-negative safe integer, and a malformed `warnings`
+  list, enforces the CORE CF-5(5) 128-level nesting bound per artifact
+  without leaking recursion errors, does not let the JSON
   spelling of one number (for example `1` and `1.0`) change a verdict
   (CF-5(4)), treats an optional omitted
   `validUntil` under the exact recipe's authenticated `defaultMaxAgeSec`, and

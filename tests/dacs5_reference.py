@@ -34,7 +34,7 @@ import math
 import re
 import unicodedata
 from decimal import Decimal, InvalidOperation
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 from scripts import jcs
 from scripts.jcs import canonicalize as jcs_canonicalize
@@ -2169,13 +2169,13 @@ def _seb_observation_twin_binding(ref, record, signer, bundle,
     return (result, receipt) if ok else None
 
 
-def _seb_payment_execution_unavailable(record, receipt, bundle, pipeline_kinds,
-                                       session_execution_authority_by_phase_key):
-    """True when the verified receipt names a payment invocation lacking SB-1 authority.
+def _seb_payment_receipt_key(record, receipt, bundle, pipeline_kinds):
+    """Return ``(phase_key, rail_id)`` named by a payment receipt's PC-2 address.
 
-    This mirrors the released-FAB gate: only the receipt's exact PC-2 address
-    selects the invocation, and a present entry that fails binding stays a
-    deterministic rejection.
+    A payment record signs no phase index, so only the verified receipt's exact
+    ``dacs4:payment:{jobId}:{rail}:{index}[:resolved]`` address selects the one
+    invocation it could fill. Returns None when the address names no pipeline
+    invocation of the record's kind; binding then rejects it deterministically.
     """
     phase = record.get("phase")
     address = receipt.get("logicalAddress") if isinstance(receipt, dict) else None
@@ -2185,20 +2185,165 @@ def _seb_payment_execution_unavailable(record, receipt, bundle, pipeline_kinds,
         or not isinstance(address, str)
         or not address.startswith(prefix)
     ):
-        return False
-    candidates = [
-        "%d:%s" % (index, kind)
-        for index, kind in enumerate(pipeline_kinds)
-        if kind == phase
-        and (
-            address.endswith(":%d" % index)
-            or address.endswith(":%d:resolved" % index)
-        )
-    ]
-    return any(
-        candidate not in session_execution_authority_by_phase_key
-        for candidate in candidates
+        return None
+    rest = address[len(prefix):]
+    if rest.endswith(":resolved"):
+        rest = rest[: -len(":resolved")]
+    rail, separator, index_text = rest.rpartition(":")
+    if not separator or not rail or not re.fullmatch(r"0|[1-9][0-9]*", index_text):
+        return None
+    index = int(index_text)
+    if index >= len(pipeline_kinds) or pipeline_kinds[index] != phase:
+        return None
+    return ("%d:%s" % (index, phase), unquote(rail))
+
+
+def _seb_admitting_execution(record, signer, bundle, phase_key, *,
+                             rail_id=None, legacy_address=None):
+    """Return the only SB-1 entry that could admit a member whose authority is unavailable.
+
+    It carries exactly the values every admitting entry must have: this job,
+    the invocation, and the evidence signer as orchestrator (plus the rail the
+    receipt address names). Optional entry fields such as ``anchorNonce`` only
+    add constraints, so a binding failure against it is deterministic.
+    """
+    execution = {
+        "jobId": bundle.get("jobId"),
+        "phaseIndex": int(phase_key.split(":", 1)[0]),
+        "phaseKind": record.get("phase"),
+        "phaseOrchestrator": signer,
+    }
+    if rail_id is not None:
+        execution["railId"] = rail_id
+    if legacy_address is not None:
+        execution["evidenceLogicalAddress"] = legacy_address
+    return execution
+
+
+def _seb_unplaced_record_failure(record, summary_by_key, expected_keys,
+                                 pipeline_kinds, top_level_refs):
+    """Return a deterministic rejection for an unplaced member with known content.
+
+    A payment member without a receipt cannot be placed, but its authenticated
+    kind and outcome must still fit some signed row, and a signed ST-8 edge
+    must still have a valid shape (SEB-3/SEB-6).
+    """
+    if record.get("phase") not in pipeline_kinds:
+        return "authenticated phase is outside the signed listing pipeline"
+    if not _seb_unplaced_candidates(record, summary_by_key, expected_keys):
+        return "evidence record contradicts the signed phase result"
+    supersedes = record.get("supersedesEvidenceRef")
+    if supersedes is not None and (
+        record.get("outcome") != "success"
+        or record.get("phase") not in _ST8_INTERIM_REASON_BY_PHASE
+        or not _attestation_ref_shape_valid(supersedes)
+        or canonical(supersedes) in {canonical(item) for item in top_level_refs}
+    ):
+        return "invalid ST-8 supersession shape"
+    return None
+
+
+def _seb_unplaced_st8_failure(record, ref, phase_key, summary_entry, bundle, pubkeys,
+                              reference_validation_by_canonical_ref,
+                              execution_authority_by_phase_key,
+                              verified_receipt_by_canonical_ref, top_level_refs,
+                              receipt_validator, expected_kind):
+    """Return a deterministic ST-8 rejection for an unplaced payment at one candidate key.
+
+    The signed row's errorClass fixes whether that invocation is an expired
+    ST-8 interim, so the terminal class and a known successor are checked for
+    each candidate. A signed supersession edge implies a ``:resolved`` anchor;
+    it is checked where that key's SB-1 authority is available.
+    """
+    phase = record.get("phase")
+    expected_reason = _ST8_INTERIM_REASON_BY_PHASE.get(phase)
+    supersedes = record.get("supersedesEvidenceRef")
+    expired = (
+        phase == "pay-cross-chain-htlc"
+        and summary_entry.get("errorClass") == "settlement-atomicity"
+    ) or (
+        phase == "pay-cross-chain-liquidity-tank"
+        and summary_entry.get("errorClass") == "substrate"
+        and record.get("reason") == expected_reason
     )
+    if expired:
+        if (
+            record.get("outcome") != "failure"
+            or expected_reason is None
+            or record.get("reason") != expected_reason
+            or supersedes is not None
+        ):
+            return "expired ST-8 record has the wrong authenticated terminal class"
+        if _known_authenticated_st8_successor(
+            ref, record, phase_key, bundle, pubkeys,
+            reference_validation_by_canonical_ref,
+            execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref, receipt_validator, expected_kind,
+        ):
+            return "expired ST-8 record suppresses a known authenticated successor"
+    elif record.get("reason") in set(_ST8_INTERIM_REASON_BY_PHASE.values()):
+        return "ST-8 interim reason contradicts the signed phase result"
+    if supersedes is not None and phase_key in execution_authority_by_phase_key:
+        edge = _st8_supersession_edge_failure(
+            record, True, phase_key, bundle, pubkeys,
+            reference_validation_by_canonical_ref,
+            execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref, top_level_refs, receipt_validator,
+        )
+        if edge is not None and getattr(edge, "disposition", "fail") != "indeterminate":
+            return edge
+    return None
+
+
+def _seb_unplaced_candidates(record, summary_by_key, expected_keys):
+    """Keys an unplaced member could still fill; any key when its content is unknown."""
+    if record is None:
+        return set(expected_keys)
+    wanted_row = "ok" if record.get("outcome") == "success" else "fail"
+    return {
+        key for key in expected_keys
+        if summary_by_key[key].get("kind") == record.get("phase")
+        and summary_by_key[key].get("outcome") == wanted_row
+    }
+
+
+def _seb_unplaced_assignment_failure(unplaced, missing_keys, optional_pointers):
+    """Return a rejection unless unplaced members can fill the missing keys exactly.
+
+    ``unplaced`` pairs each unplaced reference with the keys it could fill. A
+    signed optional pointer for a missing key must name a distinct unplaced
+    member that can fill that key (SEB-5), and the remaining members must admit
+    a one-to-one assignment to the remaining keys (SEB-4).
+    """
+    candidates = {canonical(ref): set(keys) & missing_keys for ref, keys in unplaced}
+    fixed = set()
+    for key in sorted(missing_keys):
+        pointer = optional_pointers.get(key)
+        if pointer is None:
+            continue
+        member = canonical(pointer)
+        if member not in candidates or key not in candidates[member] or member in fixed:
+            return "optional phase pointer contradicts settlementEvidence"
+        fixed.add(member)
+    open_keys = missing_keys - {key for key in missing_keys if key in optional_pointers}
+    open_members = [member for member in candidates if member not in fixed]
+    if len(open_members) != len(open_keys):
+        return "settlementEvidence is not the exact phase-result set"
+    assignment = {}
+
+    def assign(member, seen):
+        for key in sorted(candidates[member] & open_keys):
+            if key in seen:
+                continue
+            seen.add(key)
+            if key not in assignment or assign(assignment[key], seen):
+                assignment[key] = member
+                return True
+        return False
+
+    if not all(assign(member, set()) for member in open_members):
+        return "settlementEvidence is not the exact phase-result set"
+    return None
 
 
 def _seb_deferred_delivery_excluded(record, signer, bundle, phase_key,
@@ -2495,6 +2640,8 @@ def _validate_bound_fault_bundle(
     placed_refs = []
     unplaced_refs = []
     pending_receipt_refs = set()
+    execution_overrides = {}
+    unplaced_records = {}
     # SEB-6: an availability-only member result is pending. Every independent
     # member, set, pointer, ST-8 and lifecycle check still runs, and the first
     # pending result is returned only when none of them is a deterministic
@@ -2504,7 +2651,7 @@ def _validate_bound_fault_bundle(
     delivery_dependency_owners = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
         if resolution is None:
-            unplaced_refs.append(ref)
+            unplaced_refs.append((ref, set(expected_keys)))
             if pending_closure_result is None:
                 pending_closure_result = (
                     "indeterminate",
@@ -2587,34 +2734,73 @@ def _validate_bound_fault_bundle(
         signed_delivery_key = _seb_signed_delivery_phase_key(
             record, evidence_type, pipeline_kinds
         )
-        unavailable_reason = None
         if ref_key not in verified_receipt_by_canonical_ref:
-            unavailable_reason = "evidence receipt authority is unavailable"
-        elif (
-            signed_delivery_key is not None
-            and signed_delivery_key not in session_execution_authority_by_phase_key
-        ):
-            unavailable_reason = "delivery execution authority is unavailable"
-        if unavailable_reason is not None:
             if pending_closure_result is None:
-                pending_closure_result = ("indeterminate", unavailable_reason)
+                pending_closure_result = (
+                    "indeterminate", "evidence receipt authority is unavailable"
+                )
             pending_receipt_refs.add(ref_key)
             if signed_delivery_key is None:
-                unplaced_refs.append(ref)
+                # A payment's invocation is fixed only by its receipt address, so
+                # the member stays unplaced, but its signed content is still checked.
+                unplaced_failure = _seb_unplaced_record_failure(
+                    record, summary_by_key, expected_keys, pipeline_kinds, actual_refs
+                )
+                if unplaced_failure is not None:
+                    return (False, unplaced_failure, None)
+                unplaced_refs.append((
+                    ref, _seb_unplaced_candidates(record, summary_by_key, expected_keys)
+                ))
+                unplaced_records[canonical(ref)] = record
                 continue
             if _seb_deferred_delivery_excluded(
                 record, signature["signer"], bundle, signed_delivery_key,
                 session_execution_authority_by_phase_key,
             ):
                 return (False, "evidence does not resolve to exactly one authenticated phase receipt", None)
+            if signed_delivery_key not in session_execution_authority_by_phase_key:
+                execution_overrides[signed_delivery_key] = _seb_admitting_execution(
+                    record, signature["signer"], bundle, signed_delivery_key
+                )
             binding_result, authenticated_receipt = (signed_delivery_key, False), None
         else:
+            receipt = verified_receipt_by_canonical_ref[ref_key]
+            receipt_key, rail_id = signed_delivery_key, None
+            if receipt_key is None:
+                named = _seb_payment_receipt_key(record, receipt, bundle, pipeline_kinds)
+                if named is not None:
+                    receipt_key, rail_id = named
+            binding_authority = session_execution_authority_by_phase_key
+            if (
+                receipt_key is not None
+                and receipt_key not in session_execution_authority_by_phase_key
+            ):
+                # SB-1 authority for the one invocation this member could fill is
+                # unavailable. Its present receipt still binds against the only
+                # entry that could admit it, so a receipt contradiction still fails.
+                if pending_closure_result is None:
+                    pending_closure_result = (
+                        "indeterminate",
+                        ("delivery" if record_phase in DELIVERY_PHASES else "payment")
+                        + " execution authority is unavailable",
+                    )
+                legacy_delivery = (
+                    evidence_type == "settlement" and record_phase in DELIVERY_PHASES
+                )
+                execution_overrides[receipt_key] = _seb_admitting_execution(
+                    record, signature["signer"], bundle, receipt_key, rail_id=rail_id,
+                    legacy_address=(
+                        receipt.get("logicalAddress")
+                        if legacy_delivery and isinstance(receipt, dict) else None
+                    ),
+                )
+                binding_authority = {receipt_key: execution_overrides[receipt_key]}
             binding_ok, binding_result, authenticated_receipt = _resolve_authenticated_evidence_binding(
                 ref,
                 record,
                 signature["signer"],
                 bundle,
-                session_execution_authority_by_phase_key,
+                binding_authority,
                 verified_receipt_by_canonical_ref,
                 evidence_type,
                 receipt_validator=_receipt_validator,
@@ -2623,30 +2809,19 @@ def _validate_bound_fault_bundle(
                 observed = (
                     _seb_observation_twin_binding(
                         ref, record, signature["signer"], bundle,
-                        session_execution_authority_by_phase_key,
+                        binding_authority,
                         verified_receipt_by_canonical_ref, evidence_type,
                         _receipt_validator,
                     )
                     if getattr(binding_result, "disposition", None) == "indeterminate"
                     else None
                 )
-                if observed is not None:
-                    if pending_closure_result is None:
-                        pending_closure_result = ("indeterminate", str(binding_result))
-                    pending_receipt_refs.add(ref_key)
-                    binding_result, authenticated_receipt = observed
-                elif _seb_payment_execution_unavailable(
-                    record, verified_receipt_by_canonical_ref.get(ref_key), bundle,
-                    pipeline_kinds, session_execution_authority_by_phase_key,
-                ):
-                    if pending_closure_result is None:
-                        pending_closure_result = (
-                            "indeterminate", "payment execution authority is unavailable"
-                        )
-                    unplaced_refs.append(ref)
-                    continue
-                else:
+                if observed is None:
                     return (False, binding_result, None)
+                if pending_closure_result is None:
+                    pending_closure_result = ("indeterminate", str(binding_result))
+                pending_receipt_refs.add(ref_key)
+                binding_result, authenticated_receipt = observed
         phase_key, resolved_record = binding_result
         if (
             evidence_type == "settlement"
@@ -2686,7 +2861,7 @@ def _validate_bound_fault_bundle(
                     evidence_ref=ref,
                     evidence_receipt=authenticated_receipt,
                     phase_execution=session_execution_authority_by_phase_key.get(
-                        phase_key
+                        phase_key, execution_overrides.get(phase_key)
                     ),
                     authenticated_record_authority=resolution,
                 )
@@ -2746,7 +2921,35 @@ def _validate_bound_fault_bundle(
                     _DispositionReason(closure_reason, closure_disposition),
                     None,
                 )
-            if closure_disposition == "pass" and evidence_type == "delivery":
+            ownership_checkable = closure_disposition == "pass"
+            if (
+                closure_disposition == "indeterminate"
+                and evidence_type == "delivery"
+                and phase_key in execution_overrides
+                and isinstance(delivery_authority.get(phase_key), dict)
+            ):
+                # Execution authority is unavailable. Re-run the closure against
+                # the only admitting entry, with the closure's own agreement
+                # hash, solely to decide whether cross-phase reuse (PDE-8) can
+                # be checked; this probe can never make the member pass.
+                probe_execution = dict(execution_overrides[phase_key])
+                probe_execution["agreementHash"] = delivery_authority[phase_key].get(
+                    "agreementHash"
+                )
+                probe_disposition, _ = _validate_delivery_artifact_closure_disposition(
+                    record,
+                    phase_key,
+                    listing,
+                    bundle,
+                    pubkeys,
+                    probe_execution,
+                    delivery_authority.get(phase_key),
+                    verified_receipt_by_canonical_ref,
+                    trusted_native_observations_by_canonical_ref,
+                    legacy=False,
+                )
+                ownership_checkable = probe_disposition == "pass"
+            if ownership_checkable and evidence_type == "delivery":
                 ownership_disposition, ownership_reason = (
                     _current_delivery_inner_ownership(
                         record,
@@ -2779,15 +2982,36 @@ def _validate_bound_fault_bundle(
     ):
         return (False, "settlementEvidence is not the exact phase-result set", None)
     actual_ref_by_key = dict(zip(actual_keys, placed_refs))
-    unplaced_ids = {canonical(ref) for ref in unplaced_refs}
     for phase_key, pointer in optional_pointers.items():
         placed_ref = actual_ref_by_key.get(phase_key)
-        if (
-            canonical(pointer) not in unplaced_ids
-            if placed_ref is None
-            else canonical(pointer) != canonical(placed_ref)
-        ):
+        if placed_ref is not None and canonical(pointer) != canonical(placed_ref):
             return (False, "optional phase pointer contradicts settlementEvidence", None)
+    st8_execution_authority = dict(session_execution_authority_by_phase_key)
+    st8_execution_authority.update(execution_overrides)
+    for position, (ref, keys) in enumerate(unplaced_refs):
+        record = unplaced_records.get(canonical(ref))
+        if record is None:
+            continue
+        viable, first_failure = set(), None
+        for key in sorted(keys):
+            failure = _seb_unplaced_st8_failure(
+                record, ref, key, summary_by_key[key], bundle, pubkeys,
+                reference_validation_by_canonical_ref, st8_execution_authority,
+                verified_receipt_by_canonical_ref, actual_refs, _receipt_validator,
+                expected_kind,
+            )
+            if failure is None:
+                viable.add(key)
+            elif first_failure is None:
+                first_failure = failure
+        if not viable:
+            return (False, first_failure, None)
+        unplaced_refs[position] = (ref, viable)
+    assignment_failure = _seb_unplaced_assignment_failure(
+        unplaced_refs, set(expected_keys) - set(actual_keys), optional_pointers
+    )
+    if assignment_failure is not None:
+        return (False, assignment_failure, None)
 
     # ST-8 terminal selection is derived from authenticated SettlementEvidence
     # content. A signed success record binds the superseded interim reference;
@@ -2826,7 +3050,7 @@ def _validate_bound_fault_bundle(
                 bundle,
                 pubkeys,
                 reference_validation_by_canonical_ref,
-                session_execution_authority_by_phase_key,
+                st8_execution_authority,
                 verified_receipt_by_canonical_ref,
                 _receipt_validator,
                 expected_kind,
@@ -2841,7 +3065,7 @@ def _validate_bound_fault_bundle(
             bundle,
             pubkeys,
             reference_validation_by_canonical_ref,
-            session_execution_authority_by_phase_key,
+            st8_execution_authority,
             verified_receipt_by_canonical_ref,
             actual_refs,
             _receipt_validator,
@@ -3022,8 +3246,10 @@ def _validate_finality_bound_ebfab(
         if disposition not in {"error", "fail", "indeterminate"}:
             malformed = reason.startswith(("not the expected", "malformed", "pipeline or"))
             disposition = "error" if malformed else "fail"
-        if disposition != "indeterminate":
+        if disposition == "error":
             return (disposition, str(reason), None)
+        # A deterministic SEB fail is held so a malformed FV input (error)
+        # below still outranks it.
         results.append((disposition, str(reason)))
 
     fv_available = (
@@ -10281,7 +10507,62 @@ def make_laa_phase_carrier(
     return {"laa": copy.deepcopy(laa), "binding": binding}
 
 
+def _laa_agreement_ref_join(legacy_agreement_authority_by_phase_key, phase_key, bundle):
+    """Join a signed bundle agreementRef to the phase's LAA-qualified agreement.
+
+    DACS-5 §10.4.3 agreement dispatch: when the signed bundle names its
+    agreement, the LAA-qualified agreement MUST be that agreement. A carrier
+    closed over a different (even valid) agreement is a cross-agreement
+    substitution. Returns None when there is nothing to join.
+    """
+    agreement_ref = bundle.get("agreementRef") if isinstance(bundle, dict) else None
+    if agreement_ref is None or not isinstance(legacy_agreement_authority_by_phase_key, dict):
+        return None
+    laa = _laa_input_from_phase_carrier(
+        legacy_agreement_authority_by_phase_key.get(phase_key)
+    )
+    agreement = laa.get("agreement") if isinstance(laa, dict) else None
+    if not isinstance(agreement, dict):
+        return None
+    if not _attestation_ref_shape_valid(agreement_ref):
+        return ("error", "bundle agreementRef is malformed")
+    if not _canonical_identity_string(agreement.get("contentHash")):
+        return ("error", "authenticated agreement contentHash is malformed")
+    if agreement.get("contentHash") != agreement_ref.get("contentHash"):
+        return ("fail", "LAA agreement does not bind the signed bundle agreementRef")
+    return None
+
+
 def _qualify_legacy_agreement_evidence(
+    record,
+    evidence_type,
+    phase_key,
+    legacy_agreement_authority_by_phase_key,
+    **kwargs,
+):
+    """Apply LAA plus the agreementRef join with four-state precedence.
+
+    A malformed input anywhere is ``error``; otherwise an authenticated
+    contradiction (in LAA or in the join) is ``fail`` and outranks unrelated
+    uncertainty (DACS-4 LAA-6, DACS-5 §10.4.3).
+    """
+    result = _qualify_legacy_agreement_evidence_core(
+        record, evidence_type, phase_key,
+        legacy_agreement_authority_by_phase_key, **kwargs,
+    )
+    if result[0] == "error":
+        return result
+    join = _laa_agreement_ref_join(
+        legacy_agreement_authority_by_phase_key, phase_key, kwargs.get("bundle")
+    )
+    if join is not None and join[0] == "error":
+        return join + (None,)
+    if result[0] == "fail" or join is None:
+        return result
+    return join + (None,)
+
+
+def _qualify_legacy_agreement_evidence_core(
     record,
     evidence_type,
     phase_key,
@@ -10355,21 +10636,6 @@ def _qualify_legacy_agreement_evidence(
         return ("error", "LAA carrier binding has a malformed closed shape", None)
     if binding != expected_binding:
         return ("fail", "LAA carrier contradicts the authenticated SEB closure", None)
-    # DACS-5 §10.4.3 agreement dispatch: when the signed bundle names its
-    # agreement, the LAA-qualified agreement MUST be that agreement. A carrier
-    # closed over a different (even valid) agreement is a cross-agreement
-    # substitution, so the authenticated contradiction fails before any
-    # uncertainty below.
-    bundle_agreement_ref = bundle.get("agreementRef")
-    if bundle_agreement_ref is not None:
-        if not _attestation_ref_shape_valid(bundle_agreement_ref):
-            return ("error", "bundle agreementRef is malformed", None)
-        if agreement.get("contentHash") != bundle_agreement_ref.get("contentHash"):
-            return (
-                "fail",
-                "LAA agreement does not bind the signed bundle agreementRef",
-                None,
-            )
     session = laa.get("sessionAuthority")
     signature = record.get("signature")
     if not isinstance(session, dict):
@@ -13073,6 +13339,8 @@ def _validate_ebfab_boolean(
     placed_refs = []
     unplaced_refs = []
     pending_receipt_refs = set()
+    execution_overrides = {}
+    unplaced_records = {}
     # SEB-6: an availability-only member result is pending. Every independent
     # member, set, pointer, ST-8 and lifecycle check still runs, and the first
     # pending result is returned only when none of them is a deterministic
@@ -13082,7 +13350,7 @@ def _validate_ebfab_boolean(
     legacy_agreement_eligibility = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
         if resolution is None:
-            unplaced_refs.append(ref)
+            unplaced_refs.append((ref, set(expected_keys)))
             if pending_closure_result is None:
                 pending_closure_result = (
                     "indeterminate",
@@ -13153,34 +13421,73 @@ def _validate_ebfab_boolean(
         signed_delivery_key = _seb_signed_delivery_phase_key(
             record, evidence_type, pipeline_kinds
         )
-        unavailable_reason = None
         if ref_key not in verified_receipt_by_canonical_ref:
-            unavailable_reason = "evidence receipt authority is unavailable"
-        elif (
-            signed_delivery_key is not None
-            and signed_delivery_key not in session_execution_authority_by_phase_key
-        ):
-            unavailable_reason = "delivery execution authority is unavailable"
-        if unavailable_reason is not None:
             if pending_closure_result is None:
-                pending_closure_result = ("indeterminate", unavailable_reason)
+                pending_closure_result = (
+                    "indeterminate", "evidence receipt authority is unavailable"
+                )
             pending_receipt_refs.add(ref_key)
             if signed_delivery_key is None:
-                unplaced_refs.append(ref)
+                # A payment's invocation is fixed only by its receipt address, so
+                # the member stays unplaced, but its signed content is still checked.
+                unplaced_failure = _seb_unplaced_record_failure(
+                    record, summary_by_key, expected_keys, pipeline_kinds, actual_refs
+                )
+                if unplaced_failure is not None:
+                    return (False, unplaced_failure, None)
+                unplaced_refs.append((
+                    ref, _seb_unplaced_candidates(record, summary_by_key, expected_keys)
+                ))
+                unplaced_records[canonical(ref)] = record
                 continue
             if _seb_deferred_delivery_excluded(
                 record, signature["signer"], bundle, signed_delivery_key,
                 session_execution_authority_by_phase_key,
             ):
                 return (False, "evidence does not resolve to exactly one authenticated phase receipt", None)
+            if signed_delivery_key not in session_execution_authority_by_phase_key:
+                execution_overrides[signed_delivery_key] = _seb_admitting_execution(
+                    record, signature["signer"], bundle, signed_delivery_key
+                )
             binding_result, authenticated_receipt = (signed_delivery_key, False), None
         else:
+            receipt = verified_receipt_by_canonical_ref[ref_key]
+            receipt_key, rail_id = signed_delivery_key, None
+            if receipt_key is None:
+                named = _seb_payment_receipt_key(record, receipt, bundle, pipeline_kinds)
+                if named is not None:
+                    receipt_key, rail_id = named
+            binding_authority = session_execution_authority_by_phase_key
+            if (
+                receipt_key is not None
+                and receipt_key not in session_execution_authority_by_phase_key
+            ):
+                # SB-1 authority for the one invocation this member could fill is
+                # unavailable. Its present receipt still binds against the only
+                # entry that could admit it, so a receipt contradiction still fails.
+                if pending_closure_result is None:
+                    pending_closure_result = (
+                        "indeterminate",
+                        ("delivery" if record_phase in DELIVERY_PHASES else "payment")
+                        + " execution authority is unavailable",
+                    )
+                legacy_delivery = (
+                    evidence_type == "settlement" and record_phase in DELIVERY_PHASES
+                )
+                execution_overrides[receipt_key] = _seb_admitting_execution(
+                    record, signature["signer"], bundle, receipt_key, rail_id=rail_id,
+                    legacy_address=(
+                        receipt.get("logicalAddress")
+                        if legacy_delivery and isinstance(receipt, dict) else None
+                    ),
+                )
+                binding_authority = {receipt_key: execution_overrides[receipt_key]}
             binding_ok, binding_result, authenticated_receipt = _resolve_authenticated_evidence_binding(
                 ref,
                 record,
                 signature["signer"],
                 bundle,
-                session_execution_authority_by_phase_key,
+                binding_authority,
                 verified_receipt_by_canonical_ref,
                 evidence_type,
                 receipt_validator=_receipt_validator,
@@ -13189,30 +13496,19 @@ def _validate_ebfab_boolean(
                 observed = (
                     _seb_observation_twin_binding(
                         ref, record, signature["signer"], bundle,
-                        session_execution_authority_by_phase_key,
+                        binding_authority,
                         verified_receipt_by_canonical_ref, evidence_type,
                         _receipt_validator,
                     )
                     if getattr(binding_result, "disposition", None) == "indeterminate"
                     else None
                 )
-                if observed is not None:
-                    if pending_closure_result is None:
-                        pending_closure_result = ("indeterminate", str(binding_result))
-                    pending_receipt_refs.add(ref_key)
-                    binding_result, authenticated_receipt = observed
-                elif _seb_payment_execution_unavailable(
-                    record, verified_receipt_by_canonical_ref.get(ref_key), bundle,
-                    pipeline_kinds, session_execution_authority_by_phase_key,
-                ):
-                    if pending_closure_result is None:
-                        pending_closure_result = (
-                            "indeterminate", "payment execution authority is unavailable"
-                        )
-                    unplaced_refs.append(ref)
-                    continue
-                else:
+                if observed is None:
                     return (False, binding_result, None)
+                if pending_closure_result is None:
+                    pending_closure_result = ("indeterminate", str(binding_result))
+                pending_receipt_refs.add(ref_key)
+                binding_result, authenticated_receipt = observed
         phase_key, resolved_record = binding_result
         if (
             evidence_type == "settlement"
@@ -13252,7 +13548,7 @@ def _validate_ebfab_boolean(
                     evidence_ref=ref,
                     evidence_receipt=authenticated_receipt,
                     phase_execution=session_execution_authority_by_phase_key.get(
-                        phase_key
+                        phase_key, execution_overrides.get(phase_key)
                     ),
                     authenticated_record_authority=resolution,
                 )
@@ -13298,7 +13594,35 @@ def _validate_ebfab_boolean(
                     _DispositionReason(closure_reason, closure_disposition),
                     None,
                 )
-            if closure_disposition == "pass" and evidence_type == "delivery":
+            ownership_checkable = closure_disposition == "pass"
+            if (
+                closure_disposition == "indeterminate"
+                and evidence_type == "delivery"
+                and phase_key in execution_overrides
+                and isinstance(delivery_authority.get(phase_key), dict)
+            ):
+                # Execution authority is unavailable. Re-run the closure against
+                # the only admitting entry, with the closure's own agreement
+                # hash, solely to decide whether cross-phase reuse (PDE-8) can
+                # be checked; this probe can never make the member pass.
+                probe_execution = dict(execution_overrides[phase_key])
+                probe_execution["agreementHash"] = delivery_authority[phase_key].get(
+                    "agreementHash"
+                )
+                probe_disposition, _ = _validate_delivery_artifact_closure_disposition(
+                    record,
+                    phase_key,
+                    listing,
+                    bundle,
+                    pubkeys,
+                    probe_execution,
+                    delivery_authority.get(phase_key),
+                    verified_receipt_by_canonical_ref,
+                    trusted_native_observations_by_canonical_ref,
+                    legacy=False,
+                )
+                ownership_checkable = probe_disposition == "pass"
+            if ownership_checkable and evidence_type == "delivery":
                 ownership_disposition, ownership_reason = (
                     _current_delivery_inner_ownership(
                         record,
@@ -13331,15 +13655,36 @@ def _validate_ebfab_boolean(
     ):
         return (False, "settlementEvidence is not the exact phase-result set", None)
     actual_ref_by_key = dict(zip(actual_keys, placed_refs))
-    unplaced_ids = {canonical(ref) for ref in unplaced_refs}
     for phase_key, pointer in optional_pointers.items():
         placed_ref = actual_ref_by_key.get(phase_key)
-        if (
-            canonical(pointer) not in unplaced_ids
-            if placed_ref is None
-            else canonical(pointer) != canonical(placed_ref)
-        ):
+        if placed_ref is not None and canonical(pointer) != canonical(placed_ref):
             return (False, "optional phase pointer contradicts settlementEvidence", None)
+    st8_execution_authority = dict(session_execution_authority_by_phase_key)
+    st8_execution_authority.update(execution_overrides)
+    for position, (ref, keys) in enumerate(unplaced_refs):
+        record = unplaced_records.get(canonical(ref))
+        if record is None:
+            continue
+        viable, first_failure = set(), None
+        for key in sorted(keys):
+            failure = _seb_unplaced_st8_failure(
+                record, ref, key, summary_by_key[key], bundle, pubkeys,
+                reference_validation_by_canonical_ref, st8_execution_authority,
+                verified_receipt_by_canonical_ref, actual_refs, _receipt_validator,
+                "evidence-bound",
+            )
+            if failure is None:
+                viable.add(key)
+            elif first_failure is None:
+                first_failure = failure
+        if not viable:
+            return (False, first_failure, None)
+        unplaced_refs[position] = (ref, viable)
+    assignment_failure = _seb_unplaced_assignment_failure(
+        unplaced_refs, set(expected_keys) - set(actual_keys), optional_pointers
+    )
+    if assignment_failure is not None:
+        return (False, assignment_failure, None)
 
     # ST-8 terminal selection is derived from authenticated SettlementEvidence
     # content. A signed success record binds the superseded interim reference;
@@ -13378,7 +13723,7 @@ def _validate_ebfab_boolean(
                 bundle,
                 pubkeys,
                 reference_validation_by_canonical_ref,
-                session_execution_authority_by_phase_key,
+                st8_execution_authority,
                 verified_receipt_by_canonical_ref,
                 _receipt_validator,
             ):
@@ -13392,7 +13737,7 @@ def _validate_ebfab_boolean(
             bundle,
             pubkeys,
             reference_validation_by_canonical_ref,
-            session_execution_authority_by_phase_key,
+            st8_execution_authority,
             verified_receipt_by_canonical_ref,
             actual_refs,
             _receipt_validator,

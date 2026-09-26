@@ -428,6 +428,262 @@ class SebSixPendingPrecedenceTests(_SebFixtures, unittest.TestCase):
         )
 
 
+class SebSixSameMemberPrecedenceTests(_SebFixtures, unittest.TestCase):
+    """A pending member still runs every check that its own content decides."""
+
+    def _payment_record_source(self, mutate, *, drop_receipt=False, drop_execution=False):
+        source = self._source("standard-completed")
+        replace_top_record(source, "pay-dem", mutate, self.data["seeds"])
+        source["legacyAgreementAuthorityByPhaseKey"] = refreshed_laa_phase_carriers(source)
+        payment = next(
+            _key(ref) for ref in source["bundle"]["settlementEvidence"]
+            if source["referenceValidationByCanonicalRef"][_key(ref)]["record"]["phase"]
+            in R.PAYMENT_PHASES
+        )
+        if drop_receipt:
+            del source["verifiedReceiptByCanonicalRef"][payment]
+        if drop_execution:
+            del source["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"]
+        return source
+
+    def test_unplaced_payment_keeps_its_own_contradictions(self):
+        def failure(record):
+            record["outcome"] = "failure"
+            record["reason"] = "insufficient-funds"
+            for field in ("settlementFinality", "paymentTxRefs", "paymentAmount"):
+                record.pop(field, None)
+
+        def foreign_kind(record):
+            failure(record)
+            record["phase"] = "pay-x402"
+
+        base = self._source("standard-completed")
+        delivery_ref = next(
+            ref for ref in base["bundle"]["settlementEvidence"]
+            if _key(ref) == self._member_key(base, "deliver-attested-payload")
+        )
+
+        def top_level_edge(record):
+            record["supersedesEvidenceRef"] = copy.deepcopy(delivery_ref)
+
+        for label, mutate in (
+            ("outcome contradicts every signed row", failure),
+            ("kind outside the signed pipeline", foreign_kind),
+            ("supersession edge names a top-level member", top_level_edge),
+        ):
+            for drop in ("receipt", "execution"):
+                with self.subTest(case=label, unavailable=drop):
+                    self._assert_paths(self._payment_record_source(
+                        mutate, drop_receipt=drop == "receipt",
+                        drop_execution=drop == "execution",
+                    ), "fail")
+
+    def test_unavailable_execution_still_binds_the_present_receipt(self):
+        receipt_mutations = (
+            ("writer is not the evidence signer", "writer", "did:demos:buyer"),
+            ("contentHash differs from the reference", "contentHash", "ab" * 32),
+        )
+        for phase, phase_key in (
+            ("pay-dem", "2:pay-dem"),
+            ("deliver-attested-payload", "3:deliver-attested-payload"),
+        ):
+            source = self._source("standard-completed")
+            del source["sessionExecutionAuthorityByPhaseKey"][phase_key]
+            with self.subTest(phase=phase, case="control"):
+                self._assert_paths(source, "indeterminate")
+            for label, field, value in receipt_mutations + (
+                ("established state contradicts the lifecycle", "state", "included"),
+            ):
+                source = self._source("standard-completed")
+                source["verifiedReceiptByCanonicalRef"][self._member_key(source, phase)][field] = value
+                del source["sessionExecutionAuthorityByPhaseKey"][phase_key]
+                with self.subTest(phase=phase, case=label):
+                    self._assert_paths(source, "fail")
+        source = self._source("standard-completed")
+        key = self._member_key(source, "deliver-attested-payload")
+        source["verifiedReceiptByCanonicalRef"][key]["logicalAddress"] = (
+            "dacs4:delivery:%s:2" % source["bundle"]["jobId"]
+        )
+        del source["sessionExecutionAuthorityByPhaseKey"]["3:deliver-attested-payload"]
+        self._assert_paths(source, "fail")
+        # The archival PDE-7 lane keeps its indexed-address contradiction.
+        legacy = self._source("legacy-storage-completed")
+        receipt = legacy["verifiedReceiptByCanonicalRef"][_key(legacy["bundle"]["settlementEvidence"][0])]
+        receipt["logicalAddress"] = "dacs4:delivery:%s:0" % legacy["bundle"]["jobId"]
+        del legacy["sessionExecutionAuthorityByPhaseKey"]["0:deliver-storage-program"]
+        self.assertEqual("fail", R.validate_archival_audit_ebfab_disposition(
+            *self._args(legacy), **self._laa(legacy)
+        )[0])
+
+    def test_pointers_for_missing_invocations_name_distinct_fitting_members(self):
+        def pointed(first, second, drop):
+            source = self._source("standard-completed")
+            payment = self._member_key(source, "pay-dem")
+            delivery = self._member_key(source, "deliver-attested-payload")
+            refs = {_key(ref): ref for ref in source["bundle"]["settlementEvidence"]}
+            names = {"pay": refs[payment], "del": refs[delivery]}
+            source["bundle"]["phaseSummary"][2]["attestationRef"] = copy.deepcopy(names[first])
+            source["bundle"]["phaseSummary"][3]["attestationRef"] = copy.deepcopy(names[second])
+            resign_ebfab(source["bundle"], self.data["seeds"])
+            source["legacyAgreementAuthorityByPhaseKey"] = refreshed_laa_phase_carriers(source)
+            for item in drop:
+                collection, member = item.split(":")
+                target = payment if member == "pay" else delivery
+                del source[collection][target]
+            return source
+
+        resolutions = "referenceValidationByCanonicalRef"
+        receipts = "verifiedReceiptByCanonicalRef"
+        for label, source, expected in (
+            ("one member reused by two pointers", pointed(
+                "pay", "pay", (resolutions + ":pay", resolutions + ":del")), "fail"),
+            ("pointer names a member of another kind", pointed(
+                "del", "pay", (receipts + ":pay", resolutions + ":del")), "fail"),
+            ("swapped pointers, contents unknown", pointed(
+                "del", "pay", (resolutions + ":pay", resolutions + ":del")), "indeterminate"),
+        ):
+            with self.subTest(case=label):
+                self._assert_paths(source, expected)
+
+    def test_receipt_named_invocation_is_injective(self):
+        source = self._source("repeated-pay-completed")
+        second = next(
+            _key(ref) for ref in source["bundle"]["settlementEvidence"]
+            if source["verifiedReceiptByCanonicalRef"][_key(ref)]["logicalAddress"].endswith(":1")
+        )
+        receipt = source["verifiedReceiptByCanonicalRef"][second]
+        receipt["logicalAddress"] = receipt["logicalAddress"][:-2] + ":0"
+        del source["sessionExecutionAuthorityByPhaseKey"]["0:pay-dem"]
+        self._assert_paths(source, "fail")
+
+    def test_no_single_outage_downgrades_a_shipped_rejection(self):
+        # A missing supersession edge contradicts only a :resolved receipt
+        # address, so without that receipt the member may be ordinary.
+        receipt_dependent = {
+            ("invalid-completed-st8-missing-supersedes", "receipt:pay-cross-chain-htlc"),
+        }
+
+        def disposition(source):
+            verifier = (
+                R.validate_archival_audit_ebfab_disposition
+                if source.get("deliveryEvidenceProfile") == "archival"
+                else R.validate_ebfab_disposition
+            )
+            return verifier(
+                *self._args(copy.deepcopy(source)),
+                legacy_agreement_authority_by_phase_key=source.get(
+                    "legacyAgreementAuthorityByPhaseKey", {}
+                ),
+            )[0]
+
+        downgraded = []
+        for name in self.data["executionAuthorities"]:
+            base = self._source(name)
+            if disposition(base) not in {"fail", "error"}:
+                continue
+            outages = [("execution:" + key, "sessionExecutionAuthorityByPhaseKey", key)
+                       for key in base["sessionExecutionAuthorityByPhaseKey"]]
+            for ref in base["bundle"]["settlementEvidence"]:
+                resolution = base["referenceValidationByCanonicalRef"].get(_key(ref))
+                if isinstance(resolution, dict) and isinstance(resolution.get("record"), dict):
+                    outages.append(("receipt:" + str(resolution["record"].get("phase")),
+                                    "verifiedReceiptByCanonicalRef", _key(ref)))
+            for label, collection, member in outages:
+                source = self._source(name)
+                source[collection].pop(member, None)
+                if (
+                    disposition(source) == "indeterminate"
+                    and (name, label) not in receipt_dependent
+                ):
+                    downgraded.append((name, label))
+        self.assertEqual([], downgraded)
+
+
+class LaaAgreementJoinPrecedenceTests(_SebFixtures, unittest.TestCase):
+    """The agreementRef join keeps error > fail > indeterminate."""
+
+    def _joined_source(self, mutate, agreement_hash=None):
+        source = self._source("standard-completed")
+        joined = next(iter(source["legacyAgreementAuthorityByPhaseKey"].values()))[
+            "laa"]["agreement"]["contentHash"]
+        source["bundle"]["agreementRef"] = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + source["bundle"]["jobId"],
+            },
+            "contentHash": agreement_hash or joined,
+        }
+        resign_ebfab(source["bundle"], self.data["seeds"])
+        mutate(source, joined)
+        source["legacyAgreementAuthorityByPhaseKey"] = refreshed_laa_phase_carriers(source)
+        return source
+
+    def test_join_mismatch_never_outranks_malformed_authority(self):
+        def carriers(source):
+            return list(source["legacyAgreementAuthorityByPhaseKey"].values())
+
+        def agreement(field, value):
+            return lambda source, joined: [
+                carrier["laa"]["agreement"].__setitem__(field, value(joined))
+                for carrier in carriers(source)
+            ]
+
+        def session_pending(source, joined):
+            for carrier in carriers(source):
+                carrier["laa"]["sessionAuthority"]["state"] = "pending"
+
+        unrelated = "c" * 64
+        for label, mutate, agreement_hash, expected in (
+            ("joined", lambda source, joined: None, None, "pass"),
+            ("unrelated", lambda source, joined: None, unrelated, "fail"),
+            ("malformed carrier shape beside an unrelated ref",
+             agreement("shape", lambda joined: "malformed"), unrelated, "error"),
+            ("non-string operation beside an unrelated ref",
+             lambda source, joined: [carrier["laa"].__setitem__("operation", 7)
+                                     for carrier in carriers(source)], unrelated, "error"),
+            ("padded agreement contentHash",
+             agreement("contentHash", lambda joined: " " + joined), None, "error"),
+            ("unverified session beside an unrelated ref", session_pending, unrelated, "fail"),
+        ):
+            with self.subTest(case=label):
+                source = self._joined_source(mutate, agreement_hash)
+                self.assertEqual(expected, self._direct(source)[0], self._direct(source)[1])
+
+    def test_finality_verification_error_outranks_a_join_fail(self):
+        import scripts.generate_settlement_finality_verification_vectors as finality
+        from test_settlement_finality_verification_vectors import decode_public_keys
+
+        for label, unrelated in (("joined", False), ("unrelated", True)):
+            factory = finality.FixtureFactory()
+            case = factory.strong_bundle_case("block-depth")
+            verification = next(iter(
+                case["authority"]["finalityVerificationByCanonicalRef"].values()
+            ))
+            case["bundle"]["agreementRef"] = factory.reference(
+                "agreement:block-depth",
+                "33" * 32 if unrelated
+                else finality.artifact_hash(verification["agreement"], "signatures"),
+            )
+            factory.sign_bundle(case["bundle"], finality.FINALITY_BUNDLE_DOMAIN)
+            factory.bind_current_laa_authority(case["bundle"], case["authority"])
+            verification["agreement"] = "not-an-object"
+            authority = case["authority"]
+            with self.subTest(case=label):
+                disposition, reason, _ = R.validate_finality_bound_ebfab(
+                    case["bundle"], authority["listing"],
+                    decode_public_keys(factory.trusted),
+                    authority["referenceValidationByCanonicalRef"],
+                    authority["bundleLifecycle"],
+                    authority["sessionExecutionAuthorityByPhaseKey"],
+                    authority["verifiedReceiptByCanonicalRef"],
+                    authority.get("finalityVerificationByCanonicalRef"), factory.trusted,
+                    legacy_agreement_authority_by_phase_key=authority.get(
+                        "legacyAgreementAuthorityByPhaseKey"
+                    ),
+                )
+                self.assertEqual("error", disposition, reason)
+
+
 class DependencyReceiptPrecedenceTests(_SebFixtures, unittest.TestCase):
     """PDE-6: missing entry authority cannot downgrade receipt error or fail."""
 

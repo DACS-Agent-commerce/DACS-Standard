@@ -675,6 +675,41 @@
       "id": "pr333-laa2-sealed-losing-bidder-payment-refused",
       "file": "tests/test_identity_bundle_hash_binding_vectors.py",
       "test": "IdentityBundleHashBindingVectorTests.test_sealed_envelope_losing_bidder_compatibility"
+    },
+    {
+      "id": "pr333-seb6-unplaced-payment-own-contradictions",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_unplaced_payment_keeps_its_own_contradictions"
+    },
+    {
+      "id": "pr333-seb6-unavailable-execution-binds-receipt",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_unavailable_execution_still_binds_the_present_receipt"
+    },
+    {
+      "id": "pr333-seb5-missing-invocation-pointers",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_pointers_for_missing_invocations_name_distinct_fitting_members"
+    },
+    {
+      "id": "pr333-seb4-receipt-named-invocation-injective",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_receipt_named_invocation_is_injective"
+    },
+    {
+      "id": "pr333-seb6-no-single-outage-downgrade-sweep",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_no_single_outage_downgrades_a_shipped_rejection"
+    },
+    {
+      "id": "pr333-agreement-join-error-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "LaaAgreementJoinPrecedenceTests.test_join_mismatch_never_outranks_malformed_authority"
+    },
+    {
+      "id": "pr333-finality-fv-error-outranks-join-fail",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "LaaAgreementJoinPrecedenceTests.test_finality_verification_error_outranks_a_join_fail"
     }
   ],
   "coveredInvariantClasses": [

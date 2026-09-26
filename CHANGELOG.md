@@ -253,8 +253,12 @@ The format used per release:
   authority, and unavailable FV authority are pending under SEB-6. Every
   independent member, set, pointer, ST-8 and lifecycle check still runs, so a
   deterministic `fail` or `error` elsewhere is never downgraded to
-  `indeterminate`. An unplaced pending member can fill only an otherwise
-  missing invocation. Released `AttestationBundle`/`FaultAttestationBundle`
+  `indeterminate`. A member whose execution authority is unavailable still
+  binds its present receipt against the only entry that could admit it, a
+  payment without a receipt still has its signed kind, outcome and ST-8 edge
+  checked against every row it could fill, and unplaced members and signed
+  pointers for missing invocations must admit a one-to-one assignment.
+  Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts
   the co-signed outcome still fails, an incomplete failed trace is
@@ -270,7 +274,8 @@ The format used per release:
   `agreementRef`, every LAA-qualified successful payment on the EBFAB,
   finality-bound, and released AB/FAB paths (direct, pointer and
   reconciliation) must be qualified by that same agreement; a valid but
-  unrelated agreement fails and a malformed `agreementRef` is `error`. The
+  unrelated agreement fails, a malformed `agreementRef` or agreement hash is
+  `error`, and malformed LAA or FV authority still outranks the mismatch. The
   identity-bundle payment stage now applies DACS-4 LAA-2 before the payment
   effect, so a non-payee `IdentityBoundAgreementDocument` is refused there as it
   already was at terminal admission. The two affected identity-bundle vectors

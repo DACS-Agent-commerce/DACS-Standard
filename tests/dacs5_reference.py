@@ -5298,7 +5298,12 @@ def _validate_current_fab_delivery_admission(
                     [step.get("kind") if isinstance(step, dict) else None for step in pipeline],
                 )
                 execution_overrides = {}
-                if receipt_key is not None and receipt_key[0] not in execution:
+                if (
+                    receipt_key is not None
+                    and receipt_key[0] not in execution
+                    # No entry rail quotes to an address with a lone surrogate.
+                    and not any(0xD800 <= ord(character) <= 0xDFFF for character in receipt_key[1])
+                ):
                     # SB-1 authority for the one invocation the receipt names
                     # is unavailable. As on EBFAB, the receipt still binds
                     # against the only entry that could admit it, so its own

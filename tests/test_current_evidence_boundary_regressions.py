@@ -2221,6 +2221,21 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     )[0])
                 with self.subTest(kind=kind, case=label):
                     self.assertEqual(expected, tuple(observed))
+        # No entry rail quotes to an address with a lone surrogate, so such a
+        # receipt fails whether or not the row's entry is available.
+        for kind in ("fault", "legacy"):
+            for without in (False, True):
+                value, ref_key = payment()(kind)
+                value["authority"]["verifiedReceiptByCanonicalRef"][ref_key][
+                    "logicalAddress"
+                ] = "dacs4:payment:%s:\udcff:2" % value["bundle"]["jobId"]
+                if without:
+                    without_entry(value, kind)
+                with self.subTest(kind=kind, case="lone surrogate rail", without_entry=without):
+                    self.assertEqual("fail", R._validate_current_fab_delivery_admission(
+                        value["bundle"], value["authority"], self.pubkeys,
+                        **({"ordinary_current": True} if kind == "legacy" else {}),
+                    )[0])
 
     def test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement(self):
         for name, unrelated, expected in (

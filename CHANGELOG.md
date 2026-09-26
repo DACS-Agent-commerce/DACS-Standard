@@ -256,8 +256,10 @@ The format used per release:
   `indeterminate`. A member whose execution authority is unavailable still
   binds its present receipt against the only entry that could admit it, a
   payment without a receipt still has its signed kind, outcome and ST-8 edge
-  checked against every row it could fill, and unplaced members and signed
-  pointers for missing invocations must admit a one-to-one assignment.
+  checked against every row it could fill (a transition record only against
+  its signed invocation), and unplaced members and signed pointers for
+  missing invocations must admit a one-to-one assignment. A known ST-8
+  successor rejects only where every admitting entry would bind it.
   Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts

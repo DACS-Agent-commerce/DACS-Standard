@@ -2220,17 +2220,55 @@ def _seb_admitting_execution(record, signer, bundle, phase_key, *,
     return execution
 
 
+def _seb_known_successor_disposition(ref, record, phase_key, bundle, pubkeys,
+                                     reference_validation_by_canonical_ref,
+                                     execution_authority_by_phase_key,
+                                     verified_receipt_by_canonical_ref,
+                                     receipt_validator, expected_kind,
+                                     execution_overrides):
+    """Return "fail", "pending" or None for a known authenticated ST-8 successor.
+
+    A binding success rejects here, so the admitting entry of a member whose
+    execution authority is unavailable is first pinned to that member's own
+    receipt nonce: every real entry that admits the member binds at least those
+    successors. A successor that binds only without the pin stays pending.
+    """
+    def known(authority):
+        return _known_authenticated_st8_successor(
+            ref, record, phase_key, bundle, pubkeys,
+            reference_validation_by_canonical_ref, authority,
+            verified_receipt_by_canonical_ref, receipt_validator, expected_kind,
+        )
+
+    if phase_key not in execution_overrides:
+        return "fail" if known(execution_authority_by_phase_key) else None
+    receipt = verified_receipt_by_canonical_ref.get(canonical(ref).decode("utf-8"))
+    nonce = receipt.get("nonce") if isinstance(receipt, dict) else None
+    pinned = dict(execution_authority_by_phase_key)
+    if _nonempty_jcs_string(nonce):
+        pinned[phase_key] = dict(execution_overrides[phase_key], anchorNonce=nonce)
+    if known(pinned):
+        return "fail"
+    return "pending" if known(execution_authority_by_phase_key) else None
+
+
 def _seb_unplaced_record_failure(record, summary_by_key, expected_keys,
-                                 pipeline_kinds, top_level_refs):
+                                 pipeline_kinds, top_level_refs, evidence_type=None):
     """Return a deterministic rejection for an unplaced member with known content.
 
     A payment member without a receipt cannot be placed, but its authenticated
     kind and outcome must still fit some signed row, and a signed ST-8 edge
     must still have a valid shape (SEB-3/SEB-6).
     """
-    if record.get("phase") not in pipeline_kinds:
+    if record.get("phase") not in pipeline_kinds or (
+        evidence_type == "legacy-transition"
+        and (
+            record["phaseIndex"] >= len(pipeline_kinds)
+            or pipeline_kinds[record["phaseIndex"]] != record.get("phase")
+        )
+    ):
         return "authenticated phase is outside the signed listing pipeline"
-    if not _seb_unplaced_candidates(record, summary_by_key, expected_keys):
+    if not _seb_unplaced_candidates(record, summary_by_key, expected_keys, evidence_type):
         return "evidence record contradicts the signed phase result"
     supersedes = record.get("supersedesEvidenceRef")
     if supersedes is not None and (
@@ -2295,15 +2333,24 @@ def _seb_unplaced_st8_failure(record, ref, phase_key, summary_entry, bundle, pub
     return None
 
 
-def _seb_unplaced_candidates(record, summary_by_key, expected_keys):
-    """Keys an unplaced member could still fill; any key when its content is unknown."""
+def _seb_unplaced_candidates(record, summary_by_key, expected_keys, evidence_type=None):
+    """Keys an unplaced member could still fill; any key when its content is unknown.
+
+    ``LegacyTransitionSettlementEvidence`` signs its phase index, so it can fill
+    only that one invocation.
+    """
     if record is None:
         return set(expected_keys)
     wanted_row = "ok" if record.get("outcome") == "success" else "fail"
+    signed_key = (
+        "%d:%s" % (record["phaseIndex"], record.get("phase"))
+        if evidence_type == "legacy-transition" else None
+    )
     return {
         key for key in expected_keys
         if summary_by_key[key].get("kind") == record.get("phase")
         and summary_by_key[key].get("outcome") == wanted_row
+        and (signed_key is None or key == signed_key)
     }
 
 
@@ -2744,12 +2791,15 @@ def _validate_bound_fault_bundle(
                 # A payment's invocation is fixed only by its receipt address, so
                 # the member stays unplaced, but its signed content is still checked.
                 unplaced_failure = _seb_unplaced_record_failure(
-                    record, summary_by_key, expected_keys, pipeline_kinds, actual_refs
+                    record, summary_by_key, expected_keys, pipeline_kinds, actual_refs,
+                    evidence_type,
                 )
                 if unplaced_failure is not None:
                     return (False, unplaced_failure, None)
                 unplaced_refs.append((
-                    ref, _seb_unplaced_candidates(record, summary_by_key, expected_keys)
+                    ref, _seb_unplaced_candidates(
+                        record, summary_by_key, expected_keys, evidence_type
+                    )
                 ))
                 unplaced_records[canonical(ref)] = record
                 continue
@@ -3043,19 +3093,18 @@ def _validate_bound_fault_bundle(
                 or supersedes is not None
             ):
                 return (False, "expired ST-8 record has the wrong authenticated terminal class", None)
-            if _known_authenticated_st8_successor(
-                ref,
-                record,
-                phase_key,
-                bundle,
-                pubkeys,
-                reference_validation_by_canonical_ref,
-                st8_execution_authority,
-                verified_receipt_by_canonical_ref,
-                _receipt_validator,
-                expected_kind,
-            ):
+            successor = _seb_known_successor_disposition(
+                ref, record, phase_key, bundle, pubkeys,
+                reference_validation_by_canonical_ref, st8_execution_authority,
+                verified_receipt_by_canonical_ref, _receipt_validator,
+                expected_kind, execution_overrides,
+            )
+            if successor == "fail":
                 return (False, "expired ST-8 record suppresses a known authenticated successor", None)
+            if successor == "pending" and pending_closure_result is None:
+                pending_closure_result = (
+                    "indeterminate", "ST-8 successor authority is unavailable"
+                )
         elif record.get("reason") in st8_reasons:
             return (False, "ST-8 interim reason contradicts the signed phase result", None)
         edge_failure = _st8_supersession_edge_failure(
@@ -3260,10 +3309,13 @@ def _validate_finality_bound_ebfab(
         ref_key = canonical(ref).decode("utf-8")
         resolution = reference_validation_by_canonical_ref.get(ref_key)
         record = resolution.get("record") if isinstance(resolution, dict) else None
+        # Only a finality-shaped successful payment enters FV; the SEB core
+        # decides every other record, including one it has already rejected.
         if not (
             isinstance(record, dict)
-            and record.get("phase") in PAYMENT_PHASES
+            and _string_member(record.get("phase"), PAYMENT_PHASES)
             and record.get("outcome") == "success"
+            and _finality_bound_settlement_evidence_shape_valid(record)
         ):
             continue
         candidate = finality_verification_by_canonical_ref.get(ref_key)
@@ -13431,12 +13483,15 @@ def _validate_ebfab_boolean(
                 # A payment's invocation is fixed only by its receipt address, so
                 # the member stays unplaced, but its signed content is still checked.
                 unplaced_failure = _seb_unplaced_record_failure(
-                    record, summary_by_key, expected_keys, pipeline_kinds, actual_refs
+                    record, summary_by_key, expected_keys, pipeline_kinds, actual_refs,
+                    evidence_type,
                 )
                 if unplaced_failure is not None:
                     return (False, unplaced_failure, None)
                 unplaced_refs.append((
-                    ref, _seb_unplaced_candidates(record, summary_by_key, expected_keys)
+                    ref, _seb_unplaced_candidates(
+                        record, summary_by_key, expected_keys, evidence_type
+                    )
                 ))
                 unplaced_records[canonical(ref)] = record
                 continue
@@ -13716,18 +13771,18 @@ def _validate_ebfab_boolean(
                 or supersedes is not None
             ):
                 return (False, "expired ST-8 record has the wrong authenticated terminal class", None)
-            if _known_authenticated_st8_successor(
-                ref,
-                record,
-                phase_key,
-                bundle,
-                pubkeys,
-                reference_validation_by_canonical_ref,
-                st8_execution_authority,
-                verified_receipt_by_canonical_ref,
-                _receipt_validator,
-            ):
+            successor = _seb_known_successor_disposition(
+                ref, record, phase_key, bundle, pubkeys,
+                reference_validation_by_canonical_ref, st8_execution_authority,
+                verified_receipt_by_canonical_ref, _receipt_validator,
+                "evidence-bound", execution_overrides,
+            )
+            if successor == "fail":
                 return (False, "expired ST-8 record suppresses a known authenticated successor", None)
+            if successor == "pending" and pending_closure_result is None:
+                pending_closure_result = (
+                    "indeterminate", "ST-8 successor authority is unavailable"
+                )
         elif record.get("reason") in st8_reasons:
             return (False, "ST-8 interim reason contradicts the signed phase result", None)
         edge_failure = _st8_supersession_edge_failure(

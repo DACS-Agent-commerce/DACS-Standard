@@ -710,6 +710,21 @@
       "id": "pr333-finality-fv-error-outranks-join-fail",
       "file": "tests/test_pr333_disposition_precedence_regressions.py",
       "test": "LaaAgreementJoinPrecedenceTests.test_finality_verification_error_outranks_a_join_fail"
+    },
+    {
+      "id": "pr333-st8-successor-scan-nonce-pin",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "AdmittingEntryBoundaryTests.test_successor_scan_respects_the_unavailable_nonce_pin"
+    },
+    {
+      "id": "pr333-transition-payment-signed-invocation",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "AdmittingEntryBoundaryTests.test_receiptless_transition_payment_fills_only_its_signed_invocation"
+    },
+    {
+      "id": "pr333-finality-verification-skips-rejected-records",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "FinalityBoundPendingPrecedenceTests.test_verification_skips_records_the_core_rejected"
     }
   ],
   "coveredInvariantClasses": [

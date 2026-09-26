@@ -23,13 +23,17 @@ from test_bundle_pointer_admission_delivery_authority import (
     dependency_authority,
 )
 from test_bundle_settlement_evidence_bijection_vectors import (
+    bind_laa_authority_to_bundle,
     derive_phase_disposition,
     encode,
+    laa_authority_for_bundle,
     move_verified_receipt,
     refreshed_laa_phase_carriers,
     relink_payload_attestation,
+    replace_payment_with_transition_evidence,
     replace_top_record,
     resign_ebfab,
+    resign_evidence,
     resign_listing,
 )
 
@@ -599,6 +603,109 @@ class SebSixSameMemberPrecedenceTests(_SebFixtures, unittest.TestCase):
         self.assertEqual([], downgraded)
 
 
+class AdmittingEntryBoundaryTests(_SebFixtures, unittest.TestCase):
+    """The admitting entry never widens a check whose binding success rejects."""
+
+    def _expired_with_successor(self, pin_nonce, successor_nonce, *, drop_execution):
+        completed = self._source("single-htlc-completed")
+        source = self._source("single-htlc-expired")
+        interim_ref = source["bundle"]["settlementEvidence"][0]
+        execution_key = "2:pay-cross-chain-htlc"
+        if pin_nonce is not None:
+            source["sessionExecutionAuthorityByPhaseKey"][execution_key]["anchorNonce"] = pin_nonce
+        successor = next(
+            copy.deepcopy(resolution)
+            for resolution in completed["referenceValidationByCanonicalRef"].values()
+            if resolution["record"]["outcome"] == "success"
+        )
+        record = successor["record"]
+        record["jobId"] = source["bundle"]["jobId"]
+        record["supersedesEvidenceRef"] = copy.deepcopy(interim_ref)
+        resign_evidence(record, self.data["seeds"]["seller"])
+        digest = R.settlement_evidence_hash(record)
+        successor_ref = {
+            "anchor": {"kind": "storage-program", "locator": "stor-successor-nonce"},
+            "contentHash": digest,
+        }
+        successor["lifecycle"] = {"state": "finalized", "independentlyResolvable": True}
+        source["referenceValidationByCanonicalRef"][_key(successor_ref)] = successor
+        receipt = copy.deepcopy(source["verifiedReceiptByCanonicalRef"][_key(interim_ref)])
+        receipt.update({
+            "logicalAddress": receipt["logicalAddress"] + ":resolved",
+            "nativeAddress": "stor-successor-nonce",
+            "contentHash": digest,
+            "nonce": successor_nonce,
+            "state": "finalized",
+            "transactionRef": {"kind": "demos-transaction", "value": "tx-successor-nonce"},
+        })
+        source["verifiedReceiptByCanonicalRef"][_key(successor_ref)] = receipt
+        if drop_execution:
+            del source["sessionExecutionAuthorityByPhaseKey"][execution_key]
+        return source
+
+    def test_successor_scan_respects_the_unavailable_nonce_pin(self):
+        for label, pin, nonce, drop, expected in (
+            ("unpinned entry, bound successor", None, "2", False, "fail"),
+            ("pinned entry, inert successor", "2", "999", False, "pass"),
+            ("pin unavailable, successor binds only unpinned", "2", "999", True, "indeterminate"),
+            ("pin unavailable, successor matches the member nonce", "2", "2", True, "fail"),
+        ):
+            with self.subTest(case=label):
+                self._assert_paths(
+                    self._expired_with_successor(pin, nonce, drop_execution=drop), expected
+                )
+
+    def _transition_source(self, phase_index=None, *, drop_receipt=False):
+        source = self._source("standard-completed")
+        laa = laa_authority_for_bundle(source, operation="transition-audit")
+        record = replace_payment_with_transition_evidence(source, laa, self.data["seeds"])
+        source["legacyAgreementAuthorityByPhaseKey"] = {
+            "2:pay-dem": bind_laa_authority_to_bundle(source, laa)
+        }
+        old_ref = next(
+            ref for ref in source["bundle"]["settlementEvidence"]
+            if source["referenceValidationByCanonicalRef"][_key(ref)]["record"] is record
+        )
+        if phase_index is not None:
+            resolution = source["referenceValidationByCanonicalRef"].pop(_key(old_ref))
+            receipt = source["verifiedReceiptByCanonicalRef"].pop(_key(old_ref))
+            record["phaseIndex"] = phase_index
+            record["signature"]["value"] = ""
+            digest = R.settlement_evidence_hash(record)
+            record["signature"]["value"] = self._sign(
+                "orchestrator", R.LEGACY_TRANSITION_SETTLEMENT_EVIDENCE_DOMAIN, digest
+            )
+            new_ref = dict(copy.deepcopy(old_ref), contentHash=digest)
+            receipt["contentHash"] = digest
+            source["referenceValidationByCanonicalRef"][_key(new_ref)] = resolution
+            source["verifiedReceiptByCanonicalRef"][_key(new_ref)] = receipt
+            source["bundle"]["settlementEvidence"] = [
+                new_ref if ref == old_ref else ref
+                for ref in source["bundle"]["settlementEvidence"]
+            ]
+            for entry in source["bundle"]["phaseSummary"]:
+                if entry.get("attestationRef") == old_ref:
+                    entry["attestationRef"] = new_ref
+            resign_ebfab(source["bundle"], self.data["seeds"])
+            old_ref = new_ref
+        if drop_receipt:
+            del source["verifiedReceiptByCanonicalRef"][_key(old_ref)]
+        return source
+
+    def test_receiptless_transition_payment_fills_only_its_signed_invocation(self):
+        for label, index, drop, expected in (
+            ("genuine transition", None, False, "pass"),
+            ("genuine transition, receipt unavailable", None, True, "indeterminate"),
+            ("signed index outside the pipeline", 7, True, "fail"),
+            ("signed index of another kind", 0, True, "fail"),
+        ):
+            with self.subTest(case=label):
+                disposition, reason = self._direct(
+                    self._transition_source(index, drop_receipt=drop)
+                )
+                self.assertEqual(expected, disposition, reason)
+
+
 class LaaAgreementJoinPrecedenceTests(_SebFixtures, unittest.TestCase):
     """The agreementRef join keeps error > fail > indeterminate."""
 
@@ -947,6 +1054,22 @@ class FinalityBoundPendingPrecedenceTests(unittest.TestCase):
                     with self.subTest(case=label, lifecycle_fail=lifecycle_fail, path=path):
                         disposition, reason = consumer(case)
                         self.assertEqual(expected, disposition, reason)
+
+    def test_verification_skips_records_the_core_rejected(self):
+        # A record without its selector is rejected by the SEB core; FV must
+        # not re-read it and turn that rejection into an exception or error.
+        def unselected(phase):
+            def mutate(authority, key):
+                record = authority["referenceValidationByCanonicalRef"][key]["record"]
+                record.pop("finalityBoundEvidenceVersion")
+                record["phase"] = phase
+            return mutate
+
+        for label, phase in (("list phase", ["pay-dem"]), ("string phase", "pay-dem")):
+            case = self._mutated(unselected(phase))
+            with self.subTest(case=label):
+                disposition, reason = self._direct(case)
+                self.assertEqual("fail", disposition, reason)
 
 
 if __name__ == "__main__":

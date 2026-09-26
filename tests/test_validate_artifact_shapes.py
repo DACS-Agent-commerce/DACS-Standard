@@ -63,6 +63,30 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertIn("missing required field(s): ['b']", joined)
         self.assertIn("'x'", joined)
 
+    def test_shared_bundle_literal_keeps_attestation_bundle_checks(self):
+        # IdentityBundle and AttestationBundle share bundleVersion "1".  An
+        # AttestationBundle that omits phaseSummary must still be validated
+        # (and rejected), not skipped by the IdentityBundle discriminator.
+        v = load_validator()
+        types = v.collect_type_fields()
+        identity = {
+            "bundleVersion": "1", "presentedBy": "key:" + "11" * 32,
+            "presentedAt": 1, "claims": [{"ref": "key:" + "11" * 32}],
+            "presentation": {"kind": "per-claim", "signatures": []},
+        }
+        truncated = {"bundleVersion": "1", "jobId": "01J00000000000000000000001"}
+        pairs = v._embedded_reference_artifacts({"a": identity, "b": truncated})
+        self.assertEqual(
+            [("IdentityBundle", identity), ("AttestationBundle", truncated)], pairs
+        )
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "fixture.json"
+            path.write_text(json.dumps({"wrapper": truncated}), encoding="utf-8")
+            with mock.patch.object(v, "ROOT", Path(tmp)):
+                errors, count = v.check_reference_fixture(path, types)
+        self.assertEqual(1, count)
+        self.assertTrue(any("phaseSummary" in error for error in errors), errors)
+
     def test_conformant_artifact_passes(self):
         v = load_validator()
         types = _types({"Foo": {"required": {"a", "b"}, "optional": {"c"}}})

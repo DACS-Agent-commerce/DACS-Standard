@@ -323,10 +323,19 @@ except Exception as exc:  # fail closed with one bounded diagnostic, never a tra
         raise SystemExit(1)
     raise
 _jcs = _WRAPPED["jcs"]
-_sign_ed25519 = _WRAPPED["run_lifecycle_walkthrough"].sign_ed25519
-# The helper's unbounded result cache would grow with every distinct request in a
-# long-lived process; call the same verified function without it.
-_verify_ed25519 = _WRAPPED["run_lifecycle_walkthrough"].verify_ed25519.__wrapped__
+_walkthrough = _WRAPPED["run_lifecycle_walkthrough"]
+# The helper's unbounded caches would grow with every distinct request in a
+# long-lived process: verify through the same verified function without its
+# cache, and drop the per-seed key caches after each signature.
+_verify_ed25519 = _walkthrough.verify_ed25519.__wrapped__
+
+
+def _sign_ed25519(seed: bytes, payload: bytes) -> bytes:
+    try:
+        return _walkthrough.sign_ed25519(seed, payload)
+    finally:
+        _walkthrough.private_scalar.cache_clear()
+        _walkthrough.public_key.cache_clear()
 _artifact_hash_hex = _WRAPPED["validate_conformance_vectors"].artifact_hash_hex
 _decode_signature_value = _WRAPPED["validate_conformance_vectors"].decode_signature_value
 
@@ -353,7 +362,7 @@ def _decode_tagged(root: Any) -> tuple[Any, bool]:
                 continue
             if tag == "bigint" and set(value) == {"$dacsType", "decimal"}:
                 decimal = value.get("decimal")
-                if not isinstance(decimal, str) or re.fullmatch(r"-?(?:0|[1-9][0-9]*)", decimal) is None:
+                if not isinstance(decimal, str) or re.fullmatch(r"0|-?[1-9][0-9]*", decimal) is None:
                     raise AdapterError("MALFORMED_TAG", "bigint tag requires canonical decimal text")
                 parent[key] = _HostBigInt()
                 host_type_present = True

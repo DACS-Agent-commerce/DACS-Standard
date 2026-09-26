@@ -38,6 +38,24 @@ ADAPTER_SOURCE = "scripts/dacs_adapter.py"
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
 DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
 PROTOCOL_TAGS = {"bytes", "bigint"}
+FAMILY_OPERATION = {
+    "canonicalization": "canonicalize",
+    "signed-scope": "signedScopeHash",
+    "sig6-wire": "signatureValueVerdict",
+}
+F5_PROFILE = "listing-single-hash-golden-v1"
+# The shapes the adapter's signedScopeHash hashes: discriminator, required members,
+# and the only top-level *Version members it admits.
+HASHABLE_SHAPES = {
+    "SettlementEvidence": ("evidenceVersion", {"jobId", "phase", "outcome", "signature"}, {"evidenceVersion"}),
+    "AttestationBundle": (
+        "bundleVersion",
+        {"jobId", "outcome", "phaseSummary", "signatures"},
+        {"bundleVersion", "recipeRegistryVersion", "railRegistryVersion"},
+    ),
+}
+HEX40 = re.compile(r"[0-9a-f]{40}")
+HEX64 = re.compile(r"[0-9a-f]{64}")
 FAMILY_STATUS = {
     "canonicalization": "executable",
     "signed-scope": "executable",
@@ -217,8 +235,8 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
         raise ValueError("release descriptor is not a regular file")
     descriptor_bytes = descriptor_path.read_bytes()
     descriptor = json.loads(descriptor_bytes)
-    observed_origin = _git("config", "--local", "--get", "remote.origin.url")
-    if observed_origin not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
+    origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
+    if len(origins) != 1 or origins[0] not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
         raise ValueError("working repository origin is not the pinned DACS-Standard origin")
     descriptor_relative = descriptor_path.relative_to(ROOT).as_posix()
     if _git_blob_id(descriptor_bytes) != _git("rev-parse", f"HEAD:{descriptor_relative}"):
@@ -236,8 +254,14 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
         raise ValueError("unexpected descriptor schema")
     if descriptor.get("status") != "proposal-non-normative":
         raise ValueError("descriptor must remain explicitly non-normative")
-    if descriptor.get("protocol", {}).get("id") != "dacs-adapter/1":
+    protocol = descriptor.get("protocol", {})
+    if protocol.get("id") != "dacs-adapter/1":
         raise ValueError("unexpected adapter protocol")
+    for pin in [protocol, *protocol.get("exportedCompanionInputs", [])]:
+        if not (HEX64.fullmatch(str(pin.get("sha256"))) and HEX40.fullmatch(str(pin.get("gitBlob")))):
+            raise ValueError("neutral protocol pins must be sha256 and Git blob digests")
+    if not HEX40.fullmatch(str(protocol.get("revision"))):
+        raise ValueError("neutral protocol revision must be an immutable commit id")
     repository = EXPECTED_ORIGIN.removesuffix(".git")
     if descriptor.get("adapter", {}).get("repository") != repository:
         raise ValueError("adapter repository identity is not DACS-Standard")
@@ -308,6 +332,14 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
         ]
         if len(case_ids) != len(set(case_ids)):
             raise ValueError(f"family {family['id']}: duplicate case identifiers")
+        if family["id"] in FAMILY_OPERATION and (
+            family.get("operation") != FAMILY_OPERATION[family["id"]]
+            or any("operation" in item for item in family["cases"])
+        ):
+            raise ValueError(f"family {family['id']}: operation drift")
+        for key in ("unsupportedSourceCases", "excludedSourceCases", "unsupportedCases"):
+            if not all(_bounded_text(item.get("reason"), 1024) for item in family.get(key, [])):
+                raise ValueError(f"family {family['id']}: every {key} entry must state its reason")
         if status == "bounded-operation-profile":
             bounded += len(family["cases"])
         else:
@@ -332,6 +364,8 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                     raise ValueError(f"{selected['caseId']}: canonical source error drift")
             for selected in family["unsupportedSourceCases"]:
                 actual = _case_by_name(raw["vectors"], selected["caseId"])
+                if _tags(actual["input"]) != {"bigint"}:
+                    raise ValueError(f"{selected['caseId']}: only a BigInt host type is an unsupported mapping")
                 if actual["expected"] != selected["sourceExpected"]:
                     raise ValueError(f"{selected['caseId']}: unsupported source verdict drift")
                 if actual["expectedErrorCode"] != selected["sourceExpectedErrorCode"]:
@@ -365,6 +399,16 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                 actual = _artifact_by_id(raw["artifacts"], selected["caseId"])
                 if actual["kind"] != selected["kind"]:
                     raise ValueError(f"{selected['caseId']}: artifact kind drift")
+                if selected["kind"] not in HASHABLE_SHAPES:
+                    raise ValueError(f"{selected['caseId']}: the adapter does not hash {selected['kind']}")
+                discriminator, required, version_members = HASHABLE_SHAPES[selected["kind"]]
+                body = actual["artifact"]
+                if (
+                    body.get(discriminator) != "1"
+                    or not required <= set(body)
+                    or not {member for member in body if member.endswith("Version")} <= version_members
+                ):
+                    raise ValueError(f"{selected['caseId']}: source artifact is outside the hashable shape")
                 if actual["contentHash"] != selected["sourceExpected"]:
                     raise ValueError(f"{selected['caseId']}: source content hash drift")
                 if actual["contentHash"].removeprefix("sha256:") != selected["expected"]["hex"]:
@@ -396,6 +440,14 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                 raise ValueError("bounded F5 profile must retain the incomplete generic milestone")
             if set(family.get("operations", [])) != {"domainSepSign", "domainSepVerify"}:
                 raise ValueError("bounded F5 operation set drift")
+            if family.get("profile") != F5_PROFILE:
+                raise ValueError("bounded F5 profile identifier drift")
+            if "operation" in family or any(
+                case.get("operation")
+                != ("domainSepSign" if case["caseId"] == "signing::sign-ascii-hex-hash" else "domainSepVerify")
+                for case in [*family["cases"], *family.get("unsupportedCases", [])]
+            ):
+                raise ValueError("bounded F5 case operation drift")
             if not family.get("remainingBlocker") or not family.get("requiredHandoffQuestion"):
                 raise ValueError("bounded F5 profile must retain its abstention blocker and handoff")
             _validate_control_lines(

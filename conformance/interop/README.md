@@ -81,9 +81,19 @@ runner does by default; a timeout is never a result.
 
 The canonicalization descriptor partitions all 25 source cases: six are
 selected, `bigint-native-type` is unsupported, twelve are excluded because their
-Standard-only `binary64` or `unicode-code-units` tagged inputs cannot be carried
-by `dacs-adapter/1`, and six expressible cases stay outside the frozen
-first-milestone selection. Selecting them needs a new release descriptor.
+inputs are Standard-only `binary64` or `unicode-code-units` tags, which
+`dacs-adapter/1` does not define (carrying them as a JSON number or a `\ud800`
+escape would be a runner-side mapping this release does not pin), and six
+directly expressible cases stay outside the frozen first-milestone selection.
+Selecting any of them needs a new release descriptor.
+
+`canonicalize` and `signedScopeHash` take the protocol's parsed JSON value. The
+CORE CF-5 raw-document admission rules (pre-rounding number tokens, nesting
+depth 128) are therefore not applied: a request token such as
+`9007199254740991.1` is converted to binary64 before JCS, as JavaScript's
+`JSON.parse` also does, so a raw document that CF-5
+rejects can still yield bytes. The `raw-json-profile-v0.1` corpus is not part of
+this release.
 
 The protocol's BigInt tag cannot be converted to Python `int`: that would erase
 the distinction between an ordinary JSON integer and a host-language BigInt.
@@ -133,11 +143,13 @@ reported as unsupported or as a `false` verdict. A signature or public key of
 the wrong length is a well-formed request whose verification fails, so it
 returns `false`, as the reference adapter does.
 
-Ed25519 point-encoding strictness is not pinned by CORE or by this profile. The
-wrapped helper accepts an `x = 0` point encoding with the sign bit set, which
-RFC 8032 decoding rejects; OpenSSL rejects that encoding for `R`. No such case
-is selected. A divergence there would be an open specification question, not
-evidence against either implementation.
+Ed25519 point-encoding strictness is not pinned by CORE or by this profile, and
+the wrapped helper and OpenSSL disagree in both directions. The helper accepts
+an `x = 0` point encoding with the sign bit set, which RFC 8032 decoding
+rejects and OpenSSL rejects for `R`; OpenSSL accepts a public key that encodes
+`y >= p`, which the helper, like RFC 8032, rejects. No such case is selected. A
+divergence there would be an open specification question, not evidence against
+either implementation.
 
 The generic four-family milestone remains incomplete because the shared runner
 maps every operation error to an observed `THROWN` outcome. It dispatches by

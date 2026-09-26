@@ -54,8 +54,8 @@
     "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "8da23febee610780b3b0eb5207e280087e7d83bb769771b8b7b4b5dc168c677c",
-      "gitBlob": "7edb3e07e849a19962448432bc8ac4b43eabb015"
+      "sha256": "817e2102509360e18f32f852453d6cb868b5ac7fdf7567bd927cd822865ec96a",
+      "gitBlob": "ab31843935427c10bdccbca01e089ae7031bd1ad"
     },
     "wrappedStandard": {
       "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
@@ -90,10 +90,11 @@
       "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
       "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
       "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry",
-      "Ed25519 point-encoding strictness is not pinned: the wrapped helper accepts an x=0 encoding with the sign bit set, which RFC 8032 decoding rejects and OpenSSL rejects for R; no such case is selected, and a divergence there is an open specification question",
-      "the codebase identity is the revision-free DACS-Standard repository; the pinned shared runner compares asserted identities verbatim, so a run pairing this adapter with the contributor standard-jcs-adapter (which asserts a revision- and path-qualified DACS-Standard identity) miscounts one codebase as two and its INTEROP-AGREE rows are invalid",
+      "Ed25519 point-encoding strictness is not pinned: the wrapped helper accepts an x=0 point with the sign bit set, which RFC 8032 rejects and OpenSSL rejects for R, while OpenSSL accepts a public key encoding y >= p, which the helper rejects; no such case is selected, and a divergence there is an open specification question",
+      "the codebase identity is the revision-free DACS-Standard repository; the pinned shared runner compares asserted identities after only trimming and lowercasing them, so a run pairing this adapter with the contributor standard-jcs-adapter (which asserts a revision- and path-qualified DACS-Standard identity) miscounts one codebase as two and its INTEROP-AGREE rows are invalid",
       "the pinned shared runner turns every adapter error, UNSUPPORTED_CASE included, into THROWN and dispatches by operation name, not supportedFamilies; its seed rows cr-bigint, ds-s3-unknown-separator-sign-throws and ds-s6-legacy-emission-refused therefore score an abstention as agreement, so no scored run may use that runner",
       "requests are bounded in size, not time: CPython NFC normalization is quadratic in long runs of combining marks, so callers must enforce a per-request timeout, and a timeout is never a result",
+      "canonicalize and signedScopeHash take the protocol's parsed JSON value, so the CORE CF-5 raw-document admission rules (pre-rounding number tokens, nesting depth 128) are not applied and a raw document that CF-5 rejects can still yield bytes; the raw-json-profile corpus is not part of this release",
       "the origin check reads this checkout's local Git configuration and is a consistency check, not remote attestation; the Python interpreter, its standard library, PATH, and git are trusted host inputs"
     ]
   },
@@ -172,18 +173,18 @@
         }
       ],
       "excludedSourceCases": [
-        {"caseId": "fixed-notation-lower-threshold", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "scientific-notation-below-threshold", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "negative-zero", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "minimum-positive-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "minimum-negative-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "integral-binary64-one", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "round-to-even", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "maximum-dacs-magnitude-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "minimum-dacs-magnitude-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "not-a-number", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "positive-infinity", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
-        {"caseId": "lone-surrogate-string", "sourceTag": "unicode-code-units", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "fixed-notation-lower-threshold", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "scientific-notation-below-threshold", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "negative-zero", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "minimum-positive-binary64", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "minimum-negative-binary64", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "integral-binary64-one", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "round-to-even", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "maximum-dacs-magnitude-binary64", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "minimum-dacs-magnitude-binary64", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "not-a-number", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "positive-infinity", "sourceTag": "binary64", "reason": "the source input is a Standard-only binary64 tag; dacs-adapter/1 has no such tag, and mapping it to a JSON number is a runner-side choice this release does not pin"},
+        {"caseId": "lone-surrogate-string", "sourceTag": "unicode-code-units", "reason": "the source input is a Standard-only unicode-code-units tag; a runner can carry the same lone surrogate as a JSON \\ud800 escape, but that mapping is outside the frozen selection"},
         {"caseId": "fraction-binary-sum", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
         {"caseId": "fraction-one-tenth", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
         {"caseId": "fraction-negative-one-and-half", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},

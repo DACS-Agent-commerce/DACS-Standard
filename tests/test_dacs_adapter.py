@@ -187,6 +187,12 @@ class DacsAdapterTests(unittest.TestCase):
             metadata["boundedOperationProfiles"]["domainSepSign"],
             "listing-single-hash-golden-v1",
         )
+        f5 = next(item for item in self.descriptor["families"] if item["id"] == "domain-separated-signing")
+        self.assertEqual(
+            metadata["boundedOperationProfiles"],
+            {"domainSepSign": f5["profile"], "domainSepVerify": f5["profile"]},
+        )
+        self.assertEqual(metadata["limitations"], self.descriptor["adapter"]["limitations"])
 
     def test_selected_canonicalization_cases_execute(self):
         family = next(item for item in self.descriptor["families"] if item["id"] == "canonicalization")
@@ -907,11 +913,24 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             with self.subTest(case=name):
                 self.assertFalse(response["ok"], response)
                 self.assertEqual(response["error"]["code"], code)
-        # A well-formed unknown non-DACS separator still yields the pinned false verdict.
+        # Well-formed requests keep their verdicts: an unknown non-DACS separator and a
+        # wrong-length signature or public key are failed verifications, not errors.
+        upper = byte_tag(bytes.fromhex(verify["messageBytesHex"]).upper().hex())
         completed, responses = run_adapter(
-            [execute("well-formed-unknown", "domainSepVerify", [message, unknown, signature, public_key])]
+            [
+                execute("well-formed-unknown", "domainSepVerify", [message, unknown, signature, public_key]),
+                execute("short-signature", "domainSepVerify", [message, listing, byte_tag("00" * 63), public_key]),
+                execute("short-public-key", "domainSepVerify", [message, listing, signature, byte_tag("00" * 31)]),
+                execute("uppercase-verify", "domainSepVerify", [upper, listing, signature, public_key]),
+                execute("uppercase-sign", "domainSepSign", [upper, listing, seed]),
+                execute("negative-zero-bigint", "canonicalize", [{"$dacsType": "bigint", "decimal": "-0"}]),
+            ]
         )
-        self.assertIs(responses[0]["result"], False)
+        self.assertEqual([item.get("result") for item in responses[:3]], [False, False, False])
+        self.assertEqual(
+            [item["error"]["code"] for item in responses[3:]],
+            ["UNSUPPORTED_CASE", "UNSUPPORTED_CASE", "MALFORMED_TAG"],
+        )
 
     def test_non_json_constants_and_decode_limits_are_invalid_json(self):
         prefix = (
@@ -1094,7 +1113,62 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             wrapped["revision"] = git(ROOT, "rev-parse", "HEAD")
             wrapped["tree"] = git(ROOT, "rev-parse", "HEAD^{tree}")
 
+        def canonicalization_dispatched_elsewhere(descriptor):
+            self.family(descriptor, "canonicalization")["operation"] = "signedScopeHash"
+
+        def unhashable_signed_scope_kind(descriptor):
+            # A genuine source hash, so only the hashable-kind binding can object.
+            happy = json.loads(
+                (ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json").read_text(encoding="utf-8")
+            )
+            listing = next(item for item in happy["artifacts"] if item["id"] == "listing-analyze-csv")
+            self.family(descriptor, "signed-scope")["cases"].append(
+                {
+                    "caseId": listing["id"],
+                    "kind": listing["kind"],
+                    "sourceExpected": listing["contentHash"],
+                    "expected": {"hex": listing["contentHash"].removeprefix("sha256:")},
+                }
+            )
+
+        def verify_case_run_as_sign(descriptor):
+            f5_case(descriptor, "cases", "signing::unknown-separator-false")["operation"] = "domainSepSign"
+
+        def rejection_relabelled_unsupported(descriptor):
+            family = self.family(descriptor, "canonicalization")
+            case = next(item for item in family["cases"] if item["caseId"] == "number-over-dacs-magnitude")
+            family["cases"].remove(case)
+            family["unsupportedSourceCases"].append(
+                {
+                    "caseId": case["caseId"],
+                    "sourceExpected": case["sourceExpected"],
+                    "sourceExpectedErrorCode": case["sourceExpectedErrorCode"],
+                    "adapterErrorCode": "UNSUPPORTED_CASE",
+                    "reason": "relabelled",
+                }
+            )
+
+        def generic_f5_profile(descriptor):
+            self.family(descriptor, "domain-separated-signing")["profile"] = "generic-f5"
+
+        def unexplained_sig6_exclusion(descriptor):
+            self.family(descriptor, "sig6-wire")["excludedSourceCases"][0]["reason"] = ""
+
+        def mutable_protocol_revision(descriptor):
+            descriptor["protocol"]["revision"] = "main"
+
+        def malformed_protocol_digest(descriptor):
+            descriptor["protocol"]["sha256"] = "not-a-digest"
+
         for mutate in (
+            canonicalization_dispatched_elsewhere,
+            unhashable_signed_scope_kind,
+            verify_case_run_as_sign,
+            rejection_relabelled_unsupported,
+            generic_f5_profile,
+            unexplained_sig6_exclusion,
+            mutable_protocol_revision,
+            malformed_protocol_digest,
             mismatch_case_other_separator,
             raw_digest_case_other_separator,
             primitive_control_other_separator,

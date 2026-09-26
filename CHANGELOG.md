@@ -478,8 +478,10 @@ The format used per release:
   reference, and qualification preflight covers every committed method). A
   committed result counts only for an unexpired claim of the exact bundle with
   its identity; any other committed result does not participate, so it can
-  neither satisfy a member nor steer its decision or VPC-4 fault class. Only
-  the authenticated aggregation path can select this mode. Every committed
+  neither satisfy a member nor steer its decision or VPC-4 fault class. In
+  aggregation and direct evaluation alike, a result outside its governing
+  DACS-1 §6.3.2 window is excluded before family/version preflight (CRQ-1).
+  Only the authenticated aggregation path can select this mode. Every committed
   result must be attributable to a verified member, agree with its referenced
   recipe version, and be committed once.
   `exact_selector_authorized` uses the presented claim's own verified-and-fresh

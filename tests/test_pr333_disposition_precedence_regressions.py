@@ -655,6 +655,26 @@ class AdmittingEntryBoundaryTests(_SebFixtures, unittest.TestCase):
                     self._expired_with_successor(pin, nonce, drop_execution=drop), expected
                 )
 
+    def test_archival_successor_scan_pins_integer_nonces(self):
+        def archival(pin, member_nonce, successor_nonce, drop):
+            source = self._expired_with_successor(pin, "unused", drop_execution=drop)
+            interim = _key(source["bundle"]["settlementEvidence"][0])
+            for key, receipt in source["verifiedReceiptByCanonicalRef"].items():
+                receipt["transaction"] = receipt["transactionRef"]["value"]
+                receipt["nonce"] = member_nonce if key == interim else successor_nonce
+            return R.validate_legacy_ebfab_disposition(
+                *self._args(source), **self._laa(source)
+            )[:2]
+
+        for label, pin, member_nonce, successor_nonce, drop, expected in (
+            ("pinned entry, inert successor", 2, 2, 999, False, "pass"),
+            ("pin unavailable, successor binds only unpinned", 2, 2, 999, True, "indeterminate"),
+            ("pin unavailable, successor matches the member nonce", 2, 2, 2, True, "fail"),
+        ):
+            with self.subTest(case=label):
+                disposition, reason = archival(pin, member_nonce, successor_nonce, drop)
+                self.assertEqual(expected, disposition, reason)
+
     def _transition_source(self, phase_index=None, *, drop_receipt=False):
         source = self._source("standard-completed")
         laa = laa_authority_for_bundle(source, operation="transition-audit")

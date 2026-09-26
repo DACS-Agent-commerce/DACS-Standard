@@ -2245,7 +2245,9 @@ def _seb_known_successor_disposition(ref, record, phase_key, bundle, pubkeys,
     receipt = verified_receipt_by_canonical_ref.get(canonical(ref).decode("utf-8"))
     nonce = receipt.get("nonce") if isinstance(receipt, dict) else None
     pinned = dict(execution_authority_by_phase_key)
-    if _nonempty_jcs_string(nonce):
+    if nonce is not None:
+        # Either receipt contract admitted this member with that exact nonce
+        # (the archival contract also accepts integers).
         pinned[phase_key] = dict(execution_overrides[phase_key], anchorNonce=nonce)
     if known(pinned):
         return "fail"

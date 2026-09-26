@@ -717,6 +717,11 @@
       "test": "AdmittingEntryBoundaryTests.test_successor_scan_respects_the_unavailable_nonce_pin"
     },
     {
+      "id": "pr333-st8-successor-scan-archival-integer-nonce",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "AdmittingEntryBoundaryTests.test_archival_successor_scan_pins_integer_nonces"
+    },
+    {
       "id": "pr333-transition-payment-signed-invocation",
       "file": "tests/test_pr333_disposition_precedence_regressions.py",
       "test": "AdmittingEntryBoundaryTests.test_receiptless_transition_payment_fills_only_its_signed_invocation"

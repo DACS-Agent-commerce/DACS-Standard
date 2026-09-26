@@ -57,8 +57,8 @@
       "gitBlob": "31f6f1933a619c9267c722936109942378dfc82d"
     },
     "wrappedStandard": {
-      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
-      "tree": "8cab6c094a360ded90537b34d3e0a9a4c376f5c2",
+      "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
+      "tree": "1f74859beb5f1f8820e279d93ad3bb1ce8de79b1",
       "primitives": [
         {
           "path": "scripts/jcs.py",
@@ -67,13 +67,13 @@
         },
         {
           "path": "scripts/validate_conformance_vectors.py",
-          "sha256": "6f0e4eca76613d49b02f89de14d5c1e21572dae711220115ba5c4b68104693d6",
-          "gitBlob": "0517d588199279ecfb1884b3c298aced2ddf2145"
+          "sha256": "91123240fc6d1e367184384b04f2c97d333ee6a4deceed86136182d452b900ce",
+          "gitBlob": "0860efe41fecdc629300a42c1f3506f108b38cb1"
         },
         {
           "path": "scripts/run_lifecycle_walkthrough.py",
-          "sha256": "f2ecbb41cadfe33011c8a79bee93b65d7d6bf2cf1c5ccc0549b6fceef484dcb6",
-          "gitBlob": "7b0ddbf837a09c397b958996219634a75a8e6cc0"
+          "sha256": "e4b041f6be7809fcca1311f2a5ae89d52c7eb1f65852e10a4035fdab640a020a",
+          "gitBlob": "e48c9299c2b90c4b960eae5569c12d34d038816c"
         },
         {
           "path": "scripts/specsource.py",
@@ -94,27 +94,27 @@
   "sources": {
     "canonicalization": {
       "path": "conformance/vectors/security/canonical-json-v0.1.json",
-      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
       "sha256": "1e355678b6feddc5dc54611eb0f61e12b9707a1506a3da9e4f679ab9f796c941",
       "gitBlob": "c64834d5df9aaed5f7b626486f3cc79decfeba32"
     },
     "signedScope": {
       "path": "conformance/vectors/dacs-v0.1-happy-path.json",
-      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
       "sha256": "ebb618d5d19d632c3a872205a24a9345fbf89eff58d14305d4b7a3c25cab0912",
       "gitBlob": "bf1b8c4704a41111acd1bb26e49d682c3fd82624"
     },
     "sig6": {
       "path": "conformance/vectors/security/signature-value-encoding-v0.1.json",
-      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
+      "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
       "sha256": "b98234f14d6931d85c6ed1fc83e80a4ad00ea4feb69abb6d5ee23db95ea2a0bf",
       "gitBlob": "27c837ccbb75ed3b1d9d34474e272d47326969f1"
     },
     "domainSeparatedSigning": {
       "path": "conformance/vectors/golden.json",
-      "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
-      "sha256": "5c691b29ffe61a5667b9554b7a19c50039b1078f69d5c3fa14b86628d7bdb30f",
-      "gitBlob": "1562f75c233df815c13bffc8b451cee4fd240964"
+      "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
+      "sha256": "20023ee70a73be070afa335e8e1fdc34734fc5dbe6c03a88452736fc2257b4ea",
+      "gitBlob": "332d87f3efd08846a38bcee787b095a719a39820"
     }
   },
   "families": [
@@ -251,10 +251,10 @@
       "source": "domainSeparatedSigning",
       "controlSource": {
         "path": "tests/test_flow_trace_signing.py",
-        "revision": "d45c0a292006b2fd2e40d2dbe0cd7ed518ad0f20",
-        "sha256": "e5cde864b5b0a25ef8a58b1f7dc3106d19c6cd2482fe8d6209a571819e0a6564",
-        "gitBlob": "042f83f9494f942a449967b5fe40931651dad378",
-        "lines": "38-42"
+        "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
+        "sha256": "39353f28562544dc94ae8ed828c545c67974722b0357e93448901f35d10959aa",
+        "gitBlob": "9e6066421a59ac07fb922b43d47bb0c75574a60b",
+        "lines": "47-51"
       },
       "cases": [
         {

@@ -348,8 +348,12 @@ def load_case(
     except RecursionError as exc:
         return None, [fail(path, f"invalid JSON: {exc}")]
     except ValueError as exc:
-        # The shared parser reports every admission failure as "invalid JSON: ...".
-        return None, [fail(path, str(exc))]
+        # The shared parser prefixes its own admission failures; host decoder
+        # limits (e.g. the integer digit limit) are classified the same way.
+        message = str(exc)
+        if not message.startswith("invalid JSON:"):
+            message = f"invalid JSON: {message}"
+        return None, [fail(path, message)]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []

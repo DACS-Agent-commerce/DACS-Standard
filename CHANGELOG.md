@@ -475,9 +475,13 @@ The format used per release:
   Aggregation classifies the record's committed `freshness` ++ `dealSpecific`
   results for each verified member (an empty committed set fails, a refreshed
   committed result counts even when the bundle claim still cites an older
-  reference, and qualification preflight covers every committed method),
-  while each result must still match an unexpired claim of the exact bundle.
-  Every committed result must be attributable to a verified member.
+  reference, and qualification preflight covers every committed method). A
+  committed result counts only for an unexpired claim of the exact bundle with
+  its identity; any other committed result does not participate, so it can
+  neither satisfy a member nor steer its decision or VPC-4 fault class. Only
+  the authenticated aggregation path can select this mode. Every committed
+  result must be attributable to a verified member, agree with its referenced
+  recipe version, and be committed once.
   `exact_selector_authorized` uses the presented claim's own verified-and-fresh
   evidence independently of member order; a required verified selector member
   disables the presence path; and a `oneOf` group that admits the selector
@@ -488,14 +492,18 @@ The format used per release:
   exception. Replay refuses an unsupported or missing
   `CompositeVerificationRecord.recordVersion` or `VerifyResult.resultVersion`
   and a malformed `warnings` list, enforces the CORE CF-5(5) 128-level nesting
-  bound without leaking recursion errors, treats an optional omitted
+  bound per artifact without leaking recursion errors, does not let the JSON
+  spelling of one number (for example `1` and `1.0`) change a verdict
+  (CF-5(4)), treats an optional omitted
   `validUntil` under the exact recipe's authenticated `defaultMaxAgeSec`, and
   treats an inverted validity window as stale. None of the 30 golden outputs
   change; new negatives re-anchor the trusted receipt so the guard under test,
   not a stale receipt hash, decides. The artifact-shape validator again checks
   a `bundleVersion: "1"` object as an `AttestationBundle` unless it is
   unambiguously an `IdentityBundle`, and shared JSON admission keeps the
-  decoder error type and position.
+  decoder error type and position. The CORE §B.8 SN-4 Vet record binding is
+  scoped to DACS-1/DACS-2 Vet presentations, leaving other session-nonce
+  admission points (such as DACS-5 participation admission) unchanged.
 
 ### Fixed — integrated presence and current-profile consumers
 

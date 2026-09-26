@@ -1607,8 +1607,8 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             {"families": 4, "executableCases": 14, "boundedCases": 4, "unsupportedCases": 2},
         )
 
-    def test_selection_checks_hold_behind_an_updated_claims_digest(self):
-        """A reviewed REVIEWED_CLAIMS_SHA256 update must not let a selection check lapse."""
+    def test_claim_and_selection_checks_hold_behind_an_updated_claims_digest(self):
+        """A reviewed REVIEWED_CLAIMS_SHA256 update must not let a claim or selection check lapse."""
 
         happy = json.loads(pinned_text("conformance/vectors/dacs-v0.1-happy-path.json"))
         listing = next(item for item in happy["artifacts"] if item["id"] == "listing-analyze-csv")
@@ -1648,13 +1648,48 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             ]
             family["cases"].append({"caseId": case_id, "sourceExpected": "reject", "expected": "REJECT"})
 
+        def rejection_relabelled_unsupported(descriptor):
+            family = self.family(descriptor, "canonicalization")
+            case = next(item for item in family["cases"] if item["caseId"] == "number-over-dacs-magnitude")
+            family["cases"].remove(case)
+            family["unsupportedSourceCases"].append(
+                {
+                    "caseId": case["caseId"],
+                    "sourceExpected": case["sourceExpected"],
+                    "sourceExpectedErrorCode": case["sourceExpectedErrorCode"],
+                    "adapterErrorCode": "UNSUPPORTED_CASE",
+                    "reason": "relabelled",
+                }
+            )
+
+        def unexplained_sig6_exclusion(descriptor):
+            self.family(descriptor, "sig6-wire")["excludedSourceCases"][0]["reason"] = ""
+
+        def normative_status(descriptor):
+            descriptor["status"] = "normative"
+
+        def generic_family_advertised(descriptor):
+            self.family(descriptor, "domain-separated-signing")["advertisedFamily"] = True
+
+        def generic_milestone_complete(descriptor):
+            self.family(descriptor, "domain-separated-signing")["genericFamilyMilestone"] = "complete"
+
+        def blocker_dropped(descriptor):
+            self.family(descriptor, "domain-separated-signing")["remainingBlocker"] = ""
+
         for mutate, message in (
             (unhashable_signed_scope_kind, "the adapter does not hash"),
             (duplicated_signed_scope_case, "duplicate case identifiers"),
             (sig6_exclusion_dropped, "SIG-6 selections and exclusions do not partition"),
-            (canonical_exclusion_dropped, "exclusions do not partition the source cases"),
+            (canonical_exclusion_dropped, "canonicalization selections, unsupported cases, and exclusions do not"),
             (tagged_case_selected, "selected input uses a tag"),
             (algorithm_length_case_selected, "not decided by wire encoding alone"),
+            (rejection_relabelled_unsupported, "only a BigInt host type is an unsupported mapping"),
+            (unexplained_sig6_exclusion, "every excludedSourceCases entry must state its reason"),
+            (normative_status, "must remain explicitly non-normative"),
+            (generic_family_advertised, "must not advertise the generic family"),
+            (generic_milestone_complete, "must retain the incomplete generic milestone"),
+            (blocker_dropped, "must retain its abstention blocker and handoff"),
         ):
             with self.subTest(mutation=mutate.__name__):
                 descriptor = self.mutated(mutate)
@@ -1782,7 +1817,8 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
 
         def unhashable_signed_scope_kind(descriptor):
             # A genuine source hash.  The selection digest objects first here; the
-            # hashable-kind binding alone is tested behind an updated digest below.
+            # hashable-kind binding alone is tested behind an updated digest in
+            # test_claim_and_selection_checks_hold_behind_an_updated_claims_digest.
             happy = json.loads(pinned_text("conformance/vectors/dacs-v0.1-happy-path.json"))
             listing = next(item for item in happy["artifacts"] if item["id"] == "listing-analyze-csv")
             self.family(descriptor, "signed-scope")["cases"].append(

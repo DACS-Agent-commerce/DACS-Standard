@@ -770,6 +770,11 @@
       "id": "pr333-laa-pending-mode-is-explicit",
       "file": "tests/test_pr333_disposition_precedence_regressions.py",
       "test": "PendingReceiptPaymentPrecedenceTests.test_laa_never_infers_pending_mode_from_a_missing_receipt"
+    },
+    {
+      "id": "pr333-released-payment-checks-outrank-other-outages",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_payment_checks_outrank_other_outages"
     }
   ],
   "coveredInvariantClasses": [

@@ -796,12 +796,25 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
                 carrier["binding"]["evidenceReceiptHash"] = "e" * 64
             return source
 
+        def other_writer(source):
+            # LAA admits only a receipt the evidence signer wrote, so no later
+            # receipt can satisfy a carrier naming another writer.
+            for carrier in source["legacyAgreementAuthorityByPhaseKey"].values():
+                carrier["binding"]["receiptWriter"] = "did:demos:buyer"
+            return source
+
         present = other_receipt(self._source("single-htlc-direct-completed"))
         self._assert_paths(present, "fail")
         removed = self._pending(
             other_receipt(self._source("single-htlc-direct-completed")), "removed"
         )
         self._assert_paths(removed, "indeterminate")
+        for how in ("present", "removed", "observation"):
+            with self.subTest(case="another receipt writer", receipt=how):
+                self._assert_paths(
+                    self._pending(other_writer(self._source("single-htlc-direct-completed")), how),
+                    "fail",
+                )
 
     def test_available_execution_authority_excludes_receiptless_candidates(self):
         def contradict(field, value):
@@ -826,6 +839,7 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
                 ("another orchestrator", contradict("phaseOrchestrator", "did:demos:buyer")),
                 ("another job", contradict("jobId", "01ARZ3NDEKTSV4RRFFQ69G5FAW")),
                 ("another invocation", contradict("phaseIndex", 1)),
+                ("a non-integer invocation", contradict("phaseIndex", 2.0)),
             ):
                 for how in ("present", "removed"):
                     with self.subTest(case=label, receipt=how, pointer=pointer):

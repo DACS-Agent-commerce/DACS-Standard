@@ -1962,6 +1962,120 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             with self.subTest(kind=kind, case=label):
                 self.assertEqual(expected, tuple(observed))
 
+    def test_released_payment_checks_outrank_other_outages(self):
+        """Row, lifecycle, edge and LAA checks decide beside unrelated outages."""
+        def mismatch_agreement(value, kind):
+            value["bundle"]["agreementRef"] = {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": "dacs3:agreement:" + value["bundle"]["jobId"],
+                },
+                "contentHash": "d" * 64,
+            }
+            self._resign_released(value, kind)
+            value["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(value["authority"])
+            )
+
+        def to_failure(record):
+            record["outcome"] = "failure"
+            record["reason"] = "insufficient-funds"
+            for field in ("paymentTxRefs", "paymentAmount", "paymentFee",
+                          "settlementFinality"):
+                record.pop(field, None)
+
+        def payment(*mutations):
+            def build(kind):
+                value = self._released_value("standard-completed", kind)
+                authority = value["authority"]
+                for mutate in mutations:
+                    mutate(value, kind)
+                key = next(
+                    key for key, resolution
+                    in authority["referenceValidationByCanonicalRef"].items()
+                    if resolution["record"]["phase"] == "pay-dem"
+                )
+                return value, key
+            return build
+
+        def successor(*mutations):
+            def build(kind):
+                value = self._st8_resolved_value(kind)
+                for mutate in mutations:
+                    mutate(value, kind)
+                return value, self._key(value["bundle"]["settlementEvidence"][0])
+            return build
+
+        def without_entry(value, kind):
+            del value["authority"]["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"]
+
+        def failure_on_ok_row(value, kind):
+            replace_top_record(value["authority"], "pay-dem", to_failure, self.data["seeds"])
+            self._resign_released(value, kind)
+
+        def member_lifecycle(lifecycle):
+            def mutate(value, kind):
+                resolutions = value["authority"]["referenceValidationByCanonicalRef"]
+                for resolution in resolutions.values():
+                    if resolution["record"]["phase"] == "pay-dem":
+                        resolution["lifecycle"] = (
+                            dict(resolution["lifecycle"], **lifecycle)
+                            if isinstance(lifecycle, dict) else lifecycle
+                        )
+            return mutate
+
+        def interim_not_finalized(value, kind):
+            resolution = value["authority"]["referenceValidationByCanonicalRef"][
+                value["interimKey"]
+            ]
+            resolution["lifecycle"] = dict(resolution["lifecycle"], state="included")
+
+        def without_interim(value, kind):
+            del value["authority"]["referenceValidationByCanonicalRef"][value["interimKey"]]
+
+        def other_receipt_writer(value, kind):
+            for carrier in value["authority"]["legacyAgreementAuthorityByPhaseKey"].values():
+                carrier["binding"]["receiptWriter"] = "did:demos:buyer"
+
+        def float_invocation(value, kind):
+            value["authority"]["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"][
+                "phaseIndex"
+            ] = 2.0
+
+        fail, error, pending = ("fail",) * 3, ("error",) * 3, ("indeterminate",) * 3
+        cases = (
+            ("row execution authority unavailable", payment(without_entry), pending),
+            ("agreementRef mismatch, row execution authority unavailable",
+             payment(mismatch_agreement, without_entry), fail),
+            ("failure record on an ok row, row execution authority unavailable",
+             payment(failure_on_ok_row, without_entry), fail),
+            ("member lifecycle not finalized on a completed copy",
+             payment(member_lifecycle({"state": "included"})), fail),
+            ("member lifecycle of the wrong JSON type",
+             payment(member_lifecycle("not-an-object")), error),
+            ("carrier receipt writer is not the evidence signer",
+             payment(other_receipt_writer), fail),
+            ("non-integer row invocation", payment(float_invocation), error),
+            ("ST-8 successor", successor(), ("pass", "indeterminate", "indeterminate")),
+            ("ST-8 interim dependency not finalized",
+             successor(interim_not_finalized), fail),
+            ("ST-8 interim authority unavailable", successor(without_interim), pending),
+            ("agreementRef mismatch, ST-8 interim authority unavailable",
+             successor(mismatch_agreement, without_interim), fail),
+        )
+        for kind in ("fault", "legacy"):
+            for label, build, expected in cases:
+                observed = []
+                for state in ("established", "absent", "observation"):
+                    value, ref_key = build(kind)
+                    self._receipt_state(value, ref_key, state)
+                    observed.append(R._validate_current_fab_delivery_admission(
+                        value["bundle"], value["authority"], self.pubkeys,
+                        **({"ordinary_current": True} if kind == "legacy" else {}),
+                    )[0])
+                with self.subTest(kind=kind, case=label):
+                    self.assertEqual(expected, tuple(observed))
+
     def test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement(self):
         for name, unrelated, expected in (
             ("joined", False, "pass"), ("valid-unrelated-agreement", True, "fail"),

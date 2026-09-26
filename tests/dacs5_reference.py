@@ -2272,15 +2272,20 @@ def _seb_unplaced_record_failure(record, summary_by_key, expected_keys,
         return "authenticated phase is outside the signed listing pipeline"
     if not _seb_unplaced_candidates(record, summary_by_key, expected_keys, evidence_type):
         return "evidence record contradicts the signed phase result"
+    if _st8_supersession_shape_invalid(record, top_level_refs):
+        return "invalid ST-8 supersession shape"
+    return None
+
+
+def _st8_supersession_shape_invalid(record, top_level_refs):
+    """True when a signed ST-8 supersession edge fails its receipt-free SEB-3 shape."""
     supersedes = record.get("supersedesEvidenceRef")
-    if supersedes is not None and (
+    return supersedes is not None and (
         record.get("outcome") != "success"
         or record.get("phase") not in _ST8_INTERIM_REASON_BY_PHASE
         or not _attestation_ref_shape_valid(supersedes)
         or canonical(supersedes) in {canonical(item) for item in top_level_refs}
-    ):
-        return "invalid ST-8 supersession shape"
-    return None
+    )
 
 
 def _seb_unplaced_st8_failure(record, ref, phase_key, summary_entry, bundle, pubkeys,
@@ -2360,6 +2365,7 @@ def _seb_unplaced_candidate_failure(record, ref, phase_key, summary_entry, resol
         if (
             not isinstance(execution, dict)
             or execution.get("jobId") != bundle.get("jobId")
+            or not _safe_nonnegative_integer(execution.get("phaseIndex"))
             or execution.get("phaseIndex") != int(phase_index)
             or execution.get("phaseKind") != phase_kind
             or execution.get("phaseOrchestrator") != signer
@@ -4632,20 +4638,32 @@ def _released_st8_row_class(record, summary_entry, summary, bundle):
 
 def _released_pending_payment_failure(record, ref, resolution, evidence_type, bundle,
                                       listing, pubkeys, resolutions, execution, receipts,
-                                      payment_summary_by_key,
+                                      payment_summary_by_key, top_level_refs,
                                       legacy_agreement_authority_by_phase_key,
                                       keys=None):
     """Return ``(disposition, reason)`` when a presented payment with a pending receipt fits no row.
 
-    The member's own receipt is unavailable or only an observation, but the
-    same row checks an established receipt would reach still decide it: its
-    signed kind and outcome (a transition record only at its signed
-    invocation), the row's ST-8 class and a known successor, whether present
-    SB-1 authority for the row could ever admit it, and every
-    receipt-independent LAA and agreementRef check. ``keys`` narrows the rows
-    (an observation binds exactly one). Returns None while some row stays
-    open, so the member remains pending.
+    The member's own receipt is unavailable, only an observation, or not yet
+    bindable because the row's SB-1 authority is unavailable. Every check an
+    established receipt would reach that does not read that receipt still
+    decides it: its lifecycle authority, its signed kind and outcome (a
+    transition record only at its signed invocation), the row's ST-8 class,
+    known successor and supersession edge, whether present SB-1 authority for
+    the row could ever admit it, and every receipt-independent LAA and
+    agreementRef check. ``keys`` narrows the rows to those the receipt or its
+    observation twin names. Returns None while some row stays open, so the
+    member remains pending.
     """
+    if "lifecycle" in resolution:
+        lifecycle = resolution["lifecycle"]
+        if not isinstance(lifecycle, dict):
+            return ("error", "FAB payment lifecycle authority is malformed")
+        state = lifecycle.get("state")
+        if bundle.get("outcome") == "completed":
+            if state != "finalized" or lifecycle.get("independentlyResolvable") is not True:
+                return ("fail", "completed FAB payment is not finalized and independently resolvable")
+        elif not _string_member(state, {"included", "finalized"}):
+            return ("fail", "terminal FAB payment is not included or finalized")
     wanted_row = "ok" if record.get("outcome") == "success" else "fail"
     fitting = {
         key for key, entry in payment_summary_by_key.items()
@@ -4677,6 +4695,7 @@ def _released_pending_payment_failure(record, ref, resolution, evidence_type, bu
             admits = (
                 isinstance(entry, dict)
                 and entry.get("jobId") == bundle.get("jobId")
+                and _safe_nonnegative_integer(entry.get("phaseIndex"))
                 and entry.get("phaseIndex") == int(index)
                 and entry.get("phaseKind") == kind
                 and entry.get("phaseOrchestrator") == signer
@@ -4707,6 +4726,27 @@ def _released_pending_payment_failure(record, ref, resolution, evidence_type, bu
                 continue
         else:
             entry = _seb_admitting_execution(record, signer, bundle, key)
+        if record.get("supersedesEvidenceRef") is not None:
+            # A signed edge implies the row's :resolved anchor. With the row's
+            # SB-1 authority the whole edge is checked, otherwise its signed
+            # shape; an unavailable interim leaves the row open.
+            edge = (
+                _st8_supersession_edge_failure(
+                    record, True, key, bundle, pubkeys, resolutions, execution,
+                    receipts, top_level_refs, _validate_current_evidence_receipt,
+                    typed_unavailability=True,
+                )
+                if key in execution
+                else (
+                    "invalid ST-8 supersession shape"
+                    if _st8_supersession_shape_invalid(record, top_level_refs)
+                    else None
+                )
+            )
+            edge_disposition = getattr(edge, "disposition", "fail")
+            if edge is not None and edge_disposition != "indeterminate":
+                failures.append((edge_disposition, str(edge)))
+                continue
         if record.get("outcome") == "success":
             disposition, reason, _ = _qualify_legacy_agreement_evidence(
                 record,
@@ -5171,7 +5211,7 @@ def _validate_current_fab_delivery_admission(
                     pending_failure = _released_pending_payment_failure(
                         record, ref, resolution, evidence_type, bundle, listing,
                         pubkeys, resolutions, execution, receipts,
-                        payment_summary_by_key,
+                        payment_summary_by_key, actual_refs,
                         authority.get(
                             "legacyAgreementAuthorityByPhaseKey", _LAA_AUTHORITY_UNSPECIFIED
                         ),
@@ -5199,23 +5239,24 @@ def _validate_current_fab_delivery_admission(
                 if not binding_ok and binding_disposition == "indeterminate":
                     # A well-formed observation binds through its established
                     # twin; that invocation's receipt-independent checks run.
+                    # One whose twin cannot bind yet is checked like an
+                    # unavailable receipt, against every row it could fill.
                     observed = _seb_observation_twin_binding(
                         ref, record, payment_signature["signer"], bundle, execution,
                         receipts, evidence_type, _validate_current_evidence_receipt,
                     )
-                    if observed is not None:
-                        pending_failure = _released_pending_payment_failure(
-                            record, ref, resolution, evidence_type, bundle, listing,
-                            pubkeys, resolutions, execution, receipts,
-                            payment_summary_by_key,
-                            authority.get(
-                                "legacyAgreementAuthorityByPhaseKey",
-                                _LAA_AUTHORITY_UNSPECIFIED,
-                            ),
-                            keys=[observed[0][0]],
-                        )
-                        if pending_failure is not None:
-                            return pending_failure
+                    pending_failure = _released_pending_payment_failure(
+                        record, ref, resolution, evidence_type, bundle, listing,
+                        pubkeys, resolutions, execution, receipts,
+                        payment_summary_by_key, actual_refs,
+                        authority.get(
+                            "legacyAgreementAuthorityByPhaseKey",
+                            _LAA_AUTHORITY_UNSPECIFIED,
+                        ),
+                        keys=None if observed is None else [observed[0][0]],
+                    )
+                    if pending_failure is not None:
+                        return pending_failure
                     pending_reason = pending_reason or binding_result
                     return None
                 if not binding_ok and binding_disposition == "error":
@@ -5244,6 +5285,21 @@ def _validate_current_fab_delivery_admission(
                         )
                     ]
                     if any(key not in execution for key in payment_execution_keys):
+                        # The receipt cannot bind without the row's SB-1
+                        # authority, but it still names the rows this member
+                        # could fill, and their receipt-independent checks run.
+                        pending_failure = _released_pending_payment_failure(
+                            record, ref, resolution, evidence_type, bundle, listing,
+                            pubkeys, resolutions, execution, receipts,
+                            payment_summary_by_key, actual_refs,
+                            authority.get(
+                                "legacyAgreementAuthorityByPhaseKey",
+                                _LAA_AUTHORITY_UNSPECIFIED,
+                            ),
+                            keys=payment_execution_keys,
+                        )
+                        if pending_failure is not None:
+                            return pending_failure
                         pending_reason = pending_reason or "FAB payment execution authority is unavailable"
                         return None
                     if any(
@@ -5319,10 +5375,11 @@ def _validate_current_fab_delivery_admission(
                 )
                 if edge_failure is not None:
                     edge_disposition = getattr(edge_failure, "disposition", "fail")
-                    if edge_disposition == "indeterminate":
-                        pending_reason = pending_reason or edge_failure
-                        return None
-                    return (edge_disposition, edge_failure)
+                    if edge_disposition != "indeterminate":
+                        return (edge_disposition, edge_failure)
+                    # An unavailable interim leaves only the edge open; this
+                    # member's reuse and LAA checks still decide it.
+                    pending_reason = pending_reason or edge_failure
                 if phase_key in payment_actual_keys:
                     return ("fail", "FAB reuses a payment invocation")
                 payment_actual_keys.append(phase_key)
@@ -10773,7 +10830,9 @@ def make_laa_phase_carrier(
 
 
 # Carrier binding fields that only the member's own evidence receipt can confirm.
-_LAA_RECEIPT_BINDING_FIELDS = frozenset({"evidenceReceiptHash", "receiptWriter"})
+# The receipt writer is not one: LAA admits only a receipt written by the
+# orchestrator that signed the evidence.
+_LAA_RECEIPT_BINDING_FIELDS = frozenset({"evidenceReceiptHash"})
 
 
 def _laa_agreement_ref_join(legacy_agreement_authority_by_phase_key, phase_key, bundle):
@@ -10819,8 +10878,8 @@ def _qualify_legacy_agreement_evidence(
 
     With ``receipt_pending`` the member's evidence receipt is unavailable or
     only an unestablished observation. Every check that does not read the
-    receipt still runs; only the receipt-hash and receipt-writer comparisons
-    are deferred, so a would-be ``pass`` is ``indeterminate``.
+    receipt still runs; only the receipt-hash comparison is deferred, so a
+    would-be ``pass`` is ``indeterminate``.
     """
     if receipt_pending:
         kwargs["evidence_receipt"] = None
@@ -10900,11 +10959,12 @@ def _qualify_legacy_agreement_evidence_core(
     if not isinstance(artifact, str) or artifact not in LAA_ARTIFACTS:
         return ("error", "authenticated agreement artifact is unsupported", None)
 
-    # With receipt_pending only the receipt-hash and receipt-writer
-    # comparisons below are deferred; a missing receipt otherwise stays the
-    # malformed binding it always was.
+    # With receipt_pending only the receipt-hash comparison below is deferred:
+    # the only receipt that could qualify is written by the evidence signer, so
+    # the carrier's receipt writer is still compared. A missing receipt
+    # otherwise stays the malformed binding it always was.
     if receipt_pending:
-        evidence_receipt = None
+        evidence_receipt = {"writer": record.get("signature", {}).get("signer")}
     expected_binding = _authenticated_laa_phase_binding(
         laa,
         bundle,
@@ -10912,7 +10972,7 @@ def _qualify_legacy_agreement_evidence_core(
         phase_key,
         record,
         evidence_ref,
-        {} if receipt_pending else evidence_receipt,
+        evidence_receipt,
         phase_execution,
     )
     if expected_binding is None:
@@ -10969,8 +11029,7 @@ def _qualify_legacy_agreement_evidence_core(
         return ("error", "authenticated LAA orchestrator is malformed", None)
     if not (
         orchestrator == phase_execution.get("phaseOrchestrator")
-        == signature.get("signer")
-        and (receipt_pending or orchestrator == evidence_receipt.get("writer"))
+        == signature.get("signer") == evidence_receipt.get("writer")
     ):
         return (
             "fail",

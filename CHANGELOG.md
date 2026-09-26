@@ -261,13 +261,16 @@ The format used per release:
   missing invocations must admit a one-to-one assignment. A known ST-8
   successor rejects only where every admitting entry would bind it. A
   payment whose receipt is unavailable or only observed defers only LAA's
-  receipt-hash and receipt-writer comparisons, so malformed LAA authority,
-  an authenticated agreement or `agreementRef` mismatch, and present
-  execution authority that names another job, invocation or orchestrator
-  still decide it on the EBFAB, finality-bound and released AB/FAB gates.
-  An unbindable execution rail or nonce excludes such a candidate too, and
-  the released gate keeps its phase-kind, outcome and ST-8 row-class checks
-  whether the receipt is established, absent or only observed.
+  receipt-hash comparison, so malformed LAA authority, a carrier naming a
+  receipt writer other than the evidence signer, an authenticated agreement
+  or `agreementRef` mismatch, and present execution authority that names
+  another job, invocation or orchestrator still decide it on the EBFAB,
+  finality-bound and released AB/FAB gates. An unbindable execution rail,
+  nonce or non-integer invocation excludes such a candidate too. The
+  released gate keeps its lifecycle, phase-kind, outcome, ST-8 row-class,
+  supersession-edge and LAA checks whether the receipt is established,
+  absent or only observed, and while the row's execution entry or an ST-8
+  interim's authority is unavailable.
   Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts

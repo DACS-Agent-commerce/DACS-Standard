@@ -585,6 +585,66 @@
       "id": "pr333-finality-reconcile-listing-totality",
       "file": "tests/test_settlement_finality_verification_vectors.py",
       "test": "SettlementFinalityVerificationVectorTests.test_malformed_strong_listing_is_typed_error_in_reconciliation"
+    },
+    {
+      "id": "pr333-seb6-receipt-observation-pending",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_receipt_observation_is_pending_until_independent_checks_run"
+    },
+    {
+      "id": "pr333-seb6-laa-unavailable-pending",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_unavailable_laa_authority_is_pending"
+    },
+    {
+      "id": "pr333-seb6-delivery-execution-unavailable-pending",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_unavailable_delivery_execution_authority_is_pending"
+    },
+    {
+      "id": "pr333-seb6-unplaced-member-fills-only-missing-invocation",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_unplaced_member_can_fill_only_a_missing_invocation"
+    },
+    {
+      "id": "pr333-finality-bound-pending-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "FinalityBoundPendingPrecedenceTests.test_pending_authority_never_masks_a_lifecycle_rejection"
+    },
+    {
+      "id": "pr333-released-trace-optional-fields",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_traces_admit_omitted_optional_fields"
+    },
+    {
+      "id": "pr333-released-trace-present-contradiction",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_traces_still_reject_present_contradictions"
+    },
+    {
+      "id": "pr333-released-trace-incomplete-pending",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_incomplete_released_trace_is_pending_not_a_verdict"
+    },
+    {
+      "id": "pr333-dependency-receipt-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "DependencyReceiptPrecedenceTests.test_public_entry_receipt_classes_survive_missing_resolvability"
+    },
+    {
+      "id": "pr333-self-signed-contradiction-fail",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SelfSignedMethodDispositionTests.test_public_entry_classifies_authenticated_contradictions_as_fail"
+    },
+    {
+      "id": "pr333-unselected-candidate-inert",
+      "file": "tests/test_unselected_candidate_inertness.py",
+      "test": "CurrentUseUnselectedCandidateTests.test_unselected_invalid_fault_party_is_inert"
+    },
+    {
+      "id": "pr333-job-bound-unselected-inert",
+      "file": "tests/test_unselected_candidate_inertness.py",
+      "test": "DeriveJobBoundUnselectedCandidateTests.test_unselected_candidates_are_inert"
     }
   ],
   "coveredInvariantClasses": [

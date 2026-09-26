@@ -3141,6 +3141,208 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     result["reason"],
                 )
 
+    # --- released AB/FAB traces keep released optional-field semantics
+
+    def _failed_delivery_value(self, authority_name):
+        """A current-job released FAB from a failed single-delivery EBFAB vector."""
+        source = copy.deepcopy(self.data["executionAuthorities"][authority_name])
+        bundle = source["bundle"]
+        bundle.pop("evidenceBoundFaultBundleVersion")
+        bundle["faultBundleVersion"] = "1"
+        bundle["jobId"] = CURRENT_JOB
+        old_ref = copy.deepcopy(bundle["settlementEvidence"][0])
+        old_key = R.canonical(old_ref).decode("utf-8")
+        resolution = source["referenceValidationByCanonicalRef"].pop(old_key)
+        record = resolution["record"]
+        record["jobId"] = CURRENT_JOB
+        self._resign_record(record, signer_role="orchestrator")
+        new_ref = copy.deepcopy(old_ref)
+        new_ref["contentHash"] = R.delivery_evidence_hash(record)
+        new_key = R.canonical(new_ref).decode("utf-8")
+        source["referenceValidationByCanonicalRef"][new_key] = resolution
+        receipt = source["verifiedReceiptByCanonicalRef"].pop(old_key)
+        receipt["logicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        receipt["contentHash"] = new_ref["contentHash"]
+        source["verifiedReceiptByCanonicalRef"][new_key] = receipt
+        execution = source["sessionExecutionAuthorityByPhaseKey"]["0:deliver-storage-program"]
+        execution["jobId"] = CURRENT_JOB
+        execution["evidenceLogicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        bundle["settlementEvidence"] = [new_ref]
+        bundle["phaseSummary"][0]["attestationRef"] = copy.deepcopy(new_ref)
+        role = bundle["anchoredByRole"]
+        signer = next(p["primaryClaim"] for p in bundle["parties"] if p["role"] == role)
+        value = {
+            "bundle": bundle,
+            "pointer": {
+                "faultBundleVersion": "1",
+                "pointerKind": "extended",
+                "fullBundleUrl": "fixture:released-trace-" + authority_name,
+                "fullBundleContentHash": "",
+                "signature": {},
+            },
+            "authority": source,
+            "role": role,
+            "trusted": R.trusted_profile_context(CURRENT_JOB, signer, role=role),
+            "keys": R.trusted_verification_keys(copy.deepcopy(self.pubkeys)),
+        }
+        self._resign_bundle_and_pointer(value)
+        return value
+
+    def _as_released_kind(self, value, kind):
+        """Re-sign a current-job value as a released FAB or AttestationBundle."""
+        bundle = value["bundle"]
+        if kind == "fault":
+            self._resign_bundle_and_pointer(value)
+            return value
+        bundle.pop("faultBundleVersion", None)
+        bundle.pop("faultedParty", None)
+        bundle["bundleVersion"] = "1"
+        claims = {party["role"]: party["primaryClaim"] for party in bundle["parties"]}
+        bundle["signatures"] = []
+        digest = R.bundle_hash(bundle)
+        bundle["signatures"] = [
+            {
+                "party": claims[role],
+                "algorithm": "ed25519",
+                "value": self._sign(role, R.BUNDLE_DOMAIN, digest),
+            }
+            for role in R._required_bundle_signers(bundle)
+        ]
+        return value
+
+    def _released_trace_dispositions(self, value, kind):
+        results = {
+            "direct": R._validate_current_fab_delivery_admission(
+                value["bundle"], value["authority"], self.pubkeys,
+                **({"ordinary_current": True} if kind == "legacy" else {}),
+            )[0],
+            "reconcile": self._reconcile(copy.deepcopy(value))["decision"],
+            "current-use": self._current_use(copy.deepcopy(value))[0],
+        }
+        if kind == "fault":
+            resolved = self._resolve(copy.deepcopy(value))
+            results["pointer"] = (
+                "pass" if resolved["ok"] else resolved.get("disposition", "fail")
+            )
+        return results
+
+    def test_released_traces_admit_omitted_optional_fields(self):
+        def last(value):
+            return value["bundle"]["phaseSummary"][-1]
+
+        def drop(*fields):
+            return lambda value: [last(value).pop(field, None) for field in fields]
+
+        def outcome(name, faulted):
+            def mutate(value):
+                value["bundle"]["outcome"] = name
+                value["bundle"]["faultedParty"] = faulted
+                last(value).pop("errorClass", None)
+            return mutate
+
+        def retry_marker(index):
+            return lambda value: value["bundle"]["phaseSummary"][index].__setitem__(
+                "retryExhausted", True
+            )
+
+        failed = lambda: self._failed_delivery_value("failed-delivery")
+        transient = lambda: self._failed_delivery_value("transient-retry-exhausted")
+        cases = (
+            ("permanent control", failed, None),
+            ("errorClass omitted", failed, drop("errorClass")),
+            ("retryExhausted on a permanent terminal", failed, retry_marker(-1)),
+            ("failed-substrate without errorClass", failed, outcome("failed-substrate", "none")),
+            ("failed-counterparty without errorClass", failed,
+             outcome("failed-counterparty", "buyer")),
+            ("transient without retryExhausted", transient, drop("retryExhausted")),
+            ("transient without either field", transient, drop("errorClass", "retryExhausted")),
+            ("retryExhausted on a completed ok row", self._fixture, retry_marker(0)),
+        )
+        for label, factory, mutate in cases:
+            for kind in ("fault", "legacy"):
+                value = factory()
+                if mutate is not None:
+                    mutate(value)
+                self._as_released_kind(value, kind)
+                results = self._released_trace_dispositions(value, kind)
+                with self.subTest(case=label, kind=kind):
+                    self.assertEqual({path: "pass" for path in results}, results)
+
+    def test_released_traces_still_reject_present_contradictions(self):
+        for label, error_class in (
+            ("counterparty under failed-perm", "counterparty"),
+            ("substrate under failed-perm", "substrate"),
+        ):
+            for kind in ("fault", "legacy"):
+                value = self._failed_delivery_value("failed-delivery")
+                value["bundle"]["phaseSummary"][-1]["errorClass"] = error_class
+                self._as_released_kind(value, kind)
+                results = self._released_trace_dispositions(value, kind)
+                with self.subTest(case=label, kind=kind):
+                    self.assertEqual({path: "fail" for path in results}, results)
+        # EBFAB keeps SEB-1 exact completeness for both optional fields.
+        for name in ("invalid-transient-not-exhausted", "invalid-failed-outcome-error-class"):
+            source = copy.deepcopy(self.data["executionAuthorities"][name])
+            with self.subTest(ebfab=name):
+                disposition, reason, _ = R.validate_ebfab_disposition(
+                    source["bundle"], source["listing"], self.pubkeys,
+                    source["referenceValidationByCanonicalRef"], source["bundleLifecycle"],
+                    source["sessionExecutionAuthorityByPhaseKey"],
+                    source["verifiedReceiptByCanonicalRef"],
+                    source["deliveryArtifactAuthorityByPhaseKey"],
+                    source["trustedNativeTransactionObservationsByCanonicalRef"],
+                    legacy_agreement_authority_by_phase_key=source[
+                        "legacyAgreementAuthorityByPhaseKey"
+                    ],
+                )
+                self.assertEqual("fail", disposition, reason)
+
+    def test_incomplete_released_trace_is_pending_not_a_verdict(self):
+        def drop_terminal(value, *, keep_member):
+            value["bundle"]["phaseSummary"].pop()
+            if not keep_member:
+                value["bundle"]["settlementEvidence"] = []
+
+        for kind in ("fault", "legacy"):
+            value = self._failed_delivery_value("failed-delivery")
+            drop_terminal(value, keep_member=False)
+            self._as_released_kind(value, kind)
+            results = self._released_trace_dispositions(value, kind)
+            if kind == "legacy":
+                # With no member and no delivery row, reconciliation of an
+                # AttestationBundle never enters the delivery gate.
+                results.pop("reconcile")
+            with self.subTest(kind=kind, member="omitted"):
+                self.assertEqual({path: "indeterminate" for path in results}, results)
+            # A presented member for an invocation the signed trace omits is a
+            # deterministic contradiction; the pending trace cannot mask it.
+            value = self._failed_delivery_value("failed-delivery")
+            drop_terminal(value, keep_member=True)
+            self._as_released_kind(value, kind)
+            results = self._released_trace_dispositions(value, kind)
+            with self.subTest(kind=kind, member="presented"):
+                self.assertEqual({path: "fail" for path in results}, results)
+
+    def test_released_st8_interim_row_may_omit_its_error_class(self):
+        for kind in ("fault", "legacy"):
+            value = self._failed_payment_fixture()
+            value["bundle"]["phaseSummary"][-1].pop("errorClass")
+            self._as_released_kind(value, kind)
+            results = self._released_trace_dispositions(value, kind)
+            with self.subTest(kind=kind, outcome="failed-counterparty"):
+                # CUR-5 still holds historical cross-chain settlement.
+                self.assertEqual("indeterminate", results.pop("current-use"))
+                self.assertEqual({path: "pass" for path in results}, results)
+            # The interim class is inferred only from the co-signed outcome.
+            value = self._failed_payment_fixture()
+            value["bundle"]["phaseSummary"][-1].pop("errorClass")
+            value["bundle"]["outcome"] = "failed-perm"
+            value["bundle"]["faultedParty"] = "seller"
+            self._as_released_kind(value, kind)
+            with self.subTest(kind=kind, outcome="failed-perm"):
+                results = self._released_trace_dispositions(value, kind)
+                self.assertEqual({path: "fail" for path in results}, results)
+
 class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

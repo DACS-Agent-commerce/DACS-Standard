@@ -246,6 +246,26 @@ The format used per release:
   text now separates the producer's sealing duty from DV-3's
   recipient/ciphertext check, and THREAT-MODEL records decryptability as a
   residual.
+- **Four-state precedence and released-trace semantics** (#333) — on the EBFAB
+  and finality-bound cores (direct, Boolean, pointer and reconciliation
+  consumers), a well-formed receipt observation, unavailable LAA authority,
+  an unavailable member resolution or receipt, unavailable delivery execution
+  authority, and unavailable FV authority are pending under SEB-6. Every
+  independent member, set, pointer, ST-8 and lifecycle check still runs, so a
+  deterministic `fail` or `error` elsewhere is never downgraded to
+  `indeterminate`. An unplaced pending member can fill only an otherwise
+  missing invocation. Released `AttestationBundle`/`FaultAttestationBundle`
+  traces no longer require the optional `errorClass` or read the
+  non-action-bearing `retryExhausted`; a present `errorClass` that contradicts
+  the co-signed outcome still fails, an incomplete failed trace is
+  `indeterminate` without masking a member contradiction, and an ST-8 interim
+  row without `errorClass` takes its class only from the co-signed outcome.
+  EBFAB keeps SEB-1 exact completeness. Dependency receipts are checked for
+  shape (`error`) and reference contradiction (`fail`) before missing entry
+  authority (`indeterminate`). An authenticated self-signed proof with the
+  wrong method kind or payload hash is `fail`; only unevaluable input is
+  `error`. A non-string `faultedParty` is rejected content at both post-fetch
+  entry points, and an unselected or unparseable job-bound candidate is inert.
 
 ### Fixed — delivery closure reference validation
 

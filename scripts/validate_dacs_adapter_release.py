@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """Validate the non-normative issue-270 adapter release proposal."""
 
-from __future__ import annotations
-
 import os
 import sys
 
+_CHECKOUT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+
+def _outside_checkout(entry: str) -> bool:
+    resolved = os.path.realpath(entry or os.curdir)
+    return resolved != _CHECKOUT and not resolved.startswith(_CHECKOUT + os.sep)
+
+
 if __name__ == "__main__":
     # Keep this checkout off the import path so an untracked file in it cannot
-    # shadow a standard-library module imported below.
-    _CHECKOUT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    sys.path[:] = [
-        entry
-        for entry in sys.path
-        if os.path.realpath(entry or os.curdir) != _CHECKOUT
-        and not os.path.realpath(entry or os.curdir).startswith(_CHECKOUT + os.sep)
-    ]
+    # shadow a standard-library module imported below.  (No ``from __future__``
+    # import precedes this: it too would resolve against the script directory.)
+    sys.path[:] = [entry for entry in sys.path if _outside_checkout(entry)]
 
 import argparse
 import ast
@@ -25,6 +26,7 @@ import json
 import re
 import subprocess
 import types
+from importlib.machinery import BuiltinImporter, FrozenImporter, PathFinder
 from pathlib import Path
 from typing import Any
 
@@ -101,9 +103,22 @@ def _git_blob_id(data: bytes) -> str:
     return hashlib.sha1(b"blob %d\0" % len(data) + data, usedforsecurity=False).hexdigest()
 
 
+def _safe_relative_path(path: Any) -> bool:
+    """A plain repository-relative path that cannot be read as a Git option."""
+
+    return (
+        isinstance(path, str)
+        and re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_./-]*", path) is not None
+        and ".." not in path.split("/")
+        and "//" not in path
+    )
+
+
 def _load_bytes_at_revision(source: dict[str, Any]) -> bytes:
     path = source["path"]
     revision = source["revision"]
+    if not HEX40.fullmatch(str(revision)) or not _safe_relative_path(path):
+        raise ValueError("pinned source revision and path must be a commit id and a relative path")
     blob = _git("rev-parse", f"{revision}:{path}")
     if blob != source["gitBlob"]:
         raise ValueError(f"{path}: git blob does not match descriptor")
@@ -182,12 +197,43 @@ def _load_verified_module(relative: str, expected_sha256: str, name: str) -> typ
     return module
 
 
+class _StandardLibraryOnly:
+    """While wrapped modules execute, refuse imports outside the standard library.
+
+    They put this checkout's scripts directory on ``sys.path`` and try an optional
+    ``cryptography`` import, so without this an untracked package there would run.
+    """
+
+    @staticmethod
+    def find_spec(fullname: str, path: Any = None, target: Any = None) -> Any:
+        if fullname.partition(".")[0] not in sys.stdlib_module_names:
+            raise ModuleNotFoundError(f"refusing unpinned import {fullname!r}", name=fullname)
+        for finder in (BuiltinImporter, FrozenImporter):
+            spec = finder.find_spec(fullname, path, target)
+            if spec is not None:
+                return spec
+        if path is None:
+            path = [entry for entry in sys.path if _outside_checkout(entry)]
+        spec = PathFinder.find_spec(fullname, path, target)
+        if spec is None:
+            raise ModuleNotFoundError(f"no standard-library module named {fullname!r}", name=fullname)
+        return spec
+
+
 def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
     """Load the wrapped modules from verified bytes, resolving their local imports to them."""
 
     names = {"jcs": "scripts/jcs.py", "specsource": "scripts/specsource.py"}
     previous = {name: sys.modules.get(name) for name in names}
-    loaded = {name: _load_verified_module(relative, primitives[relative], name) for name, relative in names.items()}
+    guard = _StandardLibraryOnly()
+    sys.meta_path.insert(0, guard)
+    try:
+        loaded = {
+            name: _load_verified_module(relative, primitives[relative], name) for name, relative in names.items()
+        }
+    except BaseException:
+        sys.meta_path.remove(guard)
+        raise
     sys.modules.update(loaded)  # ``import jcs`` / ``import specsource`` must see the verified modules
     try:
         loaded["walkthrough"] = _load_verified_module(
@@ -201,6 +247,7 @@ def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
             "dacs_release_vectors",
         )
     finally:
+        sys.meta_path.remove(guard)
         for name, module in previous.items():
             if module is None:
                 sys.modules.pop(name, None)
@@ -236,7 +283,12 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
     descriptor_bytes = descriptor_path.read_bytes()
     descriptor = json.loads(descriptor_bytes)
     origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
-    if len(origins) != 1 or origins[0] not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
+    effective = _git("remote", "get-url", "--all", "origin").splitlines()
+    if (
+        len(origins) != 1
+        or origins[0] not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}
+        or effective != origins
+    ):
         raise ValueError("working repository origin is not the pinned DACS-Standard origin")
     descriptor_relative = descriptor_path.relative_to(ROOT).as_posix()
     if _git_blob_id(descriptor_bytes) != _git("rev-parse", f"HEAD:{descriptor_relative}"):

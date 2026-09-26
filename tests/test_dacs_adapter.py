@@ -193,6 +193,7 @@ class DacsAdapterTests(unittest.TestCase):
             {"domainSepSign": f5["profile"], "domainSepVerify": f5["profile"]},
         )
         self.assertEqual(metadata["limitations"], self.descriptor["adapter"]["limitations"])
+        self.assertEqual(metadata["releaseDescriptorSha256"], hashlib.sha256(DESCRIPTOR.read_bytes()).hexdigest())
 
     def test_selected_canonicalization_cases_execute(self):
         family = next(item for item in self.descriptor["families"] if item["id"] == "canonicalization")
@@ -771,6 +772,207 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         self.assertNotIn(b"BrokenPipeError", stderr)
 
 
+    def test_nothing_in_the_checkout_runs_before_or_after_the_isolated_reexec(self):
+        clone = committed_clone(self)
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        markers = Path(directory.name)
+        planted = {
+            clone / "scripts" / "__future__.py": "annotations = None\n",
+            clone / "scripts" / "cryptography" / "__init__.py": "",
+            clone / "scripts" / "os.py": "",
+        }
+        for path, body in planted.items():
+            path.parent.mkdir(exist_ok=True)
+            marker = markers / path.relative_to(clone).as_posix().replace("/", "_")
+            path.write_text(
+                f"import sys\nsys.stdout.write('POLLUTED\\n')\nopen({str(marker)!r}, 'w').close()\n{body}",
+                encoding="utf-8",
+            )
+        completed, responses = run_adapter(
+            [METADATA, execute("sig", "signatureValueVerdict", ["YQ"])], root=clone
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual([item["id"] for item in responses], ["metadata", "sig"])
+        validator = subprocess.run(
+            [sys.executable, str(clone / "scripts" / "validate_dacs_adapter_release.py")],
+            cwd=clone,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertEqual(validator.returncode, 0, validator.stderr)
+        self.assertNotIn("POLLUTED", validator.stdout)
+        self.assertEqual(sorted(item.name for item in markers.iterdir()), [])
+
+    def test_isolated_reexec_skips_site_initialization(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        venv = Path(directory.name) / "venv"
+        subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True, timeout=120)
+        marker = Path(directory.name) / "site-ran-in-isolated-adapter"
+        site_packages = next(venv.glob("lib/python3*/site-packages"))
+        (site_packages / "zz_probe.pth").write_text(
+            f"import sys, pathlib; sys.flags.isolated and pathlib.Path({str(marker)!r}).write_text('ran')\n",
+            encoding="utf-8",
+        )
+        completed = subprocess.run(
+            [str(venv / "bin" / "python"), str(ADAPTER)],
+            cwd=ROOT,
+            input=json.dumps(METADATA).encode() + b"\n",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertFalse(marker.exists())
+
+    def test_git_checks_are_scoped_to_the_checkout_and_its_effective_origin(self):
+        # Launched from outside the repository, the adapter still checks its own checkout.
+        with tempfile.TemporaryDirectory() as elsewhere:
+            completed = subprocess.run(
+                [sys.executable, str(ADAPTER)],
+                cwd=elsewhere,
+                input=json.dumps(METADATA).encode() + b"\n",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=60,
+            )
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+
+        def origin_only_from_environment(clone):
+            git(clone, "remote", "remove", "origin")
+            env = {
+                **os.environ,
+                "GIT_CONFIG_COUNT": "1",
+                "GIT_CONFIG_KEY_0": "remote.origin.url",
+                "GIT_CONFIG_VALUE_0": EXPECTED_ORIGIN,
+            }
+            return env
+
+        def fetch_url_rewritten_by_include(clone):
+            include = clone / ".git" / "fork.inc"
+            include.write_text(
+                '[url "https://github.com/example-fork/"]\n'
+                "\tinsteadOf = https://github.com/DACS-Agent-commerce/\n",
+                encoding="utf-8",
+            )
+            git(clone, "config", "include.path", "fork.inc")
+            return None
+
+        def second_url_in_worktree_config(clone):
+            git(clone, "config", "extensions.worktreeConfig", "true")
+            git(clone, "config", "--worktree", "--add", "remote.origin.url", "https://github.com/example-fork/x.git")
+            return None
+
+        def fork_with_added_pinned_origin(clone):
+            git(clone, "remote", "set-url", "origin", "https://github.com/example-fork/DACS-Standard.git")
+            git(clone, "config", "--add", "remote.origin.url", EXPECTED_ORIGIN)
+            return None
+
+        for mutate in (
+            origin_only_from_environment,
+            fetch_url_rewritten_by_include,
+            second_url_in_worktree_config,
+            fork_with_added_pinned_origin,
+        ):
+            with self.subTest(mutation=mutate.__name__):
+                clone = committed_clone(self)
+                env = mutate(clone)
+                completed, _ = run_adapter([METADATA], root=clone, env=env)
+                self.assertTrue(unavailable(completed), completed)
+                validator = subprocess.run(
+                    [sys.executable, str(clone / "scripts" / "validate_dacs_adapter_release.py")],
+                    cwd=clone,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False,
+                    timeout=120,
+                )
+                self.assertEqual(validator.returncode, 1, validator.stdout)
+                self.assertIn("adapter release proposal: FAIL", validator.stderr)
+
+    def test_wrapped_release_constants_must_name_a_consistent_commit_and_tree(self):
+        descriptor = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))
+        wrapped_revision = descriptor["adapter"]["wrappedStandard"]["revision"]
+        wrapped_tree = descriptor["adapter"]["wrappedStandard"]["tree"]
+        for label, new_revision, new_tree in (
+            ("tree-of-another-commit", wrapped_revision, git(ROOT, "rev-parse", "HEAD^{tree}")),
+            ("tree-object-as-revision", wrapped_tree, wrapped_tree),
+        ):
+            with self.subTest(variant=label):
+                clone = committed_clone(self)
+                adapter = clone / "scripts" / "dacs_adapter.py"
+                text = adapter.read_text(encoding="utf-8")
+                text = text.replace(f'WRAPPED_REVISION = "{wrapped_revision}"', f'WRAPPED_REVISION = "{new_revision}"')
+                text = text.replace(f'WRAPPED_TREE = "{wrapped_tree}"', f'WRAPPED_TREE = "{new_tree}"')
+                adapter.write_text(text, encoding="utf-8")
+                commit_all(clone, "retarget constants")
+
+                def retarget(descriptor):
+                    descriptor["adapter"]["wrappedStandard"]["revision"] = new_revision
+                    descriptor["adapter"]["wrappedStandard"]["tree"] = new_tree
+                    descriptor["adapter"]["source"] = pin_of(clone, "scripts/dacs_adapter.py")
+
+                commit_descriptor(clone, retarget)
+                completed, _ = run_adapter([METADATA], root=clone)
+                self.assertTrue(unavailable(completed), completed)
+
+    def test_request_and_diagnostic_bounds(self):
+        completed, responses = run_adapter(
+            [
+                request("i" * 256, "metadata"),
+                request("i" * 257, "metadata"),
+                execute("six", "canonicalize", [1, 2, 3, 4, 5, 6]),
+                execute("\u202e" * 256, "madeUp", []),
+            ]
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertTrue(responses[0]["ok"])
+        self.assertEqual(
+            [item["error"]["code"] for item in responses[1:]],
+            ["INVALID_REQUEST", "INVALID_REQUEST", "UNSUPPORTED_OPERATION"],
+        )
+        self.assertTrue(all(len(line) <= 1024 for line in completed.stderr.splitlines()))
+        self.assertGreater(max(len(line) for line in completed.stderr.splitlines()), 1000)
+
+        clone = committed_clone(self)
+        (clone / DESCRIPTOR_RELATIVE).write_bytes(b" " * (9 * 1_048_576))
+        completed, _ = run_adapter([METADATA], root=clone)
+        self.assertTrue(unavailable(completed), completed)
+        self.assertIn(b"too large", completed.stderr)
+
+    def test_failing_standard_streams_fail_closed_with_one_line(self):
+        good = json.dumps(METADATA).encode() + b"\n"
+        with tempfile.TemporaryDirectory() as directory:
+            requests = Path(directory) / "requests.jsonl"
+            requests.write_bytes(good)
+            for label, redirect in (
+                ("stdout-full", f"< {requests} > /dev/full"),
+                ("stdout-read-only", f"< {requests} 1< /dev/null"),
+                ("stdin-write-only", f"0> {Path(directory) / 'sink'}"),
+            ):
+                with self.subTest(stream=label):
+                    completed = subprocess.run(
+                        ["sh", "-c", f'exec "$0" "$1" {redirect}', sys.executable, str(ADAPTER)],
+                        cwd=ROOT,
+                        stdout=subprocess.PIPE if label == "stdin-write-only" else None,
+                        stderr=subprocess.PIPE,
+                        check=False,
+                        timeout=60,
+                    )
+                    self.assertEqual(completed.returncode, 1)
+                    self.assertEqual(completed.stderr.count(b"\n"), 1, completed.stderr)
+                    self.assertIn(b"dacs-adapter: unavailable: standard stream failed", completed.stderr)
+                    self.assertNotIn(b"Traceback", completed.stderr)
+
+
 class DacsAdapterBoundaryTests(unittest.TestCase):
     """Verdicts, abstentions, and request errors stay distinct."""
 
@@ -1160,7 +1362,19 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def malformed_protocol_digest(descriptor):
             descriptor["protocol"]["sha256"] = "not-a-digest"
 
+        probe = tempfile.TemporaryDirectory()
+        self.addCleanup(probe.cleanup)
+        injected = Path(probe.name) / "injected"
+
+        def option_shaped_source_revision(descriptor):
+            descriptor["sources"]["sig6"]["revision"] = f"--output={injected}"
+
+        def traversing_source_path(descriptor):
+            descriptor["sources"]["sig6"]["path"] = "../outside.json"
+
         for mutate in (
+            option_shaped_source_revision,
+            traversing_source_path,
             canonicalization_dispatched_elsewhere,
             unhashable_signed_scope_kind,
             verify_case_run_as_sign,
@@ -1194,6 +1408,7 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             with self.subTest(mutation=mutate.__name__):
                 with self.assertRaises(ValueError):
                     self.validator.validate_release(self.mutated(mutate))
+        self.assertFalse(injected.exists())
 
 
 if __name__ == "__main__":

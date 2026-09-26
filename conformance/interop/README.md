@@ -14,19 +14,26 @@ pins the Standard revision, tree, implementation blobs, source corpora, selected
 case identifiers, and expected values. The adapter fixes the wrapped revision,
 tree, and the sha256 of each of the four repository modules it executes in its
 own source, so the metadata `revision` (the adapter's sha256) covers the code
-that runs; the descriptor must repeat exactly those pins. Before executing
-anything it wraps, the adapter verifies the committed blobs, the wrapped
-revision and tree, and the single `remote.origin.url` in this checkout's local
-Git configuration. Each module runs from the bytes that were verified, never
-from a re-read file or cached bytecode. On POSIX hosts the adapter re-executes
-its interpreter with `-I -S`, so `PYTHONPATH`, the script directory, user and
-site packages, and `.pth` hooks take no part in its imports; after
-verification an import guard refuses every module that is not part of the
-interpreter's standard library. The optional `cryptography` import in
+that runs; the descriptor must repeat exactly those pins, and the metadata
+`releaseDescriptorSha256` binds the descriptor text the handshake echoes.
+Before executing anything it wraps, the adapter verifies the committed blobs,
+the wrapped revision and tree, and that both the single `remote.origin.url` in
+this checkout's own Git configuration and the URL Git would actually fetch
+from are the pinned origin. Each module runs from the bytes that were verified,
+never from a re-read file or cached bytecode. On POSIX hosts the adapter
+imports only built-in modules before re-executing its interpreter with `-I -S`,
+so from then on `PYTHONPATH`, the script directory, user and site packages, and
+`.pth` hooks take no part in its imports; after verification an import guard
+refuses every module that is not part of the interpreter's standard library,
+including anything under this checkout. The optional `cryptography` import in
 `validate_conformance_vectors.py` is therefore refused and its existing
-fallback applies; no advertised operation uses it. These are consistency
-checks, not remote attestation or host confinement: the interpreter, its
-standard library, `PATH`, and `git` are trusted host inputs.
+fallback applies; no advertised operation uses it. Code that the interpreter
+runs before the adapter's first line (`sitecustomize`, `.pth` hooks, or modules
+on `PYTHONPATH` that site initialization loads) is outside the adapter's
+control; launch it as `python3 -I -S scripts/dacs_adapter.py` to exclude that
+too. These are consistency checks, not remote attestation or host confinement:
+the interpreter, its standard library, the launching environment, `PATH`, and
+`git` are trusted host inputs.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
 wrapped primitive digests remain separate.
 
@@ -180,7 +187,7 @@ python3 scripts/validate_dacs_adapter_release.py
 printf '%s\n' \
   '{"protocol":"dacs-adapter/1","id":"1","type":"metadata"}' \
   '{"protocol":"dacs-adapter/1","id":"2","type":"execute","operation":"canonicalize","params":[{"b":1,"a":2}]}' \
-  | python3 scripts/dacs_adapter.py
+  | python3 -I -S scripts/dacs_adapter.py
 python3 -m unittest tests.test_dacs_adapter
 ```
 
@@ -193,4 +200,6 @@ descriptor do not include the runner, but the pinned public revision does
 `THROWN`, and its own seed-corpus lock (`PINNED-SOURCES.json`) no longer matches
 the committed `partner-kit/vectors.json`, so its command line refuses to run
 until that lock is corrected. The reproducible adapter handoff command is
-`python3 scripts/dacs_adapter.py`.
+`python3 -I -S scripts/dacs_adapter.py`; the frozen pilot's
+`python3 scripts/dacs_adapter.py` gives the same results in a clean
+environment.

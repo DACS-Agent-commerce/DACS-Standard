@@ -9,20 +9,31 @@ interpreter's standard library may be imported alongside them.  It performs no
 network or substrate operations.
 """
 
-from __future__ import annotations
-
-import os
 import sys
 
-# Re-execute in isolated mode so PYTHONPATH, the script directory, user and site
-# packages, and .pth hooks take no part in this process's imports.  POSIX exec
-# keeps the process id and the standard streams.
-if __name__ == "__main__" and os.name == "posix" and not (sys.flags.isolated and sys.flags.no_site):
+# Until the interpreter is isolated, any import could resolve against this
+# script's directory (even ``from __future__``), so only built-in modules are
+# touched before re-executing in isolated mode.  From then on PYTHONPATH, the
+# script directory, user and site packages, and .pth hooks take no part in this
+# process's imports.  POSIX exec keeps the process id and the standard streams.
+if __name__ == "__main__" and "posix" in sys.builtin_module_names and not (
+    sys.flags.isolated and sys.flags.no_site
+):
+    import posix
+
     try:
-        os.execv(sys.executable, [sys.executable, "-I", "-S", os.path.realpath(__file__), *sys.argv[1:]])
+        posix.execv(sys.executable, [sys.executable, "-I", "-S", __file__, *sys.argv[1:]])
     except (OSError, TypeError, ValueError):
-        os.write(2, b"dacs-adapter: unavailable: cannot re-execute the adapter in isolated mode\n")
+        posix.write(2, b"dacs-adapter: unavailable: cannot re-execute the adapter in isolated mode\n")
         raise SystemExit(1)
+
+import os  # noqa: E402
+
+if sys.version_info < (3, 10):
+    if __name__ == "__main__":
+        os.write(2, b"dacs-adapter: unavailable: Python 3.10 or later is required\n")
+        raise SystemExit(1)
+    raise RuntimeError("Python 3.10 or later is required")
 
 _CHECKOUT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
@@ -197,13 +208,16 @@ def _bounded_text(value: object, limit: int) -> bool:
     return isinstance(value, str) and 0 < len(value) <= limit
 
 
-def _verify_provenance() -> tuple[dict[str, Any], str, dict[str, bytes]]:
-    if not hasattr(sys, "stdlib_module_names"):
-        raise RuntimeError("Python 3.10 or later is required to confine imports")
+def _verify_provenance() -> tuple[dict[str, Any], str, str, dict[str, bytes]]:
     if Path(_git("rev-parse", "--show-toplevel")).resolve() != ROOT:
         raise RuntimeError("adapter checkout is not the root of its Git work tree")
+    # Both the repository's own configuration and the URL Git would actually fetch
+    # from (after includes, per-worktree configuration, and insteadOf rewriting)
+    # must be exactly the pinned origin.
+    pinned_origins = {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}
     origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
-    if len(origins) != 1 or origins[0] not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
+    effective = _git("remote", "get-url", "--all", "origin").splitlines()
+    if len(origins) != 1 or origins[0] not in pinned_origins or effective != origins:
         raise RuntimeError("repository origin does not match the pinned DACS-Standard origin")
     observed_origin = origins[0]
 
@@ -273,7 +287,7 @@ def _verify_provenance() -> tuple[dict[str, Any], str, dict[str, bytes]]:
             expected_sha256=expected[relative],
             expected_blob=primitive.get("gitBlob"),
         )
-    return descriptor, observed_origin, verified
+    return descriptor, hashlib.sha256(descriptor_bytes).hexdigest(), observed_origin, verified
 
 
 class _StandardLibraryOnly:
@@ -315,7 +329,7 @@ def _load_wrapped_modules(verified: dict[str, bytes]) -> dict[str, types.ModuleT
 
 # Provenance checks intentionally precede execution of the wrapped implementation.
 try:
-    _RELEASE, _OBSERVED_ORIGIN, _VERIFIED = _verify_provenance()
+    _RELEASE, _RELEASE_SHA256, _OBSERVED_ORIGIN, _VERIFIED = _verify_provenance()
     _WRAPPED = _load_wrapped_modules(_VERIFIED)
 except Exception as exc:  # fail closed with one bounded diagnostic, never a traceback
     if __name__ == "__main__":
@@ -426,6 +440,9 @@ def _metadata() -> dict[str, Any]:
         "repository": adapter["repository"],
         "observedOrigin": _OBSERVED_ORIGIN,
         "revision": "sha256:" + adapter["source"]["sha256"],
+        # ``revision`` covers the executed code; this binds the descriptor text the
+        # handshake echoes (name, version, limitations, reported pins).
+        "releaseDescriptorSha256": _RELEASE_SHA256,
         "provenanceCodebase": adapter["provenanceCodebase"],
         "supportedFamilies": [
             "canonical-accept",
@@ -684,8 +701,10 @@ def main() -> int:
         return 1
     try:
         return _serve(sys.stdin.buffer, sys.stdout.buffer)
-    except BrokenPipeError:
-        # The reader closed stdout: stop without a traceback or a second failed flush.
+    except OSError as exc:
+        # A closed, full, or wrongly opened standard stream: stop with one bounded
+        # diagnostic and no traceback or second failed flush.
+        _stderr(f"dacs-adapter: unavailable: standard stream failed: {_clean_message(exc)}")
         os.dup2(os.open(os.devnull, os.O_WRONLY), 1)
         return 1
 

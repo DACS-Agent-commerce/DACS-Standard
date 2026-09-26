@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 is a **breaking pre-v1 corrective candidate** under §11.1.2: it adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification; pins one byte-exact canonical `jobId` grammar across the stack; and corrects the shared SN-4/Vet execution boundary so presentation admission uses verifier-issued, issuer-owned nonce state and authenticated current-profile context rather than caller-projected authority. The signed artifact shapes and domains remain unchanged, but a pre-correction implementation carrying the same v0.3 label is not presumed interoperable. v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 defines portable logical-to-native resolution and the non-recursive registry bootstrap, adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification, and registers the DACS-4 finality-bound settlement-evidence, finality-observation-response, legacy-agreement activation-checkpoint, legacy-payment-reservation, and legacy-transition-evidence signature domains; it is a declared **breaking pre-v1 corrective candidate** under §11.1.2, pins one byte-exact canonical `jobId` grammar across the stack, and corrects the shared SN-4/Vet execution boundary so presentation admission uses verifier-issued, issuer-owned nonce state and authenticated current-profile context rather than caller-projected authority. The Vet correction leaves the existing signed Vet artifact shapes and domains unchanged, but a pre-correction implementation carrying the same v0.3 label is not presumed interoperable. v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -154,7 +154,7 @@ type AnchorReceipt = {
   observedAt: number                   // unix ms; observer time, not consensus time
   blockRef?: {
     id: string                         // canonical block/state identifier
-    height?: string                    // decimal string; avoids JSON safe-integer ambiguity
+    height?: string                    // canonical ASCII unsigned decimal: "0" or [1-9][0-9]*
     timestamp?: number                 // consensus timestamp, unix ms
   }
   replacementTransactionRef?: {              // REQUIRED for state == "replaced" when known
@@ -168,11 +168,26 @@ type AnchorReceipt = {
 }
 ```
 
+Binding-specific proof and reconciliation metadata MUST be carried by the
+portable `evidence: {kind, value}` member, not added as binding-specific
+top-level `AnchorReceipt` fields. A binding MAY canonically encode structured
+proof inside `evidence.value` (including authenticated native order,
+replacement causality, or lineage completeness) and MUST define how a consumer
+decodes and verifies it. Those facts have authority only through that verified
+binding evidence; an unverified sidecar or producer assertion cannot supply
+them.
+
 `AnchorReceipt` is evidence *about* an artifact anchor; it is not itself required to be anchored, avoiding an infinite receipt-about-receipt regress. A later observation produces another immutable snapshot for the same `(substrate, logicalAddress, nativeAddress, contentHash, transactionRef)` tuple. It MUST NOT mutate or silently replace an earlier snapshot. An `established` snapshot claims the lifecycle state shown in `state`. An `indeterminate` snapshot MUST repeat the prior established receipt's state and carry its canonical hash in `preservedReceiptHash`; a consumer MUST verify that referenced prior receipt before relying on the preserved state. If no established receipt newer than local submission exists, the writer first retains the `submitted` receipt and an indeterminate observation preserves that baseline.
 
 - (SR2-4) Every receipt MUST carry binding-defined evidence for its claimed observation. An `established` receipt claiming `accepted`, `included`, or `finalized` MUST carry enough authenticated evidence for an independent consumer to verify that state. An `indeterminate` receipt MUST carry evidence of the observation failure or unorderable conflict and MUST satisfy the preserved-receipt rules above; it cannot establish a lifecycle state on its own. The receipt fields alone are assertions, not proof.
 - (SR2-5) Every receipt MUST bind one canonical logical address, its actual native address, the artifact content hash, transaction reference, writer, and applicable nonce. On a mismatch in any available binding, a consumer MUST reject the receipt as invalid; the mismatch is not an `indeterminate` observation and does not identify a different artifact.
-- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. A `finalized` receipt MUST identify the finality profile under which finality was established. Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT substitute for it.
+- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. When
+  `blockRef.height` is present, it MUST be the canonical ASCII unsigned-decimal
+  string `"0"` or `[1-9][0-9]*`; readers MUST reject signs, whitespace, Unicode
+  digits, leading zeros, decimal points, and exponents. A `finalized` receipt
+  MUST identify the finality profile under which finality was established.
+  Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT
+  substitute for it.
 - (SR2-7) Consumers MUST validate each `established` lifecycle transition against the graph above. In particular, `dropped`, `expired`, or `reorged` cannot themselves satisfy a success gate, but a later authenticated `accepted`/`included`/`finalized` snapshot MAY do so through the defined re-entry path. A `replaced` transaction cannot satisfy a gate unless the consumer separately verifies a qualifying receipt for the replacement. Each SR-2 binding MUST define how authenticated native evidence orders and reconciles snapshots for one transaction; `observedAt` MUST NOT determine precedence. Conflicting snapshots that the binding cannot order produce an `indeterminate` observation disposition over the unchanged last established state, including when that state is `included` or `finalized`.
 
 **Cross-stage gates.** DACS distinguishes reversible progression, irreversible effects, and terminal audit publication:
@@ -181,6 +196,7 @@ type AnchorReceipt = {
 | --- | --- |
 | DACS-1 active listing publication/discovery | `finalized`, and independently resolvable |
 | DACS-2 Vet result | verified durable `accepted` MAY permit reversible progression; `finalized` required by terminal bundle production |
+| DACS-3 complete sealed selection | `SealedSelectionReceipt` `finalized`, independently resolvable, and reproduced before agreement signatures |
 | DACS-3 agreement signature | valid required party signatures permit commitment submission; no SR-2 state is implied |
 | DACS-3 commitment | `finalized` before any payment or irreversible delivery |
 | DACS-4 payment | payment rail's declared finality; its SR-2 evidence anchor MAY catch up asynchronously |
@@ -200,12 +216,305 @@ An SR-2 binding MAY omit authoritative absence support. A binding that supports 
 
 A finalized non-membership proof or a binding-defined authenticated independent quorum MAY satisfy that policy. DACS does not prescribe one mechanism or a universal quorum number. When the binding has no declared policy, or a read does not satisfy it, a consumer MUST return `indeterminate` rather than promote non-observation to `absent`. This requirement changes no signed artifact shape; absence evidence is substrate read context retained by the consumer.
 
+**Logical-to-native resolution (normative).** On a write-input-mapping
+substrate (§A.2), a native address is not recomputable from its DACS logical
+address. Given an expected canonical logical address, an optional expected
+content hash, the calling rule's lifecycle gate, and its named artifact-specific
+authorization predicate, a consumer MUST apply this algorithm:
+
+1. obtain an `AnchorReceipt` directly from a protocol participant or through
+   an artifact-specific discovery surface;
+2. independently verify the receipt's binding-defined `evidence` under SR2-4,
+   its complete SR2-5 tuple, and its lifecycle snapshot under SR2-6/SR2-7;
+3. require `logicalAddress` to equal the expected canonical address and, when
+   supplied, `contentHash` to equal the expected hash;
+4. require the established state to meet the calling rule's minimum gate from
+   the cross-stage table above; index visibility and an indeterminate
+   observation cannot promote that state;
+5. fetch only from the exact verified `nativeAddress`, canonicalize the
+   returned artifact under §B.2, and require its hash to equal
+   `receipt.contentHash`;
+6. apply the calling rule's named writer, signer, session, role, and semantic
+   authorization predicate. SR2-4/SR2-5 receipt validity proves publication of
+   the tuple, not authority to control its logical address; and
+7. only then return `present` with the verified artifact and receipt. Fetching
+   from an untrusted candidate is not acceptance.
+
+- (SR2-10) **Portable logical-address resolution carrier.** A consumer on a
+  write-input mapping MUST establish a logical-to-native mapping from a verified
+  `AnchorReceipt` or a class-specific binding verified under that class's rules.
+  A bare native locator, unverified receipt, unauthenticated cache/catalog/index
+  assertion, or locally reconstructed write input MUST NOT establish the
+  mapping. This is distinct from dereferencing an already-authenticated content
+  reference: a signed finalized bundle's `AttestationRef`, or an entry in a
+  registry-index snapshot authenticated by a verified
+  `RegistryBootstrapDescriptor`, MAY carry a native locator plus content hash
+  for fetch-and-hash verification without claiming independent resolution of
+  that referenced logical address. The referenced artifact's own signature,
+  version, availability, governance, and semantic checks remain mandatory.
+- (SR2-11) **Calling-rule lifecycle and authority gate.** Resolution MUST apply
+  the lifecycle state and the artifact-specific authority predicate named by
+  the rule that requested the artifact. A call site that cannot identify that
+  predicate MUST NOT return `present`. A receipt whose evidence, tuple,
+  lifecycle, and content hash all verify is still insufficient when the
+  required publisher/writer/signer/session authority is absent or invalid.
+  For example, a DACS-2 Vet record may support reversible progress on verified
+  durable `accepted` when VPC-3 permits it, while DACS-4 PIPE-6 requires the
+  agreement commitment to be `finalized` before an irreversible effect.
+- (SR2-12) **Timely direct delivery and retention.** Once a qualifying receipt
+  exists, a producer MUST make it available to every participant entitled by
+  the calling rule no later than the first applicable gate in the cross-stage
+  table. It MUST retain and re-deliver that receipt through terminalization,
+  including a failed or aborted session that never produces a finalized
+  bundle. A substrate that never establishes the minimum required lifecycle
+  state leaves the producer and session blocked at that gate; the unavailable
+  receipt is not by itself producer non-conformance, but the producer MUST NOT
+  cross the gate or represent the state as established. Withholding an
+  existing qualifying receipt or delivering it only after the first required
+  gate is a producer conformance failure and MUST NOT retroactively validate
+  progress taken without the receipt. A forged or mismatched candidate is
+  discarded; if no qualifying carrier remains, the resolution result is
+  `indeterminate`, never authoritative absence.
+- (SR2-13) **Bounded public discovery.** Listings use §6.3.4–§6.3.6,
+  revocations use `RevocationBinding`, and bundles use `BundleBinding`. Other
+  session artifacts MAY be exchanged by verified receipt during the session
+  and resolved transitively from authenticated references in the finalized
+  DACS-5 bundle afterward. DACS does not require a public `jobId`-indexed
+  discovery surface for those artifacts.
+
+A resolution result MUST NOT report `absent` unless the applicable substrate's
+declared absence-evidence policy was satisfied. For an immutable logical
+address, two canonically unequal otherwise-qualifying carriers from authorized
+sources are an equivocation. The consumer MUST retain both for audit and return
+`indeterminate`; arrival order, fetch order, `observedAt`, and index visibility
+MUST NOT select a winner. Equal SR2-5 tuples collapse only through SR2-7's
+binding-authenticated ordering. `AnchorReceipt` v1 is unchanged.
+
+**Registry bootstrap (normative capability, not current-profile activation).**
+The recipe and rail registry indexes cannot discover their own
+write-input-derived native addresses. A conforming implementation of the
+standalone registry-bootstrap capability uses this non-SR-2 trust-root type for
+each supported registry major line. The activation boundary below controls
+whether a profile may use the result for session production or replay:
+
+```
+type RegistryBootstrapSignature = {
+  keyId: string                         // key:<64 lower-case hex Ed25519 key>
+  algorithm: "ed25519"
+  value: string                         // SIG-6 unpadded Base64URL
+}
+
+type RegistryIndexEntry = {
+  id: string                            // non-empty identity within this registry kind
+  version: number                       // positive JSON safe integer; exact definition version
+  anchor: {
+    kind: "storage-program" | "ipfs" | "https"
+    locator: string                     // non-empty native locator
+  }
+  contentHash: string                   // 64 lower-case hex
+}
+
+type RegistryIndexSnapshot = {
+  registryIndexVersion: "1"
+  registryKind: "recipe" | "rail"
+  revision: number                      // positive JSON safe integer; equals descriptor.sequence
+  entries: RegistryIndexEntry[]         // no duplicate (NFC(id), version) pair
+}
+
+type RegistryBootstrapDescriptor = {
+  registryBootstrapVersion: "1"
+  registryKind: "recipe" | "rail"
+  registryLogicalAddress: string
+  substrate: string
+  sequence: number                      // positive JSON safe integer
+  nativeIndexAddress: string
+  indexContentHash: string              // 64 lower-case hex
+  indexAnchorReceipt: AnchorReceipt     // established finalized snapshot
+  authorityKeyId: string                // canonical key:<hex> material
+  supersedesDescriptorHash?: string     // required after sequence 1
+  revokedAuthorityKeyIds?: string[]     // sorted, unique, cumulative
+  authorizationSignature: RegistryBootstrapSignature
+  authorityAcceptanceSignature?: RegistryBootstrapSignature // rotation only
+}
+```
+
+The exact v1 pairing is `recipe` ↔ `dacs2:registry:v0.1` and `rail` ↔
+`dacs4:registry:v0.1`; `registryLogicalAddress` is self-describing and MUST be
+checked against that pairing, never used as its authority source. The trust-pin
+identity is `(registryKind, registryLogicalAddress, substrate,
+registryBootstrapVersion)` and deliberately excludes `sequence`.
+
+The expected tuple is verifier release configuration:
+
+- A verifier MUST receive the complete tuple independently of descriptor bytes,
+  index data, retrieval transport, and pinned key material.
+- It MUST NOT derive any tuple field from presented registry material or shared
+  key material.
+- It MUST reject a missing or malformed tuple and compare all four fields before
+  root-candidate classification.
+
+For both signatures:
+
+```
+descriptor_hash := sha256(canonical_JCS(descriptor with both
+                          authorizationSignature and
+                          authorityAcceptanceSignature omitted))
+signed_bytes    := "dacs-registry-bootstrap:v1:" || descriptor_hash
+```
+
+Both named signature fields are omitted for both signatures. Every other
+member, including an unknown member, remains in the hash under SIG-5; a verifier
+MUST NOT strip unknown members before hashing. The descriptor hash is 64
+lower-case hex and is the sole descriptor identity used by release pins,
+successor links, persisted state, and replay. The discriminator is exactly
+`registryBootstrapVersion: "1"`; a missing, unsupported, or multiply-present
+`*BootstrapVersion` member MUST be rejected before signatures or use.
+
+An implementation or release claiming registry-bootstrap v1 support MUST pin at
+least one, and SHOULD pin both, of the canonical sequence-1 descriptor hash and canonical
+`authorityKeyId`. It MUST ship the descriptor bytes or declare a retrieval
+transport, document the out-of-band channel for replacement trust pins, and
+SHOULD state an expected distribution bound in its implementation conformance
+claim. HTTPS, DNS, package registries, indexers, and repository branches are
+transport only. Bootstrap receipt/finality evidence MUST be independently
+verifiable without using the registry being bootstrapped.
+
+A consumer MUST verify the canonical tuple and descriptor hash; authenticate
+sequence 1 against its release pin; enforce the signature fields allowed for
+the transition; verify the embedded receipt as `established` and `finalized`;
+require its substrate, logical address, native address, and content hash to
+equal the descriptor fields; independently verify its finality evidence; fetch
+the exact immutable index snapshot and hash-check its canonical bytes; require
+the snapshot to be a `RegistryIndexSnapshot` v1 whose `registryKind` equals the
+descriptor, whose `revision` equals the descriptor `sequence`, and whose entry
+references satisfy the closed shape above; and
+persist the accepted descriptor plus index bytes for rollback detection and
+historical replay. The descriptor authority's valid signature over the exact
+embedded receipt is the artifact-specific delegation authorizing that
+receipt's writer for this index snapshot; no claimant-supplied authorization
+boolean or additional unnamed substrate proof may substitute for it. The
+embedded `observedAt` is the original observer's time and is not reproduced;
+consensus time remains `blockRef.timestamp` under SR2-6.
+
+Receipt `evidence` (SR2-4) and the independently verified evidence results that
+authorize it are forward-readable under SIG-5 and the §11.1.2 additivity
+contract: the required `kind` and `value` members of the evidence record, and
+the required result bindings, stay mandatory, while a future minor MAY add
+optional members. A consumer MUST NOT reject otherwise-valid evidence solely
+for carrying an optional additive member; it MUST still bind the complete
+canonical evidence record and the exact canonical receipt hash by full
+equality, so an extension is admitted exactly when the independent verified
+result repeats it, and a disagreement on any member — optional or required —
+leaves the receipt unauthorized.
+
+Runtime-controlled input depth is bounded fail-closed. A consumer MUST
+normalize host recursion or numeric-overflow failures raised at its copy,
+canonicalisation, or hashing boundaries over descriptor, snapshot, receipt,
+definition, or storage bytes into the documented disposition of that stage —
+bootstrap evaluation fails deterministically, resolution returns
+`indeterminate` — and MUST NOT leak a host exception such as a recursion or
+overflow error to its caller. Such depth or magnitude is malformed input, not
+a host failure.
+
+Registry-index identity and version selection use derived comparison values:
+
+- A consumer MUST derive `NFC(id)` for entry lookup, equality, and duplicate
+  detection. It MUST NOT rewrite the authenticated entry, snapshot, definition,
+  hash preimage, or signed bytes.
+- A recipe entry's `id` is its `Recipe.scheme`. Its family is the exact
+  `(Recipe.scheme, Recipe.defaultMethod.kind)` pair.
+- A rail entry's `id` is its `RailDefinition.railId`.
+- `RegistryIndexEntry.version` MUST be a positive JSON safe integer. It MUST
+  equal `Recipe.recipeVersion` or `RailDefinition.railVersion` as the same JSON
+  number type and value.
+- An explicit pin MUST match one exact numeric entry version without coercion.
+  A string, boolean, fraction, or other representation is not that pin.
+- For an omitted pin, the consumer MUST select the unique greatest numeric
+  version within the exact authenticated recipe family or rail ID. It MUST make
+  that selection before applying availability, governance, or other eligibility
+  checks to the selected definition.
+- An unavailable or unclassifiable candidate that could be the greatest member
+  of the requested recipe family cannot authorize an older candidate. An
+  unknown, invalid, or ineligible selected definition likewise cannot authorize
+  fallback to an older version.
+
+The fetched definition MUST repeat the entry identity under the derived NFC
+comparison and repeat its exact numeric version. Index and definition values
+remain byte-preserved for hash and signature verification.
+
+Registry-bootstrap v1 uses an immutable index snapshot per descriptor sequence.
+Every content append or other index-byte change advances `sequence` by one,
+anchors new snapshot bytes at a new native address, and retains the prior
+descriptor, receipt, address, and bytes. This `sequence` is the bootstrap
+content-sequence counter. It is not assigned to an existing
+`recipeRegistryVersion` or `railRegistryVersion` field by this revision.
+Authority rotation is the distinguished transition where `authorityKeyId`
+changes; PA-3 threshold governance requires a distinct future bootstrap type.
+
+Sequence 1 carries only `authorizationSignature` by `authorityKeyId` and no
+successor fields. Every successor increments exactly once, binds the predecessor
+hash, preserves the registry tuple, and is authorized by the predecessor key.
+An unchanged-key successor carries no acceptance signature. A changed-key
+successor additionally carries `authorityAcceptanceSignature` by the new key;
+the predecessor authorization explicitly delegates the new authority and may
+revoke the predecessor for later sequences. Revocations are sorted, unique,
+cumulative, never shrink, and cannot include the active key. Key identifiers
+are exactly `key:` plus the 32 raw Ed25519 public-key bytes as 64 lower-case hex;
+aliases and separate key-byte inputs are rejected.
+
+Two different valid successors of one predecessor are a fork. Under a key-only
+pin, two different valid sequence-1 descriptors are likewise a fork. Repeated
+transport copies with the same descriptor hash identify one descriptor and MUST
+be collapsed before fork counting. A consumer
+MUST classify every release-pin-matching sequence-1 candidate and every
+predecessor-authorized successor before selecting or advancing: invalid
+candidates are discarded; one valid candidate is selected or advances only
+when no competing candidate remains unresolved; an unavailable otherwise-valid
+candidate keeps the result `indeterminate`; and multiple valid candidates are a
+fork. An invalid same-key root therefore cannot suppress a valid key-pinned
+root. Proof or snapshot availability MUST NOT select a signed branch. Latest
+resolution becomes `indeterminate` on a fork and MUST NOT select by transport,
+time, or visibility; recovery requires a new out-of-band release pin.
+Latest-mode rollback to a lower accepted sequence is rejected. When a consumer
+has persisted a latest `(sequence, descriptorHash)` pair, that exact descriptor
+MUST occur in the newly predecessor-validated chain and the selected head MUST
+descend from it; a longer sibling branch is `indeterminate`, never a valid
+upgrade. Bootstrap historical evaluation takes an explicit retained `(sequence,
+descriptorHash)` target from an authority defined by the profile or versioned
+artifact type that activates that evaluation. Starting at the accepted root,
+the consumer MUST classify every competing candidate through that exact target.
+A fork or unresolved competitor at or before the target leaves evaluation
+`indeterminate`. Once the exact target is uniquely authenticated, traversal
+MUST stop; a later fork does not invalidate that retained historical authority.
+The consumer then uses the target's retained immutable index snapshot and exact
+recipe or rail entry version.
+A sequence alone, a same-sequence descriptor with another hash, or a descriptor
+outside that chain is not bootstrap historical authority. Unavailable required
+bootstrap material yields `indeterminate` after invalid candidates are
+discarded and never permits fallback to an unpinned latest index. Recursive
+evidence that depends on the target registry is rejected.
+
+**Activation boundary.** This revision defines and tests registry-bootstrap v1
+as an SR-2 registry-discovery and chain-validation capability. It does not add a
+descriptor-hash member to the existing `SessionContext`, Vet or Settle phase
+inputs, `SessionRecord`, `AttestationBundle`, `FaultAttestationBundle`, or
+`EvidenceBoundFaultAttestationBundle`, and it does not assign descriptor-chain
+historical-replay semantics to those types' existing numeric registry-version
+members. An implementation MUST NOT infer a descriptor hash from a numeric
+version, current registry state, transport metadata, an unknown member, or a
+sidecar, and MUST NOT claim descriptor-authenticated production or replay for
+those existing types. Action-bearing integration requires a future coordinated
+profile that defines distinct versioned session, phase-input, and signed bundle
+contracts carrying the exact descriptor identity; until then the bootstrap
+historical-evaluation arm is not an authority source for existing session
+production or replay.
+
 **Substrate-coupling status in v0.1.**
 
 - **SR-1, SR-2, and SR-5 are specified at the protocol level.** Another substrate that ships an equivalent primitive (cross-substrate identity aggregation; content-addressed anchored storage; atomic cross-chain settlement) can interoperate with DACS implementations on Demos at the artifact level: the bundles, listings, and evidence records validate the same way.
-- **SR-3 and SR-4 are specified at the trust-property level only in v0.1.** Two substrates each shipping their own SR-3 (consensus-backed proxy attestation) or SR-4 (identity-keyed private coordination) implementations will *not* be wire-protocol interoperable. The trust properties listed under CH-1..CH-6 for SR-4 and under §7.3.5 for SR-3 are the conformance bar v0.1 requires; the underlying message formats and consensus signatures are substrate-specific. Consequence, until the v2 wire formats ship (see note below): a session begun on substrate A cannot be completed on substrate B if it uses any SR-3- or SR-4-dependent phase.
+- **SR-3 and the SR-4 transport/confidentiality layer are specified at the trust-property level only in v0.1.** Two substrates each shipping their own SR-3 (consensus-backed proxy attestation) or SR-4 (identity-keyed private coordination) implementations will *not* be transport-wire interoperable. The trust properties listed under CH-1..CH-10 for SR-4 and under §7.3.5 for SR-3 are the conformance bar v0.1 requires; CH-7..CH-10 standardise the signed DACS message inside SR-4, while routing, confidentiality envelopes, and consensus signatures remain substrate-specific. Consequence, until the v2 substrate wire formats ship (see note below): a session begun on substrate A cannot be completed on substrate B if it uses any SR-3- or SR-4-dependent phase.
 
-> **Note (non-normative).** v2 of DACS-2 and DACS-3 is expected to specify wire formats for SR-3 attestation envelopes and SR-4 channel messages that enable cross-substrate interoperability.
+> **Note (non-normative).** v2 of DACS-2 and DACS-3 is expected to specify wire formats for SR-3 attestation envelopes and the SR-4 transport/confidentiality layer that enable cross-substrate interoperability. The signed `CanonicalChannelMessage` carried inside SR-4 is already byte-defined by DACS-3 §8.3.3.
 
 **Reference substrate.** The **Demos Network** is the substrate against which DACS was designed and, as of this draft, the only substrate that ships all five capabilities natively. The DACS specifications cite the substrate capabilities (SR-1 through SR-5), not the Demos primitives themselves; this separation keeps the artifact-level specification portable while staying honest about which primitives are concretely realised today and where v2 work is needed.
 
@@ -257,6 +566,10 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | --- | --- | --- |
 | `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (listing) | `sellerPrimaryClaim` (a ClaimReference) | `listingId`, `v{listingVersion}` |
 | `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (revocation marker) | `sellerPrimaryClaim` | `listingId`, `v{listingVersion}` |
+| `dacs3:auction:{jobId}:commit:{bidderClaim}:{bidHash}` (complete sealed commit) | `bidderClaim` | `jobId`, `commit`, `bidHash` |
+| `dacs3:auction:{jobId}:reveal:{bidderClaim}:{bidHash}` (complete sealed reveal) | `bidderClaim` | `jobId`, `reveal`, `bidHash` |
+| `dacs3:selection:{jobId}:{phaseIndex}` (complete sealed selection receipt) | none | `jobId`, `phaseIndex` |
+| `dacs1-revocations:{sellerPrimaryClaim}` (stable revocation-state line) | `sellerPrimaryClaim` | `dacs1-revocations` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
 | `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}` (§9.9.1 APR-6) | none | `priorJobId`, `priorPhaseIndex`, `dispositionId` |
 | `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
@@ -469,7 +782,7 @@ The v0.1 set of identity schemes (DACS-1), verification methods (DACS-2), negoti
 
 ### B.7 Universal signature scheme — domain-separated signing
 
-Every signature in DACS — across DACS-1 (listings, revocations), DACS-2 (VerifyResults, composite records, recipes), DACS-3 (channel messages, agreements, commitments), DACS-4 (settlement evidence, payload attestations, amendments, rails, entitlements), and DACS-5 (bundles, ratings) — MUST be computed over a domain-separated payload. The domain separator prevents cross-protocol signature replay: a signature produced under one artifact kind MUST NOT validate as a signature under any other artifact kind, even when the underlying hash bytes coincide.
+Every signature in DACS — across DACS-1 (listings, revocations), DACS-2 (VerifyResults, composite records, recipes), DACS-3 (channel messages, agreements, commitments), DACS-4 (settlement evidence, payload attestations, amendments, rails, entitlements), and DACS-5 (bundles, participation admissions, ratings) — MUST be computed over a domain-separated payload. The domain separator prevents cross-protocol signature replay: a signature produced under one artifact kind MUST NOT validate as a signature under any other artifact kind, even when the underlying hash bytes coincide.
 The canonical payload to be signed is:
 
 ```
@@ -490,19 +803,29 @@ The v0.x registry of domain separators at this revision is closed:
 | --- | --- | --- |
 | DACS-1 listing | "dacs-listing:v1:" | §6.3.4 |
 | DACS-1 listing revocation marker | "dacs-revocation:v1:" | §6.3.4 |
+| DACS-1 revocation state head | "dacs-revocation-state-head:v1:" | §6.3.4 |
 | DACS-1 identity bundle presentation | "dacs-bundle-presentation:v1:" | §6.3.2 |
 | DACS-2 VerifyResult | "dacs-verifyresult:v1:" | §7.5 |
 | DACS-2 composite verification record | "dacs-composite:v1:" | §7.7 |
 | DACS-2 recipe | "dacs-recipe:v1:" | §7.4 |
-| DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
+| DACS-3 canonical channel message | "dacs-canonical-channel-message:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
+| DACS-3 complete sealed-auction record | "dacs-sealed-auction-record:v1:" | §8.4.4 |
+| DACS-3 sealed-selection receipt | "dacs-sealed-selection-receipt:v1:" | §8.4.4 |
+| DACS-3 sealed-selection agreement | "dacs-sealed-selection-agreement:v1:" | §8.5 |
 | DACS-3 identity-bound agreement | "dacs-identity-bound-agreement:v1:" | §8.5 |
 | DACS-3 identity-bound payee agreement | "dacs-identity-bound-payee-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
+| Registry bootstrap descriptor | "dacs-registry-bootstrap:v1:" | §5.1 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
+| DACS-4 legacy-agreement activation checkpoint | "dacs-legacy-agreement-checkpoint:v1:" | §9.5.1 |
+| DACS-4 legacy payment reservation | "dacs-legacy-payment-reservation:v1:" | §9.5.1 |
+| DACS-4 legacy transition settlement evidence | "dacs-legacy-transition-evidence:v1:" | §9.7 |
+| DACS-4 finality-bound settlement evidence | "dacs-finality-bound-evidence:v1:" | §9.7 |
+| DACS-4 finality observation response | "dacs-finality-observation-response:v1:" | §9.7.0 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
@@ -511,13 +834,28 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
 | DACS-5 fault attestation bundle | "dacs-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 evidence-bound fault attestation bundle | "dacs-evidence-bound-fault-bundle:v1:" | §10.4.1 |
+| DACS-5 finality-bound evidence fault attestation bundle | "dacs-finality-bound-evidence-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 BundleBinding | "dacs-bundle-binding:v1:" | §10.4.2 |
+| DACS-5 legacy bundle activation checkpoint | "dacs-legacy-bundle-checkpoint:v1:" | §10.4.1 |
+| DACS-5 legacy bundle checkpoint binding | "dacs-legacy-bundle-checkpoint-binding:v1:" | §10.4.1 |
 | DACS-5 FaultAttestationBundle extended pointer | "dacs-fault-bundle-pointer:v1:" | §10.4.2 |
 | DACS-5 EvidenceBoundFaultAttestationBundle extended pointer | "dacs-evidence-bound-fault-bundle-pointer:v1:" | §10.4.2 |
+| DACS-5 FinalityBoundEvidenceFaultAttestationBundle extended pointer | "dacs-finality-bound-evidence-fault-bundle-pointer:v1:" | §10.4.2 |
+| DACS-5 SessionParticipationAdmission | "dacs-participation-admission:v1:" | §10.3.2 |
 | DACS-5 rating record | "dacs-rating:v1:" | §10.6 |
 | DACS-1 bundle session-key root binding | "dacs-session-binding:v1:" | §6.3.2 |
 | DACS-3 auto-accept commitment | "dacs-auto-accept-commitment:v1:" | §8.4.1 |
 | DACS-3 auto-accept instance | "dacs-auto-accept-instance:v1:" | §8.4.1 |
+
+**Historical read/import-only domain (not a current producer registry entry).**
+The frozen `LegacyDemosChannelMessage` uses `"dacs-channelmsg:v1:"` followed
+by the raw 32-byte SHA-256 digest, not the lowercase-hex `artifact_hash` recipe
+above. It is recorded separately here only so an explicitly selected historical
+importer can reproduce existing bytes under DACS-3 §8.3.3 CH-9/CH-10. It is not
+part of the closed current-producer table above. New producers
+MUST NOT emit that type or domain. A current channel message always uses the
+separate table entry, discriminator, signature envelope, digest framing, and
+SIG-6 encoding.
 
 **Payload shape — single-hash vs composite.** Most artifacts use the single-hash payload `domain_separator || artifact_hash`. Three entries are *composite-payload* separators that, by design, prepend the separator to more than one framed value rather than a single artifact hash:
 
@@ -527,13 +865,15 @@ The v0.x registry of domain separators at this revision is closed:
 
 For composite-payload separators each appended value MUST be a fixed-length hex sha256 digest (or, for `session_key`, the fixed-length hex public key) so the concatenation is unambiguously parseable. This is the sanctioned exception to the single-`artifact_hash` shape; these separators are first-class registry entries, not `dacs-x-` extensions.
 
-**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Three further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
+**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Five further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
 
-- `dacs-sealed-bid:v1:` — the sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3);
+- `dacs-sealed-bid:v1:` — the historical sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3; frozen);
+- `dacs-sealed-bid-context:v1:` — the complete-profile context-bound sealed commitment preimage `sha256("dacs-sealed-bid-context:v1:" || sha256(canonical_JCS(SealedBidCommitmentContext)) || salt)` (§8.4.4 SAC-11); distinct from, and never interchangeable with, the historical tag;
 - `dacs-sb3:v1:` — after JID-1 validation, the EIP-3009 session-binding nonce preimage `sha256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is therefore an identity operation for current input and remains written only to freeze the already-published recipe (§9.5.8);
 - `dacs-ap2-idem:v1:` — after JID-1 validation, the AP2 provider idempotency-key preimage `sha256(UTF8("dacs-ap2-idem:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is likewise an identity operation for current input (§9.5.6 AP2-6).
+- `dacs-laa-reservation-idem:v1:` — after JID-1 validation, the bounded legacy-payment reservation idempotency-key preimage `sha256(UTF8("dacs-laa-reservation-idem:v1:") || UTF8(jobId) || 0x3a || ASCII(bare_integer(phaseIndex)))` (§9.5.1 LAA-3).
 
-All three follow the same domain-separation discipline, preventing cross-use of the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
+All five follow the same domain-separation discipline, preventing cross-use of the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
 
 **Signature-value wire encoding.** This rule covers every DACS-owned signature
 envelope whose cryptographic result is carried in a string field named `value`.
@@ -576,9 +916,13 @@ encoding, preserve the exact signature bytes, and emit the canonical DACS value.
 It MUST NOT auto-detect by trying decoders or accept the legacy spelling on the
 conforming verification path.
 
-Re-encoding the same bytes does not change the signed payload because signature
-fields are omitted from the artifact hash. An immutable stored serialization
-still needs a migrated publication. If a dependent artifact commits the complete
+Re-encoding the same bytes does not change the signed payload when the artifact
+type, domain, and signed-scope recipe are unchanged because signature fields are
+omitted from the artifact hash. It does not convert a historical channel
+message to `CanonicalChannelMessage`: those types deliberately use different
+discriminators, domains, and digest representations, so current publication
+requires a fresh author signature. An immutable stored serialization still
+needs a migrated publication. If a dependent artifact commits the complete
 stored serialization, its reference MUST be updated and the dependent artifact
 MUST be regenerated and re-signed.
 
@@ -601,13 +945,13 @@ MUST be regenerated and re-signed.
 
 ### B.8 Session nonce
 
-The **session nonce** is the value that binds an identity presentation — and the DACS-2 checks performed against it — to one specific session, so a presentation captured in one session cannot be replayed in another. It is the anti-replay anchor referenced by the DACS-1 presentation binding (§6.3.2), the §6.6 replay defence, and the DACS-2 holder-binding / attestation-binding checks (§7.3.2). Its *conveyance* is artifact-specific (the DACS-1 `sessionNonce` field for per-claim/session-key presentations, or the SIWD `Nonce` for the `siwd` kind — §6.3.2); its *provenance* is the shared discipline defined here.
+The **session nonce** is the value that binds an identity presentation — and the DACS-2 checks performed against it — to one specific session, so a presentation captured in one session cannot be replayed in another. It is the anti-replay anchor referenced by the DACS-1 presentation binding (§6.3.2), the §6.6 replay defence, and the DACS-2 holder-binding / attestation-binding checks (§7.3.2). Its *conveyance* is artifact-specific (the DACS-1 `sessionNonce` field for per-claim/session-key presentations, the SIWD `Nonce` for the `siwd` kind, or the DACS-5 `SessionParticipationAdmission.sessionNonce` copied from the verifier's challenge — §6.3.2/§10.3.2); its *provenance* is the shared discipline defined here.
 
 A session nonce is **a challenge the verifier issues**, not a value the presenter chooses. The "verifier" is the party that performs the §6.3.2 nonce-match check — the counterparty receiving the presentation, or the orchestrator acting on its behalf.
 
 **Conformance — session nonce (SN-1..SN-4).**
 
-- (SN-1) **Generator.** The verifier MUST generate the session nonce; a presenter-supplied nonce MUST NOT be trusted as the session binding. (A bundle MAY carry a `sessionNonce` the presenter copied from the verifier's challenge — what SN-1 forbids is the verifier accepting a nonce it did not itself issue for this session.)
+- (SN-1) **Generator.** The verifier MUST generate the session nonce; a presenter-supplied nonce MUST NOT be trusted as the session binding. (A bundle or `SessionParticipationAdmission` MAY carry a `sessionNonce` the signer copied from the verifier's challenge — what SN-1 forbids is the verifier accepting a nonce it did not itself issue for this session. No artifact's `fresh`/`reused` assertion substitutes for the verifier's issued/consumed record.)
 - (SN-2) **Entropy and form (issuance-side).** The nonce MUST carry at least 128 bits of entropy from a cryptographically secure RNG and MUST be fresh and globally distinct for each new presentation challenge, including presentations by different parties or at different admission points in one session. The native `sessionNonce` field (§6.3.2) MUST be a lowercase-hex string of at least 32 hex characters; for the `siwd` kind the EIP-4361 `Nonce` carries the verifier-issued session nonce (validated by the §6.3.2 match check). These are obligations on the **issuer** — the verifier, per SN-1 — *at generation time*. A verifier validating a *presented* nonce relies on the §6.3.2 match against the nonce it issued, which already guarantees a conformant presented value (the issued nonce is well-formed by construction); it is **not** required to re-check entropy or hex-length on the presented value. A unilateral format re-check on the presented nonce is redundant and MUST NOT be treated as a conformance divergence.
 - (SN-3) **Issuance and binding.** The verifier MUST issue the nonce to the presenter before the presentation is produced, bound to the session's `jobId`. The transport of the challenge is substrate- and protocol-specific and is out of scope; the value the verifier matches against MUST be the one it generated for this session. The verifier MUST compare the presented nonce against the nonce it issued for this `jobId` and reject any mismatch.
 - (SN-4) **Single-use and retention.** A verifier MUST accept a nonce for at most one presentation. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed before validating the attempt and reject every later presentation carrying it, including a fresh, changed, or re-signed presentation for the same `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/attempted/consumed record and, for an accepted attempt, the authenticated admission record required by IBH-4 at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`, and one nonce MUST NOT be issued to more than one presenter or presentation.
@@ -712,36 +1056,33 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
 5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
 
-The unreleased coordinated corrective candidate is CORE v0.3 together with
-DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.8, and DACS-5 v0.5. It
-declares two breaking corrections within one exact-pinned boundary:
+CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.7 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. DACS-4 v0.8 also adds the governed legacy-agreement activation boundary (LAA-1..LAA-7), and DACS-3 v0.6 / DACS-5 v0.6 apply that checkpoint to pay-bearing commitment and bundle/reputation admission. The current composed candidate tuple is recorded in `PROFILE.md`; implementations MUST authenticate that complete tuple and exact release pin. This declaration does not authorize a different composition or imply ordinary cross-minor compatibility with a pre-JID-1 profile.
 
-- for `jobId`, the former “ULID or substrate-equivalent” allowance,
-  major-only listing admission, and normalization-tolerant job-specific
-  derivations are replaced by JID-1..JID-4 plus exact corrective-profile
-  admission; and
-- for Vet, CORE v0.3, DACS-1 v0.7, and DACS-2 v0.6 change existing execution
-  behaviour: the declared presentation kind selects the nonce conveyance;
-  verifier-issued SN-4 state is consumed on attempt; current invocation,
-  aggregation, time, signer, result-set, registry, and receipt authority comes
-  from authenticated verifier/orchestrator context; and unsigned or
-  caller-projected substitutes fail closed. Existing `IdentityBundle`,
-  `VerifyResult`, and `CompositeVerificationRecord` signed shapes and domains
-  are unchanged.
+CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.7 declares the same boundary for the DACS-3 channel-message wire (DACS-3 §8.3.3, #349): the historical Demos `ChannelMessage` with its bare-lowercase-hex signature and raw-32-byte-digest `dacs-channelmsg:v1:` framing is replaced by the discriminated `CanonicalChannelMessage` carrying the exclusive `canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature envelope, and the byte-exact `dacs-canonical-channel-message:v1:` plus ASCII lowercase-hex-digest signed-byte framing. The historical wire is archival-only under the explicit `legacy-import` operation; `current-read` refuses it without fallback. The same complete tuple in `PROFILE.md` is the candidate profile for this replacement; these versions do not claim ordinary cross-minor compatibility with a pre-v0.6 channel-message profile.
+
+CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8,
+and DACS-5 v0.7 declares the same boundary for Vet. CORE v0.3, DACS-1 v0.8,
+and DACS-2 v0.6 change existing execution behaviour: the declared presentation
+kind selects the nonce conveyance; verifier-issued SN-4 state is consumed on
+attempt; current invocation, aggregation, time, signer, result-set, registry,
+and receipt authority comes from authenticated verifier/orchestrator context;
+and unsigned or caller-projected substitutes fail closed. Existing
+`IdentityBundle`, `VerifyResult`, and `CompositeVerificationRecord` signed
+shapes and domains are unchanged.
 
 `PROFILE.md` records the complete tuple and identifies the three documents
-whose existing behaviour changes. Retaining their v0.x labels does not assert
-same-version interoperability with a pre-correction implementation: only the
-future exact coordinated release tag or immutable specification commit plus
-the complete tuple can establish the live profile. A Vet decision, composite,
-invocation record, or conformance result produced or interpreted only under
-pre-correction execution semantics remains historical evidence and cannot
-establish current admission, authorize current protocol action, or be relabelled
-as evidence for this correction. This does not revoke VP-C1..VP-C3 reuse of a
-structurally unchanged `VerifyResult` v1: after current-profile admission, a
-current verifier may qualify that result from its authenticated recipe family,
-version, signed predicates, times, and current trusted context. The reusable
-result does not itself assert or prove a producing profile.
+whose existing Vet behaviour changes. Retaining their v0.x labels does not
+assert same-version interoperability with a pre-correction implementation:
+only the future exact coordinated release tag or immutable specification
+commit plus the complete tuple can establish the live profile. A Vet decision,
+composite, invocation record, or conformance result produced or interpreted
+only under pre-correction execution semantics remains historical evidence and
+cannot establish current admission, authorize current protocol action, or be
+relabelled as evidence for this correction. This does not revoke VP-C1..VP-C3
+reuse of a structurally unchanged `VerifyResult` v1: after current-profile
+admission, a current verifier may qualify that result from its authenticated
+recipe family, version, signed predicates, times, and current trusted context.
+The reusable result does not itself assert or prove a producing profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 
@@ -788,7 +1129,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `revocationStateHeadVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `finalityBoundEvidenceFaultBundleVersion`, `legacyBundleCheckpointVersion`, `legacyBundleCheckpointBindingVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `finalityBoundEvidenceVersion`, `finalityObservationResponseVersion`, `participationAdmissionVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. Verifier-local orchestration inputs such as `finalityResolutionContextVersion` use their own closed discriminator before acquisition or action. Unsigned derivation-data types use the same distinct-type rule: CUR-v1 carries only `currentUseReplayableDerivationVersion: "1"`, standalone AWT-v1 only `authenticatedWindowDerivationVersion: "1"`, and the composed current-use authenticated-window candidate only `currentUseAuthenticatedWindowDerivationVersion: "1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 For an **ordinary additive minor**, the §11.1.2 additivity contract makes the major-only signal sufficient for skew in both directions, with no per-artifact minor-version field:
 
@@ -895,3 +1236,9 @@ Cross-stage references for DACS-1 through DACS-5. Per-stage chapters may cite ad
 - **FAR Part 14** — *Sealed Bidding*. US Federal Acquisition Regulation.
 - **FAR Part 15** — *Contracting by Negotiation*. US Federal Acquisition Regulation.
 - **EU Directive 2014/24/EU** — *Public Procurement Directive*.
+
+### Current-value evaluation state and record capacity
+
+A registered current-value policy distinguishes an original finalized inclusion receipt from evidence that the value remains current at an authenticated evaluation state. When DACS-1 RSC admission joins two locator observations, the registered policy must provide a common state identity and compatible substrate/finality authority; independently fresh reads or matching observer timestamps are insufficient. Preserve the original receipts and recorded policy for replay. DACS-1's explicit current-admission policy governs the join and its historical/committed-session boundary.
+
+A content-size limit over a signature-omitted canonical artifact is distinct from the selected binding's complete encoded-record capacity. The latter includes signatures and required native wrapper bytes and requires trusted binding configuration; no generic canonical/native size conversion is implied.

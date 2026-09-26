@@ -28,15 +28,11 @@ HASH_ALGORITHMS = {
     "sha-256": hashlib.sha256,
 }
 JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
-AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
-AUTHORITATIVE_MODULE_VERSIONS = {
-    "core": "0.3",
-    "dacs1": "0.7",
-    "dacs2": "0.6",
-    "dacs3": "0.5",
-    "dacs4": "0.7",
-    "dacs5": "0.5",
-}
+sys.path.insert(0, str(ROOT / "tests"))
+import dacs5_reference as _DACS5_REFERENCE  # noqa: E402
+
+AUTHORITATIVE_RELEASE_PIN = _DACS5_REFERENCE.AUTHORITATIVE_RELEASE_PIN
+AUTHORITATIVE_MODULE_VERSIONS = _DACS5_REFERENCE.AUTHORITATIVE_MODULE_VERSIONS
 AUTHORITATIVE_LOCAL_PROFILE = {
     "releasePin": AUTHORITATIVE_RELEASE_PIN,
     "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
@@ -858,6 +854,22 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                 else:
                     self.assertIsNone(derived)
 
+    def test_real_current_tuple_admits_and_caller_copy_refuses(self):
+        self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs4"], "0.8")
+        self.assertEqual(AUTHORITATIVE_MODULE_VERSIONS["dacs5"], "0.7")
+        self.assertTrue(is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE))
+        caller = self.cases["ap2-admission-caller-profile-refuses"]
+        self.assertEqual(
+            caller["peerProfile"]["moduleVersions"], AUTHORITATIVE_MODULE_VERSIONS
+        )
+        verdict, _, effects = evaluate_checkout_payment_admission(
+            caller,
+            trusted_context_for_ap2_case(caller),
+            authoritative_binding_store_for_ap2_case(caller),
+        )
+        self.assertEqual(verdict, "fail")
+        self.assertEqual(effects["bindingStoreCalls"], 0)
+
     def test_profile_and_session_gates_precede_every_modeled_effect(self):
         for name in (
             "ap2-admission-noncanonical-job-errors",
@@ -896,6 +908,23 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                         "idempotencyKeys": [],
                     },
                 )
+
+    def test_current_consumer_accepts_current_composed_tuple(self):
+        self.assertEqual(
+            AUTHORITATIVE_MODULE_VERSIONS,
+            {
+                "core": "0.3",
+                "dacs1": "0.8",
+                "dacs2": "0.6",
+                "dacs3": "0.6",
+                "dacs4": "0.8",
+                "dacs5": "0.7",
+            },
+        )
+        self.assertTrue(is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE))
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        self.assertTrue(admits_current_profile(case, context))
 
     def test_complete_chain_admission_composes_atomic_ap2_7_decision(self):
         for name in (

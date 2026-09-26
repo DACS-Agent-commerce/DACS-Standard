@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "corpusPins": {
+    "conformance/vectors/security/revocation-state-completeness-v0.8.json": {
+      "spec": "DACS-1 v0.8 §6.3.4 RSC-1..RSC-10 authoritative revocation completeness",
+      "authoritativeProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    }
+  },
+  "vectorMatrices": [
+    {
+      "id": "pr396-rsc7-same-sequence",
+      "invariantClasses": ["same-sequence-conflict"],
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "targetPresence": ["present", "absent"],
+        "authenticity": ["authentic", "inauthentic"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-same-sequence-target-present-authentic",
+          "coordinates": {"targetPresence": "present", "authenticity": "authentic"},
+          "expected": {"verdict": "fail", "revocationCheck": "revoked", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-same-sequence-target-absent-authentic",
+          "coordinates": {"targetPresence": "absent", "authenticity": "authentic"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-same-sequence-target-present-inauthentic",
+          "coordinates": {"targetPresence": "present", "authenticity": "inauthentic"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-same-sequence-target-present-authentic",
+          "controlExpected": {"verdict": "fail", "revocationCheck": "revoked", "session": "refuse"}
+        },
+        {
+          "caseId": "rsc-same-sequence-target-absent-inauthentic",
+          "coordinates": {"targetPresence": "absent", "authenticity": "inauthentic"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        }
+      ]
+    },
+    {
+      "id": "pr396-rsc2-closed-head-schema",
+      "invariantClasses": ["closed-schema"],
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "headKind": ["genesis", "transition"],
+        "mutation": ["extra", "missing", "wrong-type"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-head-schema-genesis-extra",
+          "coordinates": {"headKind": "genesis", "mutation": "extra"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-head-schema-genesis-missing",
+          "coordinates": {"headKind": "genesis", "mutation": "missing"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-head-schema-genesis-wrong-type",
+          "coordinates": {"headKind": "genesis", "mutation": "wrong-type"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-head-schema-transition-extra",
+          "coordinates": {"headKind": "transition", "mutation": "extra"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-head-schema-transition-missing",
+          "coordinates": {"headKind": "transition", "mutation": "missing"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-head-schema-transition-wrong-type",
+          "coordinates": {"headKind": "transition", "mutation": "wrong-type"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        }
+      ]
+    },
+    {
+      "id": "pr396-cross-module-composition",
+      "invariantClasses": ["cross-module-composition"],
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "rbDisposition": ["absent", "revoked", "indeterminate"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-valid-active-nonmembership",
+          "coordinates": {"rbDisposition": "absent"},
+          "expected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"},
+          "controlCase": "rsc-rb4-discovered-marker-precedes-nonmembership",
+          "controlExpected": {"verdict": "fail", "revocationCheck": "revoked", "session": "refuse"}
+        },
+        {
+          "caseId": "rsc-rb4-discovered-marker-precedes-nonmembership",
+          "coordinates": {"rbDisposition": "revoked"},
+          "expected": {"verdict": "fail", "revocationCheck": "revoked", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-rb5-indeterminate-precedes-nonmembership",
+          "coordinates": {"rbDisposition": "indeterminate"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        }
+      ]
+    },
+    {
+      "id": "pr396-selector-exclusivity",
+      "invariantClasses": ["selector-exclusivity"],
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "selectedArm": ["genesis", "transition"],
+        "armShape": ["legitimate", "mismatched"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-valid-genesis-absent",
+          "coordinates": {"selectedArm": "genesis", "armShape": "legitimate"},
+          "expected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"},
+          "controlCase": "rsc-selector-genesis-with-transition",
+          "controlExpected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"}
+        },
+        {
+          "caseId": "rsc-selector-genesis-with-transition",
+          "coordinates": {"selectedArm": "genesis", "armShape": "mismatched"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-valid-active-nonmembership",
+          "coordinates": {"selectedArm": "transition", "armShape": "legitimate"},
+          "expected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"},
+          "controlCase": "rsc-selector-transition-without-transition",
+          "controlExpected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"}
+        },
+        {
+          "caseId": "rsc-selector-transition-without-transition",
+          "coordinates": {"selectedArm": "transition", "armShape": "mismatched"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        }
+      ]
+    },
+    {
+      "id": "pr396-reference-reuse",
+      "invariantClasses": ["reference-reuse"],
+      "corpus": "conformance/vectors/security/revocation-state-completeness-v0.8.json",
+      "evaluator": "tests/test_revocation_state_completeness_vectors.py",
+      "dimensions": {
+        "reuseBoundary": ["consumed", "duplicate", "shadowed", "wrong-target", "unused"]
+      },
+      "cases": [
+        {
+          "caseId": "rsc-valid-active-nonmembership",
+          "coordinates": {"reuseBoundary": "consumed"},
+          "expected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"},
+          "controlCase": "rsc-reference-duplicate-consumed",
+          "controlExpected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"}
+        },
+        {
+          "caseId": "rsc-reference-duplicate-consumed",
+          "coordinates": {"reuseBoundary": "duplicate"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-reference-shadowed-consumed",
+          "coordinates": {"reuseBoundary": "shadowed"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-reference-wrong-target",
+          "coordinates": {"reuseBoundary": "wrong-target"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-active-nonmembership",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        },
+        {
+          "caseId": "rsc-reference-unused-authentic",
+          "coordinates": {"reuseBoundary": "unused"},
+          "expected": {"verdict": "indeterminate", "revocationCheck": "indeterminate", "session": "refuse"},
+          "controlCase": "rsc-valid-genesis-absent",
+          "controlExpected": {"verdict": "pass", "revocationCheck": "absent", "session": "continue"}
+        }
+      ]
+    }
+  ],
+  "unitRegressions": [
+    {
+      "id": "pr396-core-b2-jcs-unsupported-integer",
+      "file": "tests/test_revocation_state_completeness_vectors.py",
+      "test": "RevocationStateCompletenessTests.test_legacy_sorted_json_unsupported_integer_is_rejected_end_to_end"
+    },
+    {
+      "id": "prior-blocker-round10-lossy-signature-dedup",
+      "file": "tests/test_round10_validation_predicate_vectors.py",
+      "test": "Round10ValidationPredicateTests.test_r10_2_duplicate_invalid_defect"
+    },
+    {
+      "id": "prior-blocker-round11-four-probe-grid",
+      "file": "tests/test_round11_receipt_ingress_vectors.py",
+      "test": "Round11ReceiptIngressTests.test_r11_grid_covers_randoms_four"
+    },
+    {
+      "id": "prior-blocker-round12-replay-context-completeness",
+      "file": "tests/test_round12_replay_completeness_vectors.py",
+      "test": "Round12ReplayCompletenessTests.test_T1_missing_resolution_context"
+    },
+    {
+      "id": "prior-blocker-round14-full-standing-equivocation",
+      "file": "tests/test_round14_hub_reproduction_vectors.py",
+      "test": "Round14VerificationCompletion.test_b_bb6_two_full_standing_forms_are_indeterminate"
+    }
+  ],
+  "coveredInvariantClasses": [
+    {"id": "same-sequence-conflict", "matrixIds": ["pr396-rsc7-same-sequence"]},
+    {"id": "closed-schema", "matrixIds": ["pr396-rsc2-closed-head-schema"]},
+    {"id": "reference-reuse", "matrixIds": ["pr396-reference-reuse"]},
+    {"id": "selector-exclusivity", "matrixIds": ["pr396-selector-exclusivity"]},
+    {"id": "cross-module-composition", "matrixIds": ["pr396-cross-module-composition"]}
+  ],
+  "plannedInvariantClasses": []
+}

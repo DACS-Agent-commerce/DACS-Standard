@@ -10,10 +10,14 @@ Two signed ``SettlementEvidence`` fixtures form one supersession pair:
 
 This verifier is executable, not a shape check: each record's Ed25519 signature
 is verified over ``"dacs-evidence:v1:" || sha256hex(JCS(record minus signature))``
-against an independently pinned ``key:<pubkey-hex>`` phase orchestrator, and the
-supersession hash is recomputed.  The committed pair additionally carries
-fixture-only authenticated receipt context checked against both records.
-No amendment of any kind is accepted — ST-8 resolution is a same-phase
+against an independently pinned ``key:<pubkey-hex>`` phase orchestrator, and
+the supersession hash is recomputed. JSON is parsed with recursive
+duplicate-member and non-JSON numeric-constant rejection before
+canonicalization, hashing, or signature verification. The committed pack pins
+that authority; custom callers must supply their trusted phase context rather
+than deriving authority from either record. The committed pair additionally
+carries fixture-only authenticated receipt context checked against both
+records. No amendment of any kind is accepted — ST-8 resolution is a same-phase
 supersession, not a ``correction`` (DACS-4-SETTLE.md: "No ``correction``
 amendment is used").
 
@@ -53,13 +57,24 @@ except ImportError:  # pragma: no cover
 FIXTURE_DIR = ROOT / "conformance" / "fixtures" / "settlement"
 DEFAULT_INTERIM = FIXTURE_DIR / "htlc9-asymmetric.json"
 DEFAULT_RESOLVED = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
+DEFAULT_PHASE_ORCHESTRATOR = "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+# Compatibility name retained for callers introduced by #343.
+EXPECTED_PHASE_ORCHESTRATOR = DEFAULT_PHASE_ORCHESTRATOR
 
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
-EXPECTED_PHASE_ORCHESTRATOR = (
-    "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
-)
 FIXTURE_RAIL_ID = "cross-chain-htlc:84532:80002"
 FIXTURE_PHASE_INDEX = 4
+
+# Compatibility API retained from #343; parsing is delegated to the shared
+# strict parser used by the other current-profile consumers.
+DuplicateJsonMember = DuplicateJSONMember
+
+
+def strict_json_loads(text: str):
+    """Parse JSON with the shared duplicate/non-finite admission rules."""
+    return loads_unique_json(text)
+
+
 CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
 FORBIDDEN_KEYS = {"settlementAmendment", "amendmentType", "amendmentRefs", "amendsEvidenceRef", "refundAmount"}
 DELIVERY_ONLY_KEYS = {"deliverableContentHash", "deliverableAnchor", "attestationRef"}
@@ -70,16 +85,6 @@ SIGNATURE_KEYS = {"algorithm", "signer", "value"}
 FINALITY_KEYS = {"model", "finalityObservedAt"}
 PRICE_TERM_REQUIRED_KEYS = {"amount", "currency"}
 PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
-
-
-# Compatibility API retained from #343; parsing is delegated to the shared
-# strict parser used by the other current-profile consumers.
-DuplicateJsonMember = DuplicateJSONMember
-
-
-def strict_json_loads(text: str):
-    """Parse JSON with the shared duplicate/non-finite admission rules."""
-    return loads_unique_json(text)
 
 
 def fail(path: Path, message: str) -> str:
@@ -152,19 +157,19 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     if not isinstance(refs, list) or not refs:
         return [f"{path_label}: paymentTxRefs MUST be a non-empty list"]
     for i, ref in enumerate(refs):
-        kind = ref.get("kind") if isinstance(ref, dict) else None
-        if not isinstance(kind, str) or kind not in TXREF_HASH_FIELD:
+        if not isinstance(ref, dict) or not isinstance(ref.get("kind"), str) \
+                or ref["kind"] not in TXREF_HASH_FIELD:
             errs.append(f"{path_label}: paymentTxRefs[{i}] MUST be an htlc-lock / htlc-reveal / htlc-claim txRef"); continue
-        extra = set(ref) - TXREF_FIELDS[kind]
+        extra = set(ref) - TXREF_FIELDS[ref["kind"]]
         if extra:
-            errs.append(f"{path_label}: {kind} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
-        field = TXREF_HASH_FIELD[kind]
+            errs.append(f"{path_label}: {ref['kind']} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
+        field = TXREF_HASH_FIELD[ref["kind"]]
         if not exact_safe_integer(ref.get("chainId"), minimum=1):
-            errs.append(f"{path_label}: {kind} chainId MUST be a positive integer")
+            errs.append(f"{path_label}: {ref['kind']} chainId MUST be a positive integer")
         if not isinstance(ref.get("contractAddress"), str) or not re.fullmatch(r"0x[0-9a-fA-F]{40}", ref["contractAddress"]):
-            errs.append(f"{path_label}: {kind} contractAddress MUST be a 0x-prefixed 20-byte hex address")
+            errs.append(f"{path_label}: {ref['kind']} contractAddress MUST be a 0x-prefixed 20-byte hex address")
         if not isinstance(ref.get(field), str) or not TX_HASH.fullmatch(ref[field]):
-            errs.append(f"{path_label}: {kind} MUST carry {field} as 0x-prefixed 32-byte hex")
+            errs.append(f"{path_label}: {ref['kind']} MUST carry {field} as 0x-prefixed 32-byte hex")
     return errs
 
 
@@ -194,9 +199,16 @@ def price_term_errors(amount: Any) -> list[str]:
 
 
 def verify_signature(
-    record: dict, expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR
+    record: Any,
+    expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
 ) -> str | None:
-    """Return an error string, or None when the Ed25519 signature verifies."""
+    """Verify against phase authority supplied independently of ``record``."""
+    if not isinstance(record, dict):
+        return "SettlementEvidence MUST be an object"
+    if not isinstance(expected_phase_orchestrator, str) or not re.fullmatch(
+        r"key:[0-9a-f]{64}", expected_phase_orchestrator
+    ):
+        return "expected_phase_orchestrator MUST be a trusted key:<64 lowercase hex> Ed25519 key"
     sig = record.get("signature")
     if not isinstance(sig, dict):
         return "signature MUST be an object"
@@ -215,14 +227,14 @@ def verify_signature(
     if signer.scheme != "key" or expected.scheme != "key":
         return "signature.signer MUST be key:<64 lowercase hex> (Ed25519 public key)"
     if signer.canonical != expected.canonical:
-        return "signature.signer MUST match the independently expected phase orchestrator"
+        return "signature.signer MUST equal the independently trusted expected phase orchestrator"
     value = sig.get("value")
     if not isinstance(value, str) or not is_canonical_sig6(value):
         return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
         digest = content_hash_hex(record)
-    except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError) as exc:
-        return f"SettlementEvidence cannot be canonicalized: {exc}"
+    except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError):
+        return "record cannot be canonicalized as DACS JCS"
     try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
         public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.identifier))
@@ -283,7 +295,7 @@ def fixture_receipt_errors(
     ):
         errors.append(
             "anchorReceipt MUST bind the pinned logical/native address, content hash, "
-            "finalized lifecycle, and expected phase-orchestrator writer"
+            "finalized lifecycle, and the expected phase orchestrator as writer"
         )
     for field in ("transactionRef", "evidence"):
         item = receipt.get(field)
@@ -317,25 +329,27 @@ def fixture_receipt_errors(
 
 def load_case(
     path: Path,
+    expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
     *,
-    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
     require_fixture_receipt: bool = False,
     resolved: bool = False,
 ) -> tuple[dict | None, list[str]]:
     try:
-        raw_json = path.read_text(encoding="utf-8")
+        raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
-    except UnicodeDecodeError:
-        return None, [fail(path, "invalid UTF-8: input is not valid UTF-8")]
-    except (OSError, RecursionError) as error:
-        return None, [fail(path, f"fixture file could not be read: {error}")]
+    except UnicodeError:
+        return None, [fail(path, "fixture is not valid UTF-8")]
+    except (OSError, RecursionError) as exc:
+        detail = getattr(exc, "strerror", None) or str(exc) or type(exc).__name__
+        return None, [fail(path, f"fixture file could not be read: {detail}")]
     try:
-        data = loads_unique_json(raw_json)
-    except RecursionError as error:
-        return None, [fail(path, f"invalid JSON: {error}")]
-    except ValueError as error:
-        return None, [fail(path, str(error))]
+        data = loads_unique_json(raw)
+    except RecursionError as exc:
+        return None, [fail(path, f"invalid JSON: {exc}")]
+    except ValueError as exc:
+        # The shared parser reports every admission failure as "invalid JSON: ...".
+        return None, [fail(path, str(exc))]
     if not isinstance(data, dict):
         return None, [fail(path, "fixture root MUST be an object")]
     errors: list[str] = []
@@ -346,8 +360,8 @@ def load_case(
         return None, errors + [fail(path, "settlementEvidence MUST be an object")]
     try:
         forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
-    except RecursionError as exc:
-        return None, errors + [fail(path, f"SettlementEvidence nesting is too deep: {exc}")]
+    except RecursionError:
+        return None, errors + [fail(path, "settlementEvidence nesting exceeds the supported limit")]
     if forbidden:
         errors.append(fail(path, "ST-8 supersession MUST NOT carry amendment fields: " + ", ".join(sorted(forbidden))))
     if evidence.get("evidenceVersion") != "1":
@@ -383,13 +397,13 @@ def txref_kinds(evidence: dict) -> list[str]:
 
 def validate_interim(
     path: Path,
+    expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
     *,
-    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
     require_fixture_receipt: bool = False,
 ) -> tuple[dict | None, list[str]]:
     evidence, errors = load_case(
         path,
-        expected_phase_orchestrator=expected_phase_orchestrator,
+        expected_phase_orchestrator,
         require_fixture_receipt=require_fixture_receipt,
         resolved=False,
     )
@@ -415,7 +429,8 @@ def validate_interim(
     for kind in ("htlc-lock", "htlc-reveal"):
         if kinds.count(kind) > 1:
             errors.append(fail(path, f"interim evidence MUST carry exactly one {kind} txRef"))
-    refs = [r for r in evidence.get("paymentTxRefs", []) if isinstance(r, dict)]
+    raw_refs = evidence.get("paymentTxRefs")
+    refs = [r for r in raw_refs if isinstance(r, dict)] if isinstance(raw_refs, list) else []
     lock = next((r for r in refs if r.get("kind") == "htlc-lock"), None)
     reveal = next((r for r in refs if r.get("kind") == "htlc-reveal"), None)
     if lock and reveal and lock.get("lockTxHash") == reveal.get("revealTxHash"):
@@ -428,18 +443,21 @@ def validate_interim(
 def validate_resolved(
     path: Path,
     interim: dict | None,
+    expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
     *,
-    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
     require_fixture_receipt: bool = False,
 ) -> list[str]:
     evidence, errors = load_case(
         path,
-        expected_phase_orchestrator=expected_phase_orchestrator,
+        expected_phase_orchestrator,
         require_fixture_receipt=require_fixture_receipt,
         resolved=True,
     )
     if evidence is None:
         return errors
+    if interim is not None and not isinstance(interim, dict):
+        errors.append(fail(path, "interim SettlementEvidence MUST be an object for pair validation"))
+        interim = None
     if set(evidence) != RESOLVED_EVIDENCE_KEYS:
         errors.append(fail(path, "resolved SettlementEvidence fields MUST be exactly evidenceVersion, jobId, observedAt, outcome, phase, paymentAmount, paymentTxRefs, settlementFinality, signature, supersedesEvidenceRef"))
     if "reason" in evidence:
@@ -456,7 +474,8 @@ def validate_resolved(
             errors.append(fail(path, f"resolved evidence MUST carry the {needed} txRef"))
         elif kinds.count(needed) > 1:
             errors.append(fail(path, f"resolved evidence MUST carry exactly one {needed} txRef"))
-    refs = [r for r in evidence.get("paymentTxRefs", []) if isinstance(r, dict)]
+    raw_refs = evidence.get("paymentTxRefs")
+    refs = [r for r in raw_refs if isinstance(r, dict)] if isinstance(raw_refs, list) else []
     lock = next((r for r in refs if r.get("kind") == "htlc-lock"), None)
     reveal = next((r for r in refs if r.get("kind") == "htlc-reveal"), None)
     claim = next((r for r in refs if r.get("kind") == "htlc-claim"), None)
@@ -481,7 +500,10 @@ def validate_resolved(
             errors.append(fail(path, "HTLC topology: htlc-reveal MUST be on the destination chain (reveal.chainId != lock.chainId) for pay-cross-chain-htlc"))
     if interim is not None:
         def by_kind(ev, kind):
-            return next((r for r in ev.get("paymentTxRefs", []) if isinstance(r, dict) and r.get("kind") == kind), None)
+            pair_refs = ev.get("paymentTxRefs")
+            if not isinstance(pair_refs, list):
+                return None
+            return next((r for r in pair_refs if isinstance(r, dict) and r.get("kind") == kind), None)
         for kind in ("htlc-lock", "htlc-reveal"):
             a, b = by_kind(interim, kind), by_kind(evidence, kind)
             if a is not None and b is not None and a != b:
@@ -518,7 +540,7 @@ def validate_resolved(
         try:
             expected = content_hash_hex(interim)
         except (TypeError, ValueError, OverflowError, UnicodeError, RecursionError):
-            errors.append(fail(path, "interim record is not strict JCS-canonicalizable"))
+            errors.append(fail(path, "interim record cannot be canonicalized as DACS JCS for pair validation"))
             return errors
         if ref["contentHash"] != expected:
             errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
@@ -553,7 +575,7 @@ def supersession_binding_errors(
         or not isinstance(signature, dict)
         or reference["signer"] != signature.get("signer")
     ):
-        errors.append("supersedesEvidenceRef.signer MUST match the independently expected phase orchestrator and authenticated interim signer")
+        errors.append("supersedesEvidenceRef.signer MUST equal the independently trusted expected phase orchestrator and authenticated interim signer")
     if require_fixture_receipt and reference["anchor"] != {
         "kind": "storage-program", "locator": f"stor-{content_hash_hex(interim)}",
     }:
@@ -572,24 +594,29 @@ def requires_fixture_receipts(interim_path: Path, resolved_path: Path) -> bool:
 def validate_pair(
     interim_path: Path,
     resolved_path: Path,
-    *,
-    expected_phase_orchestrator: str = EXPECTED_PHASE_ORCHESTRATOR,
+    expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
 ) -> list[str]:
     try:
         require_fixture_receipts = requires_fixture_receipts(interim_path, resolved_path)
     except (OSError, RuntimeError) as error:
-        return [fail(interim_path, f"pair paths could not be resolved: {error}")]
+        # Fail closed: no record is evaluated and no receipt policy is chosen.
+        # Ordinary file diagnostics remain visible without reading either file.
+        errors = [fail(interim_path, f"pair paths could not be resolved: {error}")]
+        for path in dict.fromkeys((interim_path, resolved_path)):
+            if not path.exists():
+                errors.append(fail(path, "fixture file not found"))
+        return errors
     interim, errors = validate_interim(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,
         require_fixture_receipt=require_fixture_receipts,
     )
-    admitted_interim = interim if interim is not None and not errors else None
+    accepted_interim = interim if interim is not None and not errors else None
     if errors:
         errors.append(fail(resolved_path, "pair binding not evaluated because interim evidence was rejected"))
     errors += validate_resolved(
         resolved_path,
-        admitted_interim,
+        accepted_interim,
         expected_phase_orchestrator=expected_phase_orchestrator,
         require_fixture_receipt=require_fixture_receipts,
     )
@@ -600,8 +627,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("interim", nargs="?", type=Path, default=DEFAULT_INTERIM)
     parser.add_argument("resolved", nargs="?", type=Path, default=DEFAULT_RESOLVED)
+    parser.add_argument(
+        "--expected-phase-orchestrator",
+        default=DEFAULT_PHASE_ORCHESTRATOR,
+        help="independently trusted key:<Ed25519-public-key-hex> for this phase",
+    )
     args = parser.parse_args(argv)
-    errors = validate_pair(args.interim, args.resolved)
+    try:
+        errors = validate_pair(
+            args.interim, args.resolved, args.expected_phase_orchestrator
+        )
+    except (AttributeError, OSError, OverflowError, RecursionError, TypeError, UnicodeError, ValueError) as exc:
+        print(f"HTLC-9 ST-8 verifier failed: {exc}", file=sys.stderr)
+        return 1
     if errors:
         for e in errors:
             print(e, file=sys.stderr)

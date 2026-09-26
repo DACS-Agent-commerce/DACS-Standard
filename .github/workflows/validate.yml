@@ -64,12 +64,17 @@ jobs:
       - name: Verify domain-claim GCR vectors are deterministic
         run: python3 scripts/generate_domain_gcr_vectors.py --check
 
+      - name: Verify SR-2 resolution vectors are deterministic
+        run: python3 scripts/generate_sr2_resolution_vectors.py --check
+
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check
 
       - name: Verify DACS-1/Vet golden inputs are deterministic
         run: python3 scripts/generate_dacs1_vet_golden_inputs.py --check
 
+      - name: Verify canonical channel-message vectors are deterministic
+        run: python3 scripts/generate_channel_message_vectors.py --check
       - name: Verify IdentityBundle hash binding vectors are deterministic
         run: python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 
@@ -79,6 +84,21 @@ jobs:
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
 
+      - name: Verify settlement-finality vectors are deterministic
+        run: python3 scripts/generate_settlement_finality_verification_vectors.py --check
+
+      - name: Verify finality-resolution vectors are deterministic
+        run: python3 scripts/generate_finality_resolution_context_vectors.py --check
+
+      - name: Verify current-use reputation vectors are deterministic
+        run: python3 scripts/generate_current_use_reputation_vectors.py --check
+
+      - name: Verify combined current-use authenticated-window vectors are deterministic
+        run: python3 scripts/generate_current_use_authenticated_window_vectors.py --check
+
+      - name: Verify sealed-auction completeness vectors are deterministic
+        run: python3 scripts/generate_sealed_auction_completeness_vectors.py --check
+
       - name: Verify canonical jobId vectors are deterministic
         run: python3 scripts/generate_job_id_grammar_vectors.py --check
 
@@ -87,6 +107,21 @@ jobs:
 
       - name: Verify SB-2 collision-authority vectors are deterministic
         run: python3 scripts/generate_sb2_collision_authority_vectors.py --check
+
+      - name: Verify legacy-agreement admission vectors are deterministic
+        run: python3 scripts/generate_legacy_agreement_admission_vectors.py --check
+
+      - name: Verify authenticated reputation-window vectors are deterministic
+        run: python3 scripts/generate_reputation_authenticated_window_vectors.py --check
+
+      - name: Verify signed-participation reputation vectors are deterministic
+        run: python3 scripts/generate_reputation_participation_vectors.py --check
+
+      - name: Verify revocation-state completeness vectors are deterministic
+        run: python3 scripts/generate_revocation_state_completeness_vectors.py --check
+
+      - name: Run offline pre-review invariant gate
+        run: python3 scripts/pre_review_gate.py
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check

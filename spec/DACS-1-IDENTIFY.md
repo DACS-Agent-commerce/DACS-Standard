@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.7** on the common DACS v0.1 baseline. v0.7 is an affected document in the declared CORE §11.1.2 **breaking pre-v1 corrective candidate**: it adopts JID-1 exact-profile admission and changes existing session-presentation behaviour so the declared presentation kind selects the nonce conveyance and only the verifier-issued, issuer-owned SN-4 ledger can authorize and consume the attempt. The signed `IdentityBundle` shape is unchanged; the v0.7 label alone does not establish interoperability with pre-correction v0.7 behavior. v0.7 also defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.8 also adds RSC-1..RSC-10 and a listing-bound, append-only `RevocationStateHead`: a new-session reader can return `absent` only from an authenticated proof against the current finalized seller state, never from a discovery surface's omission. v0.8 is also an affected document in the declared CORE §11.1.2 **breaking pre-v1 Vet correction**: it changes existing session-presentation behaviour so the declared presentation kind selects the nonce conveyance and only the verifier-issued, issuer-owned SN-4 ledger can authorize and consume the attempt. The signed `IdentityBundle` shape is unchanged; the v0.8 label alone does not establish interoperability with pre-correction session-presentation behaviour. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, keeps authoritative listing-time rail resolution on the existing DACS-4 registry contract while CORE registry-bootstrap activation remains deferred, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -603,6 +603,7 @@ type Listing = {
     notBefore: number                  // unix ms
     notAfter?: number                  // unix ms; absent => no expiry
   }
+  revocationState?: RevocationStateRef // REQUIRED by the v0.8 current new-session profile; absent historical listings remain audit-readable but cannot establish current non-revocation
   // Listing-level signature
   signature: ListingSignature
 }
@@ -621,7 +622,7 @@ type ListingTerms = {
 }
 ```
 
-**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement`, DACS-3 §8.4.3 SE-8), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
+**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope` or `negotiate-sealed-envelope-complete`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement` or `negotiate-sealed-envelope-procurement-complete`, DACS-3 §8.4.3 SE-8 / §8.4.4 SAC-9), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
 
 **`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).
 
@@ -649,8 +650,10 @@ type PhaseType =
   | "vet-credentials"
   // DACS-3
   | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
+  | "negotiate-sealed-envelope-complete" | "negotiate-sealed-envelope-procurement-complete"
   | "commit-agreement" | "commit-payee-bound-agreement"
   | "commit-identity-bound-agreement" | "commit-identity-bound-payee-agreement"
+  | "commit-selection-bound-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
@@ -669,14 +672,19 @@ Per-kind parameter shapes are normative in the owning chapter:
 | negotiate-rfq | {maxTurns, timeoutSec, channelSubnet?, rfqInitiator?} | 8 |
 | negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
+| negotiate-sealed-envelope-complete | {commitDeadline, revealWindow, selectionRule, candidateSetBinding, auctionMode?, channelSubnet?}; `selectionRule` is `"lowest-price"` or `"highest-price"`; `auctionMode`, when present, MUST be `"demand"`; DACS-3 §8.4.4 | 8 |
+| negotiate-sealed-envelope-procurement-complete | {commitDeadline, revealWindow, selectionRule, candidateSetBinding, auctionMode, channelSubnet?}; `selectionRule` is `"lowest-price"` or `"highest-price"`; `auctionMode` MUST be `"procurement"`; DACS-3 §8.4.4 | 8 |
 | commit-agreement | none | 8 |
 | commit-payee-bound-agreement | none | 8 |
+| commit-selection-bound-agreement | none; consumes only `SealedSelectionAgreementDocument` | 8 |
 | commit-identity-bound-agreement | none | 8 |
 | commit-identity-bound-payee-agreement | none | 8 |
 | pay-alternative | {alternatives: PaymentRailRef[]} (DACS-4 APR-1; listing projection only, never executable) | 9 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
 | rate | optional {required?: boolean} | 10 |
+
+For a new session under the current DACS-1 v0.8 / DACS-3 v0.6 profile, a sealed-envelope listing MUST use one of the two `*-complete` negotiation phases and `commit-selection-bound-agreement`. The two earlier sealed phase kinds remain valid signed historical inputs and may complete an already pinned session, but they cannot establish candidate-set completeness and MUST NOT be selected for a new current-profile session. This is paired with the structurally distinct new phase and agreement types so an older reader rejects a current complete-profile listing rather than silently ignoring its security requirements.
 
 **Canonical serialisation and signature**
 The listing follows the §B.2 canonical-form template, omitting the `signature` field. The signature.value is computed over:
@@ -727,7 +735,9 @@ Consumers resolve a listing by looking up native_address for the logical_address
 
 Substrates MAY use equivalent addressing schemes; the requirement is that any party with substrate access can dereference an anchor reference to the canonical content and verify the content hash.
 
-**Size cap.** The canonical JSON form of a listing MUST NOT exceed 16,384 bytes (16 KB). Listings exceeding the cap MUST use the extendedDescriptionUrl + extendedDescriptionHash pattern to host verbose offering descriptions externally with content-hash binding. The cap applies after canonicalisation; the actual on-chain payload size may differ slightly due to substrate encoding. On substrates whose SR-2 implementation has a smaller per-record cap, the substrate cap governs (the lesser of 16 KB and the substrate cap). Implementations MUST reject listings exceeding the applicable cap at the validation step (LR-2).
+**Size cap.** `listing_size` is the UTF-8 octet length of the Listing's CORE §B.2 canonical form, omitting exactly the top-level `signature` and preserving every other member, including unknown signed extensions. It MUST NOT exceed 16,384 octets. Listings exceeding this cap MUST use the `extendedDescriptionUrl` + `extendedDescriptionHash` pattern for externally hosted descriptions. This measurement changes no signature scope, hash, or domain.
+
+The selected SR-2 binding MUST independently provide its native record-size limit and exact encoding rule as trusted binding configuration. Producers and readers MUST measure the complete native encoded record, including its signature and required storage wrapper, and reject a record exceeding that limit before publication or a new-session effect. A producer-supplied limit, reported length, or discovery field cannot configure this check. Missing or unsupported binding measurement is `indeterminate`, not successful validation. There is no universal conversion from canonical content size to native record size. Only when a binding explicitly provides an equivalent canonical-byte budget does the lesser of that budget and 16,384 apply to `listing_size`. A longer signature can change native encodability without changing `listing_size`.
 
 **Operational engagement and reachability.** Cryptographic validity answers
 "who signed these terms?"; it does not establish that a buyer can contact the
@@ -765,6 +775,7 @@ Versioning rules:
 
 - Each listingVersion is independently anchored. Prior versions MUST remain readable.
 - A new version supersedes prior versions for new sessions; sessions already past their DACS-3 agreement commitment phase MUST continue against their pinned version.
+- For a `Listing` entering the current RSC profile, RSC-8 additionally requires a reader to authenticate the exact current value of the stable per-publisher/listing line before new-session admission. A signed newer object, a producer-supplied hash-linked list, or a discovery result is not current-state authority for that proof. This qualification does not alter historical `Listing` versioning semantics.
 - listingVersion MUST be monotonically increasing per listingId. Versions MUST NOT be skipped.
 
 **Revocation marker and binding.** A `RevocationMarker` is the seller's signed withdrawal of one listing version. A `RevocationBinding` locates that marker without relying on its StorageProgram name.
@@ -795,6 +806,94 @@ type RevocationBinding = {
   markerContentHash: string
 }
 
+type RevocationStateRef = {
+  revocationStateRefVersion: "1"
+  logicalAddress: string                       // dacs1-revocations:{sellerPrimaryClaim}, CF-4 encoded
+  anchor: { kind: string; locator: string }    // stable native state line; covered by the Listing signature
+  checkpointSequence: string                   // canonical unsigned decimal; no leading zero except "0"
+  checkpointHeadHash: string                   // exact signed head already current when this Listing was issued
+}
+
+type RevocationStateHead = {
+  revocationStateHeadVersion: "1"
+  sellerPrimaryClaim: ClaimReference
+  logicalAddress: string
+  sequence: string                              // canonical unsigned decimal
+  previousHeadHash: string                     // 64 lowercase hex; all-zero only at sequence "0"
+  rootHash: string                             // sparse-Merkle root defined below
+  entryCount: string                           // canonical unsigned decimal; equals sequence in v1
+  transition?: RevocationAppend                // absent exactly at sequence "0"; required otherwise
+  issuedAt: number                             // advisory producer time; never establishes latest state
+  signature: RevocationSignature               // dacs-revocation-state-head:v1:
+}
+
+type RevocationAppend = {
+  leafKey: string                               // exact tuple key defined below
+  revocationRef: AttestationRef                 // independently resolvable RB-1 marker
+  priorProof: SparseMerkleProof                 // proves this key was empty in previousHeadHash's root
+}
+
+type SparseMerkleProof = {
+  siblings: SparseMerkleSibling[]               // non-default siblings only; canonical ascending height
+}
+
+type SparseMerkleSibling = {
+  height: number                                // integer 0..255; height 0 is the leaf sibling
+  hash: string                                  // 64 lowercase hex
+}
+
+type RevocationStateProof = {
+  revocationStateProofVersion: "1"
+  headContentHash: string
+  leafKey: string
+  disposition: "absent" | "revoked"
+  revocationRef?: AttestationRef                // required exactly for revoked
+  proof: SparseMerkleProof
+}
+
+type RevocationHeadResolutionContext = {
+  headRef: AttestationRef                       // dereferences the current RevocationStateHead
+  headReceipt: AnchorReceipt                    // finalized receipt for that exact head update
+  headReceiptHistory: AnchorReceipt[]           // every snapshot used to reconcile the stable state line
+  listingReceipt: AnchorReceipt                 // finalized receipt binding the signed Listing to the shared finalized state (LP-1)
+  currentStateEvidence: {
+    policy: string                              // registered substrate current-state/latest-tip policy
+    finalizedStateId: string
+    valueContentHash: string                    // equals headRef.contentHash
+    listingContentHash: string                  // equals the signed Listing's canonical content hash
+    listingReceiptHash: string                  // equals sha256(canonical(listingReceipt))
+    conflictingHeadsHash: string                // equals sha256(canonical(knownConflictingHeads))
+    evidence: { kind: string; value: string }
+  }
+  headHistory: ResolvedRevocationHead[]        // genesis through current, inclusive; contains the Listing checkpoint
+  stateProof: RevocationStateProof
+  resolvedMarkers: ResolvedRevocationMarker[]  // every marker consumed by a transition or current inclusion proof
+  knownConflictingHeads: ResolvedRevocationHead[] // complete fork/equivocation observation set; explicit empty array when none observed
+}
+
+type ResolvedRevocationHead = {
+  head: RevocationStateHead
+  receipt: AnchorReceipt
+  authority: {
+    claim: ClaimReference
+    key: string                                 // algorithm-profile public key bytes, canonical encoding
+    disposition: "verified" | "indeterminate"
+    evidence: { kind: string; value: string }
+  }
+}
+
+type ResolvedRevocationMarker = {
+  revocationRef: AttestationRef
+  marker: RevocationMarker
+  receipt: AnchorReceipt
+  authority: {
+    claim: ClaimReference
+    key: string
+    disposition: "verified" | "indeterminate"
+    evidence: { kind: string; value: string }
+  }
+}
+
 type RevocationCheck = "absent" | "revoked" | "indeterminate"
 ```
 
@@ -816,7 +915,7 @@ A seller MAY revoke one listing version by completing RB-1..RB-3.
   5. match the marker's three listing fields to the listing under evaluation.
 - A binding supplies discovery only. A reader MUST NOT honour revocation from the binding without completing every RB-4 post-fetch check.
 - (RB-5) A missing required binding or an incomplete RB-4 check MUST produce `indeterminate`. A reader MUST refuse a new session when the result is `revoked` or `indeterminate`.
-- (RB-6) Across the discovery records consulted for one check, result precedence is `revoked`, then `indeterminate`, then `absent`. A reader MAY return `absent` only when every successfully consulted record is integrity-consistent, active, and has no binding.
+- (RB-6) Across the discovery records consulted for one check, result precedence is `revoked`, then `indeterminate`, then `absent`. A reader MAY return the historical/discovery-only `absent` result only when every successfully consulted record is integrity-consistent, active, and has no binding. That result does not establish revocation completeness and MUST NOT satisfy the v0.8 current new-session gate; only RSC-1..RSC-7 can do so.
 - A well-known read is integrity-consistent only when `listings.json` matches `indexHash`. A catalog-only record whose `catalogObservedAt` is older than 24 hours MUST NOT establish `absent`.
 - A transport failure, stale record, or integrity mismatch is `indeterminate`, not `absent`.
 - Sessions already past their agreement commitment phase MUST NOT be invalidated by revocation.
@@ -824,6 +923,50 @@ A seller MAY revoke one listing version by completing RB-1..RB-3.
 > **Note (non-normative).** The binding is not a new trust root. A false pointer, tuple, or hash fails RB-4; only the listing key's existing marker signature establishes revocation.
 
 > **Note (non-normative).** RB-6 distinguishes a completed discovery read from a resolution failure. It does not claim that one transport's successful “not found” response proves global absence across censored views.
+
+**Current revocation-state completeness (RSC-1..RSC-10).** A signed marker proves revocation once found, but an active catalog or index cannot prove that a newer marker was not withheld. The v0.8 current new-session profile therefore uses the stable state line signed into the Listing and treats discovery as a non-authoritative optimisation.
+
+The state line is an append-only 256-level sparse Merkle tree. For the Listing tuple
+
+```
+T := {
+  sellerPrimaryClaim,
+  listingId,
+  listingVersion,
+  listingContentHash
+}
+K := sha256(JCS(T))
+R := sha256(JCS(revocationRef))
+EMPTY[0] := sha256(0x00)
+EMPTY[h + 1] := sha256(0x01 || EMPTY[h] || EMPTY[h])
+REVOKED_LEAF := sha256(0x02 || hexToBytes(K) || hexToBytes(R))
+PARENT(left, right) := sha256(0x01 || left || right)
+```
+
+All concatenation in these equations is binary. `sha256` returns 32 bytes and stored hashes are their lowercase 64-hex encodings. A proof walks from leaf height 0 through height 255 using bit `h` of `K` interpreted as a 256-bit unsigned big-endian integer; bit 0 is the least-significant bit. If bit `h` is zero, the running node is the left child; otherwise it is the right child. A missing compact sibling at height `h` means `EMPTY[h]`. Present siblings are strictly ascending, unique heights in 0..255; malformed, duplicate, out-of-order, default-valued, or non-hex entries are rejected. An `absent` proof starts from `EMPTY[0]`; a `revoked` proof starts from `REVOKED_LEAF` computed from its exact `revocationRef`.
+
+- (RSC-1) **Listing-bound stable line.** A Listing entering the current new-session profile MUST carry exactly one closed-shape `revocationState` with `revocationStateRefVersion: "1"`. Its `logicalAddress` MUST equal `dacs1-revocations:{sellerPrimaryClaim}` after CF-4 encoding, where the claim is the Listing publisher's canonical primary claim. Its `anchor` is a stable native state locator, not a discovery-selected head pointer; the Listing signature covers it. `checkpointSequence` is canonical unsigned decimal and `checkpointHeadHash` is lowercase 64-hex. A missing, malformed, substituted, or discovery-only state reference is `indeterminate`.
+- (RSC-2) **Head type, hash, and authority.** Every resolved head MUST have exactly `revocationStateHeadVersion: "1"`, the closed schema above, the Listing's canonical publisher and logical address, a canonical content hash, and a valid signature under `"dacs-revocation-state-head:v1:" || headContentHash`. The signer MUST be the publisher claim, verified with the key that the claim's authenticated key-lifecycle authority says was valid at the head's finalized inclusion state. Rotation under the same claim is allowed only when that authority proves the new key and historical validity; producer `issuedAt` is never key or ordering evidence. Missing or conflicting authority is `indeterminate`.
+- (RSC-3) **Authenticated current value.** `currentStateEvidence` MUST pass the substrate binding's registered current-state policy and bind `revocationState.anchor.locator`, `headRef.contentHash`, `headReceipt`, and one exact finalized substrate state. The signed policy message MUST also bind the exact signed Listing content hash (`listingContentHash`), the canonical hash of its finalized `AnchorReceipt` (`listingReceiptHash`, LP-1), and the canonical hash of the complete known-conflicting-head set (`conflictingHeadsHash`), so the Listing and its revocation non-membership are evaluated in one authenticated finalized state: the Listing receipt's finalized state MUST equal the head receipt's finalized state, or an authenticated no-intervening-state proof MUST be supplied. That policy MUST authenticate the native state, establish the referenced state as the latest acceptable finalized tip rather than merely a valid old block, define a maximum lag or equivalent freshness rule, and specify independent-observer thresholds plus fork handling. A catalog, well-known response, ordinary RPC `not found`, producer timestamp, or finalized receipt for an old head is insufficient. Missing, stale, conflicting, unauthenticated, mismatched-state, or unsupported latest-state evidence is `indeterminate`.
+- (RSC-4) **Canonical head chain.** `headHistory` MUST contain every head from sequence 0 through the current head, inclusive, in exact sequence order, and MUST contain the Listing's exact `(checkpointSequence, checkpointHeadHash)`. Each later sequence and `entryCount` increments by exactly one; its `previousHeadHash` equals the prior head's canonical content hash; and every head receipt binds the same logical/native state line, exact content hash, writer, transaction, nonce where applicable, finalized state, and binding-native order. Sequence 0 alone uses the all-zero previous hash, `entryCount: "0"`, no transition, and root `EMPTY[256]`. A current sequence below the checkpoint, a missing or substituted checkpoint, a gap, replacement/reorg without canonical finalized re-entry, or an unorderable history is `indeterminate`.
+- (RSC-5) **Append-only transition.** Each non-genesis `transition.leafKey` MUST be lowercase 64-hex and its `priorProof`, starting from `EMPTY[0]`, MUST reconstruct the immediately prior root for that key. Replacing the starting leaf with `REVOKED_LEAF` for the exact transition `revocationRef` and reusing the same siblings MUST reconstruct the new head's `rootHash`. The referenced marker MUST pass RB-1/RB-4 against the tuple whose key is `leafKey`. This makes every step one previously absent, independently authenticated revocation; deletion, overwrite, duplicate insertion, or root mutation without that transition is invalid and yields `indeterminate`.
+- (RSC-6) **Exact query proof.** The reader recomputes `K` from the Listing tuple. `stateProof.headContentHash` MUST equal the current `headRef.contentHash`, and `stateProof.leafKey` MUST equal `K`. An `absent` proof carries no `revocationRef` and MUST reconstruct the signed current `rootHash` from `EMPTY[0]`. A `revoked` proof carries exactly one `revocationRef`, MUST reconstruct that root from its `REVOKED_LEAF`, and the referenced marker MUST pass RB-1/RB-4 for the exact Listing tuple. A tuple-rebound, invalid-root, malformed, or unresolved proof is `indeterminate`, never `absent`.
+- (RSC-7) **Disposition and discovery composition.** A verified RB-4 marker or verified RSC inclusion returns `revoked` and blocks a new session, including when another surface says active. Otherwise only a fully verified current-head non-membership proof returns `absent`. Any RSC failure, an RB-5 indeterminate record, or a conflict between authenticated views returns `indeterminate` and blocks a new session. Precedence is `revoked`, then `indeterminate`, then RSC-proven `absent`; discovery-only RB-6 absence is inert. Because the state line is append-only, an authenticated head at a strictly higher sequence than the accepted current head whose exact transition revokes the Listing tuple supersedes a stale non-membership read and returns `revoked`; a same-sequence sibling omitting the tuple is an equivocation and returns `indeterminate`, never `absent`. The complete conflict-observation set is verifier-owned, mandatory in `knownConflictingHeads` (an explicit empty array when none is observed), and signed into the current-state evidence via `conflictingHeadsHash`; a reader that omits it, receives a substituted set, or cannot prove completeness returns `indeterminate`, never `absent`.
+- (RSC-8) **Session boundary.** A reader MUST run the current check before admitting a new session. Revocation does not unwind a session already past its authenticated DACS-3 agreement commitment; those sessions retain the existing pinned-listing semantics. A historical Listing without `revocationState` remains signature-verifiable and audit-readable but cannot be described as current or used to start a v0.8-profile session.
+- (RSC-10) **Downgrade-safe boundary.** Adding `revocationState` to a `dacsVersion: "1"` Listing is not an ordinary additive field: a reader that fails to act on it silently loses the revocation-completeness guarantee. The current-profile boundary is therefore the authenticated corrective-profile admission (CORE §11.1.2), never the presence or absence of `revocationState` on a same-`dacsVersion` Listing and never inference from the `dacsVersion: "1"` literal or from a valid Listing signature. Within the admitted profile `revocationState` is required (RSC-1); outside it a Listing carrying the field is unsupported for new-session admission. A pre-v0.8 reader with no profile-admission mechanism MUST refuse a current-profile session; it MUST NOT silently accept the Listing and proceed without the revocation check, and it MUST NOT treat a current-profile Listing as a pre-v0.8 Listing it already acts on.
+- (RSC-9) **Replay completeness.** A producer publishing or caching a current `absent` result MUST retain the exact `RevocationHeadResolutionContext` it used. Replay re-verifies the signed Listing state reference, current-state policy evidence, every head/hash/signature/receipt/transition from genesis through current, the signed checkpoint's membership in that chain, the exact query proof, marker where present, and all known fork/conflict evidence before reproducing the disposition. Omitted, substituted, attacker-ordered, or unused context is non-conforming; discovery freshness and local time cannot repair it.
+
+> **Implementation consequence.** A substrate binding without an authenticated current-value/latest-tip policy can still resolve positive RB-1 markers, but cannot produce current RSC `absent`. Its new-session result is `indeterminate` until that capability is available.
+
+**Current admission policy v2.** Fresh current-profile `Listing` admission uses the explicit trusted policy `rsc-current-admission-v2`; the signed artifact remains `dacsVersion: "1"` under `dacs-listing:v1:`. RSC-3 and RSC-8 MUST authenticate their respective current locator values at the same finalized evaluation state in one substrate/finality domain. A registered current-values policy defines a collision-free state identity, its equality rule, authority, finality, freshness, observer threshold and conflict handling. Under one such policy, byte-identical authenticated state identifiers establish equality. Distinct policy identifiers require an explicitly registered compatibility relation; absent that relation, the states are incomparable. Observer time, equal unauthenticated heights, producer labels, or ordering two ordinary reads cannot establish this join.
+
+Each child proof MUST bind its policy identity, finalized evaluation state, exact logical and native locator, value content hash, and inclusion-receipt hash. Each inclusion receipt remains independently verified with its writer/key authority and history; its inclusion block can be earlier than the common evaluation state and different from the other inclusion block. The current-values policy MUST establish that the included value remained current at the common state, and that the inclusion precedes or equals that state. An inclusion receipt alone is not current-value proof. The verifier selects the acceptable finalized evaluation state and policy using authenticated local binding evidence; matching caller-selected labels does not confer authority.
+
+Missing, unsupported, different or incomparable current-state evidence is `indeterminate` and MUST permit no new-session consumer effect. Preserve RSC-7: an independently authenticated exact-target revocation remains `revoked` even when completeness/join evidence is unavailable. The join applies before every current discovery eligibility, negotiation, commitment, Vet, payment, and DACS-5 counting effect, including revalidation through retained admission capabilities.
+
+This policy changes unsigned resolution/admission context only. It changes no `Listing`, revocation head, hash, signature, or signed version. Authenticated already-committed sessions retain RSC-8 protection. Historical replay uses its explicitly recorded policy and MUST NOT be exposed as fresh v2 admission; missing v2 evidence never selects historical policy automatically. RSC-9 replay retains both child policies/proofs, exact receipts and locator/value bindings, the common-state identity and authority, complete lineage/conflict observations, and the trusted binding's encoding-policy identity, limit and complete native-record measurement. Replay resolves those retained policy identities rather than reinterpreting observations using a newer policy.
+
+The offline reference policy `rsc-conformance-test-current-values-v2` belongs only to `conformance:test` / `rsc-conformance-test-finality-v1`. Both independently signed child claims use that same policy and the verifier-pinned evaluation state. Its observer attests that each exact value is current there, including earlier inclusion. It supplies no production Demos proof capability. The frozen v1 corpus is retained under the explicitly named recorded-policy evaluator; the current evaluator and retained current admission capability require v2. The native-capacity reference accepts a verifier-installed binding adapter, not a serialized producer object. A real binding must supply its own registered evidence and native encoding before these checks can authorize production use.
 
 **Validation order for readers**
 Readers MUST validate listings in the following order, **halting on the first
@@ -842,7 +985,7 @@ type ListingValidationDisposition =
 2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Ordinary additive-minor skew is not checked here because §11.1.2 + SIG-5 make it forward-readable. A declared pre-v1 corrective profile is different: its exact release/commit and per-document tuple MUST already have passed CORE §11.1.2 profile admission before this listing-validation sequence begins; a missing or different pin refuses the session rather than falling through this major-only field;
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
 4. canonical form well-formed and signature verifies;
-5. revocation check per RB-4..RB-6 returns `absent`;
+5. current revocation check per RB-4..RB-6 and RSC-1..RSC-10 returns RSC-proven `absent`;
 6. `seller.identity` bundle conformant per §6.3.2;
 7. pipeline references valid phase types per DACS-3/4/5;
 8. if pipeline contains any concrete pay-* phase or `pay-alternative`,
@@ -863,7 +1006,7 @@ The reader MUST compose those results into exactly one
 
 - a failure at step 1–4, 6–7, or 9, and an LRR `rejected` result at step 8,
   produce `rejected`;
-- the RB-4..RB-6 result at step 5 produces `revoked` or `indeterminate` when
+- the RB/RSC result at step 5 produces `revoked` or `indeterminate` when
   it is not `absent`; those revocation dispositions are not relabelled as
   `rejected`;
 - an LRR `indeterminate` at step 8 is retained while step 9 runs. If step 9
@@ -880,14 +1023,14 @@ type ListingRailResolution = "verified" | "rejected" | "indeterminate"
 ```
 
 - (LRR-1) **Unambiguous listing binding.** Every concrete DACS-4 `PaymentPhaseType` phase MUST carry a string `parameters.rail`, and every such value MUST equal the `railId` of at least one `acceptedRails` entry. `pay-alternative` is the sole exception: it MUST carry complete references under APR-1 and MUST NOT carry or be coerced to a single `parameters.rail`. The raw `acceptedRails` array MUST NOT contain duplicate full-canonical `PaymentRailRef` values, where equality is over the CORE §B.2 RFC 8785 canonical bytes. Canonically distinct references MAY share a `railId`: at listing time the `railId` dispatches to the one handler fixed by DACS-4 RD-6, while the complete reference carries a selectable version/parameter requirement for agreement and session start. No one complete reference is selected merely by a concrete listing phase's `parameters.rail`, and array order never selects an APR alternative. Every reference is validated independently, and every entry in `acceptedRails`, including an entry whose `railId` is not used by a particular concrete phase or alternative, is subject to LRR-2 through LRR-5. Mere membership in the listing's own array never establishes resolution.
-- (LRR-2) **Authoritative source.** The reader MUST resolve one internally consistent rail-registry snapshot through DACS-4 §9.4.3. Under PA-2 or PA-3 this means reading `dacs4:registry:v0.1`, verifying the applicable steward/governance authority, and obtaining verified CORE §5.1 `finalized` receipts plus independent content resolution for the index and the definition resolved for every advertised `PaymentRailRef`. The reader MUST NOT use a catalog row, listing field, counterparty copy, or unauthenticated cache as registry authority.
-- (LRR-3) **Reference-to-definition match.** For every `PaymentRailRef`, the authenticated index MUST contain that exact `railId`. If `railVersion` is present, the indexed and resolved definition MUST carry that exact version; otherwise the reader uses the index's latest version in the snapshot for this validation attempt. That result is the reference-resolved definition. It MUST match the index's anchor/content hash, verify under `dacs-rail:v1:`, repeat the reference's `railId` and the selected `railVersion`, and satisfy its schema plus RD-1..RD-6.
+- (LRR-2) **Authoritative source.** The reader MUST resolve one internally consistent rail-registry snapshot through DACS-4 §9.4.3 under the existing numeric registry-version contract and resolve each advertised `PaymentRailRef` through an authenticated index entry. The authenticated entry's native locator and content hash are a content reference, not a separately asserted logical-to-native mapping; the reader MUST still verify the fetched definition's `dacs-rail:v1:` signature, exact version, availability, governance, and RD-1..RD-6. The reader MUST NOT use a catalog row, listing field, counterparty copy, unauthenticated cache, or bare locator outside that authenticated snapshot as registry authority. This profile does not activate CORE registry-bootstrap v1 for listing admission or session start; PA-1 remains the explicitly disclosed in-code path, and PA-3 requires its future governance-specific bootstrap type.
+- (LRR-3) **Reference-to-definition match.** For every `PaymentRailRef`, the authenticated index MUST contain its `railId` under derived NFC comparison without changing signed bytes. If `railVersion` is present, the reader selects the one exact numeric version without coercion. Otherwise it selects the unique greatest numeric version for that rail ID before applying eligibility. That result is the reference-resolved definition. It MUST match the index's anchor/content hash, verify under `dacs-rail:v1:`, repeat the reference's NFC-derived `railId` and exact numeric `railVersion`, and satisfy its schema plus RD-1..RD-6. An unavailable, invalid, unclassifiable, or ineligible selected definition MUST NOT authorize fallback to an older version.
 - (LRR-4) **Phase-handler binding.** For every concrete DACS-4 `PaymentPhaseType` phase, every reference-resolved definition whose `railId` equals the phase's `parameters.rail` MUST carry the same `phaseHandler`, as required across versions by DACS-4 RD-6, and that handler MUST equal the phase's `kind`. Two concrete phases with different kinds therefore cannot dispatch through the same `railId`. For `pay-alternative`, apply APR-2 instead: each complete alternative resolves to its own concrete handler and that handler MUST NOT be `pay-alternative`; no handler is required to equal the listing-only projection kind. Selection of one complete `PaymentRailRef` and its parameters is deferred to the agreement and session-start pin; it is not inferred from a concrete listing phase's railId-only field or from alternative array order. A listing cannot route `pay-x402`, for example, through a definition registered for `pay-evm-erc20`.
 - (LRR-5) **Disposition and precedence.** Failure to authenticate the registry authority under LRR-2 returns `indeterminate`; an unauthenticated snapshot MUST NOT establish a contradiction. Once registry authority is authenticated, aggregate the checks over every advertised reference with flat precedence `rejected`, then `indeterminate`, then `verified`. Return `rejected` when the listing binding is malformed or ambiguous under LRR-1, when the authenticated snapshot conclusively lacks a named rail/version, or when an otherwise valid resolved definition contradicts the listing or phase handler under LRR-3/LRR-4. Return `indeterminate` when a required definition, finality receipt, independent content, or steward/governance key is absent, unavailable, internally inconsistent, not yet finalized, or cannot be authenticated. Return `verified` only after every applicable check succeeds. Consequently, an unavailable definition for an advertised but currently unused rail makes the whole signed listing `indeterminate` and LR-3 blocks every new session from that listing until all advertised claims resolve; a publisher can remove the unavailable claim only by issuing a new signed listing version.
-- (LRR-6) **Progressive-anchoring and session boundary.** PA-1, PA-2, and PA-3 name the authority basis a reader accepts for this check, not a lifecycle state of the listing. A reader explicitly operating and disclosing PA-1 MAY resolve against its disclosed, signed in-code registry snapshot only when its trust policy accepts `governance.anchoring: "in-code"`; it MUST retain and surface `pa1-in-code` as the authority basis and MUST NOT describe that result as canonically anchored. For an unpinned PA-1 reference, the unique highest `railVersion` for that `railId` in the signed snapshot is used; duplicate definitions at that version or handler drift under RD-6 are `rejected`. A PA-2 or PA-3 reader MUST NOT fall back to in-code constants when the canonical index or a definition is unavailable. Listing-time `verified` establishes discovery eligibility only: at session start the orchestrator MUST select one complete `PaymentRailRef`, resolve and pin its exact definition under DACS-4 §9.4.3, and apply RAV-R1..RAV-R5. A discovery mirror MAY surface availability only as a non-authoritative prefilter or user-interface hint. That hint cannot satisfy the authoritative read, change `ListingValidationDisposition`, establish or refute a RAV result, or override a missing or contradictory authoritative value.
+- (LRR-6) **Progressive-anchoring and session boundary.** PA-1, PA-2, and PA-3 name the authority basis a reader accepts for this check, not a lifecycle state of the listing. A reader explicitly operating and disclosing PA-1 MAY resolve against its disclosed, signed in-code registry snapshot only when its trust policy accepts `governance.anchoring: "in-code"`; it MUST retain and surface `pa1-in-code` as the authority basis and MUST NOT describe that result as canonically anchored. For an unpinned PA-1 reference, the reader uses the unique greatest numeric `railVersion` for that NFC-derived `railId`. It selects before eligibility and permits no older fallback. Duplicate definitions at that version or handler drift under RD-6 are `rejected`. A PA-2 or PA-3 reader MUST NOT fall back to in-code constants when the canonical index or a definition is unavailable. Listing-time `verified` establishes discovery eligibility only: at session start the orchestrator MUST select one complete `PaymentRailRef`, resolve and pin its exact definition under DACS-4 §9.4.3, and apply RAV-R1..RAV-R5. A discovery mirror MAY surface availability only as a non-authoritative prefilter or user-interface hint. That hint cannot satisfy the authoritative read, change `ListingValidationDisposition`, establish or refute a RAV result, or override a missing or contradictory authoritative value.
 
 **Conformance — listing publishers and readers**
-A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; and (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record. For a pay-bearing listing it MUST: (LP-6) obtain `verified` under LRR-1..LRR-6 at publication time rather than treating its own `acceptedRails` array as proof.
+A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; and (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record. For a pay-bearing listing it MUST: (LP-6) obtain `verified` under LRR-1..LRR-6 at publication time rather than treating its own `acceptedRails` array as proof. For a current-profile Listing it MUST: (LP-7) initialize and bind the stable RSC state line before signing the Listing, and append every later revocation under RSC-2..RSC-5 before claiming successful revocation publication.
 A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings whose overall `ListingValidationDisposition` is `rejected`; (LR-3) refuse new sessions unless the overall `ListingValidationDisposition` is `verified`, including when it is `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension
@@ -1097,10 +1240,10 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 | Role | Requirements |
 | --- | --- |
-| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD); LP-6 resolve every advertised pay rail before publication |
-| Listing reader | LR-1 pin tuple; LR-2 reject `rejected`; LR-3 refuse new sessions for revocation- or rail-resolution `indeterminate`; LRR-1..LRR-6 resolve every advertised rail |
-| Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone |
-| Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 distinguish successful absence from resolution failure |
+| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD); LP-6 resolve every advertised pay rail before publication; LP-7 initialize and maintain the listing-bound RSC state line |
+| Listing reader | LR-1 pin tuple; LR-2 reject `rejected`; LR-3 refuse new sessions for revocation- or rail-resolution `indeterminate`; RSC-1..RSC-10 prove current non-revocation; LRR-1..LRR-6 resolve every advertised rail |
+| Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone; RSC-2..RSC-5 append it to the stable current-state line |
+| Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 discovery-only disposition; RSC-1..RSC-10 authenticate the current append-only head and exact tuple proof |
 | Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
 | Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 reject unverified presentedBy when primaryClaimSelector set |
 | Well-known publisher | Publish dacs block; keep indexHash current; optional bundleBindings index per §10.4.2 BB-2 |
@@ -1127,6 +1270,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 ### 6.5 Backwards compatibility
 
+**Revocation-state profile.** `revocationState` is an optional, signature-covered Listing field under CORE SIG-5, so historical version-1 Listings remain structurally valid and preserve unknown members. RSC does not reinterpret a historical RB-6 discovery result: that result remains a partial observation, while the v0.8 new-session profile separately requires `RevocationHeadResolutionContext` and returns `indeterminate` when the Listing lacks the state reference. Earlier readers may continue to audit historical Listings and already committed sessions under their released policy, but MUST NOT describe an RB-only absence result as v0.8 current non-revocation. No existing Listing signature domain or `dacsVersion` meaning changes.
+
 **ERC-8004.** A listing's claims MAY include an `erc8004` claim referencing an Ethereum identity-registry token, verified via the chapter-7 `evm-rpc` recipe (a proxy-attested call confirming the token owner). Its reputation-registry entries MAY additionally surface DACS-5 derivations for EVM consumers, but DACS-1 does not require this.
 
 **W3C DIDs.** `did` claims resolve per the relevant W3C DID method; the recipe varies by method (key material in the DID document → self-signed verification; VC-bound methods → `verifiable-credential`).
@@ -1143,7 +1288,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
-**Catalog poisoning.** *Threat:* a catalog returns false listings or omits real ones. *Mitigation:* ListingSummary includes the anchor and contentHash; clients dereference and verify. A poisoned catalog causes UX confusion (a listing that does not exist on chain, or a missing listing) but cannot produce a verifiable false transaction.
+**Catalog poisoning.** *Threat:* a catalog returns false listings, omits real ones, or withholds a revocation tombstone while replaying an older active row. *Mitigation:* ListingSummary includes the anchor and contentHash, so clients dereference and verify the Listing. Current new-session readers additionally ignore catalog omission as revocation evidence and require the Listing-bound RSC current-head proof. A poisoned catalog can still cause UX confusion or denial of service, but cannot turn a partial active view into current non-revocation.
 
 **Self-declared or unregistered payment rail.** *Threat:* a signed listing names a rail in `acceptedRails` and its pipeline, but the rail is absent from the canonical registry, changes handler across versions, has a different registered phase handler, or is available only through an undisclosed local fallback. *Mitigation:* LRR-1..LRR-6 treat the listing fields only as claims, resolve every accepted rail independently through the authenticated registry, enforce the RD-6 same-`railId` handler invariant, bind each pay phase to that handler, and keep unavailable authority `indeterminate`. PA-2/PA-3 readers never fall back silently to in-code constants.
 
@@ -1151,7 +1296,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Identity-claim substitution between bundle presentation and Vet.** *Threat:* a counterparty presents bundle A in negotiation and bundle B at Vet time. *Mitigation:* the bundle hash is pinned into the session record at presentation time; DACS-2’s Vet stage operates on the pinned bundle. Substitution is detected by hash mismatch.
 
-**Reading a listing after revocation.** *Threat:* a reader has cached a listing and cannot locate its write-input-addressed revocation marker. *Mitigation:* RB-1..RB-6 retain a discoverable binding, verify the fetched marker, and fail closed when resolution is indeterminate. Sessions already past their agreement commitment phase are not invalidated by revocation, preserving in-flight obligations.
+**Reading a listing after revocation.** *Threat:* a reader has cached a listing, or a stale/censoring discovery surface omits its write-input-addressed revocation marker while returning an integrity-consistent active view. *Mitigation:* RB-1..RB-6 authenticate any discovered marker but cannot establish completeness. RSC-1..RSC-10 bind a stable state line into the signed Listing, require an authenticated latest finalized head, verify append-only transitions and exact inclusion/non-membership, and fail closed when any proof is unavailable or conflicting. Sessions already past their agreement commitment phase are not invalidated by revocation, preserving in-flight obligations.
 
 **Stale bundles in active sessions.** *Threat:* a session runs long enough that a verifiedBy reference becomes stale. *Mitigation:* DACS-2 specifies refresh semantics for required claims. For long-running entitlement sessions, listings SHOULD declare a refresh interval; v0.1 does not standardise this, deferring to DACS-2’s per-recipe defaults.
 

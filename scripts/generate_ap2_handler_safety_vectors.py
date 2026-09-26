@@ -603,11 +603,11 @@ def vectors() -> list[dict[str, object]]:
                 "releasePin": "0000000000000000000000000000000000000001",
                 "moduleVersions": {
                     "core": "0.3",
-                    "dacs1": "0.7",
+                    "dacs1": "0.8",
                     "dacs2": "0.6",
-                    "dacs3": "0.5",
-                    "dacs4": "0.7",
-                    "dacs5": "0.5",
+                    "dacs3": "0.6",
+                    "dacs4": "0.8",
+                    "dacs5": "0.7",
                 },
             },
             "expected": "fail",
@@ -982,7 +982,7 @@ def render() -> str:
             case["providerRequest"] = fixture_provider_request(case["jobId"])
     document = {
         "set": "ap2-handler-safety-v0.6",
-        "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
+        "spec": "DACS-4 v0.8 current composed profile (JID-1 boundary declared at v0.7): §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
         "scope": (
             "candidate handler predicates: idempotency-key and transaction-id derivation, "
             "authenticated synthetic-profile and JID/phase admission ordering, checkout/payment "

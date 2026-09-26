@@ -1268,6 +1268,42 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             )[0]
         )
 
+    def test_present_agreement_ref_joins_every_laa_qualified_payment(self):
+        """A signed agreementRef binds the LAA agreement of every payment (§10.4.3)."""
+        unrelated = "LAA agreement does not bind the signed bundle agreementRef"
+        for name in ("standard-completed", "repeated-pay-completed"):
+            source = self.data["executionAuthorities"][name]
+            hashes = sorted({
+                carrier["laa"]["agreement"]["contentHash"]
+                for carrier in source["legacyAgreementAuthorityByPhaseKey"].values()
+            })
+
+            def with_agreement_ref(content_hash):
+                authority = copy.deepcopy(source)
+                authority["bundle"]["agreementRef"] = {
+                    "anchor": {
+                        "kind": "storage-program",
+                        "locator": "dacs3:agreement:" + source["bundle"]["jobId"],
+                    },
+                    "contentHash": content_hash,
+                }
+                resign_ebfab(authority["bundle"], self.data["seeds"])
+                return derive_phase_disposition(authority, self.pubkeys)[:2]
+
+            if len(hashes) == 1:
+                with self.subTest(authority=name, case="joined"):
+                    self.assertEqual("pass", with_agreement_ref(hashes[0])[0])
+            with self.subTest(authority=name, case="valid-unrelated-agreement"):
+                self.assertEqual(("fail", unrelated), with_agreement_ref("c" * 64))
+            if len(hashes) > 1:
+                # One session, one agreement: two payments qualified by two
+                # distinct agreements cannot both join one signed agreementRef.
+                for content_hash in hashes:
+                    with self.subTest(authority=name, case="distinct-per-payment"):
+                        self.assertEqual(
+                            ("fail", unrelated), with_agreement_ref(content_hash)
+                        )
+
     def test_malformed_laa_binding_is_error_not_value_mismatch(self):
         authority = copy.deepcopy(
             self.data["executionAuthorities"]["standard-completed"]

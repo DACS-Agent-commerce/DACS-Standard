@@ -1734,6 +1734,97 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         value["interimKey"] = self._key(new_interim_ref)
         return value
 
+    def test_released_copies_join_present_agreement_ref_to_laa_agreement(self):
+        """AB/FAB direct, pointer, and reconcile share the §10.4.3 agreement join."""
+        def rebind(value, kind, content_hash, *, identity_only=False):
+            value["bundle"]["agreementRef"] = {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": "dacs3:agreement:" + CURRENT_JOB,
+                },
+                "contentHash": content_hash,
+            }
+            self._resign_released(value, kind)
+            authority = value["authority"]
+            if identity_only:
+                for carrier in authority["legacyAgreementAuthorityByPhaseKey"].values():
+                    carrier["laa"]["agreement"].update({
+                        "artifact": "identity-bound",
+                        "ibhVerified": True,
+                        "pbVerified": False,
+                    })
+            authority["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(authority)
+            )
+            return value
+
+        for kind in ("legacy", "fault"):
+            probe = self._st8_resolved_value(kind)
+            joined = next(iter(
+                probe["authority"]["legacyAgreementAuthorityByPhaseKey"].values()
+            ))["laa"]["agreement"]["contentHash"]
+            for name, content_hash, identity_only, expected, reason in (
+                ("joined", joined, False, "pass", None),
+                ("valid-unrelated-agreement", "c" * 64, False, "fail",
+                 "does not bind the signed bundle agreementRef"),
+                ("identity-only-agreement", joined, True, "fail",
+                 "current payment agreement lacks payee binding"),
+            ):
+                value = rebind(
+                    self._st8_resolved_value(kind), kind, content_hash,
+                    identity_only=identity_only,
+                )
+                with self.subTest(kind=kind, case=name):
+                    direct = self._direct(value, kind)
+                    self.assertEqual(expected, direct[0], direct[1])
+                    if reason is not None:
+                        self.assertIn(reason, direct[1])
+                    reconciled = self._reconcile(value)
+                    self.assertEqual(expected, reconciled["decision"], reconciled["reason"])
+                    if kind == "fault":
+                        resolved = self._resolve(value)
+                        self.assertEqual(expected == "pass", resolved["ok"], resolved["reason"])
+                        if expected != "pass":
+                            self.assertEqual(expected, resolved["disposition"])
+
+    def test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement(self):
+        for name, unrelated, expected in (
+            ("joined", False, "pass"), ("valid-unrelated-agreement", True, "fail"),
+        ):
+            authority, pointer, signer, role = self._ebfab_pointer_case()
+            bundle = authority["bundle"]
+            joined = next(iter(
+                authority["legacyAgreementAuthorityByPhaseKey"].values()
+            ))["laa"]["agreement"]["contentHash"]
+            bundle["agreementRef"] = {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": "dacs3:agreement:" + CURRENT_JOB,
+                },
+                "contentHash": "c" * 64 if unrelated else joined,
+            }
+            resign_ebfab(bundle, self.data["seeds"])
+            authority["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(authority)
+            )
+            pointer["fullBundleContentHash"] = R.bundle_hash(bundle)
+            pointer["signature"]["value"] = ""
+            pointer["signature"]["value"] = self._sign(
+                role, R.EVIDENCE_BOUND_FAULT_POINTER_DOMAIN, R.pointer_hash(pointer)
+            )
+            resolved = R.resolve_absolute_fault_pointer(
+                pointer, bundle,
+                pubkeys=R.trusted_verification_keys(copy.deepcopy(self.pubkeys)),
+                ebfab_authority=authority,
+                trusted_contexts=R.trusted_profile_context(CURRENT_JOB, signer, role=role),
+                expected_jobid=CURRENT_JOB, expected_role=role,
+            )
+            with self.subTest(case=name):
+                self.assertEqual(expected == "pass", resolved["ok"], resolved["reason"])
+                if expected != "pass":
+                    self.assertEqual(expected, resolved["disposition"], resolved["reason"])
+                    self.assertIn("agreementRef", resolved["reason"])
+
     def test_released_st8_interim_authority_is_four_state_typed(self):
         # F-C: an exact authentic :resolved success whose interim authority is
         # unavailable is indeterminate; malformed authority is error; real

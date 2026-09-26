@@ -23418,7 +23418,7 @@
     }
   },
   "count": 398,
-  "hash": "990b5fb031129a08c4b921d3d24ad994f08f2edf915f7653f8687f33230acf24",
+  "hash": "b66edaf98b24176a6ad322b325445361c332341f5034666e3fe47824a2d7358e",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -24533,11 +24533,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "laa-current-payment-requires-payee-binding"
       }
     },
     {
@@ -27684,11 +27684,11 @@
       "mutations": [],
       "resign": [],
       "unavailable": [],
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "verdict": "pass",
-        "authorizedAction": true,
-        "reason": "verified"
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "laa-current-payment-requires-payee-binding"
       }
     },
     {

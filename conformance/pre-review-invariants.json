@@ -645,6 +645,36 @@
       "id": "pr333-job-bound-unselected-inert",
       "file": "tests/test_unselected_candidate_inertness.py",
       "test": "DeriveJobBoundUnselectedCandidateTests.test_unselected_candidates_are_inert"
+    },
+    {
+      "id": "pr333-ebfab-agreement-ref-join",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_present_agreement_ref_joins_every_laa_qualified_payment"
+    },
+    {
+      "id": "pr333-released-agreement-ref-join",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_copies_join_present_agreement_ref_to_laa_agreement"
+    },
+    {
+      "id": "pr333-ebfab-pointer-agreement-ref-join",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement"
+    },
+    {
+      "id": "pr333-finality-bound-agreement-ref-join",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_finality_bound_joins_present_agreement_ref_to_laa"
+    },
+    {
+      "id": "pr333-laa2-identity-only-payment-refused",
+      "file": "tests/test_identity_bundle_hash_binding_vectors.py",
+      "test": "IdentityBundleHashBindingVectorTests.test_retained_admission_is_exact_and_reused_without_readmission"
+    },
+    {
+      "id": "pr333-laa2-sealed-losing-bidder-payment-refused",
+      "file": "tests/test_identity_bundle_hash_binding_vectors.py",
+      "test": "IdentityBundleHashBindingVectorTests.test_sealed_envelope_losing_bidder_compatibility"
     }
   ],
   "coveredInvariantClasses": [

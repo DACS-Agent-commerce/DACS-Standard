@@ -266,6 +266,15 @@ The format used per release:
   wrong method kind or payload hash is `fail`; only unevaluable input is
   `error`. A non-string `faultedParty` is rejected content at both post-fetch
   entry points, and an unselected or unparseable job-bound candidate is inert.
+- **Agreement authority join** (#333) — when a signed bundle carries
+  `agreementRef`, every LAA-qualified successful payment on the EBFAB,
+  finality-bound, and released AB/FAB paths (direct, pointer and
+  reconciliation) must be qualified by that same agreement; a valid but
+  unrelated agreement fails and a malformed `agreementRef` is `error`. The
+  identity-bundle payment stage now applies DACS-4 LAA-2 before the payment
+  effect, so a non-payee `IdentityBoundAgreementDocument` is refused there as it
+  already was at terminal admission. The two affected identity-bundle vectors
+  now expect `fail`.
 
 ### Fixed — delivery closure reference validation
 

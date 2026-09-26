@@ -10355,6 +10355,21 @@ def _qualify_legacy_agreement_evidence(
         return ("error", "LAA carrier binding has a malformed closed shape", None)
     if binding != expected_binding:
         return ("fail", "LAA carrier contradicts the authenticated SEB closure", None)
+    # DACS-5 §10.4.3 agreement dispatch: when the signed bundle names its
+    # agreement, the LAA-qualified agreement MUST be that agreement. A carrier
+    # closed over a different (even valid) agreement is a cross-agreement
+    # substitution, so the authenticated contradiction fails before any
+    # uncertainty below.
+    bundle_agreement_ref = bundle.get("agreementRef")
+    if bundle_agreement_ref is not None:
+        if not _attestation_ref_shape_valid(bundle_agreement_ref):
+            return ("error", "bundle agreementRef is malformed", None)
+        if agreement.get("contentHash") != bundle_agreement_ref.get("contentHash"):
+            return (
+                "fail",
+                "LAA agreement does not bind the signed bundle agreementRef",
+                None,
+            )
     session = laa.get("sessionAuthority")
     signature = record.get("signature")
     if not isinstance(session, dict):

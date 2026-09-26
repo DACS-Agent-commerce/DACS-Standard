@@ -2152,8 +2152,48 @@ def pre_action_gate(
     return "pass", "verified", digests, effective
 
 
+def current_payment_laa_gate(context: dict, artifact: str) -> tuple[str, str]:
+    """DACS-4 LAA-2 before the payment effect, through the shared LAA oracle.
+
+    The verifier-owned carrier is built from the already-verified agreement and
+    session; only a payee-bound artifact can authorize a current payment.
+    """
+    agreement = context.get("agreement")
+    if not isinstance(agreement, dict):
+        return "error", "malformed-input"
+    laa = {
+        "operation": "authorize-payment",
+        "pipelineHasPayment": True,
+        "agreement": {
+            "artifact": (
+                "identity-bound-payee"
+                if artifact in generator.PAYEE_ARTIFACTS
+                else "identity-bound"
+            ),
+            "shape": "valid",
+            "partySignaturesValid": True,
+            "contentHash": generator.hash_hex(
+                generator.unsigned(agreement, "signatures")
+            ),
+            "jobId": agreement.get("jobId"),
+            "ibhVerified": True,
+            # PB-1 is verified above for every payee artifact before this gate.
+            "pbVerified": artifact in generator.PAYEE_ARTIFACTS,
+        },
+        "sessionAuthority": {
+            "state": "verified",
+            "jobId": agreement.get("jobId"),
+            "sessionId": "session:" + str(agreement.get("jobId")),
+        },
+    }
+    verdict = reputation_reference.laa_admission(laa)
+    if verdict != "pass":
+        return verdict, "laa-current-payment-requires-payee-binding"
+    return "pass", "verified"
+
+
 def validate_payment(
-    context: dict, artifact: str, unavailable: set[str]
+    context: dict, artifact: str, unavailable: set[str], *, enforce_laa: bool = True
 ) -> tuple[str, str]:
     status, reason, digests, _ = pre_action_gate(
         context, artifact, "payment", unavailable
@@ -2280,6 +2320,10 @@ def validate_payment(
         authorization_signature_valid = False
     if not authorization_signature_valid:
         return "fail", "payment-authorization-invalid"
+    if enforce_laa:
+        # Deterministic input/party/rail/PB/key/authorization mismatches are
+        # reported first; no payment effect has happened inside this validator.
+        return current_payment_laa_gate(context, artifact)
     return "pass", "verified"
 
 
@@ -2736,7 +2780,11 @@ def validate_terminal(
         and step.get("kind") in generator.CONCRETE_PAYMENT_PHASES
         for step in effective
     ):
-        status, reason = validate_payment(context, artifact, unavailable)
+        # Terminal admission re-checks the payment preconditions; LAA itself is
+        # executed by the LAA carrier qualification in validate_terminal_authority.
+        status, reason = validate_payment(
+            context, artifact, unavailable, enforce_laa=False
+        )
         if status != "pass":
             return status, reason
     phase_summary = bundle.get("phaseSummary")
@@ -3396,7 +3444,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         and not (artifact == "identityBoundAgreement" and stage == "terminal")
                         else "indeterminate"
                     )
-                    if artifact == "identityBoundAgreement" and stage == "terminal":
+                    # DACS-4 LAA-2: identity-only pay is refused at payment and terminal.
+                    if artifact == "identityBoundAgreement" and stage in {"payment", "terminal"}:
                         expected = "fail"
                     listing_admission = (
                         retained_admission_for_context(context)
@@ -3497,7 +3546,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 case = self.cases[f"identityBoundAgreement-{stage}-verified"]
                 self.assertEqual(
                     evaluate_with_fixture_admission(self.data, case, trusted_contexts=fixture_profile_contexts())[0],
-                    "fail" if stage == "terminal" else "pass",
+                    "pass" if stage == "commit" else "fail",
                 )
         self.assertEqual(
             evaluate(
@@ -4042,7 +4091,7 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     self.data,
                     self.cases[f"identity-bound-sealed-envelope-losing-bidder-{stage}"],
                  trusted_contexts=fixture_profile_contexts())[0],
-                "fail" if stage == "terminal" else "pass",
+                "fail",
             )
 
     def test_sealed_deadline_gate_boundary_and_trusted_session_time(self):

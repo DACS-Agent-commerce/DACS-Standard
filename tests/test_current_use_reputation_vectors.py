@@ -843,7 +843,9 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         )
         result = self.derive([request])
         self.assertEqual("fail", result["decision"])
-        self.assertIn("LAA agreement differs", result["reason"])
+        # The signed copy names its agreement, so the unrelated carrier is
+        # refused at the §10.4.3 agreementRef join before the FV comparison.
+        self.assertIn("does not bind the signed bundle agreementRef", result["reason"])
         self.assertIsNone(result["derivation"])
 
     def test_current_use_excludes_missing_or_malformed_finality_laa_authority(self):

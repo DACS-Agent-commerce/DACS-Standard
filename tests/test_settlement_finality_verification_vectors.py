@@ -557,6 +557,32 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertIn(eligibility, reason)
                 self.assertIsNone(keys)
 
+    def test_finality_bound_joins_present_agreement_ref_to_laa(self):
+        for name, unrelated, expected in (
+            ("joined", False, "pass"), ("valid-unrelated-agreement", True, "fail"),
+        ):
+            factory = finality_fixtures.FixtureFactory()
+            case = factory.strong_bundle_case("block-depth")
+            bundle = case["bundle"]
+            fv_agreement = next(iter(
+                case["authority"]["finalityVerificationByCanonicalRef"].values()
+            ))["agreement"]
+            bundle["agreementRef"] = factory.reference(
+                "agreement:block-depth",
+                "33" * 32 if unrelated
+                else finality_fixtures.artifact_hash(fv_agreement, "signatures"),
+            )
+            factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
+            factory.bind_current_laa_authority(bundle, case["authority"])
+            decision, reason, phase_keys = self.strong_result(
+                case, trust=factory.trusted
+            )
+            with self.subTest(case=name):
+                self.assertEqual(expected, decision, reason)
+                if expected != "pass":
+                    self.assertIn("does not bind the signed bundle agreementRef", reason)
+                    self.assertIsNone(phase_keys)
+
     def test_each_successful_payment_requires_its_own_laa_carrier(self):
         factory = finality_fixtures.FixtureFactory()
         case = factory.strong_bundle_case(

@@ -355,6 +355,8 @@ def load_case(
             fail(path, f"fixture is not valid UTF-8: invalid UTF-8 bytes: {exc}")
         ]
     except (ValueError, RecursionError) as exc:
+        # The shared parser prefixes its own admission failures; host decoder
+        # limits (e.g. the integer digit limit) are classified the same way.
         message = str(exc)
         if not message.startswith("invalid JSON:"):
             message = f"invalid JSON: {message}"

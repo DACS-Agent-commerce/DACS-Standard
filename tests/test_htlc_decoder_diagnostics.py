@@ -52,6 +52,13 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
             evidence, errors = self.verifier.load_case(path)
         self.assertIsNone(evidence)
         self.assertIn("line 2 column 11", errors[0])
+        with tempfile.TemporaryDirectory() as tmp:
+            # A host decoder limit is still an "invalid JSON" admission failure.
+            path = Path(tmp) / "huge-integer.json"
+            path.write_text('{"kind": ' + "9" * 5_000 + "}", encoding="utf-8")
+            evidence, errors = self.verifier.load_case(path)
+        self.assertIsNone(evidence)
+        self.assertIn(": invalid JSON: ", errors[0])
 
     def test_path_resolution_fallback_diagnostics_never_raise(self):
         # The fail-closed branch probes files for diagnostics only; an

@@ -987,6 +987,9 @@ presentation, so those checks do not consume the nonce again. Such a capability
 and ledger are execution state and MUST NOT be inserted into or inferred from a
 signed `IdentityBundle`, `VerifyResult` or `CompositeVerificationRecord`.
 
+This Vet binding does not change the SN-1..SN-4 obligations of other admission
+points that use a session nonce.
+
 > **Note (non-normative).** This is the standard SIWD/EIP-4361 challenge-response shape, lifted to a shared primitive because both DACS-1 (presentation) and DACS-2 (holder-/attestation-binding) depend on the same nonce having these properties. Constraining provenance — not just the match check — is what stops two conforming implementations from disagreeing on the very value the replay defence rests on.
 
 ## C. Composed open standards

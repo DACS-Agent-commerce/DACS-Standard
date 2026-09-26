@@ -865,6 +865,11 @@ def verify_result(resolved, recipes, result_context):
         # An unsupported VerifyResult version is refused before use (CORE
         # §11.1.2 new-type refusal), never read as version 1.
         artifact.get("resultVersion") != "1"
+        # §7.5 required member types.  A malformed signed result keeps its
+        # rejected disposition (CRQ-1) whether or not it is also stale.
+        or artifact.get("decision") not in ("pass", "fail", "indeterminate", "error")
+        or not isinstance(artifact.get("reason"), str)
+        or ("data" in artifact and not isinstance(artifact["data"], dict))
         or not isinstance(artifact.get("scheme"), str)
         or not isinstance(artifact.get("method"), str)
         or type(artifact.get("recipeVersion")) not in (int, float)
@@ -4047,6 +4052,66 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     changed["input"]["bundle"], presenter, public_ref(presenter)
                 )
                 self.assertEqual(expected, execute_once(changed, document))
+
+    def test_malformed_signed_results_error_even_when_stale(self):
+        # §7.5 member types are result validity, not qualification: a stale
+        # window cannot hide a malformed authority-signed result (CRQ-1).
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        now = self.document["trustedContext"]["vetInvocations"][
+            evaluation["input"]["authority"]["invocation"]
+        ]["trustedNow"]
+        for label, mutate in (
+            ("unknown decision", lambda a: a.update(decision="bogus")),
+            ("null decision", lambda a: a.update(decision=None)),
+            ("missing reason", lambda a: a.pop("reason")),
+            ("non-string reason", lambda a: a.update(reason=7)),
+            ("non-object data", lambda a: a.update(data=[])),
+        ):
+            for stale in (False, True):
+                with self.subTest(label=label, stale=stale):
+                    document = copy.deepcopy(self.document)
+                    changed = rebuild_direct_result(
+                        evaluation, document,
+                        lambda a, mutate=mutate, stale=stale: (
+                            mutate(a), stale and a.update(validUntil=now - 1)
+                        ),
+                    )
+                    self.assertEqual("error", execute_once(changed, document))
+
+        def stale_bogus(value, document):
+            self._replace_committed(
+                value, document, self._committed_index(value, "lei"),
+                lambda a: a.update(
+                    decision="bogus", validUntil=value["record"]["generatedAt"] - 1
+                ),
+            )
+
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            self._replay_aggregate(
+                "vet-cross-accumulator-fail-over-error", stale_bogus, "fail"
+            ),
+        )
+
+    def test_stale_pass_does_not_participate_beside_a_current_non_pass(self):
+        # CRQ-2: a result outside its window "does not participate,
+        # regardless of its decision" -- it is not a counterparty fail.
+        case, _ = self._case_evaluation("vet-oneof-error-over-fail")
+
+        def stale_pass(value, document):
+            self._commit_extra(value, document, "domain", lambda a: a.update(
+                decision="pass", validUntil=value["record"]["generatedAt"] - 1,
+            ))
+
+        self.assertEqual(
+            case["expectedOutput"],
+            self._replay_aggregate(
+                "vet-oneof-error-over-fail", stale_pass,
+                case["expectedOutput"]["decision"],
+            ),
+        )
 
     def test_number_normalisation_is_exact_copying_and_cycle_safe(self):
         # Fractional numbers keep their value (signed bytes unchanged), the

@@ -815,6 +815,14 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
                     self._pending(other_writer(self._source("single-htlc-direct-completed")), how),
                     "fail",
                 )
+            # A receipt-hash contradiction does not outrank malformed LAA
+            # authority that the check without the receipt still reaches.
+            malformed = self._with_agreement_ref(
+                self._source("single-htlc-direct-completed"),
+                mutate_laa=lambda laa: laa["agreement"].__setitem__("shape", "malformed"),
+            )
+            with self.subTest(case="malformed agreement, another receipt", receipt=how):
+                self._assert_paths(self._pending(other_receipt(malformed), how), "error")
 
     def test_available_execution_authority_excludes_receiptless_candidates(self):
         def contradict(field, value):

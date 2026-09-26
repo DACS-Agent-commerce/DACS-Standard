@@ -266,11 +266,14 @@ The format used per release:
   or `agreementRef` mismatch, and present execution authority that names
   another job, invocation or orchestrator still decide it on the EBFAB,
   finality-bound and released AB/FAB gates. An unbindable execution rail,
-  nonce or non-integer invocation excludes such a candidate too. The
-  released gate keeps its lifecycle, phase-kind, outcome, ST-8 row-class,
-  supersession-edge and LAA checks whether the receipt is established,
-  absent or only observed, and while the row's execution entry or an ST-8
-  interim's authority is unavailable.
+  nonce or non-integer invocation excludes such a candidate too, and a
+  receipt-hash contradiction no longer outranks malformed LAA authority.
+  The released gate runs its execution-entry, lifecycle, phase-kind,
+  outcome, ST-8 row-class, supersession-edge and LAA checks in the same
+  order whether the receipt is established, absent or only observed. While
+  the row's execution entry is unavailable, a present receipt binds the
+  only entry that could admit it, as on EBFAB, and an unavailable ST-8
+  interim no longer skips the member's LAA checks.
   Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts

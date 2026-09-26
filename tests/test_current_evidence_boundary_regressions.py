@@ -2042,9 +2042,78 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 "phaseIndex"
             ] = 2.0
 
+        def entry_value(field, field_value):
+            def mutate(value, kind):
+                value["authority"]["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"][
+                    field
+                ] = field_value
+            return mutate
+
+        def malformed_agreement(value, kind):
+            for carrier in value["authority"]["legacyAgreementAuthorityByPhaseKey"].values():
+                carrier["laa"]["agreement"]["shape"] = "malformed"
+            value["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(value["authority"])
+            )
+
+        def other_receipt_hash(value, kind):
+            for carrier in value["authority"]["legacyAgreementAuthorityByPhaseKey"].values():
+                carrier["binding"]["evidenceReceiptHash"] = "e" * 64
+
+        def receipt_writer(value, kind):
+            receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+            for key, resolution in value["authority"][
+                "referenceValidationByCanonicalRef"
+            ].items():
+                if resolution["record"]["phase"] == "pay-dem":
+                    receipts[key]["writer"] = "did:demos:buyer"
+
+        def without_successor_entry(value, kind):
+            del value["authority"]["sessionExecutionAuthorityByPhaseKey"][
+                "2:pay-cross-chain-htlc"
+            ]
+
+        def ordinary_anchor(value, kind):
+            receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+            receipt = receipts[self._key(value["bundle"]["settlementEvidence"][0])]
+            receipt["logicalAddress"] = receipt["logicalAddress"][: -len(":resolved")]
+            value["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(value["authority"])
+            )
+
         fail, error, pending = ("fail",) * 3, ("error",) * 3, ("indeterminate",) * 3
         cases = (
             ("row execution authority unavailable", payment(without_entry), pending),
+            # The established order: the row's execution entry, then the
+            # member's lifecycle, then its row; a malformed input outranks a
+            # contradiction whichever the receipt state.
+            ("lifecycle not finalized, malformed row entry",
+             payment(member_lifecycle({"state": "included"}), entry_value("railId", "")),
+             error),
+            ("lifecycle not finalized, row entry with a malformed orchestrator",
+             payment(member_lifecycle({"state": "included"}),
+                     entry_value("phaseOrchestrator", 5)), error),
+            ("malformed lifecycle, row entry naming another orchestrator",
+             payment(member_lifecycle("not-an-object"),
+                     entry_value("phaseOrchestrator", "did:demos:buyer")), error),
+            ("failure record on an ok row, malformed row entry",
+             payment(failure_on_ok_row, entry_value("railId", "")), error),
+            ("malformed agreement, carrier names another receipt",
+             payment(malformed_agreement, other_receipt_hash), error),
+            # Without the row's entry an established receipt still binds the
+            # only entry that could admit it, so its own contradictions and
+            # the ST-8 edge decide; no receipt leaves them open.
+            ("receipt writer is not the signer, row execution authority unavailable",
+             payment(receipt_writer, without_entry), ("fail", "indeterminate", "fail")),
+            ("carrier names another receipt, row execution authority unavailable",
+             payment(other_receipt_hash, without_entry),
+             ("fail", "indeterminate", "indeterminate")),
+            ("ST-8 interim dependency not finalized, row execution authority unavailable",
+             successor(interim_not_finalized, without_successor_entry),
+             ("fail", "indeterminate", "fail")),
+            # An observation keeps its twin's anchor class.
+            ("ST-8 successor edge at the ordinary anchor",
+             successor(ordinary_anchor), ("fail", "indeterminate", "fail")),
             ("agreementRef mismatch, row execution authority unavailable",
              payment(mismatch_agreement, without_entry), fail),
             ("failure record on an ok row, row execution authority unavailable",

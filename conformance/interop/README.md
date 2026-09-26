@@ -90,24 +90,25 @@ The executable operations are:
 
 `verifyBundle` and legacy import are not advertised. Unknown operations and
 unrecognised artifact shapes return controlled errors. The input loop caps each
-request at 1 MiB (excluding its newline) and five parameters, accepts only
-strict UTF-8 JSON (no `NaN` or `Infinity` literals and no duplicate member
-names), reports every request-decoding failure as `INVALID_JSON`, emits and
-flushes one response line per input line (so a runner that keeps one process
-alive receives each response before it sends the next request), and writes one
-bounded line of printable ASCII per diagnostic, only to stderr. Responses are
-not capped separately: the largest is about 6.8 times its request (a 1 MiB array
-of `9e15` values yields about 7.1 MB of hex), inside the runner's default 8 MiB
-output budget for one process and one request; a runner with a smaller budget,
-or one that keeps a process alive across requests, must size its budget
-accordingly. A rejection by a wrapped primitive is `OPERATION_FAILED`; any other
-fault is `INTERNAL_ERROR`, which a runner must never score as an expected
-rejection. Requests are bounded in size, not time. CPython's NFC normalization
-is quadratic in long runs of combining marks (a 200 KB string took roughly 8 to
-17 seconds in review, depending on hardware), so callers must enforce a
-per-request timeout, as the shared runner does by default; a timeout is never a
-result. NFC output also depends on the interpreter's Unicode database, whose
-version the metadata reports under `hostRuntime` with the Python version.
+request at 1 MiB (excluding its final `\n`; a `\r` before it counts) and five
+parameters, accepts only strict UTF-8 JSON (no `NaN` or `Infinity` literals and
+no duplicate member names), reports every request-decoding failure as
+`INVALID_JSON`, emits and flushes one response line per input line (so a runner
+that keeps one process alive receives each response before it sends the next
+request), and writes one bounded line of printable ASCII per diagnostic, only to
+stderr. Responses are not capped separately: the largest is about 6.8 times its
+request (a 1 MiB array of `9e15` values yields about 7.1 MB of hex), inside the
+runner's default 8 MiB output budget for one process and one request; a runner
+with a smaller budget, or one that keeps a process alive across requests, must
+size its budget accordingly. A rejection by a wrapped primitive is
+`OPERATION_FAILED`; any other fault is `INTERNAL_ERROR`, which a runner must
+never score as an expected rejection. Requests are bounded in size, not time.
+CPython's NFC normalization is quadratic in long runs of combining marks (a
+200 KB string took roughly 8 to 17 seconds in review, depending on hardware), so
+callers must enforce a per-request timeout, as the shared runner does by
+default; a timeout is never a result. NFC output also depends on the
+interpreter's Unicode database, whose version the metadata reports under
+`hostRuntime` with the Python version.
 
 The canonicalization descriptor partitions all 25 source cases: six are
 selected, `bigint-native-type` is unsupported, twelve are excluded because their
@@ -209,17 +210,17 @@ use that runner. The remaining exact handoff questions are:
 
 ## Repin
 
-To wrap a newer Standard release, land that release on `next` first, then:
-set `WRAPPED_REVISION`, `WRAPPED_TREE`, and the four module sha256 constants in
+To wrap a newer Standard release, land that release on `next` first, then: set
+`WRAPPED_REVISION`, `WRAPPED_TREE`, and the four module sha256 constants in
 `scripts/dacs_adapter.py`; update the descriptor's wrapped pins, source-corpus
 pins, and control source (including its line range); refresh the descriptor's
-adapter-source pin; review every claim and update `REVIEWED_CLAIMS_SHA256` in
-the validator; and run the validator and `tests.test_dacs_adapter`. The wrapped
-revision is a `next` commit, so merge, squash, and rebase merges of this
-proposal all keep it reachable, but a checkout needs its objects (not a
-depth-limited clone). Consumers that also compare working files with the pins,
-such as the contributor pilot, need a checkout where those files still equal
-the release, for example the release head itself.
+adapter-source pin; review every claim and the case selection and update
+`REVIEWED_CLAIMS_SHA256` in the validator; and run the validator and
+`tests.test_dacs_adapter`. The wrapped revision is a `next` commit, so merge,
+squash, and rebase merges of this proposal all keep it reachable, but a checkout
+needs its objects (not a depth-limited clone). Consumers that also compare
+working files with the pins, such as the contributor pilot, need a checkout
+where those files still equal the release, for example the release head itself.
 
 ## Run
 

@@ -128,10 +128,10 @@ ENTRY_SHAPES = {
         set(),
     ),
 }
-# sha256 of the reviewed prose claims and of the neutral-protocol pins, which
-# cannot be checked offline.  Changing any of them is a deliberate, visible edit
-# here, never a silent descriptor change.
-REVIEWED_CLAIMS_SHA256 = "b499eff09625d5352c494bd09593424e2885e83902635dccc4fb56c3e3ec29d1"
+# sha256 of the reviewed prose claims, the frozen case selection, and the
+# neutral-protocol pins, which cannot be checked offline.  Changing any of them is
+# a deliberate, visible edit here, never a silent descriptor change.
+REVIEWED_CLAIMS_SHA256 = "81d6d790babff0c24c69a2a4d30efd59809c9f6a1f316fb0c49cfd145332a25d"
 HEX64 = re.compile(r"[0-9a-f]{64}")
 FAMILY_STATUS = {
     "canonicalization": "executable",
@@ -464,7 +464,7 @@ def _check_closed_schema(descriptor: dict[str, Any]) -> None:
 
 
 def reviewed_claims_sha256(descriptor: dict[str, Any]) -> str:
-    """Digest of every prose claim and the neutral-protocol pins."""
+    """Digest of every prose claim, the frozen case selection, and the neutral-protocol pins."""
 
     families = {}
     for family in descriptor["families"]:
@@ -476,6 +476,12 @@ def reviewed_claims_sha256(descriptor: dict[str, Any]) -> str:
             if field in entry
         )
         families[family["id"]] = {
+            # The frozen selection: which source cases each list names.
+            "selection": {
+                key: sorted(entry["caseId"] for entry in family[key])
+                for key in ("cases", "unsupportedSourceCases", "excludedSourceCases", "primitiveControls", "unsupportedCases")
+                if key in family
+            },
             "flags": {
                 key: family[key]
                 for key in ("advertisedFamily", "genericFamilyMilestone", "remainingBlocker", "requiredHandoffQuestion")
@@ -765,6 +771,8 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
             if (
                 len(mismatch_message) != 64
                 or any(byte not in b"0123456789abcdef" for byte in mismatch_message)
+                # As its derivation states: only the final lowercase-hex digit differs.
+                or mismatch_message[:-1] != artifact_hash.encode("ascii")[:-1]
                 or mismatch_message == artifact_hash.encode("ascii")
                 or mismatch_case["signatureBytesHex"] != signature.hex()
                 or mismatch_case["publicKeyHex"] != public_key.hex()

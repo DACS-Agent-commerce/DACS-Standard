@@ -785,16 +785,38 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             ],
         )
         genuine = "        return _verify_ed25519(public_key, signature, payload)\n"
-        for variant in ("uncommitted", "committed-not-repinned", "pinned-bytes-not-at-head", "repinned"):
+        for variant in (
+            "uncommitted",
+            "committed-not-repinned",
+            "pinned-bytes-not-at-head",
+            "sha256-misreported",
+            "uncommitted-sha256-with-head-blob",
+            "repinned",
+        ):
             with self.subTest(variant=variant):
                 clone = committed_clone(self)
                 adapter = clone / "scripts" / "dacs_adapter.py"
                 original = adapter.read_bytes()
                 self.assertEqual(original.decode("utf-8").count(genuine), 1)
-                adapter.write_text(
-                    original.decode("utf-8").replace(genuine, "        return True\n"), encoding="utf-8"
-                )
-                if variant != "uncommitted":
+                edited_bytes = original.decode("utf-8").replace(genuine, "        return True\n").encode("utf-8")
+                if variant == "sha256-misreported":
+                    # Only the sha256 check can see this: the blob and HEAD agree.
+                    commit_descriptor(
+                        clone, lambda descriptor: descriptor["adapter"]["source"].update(sha256="ab" * 32)
+                    )
+                elif variant == "uncommitted-sha256-with-head-blob":
+                    # Only the working-blob check can see this: the sha256 names the
+                    # uncommitted edit while the blob names the HEAD file.
+                    commit_descriptor(
+                        clone,
+                        lambda descriptor: descriptor["adapter"]["source"].update(
+                            sha256=hashlib.sha256(edited_bytes).hexdigest()
+                        ),
+                    )
+                    adapter.write_bytes(edited_bytes)
+                else:
+                    adapter.write_bytes(edited_bytes)
+                if variant in {"committed-not-repinned", "pinned-bytes-not-at-head", "repinned"}:
                     commit_all(clone, "edit the adapter")
                 if variant == "pinned-bytes-not-at-head":
                     # The working file is the pinned one again, but HEAD carries the edit.
@@ -1864,6 +1886,17 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def sig6_case_without_source_verdict(descriptor):
             self.family(descriptor, "sig6-wire")["cases"][0].pop("sourceExpected")
 
+        def signed_scope_case_dropped(descriptor):
+            self.family(descriptor, "signed-scope")["cases"].pop()
+
+        def mismatch_all_digits_differ(descriptor):
+            f5_case(descriptor, "cases", "signing::reject-mismatched-ascii-hex-hash")["messageBytesHex"] = "30" * 64
+
+        def mismatch_first_digit_differs(descriptor):
+            digits = bytearray(bytes.fromhex(f5_case(descriptor, "cases", "signing::verify-ascii-hex-hash")["messageBytesHex"]))
+            digits[0] = ord("0") if digits[0] != ord("0") else ord("1")
+            f5_case(descriptor, "cases", "signing::reject-mismatched-ascii-hex-hash")["messageBytesHex"] = digits.hex()
+
         def adapter_source_digest_wrong(descriptor):
             descriptor["adapter"]["source"]["sha256"] = "0" * 64
 
@@ -1896,6 +1929,9 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             signing_material_on_verify_case,
             verification_material_on_sign_case,
             sig6_case_without_source_verdict,
+            signed_scope_case_dropped,
+            mismatch_all_digits_differ,
+            mismatch_first_digit_differs,
             option_shaped_source_revision,
             traversing_source_path,
             canonicalization_dispatched_elsewhere,

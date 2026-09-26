@@ -1981,6 +1981,22 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def sig6_case_without_source_verdict(descriptor):
             self.family(descriptor, "sig6-wire")["cases"][0].pop("sourceExpected")
 
+        def other_protocol_id(descriptor):
+            descriptor["protocol"]["id"] = "dacs-adapter/2"
+
+        def handoff_question_dropped(descriptor):
+            self.family(descriptor, "domain-separated-signing")["requiredHandoffQuestion"] = ""
+
+        def second_primitive_control(descriptor):
+            controls = self.family(descriptor, "domain-separated-signing")["primitiveControls"]
+            controls.append({**copy.deepcopy(controls[0]), "caseId": "signing::second-control"})
+
+        def unexplained_unsupported_mapping(descriptor):
+            self.family(descriptor, "canonicalization")["unsupportedSourceCases"][0]["reason"] = ""
+
+        def unexplained_unsupported_f5_case(descriptor):
+            self.family(descriptor, "domain-separated-signing")["unsupportedCases"][0]["reason"] = ""
+
         def signed_scope_case_dropped(descriptor):
             self.family(descriptor, "signed-scope")["cases"].pop()
 
@@ -1995,6 +2011,15 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def adapter_source_digest_wrong(descriptor):
             descriptor["adapter"]["source"]["sha256"] = "0" * 64
 
+        # Prose claims and neutral-protocol pins that cannot be checked offline:
+        # only the reviewed digest guards them.
+        digest_only = {
+            "blocker_claimed_resolved",
+            "limitation_contradicted",
+            "exclusion_reason_rewritten",
+            "protocol_repository_changed",
+            "signed_scope_case_dropped",
+        }
         for mutate in (
             normative_status,
             undeclared_normative_member,
@@ -2025,6 +2050,11 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             verification_material_on_sign_case,
             sig6_case_without_source_verdict,
             signed_scope_case_dropped,
+            other_protocol_id,
+            handoff_question_dropped,
+            second_primitive_control,
+            unexplained_unsupported_mapping,
+            unexplained_unsupported_f5_case,
             mismatch_all_digits_differ,
             mismatch_first_digit_differs,
             option_shaped_source_revision,
@@ -2060,8 +2090,21 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             other_adapter_source,
         ):
             with self.subTest(mutation=mutate.__name__):
+                descriptor = self.mutated(mutate)
                 with self.assertRaises(ValueError):
-                    self.validator.validate_release(self.mutated(mutate))
+                    self.validator.validate_release(copy.deepcopy(descriptor))
+                if mutate.__name__ in digest_only:
+                    continue
+                # A reviewed REVIEWED_CLAIMS_SHA256 update must not let the check
+                # behind the digest lapse: the drift is still refused, and not by it.
+                try:
+                    digest = self.validator.reviewed_claims_sha256(descriptor)
+                except (AttributeError, KeyError, TypeError):
+                    digest = self.validator.REVIEWED_CLAIMS_SHA256  # the schema check objects first
+                with mock.patch.object(self.validator, "REVIEWED_CLAIMS_SHA256", digest):
+                    with self.assertRaises(ValueError) as caught:
+                        self.validator.validate_release(copy.deepcopy(descriptor))
+                self.assertNotIn("REVIEWED_CLAIMS_SHA256", str(caught.exception))
         self.assertFalse(injected.exists())
 
 

@@ -755,6 +755,21 @@
       "id": "pr333-released-pending-payment-receipt",
       "file": "tests/test_current_evidence_boundary_regressions.py",
       "test": "CurrentFabDeliveryAdmissionTests.test_released_pending_payment_receipt_keeps_its_own_contradictions"
+    },
+    {
+      "id": "pr333-released-payment-receipt-state-independence",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_payment_verdict_is_independent_of_receipt_state"
+    },
+    {
+      "id": "pr333-receiptless-candidate-rail-and-nonce",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_receiptless_candidate_needs_the_bindable_rail_and_nonce"
+    },
+    {
+      "id": "pr333-laa-pending-mode-is-explicit",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_laa_never_infers_pending_mode_from_a_missing_receipt"
     }
   ],
   "coveredInvariantClasses": [

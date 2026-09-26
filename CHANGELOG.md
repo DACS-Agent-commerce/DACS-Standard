@@ -265,6 +265,9 @@ The format used per release:
   an authenticated agreement or `agreementRef` mismatch, and present
   execution authority that names another job, invocation or orchestrator
   still decide it on the EBFAB, finality-bound and released AB/FAB gates.
+  An unbindable execution rail or nonce excludes such a candidate too, and
+  the released gate keeps its phase-kind, outcome and ST-8 row-class checks
+  whether the receipt is established, absent or only observed.
   Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts

@@ -2354,12 +2354,22 @@ def _seb_unplaced_candidate_failure(record, ref, phase_key, summary_entry, resol
     phase_index, phase_kind = phase_key.split(":", 1)
     if phase_key in session_execution_authority_by_phase_key:
         execution = session_execution_authority_by_phase_key[phase_key]
+        pinned_nonce = (
+            execution.get("anchorNonce") if isinstance(execution, dict) else None
+        )
         if (
             not isinstance(execution, dict)
             or execution.get("jobId") != bundle.get("jobId")
             or execution.get("phaseIndex") != int(phase_index)
             or execution.get("phaseKind") != phase_kind
             or execution.get("phaseOrchestrator") != signer
+            or not isinstance(execution.get("railId"), str)
+            or not execution.get("railId")
+            or (
+                receipt_validator is _validate_current_evidence_receipt
+                and pinned_nonce is not None
+                and not _nonempty_jcs_string(pinned_nonce)
+            )
         ):
             return ("fail", "evidence does not resolve to exactly one authenticated phase receipt")
     else:
@@ -4562,60 +4572,137 @@ def _authenticated_pointer_signature_family(pointer, pubkeys):
     return candidates[0] if len(candidates) == 1 else None
 
 
+def _released_payment_execution_malformed(entry):
+    """True when a released-gate payment execution entry has a malformed shape."""
+    return (
+        not isinstance(entry, dict)
+        or not _nonempty_jcs_string(entry.get("jobId"))
+        or not _safe_nonnegative_integer(entry.get("phaseIndex"))
+        or not _string_member(entry.get("phaseKind"), PAYMENT_PHASES)
+        or not _claim_reference_shape_valid(entry.get("phaseOrchestrator"))
+        or not _nonempty_jcs_string(entry.get("railId"))
+        or (
+            "anchorNonce" in entry
+            and not _nonempty_jcs_string(entry.get("anchorNonce"))
+        )
+    )
+
+
+def _released_st8_row_class(record, summary_entry, summary, bundle):
+    """Return ``(rejection, expired)`` for a released payment record at one signed row.
+
+    A released row may omit its optional errorClass. Only the terminal failed
+    row carrying the phase-specific interim reason then takes the ST-8(b)
+    class its co-signed outcome implies; a present class is never overridden.
+    """
+    phase = record.get("phase")
+    expected_reason = _ST8_INTERIM_REASON_BY_PHASE.get(phase)
+    row_error_class = summary_entry.get("errorClass")
+    if (
+        "errorClass" not in summary_entry
+        and isinstance(summary, list)
+        and summary
+        and summary_entry is summary[-1]
+        and record.get("reason") == expected_reason
+    ):
+        row_error_class = {
+            ("pay-cross-chain-htlc", "failed-counterparty"): "settlement-atomicity",
+            ("pay-cross-chain-liquidity-tank", "failed-substrate"): "substrate",
+        }.get((phase, bundle.get("outcome")))
+    expired = (
+        phase == "pay-cross-chain-htlc" and row_error_class == "settlement-atomicity"
+    ) or (
+        phase == "pay-cross-chain-liquidity-tank"
+        and row_error_class == "substrate"
+        and record.get("reason") == expected_reason
+    )
+    if expired:
+        if (
+            record.get("outcome") != "failure"
+            or expected_reason is None
+            or record.get("reason") != expected_reason
+            or record.get("supersedesEvidenceRef") is not None
+        ):
+            return ("expired ST-8 record has the wrong authenticated terminal class", True)
+        return (None, True)
+    if record.get("reason") in set(_ST8_INTERIM_REASON_BY_PHASE.values()):
+        return ("ST-8 interim reason contradicts the signed phase result", False)
+    return (None, False)
+
+
 def _released_pending_payment_failure(record, ref, resolution, evidence_type, bundle,
-                                      listing, execution, payment_summary_by_key,
+                                      listing, pubkeys, resolutions, execution, receipts,
+                                      payment_summary_by_key,
                                       legacy_agreement_authority_by_phase_key,
                                       keys=None):
     """Return ``(disposition, reason)`` when a presented payment with a pending receipt fits no row.
 
-    The member's own receipt is unavailable or only an observation, but its
-    signed kind and outcome, a transition record's signed invocation, present
-    SB-1 authority for each candidate row, and every receipt-independent LAA
-    and agreementRef check still decide it. Returns None while some row stays
+    The member's own receipt is unavailable or only an observation, but the
+    same row checks an established receipt would reach still decide it: its
+    signed kind and outcome (a transition record only at its signed
+    invocation), the row's ST-8 class and a known successor, whether present
+    SB-1 authority for the row could ever admit it, and every
+    receipt-independent LAA and agreementRef check. ``keys`` narrows the rows
+    (an observation binds exactly one). Returns None while some row stays
     open, so the member remains pending.
     """
-    if keys is None:
-        wanted_row = "ok" if record.get("outcome") == "success" else "fail"
-        keys = sorted(
-            key for key, entry in payment_summary_by_key.items()
-            if entry.get("kind") == record.get("phase")
-            and entry.get("outcome") == wanted_row
-            and (
-                evidence_type != "legacy-transition"
-                or key == "%d:%s" % (record["phaseIndex"], record.get("phase"))
-            )
+    wanted_row = "ok" if record.get("outcome") == "success" else "fail"
+    fitting = {
+        key for key, entry in payment_summary_by_key.items()
+        if entry.get("kind") == record.get("phase")
+        and entry.get("outcome") == wanted_row
+        and (
+            evidence_type != "legacy-transition"
+            or key == "%d:%s" % (record["phaseIndex"], record.get("phase"))
         )
+    }
+    keys = sorted(fitting if keys is None else fitting & set(keys))
     if not keys:
         return ("fail", "FAB payment evidence contradicts the signed phase result")
     signer = record["signature"]["signer"]
+    summary = bundle.get("phaseSummary")
     failures = []
     for key in keys:
         index, kind = key.split(":", 1)
+        rejection, expired = _released_st8_row_class(
+            record, payment_summary_by_key[key], summary, bundle
+        )
+        if rejection is not None:
+            failures.append(("fail", rejection))
+            continue
         if key in execution:
             entry = execution[key]
-            if (
-                not isinstance(entry, dict)
-                or not _nonempty_jcs_string(entry.get("jobId"))
-                or not _safe_nonnegative_integer(entry.get("phaseIndex"))
-                or not _string_member(entry.get("phaseKind"), PAYMENT_PHASES)
-                or not _claim_reference_shape_valid(entry.get("phaseOrchestrator"))
-                or not _nonempty_jcs_string(entry.get("railId"))
-                or (
-                    "anchorNonce" in entry
-                    and not _nonempty_jcs_string(entry.get("anchorNonce"))
+            # Mirror binding exactly: an entry that could admit the member stays
+            # open; one that never can is malformed (error) or contradictory.
+            admits = (
+                isinstance(entry, dict)
+                and entry.get("jobId") == bundle.get("jobId")
+                and entry.get("phaseIndex") == int(index)
+                and entry.get("phaseKind") == kind
+                and entry.get("phaseOrchestrator") == signer
+                and isinstance(entry.get("railId"), str)
+                and bool(entry.get("railId"))
+                and (
+                    entry.get("anchorNonce") is None
+                    or _nonempty_jcs_string(entry.get("anchorNonce"))
                 )
-            ):
-                failures.append(("error", "FAB payment execution authority is malformed"))
+            )
+            if not admits:
+                failures.append(
+                    ("error", "FAB payment execution authority is malformed")
+                    if _released_payment_execution_malformed(entry)
+                    else (
+                        "fail",
+                        "evidence does not resolve to exactly one authenticated phase receipt",
+                    )
+                )
                 continue
-            if (
-                entry.get("jobId") != bundle.get("jobId")
-                or entry.get("phaseIndex") != int(index)
-                or entry.get("phaseKind") != kind
-                or entry.get("phaseOrchestrator") != signer
+            if expired and _known_authenticated_st8_successor(
+                ref, record, key, bundle, pubkeys, resolutions, execution,
+                receipts, _validate_current_evidence_receipt,
             ):
                 failures.append((
-                    "fail",
-                    "evidence does not resolve to exactly one authenticated phase receipt",
+                    "fail", "expired ST-8 record suppresses a known authenticated successor"
                 ))
                 continue
         else:
@@ -4638,8 +4725,10 @@ def _released_pending_payment_failure(record, ref, resolution, evidence_type, bu
                 failures.append((disposition, reason))
                 continue
         return None
-    errors = [failure for failure in failures if failure[0] == "error"]
-    return (errors or failures)[0]
+    # Released rows need not have members, so malformed authority on a row
+    # this member may not occupy does not outrank its certain rejection.
+    fails = [failure for failure in failures if failure[0] == "fail"]
+    return (fails or failures)[0]
 
 
 def _validate_current_fab_delivery_admission(
@@ -5081,7 +5170,8 @@ def _validate_current_fab_delivery_admission(
                 if ref_key not in receipts:
                     pending_failure = _released_pending_payment_failure(
                         record, ref, resolution, evidence_type, bundle, listing,
-                        execution, payment_summary_by_key,
+                        pubkeys, resolutions, execution, receipts,
+                        payment_summary_by_key,
                         authority.get(
                             "legacyAgreementAuthorityByPhaseKey", _LAA_AUTHORITY_UNSPECIFIED
                         ),
@@ -5116,7 +5206,8 @@ def _validate_current_fab_delivery_admission(
                     if observed is not None:
                         pending_failure = _released_pending_payment_failure(
                             record, ref, resolution, evidence_type, bundle, listing,
-                            execution, payment_summary_by_key,
+                            pubkeys, resolutions, execution, receipts,
+                            payment_summary_by_key,
                             authority.get(
                                 "legacyAgreementAuthorityByPhaseKey",
                                 _LAA_AUTHORITY_UNSPECIFIED,
@@ -5156,26 +5247,7 @@ def _validate_current_fab_delivery_admission(
                         pending_reason = pending_reason or "FAB payment execution authority is unavailable"
                         return None
                     if any(
-                        not isinstance(execution[key], dict)
-                        or not _nonempty_jcs_string(execution[key].get("jobId"))
-                        or not _safe_nonnegative_integer(
-                            execution[key].get("phaseIndex")
-                        )
-                        or not _string_member(
-                            execution[key].get("phaseKind"), PAYMENT_PHASES
-                        )
-                        or not _claim_reference_shape_valid(
-                            execution[key].get("phaseOrchestrator")
-                        )
-                        or not _nonempty_jcs_string(
-                            execution[key].get("railId")
-                        )
-                        or (
-                            "anchorNonce" in execution[key]
-                            and not _nonempty_jcs_string(
-                                execution[key].get("anchorNonce")
-                            )
-                        )
+                        _released_payment_execution_malformed(execution[key])
                         for key in payment_execution_keys
                     ):
                         return ("error", "FAB payment execution authority is malformed")
@@ -5212,42 +5284,12 @@ def _validate_current_fab_delivery_admission(
                     or record.get("outcome") != expected_record_outcome
                 ):
                     return ("fail", "FAB payment evidence contradicts the signed phase result")
-                st8_reason_by_phase = {
-                    "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
-                    "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
-                }
-                expected_st8_reason = st8_reason_by_phase.get(record.get("phase"))
-                supersedes = record.get("supersedesEvidenceRef")
-                # A released row may omit its optional errorClass. Only the
-                # terminal failed row carrying the phase-specific interim
-                # reason then takes the ST-8(b) class its co-signed outcome
-                # implies; a present class is never overridden.
-                row_error_class = summary_entry.get("errorClass")
-                if (
-                    "errorClass" not in summary_entry
-                    and summary_entry is summary[-1]
-                    and record.get("reason") == expected_st8_reason
-                ):
-                    row_error_class = {
-                        ("pay-cross-chain-htlc", "failed-counterparty"): "settlement-atomicity",
-                        ("pay-cross-chain-liquidity-tank", "failed-substrate"): "substrate",
-                    }.get((record.get("phase"), bundle.get("outcome")))
-                expired_st8 = (
-                    record.get("phase") == "pay-cross-chain-htlc"
-                    and row_error_class == "settlement-atomicity"
-                ) or (
-                    record.get("phase") == "pay-cross-chain-liquidity-tank"
-                    and row_error_class == "substrate"
-                    and record.get("reason") == expected_st8_reason
+                st8_rejection, expired_st8 = _released_st8_row_class(
+                    record, summary_entry, summary, bundle
                 )
+                if st8_rejection is not None:
+                    return ("fail", st8_rejection)
                 if expired_st8:
-                    if (
-                        record.get("outcome") != "failure"
-                        or expected_st8_reason is None
-                        or record.get("reason") != expected_st8_reason
-                        or supersedes is not None
-                    ):
-                        return ("fail", "expired ST-8 record has the wrong authenticated terminal class")
                     if _known_authenticated_st8_successor(
                         ref,
                         record,
@@ -5260,8 +5302,6 @@ def _validate_current_fab_delivery_admission(
                         _validate_current_evidence_receipt,
                     ):
                         return ("fail", "expired ST-8 record suppresses a known authenticated successor")
-                elif record.get("reason") in set(st8_reason_by_phase.values()):
-                    return ("fail", "ST-8 interim reason contradicts the signed phase result")
                 # An authentic ST-8 :resolved success is admitted under the
                 # same SEB-3 edge rules as EBFAB; any other edge fails.
                 edge_failure = _st8_supersession_edge_failure(
@@ -10786,7 +10826,8 @@ def _qualify_legacy_agreement_evidence(
         kwargs["evidence_receipt"] = None
     result = _qualify_legacy_agreement_evidence_core(
         record, evidence_type, phase_key,
-        legacy_agreement_authority_by_phase_key, **kwargs,
+        legacy_agreement_authority_by_phase_key,
+        receipt_pending=receipt_pending, **kwargs,
     )
     if result[0] == "error":
         return result
@@ -10816,6 +10857,7 @@ def _qualify_legacy_agreement_evidence_core(
     evidence_receipt,
     phase_execution,
     authenticated_record_authority,
+    receipt_pending=False,
 ):
     """Apply LAA without letting record content select the agreement era.
 
@@ -10858,9 +10900,11 @@ def _qualify_legacy_agreement_evidence_core(
     if not isinstance(artifact, str) or artifact not in LAA_ARTIFACTS:
         return ("error", "authenticated agreement artifact is unsupported", None)
 
-    # A None receipt is pending (the wrapper's receipt_pending): only the
-    # receipt-hash and receipt-writer comparisons below are deferred.
-    receipt_pending = evidence_receipt is None
+    # With receipt_pending only the receipt-hash and receipt-writer
+    # comparisons below are deferred; a missing receipt otherwise stays the
+    # malformed binding it always was.
+    if receipt_pending:
+        evidence_receipt = None
     expected_binding = _authenticated_laa_phase_binding(
         laa,
         bundle,

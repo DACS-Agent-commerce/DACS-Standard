@@ -833,6 +833,34 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
                             self._pending(mutate(factory()), how), "fail", pointer=pointer
                         )
 
+    def test_receiptless_candidate_needs_the_bindable_rail_and_nonce(self):
+        # No receipt can bind an entry without a rail, or one pinning a
+        # malformed nonce under the current receipt contract.
+        for field, value in (("railId", ""), ("anchorNonce", [])):
+            for how in ("present", "removed"):
+                source = self._source("single-htlc-direct-completed")
+                source["sessionExecutionAuthorityByPhaseKey"][self.PAYMENT_KEY][field] = value
+                with self.subTest(field=field, receipt=how):
+                    self._assert_paths(self._pending(source, how), "fail")
+
+    def test_laa_never_infers_pending_mode_from_a_missing_receipt(self):
+        source = self._with_agreement_ref(self._source("single-htlc-direct-completed"))
+        ref = source["bundle"]["settlementEvidence"][0]
+        record = source["referenceValidationByCanonicalRef"][_key(ref)]["record"]
+        arguments = dict(
+            bundle=source["bundle"], listing=source["listing"], evidence_ref=ref,
+            evidence_receipt=None,
+            phase_execution=source["sessionExecutionAuthorityByPhaseKey"][self.PAYMENT_KEY],
+            authenticated_record_authority=source["referenceValidationByCanonicalRef"][_key(ref)],
+        )
+        authority = source["legacyAgreementAuthorityByPhaseKey"]
+        self.assertEqual("error", R._qualify_legacy_agreement_evidence(
+            record, "settlement", self.PAYMENT_KEY, authority, **arguments
+        )[0])
+        self.assertEqual("indeterminate", R._qualify_legacy_agreement_evidence(
+            record, "settlement", self.PAYMENT_KEY, authority, receipt_pending=True, **arguments
+        )[0])
+
     def test_finality_bound_core_keeps_the_same_precedence(self):
         import scripts.generate_settlement_finality_verification_vectors as finality
         from test_settlement_finality_verification_vectors import decode_public_keys

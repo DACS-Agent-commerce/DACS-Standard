@@ -1862,6 +1862,106 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 self.assertFalse(resolved["ok"])
                 self.assertEqual(expected, resolved["disposition"], resolved["reason"])
 
+    def _receipt_state(self, value, ref_key, state):
+        receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+        if state == "absent":
+            del receipts[ref_key]
+        elif state == "observation":
+            prior = copy.deepcopy(receipts[ref_key])
+            receipts[ref_key].update({
+                "observationDisposition": "indeterminate",
+                "preservedReceiptHash": hashlib.sha256(R.canonical(prior)).hexdigest(),
+                "observedAt": prior["observedAt"] + 1000,
+            })
+        return value
+
+    def test_released_payment_verdict_is_independent_of_receipt_state(self):
+        """Absent or observed receipts defer only receipt checks (released gate)."""
+        def payment_key(value):
+            return next(
+                key for key, resolution
+                in value["authority"]["referenceValidationByCanonicalRef"].items()
+                if resolution["record"]["phase"] == "pay-dem"
+            )
+
+        def failure_on_ok_row(kind):
+            def build():
+                value = self._released_value("standard-completed", kind)
+
+                def to_failure(record):
+                    record["outcome"] = "failure"
+                    record["reason"] = "insufficient-funds"
+                    for field in ("paymentTxRefs", "paymentAmount", "paymentFee",
+                                  "settlementFinality"):
+                        record.pop(field, None)
+
+                replace_top_record(value["authority"], "pay-dem", to_failure,
+                                   self.data["seeds"])
+                self._resign_released(value, kind)
+                return value, payment_key(value)
+            return build
+
+        def failed_payment(mutate):
+            def build():
+                value = self._failed_payment_fixture()
+                mutate(value)
+                return value, self._key(value["bundle"]["settlementEvidence"][0])
+            return build
+
+        def omit_terminal_row(value):
+            value["bundle"]["phaseSummary"] = value["bundle"]["phaseSummary"][:-1]
+            self._resign_bundle_and_pointer(value)
+
+        def wrong_interim_reason(value):
+            self._replace_payment_record(
+                value, lambda record: record.__setitem__("reason", "counterparty-timeout")
+            )
+
+        def entry_field(field, value_):
+            def build():
+                value = self._released_value("standard-completed", "fault")
+                authority = value["authority"]
+                key = payment_key(value)
+                authority["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"][field] = value_
+                if field == "railId":
+                    from urllib.parse import quote
+                    authority["verifiedReceiptByCanonicalRef"][key]["logicalAddress"] = (
+                        "dacs4:payment:%s:%s:2" % (
+                            value["bundle"]["jobId"], quote(value_, safe="-._~")
+                        )
+                    )
+                authority["legacyAgreementAuthorityByPhaseKey"] = (
+                    refreshed_laa_phase_carriers(authority)
+                )
+                return value, key
+            return build
+
+        cases = (
+            ("fault", "failure record on an ok row", failure_on_ok_row("fault"),
+             ("fail", "fail", "fail")),
+            ("legacy", "failure record on an ok row", failure_on_ok_row("legacy"),
+             ("fail", "fail", "fail")),
+            ("fault", "terminal row omitted beside a presented payment",
+             failed_payment(omit_terminal_row), ("fail", "fail", "fail")),
+            ("fault", "expired interim with the wrong reason",
+             failed_payment(wrong_interim_reason), ("fail", "fail", "fail")),
+            ("fault", "entry pins no nonce (null)", entry_field("anchorNonce", None),
+             ("pass", "indeterminate", "indeterminate")),
+            ("fault", "entry rail outside the canonical identity form",
+             entry_field("railId", "rail-e\u0301"), ("pass", "indeterminate", "indeterminate")),
+        )
+        for kind, label, build, expected in cases:
+            observed = []
+            for state in ("established", "absent", "observation"):
+                value, ref_key = build()
+                self._receipt_state(value, ref_key, state)
+                observed.append(R._validate_current_fab_delivery_admission(
+                    value["bundle"], value["authority"], self.pubkeys,
+                    **({"ordinary_current": True} if kind == "legacy" else {}),
+                )[0])
+            with self.subTest(kind=kind, case=label):
+                self.assertEqual(expected, tuple(observed))
+
     def test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement(self):
         for name, unrelated, expected in (
             ("joined", False, "pass"), ("valid-unrelated-agreement", True, "fail"),

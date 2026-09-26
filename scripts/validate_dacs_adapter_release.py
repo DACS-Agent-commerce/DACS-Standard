@@ -348,10 +348,15 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
     descriptor = json.loads(descriptor_bytes)
     origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
     effective = _git("remote", "get-url", "--all", "origin").splitlines()
+    same_repository = {
+        f"{prefix}DACS-Agent-commerce/DACS-Standard"
+        for prefix in ("https://github.com/", "ssh://git@github.com/", "git@github.com:")
+    }
     if (
         len(origins) != 1
         or origins[0] not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}
-        or effective != origins
+        or len(effective) != 1
+        or effective[0].removesuffix(".git") not in same_repository
     ):
         raise ValueError("working repository origin is not the pinned DACS-Standard origin")
     descriptor_relative = descriptor_path.relative_to(ROOT).as_posix()
@@ -393,6 +398,8 @@ def _check_closed_schema(descriptor: dict[str, Any]) -> None:
             if owner == family_id:
                 for entry in family.get(key, []):
                     _closed(entry, allowed, f"{family_id}.{key}")
+                    if isinstance(entry.get("expected"), dict):
+                        _closed(entry["expected"], {"hex"}, f"{family_id}.{key}.expected")
         if "controlSource" in family:
             _closed(family["controlSource"], SOURCE_KEYS | {"test", "lines"}, "control source")
 

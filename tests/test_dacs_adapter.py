@@ -1,10 +1,13 @@
+import atexit
 import copy
+import functools
 import hashlib
 import importlib.util
 import json
 import os
 import py_compile
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -30,7 +33,7 @@ def request(request_id, request_type, **values):
     }
 
 
-def run_adapter(requests, *, root=ROOT, env=None):
+def run_adapter(requests, *, root=None, env=None):
     encoded = b"".join(
         json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
         for item in requests
@@ -38,7 +41,8 @@ def run_adapter(requests, *, root=ROOT, env=None):
     return run_adapter_bytes(encoded, root=root, env=env)
 
 
-def run_adapter_bytes(encoded, *, root=ROOT, env=None):
+def run_adapter_bytes(encoded, *, root=None, env=None):
+    root = root or pinned_checkout()
     completed = subprocess.run(
         [sys.executable, str(root / "scripts" / "dacs_adapter.py")],
         cwd=root,
@@ -73,6 +77,39 @@ def git(root, *args):
     ).stdout.strip()
 
 
+def git_bytes(root, *args):
+    return subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=60,
+    ).stdout
+
+
+@functools.lru_cache(maxsize=None)
+def pinned_checkout():
+    """This commit, checked out with the pinned origin.
+
+    The adapter only runs from a checkout whose origin is the pinned DACS-Standard
+    URL, so the suite exercises it there rather than depending on how the
+    developer's own clone (a fork, an SSH remote) is configured.
+    """
+
+    directory = tempfile.mkdtemp(prefix="dacs-adapter-tests-")
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    checkout = Path(directory) / "checkout"
+    git(ROOT, "clone", "--quiet", "--shared", "--no-checkout", str(ROOT), str(checkout))
+    git(checkout, "checkout", "--quiet", "--detach", git(ROOT, "rev-parse", "HEAD"))
+    git(checkout, "remote", "set-url", "origin", EXPECTED_ORIGIN)
+    return checkout
+
+
+def pinned_adapter():
+    return pinned_checkout() / "scripts" / "dacs_adapter.py"
+
+
 def committed_clone(test, *, origin=EXPECTED_ORIGIN):
     """A disposable checkout of the committed HEAD with the given origin."""
 
@@ -99,7 +136,7 @@ def commit_all(clone, message="mutate"):
 
 
 def pin_of(clone, relative, revision="HEAD"):
-    data = (clone / relative).read_bytes()
+    data = git_bytes(clone, "show", f"{revision}:{relative}")
     return {
         "path": relative,
         "sha256": hashlib.sha256(data).hexdigest(),
@@ -120,11 +157,17 @@ def unavailable(completed):
 METADATA = {"protocol": "dacs-adapter/1", "id": "metadata", "type": "metadata"}
 
 
-def pinned_text(relative):
-    """A pinned source as the wrapped release carries it, whatever the working tree says."""
+WRAPPED_REVISION = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))["adapter"]["wrappedStandard"]["revision"]
 
-    revision = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))["adapter"]["wrappedStandard"]["revision"]
-    return git(ROOT, "show", f"{revision}:{relative}")
+
+def release_bytes(relative):
+    """A file exactly as the wrapped release carries it, whatever the working tree says."""
+
+    return git_bytes(ROOT, "show", f"{WRAPPED_REVISION}:{relative}")
+
+
+def pinned_text(relative):
+    return release_bytes(relative).decode("utf-8")
 
 
 class DacsAdapterTests(unittest.TestCase):
@@ -137,8 +180,8 @@ class DacsAdapterTests(unittest.TestCase):
 
     def test_release_descriptor_and_actual_domain_primitive_pin(self):
         completed = subprocess.run(
-            [sys.executable, str(VALIDATOR)],
-            cwd=ROOT,
+            [sys.executable, str(pinned_checkout() / "scripts" / "validate_dacs_adapter_release.py")],
+            cwd=pinned_checkout(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -455,8 +498,8 @@ class DacsAdapterTests(unittest.TestCase):
         oversized = b"{" + b"x" * 1_048_576 + b"}\n"
         valid = json.dumps(request("after", "metadata"), separators=(",", ":")).encode() + b"\n"
         completed = subprocess.run(
-            [sys.executable, str(ADAPTER)],
-            cwd=ROOT,
+            [sys.executable, str(pinned_adapter())],
+            cwd=pinned_checkout(),
             input=oversized + valid,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -479,8 +522,8 @@ class DacsAdapterTests(unittest.TestCase):
         )
         valid = json.dumps(request("after-invalid-id", "metadata"), separators=(",", ":")).encode() + b"\n"
         completed = subprocess.run(
-            [sys.executable, str(ADAPTER)],
-            cwd=ROOT,
+            [sys.executable, str(pinned_adapter())],
+            cwd=pinned_checkout(),
             input=invalid_surrogate + invalid_control + valid,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -505,7 +548,8 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
     def test_planted_bytecode_cannot_replace_verified_source(self):
         clone = committed_clone(self)
         source = clone / "scripts" / "jcs.py"
-        original = source.read_bytes()
+        original = release_bytes("scripts/jcs.py")
+        source.write_bytes(original)
         tampered = original + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n"
         tampered_path = clone / "tampered_jcs.py"
         tampered_path.write_bytes(tampered)
@@ -642,8 +686,9 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             with self.subTest(variant=variant):
                 clone = committed_clone(self)
                 jcs = clone / "scripts" / "jcs.py"
-                genuine = hashlib.sha256(jcs.read_bytes()).hexdigest()
-                jcs.write_bytes(jcs.read_bytes() + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n")
+                release = release_bytes("scripts/jcs.py")
+                genuine = hashlib.sha256(release).hexdigest()
+                jcs.write_bytes(release + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n")
                 tampered_commit = commit_all(clone, "tamper jcs")
                 if variant == "adapter-constants":
                     # Even a re-pinned adapter (whose revision then changes) must not run
@@ -723,16 +768,17 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
 
         clone = committed_clone(self)
         jcs = clone / "scripts" / "jcs.py"
-        jcs.write_bytes(jcs.read_bytes() + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n")
+        jcs.write_bytes(release_bytes("scripts/jcs.py") + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n")
         for relative in (
             "scripts/validate_conformance_vectors.py",
             "scripts/run_lifecycle_walkthrough.py",
             "tests/test_flow_trace_signing.py",
         ):
             path = clone / relative
-            path.write_bytes(path.read_bytes() + b"\n# a later, unrelated edit\n")
+            path.write_bytes((path.read_bytes() if path.exists() else b"") + b"\n# a later, unrelated edit\n")
         golden = clone / "conformance" / "vectors" / "golden.json"
-        golden.write_bytes(golden.read_bytes() + b"\n")
+        golden.write_bytes((golden.read_bytes() if golden.exists() else b"") + b"\n")
+        git(clone, "add", "--all")
         commit_all(clone, "later work on next")
         (clone / "scripts" / "specsource.py").write_bytes(b"raise SystemExit('uncommitted edit')\n")
         completed, responses = run_adapter(
@@ -794,8 +840,8 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         good = json.dumps(METADATA).encode() + b"\n"
         # stderr closed: diagnostics are dropped and stdout still has one line per request.
         completed = subprocess.run(
-            ["sh", "-c", 'exec "$0" "$1" 2>&-', sys.executable, str(ADAPTER)],
-            cwd=ROOT,
+            ["sh", "-c", 'exec "$0" "$1" 2>&-', sys.executable, str(pinned_adapter())],
+            cwd=pinned_checkout(),
             input=bad * 3 + good,
             stdout=subprocess.PIPE,
             check=False,
@@ -806,8 +852,8 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in lines], ["bad", "bad", "bad", "metadata"])
         # stdout closed by its reader: exit without a traceback.
         process = subprocess.Popen(
-            [sys.executable, str(ADAPTER)],
-            cwd=ROOT,
+            [sys.executable, str(pinned_adapter())],
+            cwd=pinned_checkout(),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -866,8 +912,8 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         completed = subprocess.run(
-            [str(venv / "bin" / "python"), str(ADAPTER)],
-            cwd=ROOT,
+            [str(venv / "bin" / "python"), str(pinned_adapter())],
+            cwd=pinned_checkout(),
             input=json.dumps(METADATA).encode() + b"\n",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -881,7 +927,7 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         # Launched from outside the repository, the adapter still checks its own checkout.
         with tempfile.TemporaryDirectory() as elsewhere:
             completed = subprocess.run(
-                [sys.executable, str(ADAPTER)],
+                [sys.executable, str(pinned_adapter())],
                 cwd=elsewhere,
                 input=json.dumps(METADATA).encode() + b"\n",
                 stdout=subprocess.PIPE,
@@ -930,6 +976,16 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         completed, responses = run_adapter([METADATA], root=clone)
         self.assertEqual(completed.returncode, 0, completed.stderr.decode())
         self.assertEqual(responses[0]["result"]["observedOrigin"], EXPECTED_ORIGIN)
+        validator = subprocess.run(
+            [sys.executable, str(clone / "scripts" / "validate_dacs_adapter_release.py")],
+            cwd=clone,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertEqual(validator.returncode, 0, validator.stderr)
 
         for mutate in (
             origin_only_from_environment,
@@ -1030,8 +1086,8 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             ):
                 with self.subTest(stream=label):
                     completed = subprocess.run(
-                        ["sh", "-c", f'exec "$0" "$1" {redirect}', sys.executable, str(ADAPTER)],
-                        cwd=ROOT,
+                        ["sh", "-c", f'exec "$0" "$1" {redirect}', sys.executable, str(pinned_adapter())],
+                        cwd=pinned_checkout(),
                         stdout=subprocess.PIPE if label == "stdin-write-only" else None,
                         stderr=subprocess.PIPE,
                         check=False,
@@ -1057,9 +1113,8 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
         cls.artifacts = {item["id"]: item["artifact"] for item in happy["artifacts"]}
 
     def test_signed_scope_abstains_on_every_other_version_member(self):
-        spec_text = "\n".join(
-            path.read_text(encoding="utf-8") for path in sorted((ROOT / "spec").glob("*.md"))
-        )
+        spec_files = git(ROOT, "ls-tree", "--name-only", WRAPPED_REVISION, "spec/").splitlines()
+        spec_text = "\n".join(pinned_text(path) for path in spec_files if path.endswith(".md"))
         # Every *Version name the spec declares or discusses, plus an unknown future one.
         names = set(re.findall(r"\b([a-z][A-Za-z]*Version)\b", spec_text)) | {"futureOptionalVersion"}
         for required in ("payloadAttestationVersion", "finalityCommitmentVersion", "amendmentVersion",
@@ -1606,6 +1661,9 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
                 "domainSepSign", "domainSepVerify", "domainSepVerify",
             ]
 
+        def undeclared_member_in_expected(descriptor):
+            self.family(descriptor, "canonicalization")["cases"][0]["expected"]["normative"] = True
+
         def adapter_source_digest_wrong(descriptor):
             descriptor["adapter"]["source"]["sha256"] = "0" * 64
 
@@ -1632,6 +1690,7 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             source_pinned_at_head,
             control_pinned_at_head,
             duplicated_f5_operations,
+            undeclared_member_in_expected,
             adapter_source_digest_wrong,
             option_shaped_source_revision,
             traversing_source_path,

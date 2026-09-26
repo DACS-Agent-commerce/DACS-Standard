@@ -40,9 +40,10 @@ control; launch it as `python3 -I -S scripts/dacs_adapter.py` to exclude that
 too. These are consistency checks, not remote attestation or host confinement:
 the interpreter, its standard library, the launching environment, `PATH`,
 `git`, and this checkout's own Git configuration are trusted host inputs. The
-adapter's Git calls run with an empty `GIT_ALLOW_PROTOCOL` allow-list,
-`protocol.allow=never`, and lazy fetching disabled, so no configured promisor
-or remote helper can run during them.
+adapter's Git calls run with an empty `GIT_ALLOW_PROTOCOL` allow-list (which
+refuses every transport whatever the configuration allows), `protocol.allow=never`,
+and `GIT_NO_LAZY_FETCH` where Git supports it, so no configured promisor or
+remote helper can run during them.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
 wrapped primitive digests remain separate.
 

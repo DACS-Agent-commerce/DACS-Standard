@@ -1134,6 +1134,84 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             ["UNSUPPORTED_CASE", "UNSUPPORTED_CASE", "MALFORMED_TAG"],
         )
 
+    def test_every_request_guard_is_exercised(self):
+        evidence = self.artifacts["settlement-htlc-release"]
+        bundle = self.artifacts["attestation-bundle-happy"]
+        verify = self.cases["signing::verify-ascii-hex-hash"]
+        sign = self.cases["signing::sign-ascii-hex-hash"]
+        message = byte_tag(verify["messageBytesHex"])
+        signature = byte_tag(verify["signatureBytesHex"])
+        public_key = byte_tag(verify["publicKeyHex"])
+        seed = byte_tag(sign["privateKeyBytesHex"])
+        raw_digest = byte_tag(self.family["unsupportedCases"][0]["messageBytesHex"])
+
+        def without(artifact, member):
+            return {key: value for key, value in artifact.items() if key != member}
+
+        cases = [
+            ("bundle-version-2", "signedScopeHash", [{**bundle, "bundleVersion": "2"}], "UNSUPPORTED_CASE"),
+            ("evidence-version-2", "signedScopeHash", [{**evidence, "evidenceVersion": "2"}], "UNSUPPORTED_CASE"),
+            *[
+                (f"evidence-without-{member}", "signedScopeHash", [without(evidence, member)], "UNSUPPORTED_CASE")
+                for member in ("jobId", "phase", "outcome", "signature")
+            ],
+            *[
+                (f"bundle-without-{member}", "signedScopeHash", [without(bundle, member)], "UNSUPPORTED_CASE")
+                for member in ("jobId", "outcome", "phaseSummary", "signatures")
+            ],
+            ("signed-scope-arity", "signedScopeHash", [evidence, evidence], "INVALID_PARAMS"),
+            ("sig6-arity", "signatureValueVerdict", [], "INVALID_PARAMS"),
+            ("canonicalize-arity", "canonicalize", [], "INVALID_PARAMS"),
+            ("verify-arity", "domainSepVerify", [message, "dacs-listing:v1:", signature], "INVALID_PARAMS"),
+            ("sign-arity", "domainSepSign", [message, "dacs-listing:v1:"], "INVALID_PARAMS"),
+            ("verify-numeric-separator", "domainSepVerify", [message, 7, signature, public_key], "INVALID_PARAMS"),
+            # 32 characters, so only the byte-tag type check can object.
+            ("sign-text-seed", "domainSepSign", [message, "dacs-listing:v1:", "s" * 32], "INVALID_PARAMS"),
+            ("unknown-op-before-tags", "madeUp", [{"$dacsType": "bytes", "hex": "ZZ"}], "UNSUPPORTED_OPERATION"),
+            ("uppercase-bytes-tag", "canonicalize", [{"$dacsType": "bytes", "hex": "AB"}], "MALFORMED_TAG"),
+            ("odd-bytes-tag", "canonicalize", [{"$dacsType": "bytes", "hex": "abc"}], "MALFORMED_TAG"),
+            ("bytes-tag-extra-member", "canonicalize", [{"$dacsType": "bytes", "hex": "ab", "x": 1}], "MALFORMED_TAG"),
+            ("unknown-tag", "canonicalize", [{"$dacsType": "binary64", "hex": "00" * 8}], "MALFORMED_TAG"),
+            ("bigint-extra-member", "canonicalize", [{"$dacsType": "bigint", "decimal": "1", "x": 1}], "MALFORMED_TAG"),
+            ("bigint-leading-zero", "canonicalize", [{"$dacsType": "bigint", "decimal": "01"}], "MALFORMED_TAG"),
+            ("verify-dacs5-separator", "domainSepVerify", [message, "dacs5-bundle:v1:", signature, public_key], "UNSUPPORTED_CASE"),
+            ("verify-sig4-uppercase-kind", "domainSepVerify", [message, "dacs-x-Foo:v1:", signature, public_key], "UNSUPPORTED_CASE"),
+            ("verify-sig4-underscore-kind", "domainSepVerify", [message, "dacs-x-foo_bar:v1:", signature, public_key], "UNSUPPORTED_CASE"),
+            ("sign-sig4-kind", "domainSepSign", [message, "dacs-x-Foo:v1:", seed], "UNSUPPORTED_CASE"),
+        ]
+        envelopes = [
+            ({"id": "p", "type": "metadata"}, "PROTOCOL_MISMATCH"),
+            ({"protocol": "dacs-adapter/0", "id": "p", "type": "metadata"}, "PROTOCOL_MISMATCH"),
+            ({"protocol": "dacs-adapter/1", "id": "p", "type": "other"}, "INVALID_REQUEST"),
+            ({"protocol": "dacs-adapter/1", "id": "p", "type": "metadata", "x": 1}, "INVALID_REQUEST"),
+            ({**execute("p", "canonicalize", [1]), "x": 1}, "INVALID_REQUEST"),
+            (execute("p", "", [1]), "INVALID_REQUEST"),
+            ({**execute("p", "canonicalize", [1]), "params": {"0": 1}}, "INVALID_REQUEST"),
+            ({"protocol": "dacs-adapter/1", "id": 7, "type": "metadata"}, "INVALID_REQUEST"),
+            ([METADATA], "INVALID_REQUEST"),
+        ]
+        requests = [execute(name, operation, params) for name, operation, params, _ in cases]
+        requests += [envelope for envelope, _ in envelopes]
+        # Verification decides the separator before the message grammar.
+        requests.append(
+            execute("raw-digest-unknown-separator", "domainSepVerify",
+                    [raw_digest, "not-a-dacs-separator:v1:", signature, public_key])
+        )
+        completed, responses = run_adapter(requests)
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        expected = [code for *_, code in cases] + [code for _, code in envelopes]
+        for label, response, code in zip(
+            [name for name, *_ in cases] + [f"envelope-{index}" for index in range(len(envelopes))],
+            responses,
+            expected,
+            strict=False,
+        ):
+            with self.subTest(case=label):
+                self.assertFalse(response["ok"], response)
+                self.assertEqual(response["error"]["code"], code)
+        self.assertEqual(len(responses), len(requests))
+        self.assertIs(responses[-1]["result"], False)
+
     def test_non_json_constants_and_decode_limits_are_invalid_json(self):
         prefix = (
             b'{"protocol":"dacs-adapter/1","id":"x","type":"execute",'
@@ -1372,7 +1450,96 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def traversing_source_path(descriptor):
             descriptor["sources"]["sig6"]["path"] = "../outside.json"
 
+        def normative_status(descriptor):
+            descriptor["status"] = "normative"
+
+        def undeclared_normative_member(descriptor):
+            descriptor["normative"] = True
+
+        def undeclared_family_member(descriptor):
+            self.family(descriptor, "domain-separated-signing")["advertisedGenericFamily"] = True
+
+        def missing_sig6_family(descriptor):
+            descriptor["families"] = [item for item in descriptor["families"] if item["id"] != "sig6-wire"]
+
+        def sig6_exclusion_dropped(descriptor):
+            self.family(descriptor, "sig6-wire")["excludedSourceCases"].pop()
+
+        def sig6_verdict_flipped(descriptor):
+            self.family(descriptor, "sig6-wire")["cases"][0]["expected"] = "REJECT"
+
+        def generic_family_advertised(descriptor):
+            self.family(descriptor, "domain-separated-signing")["advertisedFamily"] = True
+
+        def generic_milestone_complete(descriptor):
+            self.family(descriptor, "domain-separated-signing")["genericFamilyMilestone"] = "complete"
+
+        def blocker_claimed_resolved(descriptor):
+            self.family(descriptor, "domain-separated-signing")["remainingBlocker"] = (
+                "None: the shared runner already scores UNSUPPORTED_CASE as ABSTAIN."
+            )
+
+        def limitation_contradicted(descriptor):
+            descriptor["adapter"]["limitations"][3] = (
+                "domainSepSign/domainSepVerify implement the advertised generic domain-sep-sign family"
+            )
+
+        def exclusion_reason_rewritten(descriptor):
+            self.family(descriptor, "sig6-wire")["excludedSourceCases"][0]["reason"] = "not needed"
+
+        def protocol_repository_changed(descriptor):
+            descriptor["protocol"]["repository"] = "https://github.com/example-fork/pathos-dacs-ref"
+
+        def extra_source_corpus(descriptor):
+            descriptor["sources"]["rawJson"] = dict(descriptor["sources"]["sig6"])
+
+        def control_names_another_test(descriptor):
+            lines = (ROOT / "tests" / "test_flow_trace_signing.py").read_text(encoding="utf-8").splitlines()
+            name = "test_golden_signature_verifies_over_core_b7_preimage"
+            start = lines.index(f"    def {name}(self):") + 1
+            end = start
+            while lines[end].startswith("        "):
+                end += 1
+            control = self.family(descriptor, "domain-separated-signing")["controlSource"]
+            control.update({"test": name, "lines": f"{start}-{end}"})
+
+        def verify_signature_altered(descriptor):
+            f5_case(descriptor, "cases", "signing::verify-ascii-hex-hash")["signatureBytesHex"] = "00" * 64
+
+        def sign_expectation_altered(descriptor):
+            f5_case(descriptor, "cases", "signing::sign-ascii-hex-hash")["expected"] = {"hex": "00" * 64}
+
+        def raw_digest_signature_altered(descriptor):
+            f5_case(descriptor, "unsupportedCases", "signing::valid-raw-digest-profile-boundary")[
+                "signatureBytesHex"
+            ] = "00" * 64
+
+        def sig4_form_as_unknown_separator(descriptor):
+            f5_case(descriptor, "cases", "signing::unknown-separator-false")["separator"] = "dacs-x-Foo:v1:"
+
+        def adapter_source_digest_wrong(descriptor):
+            descriptor["adapter"]["source"]["sha256"] = "0" * 64
+
         for mutate in (
+            normative_status,
+            undeclared_normative_member,
+            undeclared_family_member,
+            missing_sig6_family,
+            sig6_exclusion_dropped,
+            sig6_verdict_flipped,
+            generic_family_advertised,
+            generic_milestone_complete,
+            blocker_claimed_resolved,
+            limitation_contradicted,
+            exclusion_reason_rewritten,
+            protocol_repository_changed,
+            extra_source_corpus,
+            control_names_another_test,
+            verify_signature_altered,
+            sign_expectation_altered,
+            raw_digest_signature_altered,
+            sig4_form_as_unknown_separator,
+            adapter_source_digest_wrong,
             option_shaped_source_revision,
             traversing_source_path,
             canonicalization_dispatched_elsewhere,

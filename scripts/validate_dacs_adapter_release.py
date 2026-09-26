@@ -38,7 +38,8 @@ DEFAULT_DESCRIPTOR = (
 EXPECTED_ORIGIN = "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
 ADAPTER_SOURCE = "scripts/dacs_adapter.py"
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
-DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
+DACS_SEPARATOR_PREFIX = "dacs"
+CONTROL_TEST = "test_golden_signature_rejects_raw_digest_preimage"
 PROTOCOL_TAGS = {"bytes", "bigint"}
 FAMILY_OPERATION = {
     "canonicalization": "canonicalize",
@@ -57,6 +58,49 @@ HASHABLE_SHAPES = {
     ),
 }
 HEX40 = re.compile(r"[0-9a-f]{40}")
+PIN_KEYS = {"path", "sha256", "gitBlob"}
+SOURCE_KEYS = PIN_KEYS | {"revision"}
+# The members each descriptor object may carry.  Anything else would be an
+# unreviewed claim (for example ``"normative": true``) and is refused.
+DESCRIPTOR_KEYS = {"schema", "status", "issue", "protocol", "adapter", "sources", "families"}
+PROTOCOL_KEYS = SOURCE_KEYS | {"id", "repository", "exportedCompanionInputs"}
+ADAPTER_KEYS = {"name", "version", "repository", "provenanceCodebase", "source", "wrappedStandard", "limitations"}
+SOURCE_NAMES = {"canonicalization", "signedScope", "sig6", "domainSeparatedSigning"}
+FAMILY_KEYS = {
+    "canonicalization": {"id", "operation", "status", "source", "cases", "unsupportedSourceCases", "excludedSourceCases"},
+    "signed-scope": {"id", "operation", "status", "source", "cases"},
+    "sig6-wire": {"id", "operation", "status", "source", "cases", "excludedSourceCases"},
+    "domain-separated-signing": {
+        "id", "operations", "status", "advertisedFamily", "profile", "source", "controlSource", "cases",
+        "primitiveControls", "unsupportedCases", "genericFamilyMilestone", "remainingBlocker",
+        "requiredHandoffQuestion",
+    },
+}
+ENTRY_KEYS = {
+    ("canonicalization", "cases"): {"caseId", "sourceExpected", "expected", "sourceExpectedErrorCode", "expectedErrorCode"},
+    ("canonicalization", "unsupportedSourceCases"): {
+        "caseId", "sourceExpected", "sourceExpectedErrorCode", "adapterErrorCode", "reason",
+    },
+    ("canonicalization", "excludedSourceCases"): {"caseId", "sourceTag", "reason"},
+    ("signed-scope", "cases"): {"caseId", "kind", "sourceExpected", "expected"},
+    ("sig6-wire", "cases"): {"caseId", "sourceExpected", "expected"},
+    ("sig6-wire", "excludedSourceCases"): {"caseId", "reason"},
+    ("domain-separated-signing", "cases"): {
+        "caseId", "operation", "separator", "artifactHashHex", "messageBytesHex", "privateKeyBytesHex",
+        "sourceExpected", "expected", "signatureBytesHex", "publicKeyHex", "derivation",
+    },
+    ("domain-separated-signing", "primitiveControls"): {
+        "caseId", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex", "expected", "scope",
+    },
+    ("domain-separated-signing", "unsupportedCases"): {
+        "caseId", "operation", "separator", "messageBytesHex", "signatureBytesHex", "publicKeyHex",
+        "primitiveVerification", "adapterErrorCode", "reason",
+    },
+}
+# sha256 of the reviewed prose claims and of the neutral-protocol pins, which
+# cannot be checked offline.  Changing any of them is a deliberate, visible edit
+# here, never a silent descriptor change.
+REVIEWED_CLAIMS_SHA256 = "b390b7dbed2f0619235f729f9efdcd11e3c52c6fe8f6a56d3d25a4496f78151f"
 HEX64 = re.compile(r"[0-9a-f]{64}")
 FAMILY_STATUS = {
     "canonicalization": "executable",
@@ -81,7 +125,7 @@ def _git_run(*args: str) -> subprocess.CompletedProcess:
     environment = {key: value for key, value in os.environ.items() if key not in GIT_REPOSITORY_ENV}
     environment["GIT_TERMINAL_PROMPT"] = "0"
     return subprocess.run(
-        ["git", "-C", str(ROOT), *args],
+        ["git", "-C", str(ROOT), "-c", "protocol.allow=never", *args],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
@@ -259,8 +303,8 @@ def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
 def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
     match = re.fullmatch(r"([1-9][0-9]*)-([1-9][0-9]*)", str(control.get("lines", "")))
     test_name = control.get("test")
-    if match is None or not isinstance(test_name, str):
-        raise ValueError("bounded F5 control source must name its test and line range")
+    if match is None or test_name != CONTROL_TEST:
+        raise ValueError(f"bounded F5 control source must be {CONTROL_TEST} with its line range")
     start, end = int(match.group(1)), int(match.group(2))
     lines = data.decode("utf-8").splitlines()
     definition = f"    def {test_name}(self):"
@@ -275,6 +319,9 @@ def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
             body_end = number
     if end != body_end:
         raise ValueError("bounded F5 control line range does not cover exactly the named test")
+    body = "\n".join(lines[start - 1 : end])
+    if "bytes.fromhex(self.digest_hex)" not in body or "assertRaises(InvalidSignature)" not in body:
+        raise ValueError("bounded F5 control test no longer rejects the raw-digest preimage")
 
 
 def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
@@ -299,9 +346,78 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
     return validate_release(descriptor)
 
 
+def _closed(value: Any, allowed: set[str], where: str) -> None:
+    if not isinstance(value, dict) or not set(value) <= allowed:
+        extra = sorted(set(value) - allowed) if isinstance(value, dict) else type(value).__name__
+        raise ValueError(f"{where}: unexpected descriptor members {extra}")
+
+
+def _check_closed_schema(descriptor: dict[str, Any]) -> None:
+    _closed(descriptor, DESCRIPTOR_KEYS, "descriptor")
+    _closed(descriptor["protocol"], PROTOCOL_KEYS, "protocol")
+    for pin in descriptor["protocol"]["exportedCompanionInputs"]:
+        _closed(pin, PIN_KEYS, "protocol companion input")
+    adapter = descriptor["adapter"]
+    _closed(adapter, ADAPTER_KEYS, "adapter")
+    _closed(adapter["source"], PIN_KEYS, "adapter source")
+    _closed(adapter["wrappedStandard"], {"revision", "tree", "primitives"}, "wrapped Standard")
+    for primitive in adapter["wrappedStandard"]["primitives"]:
+        _closed(primitive, PIN_KEYS, "wrapped primitive")
+    if set(descriptor["sources"]) != SOURCE_NAMES:
+        raise ValueError("descriptor sources differ from the four pinned corpora")
+    for name, source in descriptor["sources"].items():
+        _closed(source, SOURCE_KEYS, f"source {name}")
+    for family in descriptor["families"]:
+        family_id = family.get("id")
+        if family_id not in FAMILY_KEYS:
+            raise ValueError(f"unknown release family {family_id!r}")
+        _closed(family, FAMILY_KEYS[family_id], f"family {family_id}")
+        for (owner, key), allowed in ENTRY_KEYS.items():
+            if owner == family_id:
+                for entry in family.get(key, []):
+                    _closed(entry, allowed, f"{family_id}.{key}")
+        if "controlSource" in family:
+            _closed(family["controlSource"], SOURCE_KEYS | {"test", "lines"}, "control source")
+
+
+def reviewed_claims_sha256(descriptor: dict[str, Any]) -> str:
+    """Digest of every prose claim and the neutral-protocol pins."""
+
+    families = {}
+    for family in descriptor["families"]:
+        notes = sorted(
+            [key, entry["caseId"], entry[field]]
+            for key in ("cases", "unsupportedSourceCases", "excludedSourceCases", "primitiveControls", "unsupportedCases")
+            for entry in family.get(key, [])
+            for field in ("reason", "scope", "derivation")
+            if field in entry
+        )
+        families[family["id"]] = {
+            "flags": {
+                key: family[key]
+                for key in ("advertisedFamily", "genericFamilyMilestone", "remainingBlocker", "requiredHandoffQuestion")
+                if key in family
+            },
+            "notes": notes,
+        }
+    claims = {
+        "status": descriptor.get("status"),
+        "issue": descriptor.get("issue"),
+        "protocol": descriptor.get("protocol"),
+        "adapter": {key: descriptor["adapter"].get(key) for key in ("name", "version", "limitations")},
+        "families": families,
+    }
+    return _sha256(json.dumps(claims, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+
 def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
     """Check descriptor content against the working tree and its pinned revisions."""
 
+    _check_closed_schema(descriptor)
+    if reviewed_claims_sha256(descriptor) != REVIEWED_CLAIMS_SHA256:
+        raise ValueError(
+            "descriptor claims or neutral-protocol pins changed; review them and update REVIEWED_CLAIMS_SHA256"
+        )
     if descriptor.get("schema") != "dacs-adapter-release-proposal/1":
         raise ValueError("unexpected descriptor schema")
     if descriptor.get("status") != "proposal-non-normative":
@@ -602,7 +718,7 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                 unknown_case["expected"] is not False
                 or not isinstance(separator, str)
                 or separator == BOUNDED_F5_SEPARATOR
-                or DACS_SEPARATOR_SHAPE.fullmatch(separator)
+                or separator.startswith(DACS_SEPARATOR_PREFIX)
                 or unknown_case["messageBytesHex"] != verify_case["messageBytesHex"]
                 or unknown_case["signatureBytesHex"] != verify_case["signatureBytesHex"]
                 or unknown_case["publicKeyHex"] != verify_case["publicKeyHex"]

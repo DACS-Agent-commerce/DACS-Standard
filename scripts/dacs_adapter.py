@@ -98,7 +98,10 @@ MAX_DIAGNOSTIC_CHARS = 320
 MAX_STDERR_LINE_CHARS = 1024
 MAX_PINNED_FILE_BYTES = 8 * 1_048_576
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
-DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
+# CORE §B.7 and SIG-4 do not restrict an artifact kind's characters, so every
+# separator beginning with "dacs" is treated as a DACS separator this bounded
+# profile does not support, never as an unknown one it can reject.
+DACS_SEPARATOR_PREFIX = "dacs"
 # CORE §11.2.5: every artifact type carries its own ``*Version`` literal.  Apart
 # from their own discriminator, the spec shapes of SettlementEvidence and
 # AttestationBundle carry no top-level ``*Version`` member except the bundle's
@@ -163,7 +166,9 @@ def _git(*args: str) -> str:
     environment["GIT_TERMINAL_PROMPT"] = "0"
     try:
         completed = subprocess.run(
-            ["git", "-C", str(ROOT), *args],
+            # The checks read local objects and configuration only; refusing every
+            # transport stops a configured promisor or helper from running.
+            ["git", "-C", str(ROOT), "-c", "protocol.allow=never", *args],
             check=True,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -547,7 +552,7 @@ def _execute(operation: str, params: list[Any], host_type_present: bool) -> Any:
                 "UNSUPPORTED_CASE", "the bounded Listing verification profile has no intermediate hash"
             )
         if separator != BOUNDED_F5_SEPARATOR:
-            if DACS_SEPARATOR_SHAPE.fullmatch(separator):
+            if separator.startswith(DACS_SEPARATOR_PREFIX):
                 raise AdapterError(
                     "UNSUPPORTED_CASE", "the bounded verification profile selects only dacs-listing:v1:"
                 )

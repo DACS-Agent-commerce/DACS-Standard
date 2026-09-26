@@ -32,8 +32,10 @@ runs before the adapter's first line (`sitecustomize`, `.pth` hooks, or modules
 on `PYTHONPATH` that site initialization loads) is outside the adapter's
 control; launch it as `python3 -I -S scripts/dacs_adapter.py` to exclude that
 too. These are consistency checks, not remote attestation or host confinement:
-the interpreter, its standard library, the launching environment, `PATH`, and
-`git` are trusted host inputs.
+the interpreter, its standard library, the launching environment, `PATH`,
+`git`, and this checkout's own Git configuration are trusted host inputs. The
+adapter's Git calls refuse every transport (`protocol.allow=never`), so a
+configured promisor or remote helper cannot run during them.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
 wrapped primitive digests remain separate.
 
@@ -82,9 +84,10 @@ line, and writes one bounded line of printable ASCII per diagnostic, only to
 stderr. A rejection by a wrapped primitive is `OPERATION_FAILED`; any other
 fault is `INTERNAL_ERROR`, which a runner must never score as an expected
 rejection. Requests are bounded in size, not time. CPython's NFC normalization
-is quadratic in long runs of combining marks (a 200 KB string can take over
-ten seconds), so callers must enforce a per-request timeout, as the shared
-runner does by default; a timeout is never a result.
+is quadratic in long runs of combining marks (a 200 KB string took roughly 8 to
+17 seconds in review, depending on hardware), so callers must enforce a
+per-request timeout, as the shared runner does by default; a timeout is never
+a result.
 
 The canonicalization descriptor partitions all 25 source cases: six are
 selected, `bigint-native-type` is unsupported, twelve are excluded because their
@@ -122,8 +125,10 @@ Standard's existing Listing golden: the message is the 64 ASCII lowercase-hex
 artifact hash, the separator is exactly `dacs-listing:v1:`, and no intermediate
 hash is present. It pins signing output, successful verification, and the
 in-profile negative control where one lowercase-hex message digit changes while
-the signature stays fixed. An unknown non-DACS separator returns `false` on
-verification.
+the signature stays fixed. Verification decides the separator first: a
+separator that does not begin with `dacs` is outside the closed CORE §B.7
+registry and returns `false` whatever the message bytes are, as the reference
+adapter does.
 
 The existing Standard test showing that the golden signature does not verify
 over the 32 raw digest bytes remains pinned as a primitive-level control. Raw
@@ -134,10 +139,11 @@ generated raw-digest signature is cryptographically valid.
 This is a primitive bridge. It does not parse an artifact, derive its hash,
 establish signer authority, admit intermediate hashes, or claim the full CORE
 B.7 separator registry. Emission under any separator other than the selected
-Listing separator returns `UNSUPPORTED_CASE`; DACS-shaped non-Listing
-verification separators and Listing messages outside the 64 lowercase-hex
-grammar also return `UNSUPPORTED_CASE`. Those are unsupported inputs, not
-failed conformance candidates.
+Listing separator returns `UNSUPPORTED_CASE`. So does verification under any
+other separator beginning with `dacs` (CORE §B.7 and SIG-4 do not restrict an
+artifact kind's characters, so `dacs-x-Foo:v1:` is one), and verification under
+the Listing separator of a message outside the 64 lowercase-hex grammar.
+Those are unsupported inputs, not failed conformance candidates.
 
 The pinned neutral protocol lists the intermediate hash as an optional final
 parameter, and the shared runner sends an omitted optional argument as a
@@ -166,8 +172,9 @@ runner an explicit `UNSUPPORTED_CASE` therefore matches any vector that
 expects `THROWN`: paired with the reference adapter, the seed rows
 `cr-bigint`, `ds-s3-unknown-separator-sign-throws`, and
 `ds-s6-legacy-emission-refused` report `INTEROP-AGREE` although this adapter
-abstained. No scored run may use that runner. The remaining exact handoff
-questions are:
+abstained, and the other seed F5 rows and `dr-d4-settlement-golden-match`
+report `IMPLEMENTATION-DIVERGENCE` for the same abstentions. No scored run may
+use that runner. The remaining exact handoff questions are:
 
 > Will the shared runner classify the adapter's explicit `UNSUPPORTED_CASE`
 > error as `ABSTAIN` rather than `THROWN`, so BigInt host-type inputs and F5

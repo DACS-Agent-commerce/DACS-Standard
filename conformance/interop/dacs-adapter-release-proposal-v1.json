@@ -54,8 +54,8 @@
     "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "e82ec681b39795204e1a7b9f4e474680f56c4959aaf6203ecae324597447e81b",
-      "gitBlob": "aba63ad4326f1c8b7af560592a07897c62c16a31"
+      "sha256": "53a306b02062cfa5052ee174adc7a0e9d88b0142d04445b58e4bc29e80d4f151",
+      "gitBlob": "6f89a0fdbce059cadc3850f66c944bac6bb428c0"
     },
     "wrappedStandard": {
       "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
@@ -88,14 +88,14 @@
       "signedScopeHash hashes only version 1 SettlementEvidence and AttestationBundle records whose top-level *Version members are the kind's own discriminator (plus a bundle's two registry versions); any other *Version member or shape returns UNSUPPORTED_CASE",
       "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
       "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
-      "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
+      "under the Listing separator both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography, so raw digest bytes are unsupported even with a valid signature; verification rejects a separator that does not begin with dacs before examining the message, and abstains on any other dacs separator",
       "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry",
       "Ed25519 point-encoding strictness is not pinned: the wrapped helper accepts an x=0 point with the sign bit set, which RFC 8032 rejects and OpenSSL rejects for R, while OpenSSL accepts a public key encoding y >= p, which the helper rejects; no such case is selected, and a divergence there is an open specification question",
       "the codebase identity is the revision-free DACS-Standard repository; the pinned shared runner compares asserted identities after only trimming and lowercasing them, so a run pairing this adapter with the contributor standard-jcs-adapter (which asserts a revision- and path-qualified DACS-Standard identity) miscounts one codebase as two and its INTEROP-AGREE rows are invalid",
-      "the pinned shared runner turns every adapter error, UNSUPPORTED_CASE included, into THROWN and dispatches by operation name, not supportedFamilies; its seed rows cr-bigint, ds-s3-unknown-separator-sign-throws and ds-s6-legacy-emission-refused therefore score an abstention as agreement, so no scored run may use that runner",
+      "the pinned shared runner turns every adapter error, UNSUPPORTED_CASE included, into THROWN and dispatches by operation name, not supportedFamilies; its seed rows cr-bigint, ds-s3-unknown-separator-sign-throws and ds-s6-legacy-emission-refused therefore score an abstention as agreement and its other seed F5 rows and dr-d4 as divergence, so no scored run may use that runner",
       "requests are bounded in size, not time: CPython NFC normalization is quadratic in long runs of combining marks, so callers must enforce a per-request timeout, and a timeout is never a result",
       "canonicalize and signedScopeHash take the protocol's parsed JSON value, so the CORE CF-5 raw-document admission rules (pre-rounding number tokens, nesting depth 128) are not applied and a raw document that CF-5 rejects can still yield bytes; the raw-json-profile corpus is not part of this release",
-      "the origin check compares this checkout's own Git configuration and effective fetch URL with the pinned origin; it is a consistency check, not remote attestation; the Python interpreter, its standard library, the launching environment (code it runs before the adapter starts), PATH, and git are trusted host inputs; launch with python3 -I -S to exclude site initialization"
+      "the origin check compares this checkout's own Git configuration and effective fetch URL with the pinned origin; it is a consistency check, not remote attestation; the Python interpreter, its standard library, the launching environment (code it runs before the adapter starts), PATH, git, and this checkout's Git configuration are trusted host inputs; Git transports are refused during the checks; launch with python3 -I -S to exclude site initialization"
     ]
   },
   "sources": {

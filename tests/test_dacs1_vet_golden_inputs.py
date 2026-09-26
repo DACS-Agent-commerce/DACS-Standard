@@ -137,24 +137,37 @@ def integral_numbers(value):
 
     ``1900000060000.0`` and ``1.90000006e12`` have the same JCS bytes as
     ``1900000060000``, so the host parser's int/float split must not change a
-    verdict.  Returns a copy with integral safe-range floats as ints, built
-    iteratively so deep input cannot reach a host recursion limit.
+    verdict.  Returns a copy with integral safe-range floats as ints; fractional
+    numbers are untouched.  The walk is iterative, copies each shared container
+    once, and refuses a cyclic in-process value, which no JSON text can express.
     """
 
+    copies = {}
+    active = set()
     root = [value]
-    stack = [(root, 0)]
+    stack = [(root, 0, None)]
     while stack:
-        container, key = stack.pop()
+        container, key, leaving = stack.pop()
+        if leaving is not None:
+            active.discard(leaving)
+            continue
         item = container[key]
         if isinstance(item, float):
             if math.isfinite(item) and item.is_integer() and abs(item) <= SAFE_INT:
                 container[key] = int(item)
-        elif isinstance(item, dict):
-            container[key] = dict(item)
-            stack.extend((container[key], name) for name in item)
-        elif isinstance(item, list):
-            container[key] = list(item)
-            stack.extend((container[key], index) for index in range(len(item)))
+        elif isinstance(item, (dict, list)):
+            ident = id(item)
+            if ident in active:
+                raise ValueError("cyclic value is not JSON")
+            if ident in copies:
+                container[key] = copies[ident]
+                continue
+            clone = dict(item) if isinstance(item, dict) else list(item)
+            copies[ident] = container[key] = clone
+            active.add(ident)
+            stack.append((None, None, ident))
+            names = list(clone) if isinstance(clone, dict) else range(len(clone))
+            stack.extend((clone, name, None) for name in names)
     return root[0]
 
 
@@ -1058,6 +1071,41 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
     )
 
 
+def freshness_window(result, claim, recipes, decision_time):
+    """DACS-1 §6.3.2 governing window of ``result`` for ``claim``.
+
+    Expiry is ``min(claim.expiresAt, validUntil ?? verifiedAt + the exact
+    recipe's defaultMaxAgeSec)``.  Returns "current", "stale" (expired or an
+    inverted, undeterminable window) or "untimed" (non-integer times).  CRQ-1:
+    only results whose governing window has passed take part in qualification
+    preflight or classification.
+    """
+
+    verified_at = result.get("verifiedAt")
+    if "validUntil" in result:
+        valid_until = result["validUntil"]
+    else:
+        # The exact recipe the result was validated under, never "latest".
+        recipe = recipes.get(
+            (result.get("scheme"), result.get("method"), result.get("recipeVersion"))
+        )
+        valid_until = (
+            verified_at + recipe["defaultMaxAgeSec"] * 1_000
+            if recipe is not None and type(verified_at) is int
+            else None
+        )
+    if type(verified_at) is not int or type(valid_until) is not int:
+        return "untimed"
+    expires_at = claim.get("expiresAt")
+    effective_expiry = min(
+        valid_until,
+        expires_at if type(expires_at) is int else SAFE_INT,
+    )
+    if valid_until < verified_at or decision_time > effective_expiry:
+        return "stale"
+    return "current"
+
+
 def qualify_result(resolved, claim, req, recipes, result_context, decision_time):
     """Authenticate one resolved result and qualify it for ``claim``/``req``."""
 
@@ -1072,6 +1120,12 @@ def qualify_result(resolved, claim, req, recipes, result_context, decision_time)
         or result.get("recipeVersion") != reference["recipeVersion"]
     ):
         return "fail"
+    window = freshness_window(result, claim, recipes, decision_time)
+    if window == "untimed":
+        return "fail"
+    if window == "stale":
+        # Not current evidence, so it cannot reach family/version preflight.
+        return "not-applicable"
     parameters = req.get("parameters") or {}
     selected_method = parameters.get("verificationMethod", result.get("method"))
     expected_version = effective_recipe_version(req, selected_method, recipes)
@@ -1087,34 +1141,10 @@ def qualify_result(resolved, claim, req, recipes, result_context, decision_time)
         "pass", "fail", "indeterminate", "error"
     }:
         return "error"
-    verified_at = result.get("verifiedAt")
-    if "validUntil" in result:
-        valid_until = result["validUntil"]
-    else:
-        # The exact recipe the result was validated under, never "latest".
-        recipe = recipes.get(
-            (result.get("scheme"), result.get("method"), result.get("recipeVersion"))
-        )
-        valid_until = (
-            verified_at + recipe["defaultMaxAgeSec"] * 1_000
-            if recipe is not None and type(verified_at) is int
-            else None
-        )
-    if type(verified_at) is not int or type(valid_until) is not int:
-        return "fail"
-    if valid_until < verified_at:
-        # DACS-1 §6.3.2: an inverted window is undeterminable, hence stale.
-        return "not-applicable"
     now = decision_time
-    expires_at = claim.get("expiresAt")
-    effective_expiry = min(
-        valid_until,
-        expires_at if type(expires_at) is int else SAFE_INT,
-    )
+    verified_at = result["verifiedAt"]
     if verified_at > now:
         return "error"
-    if now > effective_expiry:
-        return "not-applicable"
     max_age = req.get("maxAge")
     if max_age is not None and now > verified_at + max_age * 1_000:
         return "not-applicable"
@@ -1216,10 +1246,23 @@ def qualification_preflight(
         return False
     if value.get(COMMITTED_RESULTS_ONLY):
         # §7.7.1 preflight_qualification: every method the record commits for
-        # this scheme must resolve, whether or not a bundle claim cites it.
+        # this scheme must resolve, whether or not a bundle claim cites it --
+        # but only for results that are current evidence (CRQ-1): owned by an
+        # unexpired claim with its identity and inside their governing window.
+        claims = matching_claims(value, req, decision_time)
+        current = [
+            item for item in committed_results(value, req)
+            if any(
+                parse_ref(claim["ref"])
+                == (item["artifact"].get("scheme"), item["artifact"].get("identifier"))
+                and freshness_window(item["artifact"], claim, recipes, decision_time)
+                == "current"
+                for claim in claims
+            )
+        ]
         methods = (
             {selected_method} if selected_method is not None
-            else {item["artifact"].get("method") for item in committed_results(value, req)}
+            else {item["artifact"].get("method") for item in current}
         )
         return all(
             effective_recipe_version(req, method, recipes) is not None
@@ -1891,8 +1934,8 @@ def authenticate_production_aggregate(
 
 
 def aggregate_output(value, trusted_context, recipes, result_context, runtime):
-    value = integral_numbers(value)
     try:
+        value = integral_numbers(value)
         if (
             not isinstance(runtime, VetReferenceRuntime)
             or runtime.trusted_context is not trusted_context
@@ -3914,6 +3957,134 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         self.assertEqual(
             aggregate_case["expectedOutput"], execute_once(respelled, self.document)
         )
+
+    def test_non_current_results_cannot_reach_qualification_preflight(self):
+        # CRQ-1: preflight operates only on results whose governing §6.3.2
+        # window has passed.  A stale or expired-owner result for an
+        # unresolvable family therefore cannot turn a counterparty "fail"
+        # into a permanent "error" (VPC-4).
+        case, evaluation = self._case_evaluation("vet-cross-accumulator-fail-over-error")
+        _, credential = self._case_evaluation("vet-ma3-verified-accept")
+
+        def commit_credential(value, document, *, identifier=None, valid_until=None):
+            source = copy.deepcopy(credential["input"]["resolvedResults"][0])
+            if identifier is not None:
+                source["artifact"]["identifier"] = identifier
+            if valid_until is not None:
+                source["artifact"]["validUntil"] = valid_until
+            extra = resign_result(source, fixture_private_key("authority"), AUTHORITY_REF)
+            trusted = document["trustedContext"]["authenticatedResultArtifacts"]
+            if all(canonical_bytes(item["ref"]) != canonical_bytes(extra["ref"]) for item in trusted):
+                trusted.append({
+                    "ref": copy.deepcopy(extra["ref"]),
+                    "serializedArtifactHash": extra["serializedArtifactHash"],
+                })
+            value["resolvedResults"].append(extra)
+            value["record"]["dealSpecific"].append(copy.deepcopy(extra["ref"]))
+            return extra
+
+        def stale(value, document):
+            commit_credential(
+                value, document, valid_until=value["record"]["generatedAt"] - 1
+            )
+
+        def expired_owner(value, document):
+            extra = commit_credential(value, document, identifier="529900T8BM49AURSDO55")
+            value["authority"]["vetInput"]["bundleToVet"]["claims"].append({
+                "ref": "lei:529900T8BM49AURSDO55",
+                "issuedAt": value["record"]["generatedAt"] - 2,
+                "expiresAt": value["record"]["generatedAt"] - 1,
+                "verifiedBy": copy.deepcopy(extra["ref"]),
+            })
+            self._resign_aggregate_bundle(value)
+
+        def current(value, document):
+            commit_credential(value, document)
+
+        for label, mutate in (("stale", stale), ("expired owner", expired_owner)):
+            with self.subTest(label=label):
+                self.assertEqual(
+                    case["expectedOutput"],
+                    self._replay_aggregate(
+                        "vet-cross-accumulator-fail-over-error", mutate, "fail"
+                    ),
+                )
+        # Control: the same result while current does reach preflight.
+        self.assertEqual(
+            {"decision": "error", "reasons": ["unresolved recipe family or version"]},
+            self._replay_aggregate(
+                "vet-cross-accumulator-fail-over-error", current, "error"
+            ),
+        )
+
+        # Direct evaluation: a stale cited result is excluded before preflight.
+        direct_case, direct = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        now = self.document["trustedContext"]["vetInvocations"][
+            direct["input"]["authority"]["invocation"]
+        ]["trustedNow"]
+        for valid_until, expected in ((now - 1, direct_case["expectedOutput"]), (now, "error")):
+            with self.subTest(direct_valid_until=valid_until - now):
+                document = copy.deepcopy(self.document)
+                source = copy.deepcopy(credential["input"]["resolvedResults"][0])
+                source["artifact"]["identifier"] = "529900T8BM49AURSDO55"
+                source["artifact"]["validUntil"] = valid_until
+                extra = resign_result(source, fixture_private_key("authority"), AUTHORITY_REF)
+                document["trustedContext"]["authenticatedResultArtifacts"].append({
+                    "ref": copy.deepcopy(extra["ref"]),
+                    "serializedArtifactHash": extra["serializedArtifactHash"],
+                })
+                changed = copy.deepcopy(direct)
+                changed["input"]["resolvedResults"].append(extra)
+                changed["input"]["bundle"]["claims"].append({
+                    "ref": "lei:529900T8BM49AURSDO55",
+                    "issuedAt": changed["input"]["bundle"]["presentedAt"],
+                    "verifiedBy": copy.deepcopy(extra["ref"]),
+                })
+                presenter = fixture_private_key("presenter")
+                changed["input"]["bundle"] = resign_bundle(
+                    changed["input"]["bundle"], presenter, public_ref(presenter)
+                )
+                self.assertEqual(expected, execute_once(changed, document))
+
+    def test_number_normalisation_is_exact_copying_and_cycle_safe(self):
+        # Fractional numbers keep their value (signed bytes unchanged), the
+        # caller's input is not modified, aggregate_output normalises when
+        # called directly, and an in-process cycle is an error, not a hang.
+        self.assertEqual({"a": [1, 0.97, -0.5]}, integral_numbers({"a": [1.0, 0.97, -0.5]}))
+        case, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        document = copy.deepcopy(self.document)
+        fractional = copy.deepcopy(evaluation)
+        fractional["input"]["record"]["supplementary"][0]["value"] = 0.97
+        fractional["input"] = reanchor_composite_input(fractional["input"], document)
+        self.assertEqual(case["expectedOutput"], execute_once(fractional, document))
+
+        respelled = copy.deepcopy(evaluation)
+        signal = respelled["input"]["record"]["supplementary"][0]
+        signal["observedAt"] = float(signal["observedAt"])
+        before = copy.deepcopy(respelled)
+        self.assertEqual(
+            case["expectedOutput"],
+            aggregate_output(
+                respelled["input"], self.document["trustedContext"], self.recipes,
+                self.result_context, VetReferenceRuntime(self.document["trustedContext"]),
+            ),
+        )
+        self.assertIs(float, type(respelled["input"]["record"]["supplementary"][0]["observedAt"]))
+        self.assertEqual(before, respelled)
+
+        shared = {"k": 1.0}
+        copied = integral_numbers({"x": shared, "y": shared})
+        self.assertEqual({"x": {"k": 1}, "y": {"k": 1}}, copied)
+        self.assertIs(float, type(shared["k"]))
+
+        _, direct = self._case_evaluation("vet-control-key-presentation-accept")
+        cyclic = copy.deepcopy(direct)
+        loop = {}
+        loop["self"] = loop
+        cyclic["input"]["bundle"]["claims"][0]["metadata"] = loop
+        self.assertEqual("error", execute_once(cyclic, self.document))
 
     def test_selector_branches_follow_exact_selector_authorized(self):
         # passingOtherScheme keeps presence authorization for a group that

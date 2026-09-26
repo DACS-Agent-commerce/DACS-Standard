@@ -379,10 +379,17 @@ def _embedded_reference_artifacts(data) -> list[tuple[str, dict]]:
 
     def walk(value) -> None:
         if isinstance(value, dict):
-            if value.get("bundleVersion") == "1" and "phaseSummary" in value:
-                pairs.append(("AttestationBundle", value))
-            elif value.get("bundleVersion") == "1" and "claims" in value:
-                pairs.append(("IdentityBundle", value))
+            if value.get("bundleVersion") == "1":
+                # IdentityBundle and the legacy AttestationBundle share this
+                # literal.  Only an unambiguous IdentityBundle leaves the
+                # AttestationBundle check, so an AttestationBundle missing
+                # phaseSummary is still shape-checked and rejected.
+                kind = (
+                    "IdentityBundle"
+                    if "claims" in value and "phaseSummary" not in value
+                    else "AttestationBundle"
+                )
+                pairs.append((kind, value))
             elif value.get("resultVersion") == "1":
                 pairs.append(("VerifyResult", value))
             elif value.get("faultBundleVersion") == "1":

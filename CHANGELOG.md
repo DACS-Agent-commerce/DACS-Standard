@@ -471,6 +471,22 @@ The format used per release:
   `counterparty`, never `permanent`). The cross-run tool rejects the
   superseded control-gate sketch and exposes all 44 replacement evaluations
   under stable `<case>::<evaluation>` names (#363).
+- The Vet reference replay now follows DACS-2 §7.7.1 `exact_selector_authorized`
+  exactly: a `oneOf` group that admits the selector scheme through a verified
+  member must be satisfied by exact presence or by another scheme, so a
+  different same-scheme verified claim cannot launder a presence-only selector
+  (PCR-5), while exact-claim verified evidence authorizes a selector that
+  appears only inside `oneOf`. A presented identity with no exact CF-2 claim
+  is uncontrolled rather than an exception. Replay refuses an unsupported or
+  missing `CompositeVerificationRecord.recordVersion` or
+  `VerifyResult.resultVersion`, a malformed `warnings` list, and a record
+  whose committed result only a presence-only member could claim. An omitted
+  optional `VerifyResult.validUntil` uses the exact recipe's authenticated
+  `defaultMaxAgeSec` window instead of being rejected. None of the 30 golden
+  outputs change; new negatives re-anchor the trusted receipt so the guard
+  under test, not a stale receipt hash, decides. The artifact-shape validator
+  again checks a `bundleVersion: "1"` object as an `AttestationBundle` unless
+  it is unambiguously an `IdentityBundle`.
 
 ### Fixed — integrated presence and current-profile consumers
 

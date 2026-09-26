@@ -2081,6 +2081,45 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 refreshed_laa_phase_carriers(value["authority"])
             )
 
+        def pinned_successor_nonce(value, kind):
+            receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+            member = receipts[self._key(value["bundle"]["settlementEvidence"][0])]
+            value["authority"]["sessionExecutionAuthorityByPhaseKey"][
+                "2:pay-cross-chain-htlc"
+            ]["anchorNonce"] = member["nonce"]
+
+        def decoy_at_ordinary_address(nonce):
+            # Another receipt at the interim's ordinary address; a pinned
+            # nonce it does not carry makes it inert (DACS-5 §10.4.3).
+            def mutate(value, kind):
+                receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+                decoy = copy.deepcopy(receipts[value["interimKey"]])
+                decoy.update({
+                    "contentHash": "a" * 64,
+                    "nativeAddress": "stor-decoy",
+                    "transactionRef": {"kind": "demos-transaction", "value": "tx-decoy"},
+                })
+                if nonce is None:
+                    decoy.pop("nonce")
+                else:
+                    decoy["nonce"] = nonce
+                receipts[self._key({
+                    "anchor": {"kind": "storage-program", "locator": "stor-decoy"},
+                    "contentHash": "a" * 64,
+                })] = decoy
+            return mutate
+
+        def interim_lifecycle_malformed(value, kind):
+            value["authority"]["referenceValidationByCanonicalRef"][value["interimKey"]][
+                "lifecycle"
+            ] = "not-an-object"
+
+        def successor_receipt_writer(value, kind):
+            receipts = value["authority"]["verifiedReceiptByCanonicalRef"]
+            receipts[self._key(value["bundle"]["settlementEvidence"][0])]["writer"] = (
+                "did:demos:buyer"
+            )
+
         fail, error, pending = ("fail",) * 3, ("error",) * 3, ("indeterminate",) * 3
         cases = (
             ("row execution authority unavailable", payment(without_entry), pending),
@@ -2111,9 +2150,27 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             ("ST-8 interim dependency not finalized, row execution authority unavailable",
              successor(interim_not_finalized, without_successor_entry),
              ("fail", "indeterminate", "fail")),
-            # An observation keeps its twin's anchor class.
+            # The synthesized entry pins no nonce, but a real one may pin the
+            # member's own nonce; only a verdict both would reach decides.
+            ("pinned entry, other-nonce receipt at the interim address",
+             successor(pinned_successor_nonce, decoy_at_ordinary_address("9")),
+             ("pass", "indeterminate", "indeterminate")),
+            ("other-nonce receipt at the interim address, row execution authority unavailable",
+             successor(pinned_successor_nonce, decoy_at_ordinary_address("9"),
+                       without_successor_entry), pending),
+            ("unpinned receipt at the interim address, row execution authority unavailable",
+             successor(pinned_successor_nonce, decoy_at_ordinary_address(None),
+                       without_successor_entry), pending),
+            # An observation keeps its twin's anchor class, and a receipt that
+            # binds no entry keeps the class its address names.
             ("ST-8 successor edge at the ordinary anchor",
              successor(ordinary_anchor), ("fail", "indeterminate", "fail")),
+            ("edge at the ordinary anchor, malformed interim lifecycle",
+             successor(ordinary_anchor, interim_lifecycle_malformed),
+             ("fail", "error", "fail")),
+            ("edge at the ordinary anchor, malformed interim lifecycle, another writer",
+             successor(ordinary_anchor, interim_lifecycle_malformed, successor_receipt_writer),
+             ("fail", "error", "fail")),
             ("agreementRef mismatch, row execution authority unavailable",
              payment(mismatch_agreement, without_entry), fail),
             ("failure record on an ok row, row execution authority unavailable",

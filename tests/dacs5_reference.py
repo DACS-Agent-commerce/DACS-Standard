@@ -4643,6 +4643,46 @@ def _released_st8_row_class(record, summary_entry, summary, bundle):
     return (None, False)
 
 
+def _released_st8_edge_failure(record, resolved, phase_key, bundle, pubkeys, resolutions,
+                               execution, receipts, top_level_refs, member_receipt,
+                               execution_overrides):
+    """Return the released-gate SEB-3 edge rejection for one bound row, or None.
+
+    A synthesized admitting entry pins no nonce, but a real entry that admits
+    the member may pin the member receipt's own nonce, which makes an
+    other-nonce receipt at the interim's ordinary address inert and binds
+    only a same-nonce interim. Such a row is decided only where both
+    completions agree; otherwise its edge stays pending.
+    """
+    def edge(authority):
+        return _st8_supersession_edge_failure(
+            record, resolved, phase_key, bundle, pubkeys, resolutions, authority,
+            receipts, top_level_refs, _validate_current_evidence_receipt,
+            typed_unavailability=True,
+        )
+
+    unpinned = edge(execution)
+    nonce = member_receipt.get("nonce") if isinstance(member_receipt, dict) else None
+    if phase_key not in (execution_overrides or {}) or nonce is None:
+        return unpinned
+    pinned = edge(dict(
+        execution, **{phase_key: dict(execution_overrides[phase_key], anchorNonce=nonce)}
+    ))
+    dispositions = [
+        None if failure is None else getattr(failure, "disposition", "fail")
+        for failure in (unpinned, pinned)
+    ]
+    if dispositions[0] == dispositions[1]:
+        return unpinned
+    if set(dispositions) <= {"fail", "error"}:
+        # Every completion rejects; the class they disagree on is not certain.
+        return unpinned if dispositions[0] == "fail" else pinned
+    return _DispositionReason(
+        "ST-8 supersession edge depends on unavailable execution authority",
+        "indeterminate",
+    )
+
+
 def _released_pending_payment_failure(record, ref, resolution, evidence_type, bundle,
                                       listing, pubkeys, resolutions, execution, receipts,
                                       payment_summary_by_key, top_level_refs,
@@ -4757,10 +4797,10 @@ def _released_pending_payment_failure(record, ref, resolution, evidence_type, bu
         # the row open.
         anchor = record.get("supersedesEvidenceRef") is not None if resolved is None else resolved
         edge = (
-            _st8_supersession_edge_failure(
+            _released_st8_edge_failure(
                 record, anchor, key, bundle, pubkeys, resolutions, execution,
-                receipts, top_level_refs, _validate_current_evidence_receipt,
-                typed_unavailability=True,
+                receipts, top_level_refs, receipts.get(canonical(ref).decode("utf-8")),
+                execution_overrides,
             )
             if key in execution
             else _st8_signed_edge_failure(record, anchor, top_level_refs)
@@ -5337,6 +5377,10 @@ def _validate_current_fab_delivery_admission(
                             _LAA_AUTHORITY_UNSPECIFIED,
                         ),
                         keys=payment_execution_keys,
+                        resolved=(
+                            receipt_logical_address.endswith(":resolved")
+                            if isinstance(receipt_logical_address, str) else None
+                        ),
                     )
                     if row_failure is not None and row_failure[0] == "error":
                         return row_failure
@@ -5405,18 +5449,10 @@ def _validate_current_fab_delivery_admission(
                         pending_reason = pending_reason or "ST-8 successor authority is unavailable"
                 # An authentic ST-8 :resolved success is admitted under the
                 # same SEB-3 edge rules as EBFAB; any other edge fails.
-                edge_failure = _st8_supersession_edge_failure(
-                    record,
-                    resolved,
-                    phase_key,
-                    bundle,
-                    pubkeys,
-                    resolutions,
-                    member_execution,
-                    receipts,
-                    actual_refs,
-                    _validate_current_evidence_receipt,
-                    typed_unavailability=True,
+                edge_failure = _released_st8_edge_failure(
+                    record, resolved, phase_key, bundle, pubkeys, resolutions,
+                    member_execution, receipts, actual_refs, authenticated_receipt,
+                    execution_overrides,
                 )
                 if edge_failure is not None:
                     edge_disposition = getattr(edge_failure, "disposition", "fail")

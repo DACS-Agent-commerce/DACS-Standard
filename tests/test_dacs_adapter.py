@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import importlib.util
 import json
 import os
@@ -90,6 +91,20 @@ def commit_descriptor(clone, mutate):
     mutate(descriptor)
     path.write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
     git(clone, "-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "--quiet", "-am", "mutate")
+
+
+def commit_all(clone, message="mutate"):
+    git(clone, "-c", "user.name=test", "-c", "user.email=test@invalid", "commit", "--quiet", "-am", message)
+    return git(clone, "rev-parse", "HEAD")
+
+
+def pin_of(clone, relative, revision="HEAD"):
+    data = (clone / relative).read_bytes()
+    return {
+        "path": relative,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "gitBlob": git(clone, "rev-parse", f"{revision}:{relative}"),
+    }
 
 
 def unavailable(completed):
@@ -412,9 +427,9 @@ class DacsAdapterTests(unittest.TestCase):
         self.assertEqual(
             [response["error"]["code"] for response in responses],
             [
-                "UNSUPPORTED_ARTIFACT",
-                "UNSUPPORTED_ARTIFACT",
-                "UNSUPPORTED_ARTIFACT",
+                "UNSUPPORTED_CASE",
+                "UNSUPPORTED_CASE",
+                "UNSUPPORTED_CASE",
                 "UNSUPPORTED_OPERATION",
             ],
         )
@@ -523,7 +538,35 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             )
             descriptor["adapter"]["source"] = dict(jcs)
 
-        for mutate in (drop_walkthrough, duplicate_jcs, pin_other_file_as_adapter_source):
+        def misname_adapter_source(descriptor):
+            # Correct adapter digests under another path: only the path binding can object.
+            descriptor["adapter"]["source"]["path"] = "scripts/jcs.py"
+
+        def misreported_primitive_digest(descriptor):
+            # The executed bytes still match the adapter; only the reported digest is false.
+            descriptor["adapter"]["wrappedStandard"]["primitives"][0]["sha256"] = "0" * 64
+
+        def misreported_wrapped_revision(descriptor):
+            # HEAD carries byte-identical primitives, so only the release binding can object.
+            head = git(ROOT, "rev-parse", "HEAD")
+            descriptor["adapter"]["wrappedStandard"]["revision"] = head
+            descriptor["adapter"]["wrappedStandard"]["tree"] = git(ROOT, "rev-parse", "HEAD^{tree}")
+
+        def add_unexecuted_primitive(descriptor):
+            revision = descriptor["adapter"]["wrappedStandard"]["revision"]
+            descriptor["adapter"]["wrappedStandard"]["primitives"].append(
+                pin_of(ROOT, "scripts/raw_json_profile.py", revision)
+            )
+
+        for mutate in (
+            drop_walkthrough,
+            duplicate_jcs,
+            pin_other_file_as_adapter_source,
+            misname_adapter_source,
+            misreported_primitive_digest,
+            misreported_wrapped_revision,
+            add_unexecuted_primitive,
+        ):
             with self.subTest(mutation=mutate.__name__):
                 clone = committed_clone(self)
                 commit_descriptor(clone, mutate)
@@ -578,6 +621,150 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         self.assertIn(b"origin", completed.stderr)
 
 
+    def test_tampered_wrapped_module_cannot_be_repinned_by_the_descriptor(self):
+        """The adapter's own sha256, reported as its revision, covers the wrapped code."""
+
+        for variant in ("descriptor-pins", "descriptor-revision", "adapter-constants"):
+            with self.subTest(variant=variant):
+                clone = committed_clone(self)
+                jcs = clone / "scripts" / "jcs.py"
+                genuine = hashlib.sha256(jcs.read_bytes()).hexdigest()
+                jcs.write_bytes(jcs.read_bytes() + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n")
+                tampered_commit = commit_all(clone, "tamper jcs")
+                if variant == "adapter-constants":
+                    # Even a re-pinned adapter (whose revision then changes) must not run
+                    # bytes that are absent from the wrapped Standard revision.
+                    adapter = clone / "scripts" / "dacs_adapter.py"
+                    text = adapter.read_text(encoding="utf-8")
+                    self.assertEqual(text.count(genuine), 1)
+                    adapter.write_text(text.replace(genuine, pin_of(clone, "scripts/jcs.py")["sha256"]), encoding="utf-8")
+                    commit_all(clone, "repin adapter constant")
+
+                def repin(descriptor):
+                    wrapped = descriptor["adapter"]["wrappedStandard"]
+                    if variant == "descriptor-revision":
+                        wrapped["revision"] = tampered_commit
+                        wrapped["tree"] = git(clone, "rev-parse", f"{tampered_commit}^{{tree}}")
+                    for index, item in enumerate(wrapped["primitives"]):
+                        if item["path"] == "scripts/jcs.py":
+                            wrapped["primitives"][index] = pin_of(clone, "scripts/jcs.py")
+                    if variant == "adapter-constants":
+                        descriptor["adapter"]["source"] = pin_of(clone, "scripts/dacs_adapter.py")
+
+                commit_descriptor(clone, repin)
+                completed, responses = run_adapter(
+                    [execute("jcs", "canonicalize", [{"b": 1, "a": 2}])], root=clone
+                )
+                self.assertTrue(unavailable(completed), (completed, responses))
+
+    def test_every_provenance_check_is_individually_required(self):
+        """Each mutation below defeats exactly one check; the adapter must still refuse."""
+
+        def uncommitted_descriptor(clone):
+            # Only the committed-at-HEAD check can see an edited limitation string.
+            path = clone / DESCRIPTOR_RELATIVE
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("are not exposed by this release", text)
+            path.write_text(text.replace("are not exposed by this release", "are not exposed"), encoding="utf-8")
+            return clone
+
+        def working_bytes_genuine_but_not_head(clone):
+            jcs = clone / "scripts" / "jcs.py"
+            original = jcs.read_bytes()
+            jcs.write_bytes(original + b"\n# committed change\n")
+            commit_all(clone, "change jcs at HEAD")
+            jcs.write_bytes(original)
+            return clone
+
+        def nested_plain_copy(clone):
+            nested = clone / "nested-copy"
+            nested.mkdir()
+            archive = subprocess.run(
+                ["git", "-C", str(clone), "archive", "HEAD"], check=True, stdout=subprocess.PIPE
+            ).stdout
+            subprocess.run(["tar", "-x", "-C", str(nested)], input=archive, check=True)
+            return nested
+
+        def second_origin_value(clone):
+            git(clone, "config", "--add", "remote.origin.url", "https://github.com/example-fork/DACS-Standard.git")
+            return clone
+
+        def fork_with_added_pinned_origin(clone):
+            git(clone, "remote", "set-url", "origin", "https://github.com/example-fork/DACS-Standard.git")
+            git(clone, "config", "--add", "remote.origin.url", EXPECTED_ORIGIN)
+            return clone
+
+        def descriptor_is_a_fifo(clone):
+            path = clone / DESCRIPTOR_RELATIVE
+            path.unlink()
+            os.mkfifo(path)
+            return clone
+
+        for mutate in (
+            uncommitted_descriptor,
+            working_bytes_genuine_but_not_head,
+            nested_plain_copy,
+            second_origin_value,
+            fork_with_added_pinned_origin,
+            descriptor_is_a_fifo,
+        ):
+            with self.subTest(mutation=mutate.__name__):
+                root = mutate(committed_clone(self))
+                completed, _ = run_adapter([METADATA], root=root)
+                self.assertTrue(unavailable(completed), completed)
+
+    def test_untracked_and_environment_modules_cannot_shadow_the_standard_library(self):
+        clone = committed_clone(self)
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        markers = Path(directory.name)
+        planted = {
+            clone / "scripts" / "json.py": markers / "scripts-json",
+            clone / "untracked" / "json.py": markers / "checkout-pythonpath-json",
+            markers / "base64.py": markers / "pythonpath-base64",
+        }
+        for path, marker in planted.items():
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(f"import pathlib\npathlib.Path({str(marker)!r}).write_text('ran')\n", encoding="utf-8")
+        env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(clone / "untracked"), str(markers)])}
+        completed, responses = run_adapter(
+            [METADATA, execute("sig", "signatureValueVerdict", ["YQ"])], root=clone, env=env
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual(responses[1]["result"], "ACCEPT")
+        for marker in planted.values():
+            self.assertFalse(marker.exists(), marker.name)
+
+    def test_closed_streams_never_produce_tracebacks_or_stdout_diagnostics(self):
+        bad = json.dumps(execute("bad", "madeUp", [])).encode() + b"\n"
+        good = json.dumps(METADATA).encode() + b"\n"
+        # stderr closed: diagnostics are dropped and stdout still has one line per request.
+        completed = subprocess.run(
+            ["sh", "-c", 'exec "$0" "$1" 2>&-', sys.executable, str(ADAPTER)],
+            cwd=ROOT,
+            input=bad * 3 + good,
+            stdout=subprocess.PIPE,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual(completed.returncode, 0)
+        lines = [json.loads(line) for line in completed.stdout.splitlines()]
+        self.assertEqual([item["id"] for item in lines], ["bad", "bad", "bad", "metadata"])
+        # stdout closed by its reader: exit without a traceback.
+        process = subprocess.Popen(
+            [sys.executable, str(ADAPTER)],
+            cwd=ROOT,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        process.stdout.close()
+        _, stderr = process.communicate(good * 200, timeout=60)
+        self.assertEqual(process.returncode, 1)
+        self.assertNotIn(b"Traceback", stderr)
+        self.assertNotIn(b"BrokenPipeError", stderr)
+
+
 class DacsAdapterBoundaryTests(unittest.TestCase):
     """Verdicts, abstentions, and request errors stay distinct."""
 
@@ -593,30 +780,34 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
         )
         cls.artifacts = {item["id"]: item["artifact"] for item in happy["artifacts"]}
 
-    def test_signed_scope_refuses_every_foreign_type_discriminator(self):
-        core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")
-        paragraph = next(
-            line for line in core.splitlines() if line.startswith("**Version-signalling scope.**")
+    def test_signed_scope_abstains_on_every_other_version_member(self):
+        spec_text = "\n".join(
+            path.read_text(encoding="utf-8") for path in sorted((ROOT / "spec").glob("*.md"))
         )
-        discriminators = set(re.findall(r"`([A-Za-z]+Version)`", paragraph))
-        spec = importlib.util.spec_from_file_location(
-            "dacs_adapter_test_vcv", ROOT / "scripts" / "validate_conformance_vectors.py"
-        )
-        vcv = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(vcv)
-        discriminators.update(vcv.BODY_DISCRIMINATORS.values())
-        discriminators.add("legacyTransitionEvidenceVersion")  # DACS-4 §9.7 exclusive discriminator
-        self.assertGreaterEqual(len(discriminators), 24)
+        # Every *Version name the spec declares or discusses, plus an unknown future one.
+        names = set(re.findall(r"\b([a-z][A-Za-z]*Version)\b", spec_text)) | {"futureOptionalVersion"}
+        for required in ("payloadAttestationVersion", "finalityCommitmentVersion", "amendmentVersion",
+                         "legacyTransitionEvidenceVersion", "finalityBoundEvidenceVersion", "recordVersion"):
+            self.assertIn(required, names)
 
         evidence = self.artifacts["settlement-htlc-release"]
         bundle = self.artifacts["attestation-bundle-happy"]
+        allowed = {
+            "evidence": {"evidenceVersion"},
+            "bundle": {"bundleVersion", "recipeRegistryVersion", "railRegistryVersion"},
+        }
         requests = [
             execute("control-evidence", "signedScopeHash", [evidence]),
             execute("control-bundle", "signedScopeHash", [bundle]),
         ]
-        for own, artifact in (("evidenceVersion", evidence), ("bundleVersion", bundle)):
-            for name in sorted(discriminators - {own}):
-                requests.append(execute(f"{own}+{name}", "signedScopeHash", [{**artifact, name: "1"}]))
+        for label, artifact in (("evidence", evidence), ("bundle", bundle)):
+            for name in sorted(names - allowed[label]):
+                requests.append(execute(f"{label}+{name}", "signedScopeHash", [{**artifact, name: "1"}]))
+        without_phase = {key: value for key, value in evidence.items() if key != "phase"}
+        requests += [
+            execute("evidence-without-phase", "signedScopeHash", [without_phase]),
+            execute("not-an-object", "signedScopeHash", [[evidence]]),
+        ]
         completed, responses = run_adapter(requests)
         self.assertEqual(completed.returncode, 0, completed.stderr.decode())
         signed_scope = next(item for item in self.descriptor["families"] if item["id"] == "signed-scope")
@@ -624,10 +815,12 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             [response["result"] for response in responses[:2]],
             [case["expected"] for case in signed_scope["cases"]],
         )
-        for response in responses[2:]:
+        self.assertGreater(len(responses), 90)
+        for response in responses[2:-1]:
             with self.subTest(case=response["id"]):
                 self.assertFalse(response["ok"], response)
-                self.assertEqual(response["error"]["code"], "UNSUPPORTED_ARTIFACT")
+                self.assertEqual(response["error"]["code"], "UNSUPPORTED_CASE")
+        self.assertEqual(responses[-1]["error"]["code"], "INVALID_PARAMS")
 
     def test_trailing_null_intermediate_hash_is_absent(self):
         """The shared runner encodes an omitted optional argument as JSON null."""
@@ -698,6 +891,13 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             ("verify-unknown-untyped", "domainSepVerify", [1, unknown, None, []], "INVALID_PARAMS"),
             ("verify-text-signature", "domainSepVerify", [message, listing, "sig", public_key], "INVALID_PARAMS"),
             ("unknown-operation-with-bigint", "madeUp", [bigint], "UNSUPPORTED_OPERATION"),
+            ("sign-bigint-message", "domainSepSign", [bigint, listing, seed], "INVALID_PARAMS"),
+            ("sign-bigint-arity", "domainSepSign", [message, listing, seed, None, bigint], "INVALID_PARAMS"),
+            ("verify-bigint-key", "domainSepVerify", [message, listing, signature, bigint], "INVALID_PARAMS"),
+            ("canonicalize-bigint-arity", "canonicalize", [1, bigint], "INVALID_PARAMS"),
+            ("signed-scope-bigint-not-object", "signedScopeHash", [bigint], "INVALID_PARAMS"),
+            ("sig6-bigint-value", "signatureValueVerdict", [bigint], "UNSUPPORTED_CASE"),
+            ("signed-scope-nested-bigint", "signedScopeHash", [{"evidenceVersion": bigint}], "UNSUPPORTED_CASE"),
         ]
         completed, responses = run_adapter(
             [execute(name, operation, params) for name, operation, params, _ in cases]
@@ -725,6 +925,9 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             prefix + b"9" * 5000 + b"]}",
             b"\xef\xbb\xbf" + json.dumps(METADATA).encode(),
             b'{"protocol":"dacs-adapter/1","id":"\xff","type":"metadata"}',
+            prefix + b"[" * 100_000 + b"]" * 100_000 + b"]}",
+            b'{"protocol":"dacs-adapter/1","id":"a","id":"b","type":"metadata"}',
+            prefix + b'{"a":1,"a":2}]}',
         ]
         encoded = b"".join(line + b"\n" for line in lines) + json.dumps(METADATA).encode() + b"\n"
         completed, responses = run_adapter_bytes(encoded)
@@ -825,7 +1028,84 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def other_adapter_source(descriptor):
             descriptor["adapter"]["source"]["path"] = "scripts/jcs.py"
 
+        def f5_case(descriptor, key, case_id):
+            family = self.family(descriptor, "domain-separated-signing")
+            return next(item for item in family[key] if item["caseId"] == case_id)
+
+        def mismatch_case_other_separator(descriptor):
+            f5_case(descriptor, "cases", "signing::reject-mismatched-ascii-hex-hash")["separator"] = "zzz"
+
+        def raw_digest_case_other_separator(descriptor):
+            f5_case(descriptor, "unsupportedCases", "signing::valid-raw-digest-profile-boundary")[
+                "separator"
+            ] = "dacs-bundle:v1:"
+
+        def primitive_control_other_separator(descriptor):
+            f5_case(descriptor, "primitiveControls", "signing::raw-digest-does-not-verify-golden-signature")[
+                "separator"
+            ] = "zzz"
+
+        def tagged_case_selected(descriptor):
+            family = self.family(descriptor, "canonicalization")
+            family["excludedSourceCases"] = [
+                item for item in family["excludedSourceCases"] if item["caseId"] != "negative-zero"
+            ]
+            family["cases"].append(
+                {"caseId": "negative-zero", "sourceExpected": "pass", "expected": {"hex": "30"}}
+            )
+
+        def unsupported_code_as_expected_rejection(descriptor):
+            case = next(
+                item for item in self.family(descriptor, "canonicalization")["cases"]
+                if item["caseId"] == "number-over-dacs-magnitude"
+            )
+            case["expectedErrorCode"] = "UNSUPPORTED_CASE"
+
+        def algorithm_length_case_selected(descriptor):
+            family = self.family(descriptor, "sig6-wire")
+            family["excludedSourceCases"] = [
+                item for item in family["excludedSourceCases"]
+                if item["caseId"] != "canonical-wire-wrong-ed25519-length-rejected"
+            ]
+            family["cases"].append(
+                {
+                    "caseId": "canonical-wire-wrong-ed25519-length-rejected",
+                    "sourceExpected": "reject",
+                    "expected": "REJECT",
+                }
+            )
+
+        def bounded_family_scored_as_executable(descriptor):
+            self.family(descriptor, "domain-separated-signing")["status"] = "executable"
+
+        def duplicated_signed_scope_case(descriptor):
+            cases = self.family(descriptor, "signed-scope")["cases"]
+            cases.append(copy.deepcopy(cases[0]))
+
+        def missing_adapter_name(descriptor):
+            del descriptor["adapter"]["name"]
+
+        def oversized_limitation(descriptor):
+            descriptor["adapter"]["limitations"].append("x" * 5_000_000)
+
+        def wrapped_release_not_fixed_by_adapter(descriptor):
+            # HEAD carries byte-identical primitives, so only the release binding can object.
+            wrapped = descriptor["adapter"]["wrappedStandard"]
+            wrapped["revision"] = git(ROOT, "rev-parse", "HEAD")
+            wrapped["tree"] = git(ROOT, "rev-parse", "HEAD^{tree}")
+
         for mutate in (
+            mismatch_case_other_separator,
+            raw_digest_case_other_separator,
+            primitive_control_other_separator,
+            tagged_case_selected,
+            unsupported_code_as_expected_rejection,
+            algorithm_length_case_selected,
+            bounded_family_scored_as_executable,
+            duplicated_signed_scope_case,
+            missing_adapter_name,
+            oversized_limitation,
+            wrapped_release_not_fixed_by_adapter,
             stale_control_lines,
             renamed_control_test,
             registered_unknown_separator,

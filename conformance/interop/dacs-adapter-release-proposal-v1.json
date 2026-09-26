@@ -54,8 +54,8 @@
     "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "180d78d10db3e4ad9bf4c454cf361f3dc2b6982874677267094840b51ca3448b",
-      "gitBlob": "b51a5c22ddb6ffd9864c9cd17039c869c0e4ce34"
+      "sha256": "8da23febee610780b3b0eb5207e280087e7d83bb769771b8b7b4b5dc168c677c",
+      "gitBlob": "7edb3e07e849a19962448432bc8ac4b43eabb015"
     },
     "wrappedStandard": {
       "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
@@ -85,13 +85,16 @@
     },
     "limitations": [
       "verifyBundle and legacySignatureValueImport are not exposed by this release",
-      "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes; a record carrying any other exclusive type discriminator is refused",
+      "signedScopeHash hashes only version 1 SettlementEvidence and AttestationBundle records whose top-level *Version members are the kind's own discriminator (plus a bundle's two registry versions); any other *Version member or shape returns UNSUPPORTED_CASE",
       "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
       "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
       "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
       "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry",
       "Ed25519 point-encoding strictness is not pinned: the wrapped helper accepts an x=0 encoding with the sign bit set, which RFC 8032 decoding rejects and OpenSSL rejects for R; no such case is selected, and a divergence there is an open specification question",
-      "the codebase identity is the revision-free DACS-Standard repository; the pinned shared runner compares asserted identities verbatim, so a run pairing this adapter with the contributor standard-jcs-adapter (which asserts a revision- and path-qualified DACS-Standard identity) miscounts one codebase as two and its INTEROP-AGREE rows are invalid"
+      "the codebase identity is the revision-free DACS-Standard repository; the pinned shared runner compares asserted identities verbatim, so a run pairing this adapter with the contributor standard-jcs-adapter (which asserts a revision- and path-qualified DACS-Standard identity) miscounts one codebase as two and its INTEROP-AGREE rows are invalid",
+      "the pinned shared runner turns every adapter error, UNSUPPORTED_CASE included, into THROWN and dispatches by operation name, not supportedFamilies; its seed rows cr-bigint, ds-s3-unknown-separator-sign-throws and ds-s6-legacy-emission-refused therefore score an abstention as agreement, so no scored run may use that runner",
+      "requests are bounded in size, not time: CPython NFC normalization is quadratic in long runs of combining marks, so callers must enforce a per-request timeout, and a timeout is never a result",
+      "the origin check reads this checkout's local Git configuration and is a consistency check, not remote attestation; the Python interpreter, its standard library, PATH, and git are trusted host inputs"
     ]
   },
   "sources": {

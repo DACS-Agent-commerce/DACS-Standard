@@ -2,10 +2,11 @@
 """Bounded ``dacs-adapter/1`` wrapper over pinned DACS-Standard primitives.
 
 This proposal adapter is non-normative.  It verifies the repository origin and
-the committed blobs named by its release descriptor, then executes exactly
-those verified bytes for the existing canonicalisation, signed-scope, and
-signature helpers.  Only the interpreter's standard library may be imported
-alongside them.  It performs no network or substrate operations.
+the committed blobs of the wrapped Standard modules, whose revision, tree, and
+digests are fixed in this file, then executes exactly those verified bytes for
+the existing canonicalisation, signed-scope, and signature helpers.  Only the
+interpreter's standard library may be imported alongside them.  It performs no
+network or substrate operations.
 """
 
 from __future__ import annotations
@@ -13,17 +14,26 @@ from __future__ import annotations
 import os
 import sys
 
-# The directory holding this script is sys.path[0].  Remove the checkout's own
-# directories before any further import so an untracked file in this repository
-# cannot shadow a standard-library module.
-_SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-_CHECKOUT_DIRECTORIES = (_SCRIPT_DIRECTORY, os.path.dirname(_SCRIPT_DIRECTORY))
+# Re-execute in isolated mode so PYTHONPATH, the script directory, user and site
+# packages, and .pth hooks take no part in this process's imports.  POSIX exec
+# keeps the process id and the standard streams.
+if __name__ == "__main__" and os.name == "posix" and not (sys.flags.isolated and sys.flags.no_site):
+    try:
+        os.execv(sys.executable, [sys.executable, "-I", "-S", os.path.realpath(__file__), *sys.argv[1:]])
+    except (OSError, TypeError, ValueError):
+        os.write(2, b"dacs-adapter: unavailable: cannot re-execute the adapter in isolated mode\n")
+        raise SystemExit(1)
+
+_CHECKOUT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
 def _outside_checkout(entry: str) -> bool:
-    return os.path.realpath(entry or os.curdir) not in _CHECKOUT_DIRECTORIES
+    resolved = os.path.realpath(entry or os.curdir)
+    return resolved != _CHECKOUT and not resolved.startswith(_CHECKOUT + os.sep)
 
 
+# Where isolated mode is unavailable, still keep this checkout off the import
+# path so an untracked file in it cannot shadow a standard-library module.
 sys.path[:] = [entry for entry in sys.path if _outside_checkout(entry)]
 
 import hashlib  # noqa: E402
@@ -42,14 +52,26 @@ EXPECTED_ORIGIN = "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
 ROOT = Path(__file__).resolve().parents[1]
 DESCRIPTOR = ROOT / "conformance" / "interop" / "dacs-adapter-release-proposal-v1.json"
 ADAPTER_SOURCE = "scripts/dacs_adapter.py"
-# Every repository module this adapter executes, in load order.  The release
-# descriptor must pin exactly these paths; each one runs from the bytes that were
-# verified, never from a re-read file or cached bytecode.
+# The wrapped Standard release.  Fixing it here makes this file's own sha256,
+# which the metadata handshake reports as ``revision``, cover the code it runs.
+WRAPPED_REVISION = "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6"
+WRAPPED_TREE = "1f74859beb5f1f8820e279d93ad3bb1ce8de79b1"
+# Every repository module this adapter executes, in load order, with its
+# sha256.  The release descriptor must pin exactly these; each one runs from the
+# bytes that were verified, never from a re-read file or cached bytecode.
 WRAPPED_MODULES = (
-    ("jcs", "scripts/jcs.py"),
-    ("specsource", "scripts/specsource.py"),
-    ("run_lifecycle_walkthrough", "scripts/run_lifecycle_walkthrough.py"),
-    ("validate_conformance_vectors", "scripts/validate_conformance_vectors.py"),
+    ("jcs", "scripts/jcs.py", "db34b07bc8c3b975f1b83ea78bf6ecd302c2d23ea743d1cfae6cf95fcdc3449a"),
+    ("specsource", "scripts/specsource.py", "96a74cea62ddd311a0ba3aaec5279beca68cc0c152d50d6439d3016a7d0c86d9"),
+    (
+        "run_lifecycle_walkthrough",
+        "scripts/run_lifecycle_walkthrough.py",
+        "e4b041f6be7809fcca1311f2a5ae89d52c7eb1f65852e10a4035fdab640a020a",
+    ),
+    (
+        "validate_conformance_vectors",
+        "scripts/validate_conformance_vectors.py",
+        "91123240fc6d1e367184384b04f2c97d333ee6a4deceed86136182d452b900ce",
+    ),
 )
 OPERATIONS = (
     "canonicalize",
@@ -63,44 +85,18 @@ MAX_REQUEST_ID_CHARS = 256
 MAX_PARAMS = 5
 MAX_DIAGNOSTIC_CHARS = 320
 MAX_STDERR_LINE_CHARS = 1024
+MAX_PINNED_FILE_BYTES = 8 * 1_048_576
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
 DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
-# Exclusive artifact type discriminators: the CORE §11.2.5 version-signalling
-# list, DACS-4 §9.7 LegacyTransitionSettlementEvidence, and the wrapped
-# validator's DACS-2 composite-record discriminator.  signedScopeHash refuses a
-# record carrying any discriminator besides its own instead of hashing a
-# type-ambiguous shape.
-TYPE_DISCRIMINATORS = frozenset(
-    {
-        "agreementVersion",
-        "authenticatedWindowDerivationVersion",
-        "bundleVersion",
-        "currentUseAuthenticatedWindowDerivationVersion",
-        "currentUseReplayableDerivationVersion",
-        "dacsVersion",
-        "evidenceBoundFaultBundleVersion",
-        "evidenceVersion",
-        "faultBundleVersion",
-        "finalityBoundEvidenceFaultBundleVersion",
-        "finalityBoundEvidenceVersion",
-        "finalityObservationResponseVersion",
-        "finalityResolutionContextVersion",
-        "identityBoundAgreementVersion",
-        "identityBoundPayeeAgreementVersion",
-        "legacyBundleCheckpointBindingVersion",
-        "legacyBundleCheckpointVersion",
-        "legacyTransitionEvidenceVersion",
-        "participationAdmissionVersion",
-        "payeeBoundAgreementVersion",
-        "ratingVersion",
-        "recordVersion",
-        "resultVersion",
-        "revocationStateHeadVersion",
-        "sealedAuctionRecordVersion",
-        "sealedSelectionAgreementVersion",
-        "sealedSelectionReceiptVersion",
-    }
-)
+# CORE §11.2.5: every artifact type carries its own ``*Version`` literal.  Apart
+# from their own discriminator, the spec shapes of SettlementEvidence and
+# AttestationBundle carry no top-level ``*Version`` member except the bundle's
+# two registry versions, so any other one makes the record's type ambiguous or
+# unknown to this adapter.
+VERSION_MEMBERS = {
+    "SettlementEvidence": frozenset({"evidenceVersion"}),
+    "AttestationBundle": frozenset({"bundleVersion", "recipeRegistryVersion", "railRegistryVersion"}),
+}
 # Variables that would point the provenance checks at another repository.
 GIT_REPOSITORY_ENV = frozenset(
     {
@@ -125,6 +121,12 @@ class AdapterError(Exception):
         self.code = code
 
 
+class _HostBigInt:
+    """A protocol BigInt, which Python cannot keep distinct from a JSON integer."""
+
+    __slots__ = ()
+
+
 def _clean_message(value: object) -> str:
     text = " ".join(str(value).splitlines()).strip()
     if not text:
@@ -133,13 +135,16 @@ def _clean_message(value: object) -> str:
 
 
 def _stderr(text: str) -> None:
-    """Write one bounded diagnostic line of printable ASCII."""
+    """Write one bounded diagnostic line of printable ASCII; never raise."""
 
     line = "".join(
         character if " " <= character <= "~" else character.encode("unicode_escape").decode("ascii")
         for character in text
     )
-    print(line[:MAX_STDERR_LINE_CHARS], file=sys.stderr, flush=True)
+    try:
+        os.write(2, (line[:MAX_STDERR_LINE_CHARS] + "\n").encode("ascii"))
+    except OSError:
+        pass
 
 
 def _git(*args: str) -> str:
@@ -167,13 +172,18 @@ def _git_blob_id(data: bytes) -> str:
     return hashlib.sha1(b"blob %d\0" % len(data) + data, usedforsecurity=False).hexdigest()
 
 
+def _read_regular_file(path: Path, label: str) -> bytes:
+    if not path.is_file():
+        raise RuntimeError(f"missing {label}: {path.relative_to(ROOT).as_posix()}")
+    if path.stat().st_size > MAX_PINNED_FILE_BYTES:
+        raise RuntimeError(f"{label} is too large: {path.relative_to(ROOT).as_posix()}")
+    return path.read_bytes()
+
+
 def _read_committed_bytes(relative: str, *, expected_sha256: object, expected_blob: object) -> bytes:
     """Read a pinned file once and return it only if it is the committed HEAD blob."""
 
-    path = ROOT / relative
-    if not path.is_file():
-        raise RuntimeError(f"missing provenance-pinned file: {relative}")
-    data = path.read_bytes()
+    data = _read_regular_file(ROOT / relative, "provenance-pinned file")
     if hashlib.sha256(data).hexdigest() != expected_sha256:
         raise RuntimeError(f"sha256 mismatch for provenance-pinned file: {relative}")
     if _git_blob_id(data) != expected_blob:
@@ -183,18 +193,23 @@ def _read_committed_bytes(relative: str, *, expected_sha256: object, expected_bl
     return data
 
 
+def _bounded_text(value: object, limit: int) -> bool:
+    return isinstance(value, str) and 0 < len(value) <= limit
+
+
 def _verify_provenance() -> tuple[dict[str, Any], str, dict[str, bytes]]:
     if not hasattr(sys, "stdlib_module_names"):
         raise RuntimeError("Python 3.10 or later is required to confine imports")
     if Path(_git("rev-parse", "--show-toplevel")).resolve() != ROOT:
         raise RuntimeError("adapter checkout is not the root of its Git work tree")
-    observed_origin = _git("config", "--local", "--get", "remote.origin.url")
-    if observed_origin not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
+    origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
+    if len(origins) != 1 or origins[0] not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
         raise RuntimeError("repository origin does not match the pinned DACS-Standard origin")
+    observed_origin = origins[0]
 
     descriptor_relative = DESCRIPTOR.relative_to(ROOT).as_posix()
     try:
-        descriptor_bytes = DESCRIPTOR.read_bytes()
+        descriptor_bytes = _read_regular_file(DESCRIPTOR, "adapter release descriptor")
     except OSError as exc:
         raise RuntimeError(f"cannot read adapter release descriptor: {_clean_message(exc)}") from exc
     if _git_blob_id(descriptor_bytes) != _git("rev-parse", f"HEAD:{descriptor_relative}"):
@@ -214,6 +229,15 @@ def _verify_provenance() -> tuple[dict[str, Any], str, dict[str, bytes]]:
         raise RuntimeError("adapter descriptor repository is not DACS-Standard")
     if adapter.get("provenanceCodebase") != repository.removeprefix("https://"):
         raise RuntimeError("adapter codebase identity must be the revision-free DACS-Standard codebase")
+    limitations = adapter.get("limitations")
+    if not (
+        _bounded_text(adapter.get("name"), 128)
+        and _bounded_text(adapter.get("version"), 128)
+        and isinstance(limitations, list)
+        and 0 < len(limitations) <= 32
+        and all(_bounded_text(item, 512) for item in limitations)
+    ):
+        raise RuntimeError("adapter descriptor name, version, or limitations are malformed")
 
     source = adapter.get("source", {})
     if source.get("path") != ADAPTER_SOURCE or (ROOT / ADAPTER_SOURCE).resolve() != Path(__file__).resolve():
@@ -225,28 +249,28 @@ def _verify_provenance() -> tuple[dict[str, Any], str, dict[str, bytes]]:
     )
 
     wrapped = adapter.get("wrappedStandard", {})
-    revision = wrapped.get("revision")
-    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
-        raise RuntimeError("wrapped Standard revision is not an immutable commit id")
-    if _git("rev-parse", f"{revision}^{{commit}}") != revision:
+    if wrapped.get("revision") != WRAPPED_REVISION or wrapped.get("tree") != WRAPPED_TREE:
+        raise RuntimeError("release descriptor does not name the Standard release this adapter wraps")
+    if _git("rev-parse", f"{WRAPPED_REVISION}^{{commit}}") != WRAPPED_REVISION:
         raise RuntimeError("wrapped Standard revision does not resolve to its pinned commit")
-    if _git("rev-parse", f"{revision}^{{tree}}") != wrapped.get("tree"):
-        raise RuntimeError("wrapped Standard tree does not match the release descriptor")
+    if _git("rev-parse", f"{WRAPPED_REVISION}^{{tree}}") != WRAPPED_TREE:
+        raise RuntimeError("wrapped Standard tree does not match its pinned revision")
 
     primitives = wrapped.get("primitives")
     if not isinstance(primitives, list) or not all(isinstance(item, dict) for item in primitives):
         raise RuntimeError("adapter descriptor has malformed wrapped primitives")
-    pinned_paths = [item.get("path") for item in primitives]
-    if sorted(pinned_paths, key=str) != sorted(relative for _, relative in WRAPPED_MODULES):
+    expected = {relative: digest for _, relative, digest in WRAPPED_MODULES}
+    pinned = {item.get("path"): item.get("sha256") for item in primitives}
+    if len(primitives) != len(expected) or pinned != expected:
         raise RuntimeError("wrapped primitive pins do not match the modules this adapter executes")
     verified: dict[str, bytes] = {}
     for primitive in primitives:
         relative = primitive["path"]
-        if _git("rev-parse", f"{revision}:{relative}") != primitive.get("gitBlob"):
+        if _git("rev-parse", f"{WRAPPED_REVISION}:{relative}") != primitive.get("gitBlob"):
             raise RuntimeError(f"wrapped revision blob mismatch for {relative}")
         verified[relative] = _read_committed_bytes(
             relative,
-            expected_sha256=primitive.get("sha256"),
+            expected_sha256=expected[relative],
             expected_blob=primitive.get("gitBlob"),
         )
     return descriptor, observed_origin, verified
@@ -279,7 +303,7 @@ class _StandardLibraryOnly:
 def _load_wrapped_modules(verified: dict[str, bytes]) -> dict[str, types.ModuleType]:
     sys.meta_path.insert(0, _StandardLibraryOnly())
     loaded: dict[str, types.ModuleType] = {}
-    for name, relative in WRAPPED_MODULES:
+    for name, relative, _ in WRAPPED_MODULES:
         path = ROOT / relative
         module = types.ModuleType(name)
         module.__file__ = str(path)
@@ -300,17 +324,23 @@ except Exception as exc:  # fail closed with one bounded diagnostic, never a tra
     raise
 _jcs = _WRAPPED["jcs"]
 _sign_ed25519 = _WRAPPED["run_lifecycle_walkthrough"].sign_ed25519
-_verify_ed25519 = _WRAPPED["run_lifecycle_walkthrough"].verify_ed25519
+# The helper's unbounded result cache would grow with every distinct request in a
+# long-lived process; call the same verified function without it.
+_verify_ed25519 = _WRAPPED["run_lifecycle_walkthrough"].verify_ed25519.__wrapped__
 _artifact_hash_hex = _WRAPPED["validate_conformance_vectors"].artifact_hash_hex
 _decode_signature_value = _WRAPPED["validate_conformance_vectors"].decode_signature_value
 
 
-def _decode_tagged(root: Any) -> Any:
-    """Decode byte tags; abstain on a host type only once the request is well formed."""
+def _decode_tagged(root: Any) -> tuple[Any, bool]:
+    """Decode byte tags and mark BigInts; report whether any BigInt was present.
+
+    The operation validates its parameters before abstaining on a BigInt, so a
+    malformed request is never reported as an unsupported case.
+    """
 
     holder: list[Any] = [root]
     stack: list[tuple[Any, Any, Any]] = [(holder, 0, root)]
-    host_type_unsupported = False
+    host_type_present = False
     while stack:
         parent, key, value = stack.pop()
         if isinstance(value, dict) and "$dacsType" in value:
@@ -325,7 +355,8 @@ def _decode_tagged(root: Any) -> Any:
                 decimal = value.get("decimal")
                 if not isinstance(decimal, str) or re.fullmatch(r"-?(?:0|[1-9][0-9]*)", decimal) is None:
                     raise AdapterError("MALFORMED_TAG", "bigint tag requires canonical decimal text")
-                host_type_unsupported = True
+                parent[key] = _HostBigInt()
+                host_type_present = True
                 continue
             raise AdapterError("MALFORMED_TAG", f"unsupported or malformed tagged value: {tag!r}")
         if isinstance(value, list):
@@ -338,26 +369,21 @@ def _decode_tagged(root: Any) -> Any:
                 stack.append((value, member, value[member]))
         else:
             parent[key] = value
-    if host_type_unsupported:
+    return holder[0], host_type_present
+
+
+def _abstain_on_host_type(host_type_present: bool) -> None:
+    if host_type_present:
         raise AdapterError(
             "UNSUPPORTED_CASE",
             "Python cannot preserve the protocol distinction between a host BigInt and a JSON integer",
         )
-    return holder[0]
 
 
-def _infer_hashable_kind(artifact: Any) -> str:
-    if not isinstance(artifact, dict):
-        raise AdapterError("UNSUPPORTED_ARTIFACT", "signedScopeHash requires an artifact object")
-    discriminators = sorted(TYPE_DISCRIMINATORS.intersection(artifact))
-    if len(discriminators) > 1:
-        raise AdapterError(
-            "UNSUPPORTED_ARTIFACT",
-            "signedScopeHash rejects records carrying more than one type discriminator: "
-            + ", ".join(discriminators),
-        )
+def _infer_hashable_kind(artifact: dict[str, Any]) -> str:
+    version_members = {member for member in artifact if member.endswith("Version")}
     is_evidence = (
-        discriminators == ["evidenceVersion"]
+        version_members <= VERSION_MEMBERS["SettlementEvidence"]
         and artifact.get("evidenceVersion") == "1"
         and "jobId" in artifact
         and "phase" in artifact
@@ -365,7 +391,7 @@ def _infer_hashable_kind(artifact: Any) -> str:
         and "signature" in artifact
     )
     is_bundle = (
-        discriminators == ["bundleVersion"]
+        version_members <= VERSION_MEMBERS["AttestationBundle"]
         and artifact.get("bundleVersion") == "1"
         and "jobId" in artifact
         and "outcome" in artifact
@@ -377,7 +403,7 @@ def _infer_hashable_kind(artifact: Any) -> str:
     if is_bundle:
         return "AttestationBundle"
     raise AdapterError(
-        "UNSUPPORTED_ARTIFACT",
+        "UNSUPPORTED_CASE",
         "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
     )
 
@@ -428,21 +454,26 @@ def _intermediate_hash_supplied(params: list[Any], position: int, operation: str
     return True
 
 
-def _execute(operation: str, params: list[Any]) -> Any:
+def _execute(operation: str, params: list[Any], host_type_present: bool) -> Any:
     if operation == "canonicalize":
         if len(params) != 1:
             raise AdapterError("INVALID_PARAMS", "canonicalize requires exactly one parameter")
+        _abstain_on_host_type(host_type_present)
         return {"hex": _jcs.canonicalize(params[0]).encode("utf-8").hex()}
     if operation == "signedScopeHash":
         if len(params) != 1:
             raise AdapterError("INVALID_PARAMS", "signedScopeHash requires exactly one parameter")
         artifact = params[0]
+        if not isinstance(artifact, dict):
+            raise AdapterError("INVALID_PARAMS", "signedScopeHash requires an artifact object")
+        _abstain_on_host_type(host_type_present)
         return {"hex": _artifact_hash_hex(_infer_hashable_kind(artifact), artifact)}
     if operation == "signatureValueVerdict":
         if len(params) != 1:
             raise AdapterError(
                 "INVALID_PARAMS", "signatureValueVerdict requires exactly one parameter"
             )
+        _abstain_on_host_type(host_type_present)
         try:
             _decode_signature_value(params[0], legacy_allowed=False)
         except (TypeError, ValueError):
@@ -538,7 +569,8 @@ def _handle(request: Any) -> tuple[str | None, Any]:
             "UNSUPPORTED_OPERATION",
             f"operation {operation!r} is not advertised by this adapter release",
         )
-    return request_id, _execute(operation, _decode_tagged(params))
+    decoded, host_type_present = _decode_tagged(params)
+    return request_id, _execute(operation, decoded, host_type_present)
 
 
 def _safe_request_id(value: Any) -> bool:
@@ -555,11 +587,24 @@ def _reject_json_constant(name: str) -> None:
     raise ValueError(f"{name} is not a JSON value")
 
 
+def _unique_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    members: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in members:
+            raise ValueError(f"duplicate member name {name!r}")
+        members[name] = value
+    return members
+
+
 def _parse_request(line: bytes) -> Any:
     """Parse one strict UTF-8 JSON request; any decoding failure is INVALID_JSON."""
 
     try:
-        return json.loads(line.decode("utf-8"), parse_constant=_reject_json_constant)
+        return json.loads(
+            line.decode("utf-8"),
+            object_pairs_hook=_unique_members,
+            parse_constant=_reject_json_constant,
+        )
     except (ValueError, RecursionError) as exc:
         raise AdapterError("INVALID_JSON", _clean_message(exc)) from exc
 
@@ -587,9 +632,7 @@ def _discard_line_tail(stream: Any) -> None:
             return
 
 
-def main() -> int:
-    incoming = sys.stdin.buffer
-    outgoing = sys.stdout.buffer
+def _serve(incoming: Any, outgoing: Any) -> int:
     while True:
         line = incoming.readline(MAX_REQUEST_BYTES + 1)
         if not line:
@@ -608,17 +651,34 @@ def main() -> int:
             if isinstance(request, dict) and _safe_request_id(request.get("id")):
                 request_id = request["id"][:MAX_REQUEST_ID_CHARS]
             request_id, result = _handle(request)
-            outgoing.write(_response(request_id, result=result))
+            response = _response(request_id, result=result)
         except AdapterError as exc:
-            _stderr(
-                f"dacs-adapter: request {request_id or '<unknown>'}: {exc.code}: {_clean_message(exc)}"
-            )
-            outgoing.write(_response(request_id, error=exc))
-        except Exception as exc:  # fail closed at the subprocess boundary
+            error = exc
+        except (TypeError, ValueError) as exc:  # a wrapped primitive rejected the input
             error = AdapterError("OPERATION_FAILED", _clean_message(exc))
-            _stderr(f"dacs-adapter: request {request_id or '<unknown>'}: {error.code}: {error}")
-            outgoing.write(_response(request_id, error=error))
+        except Exception as exc:  # an adapter fault is never an expected operation rejection
+            error = AdapterError("INTERNAL_ERROR", _clean_message(exc))
+        else:
+            error = None
+        if error is not None:
+            _stderr(
+                f"dacs-adapter: request {request_id or '<unknown>'}: {error.code}: {_clean_message(error)}"
+            )
+            response = _response(request_id, error=error)
+        outgoing.write(response)
         outgoing.flush()
+
+
+def main() -> int:
+    if sys.stdin is None or sys.stdout is None:
+        _stderr("dacs-adapter: unavailable: standard input or output is closed")
+        return 1
+    try:
+        return _serve(sys.stdin.buffer, sys.stdout.buffer)
+    except BrokenPipeError:
+        # The reader closed stdout: stop without a traceback or a second failed flush.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), 1)
+        return 1
 
 
 if __name__ == "__main__":

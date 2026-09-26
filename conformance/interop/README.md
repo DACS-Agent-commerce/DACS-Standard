@@ -11,14 +11,22 @@ The interface remains non-normative and is not copied into the Standard.
 
 [`dacs-adapter-release-proposal-v1.json`](dacs-adapter-release-proposal-v1.json)
 pins the Standard revision, tree, implementation blobs, source corpora, selected
-case identifiers, and expected values. The adapter verifies those local
-committed blobs, the exact DACS-Standard Git origin of this checkout, and the
-wrapped revision and tree before executing anything it wraps. The descriptor must
-pin exactly the four repository modules the adapter executes; each runs from the
-bytes that were verified, never from a re-read file or cached bytecode, and only
-the interpreter's standard library may be imported alongside them. The optional
-`cryptography` import in `validate_conformance_vectors.py` is therefore refused
-and its existing fallback applies; no advertised operation uses it.
+case identifiers, and expected values. The adapter fixes the wrapped revision,
+tree, and the sha256 of each of the four repository modules it executes in its
+own source, so the metadata `revision` (the adapter's sha256) covers the code
+that runs; the descriptor must repeat exactly those pins. Before executing
+anything it wraps, the adapter verifies the committed blobs, the wrapped
+revision and tree, and the single `remote.origin.url` in this checkout's local
+Git configuration. Each module runs from the bytes that were verified, never
+from a re-read file or cached bytecode. On POSIX hosts the adapter re-executes
+its interpreter with `-I -S`, so `PYTHONPATH`, the script directory, user and
+site packages, and `.pth` hooks take no part in its imports; after
+verification an import guard refuses every module that is not part of the
+interpreter's standard library. The optional `cryptography` import in
+`validate_conformance_vectors.py` is therefore refused and its existing
+fallback applies; no advertised operation uses it. These are consistency
+checks, not remote attestation or host confinement: the interpreter, its
+standard library, `PATH`, and `git` are trusted host inputs.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
 wrapped primitive digests remain separate.
 
@@ -27,7 +35,7 @@ The adapter asserts the revision-free codebase identity
 DACS-Standard is one codebase, so this wrapper and the contributor
 `standard-jcs-adapter` cannot be two independent implementations. The pinned
 shared runner does not enforce that yet: it compares asserted
-`provenanceCodebase` strings verbatim after lowercasing, and
+`provenanceCodebase` strings after only trimming and lowercasing them, and
 `standard-jcs-adapter` asserts
 `https://github.com/DACS-Agent-commerce/DACS-Standard@<revision>#scripts/jcs.py`.
 Running both adapters through that runner reports `INTEROP-AGREE` with two
@@ -42,9 +50,13 @@ The executable operations are:
 - `canonicalize`, calling `scripts/jcs.py`;
 - `signedScopeHash`, calling
   `scripts/validate_conformance_vectors.py::artifact_hash_hex` for unambiguous
-  `SettlementEvidence` and `AttestationBundle` inputs. A record carrying any
-  other exclusive type discriminator (CORE §11.2.5, DACS-4 §9.7) is refused,
-  never hashed as the kind it resembles;
+  `SettlementEvidence` and `AttestationBundle` inputs. CORE §11.2.5 gives every
+  artifact type its own `*Version` literal, and the spec shapes of these two
+  kinds carry no other top-level `*Version` member except the bundle's
+  `recipeRegistryVersion` and `railRegistryVersion`. A record with any other
+  `*Version` member, or any other shape, returns `UNSUPPORTED_CASE` and is
+  never hashed as the kind it resembles. The shared runner's seed vector
+  `dr-d4-settlement-golden-match`, which has no `phase`, therefore abstains;
 - `signatureValueVerdict`, calling
   `scripts/validate_conformance_vectors.py::decode_signature_value` with legacy
   spelling disabled. This operation is encoding-only, as required by F3, and
@@ -57,9 +69,15 @@ The executable operations are:
 `verifyBundle` and legacy import are not advertised. Unknown operations and
 unrecognised artifact shapes return controlled errors. The input loop caps each
 request at 1 MiB and five parameters, accepts only strict UTF-8 JSON (no `NaN`
-or `Infinity` literals), reports every request-decoding failure as
-`INVALID_JSON`, emits one response line per input line, and writes one bounded
-line of printable ASCII per diagnostic, only to stderr.
+or `Infinity` literals and no duplicate member names), reports every
+request-decoding failure as `INVALID_JSON`, emits one response line per input
+line, and writes one bounded line of printable ASCII per diagnostic, only to
+stderr. A rejection by a wrapped primitive is `OPERATION_FAILED`; any other
+fault is `INTERNAL_ERROR`, which a runner must never score as an expected
+rejection. Requests are bounded in size, not time. CPython's NFC normalization
+is quadratic in long runs of combining marks (a 200 KB string can take over
+ten seconds), so callers must enforce a per-request timeout, as the shared
+runner does by default; a timeout is never a result.
 
 The canonicalization descriptor partitions all 25 source cases: six are
 selected, `bigint-native-type` is unsupported, twelve are excluded because their
@@ -75,8 +93,9 @@ opaque Python object into an expected JCS rejection would manufacture coverage.
 The current runner maps every operation error to `THROWN`, which would still
 look like the expected rejection; it must recognize this explicit unsupported
 result as `ABSTAIN` before the BigInt case can enter a shared cross-run.
-A BigInt never masks a malformed tag elsewhere in the same request: the whole
-request is decoded first, and a malformed tag is `MALFORMED_TAG`.
+A BigInt never masks a malformed request: the whole request is decoded first,
+so a malformed tag elsewhere is `MALFORMED_TAG`, and each operation checks its
+parameter count and types before abstaining on a BigInt.
 
 ## Bounded F5 profile
 
@@ -108,9 +127,11 @@ parameter, and the shared runner sends an omitted optional argument as a
 trailing JSON `null`. The adapter treats that `null` as absent, so an in-profile
 case keeps its `true`, `false`, or signature result; a supplied intermediate
 hash, even an empty one, returns `UNSUPPORTED_CASE`. Parameters of the wrong
-type, or a private key that is not 32 bytes, return `INVALID_PARAMS` before any
-profile decision, so a malformed request is never reported as unsupported or
-as a `false` verdict.
+type (including a BigInt), or a private key that is not 32 bytes, return
+`INVALID_PARAMS` before any profile decision, so a malformed request is never
+reported as unsupported or as a `false` verdict. A signature or public key of
+the wrong length is a well-formed request whose verification fails, so it
+returns `false`, as the reference adapter does.
 
 Ed25519 point-encoding strictness is not pinned by CORE or by this profile. The
 wrapped helper accepts an `x = 0` point encoding with the sign bit set, which
@@ -119,8 +140,15 @@ is selected. A divergence there would be an open specification question, not
 evidence against either implementation.
 
 The generic four-family milestone remains incomplete because the shared runner
-maps every operation error to an observed `THROWN` outcome. The remaining exact
-handoff questions are:
+maps every operation error to an observed `THROWN` outcome. It dispatches by
+operation name, so leaving `domain-sep-sign` out of `supportedFamilies` does
+not stop it from sending every seed F5 vector to this adapter. On the pinned
+runner an explicit `UNSUPPORTED_CASE` therefore matches any vector that
+expects `THROWN`: paired with the reference adapter, the seed rows
+`cr-bigint`, `ds-s3-unknown-separator-sign-throws`, and
+`ds-s6-legacy-emission-refused` report `INTEROP-AGREE` although this adapter
+abstained. No scored run may use that runner. The remaining exact handoff
+questions are:
 
 > Will the shared runner classify the adapter's explicit `UNSUPPORTED_CASE`
 > error as `ABSTAIN` rather than `THROWN`, so BigInt host-type inputs and F5
@@ -150,5 +178,7 @@ none is claimed by this proposal. The exported companion inputs pinned in the
 descriptor do not include the runner, but the pinned public revision does
 (`conformance/shared-suite/cross-run.mjs`, with repeatable `--adapter` and
 `--adapter-provenance` options). That runner still maps `UNSUPPORTED_CASE` to
-`THROWN`. The reproducible adapter handoff command is
+`THROWN`, and its own seed-corpus lock (`PINNED-SOURCES.json`) no longer matches
+the committed `partner-kit/vectors.json`, so its command line refuses to run
+until that lock is corrected. The reproducible adapter handoff command is
 `python3 scripts/dacs_adapter.py`.

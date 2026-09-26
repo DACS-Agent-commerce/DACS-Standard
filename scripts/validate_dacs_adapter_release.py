@@ -3,15 +3,27 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
+if __name__ == "__main__":
+    # Keep this checkout off the import path so an untracked file in it cannot
+    # shadow a standard-library module imported below.
+    _CHECKOUT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    sys.path[:] = [
+        entry
+        for entry in sys.path
+        if os.path.realpath(entry or os.curdir) != _CHECKOUT
+        and not os.path.realpath(entry or os.curdir).startswith(_CHECKOUT + os.sep)
+    ]
+
 import argparse
 import ast
 import base64
 import hashlib
 import json
-import os
 import re
 import subprocess
-import sys
 import types
 from pathlib import Path
 from typing import Any
@@ -26,6 +38,12 @@ ADAPTER_SOURCE = "scripts/dacs_adapter.py"
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
 DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
 PROTOCOL_TAGS = {"bytes", "bigint"}
+FAMILY_STATUS = {
+    "canonicalization": "executable",
+    "signed-scope": "executable",
+    "sig6-wire": "executable",
+    "domain-separated-signing": "bounded-operation-profile",
+}
 GIT_REPOSITORY_ENV = {
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     "GIT_CEILING_DIRECTORIES",
@@ -114,16 +132,23 @@ def _tags(value: Any) -> set[str]:
     return found
 
 
-def _adapter_wrapped_paths() -> set[str]:
-    """The repository modules the adapter executes, read from its source without running it."""
+def _adapter_constants() -> dict[str, Any]:
+    """The wrapped release fixed in the adapter source, read without running it."""
 
-    tree = ast.parse((ROOT / ADAPTER_SOURCE).read_bytes())
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == "WRAPPED_MODULES" for target in node.targets
-        ):
-            return {relative for _, relative in ast.literal_eval(node.value)}
-    raise ValueError("adapter source does not declare WRAPPED_MODULES")
+    wanted = {"WRAPPED_REVISION", "WRAPPED_TREE", "WRAPPED_MODULES"}
+    found: dict[str, Any] = {}
+    for node in ast.parse((ROOT / ADAPTER_SOURCE).read_bytes()).body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in wanted:
+                    found[target.id] = ast.literal_eval(node.value)
+    if set(found) != wanted:
+        raise ValueError("adapter source does not declare its wrapped Standard release")
+    return found
+
+
+def _bounded_text(value: Any, limit: int) -> bool:
+    return isinstance(value, str) and 0 < len(value) <= limit
 
 
 def _load_verified_module(relative: str, expected_sha256: str, name: str) -> types.ModuleType:
@@ -139,22 +164,31 @@ def _load_verified_module(relative: str, expected_sha256: str, name: str) -> typ
     return module
 
 
-def _load_walkthrough(primitives: dict[str, str]) -> tuple[types.ModuleType, types.ModuleType]:
-    jcs = _load_verified_module("scripts/jcs.py", primitives["scripts/jcs.py"], "jcs")
-    previous = sys.modules.get("jcs")
-    sys.modules["jcs"] = jcs  # the walkthrough's own ``import jcs`` must see the verified module
+def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
+    """Load the wrapped modules from verified bytes, resolving their local imports to them."""
+
+    names = {"jcs": "scripts/jcs.py", "specsource": "scripts/specsource.py"}
+    previous = {name: sys.modules.get(name) for name in names}
+    loaded = {name: _load_verified_module(relative, primitives[relative], name) for name, relative in names.items()}
+    sys.modules.update(loaded)  # ``import jcs`` / ``import specsource`` must see the verified modules
     try:
-        walkthrough = _load_verified_module(
+        loaded["walkthrough"] = _load_verified_module(
             "scripts/run_lifecycle_walkthrough.py",
             primitives["scripts/run_lifecycle_walkthrough.py"],
             "dacs_release_walkthrough",
         )
+        loaded["vectors"] = _load_verified_module(
+            "scripts/validate_conformance_vectors.py",
+            primitives["scripts/validate_conformance_vectors.py"],
+            "dacs_release_vectors",
+        )
     finally:
-        if previous is None:
-            sys.modules.pop("jcs", None)
-        else:
-            sys.modules["jcs"] = previous
-    return jcs, walkthrough
+        for name, module in previous.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+    return loaded
 
 
 def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
@@ -179,6 +213,8 @@ def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
 
 
 def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
+    if not descriptor_path.is_file():
+        raise ValueError("release descriptor is not a regular file")
     descriptor_bytes = descriptor_path.read_bytes()
     descriptor = json.loads(descriptor_bytes)
     observed_origin = _git("config", "--local", "--get", "remote.origin.url")
@@ -209,6 +245,15 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
         raise ValueError("adapter codebase identity must be the revision-free DACS-Standard codebase")
 
     adapter = descriptor["adapter"]
+    limitations = adapter.get("limitations")
+    if not (
+        _bounded_text(adapter.get("name"), 128)
+        and _bounded_text(adapter.get("version"), 128)
+        and isinstance(limitations, list)
+        and 0 < len(limitations) <= 32
+        and all(_bounded_text(item, 512) for item in limitations)
+    ):
+        raise ValueError("adapter name, version, or limitations are malformed")
     source = adapter["source"]
     if source.get("path") != ADAPTER_SOURCE:
         raise ValueError("adapter source pin must name the adapter itself")
@@ -219,12 +264,16 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
         raise ValueError("adapter source git blob does not match descriptor")
 
     wrapped = adapter["wrappedStandard"]
+    constants = _adapter_constants()
+    if wrapped["revision"] != constants["WRAPPED_REVISION"] or wrapped["tree"] != constants["WRAPPED_TREE"]:
+        raise ValueError("wrapped Standard release differs from the one fixed in the adapter")
     if _git("rev-parse", f"{wrapped['revision']}^{{commit}}") != wrapped["revision"]:
         raise ValueError("wrapped Standard revision does not resolve to its pinned commit")
     if _git("rev-parse", f"{wrapped['revision']}^{{tree}}") != wrapped["tree"]:
         raise ValueError("wrapped Standard tree mismatch")
-    pinned_paths = [primitive["path"] for primitive in wrapped["primitives"]]
-    if len(pinned_paths) != len(set(pinned_paths)) or set(pinned_paths) != _adapter_wrapped_paths():
+    expected_primitives = {relative: digest for _, relative, digest in constants["WRAPPED_MODULES"]}
+    pinned = {primitive["path"]: primitive["sha256"] for primitive in wrapped["primitives"]}
+    if len(wrapped["primitives"]) != len(expected_primitives) or pinned != expected_primitives:
         raise ValueError("wrapped primitive pins do not match the modules the adapter executes")
     for primitive in wrapped["primitives"]:
         path = primitive["path"]
@@ -244,12 +293,23 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
     executable = 0
     bounded = 0
     unsupported = 0
+    modules = _load_primitives(primitive_sha256)
+    family_ids = [family["id"] for family in descriptor["families"]]
+    if sorted(family_ids) != sorted(FAMILY_STATUS):
+        raise ValueError("release families differ from the proposal's four families")
     for family in descriptor["families"]:
         status = family["status"]
+        if status != FAMILY_STATUS[family["id"]]:
+            raise ValueError(f"family {family['id']}: invalid status {status!r}")
+        case_ids = [
+            item["caseId"]
+            for key in ("cases", "unsupportedSourceCases", "excludedSourceCases", "primitiveControls", "unsupportedCases")
+            for item in family.get(key, [])
+        ]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError(f"family {family['id']}: duplicate case identifiers")
         if status == "bounded-operation-profile":
             bounded += len(family["cases"])
-        elif status != "executable":
-            raise ValueError(f"family {family['id']}: invalid status {status!r}")
         else:
             executable += len(family["cases"])
 
@@ -257,12 +317,18 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
             raw = sources[family["source"]]
             for selected in family["cases"]:
                 actual = _case_by_name(raw["vectors"], selected["caseId"])
+                if _tags(actual["input"]):
+                    raise ValueError(f"{selected['caseId']}: selected input uses a tag dacs-adapter/1 cannot carry")
                 if actual["expected"] != selected["sourceExpected"]:
                     raise ValueError(f"{selected['caseId']}: canonical source verdict drift")
                 if actual["expected"] == "pass":
-                    if actual["canonicalUtf8Hex"] != selected["expected"]["hex"]:
+                    if "expectedErrorCode" in selected or actual["canonicalUtf8Hex"] != selected["expected"]["hex"]:
                         raise ValueError(f"{selected['caseId']}: canonical bytes drift")
-                elif actual["expectedErrorCode"] != selected["sourceExpectedErrorCode"]:
+                elif (
+                    actual["expectedErrorCode"] != selected["sourceExpectedErrorCode"]
+                    or "expected" in selected
+                    or selected.get("expectedErrorCode") != "OPERATION_FAILED"
+                ):
                     raise ValueError(f"{selected['caseId']}: canonical source error drift")
             for selected in family["unsupportedSourceCases"]:
                 actual = _case_by_name(raw["vectors"], selected["caseId"])
@@ -316,6 +382,13 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                     raise ValueError(f"{selected['caseId']}: SIG-6 source verdict drift")
                 if actual["expected"].upper() != selected["expected"]:
                     raise ValueError(f"{selected['caseId']}: SIG-6 adapter verdict drift")
+                try:
+                    modules["vectors"].decode_signature_value(actual["value"], legacy_allowed=False)
+                    wire_verdict = "ACCEPT"
+                except (TypeError, ValueError):
+                    wire_verdict = "REJECT"
+                if wire_verdict != selected["expected"]:
+                    raise ValueError(f"{selected['caseId']}: selected SIG-6 case is not decided by wire encoding alone")
         elif family["id"] == "domain-separated-signing":
             if family.get("advertisedFamily") is not False:
                 raise ValueError("bounded F5 profile must not advertise the generic family")
@@ -353,7 +426,10 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
             if raw["signature"] != sign_case["sourceExpected"]:
                 raise ValueError("domain signature source drift")
 
-            jcs, walkthrough = _load_walkthrough(primitive_sha256)
+            jcs, walkthrough = modules["jcs"], modules["walkthrough"]
+            for case in [*family["cases"], raw_digest_control, raw_digest_unsupported]:
+                if case["caseId"] != "signing::unknown-separator-false" and case["separator"] != BOUNDED_F5_SEPARATOR:
+                    raise ValueError(f"{case['caseId']}: bounded F5 case must use {BOUNDED_F5_SEPARATOR}")
             artifact_hash = _sha256(jcs.canonicalize(raw["doc"]).encode("utf-8"))
             if artifact_hash != sign_case["artifactHashHex"]:
                 raise ValueError("domain signing artifact hash drift")
@@ -446,8 +522,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         counts = validate(args.descriptor.resolve())
     except (
+        AttributeError,
+        IndexError,
         KeyError,
         OSError,
+        RecursionError,
         SyntaxError,
         TypeError,
         ValueError,

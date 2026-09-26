@@ -627,7 +627,21 @@ def validate_pair(
                 interim_path, resolved_path
             )
         except (OSError, RuntimeError) as error:
-            return [fail(interim_path, f"pair paths could not be resolved: {error}")]
+            # Fail closed: no record is evaluated and no receipt policy is
+            # chosen. Preserve ordinary per-file diagnostics without reading
+            # either input after resolution failed.
+            errors = [fail(interim_path, f"pair paths could not be resolved: {error}")]
+            for path in dict.fromkeys((interim_path, resolved_path)):
+                try:
+                    path.stat()
+                except FileNotFoundError:
+                    errors.append(fail(path, "fixture file not found"))
+                except OSError as exc:
+                    detail = exc.strerror or type(exc).__name__
+                    errors.append(
+                        fail(path, f"fixture file could not be read: {detail}")
+                    )
+            return errors
     interim, errors = validate_interim(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,

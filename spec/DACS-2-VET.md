@@ -1241,6 +1241,9 @@ A producer MUST set `record.overallDecision` to the algorithm's result. A strict
 - **Record.** The anchor reference is recorded in the DACS-5 session record.
 - **Sign.** The composite record’s signature MUST be produced by the verifier (the party running Vet on the counterparty) over the domain-separated payload per §B.7:
 
+signed_bytes := "dacs-composite:v1:" || composite_hash
+In v0.1, the composite record carries a single verifier signature. Multi-party composition (e.g., two-sided independent Vet records cross-referenced into one) is deferred to v2.
+
 The §7.8 VPC-3 return is authorized by an independently verified CORE §5.1
 receipt, not by `recordRef` fields alone.  The consumer reconstructs the
 canonical logical address above from `record.jobId` and the CF-2/CF-4
@@ -1254,16 +1257,13 @@ explicitly declares that mapping.  Production progression requires the VPC-3
 resolved `finalized` receipt specified by CORE §5.1 and DACS-5.  Receipt times
 obey the `generatedAt` chronology above and do not alter the signed record.
 
-signed_bytes := "dacs-composite:v1:" || composite_hash
-In v0.1, the composite record carries a single verifier signature. Multi-party composition (e.g., two-sided independent Vet records cross-referenced into one) is deferred to v2.
-
 #### 7.7.3 Production presentation admission
 
 `bundleToVet` and `verifierIdentity` are separate identity presentations at
 separate admission points.  Each MUST carry its own globally distinct CORE
 §B.8 challenge, issuer-owned SN-4 ledger record, and admission capability.  The
-expected verifier (or the orchestrator acting on its behalf) issues and checks
-the `bundleToVet` challenge.  The independently authenticated receiver of the
+expected verifier issues and checks the `bundleToVet` challenge. The
+independently authenticated receiver of the
 verifier's presentation — normally the phase orchestrator — issues and checks
 the `verifierIdentity` challenge.  Neither presenter chooses its challenge,
 and a challenge issued for either presentation MUST NOT authorize the other,

@@ -37,6 +37,37 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
             self.assertIn("invalid JSON: decoder recursion limit", stderr.getvalue())
             self.assertNotIn("Traceback", stderr.getvalue())
 
+    def test_shared_json_admission_keeps_decoder_type_and_position(self):
+        import json
+        import tempfile
+        from dacs_reference import loads_unique_json
+
+        with self.assertRaises(json.JSONDecodeError) as caught:
+            loads_unique_json('{\n  "kind": }')
+        self.assertIn("invalid JSON: Expecting value", str(caught.exception))
+        self.assertIn("line 2 column 11", str(caught.exception))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "malformed.json"
+            path.write_text('{\n  "kind": }', encoding="utf-8")
+            evidence, errors = self.verifier.load_case(path)
+        self.assertIsNone(evidence)
+        self.assertIn("line 2 column 11", errors[0])
+
+    def test_path_resolution_fallback_diagnostics_never_raise(self):
+        # The fail-closed branch probes files for diagnostics only; an
+        # unreadable path is reported, never raised to a library caller.
+        ver = self.verifier
+        for error in (PermissionError(13, "Permission denied"), OSError(40, "Too many levels")):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(Path, "resolve", side_effect=RuntimeError("loop")), \
+                        mock.patch.object(Path, "stat", side_effect=error):
+                    errors = ver.validate_pair(ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED)
+                self.assertIn("pair paths could not be resolved", errors[0])
+                self.assertTrue(
+                    any("fixture file could not be read: " + error.strerror in e for e in errors),
+                    errors,
+                )
+
     def test_path_resolution_errors_reject_pair_and_cli_without_receipt_downgrade(self):
         ver = self.verifier
         for error_type in (OSError, RuntimeError):

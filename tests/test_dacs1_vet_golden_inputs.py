@@ -112,15 +112,41 @@ def parse_ref(value):
     return parsed.identity
 
 
+# CORE CF-5(5): container depth 128 is admitted and 129 is rejected; a
+# top-level object or array has depth 1.
+MAX_JSON_DEPTH = 128
+
+
+def within_json_depth(value, limit=MAX_JSON_DEPTH):
+    """Iterative CF-5(5) depth check that cannot hit a host recursion limit."""
+
+    stack = [(value, 0)]
+    while stack:
+        item, depth = stack.pop()
+        if isinstance(item, (dict, list)):
+            depth += 1
+            if depth > limit:
+                return False
+            children = item.values() if isinstance(item, dict) else item
+            stack.extend((child, depth) for child in children)
+    return True
+
+
 def all_safe_integers(value):
-    if isinstance(value, bool):
-        return True
-    if isinstance(value, int):
-        return -SAFE_INT <= value <= SAFE_INT
-    if isinstance(value, dict):
-        return all(all_safe_integers(item) for item in value.values())
-    if isinstance(value, list):
-        return all(all_safe_integers(item) for item in value)
+    if not within_json_depth(value):
+        return False
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, bool):
+            continue
+        if isinstance(item, int):
+            if not -SAFE_INT <= item <= SAFE_INT:
+                return False
+        elif isinstance(item, dict):
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
     return True
 
 
@@ -663,7 +689,7 @@ def verify_bundle(bundle, admission=None):
     unsigned = {key: value for key, value in bundle.items() if key != "presentation"}
     try:
         payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
-    except (TypeError, ValueError, UnicodeError):
+    except (TypeError, ValueError, UnicodeError, RecursionError):
         return False
     claim_refs = {item["ref"] for item in claims}
     return all(
@@ -681,6 +707,7 @@ def verify_result(resolved, recipes, result_context):
         not isinstance(resolved, dict)
         or set(resolved) != {"ref", "artifact", "serializedArtifactHash"}
         or not isinstance(result_context, dict)
+        or not within_json_depth(resolved)
     ):
         return False
     artifact = resolved.get("artifact")
@@ -709,7 +736,7 @@ def verify_result(resolved, recipes, result_context):
         full_hash = hash_hex(artifact)
         reference_key = canonical_bytes(reference)
         attestation_key = canonical_bytes(artifact.get("attestation"))
-    except (TypeError, ValueError, UnicodeError):
+    except (TypeError, ValueError, UnicodeError, RecursionError):
         return False
     if unsigned_hash != reference["contentHash"]:
         return False
@@ -767,7 +794,6 @@ def verify_result(resolved, recipes, result_context):
             and not exact_safe_integer(artifact["validUntil"], minimum=0)
         )
         or artifact["fetchedAt"] > artifact["verifiedAt"]
-        or artifact["verifiedAt"] > artifact.get("validUntil", artifact["verifiedAt"])
     ):
         return False
     return verify_signature(
@@ -792,6 +818,26 @@ def resolved_by_ref(value):
     return resolved
 
 
+def same_identity(left, right):
+    """CORE CF-3: parameters never contribute to a ClaimReference identity."""
+
+    try:
+        return parse_ref(left) == parse_ref(right)
+    except ValueError:
+        return False
+
+
+def presented_claim(bundle):
+    """DACS-1 §6.3.2: the unique claim ``presentedBy`` resolves to by CF-3
+    identity (canonical scheme and identifier).  Ambiguity resolves nothing."""
+
+    matches = [
+        item for item in bundle["claims"]
+        if same_identity(item.get("ref"), bundle.get("presentedBy"))
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def matching_claims(value, req, decision_time, exact_ref=None):
     now = decision_time
     matches = []
@@ -799,7 +845,7 @@ def matching_claims(value, req, decision_time, exact_ref=None):
         scheme, _ = parse_ref(item.get("ref"))
         if scheme != req.get("scheme"):
             continue
-        if exact_ref is not None and item.get("ref") != exact_ref:
+        if exact_ref is not None and not same_identity(item.get("ref"), exact_ref):
             continue
         expires_at = item.get("expiresAt")
         if expires_at is not None and (
@@ -869,6 +915,8 @@ def parameters_match(result, req):
 
 
 def result_outcome(value, claim, req, recipes, result_context, decision_time):
+    """DACS-1 §6.3.2: resolve the claim's own ``verifiedBy`` and qualify it."""
+
     reference = claim.get("verifiedBy")
     if not well_formed_result_ref(reference):
         return "fail" if reference is None else "error"
@@ -878,8 +926,17 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
     resolved = results.get(canonical_bytes(reference))
     if resolved is None:
         return "indeterminate"
+    return qualify_result(
+        resolved, claim, req, recipes, result_context, decision_time
+    )
+
+
+def qualify_result(resolved, claim, req, recipes, result_context, decision_time):
+    """Authenticate one resolved result and qualify it for ``claim``/``req``."""
+
     if not verify_result(resolved, recipes, result_context):
         return "error"
+    reference = resolved["ref"]
     result = resolved["artifact"]
     scheme, identifier = parse_ref(claim["ref"])
     if (
@@ -918,6 +975,9 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
         )
     if type(verified_at) is not int or type(valid_until) is not int:
         return "fail"
+    if valid_until < verified_at:
+        # DACS-1 §6.3.2: an inverted window is undeterminable, hence stale.
+        return "not-applicable"
     now = decision_time
     expires_at = claim.get("expiresAt")
     effective_expiry = min(
@@ -936,11 +996,58 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
     return decision
 
 
+def committed_results(value, req):
+    """DACS-2 §7.7.1 find_all_results(record, cr.scheme) over the committed set."""
+
+    return [
+        item for item in value["resolvedResults"]
+        if item["artifact"].get("scheme") == req.get("scheme")
+    ]
+
+
+def member_outcomes(
+    value, req, recipes, result_context, decision_time, exact_ref=None
+):
+    """Per-evidence outcomes for one verified member.
+
+    Direct DACS-1 evaluation follows each matching claim's own ``verifiedBy``.
+    Aggregation (§7.7.1 classify_verified_member) instead classifies every
+    result the signed record commits for the scheme, so a refreshed result
+    counts and an uncommitted pointer does not.  Each committed result still
+    passes the identifier classifier against an unexpired matching claim of
+    the exact bundle; a result for another identity is a failing result.
+    """
+
+    claims = matching_claims(value, req, decision_time, exact_ref)
+    if not value.get("committedResultsOnly"):
+        return [
+            result_outcome(
+                value, claim, req, recipes, result_context, decision_time
+            )
+            for claim in claims
+        ]
+    outcomes = []
+    for resolved in committed_results(value, req):
+        artifact = resolved["artifact"]
+        identity = (artifact.get("scheme"), artifact.get("identifier"))
+        owners = [claim for claim in claims if parse_ref(claim["ref"]) == identity]
+        if not owners:
+            outcomes.append("fail")
+            continue
+        outcomes.extend(
+            qualify_result(
+                resolved, claim, req, recipes, result_context, decision_time
+            )
+            for claim in owners
+        )
+    return outcomes
+
+
 def classify_member(
     value, req, recipes, result_context, decision_time, exact_ref=None
 ):
-    matches = matching_claims(value, req, decision_time, exact_ref)
     if req.get("verificationRequired") is False:
+        matches = matching_claims(value, req, decision_time, exact_ref)
         return "pass" if matches else "fail"
     parameters = req.get("parameters") or {}
     selected_method = parameters.get("verificationMethod")
@@ -949,12 +1056,9 @@ def classify_member(
         and effective_recipe_version(req, selected_method, recipes) is None
     ):
         return "error"
-    outcomes = [
-        result_outcome(
-            value, item, req, recipes, result_context, decision_time
-        )
-        for item in matches
-    ]
+    outcomes = member_outcomes(
+        value, req, recipes, result_context, decision_time, exact_ref
+    )
     if "qualification-error" in outcomes:
         return "error"
     for outcome in ("pass", "fail", "error", "indeterminate"):
@@ -975,6 +1079,17 @@ def qualification_preflight(
         and effective_recipe_version(req, selected_method, recipes) is None
     ):
         return False
+    if value.get("committedResultsOnly"):
+        # §7.7.1 preflight_qualification: every method the record commits for
+        # this scheme must resolve, whether or not a bundle claim cites it.
+        methods = (
+            {selected_method} if selected_method is not None
+            else {item["artifact"].get("method") for item in committed_results(value, req)}
+        )
+        return all(
+            effective_recipe_version(req, method, recipes) is not None
+            for method in methods
+        )
     return all(
         result_outcome(
             value, claim, req, recipes, result_context, decision_time
@@ -985,21 +1100,16 @@ def qualification_preflight(
 
 
 def presented_control(value, recipes, result_context, decision_time):
+    """DACS-1 §6.3.2 step (6) control of the exact presented claim."""
+
     bundle = value["bundle"]
-    presented = bundle["presentedBy"]
-    scheme, _ = parse_ref(presented)
-    # verify_bundle admits presentedBy by CF-3 identity; control is decided
-    # only for the exact CF-2 claim, and its absence is not control.
-    claim = next(
-        (item for item in bundle["claims"] if item["ref"] == presented), None
-    )
+    claim = presented_claim(bundle)
     if claim is None:
         return False
-    signer_refs = {
-        item["ref"] for item in bundle["presentation"]["signatures"]
-    }
+    scheme, _ = parse_ref(claim["ref"])
+    signer_refs = [item["ref"] for item in bundle["presentation"]["signatures"]]
     if scheme == "key":
-        return presented in signer_refs
+        return any(same_identity(ref, claim["ref"]) for ref in signer_refs)
     reference = claim.get("verifiedBy")
     if not well_formed_result_ref(reference):
         return False
@@ -1010,7 +1120,8 @@ def presented_control(value, recipes, result_context, decision_time):
     if resolved is None or not verify_result(resolved, recipes, result_context):
         return False
     result = resolved["artifact"]
-    binding = result.get("data", {}).get("holderBinding")
+    data = result.get("data")
+    binding = data.get("holderBinding") if isinstance(data, dict) else None
     return (
         result_outcome(
             value,
@@ -1023,31 +1134,26 @@ def presented_control(value, recipes, result_context, decision_time):
         ) == "pass"
         and result.get("method") == "verifiable-credential"
         and isinstance(binding, dict)
-        and binding.get("controller") in signer_refs
+        and any(same_identity(binding.get("controller"), ref) for ref in signer_refs)
     )
 
 
 def selector_authorized(value, req, recipes, result_context, decision_time):
+    """DACS-2 §7.7.1 exact_selector_authorized over the exact presented claim."""
+
     selector = req.get("primaryClaimSelector")
     if selector is None:
         return True
-    """DACS-2 §7.7.1 exact_selector_authorized over the exact presented claim."""
-
     bundle = value["bundle"]
-    presented_ref = bundle["presentedBy"]
-    scheme, _ = parse_ref(presented_ref)
+    scheme, _ = parse_ref(bundle["presentedBy"])
     if scheme != selector or not presented_control(
         value, recipes, result_context, decision_time
     ):
         return False
+    # presented_control above already required a unique presented claim.
+    presented = presented_claim(bundle)
     required = req.get("required", [])
     one_of = req.get("oneOf", [])
-
-    def exact_pass(member):
-        return classify_member(
-            value, member, recipes, result_context, decision_time,
-            exact_ref=presented_ref,
-        ) == "pass"
 
     def is_selector(member, verified):
         return (
@@ -1055,17 +1161,15 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
             and member.get("verificationRequired") is verified
         )
 
-    required_verified = [item for item in required if is_selector(item, True)]
-    if required_verified:
-        # A required verified selector member disables the presence path; the
-        # exact presented claim must satisfy that member's own qualification.
-        return exact_pass(required_verified[0])
+    def exact_presence(member):
+        return classify_member(
+            value, member, recipes, result_context, decision_time,
+            exact_ref=presented["ref"],
+        ) == "pass"
 
-    # verifiedSelector: record-committed, passing and fresh exact-claim
-    # evidence under the DACS-1 §6.3.2 verified-claim gate.  Another
+    # verifiedSelector: passing, fresh exact-claim evidence under the DACS-1
+    # §6.3.2 verified-claim gate.  It is member-independent, and another
     # same-scheme claim cannot supply it (PCR-5).
-    # presented_control above already required this exact claim to exist.
-    presented = next(item for item in bundle["claims"] if item["ref"] == presented_ref)
     reference = presented.get("verifiedBy")
     verified_selector = well_formed_result_ref(reference) and result_outcome(
         value,
@@ -1078,9 +1182,11 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
     ) == "pass"
 
     presence_selector = any(
-        is_selector(item, False) and exact_pass(item)
+        is_selector(item, False) and exact_presence(item)
         for item in [*required, *(member for group in one_of for member in group)]
     )
+    if any(is_selector(item, True) for item in required):
+        presence_selector = False
     for group in one_of:
         if not any(is_selector(item, True) for item in group):
             continue
@@ -1088,7 +1194,7 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
         # must itself be satisfied by exact presence or by another scheme, so
         # a different same-scheme verified claim cannot launder the selector.
         exact_presence_in_group = any(
-            is_selector(item, False) and exact_pass(item) for item in group
+            is_selector(item, False) and exact_presence(item) for item in group
         )
         passing_other_scheme = any(
             item.get("scheme") != selector
@@ -1331,6 +1437,7 @@ def valid_composite_record_shape(record):
 
     if (
         not isinstance(record, dict)
+        or not within_json_depth(record)
         or not COMPOSITE_REQUIRED_FIELDS <= set(record)
         or record.get("recordVersion") != "1"
     ):
@@ -1350,11 +1457,13 @@ def valid_composite_record_shape(record):
     )
 
 
-def presence_only_attributed_results(req, resolved):
-    """Results whose scheme only a presence-only member names (§7.7.1).
+def results_without_verified_member(req, resolved):
+    """Committed results no verified member can claim (DACS-2 §7.7.1).
 
-    Presence-only members never invoke a recipe, so a committed result that
-    only such a member could claim is a synthetic/laundered reference.
+    "Every CVR VerifyResultRef must be attributable to at least one verified
+    member": presence-only members never invoke a recipe, so a committed
+    result whose scheme only presence-only members (or no member) name is a
+    synthetic or unrelated reference and rejects the record.
     """
 
     members = [
@@ -1362,10 +1471,9 @@ def presence_only_attributed_results(req, resolved):
         *(member for group in req.get("oneOf", []) for member in group),
     ]
     verified = {m["scheme"] for m in members if m["verificationRequired"] is True}
-    presence = {m["scheme"] for m in members if m["verificationRequired"] is False}
     return [
         item for item in resolved
-        if item["artifact"]["scheme"] in presence - verified
+        if item["artifact"]["scheme"] not in verified
     ]
 
 
@@ -1497,7 +1605,7 @@ def authenticate_production_aggregate(
     }
     try:
         record_hash = hash_hex(unsigned_record)
-    except (TypeError, ValueError, UnicodeError):
+    except (TypeError, ValueError, UnicodeError, RecursionError):
         return None
     if (
         record_ref.get("contentHash") != record_hash
@@ -1557,7 +1665,7 @@ def authenticate_production_aggregate(
             key: item for key, item in bundle.items() if key != "presentation"
         })
         requirement_hash = hash_hex(req)
-    except (AttributeError, TypeError, ValueError, UnicodeError):
+    except (AttributeError, TypeError, ValueError, UnicodeError, RecursionError):
         return None
     if (
         not verify_bundle(bundle, admission)
@@ -1599,7 +1707,7 @@ def authenticate_production_aggregate(
     try:
         canonical_refs = [canonical_bytes(item) for item in committed]
         resolved_ref_keys = [canonical_bytes(item) for item in resolved_refs]
-    except (TypeError, ValueError, UnicodeError):
+    except (TypeError, ValueError, UnicodeError, RecursionError):
         return None
     if (
         len(resolved_refs) != len(resolved)
@@ -1617,13 +1725,16 @@ def authenticate_production_aggregate(
         return None
     # A malformed requirement keeps its own "invalid bundle requirement" error
     # in evaluate(); a well-formed one cannot carry presence-only results.
-    if valid_requirement(req) and presence_only_attributed_results(req, resolved):
+    if valid_requirement(req) and results_without_verified_member(req, resolved):
         return None
     return {
         "bundle": bundle,
         "requirement": req,
         "resolvedResults": resolved,
         "decisionTime": generated_at,
+        # §7.7.1 classifies the record's committed results, not the bundle's
+        # verifiedBy pointers.
+        "committedResultsOnly": True,
     }
 
 
@@ -1639,7 +1750,7 @@ def aggregate_output(value, trusted_context, recipes, result_context, runtime):
         vet_input = authority.get("vetInput") if isinstance(authority, dict) else None
         bundle = vet_input.get("bundleToVet") if isinstance(vet_input, dict) else None
         admission = active_runtime.admit(authority, bundle)
-    except (AttributeError, TypeError, ValueError, UnicodeError):
+    except (AttributeError, TypeError, ValueError, UnicodeError, RecursionError):
         admission = None
     if admission is None:
         return {"decision": "error", "reasons": ["aggregation authority invalid"]}
@@ -1652,7 +1763,7 @@ def aggregate_output(value, trusted_context, recipes, result_context, runtime):
             admission,
             active_runtime,
         )
-    except (KeyError, TypeError, ValueError, UnicodeError):
+    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError, RecursionError):
         projection = None
     if projection is None:
         return {"decision": "error", "reasons": ["aggregation authority invalid"]}
@@ -1664,7 +1775,7 @@ def aggregate_output(value, trusted_context, recipes, result_context, runtime):
             decision_time=projection["decisionTime"],
             admission=admission,
         )
-    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError):
+    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError, RecursionError):
         return {"decision": "error", "reasons": ["invalid aggregation input"]}
     if value["record"].get("overallDecision") != decision:
         return {
@@ -1733,7 +1844,7 @@ def execute(evaluation, document, runtime):
                 decision_time=admission.trusted_now,
                 admission=admission,
             )
-    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError):
+    except (AttributeError, KeyError, TypeError, ValueError, UnicodeError, RecursionError):
         decision = "error"
 
     if operation == "match":
@@ -2650,6 +2761,77 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         )
         self.assertNotEqual("transient", vpc4_error_class("error"))
 
+    def test_vet_corrective_declaration_names_the_current_profile_tuple(self):
+        # The Vet correction joins the existing unreleased candidate without a
+        # version bump, so every restatement must name the PROFILE table's
+        # current labels; a stale tuple in any one document fails here.
+        def text(path):
+            return " ".join((ROOT / path).read_text(encoding="utf-8").split())
+
+        profile = (ROOT / "spec" / "PROFILE.md").read_text(encoding="utf-8")
+        section = profile.split("\n## Unreleased corrective candidate\n", 1)[1]
+        section = section.split("\n## ", 1)[0]
+        table = dict(re.findall(
+            r"\| \[(CORE|DACS-[1-5])[^\]]*\]\([^)]*\) \| (\d+\.\d+) \|", section
+        ))
+        self.assertEqual(
+            {"CORE", "DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"}, set(table)
+        )
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(
+            {key.lower().replace("-", ""): value for key, value in table.items()},
+            manifest["syntheticProfileAdmissionFixture"]["moduleVersions"],
+        )
+        core, d1, d2 = table["CORE"], table["DACS-1"], table["DACS-2"]
+        vet_labels = f"CORE v{core}, DACS-1 v{d1}, and DACS-2 v{d2}"
+        core_text = text("spec/CORE.md")
+        self.assertIn(f"**DACS Core v{core}**", core_text)
+        self.assertIn(
+            f"CORE v{core} together with DACS-1 v{d1}, DACS-2 v{d2}, "
+            f"DACS-3 v{table['DACS-3']}, DACS-4 v{table['DACS-4']}, and "
+            f"DACS-5 v{table['DACS-5']} declares the same boundary for Vet. "
+            f"{vet_labels} change existing execution behaviour",
+            core_text,
+        )
+        self.assertIn(
+            f"**breaking pre-v1 Vet correction** in {vet_labels}.",
+            " ".join(section.split()),
+        )
+        for name, version, affected in (
+            ("CORE", core, "shared Vet admission behaviour affected"),
+            ("DACS-1", d1, "session presentation behaviour affected"),
+            ("DACS-2", d2, "Vet aggregation and authority behaviour affected"),
+        ):
+            with self.subTest(row=name):
+                row = next(
+                    line for line in section.splitlines()
+                    if line.startswith(f"| [{name}")
+                )
+                self.assertIn(f"| {version} |", row)
+                self.assertIn(affected, row)
+        self.assertIn(
+            f"**DACS-1 v{d1}** on the common DACS v0.1 baseline", text("spec/DACS-1-IDENTIFY.md")
+        )
+        self.assertIn(
+            f"v{d1} is also an affected document in the declared CORE §11.1.2 "
+            "**breaking pre-v1 Vet correction**",
+            text("spec/DACS-1-IDENTIFY.md"),
+        )
+        dacs2 = text("spec/DACS-2-VET.md")
+        self.assertIn(f"**DACS-2 v{d2}**", dacs2)
+        self.assertIn(
+            f"The same v{d2} profile is an affected document in the declared "
+            "CORE §11.1.2 **breaking pre-v1 Vet correction**",
+            dacs2,
+        )
+        heading = next(
+            line for line in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+            if line.startswith("### Breaking pre-v1 correction — Vet admission")
+        )
+        self.assertTrue(
+            heading.endswith(f"(CORE v{core} / DACS-1 v{d1} / DACS-2 v{d2})"), heading
+        )
+
     # -- Review/repair regressions: each negative has a positive control. --
 
     def _case_evaluation(self, name, label="result"):
@@ -2697,21 +2879,36 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         uncontrolled["input"]["requirement"]["primaryClaimSelector"] = "key"
         self.assertFalse(execute_once(uncontrolled, self.document))
 
-    def test_presented_identity_without_exact_claim_fails_without_throwing(self):
-        # verify_bundle admits presentedBy by CF-3 identity; selector control
-        # needs the exact CF-2 claim, whose absence is "not controlled".
+    def test_presented_by_resolves_by_cf3_identity_without_throwing(self):
+        # DACS-1 §6.3.2: presentedBy resolves to the claim with the same
+        # canonical scheme and identifier; CF-3 parameters are not identity.
         _, evaluation = self._case_evaluation("vet-control-key-presentation-accept")
-        changed = copy.deepcopy(evaluation)
-        bundle = changed["input"]["bundle"]
-        claim = next(c for c in bundle["claims"] if c["ref"] == bundle["presentedBy"])
-        claim["ref"] = bundle["presentedBy"] + "?purpose=session"
         presenter = fixture_private_key("presenter")
-        changed["input"]["bundle"] = resign_bundle(bundle, presenter, claim["ref"])
-        self.assertTrue(verify_bundle(changed["input"]["bundle"]))
-        self.assertEqual("fail", execute_once(changed, self.document))
-        control = copy.deepcopy(changed)
-        control["operation"] = "control-decision"
-        self.assertEqual("fail", execute_once(control, self.document))
+
+        def presented_as(refs):
+            changed = copy.deepcopy(evaluation)
+            bundle = changed["input"]["bundle"]
+            original = next(
+                c for c in bundle["claims"] if c["ref"] == bundle["presentedBy"]
+            )
+            bundle["claims"] = [
+                c for c in bundle["claims"] if c is not original
+            ] + [dict(original, ref=ref) for ref in refs]
+            changed["input"]["bundle"] = resign_bundle(bundle, presenter, refs[0])
+            self.assertTrue(verify_bundle(changed["input"]["bundle"]))
+            return changed
+
+        presented = evaluation["input"]["bundle"]["presentedBy"]
+        qualified = presented_as([presented + "?purpose=session"])
+        self.assertEqual("pass", execute_once(qualified, self.document))
+        qualified["operation"] = "control-decision"
+        self.assertEqual("pass", execute_once(qualified, self.document))
+
+        # Two claims with the presented identity do not resolve uniquely.
+        ambiguous = presented_as([presented + "?purpose=session", presented + "?purpose=audit"])
+        self.assertEqual("fail", execute_once(ambiguous, self.document))
+        ambiguous["operation"] = "control-decision"
+        self.assertEqual("fail", execute_once(ambiguous, self.document))
 
     def test_composite_record_version_and_warning_shapes_are_enforced(self):
         case, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
@@ -2830,13 +3027,6 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 identity, verifier, public_ref(verifier)
             )
 
-        def verifier_without_nonce(value, document):
-            identity = value["authority"]["vetInput"]["verifierIdentity"]
-            identity.pop("sessionNonce")
-            value["authority"]["vetInput"]["verifierIdentity"] = resign_bundle(
-                identity, verifier, public_ref(verifier)
-            )
-
         def duplicate_commitment(value, document):
             value["record"]["dealSpecific"].append(
                 copy.deepcopy(value["record"]["dealSpecific"][0])
@@ -2864,7 +3054,6 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             ("vetInput attempt", lambda v, d: v["authority"]["vetInput"].update(attempt=2)),
             ("authenticated session name", other_session),
             ("verifier identity presentedBy", verifier_presents_other_claim),
-            ("verifier identity nonce", verifier_without_nonce),
             ("resolved order only", lambda v, d: v["resolvedResults"].reverse()),
         )
         for label, mutate in unsigned:
@@ -2881,7 +3070,8 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             ("unestablished observation",
              lambda v, i, r: r.update(observationDisposition="inferred")),
             ("receipt content hash", lambda v, i, r: r.update(contentHash="00" * 32)),
-            ("native equals logical", native_equals_logical),
+            ("native equals logical without a declared identity mapping",
+             native_equals_logical),
         )
         for label, mutate in receipts:
             with self.subTest(label=label):
@@ -2895,6 +3085,361 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
              "reasons": ["signed overallDecision does not match replay"]},
             flipped,
         )
+
+    def _replay_aggregate(self, name, mutate, decision):
+        """Mutate an aggregate input, sign ``decision``, and re-anchor it."""
+
+        _, evaluation = self._case_evaluation(name)
+        document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        mutate(changed["input"], document)
+        changed["input"]["record"]["overallDecision"] = decision
+        changed["input"] = reanchor_composite_input(changed["input"], document)
+        return execute_once(changed, document)
+
+    def _committed_index(self, value, scheme):
+        return next(
+            index for index, item in enumerate(value["resolvedResults"])
+            if item["artifact"]["scheme"] == scheme
+        )
+
+    def _replace_committed(self, value, document, index, mutate_artifact):
+        """Swap one committed result for a re-signed, authenticated variant."""
+
+        resolved = copy.deepcopy(value["resolvedResults"][index])
+        mutate_artifact(resolved["artifact"])
+        replacement = resign_result(
+            resolved, fixture_private_key("authority"), AUTHORITY_REF
+        )
+        document["trustedContext"]["authenticatedResultArtifacts"].append({
+            "ref": copy.deepcopy(replacement["ref"]),
+            "serializedArtifactHash": replacement["serializedArtifactHash"],
+        })
+        old = value["resolvedResults"][index]["ref"]
+        value["resolvedResults"][index] = replacement
+        for field in ("freshness", "dealSpecific"):
+            value["record"][field] = [
+                copy.deepcopy(replacement["ref"]) if ref == old else ref
+                for ref in value["record"][field]
+            ]
+
+    def test_aggregation_classifies_committed_results_not_bundle_pointers(self):
+        # DACS-2 §7.7.1 classify_verified_member uses the record's committed
+        # freshness ++ dealSpecific results; an empty committed set fails.
+        def drop_lei(value, document):
+            index = self._committed_index(value, "lei")
+            ref = value["resolvedResults"].pop(index)["ref"]
+            for field in ("freshness", "dealSpecific"):
+                value["record"][field] = [
+                    item for item in value["record"][field] if item != ref
+                ]
+
+        self.assertEqual(
+            {"decision": "fail", "reasons": ["required failing or absent: lei"]},
+            self._replay_aggregate(
+                "vet-cross-accumulator-fail-over-error", drop_lei, "fail"
+            ),
+        )
+
+        # A refreshed committed result counts even though the bundle claim
+        # still points at the older, now uncommitted reference.
+        def refresh_lei(value, document):
+            self._replace_committed(
+                value, document, self._committed_index(value, "lei"),
+                lambda artifact: artifact.update(decision="pass"),
+            )
+
+        self.assertEqual(
+            {"decision": "pass", "reasons": []},
+            self._replay_aggregate(
+                "vet-oneof-indeterminate-over-fail", refresh_lei, "pass"
+            ),
+        )
+
+        # A committed result for another identity cannot satisfy the member.
+        def other_identity(value, document):
+            self._replace_committed(
+                value, document, self._committed_index(value, "lei"),
+                lambda artifact: artifact.update(
+                    decision="pass", identifier="529900T8BM49AURSDO55"
+                ),
+            )
+
+        case, _ = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        self.assertEqual(
+            case["expectedOutput"],
+            self._replay_aggregate(
+                "vet-oneof-indeterminate-over-fail", other_identity,
+                "indeterminate",
+            ),
+        )
+
+        # Qualification preflight covers every committed method for the
+        # scheme, not only the one a bundle claim cites (CRQ-2).
+        _, credential = self._case_evaluation("vet-ma3-verified-accept")
+        uncited = credential["input"]["resolvedResults"][0]
+
+        def commit_uncited(value, document):
+            value["resolvedResults"].append(copy.deepcopy(uncited))
+            value["record"]["dealSpecific"].append(copy.deepcopy(uncited["ref"]))
+
+        self.assertEqual(
+            {"decision": "error", "reasons": ["unresolved recipe family or version"]},
+            self._replay_aggregate(
+                "vet-oneof-indeterminate-over-fail", commit_uncited, "error"
+            ),
+        )
+
+    def test_every_committed_result_needs_a_verified_member(self):
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+
+        def requirement(req):
+            def mutate(value, document):
+                value["authority"]["vetInput"]["requirement"] = req
+                value["record"]["requirementHash"] = hash_hex(req)
+            return mutate
+
+        # The committed domain result is attributable to no member.
+        self.assertEqual(invalid, self._replay_aggregate(
+            "vet-cross-accumulator-fail-over-error",
+            requirement({"requirementVersion": "1", "required": [
+                {"scheme": "lei", "verificationRequired": True, "recipeVersion": 1},
+            ]}),
+            "fail",
+        ))
+        # No member at all: every committed result is unattributable.
+        self.assertEqual(invalid, self._replay_aggregate(
+            "vet-cross-accumulator-fail-over-error",
+            requirement({"requirementVersion": "1", "required": []}),
+            "pass",
+        ))
+
+    def test_required_verified_selector_uses_the_generic_exact_claim_gate(self):
+        # exact_selector_authorized: verifiedSelector is the presented claim's
+        # own verified-and-fresh evidence, independent of member order and of
+        # any one member's method/age/parameter constraints.
+        case, evaluation = self._case_evaluation("vet-ma3-verified-accept")
+        self.assertTrue(case["expectedOutput"])
+        _, proxy_case = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        proxy = copy.deepcopy(proxy_case["input"]["resolvedResults"][0])
+        proxy["artifact"]["identifier"] = "529900T8BM49AURSDO55"
+        proxy = resign_result(proxy, fixture_private_key("authority"), AUTHORITY_REF)
+        document = copy.deepcopy(self.document)
+        document["trustedContext"]["authenticatedResultArtifacts"].append({
+            "ref": copy.deepcopy(proxy["ref"]),
+            "serializedArtifactHash": proxy["serializedArtifactHash"],
+        })
+        changed = copy.deepcopy(evaluation)
+        bundle = changed["input"]["bundle"]
+        bundle["claims"].append({
+            "ref": "lei:529900T8BM49AURSDO55",
+            "issuedAt": bundle["presentedAt"],
+            "verifiedBy": copy.deepcopy(proxy["ref"]),
+        })
+        presenter = fixture_private_key("presenter")
+        changed["input"]["bundle"] = resign_bundle(bundle, presenter, public_ref(presenter))
+        changed["input"]["resolvedResults"].append(proxy)
+        members = [
+            {"scheme": "lei", "verificationRequired": True,
+             "parameters": {"verificationMethod": "verifiable-credential"}},
+            {"scheme": "lei", "verificationRequired": True,
+             "parameters": {"verificationMethod": "consensus-backed-proxy"}},
+        ]
+        for order in (members, list(reversed(members))):
+            with self.subTest(first=order[0]["parameters"]["verificationMethod"]):
+                candidate = copy.deepcopy(changed)
+                candidate["input"]["requirement"] = {
+                    "requirementVersion": "1", "required": order,
+                    "primaryClaimSelector": "lei",
+                }
+                self.assertTrue(execute_once(candidate, document))
+
+    def test_json_nesting_depth_is_bounded_without_recursion_leaks(self):
+        # CORE CF-5(5): depth 128 is admitted, 129 is rejected, and a host
+        # recursion limit is never leaked as a verdict.
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        presenter = fixture_private_key("presenter")
+
+        def nested(depth):
+            value = 0
+            for _ in range(depth):
+                value = [value]
+            return value
+
+        def with_metadata(depth):
+            changed = copy.deepcopy(evaluation)
+            bundle = changed["input"]["bundle"]
+            claim = next(c for c in bundle["claims"] if c["ref"].startswith("lei:"))
+            claim["metadata"] = {"nested": nested(depth)}
+            changed["input"]["bundle"] = resign_bundle(
+                bundle, presenter, public_ref(presenter)
+            )
+            changed["input"]["requirement"] = {
+                "requirementVersion": "1",
+                "required": [{"scheme": "lei", "verificationRequired": False}],
+            }
+            return changed
+
+        # bundle(1) > claims(2) > claim(3) > metadata(4) > nested lists.
+        admitted = with_metadata(MAX_JSON_DEPTH - 4)
+        self.assertTrue(within_json_depth(admitted["input"]["bundle"]))
+        self.assertEqual("pass", execute_once(admitted, self.document))
+        refused = with_metadata(MAX_JSON_DEPTH - 3)
+        self.assertFalse(within_json_depth(refused["input"]["bundle"]))
+        self.assertEqual("error", execute_once(refused, self.document))
+
+        deep = copy.deepcopy(evaluation)
+        deep["input"]["requirement"]["required"][0]["parameters"] = {
+            "nested": nested(5_000)
+        }
+        self.assertEqual("error", execute_once(deep, self.document))
+        _, aggregate = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        deep_aggregate = copy.deepcopy(aggregate)
+        deep_aggregate["input"]["authority"]["vetInput"]["requirement"] = {
+            "nested": nested(5_000)
+        }
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            execute_once(deep_aggregate, self.document),
+        )
+
+    def test_previously_unpinned_record_signal_and_binding_guards(self):
+        _, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+        record = evaluation["input"]["record"]
+
+        def replay(mutate_record=None, mutate_trusted=None):
+            document = copy.deepcopy(self.document)
+            changed = copy.deepcopy(evaluation)
+            if mutate_record:
+                mutate_record(changed["input"]["record"])
+            changed["input"] = reanchor_composite_input(changed["input"], document)
+            if mutate_trusted:
+                invocation = document["trustedContext"]["vetInvocations"][
+                    changed["input"]["authority"]["invocation"]
+                ]
+                mutate_trusted(invocation)
+            return execute_once(changed, document)
+
+        warning = {
+            "claimRef": record["evaluatedParty"],
+            "code": "AUTHORITY_UNAVAILABLE", "retryable": True,
+        }
+        signal = record["supplementary"][0]
+        for label, mutate in (
+            ("empty-string warnings", lambda r: r.update(warnings="")),
+            ("object warnings", lambda r: r.update(warnings={})),
+            ("non-string warning claimRef",
+             lambda r: r.update(warnings=[dict(warning, claimRef=1)])),
+            ("signal extra member",
+             lambda r: r["supplementary"][0].update(rogue=1)),
+            ("signal object value",
+             lambda r: r["supplementary"][0].update(value={})),
+            ("signal string observedAt",
+             lambda r: r["supplementary"][0].update(observedAt=str(signal["observedAt"]))),
+            ("signal empty source",
+             lambda r: r["supplementary"][0].update(source="")),
+        ):
+            with self.subTest(label=label):
+                self.assertEqual(invalid, replay(mutate))
+        self.assertEqual(invalid, replay(mutate_trusted=lambda invocation: invocation[
+            "recordAnchorBinding"
+        ].update(writer=invocation["expectedVerifier"])))
+
+    def test_required_verified_selector_member_disables_the_presence_path(self):
+        # §7.7.1: when a required member verifies the selector scheme, only the
+        # presented claim's own verified evidence can authorize the selector;
+        # an exact presence member plus a DIFFERENT verified claim cannot.
+        _, evaluation = self._case_evaluation(
+            "vet-control-key-verified-selector-laundering-reject"
+        )
+        changed = copy.deepcopy(evaluation)
+        changed["input"]["requirement"] = {
+            "requirementVersion": "1",
+            "primaryClaimSelector": "key",
+            "required": [
+                {"scheme": "key", "verificationRequired": True, "recipeVersion": 1},
+                {"scheme": "key", "verificationRequired": False},
+            ],
+        }
+        self.assertEqual("fail", execute_once(changed, self.document))
+        without_selector = copy.deepcopy(changed)
+        without_selector["input"]["requirement"].pop("primaryClaimSelector")
+        self.assertEqual("pass", execute_once(without_selector, self.document))
+
+    def test_verifier_identity_presentation_signature_is_load_bearing(self):
+        _, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        changed = copy.deepcopy(evaluation)
+        signature = changed["input"]["authority"]["vetInput"]["verifierIdentity"][
+            "presentation"
+        ]["signatures"][0]
+        signature["signature"] = (
+            ("A" if signature["signature"][0] != "A" else "B")
+            + signature["signature"][1:]
+        )
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            execute_once(changed, self.document),
+        )
+
+    def test_supplementary_observed_at_must_be_an_exact_integer(self):
+        _, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        changed["input"]["record"]["supplementary"][0]["observedAt"] = (
+            changed["input"]["record"]["generatedAt"] - 0.5
+        )
+        changed["input"] = reanchor_composite_input(changed["input"], document)
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            execute_once(changed, document),
+        )
+
+    def test_omitted_valid_until_uses_the_exact_not_latest_recipe_window(self):
+        # A later recipe version with a wider default must not widen a
+        # result validated under the earlier exact version (DACS-1 §6.3.2).
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        now = self.document["trustedContext"]["vetInvocations"][
+            evaluation["input"]["authority"]["invocation"]
+        ]["trustedNow"]
+        artifact = evaluation["input"]["resolvedResults"][0]["artifact"]
+        family = (artifact["scheme"], artifact["method"], artifact["recipeVersion"])
+        document = copy.deepcopy(self.document)
+        context = document["trustedContext"]
+        base = next(
+            recipe for recipe in context["recipeRegistry"]["recipes"]
+            if (recipe["scheme"], recipe["defaultMethod"]["kind"], recipe["recipeVersion"]) == family
+        )
+        later = copy.deepcopy(base)
+        later["recipeVersion"] = 3
+        later["defaultMaxAgeSec"] = base["defaultMaxAgeSec"] * 10
+        unsigned = {k: v for k, v in later.items() if k != "signature"}
+        later["signature"]["value"] = b64url_encode(
+            fixture_private_key("recipe-steward").sign(
+                (RECIPE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+            )
+        )
+        context["recipeRegistry"]["recipes"].append(later)
+        context["resultAuthorities"].append({
+            "scheme": family[0], "method": family[1], "recipeVersion": 3,
+            "algorithm": "ed25519", "signer": AUTHORITY_REF,
+        })
+        self.assertIsNotNone(authenticated_result_context(
+            document, authenticated_recipe_registry(document)
+        ))
+        age = base["defaultMaxAgeSec"] * 1_000 + 1
+        changed = rebuild_direct_result(
+            evaluation, document,
+            lambda a: (a.pop("validUntil"), a.update(verifiedAt=now - age, fetchedAt=now - age)),
+        )
+        self.assertEqual(1, changed["input"]["requirement"]["required"][0]["recipeVersion"])
+        self.assertEqual("fail", execute_once(changed, document))
 
     def test_verify_result_version_is_refused_not_reinterpreted(self):
         case, evaluation = self._case_evaluation(
@@ -2984,8 +3529,10 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         self.assertEqual(
             "error", replay(lambda a: a.update(fetchedAt=a["verifiedAt"] + 1))
         )
+        # DACS-1 §6.3.2: validUntil < verifiedAt is an undeterminable window,
+        # which is stale for verified use rather than malformed input.
         self.assertEqual(
-            "error", replay(lambda a: a.update(validUntil=a["verifiedAt"] - 1))
+            "fail", replay(lambda a: a.update(validUntil=a["verifiedAt"] - 1))
         )
 
     def test_presence_member_parameters_and_mode_boundary(self):

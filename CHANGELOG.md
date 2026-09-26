@@ -471,22 +471,31 @@ The format used per release:
   `counterparty`, never `permanent`). The cross-run tool rejects the
   superseded control-gate sketch and exposes all 44 replacement evaluations
   under stable `<case>::<evaluation>` names (#363).
-- The Vet reference replay now follows DACS-2 §7.7.1 `exact_selector_authorized`
-  exactly: a `oneOf` group that admits the selector scheme through a verified
-  member must be satisfied by exact presence or by another scheme, so a
-  different same-scheme verified claim cannot launder a presence-only selector
-  (PCR-5), while exact-claim verified evidence authorizes a selector that
-  appears only inside `oneOf`. A presented identity with no exact CF-2 claim
-  is uncontrolled rather than an exception. Replay refuses an unsupported or
-  missing `CompositeVerificationRecord.recordVersion` or
-  `VerifyResult.resultVersion`, a malformed `warnings` list, and a record
-  whose committed result only a presence-only member could claim. An omitted
-  optional `VerifyResult.validUntil` uses the exact recipe's authenticated
-  `defaultMaxAgeSec` window instead of being rejected. None of the 30 golden
-  outputs change; new negatives re-anchor the trusted receipt so the guard
-  under test, not a stale receipt hash, decides. The artifact-shape validator
-  again checks a `bundleVersion: "1"` object as an `AttestationBundle` unless
-  it is unambiguously an `IdentityBundle`.
+- The Vet reference replay now follows DACS-2 §7.7.1 more closely.
+  Aggregation classifies the record's committed `freshness` ++ `dealSpecific`
+  results for each verified member (an empty committed set fails, a refreshed
+  committed result counts even when the bundle claim still cites an older
+  reference, and qualification preflight covers every committed method),
+  while each result must still match an unexpired claim of the exact bundle.
+  Every committed result must be attributable to a verified member.
+  `exact_selector_authorized` uses the presented claim's own verified-and-fresh
+  evidence independently of member order; a required verified selector member
+  disables the presence path; and a `oneOf` group that admits the selector
+  scheme through verification must be satisfied by exact presence or another
+  scheme, so a different same-scheme verified claim cannot launder a
+  presence-only selector (PCR-5). `presentedBy` resolves by CF-3 identity
+  (DACS-1 §6.3.2); ambiguous resolution is uncontrolled rather than an
+  exception. Replay refuses an unsupported or missing
+  `CompositeVerificationRecord.recordVersion` or `VerifyResult.resultVersion`
+  and a malformed `warnings` list, enforces the CORE CF-5(5) 128-level nesting
+  bound without leaking recursion errors, treats an optional omitted
+  `validUntil` under the exact recipe's authenticated `defaultMaxAgeSec`, and
+  treats an inverted validity window as stale. None of the 30 golden outputs
+  change; new negatives re-anchor the trusted receipt so the guard under test,
+  not a stale receipt hash, decides. The artifact-shape validator again checks
+  a `bundleVersion: "1"` object as an `AttestationBundle` unless it is
+  unambiguously an `IdentityBundle`, and shared JSON admission keeps the
+  decoder error type and position.
 
 ### Fixed — integrated presence and current-profile consumers
 

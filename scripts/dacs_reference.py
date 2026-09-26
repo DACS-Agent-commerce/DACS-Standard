@@ -87,7 +87,11 @@ def loads_unique_json(value: str | bytes | bytearray) -> Any:
             parse_constant=reject_constant,
         )
     except json.JSONDecodeError as error:
-        raise ValueError(f"invalid JSON: {error.msg}") from error
+        # Keep the decoder type and position for existing callers and
+        # diagnostics; the prefix only classifies the admission failure.
+        raise json.JSONDecodeError(
+            f"invalid JSON: {error.msg}", error.doc, error.pos
+        ) from error
     except UnicodeDecodeError as error:
         raise ValueError("invalid JSON: input is not valid UTF-8") from error
 

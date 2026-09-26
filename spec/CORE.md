@@ -1060,15 +1060,7 @@ CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and 
 
 CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.7 declares the same boundary for the DACS-3 channel-message wire (DACS-3 §8.3.3, #349): the historical Demos `ChannelMessage` with its bare-lowercase-hex signature and raw-32-byte-digest `dacs-channelmsg:v1:` framing is replaced by the discriminated `CanonicalChannelMessage` carrying the exclusive `canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature envelope, and the byte-exact `dacs-canonical-channel-message:v1:` plus ASCII lowercase-hex-digest signed-byte framing. The historical wire is archival-only under the explicit `legacy-import` operation; `current-read` refuses it without fallback. The same complete tuple in `PROFILE.md` is the candidate profile for this replacement; these versions do not claim ordinary cross-minor compatibility with a pre-v0.6 channel-message profile.
 
-CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8,
-and DACS-5 v0.7 declares the same boundary for Vet. CORE v0.3, DACS-1 v0.8,
-and DACS-2 v0.6 change existing execution behaviour: the declared presentation
-kind selects the nonce conveyance; verifier-issued SN-4 state is consumed on
-attempt; current invocation, aggregation, time, signer, result-set, registry,
-and receipt authority comes from authenticated verifier/orchestrator context;
-and unsigned or caller-projected substitutes fail closed. Existing
-`IdentityBundle`, `VerifyResult`, and `CompositeVerificationRecord` signed
-shapes and domains are unchanged.
+CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.7 declares the same boundary for Vet. CORE v0.3, DACS-1 v0.8, and DACS-2 v0.6 change existing execution behaviour: the declared presentation kind selects the nonce conveyance; verifier-issued SN-4 state is consumed on attempt; current invocation, aggregation, time, signer, result-set, registry, and receipt authority comes from authenticated verifier/orchestrator context; and unsigned or caller-projected substitutes fail closed. Existing `IdentityBundle`, `VerifyResult`, and `CompositeVerificationRecord` signed shapes and domains are unchanged.
 
 `PROFILE.md` records the complete tuple and identifies the three documents
 whose existing Vet behaviour changes. Retaining their v0.x labels does not

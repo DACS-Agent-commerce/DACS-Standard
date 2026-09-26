@@ -591,7 +591,7 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
         stage_keys = ("core", "dacs1", "dacs2", "dacs3", "dacs4", "dacs5")
 
         # Independent parse 1: the complete candidate tuple as declared by
-        # every CORE §11.1.2 boundary sentence (jobId and channel wire).
+        # every CORE §11.1.2 boundary sentence (jobId, channel wire, and Vet).
         # Each match alternates major/minor captures; preserve both parts so
         # a major-version drift cannot be hidden by an unchanged minor.
         core_sentences = re.findall(

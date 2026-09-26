@@ -603,8 +603,13 @@ def validate_pair(
         # Ordinary file diagnostics remain visible without reading either file.
         errors = [fail(interim_path, f"pair paths could not be resolved: {error}")]
         for path in dict.fromkeys((interim_path, resolved_path)):
-            if not path.exists():
+            try:
+                path.stat()
+            except FileNotFoundError:
                 errors.append(fail(path, "fixture file not found"))
+            except OSError as exc:
+                detail = exc.strerror or type(exc).__name__
+                errors.append(fail(path, f"fixture file could not be read: {detail}"))
         return errors
     interim, errors = validate_interim(
         interim_path,

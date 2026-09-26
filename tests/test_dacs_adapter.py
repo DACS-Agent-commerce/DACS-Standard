@@ -120,13 +120,20 @@ def unavailable(completed):
 METADATA = {"protocol": "dacs-adapter/1", "id": "metadata", "type": "metadata"}
 
 
+def pinned_text(relative):
+    """A pinned source as the wrapped release carries it, whatever the working tree says."""
+
+    revision = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))["adapter"]["wrappedStandard"]["revision"]
+    return git(ROOT, "show", f"{revision}:{relative}")
+
+
 class DacsAdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.descriptor = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))
         cls.sources = {}
         for name, source in cls.descriptor["sources"].items():
-            cls.sources[name] = json.loads((ROOT / source["path"]).read_text(encoding="utf-8"))
+            cls.sources[name] = json.loads(pinned_text(source["path"]))
 
     def test_release_descriptor_and_actual_domain_primitive_pin(self):
         completed = subprocess.run(
@@ -675,14 +682,6 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             path.write_text(text.replace("are not exposed by this release", "are not exposed"), encoding="utf-8")
             return clone
 
-        def working_bytes_genuine_but_not_head(clone):
-            jcs = clone / "scripts" / "jcs.py"
-            original = jcs.read_bytes()
-            jcs.write_bytes(original + b"\n# committed change\n")
-            commit_all(clone, "change jcs at HEAD")
-            jcs.write_bytes(original)
-            return clone
-
         def nested_plain_copy(clone):
             nested = clone / "nested-copy"
             nested.mkdir()
@@ -709,7 +708,6 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
 
         for mutate in (
             uncommitted_descriptor,
-            working_bytes_genuine_but_not_head,
             nested_plain_copy,
             second_origin_value,
             fork_with_added_pinned_origin,
@@ -719,6 +717,55 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
                 root = mutate(committed_clone(self))
                 completed, _ = run_adapter([METADATA], root=root)
                 self.assertTrue(unavailable(completed), completed)
+
+    def test_later_edits_to_wrapped_files_change_neither_what_runs_nor_whether_it_runs(self):
+        """The release is read from Git objects, so ordinary repository work cannot break it."""
+
+        clone = committed_clone(self)
+        jcs = clone / "scripts" / "jcs.py"
+        jcs.write_bytes(jcs.read_bytes() + b"\n\ndef canonicalize(value):\n    return '\"TAMPERED\"'\n")
+        for relative in (
+            "scripts/validate_conformance_vectors.py",
+            "scripts/run_lifecycle_walkthrough.py",
+            "tests/test_flow_trace_signing.py",
+        ):
+            path = clone / relative
+            path.write_bytes(path.read_bytes() + b"\n# a later, unrelated edit\n")
+        golden = clone / "conformance" / "vectors" / "golden.json"
+        golden.write_bytes(golden.read_bytes() + b"\n")
+        commit_all(clone, "later work on next")
+        (clone / "scripts" / "specsource.py").write_bytes(b"raise SystemExit('uncommitted edit')\n")
+        completed, responses = run_adapter(
+            [METADATA, execute("jcs", "canonicalize", [{"b": 1, "a": 2}])], root=clone
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual(responses[1]["result"], {"hex": b'{"a":2,"b":1}'.hex()})
+        validator = subprocess.run(
+            [sys.executable, str(clone / "scripts" / "validate_dacs_adapter_release.py")],
+            cwd=clone,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertEqual(validator.returncode, 0, validator.stderr)
+
+    def test_no_git_transport_runs_during_the_checks(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        clone = Path(directory.name) / "shallow"
+        marker = Path(directory.name) / "helper-ran"
+        # A depth-1 clone lacks the wrapped revision object, which invites a lazy fetch.
+        git(ROOT, "clone", "--quiet", "--depth", "1", f"file://{ROOT}", str(clone))
+        git(clone, "remote", "set-url", "origin", EXPECTED_ORIGIN)
+        git(clone, "config", "extensions.partialClone", "helper")
+        git(clone, "config", "remote.helper.url", f"ext::sh -c touch% {marker}")
+        git(clone, "config", "remote.helper.promisor", "true")
+        git(clone, "config", "protocol.ext.allow", "always")
+        completed, _ = run_adapter([METADATA], root=clone)
+        self.assertTrue(unavailable(completed), completed)
+        self.assertFalse(marker.exists())
 
     def test_untracked_and_environment_modules_cannot_shadow_the_standard_library(self):
         clone = committed_clone(self)
@@ -874,6 +921,16 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
             git(clone, "config", "--add", "remote.origin.url", EXPECTED_ORIGIN)
             return None
 
+        # A developer's rewrite of the same repository to SSH is still that repository.
+        clone = committed_clone(self)
+        (clone / ".git" / "ssh.inc").write_text(
+            '[url "git@github.com:"]\n\tinsteadOf = https://github.com/\n', encoding="utf-8"
+        )
+        git(clone, "config", "include.path", "ssh.inc")
+        completed, responses = run_adapter([METADATA], root=clone)
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual(responses[0]["result"]["observedOrigin"], EXPECTED_ORIGIN)
+
         for mutate in (
             origin_only_from_environment,
             fetch_url_rewritten_by_include,
@@ -942,6 +999,19 @@ class DacsAdapterIntegrityTests(unittest.TestCase):
         self.assertTrue(all(len(line) <= 1024 for line in completed.stderr.splitlines()))
         self.assertGreater(max(len(line) for line in completed.stderr.splitlines()), 1000)
 
+        def sized(total):
+            head = b'{"protocol":"dacs-adapter/1","id":"s","type":"execute","operation":"canonicalize","params":["'
+            tail = b'"]}'
+            return head + b"a" * (total - len(head) - len(tail)) + tail
+
+        exact, over = sized(1_048_576), sized(1_048_577)
+        completed, responses = run_adapter_bytes(exact + b"\n" + over + b"\n" + over)
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertTrue(responses[0]["ok"], responses[0].get("error"))
+        self.assertEqual(
+            [item["error"]["code"] for item in responses[1:]], ["REQUEST_TOO_LARGE", "REQUEST_TOO_LARGE"]
+        )
+
         clone = committed_clone(self)
         (clone / DESCRIPTOR_RELATIVE).write_bytes(b" " * (9 * 1_048_576))
         completed, _ = run_adapter([METADATA], root=clone)
@@ -983,9 +1053,7 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             item for item in cls.descriptor["families"] if item["id"] == "domain-separated-signing"
         )
         cls.cases = {case["caseId"]: case for case in cls.family["cases"]}
-        happy = json.loads(
-            (ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json").read_text(encoding="utf-8")
-        )
+        happy = json.loads(pinned_text("conformance/vectors/dacs-v0.1-happy-path.json"))
         cls.artifacts = {item["id"]: item["artifact"] for item in happy["artifacts"]}
 
     def test_signed_scope_abstains_on_every_other_version_member(self):
@@ -1174,6 +1242,9 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             ("unknown-tag", "canonicalize", [{"$dacsType": "binary64", "hex": "00" * 8}], "MALFORMED_TAG"),
             ("bigint-extra-member", "canonicalize", [{"$dacsType": "bigint", "decimal": "1", "x": 1}], "MALFORMED_TAG"),
             ("bigint-leading-zero", "canonicalize", [{"$dacsType": "bigint", "decimal": "01"}], "MALFORMED_TAG"),
+            # Two digits, so only the string type check can object.
+            ("bytes-tag-number", "canonicalize", [{"$dacsType": "bytes", "hex": 55}], "MALFORMED_TAG"),
+            ("bigint-number", "canonicalize", [{"$dacsType": "bigint", "decimal": 5}], "MALFORMED_TAG"),
             ("verify-dacs5-separator", "domainSepVerify", [message, "dacs5-bundle:v1:", signature, public_key], "UNSUPPORTED_CASE"),
             ("verify-sig4-uppercase-kind", "domainSepVerify", [message, "dacs-x-Foo:v1:", signature, public_key], "UNSUPPORTED_CASE"),
             ("verify-sig4-underscore-kind", "domainSepVerify", [message, "dacs-x-foo_bar:v1:", signature, public_key], "UNSUPPORTED_CASE"),
@@ -1188,6 +1259,7 @@ class DacsAdapterBoundaryTests(unittest.TestCase):
             (execute("p", "", [1]), "INVALID_REQUEST"),
             ({**execute("p", "canonicalize", [1]), "params": {"0": 1}}, "INVALID_REQUEST"),
             ({"protocol": "dacs-adapter/1", "id": 7, "type": "metadata"}, "INVALID_REQUEST"),
+            ({**execute("p", "canonicalize", [1]), "operation": 5}, "INVALID_REQUEST"),
             ([METADATA], "INVALID_REQUEST"),
         ]
         requests = [execute(name, operation, params) for name, operation, params, _ in cases]
@@ -1398,9 +1470,7 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
 
         def unhashable_signed_scope_kind(descriptor):
             # A genuine source hash, so only the hashable-kind binding can object.
-            happy = json.loads(
-                (ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json").read_text(encoding="utf-8")
-            )
+            happy = json.loads(pinned_text("conformance/vectors/dacs-v0.1-happy-path.json"))
             listing = next(item for item in happy["artifacts"] if item["id"] == "listing-analyze-csv")
             self.family(descriptor, "signed-scope")["cases"].append(
                 {
@@ -1494,7 +1564,7 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             descriptor["sources"]["rawJson"] = dict(descriptor["sources"]["sig6"])
 
         def control_names_another_test(descriptor):
-            lines = (ROOT / "tests" / "test_flow_trace_signing.py").read_text(encoding="utf-8").splitlines()
+            lines = pinned_text("tests/test_flow_trace_signing.py").splitlines()
             name = "test_golden_signature_verifies_over_core_b7_preimage"
             start = lines.index(f"    def {name}(self):") + 1
             end = start
@@ -1516,6 +1586,25 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
 
         def sig4_form_as_unknown_separator(descriptor):
             f5_case(descriptor, "cases", "signing::unknown-separator-false")["separator"] = "dacs-x-Foo:v1:"
+
+        def swapped_source_corpora(descriptor):
+            sources = descriptor["sources"]
+            sources["canonicalization"], sources["sig6"] = sources["sig6"], sources["canonicalization"]
+            self.family(descriptor, "canonicalization")["source"] = "sig6"
+            self.family(descriptor, "sig6-wire")["source"] = "canonicalization"
+
+        def source_pinned_at_head(descriptor):
+            descriptor["sources"]["sig6"]["revision"] = git(ROOT, "rev-parse", "HEAD")
+
+        def control_pinned_at_head(descriptor):
+            self.family(descriptor, "domain-separated-signing")["controlSource"]["revision"] = git(
+                ROOT, "rev-parse", "HEAD"
+            )
+
+        def duplicated_f5_operations(descriptor):
+            self.family(descriptor, "domain-separated-signing")["operations"] = [
+                "domainSepSign", "domainSepVerify", "domainSepVerify",
+            ]
 
         def adapter_source_digest_wrong(descriptor):
             descriptor["adapter"]["source"]["sha256"] = "0" * 64
@@ -1539,6 +1628,10 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             sign_expectation_altered,
             raw_digest_signature_altered,
             sig4_form_as_unknown_separator,
+            swapped_source_corpora,
+            source_pinned_at_head,
+            control_pinned_at_head,
+            duplicated_f5_operations,
             adapter_source_digest_wrong,
             option_shaped_source_revision,
             traversing_source_path,

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Bounded ``dacs-adapter/1`` wrapper over pinned DACS-Standard primitives.
 
-This proposal adapter is non-normative.  It verifies the repository origin and
-the committed blobs of the wrapped Standard modules, whose revision, tree, and
-digests are fixed in this file, then executes exactly those verified bytes for
-the existing canonicalisation, signed-scope, and signature helpers.  Only the
-interpreter's standard library may be imported alongside them.  It performs no
-network or substrate operations.
+This proposal adapter is non-normative.  It verifies the repository origin, then
+reads the wrapped Standard modules from the Git objects of the release whose
+revision, tree, and digests are fixed in this file, and executes exactly those
+verified bytes for the existing canonicalisation, signed-scope, and signature
+helpers.  Later edits to those files in the working tree change neither what
+runs nor whether it runs.  Only the interpreter's standard library may be
+imported alongside them.  It performs no network or substrate operations.
 """
 
 import sys
@@ -161,25 +162,31 @@ def _stderr(text: str) -> None:
         pass
 
 
-def _git(*args: str) -> str:
+def _git_bytes(*args: str) -> bytes:
     environment = {key: value for key, value in os.environ.items() if key not in GIT_REPOSITORY_ENV}
     environment["GIT_TERMINAL_PROMPT"] = "0"
+    # The checks read local objects and configuration only.  An empty protocol
+    # allow-list and no lazy fetching refuse every transport, whatever the Git
+    # configuration allows, so no promisor or remote helper can run.
+    environment["GIT_ALLOW_PROTOCOL"] = ""
+    environment["GIT_NO_LAZY_FETCH"] = "1"
     try:
         completed = subprocess.run(
-            # The checks read local objects and configuration only; refusing every
-            # transport stops a configured promisor or helper from running.
             ["git", "-C", str(ROOT), "-c", "protocol.allow=never", *args],
             check=True,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
             timeout=5,
             env=environment,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise RuntimeError(f"provenance git check failed: {_clean_message(exc)}") from exc
-    return completed.stdout.strip()
+    return completed.stdout
+
+
+def _git(*args: str) -> str:
+    return _git_bytes(*args).decode("utf-8", "replace").strip()
 
 
 def _git_blob_id(data: bytes) -> str:
@@ -209,6 +216,31 @@ def _read_committed_bytes(relative: str, *, expected_sha256: object, expected_bl
     return data
 
 
+def _read_release_bytes(relative: str, *, expected_sha256: str, expected_blob: object) -> bytes:
+    """Read a wrapped module from the wrapped release's Git objects, not the working tree."""
+
+    spec = f"{WRAPPED_REVISION}:{relative}"
+    if _git("cat-file", "-t", spec) != "blob" or int(_git("cat-file", "-s", spec)) > MAX_PINNED_FILE_BYTES:
+        raise RuntimeError(f"wrapped release has no bounded blob for {relative}")
+    data = _git_bytes("cat-file", "blob", spec)
+    if hashlib.sha256(data).hexdigest() != expected_sha256:
+        raise RuntimeError(f"sha256 mismatch for wrapped release module: {relative}")
+    if _git_blob_id(data) != expected_blob:
+        raise RuntimeError(f"wrapped revision blob mismatch for {relative}")
+    return data
+
+
+def _same_repository(url: str) -> bool:
+    """Whether a fetch URL names the pinned repository over HTTPS or SSH."""
+
+    path = "DACS-Agent-commerce/DACS-Standard"
+    return url.removesuffix(".git") in {
+        f"https://github.com/{path}",
+        f"ssh://git@github.com/{path}",
+        f"git@github.com:{path}",
+    }
+
+
 def _bounded_text(value: object, limit: int) -> bool:
     return isinstance(value, str) and 0 < len(value) <= limit
 
@@ -216,13 +248,19 @@ def _bounded_text(value: object, limit: int) -> bool:
 def _verify_provenance() -> tuple[dict[str, Any], str, str, dict[str, bytes]]:
     if Path(_git("rev-parse", "--show-toplevel")).resolve() != ROOT:
         raise RuntimeError("adapter checkout is not the root of its Git work tree")
-    # Both the repository's own configuration and the URL Git would actually fetch
-    # from (after includes, per-worktree configuration, and insteadOf rewriting)
-    # must be exactly the pinned origin.
+    # The repository's own configuration must name exactly the pinned origin, and
+    # the URL Git would actually fetch from (after includes, per-worktree
+    # configuration, and insteadOf rewriting) must be that same repository,
+    # over HTTPS or SSH.
     pinned_origins = {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}
     origins = _git("config", "--local", "--get-all", "remote.origin.url").splitlines()
     effective = _git("remote", "get-url", "--all", "origin").splitlines()
-    if len(origins) != 1 or origins[0] not in pinned_origins or effective != origins:
+    if (
+        len(origins) != 1
+        or origins[0] not in pinned_origins
+        or len(effective) != 1
+        or not _same_repository(effective[0])
+    ):
         raise RuntimeError("repository origin does not match the pinned DACS-Standard origin")
     observed_origin = origins[0]
 
@@ -285,9 +323,7 @@ def _verify_provenance() -> tuple[dict[str, Any], str, str, dict[str, bytes]]:
     verified: dict[str, bytes] = {}
     for primitive in primitives:
         relative = primitive["path"]
-        if _git("rev-parse", f"{WRAPPED_REVISION}:{relative}") != primitive.get("gitBlob"):
-            raise RuntimeError(f"wrapped revision blob mismatch for {relative}")
-        verified[relative] = _read_committed_bytes(
+        verified[relative] = _read_release_bytes(
             relative,
             expected_sha256=expected[relative],
             expected_blob=primitive.get("gitBlob"),
@@ -448,6 +484,11 @@ def _metadata() -> dict[str, Any]:
         # ``revision`` covers the executed code; this binds the descriptor text the
         # handshake echoes (name, version, limitations, reported pins).
         "releaseDescriptorSha256": _RELEASE_SHA256,
+        # CF-1 NFC output depends on the interpreter's Unicode database.
+        "hostRuntime": {
+            "python": ".".join(str(part) for part in sys.version_info[:3]),
+            "unicodeVersion": unicodedata.unidata_version,
+        },
         "provenanceCodebase": adapter["provenanceCodebase"],
         "supportedFamilies": [
             "canonical-accept",
@@ -665,11 +706,12 @@ def _discard_line_tail(stream: Any) -> None:
 
 def _serve(incoming: Any, outgoing: Any) -> int:
     while True:
-        line = incoming.readline(MAX_REQUEST_BYTES + 1)
+        # The bound applies to the request itself, excluding its line terminator.
+        line = incoming.readline(MAX_REQUEST_BYTES + 2)
         if not line:
             return 0
         request_id: str | None = None
-        if len(line) > MAX_REQUEST_BYTES:
+        if len(line.removesuffix(b"\n")) > MAX_REQUEST_BYTES:
             if not line.endswith(b"\n"):
                 _discard_line_tail(incoming)
             error = AdapterError("REQUEST_TOO_LARGE", "request exceeds 1048576 bytes")

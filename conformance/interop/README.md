@@ -16,11 +16,17 @@ tree, and the sha256 of each of the four repository modules it executes in its
 own source, so the metadata `revision` (the adapter's sha256) covers the code
 that runs; the descriptor must repeat exactly those pins, and the metadata
 `releaseDescriptorSha256` binds the descriptor text the handshake echoes.
-Before executing anything it wraps, the adapter verifies the committed blobs,
-the wrapped revision and tree, and that both the single `remote.origin.url` in
-this checkout's own Git configuration and the URL Git would actually fetch
-from are the pinned origin. Each module runs from the bytes that were verified,
-never from a re-read file or cached bytecode. On POSIX hosts the adapter
+Before executing anything it wraps, the adapter checks that it and the
+descriptor are the committed HEAD blobs, that the single `remote.origin.url` in
+this checkout's own Git configuration is the pinned origin and the URL Git would
+actually fetch from names the same repository over HTTPS or SSH, and that the
+wrapped revision resolves to the pinned commit and tree. It reads the four
+wrapped modules from that revision's Git objects, never from the working tree,
+verifies each against its fixed sha256 and blob, and runs exactly those bytes,
+never a re-read file or cached bytecode. Later edits to the wrapped files in
+this repository therefore change neither what the adapter runs nor whether it
+starts; moving to a newer Standard release is a deliberate repin (see
+[Repin](#repin)). On POSIX hosts the adapter
 imports only built-in modules before re-executing its interpreter with `-I -S`,
 so from then on `PYTHONPATH`, the script directory, user and site packages, and
 `.pth` hooks take no part in its imports; after verification an import guard
@@ -34,8 +40,9 @@ control; launch it as `python3 -I -S scripts/dacs_adapter.py` to exclude that
 too. These are consistency checks, not remote attestation or host confinement:
 the interpreter, its standard library, the launching environment, `PATH`,
 `git`, and this checkout's own Git configuration are trusted host inputs. The
-adapter's Git calls refuse every transport (`protocol.allow=never`), so a
-configured promisor or remote helper cannot run during them.
+adapter's Git calls run with an empty `GIT_ALLOW_PROTOCOL` allow-list,
+`protocol.allow=never`, and lazy fetching disabled, so no configured promisor
+or remote helper can run during them.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
 wrapped primitive digests remain separate.
 
@@ -77,7 +84,8 @@ The executable operations are:
 
 `verifyBundle` and legacy import are not advertised. Unknown operations and
 unrecognised artifact shapes return controlled errors. The input loop caps each
-request at 1 MiB and five parameters, accepts only strict UTF-8 JSON (no `NaN`
+request at 1 MiB (excluding its newline) and five parameters, accepts only
+strict UTF-8 JSON (no `NaN`
 or `Infinity` literals and no duplicate member names), reports every
 request-decoding failure as `INVALID_JSON`, emits one response line per input
 line, and writes one bounded line of printable ASCII per diagnostic, only to
@@ -87,7 +95,8 @@ rejection. Requests are bounded in size, not time. CPython's NFC normalization
 is quadratic in long runs of combining marks (a 200 KB string took roughly 8 to
 17 seconds in review, depending on hardware), so callers must enforce a
 per-request timeout, as the shared runner does by default; a timeout is never
-a result.
+a result. NFC output also depends on the interpreter's Unicode database, whose
+version the metadata reports under `hostRuntime` with the Python version.
 
 The canonicalization descriptor partitions all 25 source cases: six are
 selected, `bigint-native-type` is unsupported, twelve are excluded because their
@@ -183,6 +192,20 @@ use that runner. The remaining exact handoff questions are:
 > Will the shared runner fold every asserted DACS-Standard codebase identity,
 > with or without a revision or path qualifier, to one codebase before counting
 > independent implementations?
+
+## Repin
+
+To wrap a newer Standard release, land that release on `next` first, then:
+set `WRAPPED_REVISION`, `WRAPPED_TREE`, and the four module sha256 constants in
+`scripts/dacs_adapter.py`; update the descriptor's wrapped pins, source-corpus
+pins, and control source (including its line range); refresh the descriptor's
+adapter-source pin; review every claim and update `REVIEWED_CLAIMS_SHA256` in
+the validator; and run the validator and `tests.test_dacs_adapter`. The wrapped
+revision is a `next` commit, so merge, squash, and rebase merges of this
+proposal all keep it reachable, but a checkout needs its objects (not a
+depth-limited clone). Consumers that also compare working files with the pins,
+such as the contributor pilot, need a checkout where those files still equal
+the release, for example the release head itself.
 
 ## Run
 

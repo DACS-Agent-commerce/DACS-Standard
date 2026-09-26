@@ -65,7 +65,19 @@ SOURCE_KEYS = PIN_KEYS | {"revision"}
 DESCRIPTOR_KEYS = {"schema", "status", "issue", "protocol", "adapter", "sources", "families"}
 PROTOCOL_KEYS = SOURCE_KEYS | {"id", "repository", "exportedCompanionInputs"}
 ADAPTER_KEYS = {"name", "version", "repository", "provenanceCodebase", "source", "wrappedStandard", "limitations"}
-SOURCE_NAMES = {"canonicalization", "signedScope", "sig6", "domainSeparatedSigning"}
+SOURCE_PATHS = {
+    "canonicalization": "conformance/vectors/security/canonical-json-v0.1.json",
+    "signedScope": "conformance/vectors/dacs-v0.1-happy-path.json",
+    "sig6": "conformance/vectors/security/signature-value-encoding-v0.1.json",
+    "domainSeparatedSigning": "conformance/vectors/golden.json",
+}
+SOURCE_NAMES = set(SOURCE_PATHS)
+FAMILY_SOURCE = {
+    "canonicalization": "canonicalization",
+    "signed-scope": "signedScope",
+    "sig6-wire": "sig6",
+    "domain-separated-signing": "domainSeparatedSigning",
+}
 FAMILY_KEYS = {
     "canonicalization": {"id", "operation", "status", "source", "cases", "unsupportedSourceCases", "excludedSourceCases"},
     "signed-scope": {"id", "operation", "status", "source", "cases"},
@@ -100,7 +112,7 @@ ENTRY_KEYS = {
 # sha256 of the reviewed prose claims and of the neutral-protocol pins, which
 # cannot be checked offline.  Changing any of them is a deliberate, visible edit
 # here, never a silent descriptor change.
-REVIEWED_CLAIMS_SHA256 = "b390b7dbed2f0619235f729f9efdcd11e3c52c6fe8f6a56d3d25a4496f78151f"
+REVIEWED_CLAIMS_SHA256 = "b499eff09625d5352c494bd09593424e2885e83902635dccc4fb56c3e3ec29d1"
 HEX64 = re.compile(r"[0-9a-f]{64}")
 FAMILY_STATUS = {
     "canonicalization": "executable",
@@ -124,6 +136,8 @@ GIT_REPOSITORY_ENV = {
 def _git_run(*args: str) -> subprocess.CompletedProcess:
     environment = {key: value for key, value in os.environ.items() if key not in GIT_REPOSITORY_ENV}
     environment["GIT_TERMINAL_PROMPT"] = "0"
+    environment["GIT_ALLOW_PROTOCOL"] = ""  # refuse every transport, whatever the configuration allows
+    environment["GIT_NO_LAZY_FETCH"] = "1"
     return subprocess.run(
         ["git", "-C", str(ROOT), "-c", "protocol.allow=never", *args],
         check=True,
@@ -169,9 +183,8 @@ def _load_bytes_at_revision(source: dict[str, Any]) -> bytes:
     data = _git_run("show", f"{revision}:{path}").stdout
     if _sha256(data) != source["sha256"]:
         raise ValueError(f"{path}: sha256 does not match descriptor")
-    current = (ROOT / path).read_bytes()
-    if current != data:
-        raise ValueError(f"{path}: working file differs from the pinned source revision")
+    # The pinned bytes come from the release's Git objects; later edits to the
+    # working file neither change them nor invalidate the release.
     return data
 
 
@@ -228,11 +241,10 @@ def _bounded_text(value: Any, limit: int) -> bool:
     return isinstance(value, str) and 0 < len(value) <= limit
 
 
-def _load_verified_module(relative: str, expected_sha256: str, name: str) -> types.ModuleType:
-    """Execute exactly the pinned bytes; never a re-read file or cached bytecode."""
+def _load_verified_module(relative: str, data: bytes, expected_sha256: str, name: str) -> types.ModuleType:
+    """Execute exactly the pinned release bytes; never a working file or cached bytecode."""
 
     path = ROOT / relative
-    data = path.read_bytes()
     if _sha256(data) != expected_sha256:
         raise ValueError(f"wrapped primitive sha256 mismatch: {relative}")
     module = types.ModuleType(name)
@@ -264,7 +276,7 @@ class _StandardLibraryOnly:
         return spec
 
 
-def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
+def _load_primitives(primitives: dict[str, str], release: dict[str, bytes]) -> dict[str, types.ModuleType]:
     """Load the wrapped modules from verified bytes, resolving their local imports to them."""
 
     names = {"jcs": "scripts/jcs.py", "specsource": "scripts/specsource.py"}
@@ -273,7 +285,8 @@ def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
     sys.meta_path.insert(0, guard)
     try:
         loaded = {
-            name: _load_verified_module(relative, primitives[relative], name) for name, relative in names.items()
+            name: _load_verified_module(relative, release[relative], primitives[relative], name)
+            for name, relative in names.items()
         }
     except BaseException:
         sys.meta_path.remove(guard)
@@ -282,11 +295,13 @@ def _load_primitives(primitives: dict[str, str]) -> dict[str, types.ModuleType]:
     try:
         loaded["walkthrough"] = _load_verified_module(
             "scripts/run_lifecycle_walkthrough.py",
+            release["scripts/run_lifecycle_walkthrough.py"],
             primitives["scripts/run_lifecycle_walkthrough.py"],
             "dacs_release_walkthrough",
         )
         loaded["vectors"] = _load_verified_module(
             "scripts/validate_conformance_vectors.py",
+            release["scripts/validate_conformance_vectors.py"],
             primitives["scripts/validate_conformance_vectors.py"],
             "dacs_release_vectors",
         )
@@ -310,6 +325,8 @@ def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
     definition = f"    def {test_name}(self):"
     if start > end or end > len(lines) or lines[start - 1] != definition:
         raise ValueError("bounded F5 control line range does not start at the named test")
+    if lines.count(definition) != 1 or (start > 1 and lines[start - 2].lstrip().startswith("@")):
+        raise ValueError("bounded F5 control test must be defined once and undecorated")
     body_end = start
     for number in range(start + 1, len(lines) + 1):
         text = lines[number - 1]
@@ -467,15 +484,18 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
     pinned = {primitive["path"]: primitive["sha256"] for primitive in wrapped["primitives"]}
     if len(wrapped["primitives"]) != len(expected_primitives) or pinned != expected_primitives:
         raise ValueError("wrapped primitive pins do not match the modules the adapter executes")
+    release: dict[str, bytes] = {}
     for primitive in wrapped["primitives"]:
         path = primitive["path"]
-        current = (ROOT / path).read_bytes()
-        if _sha256(current) != primitive["sha256"]:
+        data = _git_run("show", f"{wrapped['revision']}:{path}").stdout
+        if _sha256(data) != primitive["sha256"]:
             raise ValueError(f"wrapped primitive sha256 mismatch: {path}")
-        if _git_blob_id(current) != primitive["gitBlob"]:
-            raise ValueError(f"wrapped primitive working blob mismatch: {path}")
-        if _git("rev-parse", f"{wrapped['revision']}:{path}") != primitive["gitBlob"]:
+        if _git_blob_id(data) != primitive["gitBlob"]:
             raise ValueError(f"wrapped primitive revision blob mismatch: {path}")
+        release[path] = data
+    for name, source in descriptor["sources"].items():
+        if source.get("path") != SOURCE_PATHS[name] or source.get("revision") != wrapped["revision"]:
+            raise ValueError(f"source {name} must pin {SOURCE_PATHS[name]} at the wrapped revision")
     primitive_sha256 = {primitive["path"]: primitive["sha256"] for primitive in wrapped["primitives"]}
 
     sources = {
@@ -485,7 +505,7 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
     executable = 0
     bounded = 0
     unsupported = 0
-    modules = _load_primitives(primitive_sha256)
+    modules = _load_primitives(primitive_sha256, release)
     family_ids = [family["id"] for family in descriptor["families"]]
     if sorted(family_ids) != sorted(FAMILY_STATUS):
         raise ValueError("release families differ from the proposal's four families")
@@ -500,6 +520,8 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
         ]
         if len(case_ids) != len(set(case_ids)):
             raise ValueError(f"family {family['id']}: duplicate case identifiers")
+        if family.get("source") != FAMILY_SOURCE[family["id"]]:
+            raise ValueError(f"family {family['id']}: source corpus drift")
         if family["id"] in FAMILY_OPERATION and (
             family.get("operation") != FAMILY_OPERATION[family["id"]]
             or any("operation" in item for item in family["cases"])
@@ -606,7 +628,7 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                 raise ValueError("bounded F5 profile must not advertise the generic family")
             if family.get("genericFamilyMilestone") != "incomplete":
                 raise ValueError("bounded F5 profile must retain the incomplete generic milestone")
-            if set(family.get("operations", [])) != {"domainSepSign", "domainSepVerify"}:
+            if family.get("operations") != ["domainSepSign", "domainSepVerify"]:
                 raise ValueError("bounded F5 operation set drift")
             if family.get("profile") != F5_PROFILE:
                 raise ValueError("bounded F5 profile identifier drift")
@@ -618,9 +640,10 @@ def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
                 raise ValueError("bounded F5 case operation drift")
             if not family.get("remainingBlocker") or not family.get("requiredHandoffQuestion"):
                 raise ValueError("bounded F5 profile must retain its abstention blocker and handoff")
-            _validate_control_lines(
-                family["controlSource"], _load_bytes_at_revision(family["controlSource"])
-            )
+            control = family["controlSource"]
+            if control.get("path") != "tests/test_flow_trace_signing.py" or control.get("revision") != wrapped["revision"]:
+                raise ValueError("bounded F5 control source must be the flow-trace test at the wrapped revision")
+            _validate_control_lines(control, _load_bytes_at_revision(control))
             raw = sources[family["source"]]["signing"]
             selected = {case["caseId"]: case for case in family["cases"]}
             if set(selected) != {

@@ -12,19 +12,39 @@ The interface remains non-normative and is not copied into the Standard.
 [`dacs-adapter-release-proposal-v1.json`](dacs-adapter-release-proposal-v1.json)
 pins the Standard revision, tree, implementation blobs, source corpora, selected
 case identifiers, and expected values. The adapter verifies those local
-committed blobs and the exact DACS-Standard Git origin before importing them.
+committed blobs, the exact DACS-Standard Git origin of this checkout, and the
+wrapped revision and tree before executing anything it wraps. The descriptor must
+pin exactly the four repository modules the adapter executes; each runs from the
+bytes that were verified, never from a re-read file or cached bytecode, and only
+the interpreter's standard library may be imported alongside them. The optional
+`cryptography` import in `validate_conformance_vectors.py` is therefore refused
+and its existing fallback applies; no advertised operation uses it.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
-wrapped primitive digests remain separate. Repository identity contains no
-revision, so two wrappers around DACS-Standard still count as one codebase.
-In particular, the contributor `standard-jcs-adapter` and this wrapper cannot be
-used as two independent implementations.
+wrapped primitive digests remain separate.
+
+The adapter asserts the revision-free codebase identity
+`github.com/DACS-Agent-commerce/DACS-Standard`. Every wrapper around
+DACS-Standard is one codebase, so this wrapper and the contributor
+`standard-jcs-adapter` cannot be two independent implementations. The pinned
+shared runner does not enforce that yet: it compares asserted
+`provenanceCodebase` strings verbatim after lowercasing, and
+`standard-jcs-adapter` asserts
+`https://github.com/DACS-Agent-commerce/DACS-Standard@<revision>#scripts/jcs.py`.
+Running both adapters through that runner reports `INTEROP-AGREE` with two
+independent implementations for the same `scripts/jcs.py`. Such rows are
+invalid evidence. Until the runner folds asserted identities to one
+revision-free codebase, any run that includes more than one Standard wrapper
+must give each of them the same
+`--adapter-provenance github.com/DACS-Agent-commerce/DACS-Standard` override.
 
 The executable operations are:
 
 - `canonicalize`, calling `scripts/jcs.py`;
 - `signedScopeHash`, calling
   `scripts/validate_conformance_vectors.py::artifact_hash_hex` for unambiguous
-  `SettlementEvidence` and `AttestationBundle` inputs;
+  `SettlementEvidence` and `AttestationBundle` inputs. A record carrying any
+  other exclusive type discriminator (CORE §11.2.5, DACS-4 §9.7) is refused,
+  never hashed as the kind it resembles;
 - `signatureValueVerdict`, calling
   `scripts/validate_conformance_vectors.py::decode_signature_value` with legacy
   spelling disabled. This operation is encoding-only, as required by F3, and
@@ -36,8 +56,16 @@ The executable operations are:
 
 `verifyBundle` and legacy import are not advertised. Unknown operations and
 unrecognised artifact shapes return controlled errors. The input loop caps each
-request at 1 MiB and five parameters, emits one response line per input line,
-and writes bounded plain-text diagnostics only to stderr.
+request at 1 MiB and five parameters, accepts only strict UTF-8 JSON (no `NaN`
+or `Infinity` literals), reports every request-decoding failure as
+`INVALID_JSON`, emits one response line per input line, and writes one bounded
+line of printable ASCII per diagnostic, only to stderr.
+
+The canonicalization descriptor partitions all 25 source cases: six are
+selected, `bigint-native-type` is unsupported, twelve are excluded because their
+Standard-only `binary64` or `unicode-code-units` tagged inputs cannot be carried
+by `dacs-adapter/1`, and six expressible cases stay outside the frozen
+first-milestone selection. Selecting them needs a new release descriptor.
 
 The protocol's BigInt tag cannot be converted to Python `int`: that would erase
 the distinction between an ordinary JSON integer and a host-language BigInt.
@@ -47,6 +75,8 @@ opaque Python object into an expected JCS rejection would manufacture coverage.
 The current runner maps every operation error to `THROWN`, which would still
 look like the expected rejection; it must recognize this explicit unsupported
 result as `ABSTAIN` before the BigInt case can enter a shared cross-run.
+A BigInt never masks a malformed tag elsewhere in the same request: the whole
+request is decoded first, and a malformed tag is `MALFORMED_TAG`.
 
 ## Bounded F5 profile
 
@@ -73,17 +103,37 @@ verification separators and Listing messages outside the 64 lowercase-hex
 grammar also return `UNSUPPORTED_CASE`. Those are unsupported inputs, not
 failed conformance candidates.
 
+The pinned neutral protocol lists the intermediate hash as an optional final
+parameter, and the shared runner sends an omitted optional argument as a
+trailing JSON `null`. The adapter treats that `null` as absent, so an in-profile
+case keeps its `true`, `false`, or signature result; a supplied intermediate
+hash, even an empty one, returns `UNSUPPORTED_CASE`. Parameters of the wrong
+type, or a private key that is not 32 bytes, return `INVALID_PARAMS` before any
+profile decision, so a malformed request is never reported as unsupported or
+as a `false` verdict.
+
+Ed25519 point-encoding strictness is not pinned by CORE or by this profile. The
+wrapped helper accepts an `x = 0` point encoding with the sign bit set, which
+RFC 8032 decoding rejects; OpenSSL rejects that encoding for `R`. No such case
+is selected. A divergence there would be an open specification question, not
+evidence against either implementation.
+
 The generic four-family milestone remains incomplete because the shared runner
 maps every operation error to an observed `THROWN` outcome. The remaining exact
-handoff question is:
+handoff questions are:
 
 > Will the shared runner classify the adapter's explicit `UNSUPPORTED_CASE`
 > error as `ABSTAIN` rather than `THROWN`, so BigInt host-type inputs and F5
 > cases outside `listing-single-hash-golden-v1` remain unscored?
 
+> Will the shared runner fold every asserted DACS-Standard codebase identity,
+> with or without a revision or path qualifier, to one codebase before counting
+> independent implementations?
+
 ## Run
 
-From a committed checkout containing this proposal:
+From a committed checkout containing this proposal and the wrapped revision
+object (for example, full history), with Python 3.10 or later:
 
 ```sh
 python3 scripts/validate_dacs_adapter_release.py
@@ -96,9 +146,9 @@ python3 -m unittest tests.test_dacs_adapter
 
 These commands are a Standard self-check. An `INTEROP-AGREE` result requires a
 separate adapter from a distinct implementation codebase and a shared runner;
-none is claimed by this proposal. The immutable neutral-source export supplied
-for this work contains the interface and adapter sources but no self-contained
-runner executable or config schema. The reproducible adapter handoff command is
-`python3 scripts/dacs_adapter.py`; the neutral runner owner can pass that command
-through its documented repeatable `--adapter` option once the runner is
-published.
+none is claimed by this proposal. The exported companion inputs pinned in the
+descriptor do not include the runner, but the pinned public revision does
+(`conformance/shared-suite/cross-run.mjs`, with repeatable `--adapter` and
+`--adapter-provenance` options). That runner still maps `UNSUPPORTED_CASE` to
+`THROWN`. The reproducible adapter handoff command is
+`python3 scripts/dacs_adapter.py`.

@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
-import importlib.util
 import json
+import os
+import re
 import subprocess
 import sys
+import types
 from pathlib import Path
 from typing import Any
 
@@ -19,22 +22,47 @@ DEFAULT_DESCRIPTOR = (
     ROOT / "conformance" / "interop" / "dacs-adapter-release-proposal-v1.json"
 )
 EXPECTED_ORIGIN = "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
+ADAPTER_SOURCE = "scripts/dacs_adapter.py"
+BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
+DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
+PROTOCOL_TAGS = {"bytes", "bigint"}
+GIT_REPOSITORY_ENV = {
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_DIR",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_WORK_TREE",
+}
 
 
-def _git(*args: str) -> str:
+def _git_run(*args: str) -> subprocess.CompletedProcess:
+    environment = {key: value for key, value in os.environ.items() if key not in GIT_REPOSITORY_ENV}
+    environment["GIT_TERMINAL_PROMPT"] = "0"
     return subprocess.run(
-        ["git", *args],
-        cwd=ROOT,
+        ["git", "-C", str(ROOT), *args],
         check=True,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
-    ).stdout.strip()
+        timeout=30,
+        env=environment,
+    )
+
+
+def _git(*args: str) -> str:
+    return _git_run(*args).stdout.decode("utf-8").strip()
 
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _git_blob_id(data: bytes) -> str:
+    return hashlib.sha1(b"blob %d\0" % len(data) + data, usedforsecurity=False).hexdigest()
 
 
 def _load_bytes_at_revision(source: dict[str, Any]) -> bytes:
@@ -43,14 +71,7 @@ def _load_bytes_at_revision(source: dict[str, Any]) -> bytes:
     blob = _git("rev-parse", f"{revision}:{path}")
     if blob != source["gitBlob"]:
         raise ValueError(f"{path}: git blob does not match descriptor")
-    data = subprocess.run(
-        ["git", "show", f"{revision}:{path}"],
-        cwd=ROOT,
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    ).stdout
+    data = _git_run("show", f"{revision}:{path}").stdout
     if _sha256(data) != source["sha256"]:
         raise ValueError(f"{path}: sha256 does not match descriptor")
     current = (ROOT / path).read_bytes()
@@ -77,56 +98,144 @@ def _artifact_by_id(artifacts: list[dict[str, Any]], case_id: str) -> dict[str, 
     return matches[0]
 
 
-def _load_module(path: Path, name: str):
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise ValueError(f"cannot load module {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+def _tags(value: Any) -> set[str]:
+    """Every ``$dacsType`` tag name appearing anywhere in a source input."""
+
+    found: set[str] = set()
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, dict):
+            if "$dacsType" in item:
+                found.add(str(item["$dacsType"]))
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
+    return found
+
+
+def _adapter_wrapped_paths() -> set[str]:
+    """The repository modules the adapter executes, read from its source without running it."""
+
+    tree = ast.parse((ROOT / ADAPTER_SOURCE).read_bytes())
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "WRAPPED_MODULES" for target in node.targets
+        ):
+            return {relative for _, relative in ast.literal_eval(node.value)}
+    raise ValueError("adapter source does not declare WRAPPED_MODULES")
+
+
+def _load_verified_module(relative: str, expected_sha256: str, name: str) -> types.ModuleType:
+    """Execute exactly the pinned bytes; never a re-read file or cached bytecode."""
+
+    path = ROOT / relative
+    data = path.read_bytes()
+    if _sha256(data) != expected_sha256:
+        raise ValueError(f"wrapped primitive sha256 mismatch: {relative}")
+    module = types.ModuleType(name)
+    module.__file__ = str(path)
+    exec(compile(data, str(path), "exec", dont_inherit=True), module.__dict__)
     return module
 
 
+def _load_walkthrough(primitives: dict[str, str]) -> tuple[types.ModuleType, types.ModuleType]:
+    jcs = _load_verified_module("scripts/jcs.py", primitives["scripts/jcs.py"], "jcs")
+    previous = sys.modules.get("jcs")
+    sys.modules["jcs"] = jcs  # the walkthrough's own ``import jcs`` must see the verified module
+    try:
+        walkthrough = _load_verified_module(
+            "scripts/run_lifecycle_walkthrough.py",
+            primitives["scripts/run_lifecycle_walkthrough.py"],
+            "dacs_release_walkthrough",
+        )
+    finally:
+        if previous is None:
+            sys.modules.pop("jcs", None)
+        else:
+            sys.modules["jcs"] = previous
+    return jcs, walkthrough
+
+
+def _validate_control_lines(control: dict[str, Any], data: bytes) -> None:
+    match = re.fullmatch(r"([1-9][0-9]*)-([1-9][0-9]*)", str(control.get("lines", "")))
+    test_name = control.get("test")
+    if match is None or not isinstance(test_name, str):
+        raise ValueError("bounded F5 control source must name its test and line range")
+    start, end = int(match.group(1)), int(match.group(2))
+    lines = data.decode("utf-8").splitlines()
+    definition = f"    def {test_name}(self):"
+    if start > end or end > len(lines) or lines[start - 1] != definition:
+        raise ValueError("bounded F5 control line range does not start at the named test")
+    body_end = start
+    for number in range(start + 1, len(lines) + 1):
+        text = lines[number - 1]
+        if text.strip() and not text.startswith("        "):
+            break
+        if text.strip():
+            body_end = number
+    if end != body_end:
+        raise ValueError("bounded F5 control line range does not cover exactly the named test")
+
+
 def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
-    descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+    descriptor_bytes = descriptor_path.read_bytes()
+    descriptor = json.loads(descriptor_bytes)
+    observed_origin = _git("config", "--local", "--get", "remote.origin.url")
+    if observed_origin not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
+        raise ValueError("working repository origin is not the pinned DACS-Standard origin")
+    descriptor_relative = descriptor_path.relative_to(ROOT).as_posix()
+    if _git_blob_id(descriptor_bytes) != _git("rev-parse", f"HEAD:{descriptor_relative}"):
+        raise ValueError("release descriptor is not committed at HEAD")
+    source = descriptor.get("adapter", {}).get("source", {})
+    if _git("rev-parse", f"HEAD:{ADAPTER_SOURCE}") != source.get("gitBlob"):
+        raise ValueError("adapter source is not the pinned committed blob at HEAD")
+    return validate_release(descriptor)
+
+
+def validate_release(descriptor: dict[str, Any]) -> dict[str, int]:
+    """Check descriptor content against the working tree and its pinned revisions."""
+
     if descriptor.get("schema") != "dacs-adapter-release-proposal/1":
         raise ValueError("unexpected descriptor schema")
     if descriptor.get("status") != "proposal-non-normative":
         raise ValueError("descriptor must remain explicitly non-normative")
     if descriptor.get("protocol", {}).get("id") != "dacs-adapter/1":
         raise ValueError("unexpected adapter protocol")
-    if descriptor.get("adapter", {}).get("repository") != EXPECTED_ORIGIN.removesuffix(".git"):
+    repository = EXPECTED_ORIGIN.removesuffix(".git")
+    if descriptor.get("adapter", {}).get("repository") != repository:
         raise ValueError("adapter repository identity is not DACS-Standard")
-    observed_origin = _git("config", "--get", "remote.origin.url")
-    if observed_origin not in {EXPECTED_ORIGIN, EXPECTED_ORIGIN.removesuffix(".git")}:
-        raise ValueError("working repository origin is not the pinned DACS-Standard origin")
+    if descriptor["adapter"].get("provenanceCodebase") != repository.removeprefix("https://"):
+        raise ValueError("adapter codebase identity must be the revision-free DACS-Standard codebase")
 
     adapter = descriptor["adapter"]
     source = adapter["source"]
-    source_bytes = (ROOT / source["path"]).read_bytes()
+    if source.get("path") != ADAPTER_SOURCE:
+        raise ValueError("adapter source pin must name the adapter itself")
+    source_bytes = (ROOT / ADAPTER_SOURCE).read_bytes()
     if _sha256(source_bytes) != source["sha256"]:
         raise ValueError("adapter source sha256 does not match descriptor")
-    if _git("hash-object", "--", source["path"]) != source["gitBlob"]:
+    if _git_blob_id(source_bytes) != source["gitBlob"]:
         raise ValueError("adapter source git blob does not match descriptor")
-    if _git("rev-parse", f"HEAD:{source['path']}") != source["gitBlob"]:
-        raise ValueError("adapter source is not the pinned committed blob at HEAD")
-    descriptor_relative = str(descriptor_path.relative_to(ROOT))
-    if _git("hash-object", "--", descriptor_relative) != _git(
-        "rev-parse", f"HEAD:{descriptor_relative}"
-    ):
-        raise ValueError("release descriptor is not committed at HEAD")
 
     wrapped = adapter["wrappedStandard"]
+    if _git("rev-parse", f"{wrapped['revision']}^{{commit}}") != wrapped["revision"]:
+        raise ValueError("wrapped Standard revision does not resolve to its pinned commit")
     if _git("rev-parse", f"{wrapped['revision']}^{{tree}}") != wrapped["tree"]:
         raise ValueError("wrapped Standard tree mismatch")
+    pinned_paths = [primitive["path"] for primitive in wrapped["primitives"]]
+    if len(pinned_paths) != len(set(pinned_paths)) or set(pinned_paths) != _adapter_wrapped_paths():
+        raise ValueError("wrapped primitive pins do not match the modules the adapter executes")
     for primitive in wrapped["primitives"]:
         path = primitive["path"]
         current = (ROOT / path).read_bytes()
         if _sha256(current) != primitive["sha256"]:
             raise ValueError(f"wrapped primitive sha256 mismatch: {path}")
-        if _git("hash-object", "--", path) != primitive["gitBlob"]:
+        if _git_blob_id(current) != primitive["gitBlob"]:
             raise ValueError(f"wrapped primitive working blob mismatch: {path}")
         if _git("rev-parse", f"{wrapped['revision']}:{path}") != primitive["gitBlob"]:
             raise ValueError(f"wrapped primitive revision blob mismatch: {path}")
+    primitive_sha256 = {primitive["path"]: primitive["sha256"] for primitive in wrapped["primitives"]}
 
     sources = {
         name: _load_json_at_revision(value)
@@ -164,6 +273,26 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
                 if selected["adapterErrorCode"] != "UNSUPPORTED_CASE":
                     raise ValueError(f"{selected['caseId']}: unsupported adapter boundary drift")
                 unsupported += 1
+            partition = [
+                item["caseId"]
+                for key in ("cases", "unsupportedSourceCases", "excludedSourceCases")
+                for item in family[key]
+            ]
+            if len(partition) != len(set(partition)) or set(partition) != {
+                item["name"] for item in raw["vectors"]
+            }:
+                raise ValueError(
+                    "canonicalization selections, unsupported cases, and exclusions do not partition the source cases"
+                )
+            for excluded in family["excludedSourceCases"]:
+                tags = _tags(_case_by_name(raw["vectors"], excluded["caseId"])["input"])
+                if not excluded.get("reason"):
+                    raise ValueError(f"{excluded['caseId']}: exclusion must state its reason")
+                if "sourceTag" in excluded:
+                    if excluded["sourceTag"] in PROTOCOL_TAGS or tags != {excluded["sourceTag"]}:
+                        raise ValueError(f"{excluded['caseId']}: inexpressible-tag exclusion drift")
+                elif tags:
+                    raise ValueError(f"{excluded['caseId']}: tagged source input needs its sourceTag")
         elif family["id"] == "signed-scope":
             raw = sources[family["source"]]
             for selected in family["cases"]:
@@ -196,7 +325,9 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
                 raise ValueError("bounded F5 operation set drift")
             if not family.get("remainingBlocker") or not family.get("requiredHandoffQuestion"):
                 raise ValueError("bounded F5 profile must retain its abstention blocker and handoff")
-            _load_bytes_at_revision(family["controlSource"])
+            _validate_control_lines(
+                family["controlSource"], _load_bytes_at_revision(family["controlSource"])
+            )
             raw = sources[family["source"]]["signing"]
             selected = {case["caseId"]: case for case in family["cases"]}
             if set(selected) != {
@@ -222,11 +353,7 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
             if raw["signature"] != sign_case["sourceExpected"]:
                 raise ValueError("domain signature source drift")
 
-            sys.path.insert(0, str(ROOT / "scripts"))
-            jcs = _load_module(ROOT / "scripts" / "jcs.py", "dacs_release_jcs")
-            walkthrough = _load_module(
-                ROOT / "scripts" / "run_lifecycle_walkthrough.py", "dacs_release_walkthrough"
-            )
+            jcs, walkthrough = _load_walkthrough(primitive_sha256)
             artifact_hash = _sha256(jcs.canonicalize(raw["doc"]).encode("utf-8"))
             if artifact_hash != sign_case["artifactHashHex"]:
                 raise ValueError("domain signing artifact hash drift")
@@ -290,7 +417,16 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
                 )
             ):
                 raise ValueError("valid raw-digest adapter-boundary case drift")
-            if unknown_case["expected"] is not False:
+            separator = unknown_case["separator"]
+            if (
+                unknown_case["expected"] is not False
+                or not isinstance(separator, str)
+                or separator == BOUNDED_F5_SEPARATOR
+                or DACS_SEPARATOR_SHAPE.fullmatch(separator)
+                or unknown_case["messageBytesHex"] != verify_case["messageBytesHex"]
+                or unknown_case["signatureBytesHex"] != verify_case["signatureBytesHex"]
+                or unknown_case["publicKeyHex"] != verify_case["publicKeyHex"]
+            ):
                 raise ValueError("unknown-separator verification control drift")
         else:
             raise ValueError(f"unknown release family {family['id']!r}")
@@ -309,7 +445,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         counts = validate(args.descriptor.resolve())
-    except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+    except (
+        KeyError,
+        OSError,
+        SyntaxError,
+        TypeError,
+        ValueError,
+        subprocess.SubprocessError,
+    ) as exc:
         print(f"adapter release proposal: FAIL: {exc}", file=sys.stderr)
         return 1
     unsupported_label = "mapping" if counts["unsupportedCases"] == 1 else "mappings"

@@ -51,10 +51,11 @@
     "name": "dacs-standard-primitives",
     "version": "issue-270-proposal.1",
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "e5f5ed65a9e42306e96f1d314d25ba73e6b48794f8ad01647115b454ad092ecb",
-      "gitBlob": "31f6f1933a619c9267c722936109942378dfc82d"
+      "sha256": "180d78d10db3e4ad9bf4c454cf361f3dc2b6982874677267094840b51ca3448b",
+      "gitBlob": "b51a5c22ddb6ffd9864c9cd17039c869c0e4ce34"
     },
     "wrappedStandard": {
       "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
@@ -84,11 +85,13 @@
     },
     "limitations": [
       "verifyBundle and legacySignatureValueImport are not exposed by this release",
-      "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+      "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes; a record carrying any other exclusive type discriminator is refused",
       "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
       "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
       "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
-      "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry"
+      "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry",
+      "Ed25519 point-encoding strictness is not pinned: the wrapped helper accepts an x=0 encoding with the sign bit set, which RFC 8032 decoding rejects and OpenSSL rejects for R; no such case is selected, and a divergence there is an open specification question",
+      "the codebase identity is the revision-free DACS-Standard repository; the pinned shared runner compares asserted identities verbatim, so a run pairing this adapter with the contributor standard-jcs-adapter (which asserts a revision- and path-qualified DACS-Standard identity) miscounts one codebase as two and its INTEROP-AGREE rows are invalid"
     ]
   },
   "sources": {
@@ -164,6 +167,26 @@
           "adapterErrorCode": "UNSUPPORTED_CASE",
           "reason": "Python int also represents ordinary JSON integers, so decoding the tag cannot preserve the host-language BigInt type tested by the source case. Treating an opaque Python object as an executed expected rejection would manufacture coverage. The current shared runner converts operation errors to THROWN, so it also needs a case-level abstention result before this source case can enter a cross-run."
         }
+      ],
+      "excludedSourceCases": [
+        {"caseId": "fixed-notation-lower-threshold", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "scientific-notation-below-threshold", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "negative-zero", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "minimum-positive-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "minimum-negative-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "integral-binary64-one", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "round-to-even", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "maximum-dacs-magnitude-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "minimum-dacs-magnitude-binary64", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "not-a-number", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "positive-infinity", "sourceTag": "binary64", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "lone-surrogate-string", "sourceTag": "unicode-code-units", "reason": "the source input uses a Standard-only tagged value that dacs-adapter/1 cannot carry"},
+        {"caseId": "fraction-binary-sum", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
+        {"caseId": "fraction-one-tenth", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
+        {"caseId": "fraction-negative-one-and-half", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
+        {"caseId": "number-one-e-plus-twenty-one", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
+        {"caseId": "nfd-member-name-preserved", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"},
+        {"caseId": "nfc-and-nfd-member-names-remain-distinct", "reason": "expressible but outside the frozen first-milestone selection; selecting it requires a new release descriptor"}
       ]
     },
     {
@@ -254,6 +277,7 @@
         "revision": "b80919cd7b114499ffc3d9b5c2f3f91ca7fab3f6",
         "sha256": "39353f28562544dc94ae8ed828c545c67974722b0357e93448901f35d10959aa",
         "gitBlob": "9e6066421a59ac07fb922b43d47bb0c75574a60b",
+        "test": "test_golden_signature_rejects_raw_digest_preimage",
         "lines": "47-51"
       },
       "cases": [

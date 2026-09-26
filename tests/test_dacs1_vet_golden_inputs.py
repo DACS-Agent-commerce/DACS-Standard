@@ -4134,6 +4134,39 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 self.assertEqual("error", control(field, value))
         # An integral float spelling is the same JSON value (CF-5(4)).
         self.assertEqual("fail", control("expiresAt", float(now - 1)))
+        # JSON booleans are not numbers, and 0 is a valid (long-past) time.
+        for value in (True, False):
+            with self.subTest(boolean=value):
+                self.assertEqual("error", control("expiresAt", value))
+        self.assertEqual("fail", control("expiresAt", 0))
+        self.assertEqual("pass", control("issuedAt", 0))
+
+        # The rule covers every claim and every path, not only the
+        # presented claim under control-decision.
+        _, direct = self._case_evaluation("vet-control-existence-only-lei-supporting-context")
+        for field in ("issuedAt", "expiresAt"):
+            with self.subTest(path="decision", field=field):
+                changed = copy.deepcopy(direct)
+                bundle = changed["input"]["bundle"]
+                other = next(c for c in bundle["claims"] if c["ref"] != bundle["presentedBy"])
+                other[field] = now + 0.5
+                changed["input"]["bundle"] = resign_bundle(
+                    bundle, presenter, public_ref(presenter)
+                )
+                self.assertEqual("error", execute_once(changed, self.document))
+
+        def aggregate_claim_time(value, document):
+            bundle = value["authority"]["vetInput"]["bundleToVet"]
+            bundle["claims"][-1]["issuedAt"] = value["record"]["generatedAt"] - 0.5
+            self._resign_aggregate_bundle(value)
+
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            self._replay_aggregate(
+                "vet-oneof-indeterminate-over-fail", aggregate_claim_time,
+                "indeterminate",
+            ),
+        )
 
     def test_stale_pass_does_not_participate_beside_a_current_non_pass(self):
         # CRQ-2: a result outside its window "does not participate,
@@ -4413,6 +4446,11 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         self.assertEqual(
             "fail", replay(lambda a: a.update(validUntil=a["verifiedAt"] - 1))
         )
+        # Inverted even when both times are ahead of the decision time: stale,
+        # not the "future result" error.
+        self.assertEqual("fail", replay(lambda a: a.update(
+            fetchedAt=now + 10, verifiedAt=now + 10, validUntil=now + 5,
+        )))
 
     def test_presence_member_parameters_and_mode_boundary(self):
         _, evaluation = self._case_evaluation(

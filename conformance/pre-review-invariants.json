@@ -730,6 +730,31 @@
       "id": "pr333-finality-verification-skips-rejected-records",
       "file": "tests/test_pr333_disposition_precedence_regressions.py",
       "test": "FinalityBoundPendingPrecedenceTests.test_verification_skips_records_the_core_rejected"
+    },
+    {
+      "id": "pr333-pending-receipt-laa-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_receipt_independent_laa_checks_outrank_a_pending_receipt"
+    },
+    {
+      "id": "pr333-pending-receipt-defers-only-receipt-fields",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_only_receipt_bound_carrier_fields_are_deferred"
+    },
+    {
+      "id": "pr333-receiptless-payment-sb1-exclusion",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_available_execution_authority_excludes_receiptless_candidates"
+    },
+    {
+      "id": "pr333-finality-bound-pending-receipt-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_finality_bound_core_keeps_the_same_precedence"
+    },
+    {
+      "id": "pr333-released-pending-payment-receipt",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_pending_payment_receipt_keeps_its_own_contradictions"
     }
   ],
   "coveredInvariantClasses": [

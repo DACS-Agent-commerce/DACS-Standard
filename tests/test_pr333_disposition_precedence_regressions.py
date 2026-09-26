@@ -726,6 +726,162 @@ class AdmittingEntryBoundaryTests(_SebFixtures, unittest.TestCase):
                 self.assertEqual(expected, disposition, reason)
 
 
+class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
+    """A pending payment receipt defers only checks that need that receipt."""
+
+    PAYMENT = "pay-cross-chain-htlc"
+    PAYMENT_KEY = "2:pay-cross-chain-htlc"
+
+    def _with_agreement_ref(self, source, *, mismatch=False, mutate_laa=None):
+        carrier = next(iter(source["legacyAgreementAuthorityByPhaseKey"].values()))
+        joined = carrier["laa"]["agreement"]["contentHash"]
+        source["bundle"]["agreementRef"] = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + source["bundle"]["jobId"],
+            },
+            "contentHash": "d" * 64 if mismatch else joined,
+        }
+        resign_ebfab(source["bundle"], self.data["seeds"])
+        if mutate_laa is not None:
+            for carrier in source["legacyAgreementAuthorityByPhaseKey"].values():
+                mutate_laa(carrier["laa"])
+        source["legacyAgreementAuthorityByPhaseKey"] = refreshed_laa_phase_carriers(source)
+        return source
+
+    def _pending(self, source, how):
+        if how == "removed":
+            del source["verifiedReceiptByCanonicalRef"][
+                self._member_key(source, self.PAYMENT)
+            ]
+        elif how == "observation":
+            self._observe(source, self.PAYMENT, variant="later")
+        return source
+
+    def _cases(self, factory, pointer):
+        for how in ("present", "removed", "observation"):
+            yield ("joined agreementRef", how, self._pending(
+                self._with_agreement_ref(factory()), how,
+            ), "pass" if how == "present" else "indeterminate")
+            yield ("mismatched agreementRef", how, self._pending(
+                self._with_agreement_ref(factory(), mismatch=True), how,
+            ), "fail")
+        for label, mutate, expected in (
+            ("malformed agreement shape",
+             lambda laa: laa["agreement"].__setitem__("shape", "malformed"), "error"),
+            ("identity-only agreement",
+             lambda laa: laa["agreement"].update(
+                 {"artifact": "identity-bound", "ibhVerified": True, "pbVerified": False}
+             ), "fail"),
+            ("unverified session",
+             lambda laa: laa["sessionAuthority"].__setitem__("state", "pending"),
+             "indeterminate"),
+        ):
+            yield (label, "removed", self._pending(
+                self._with_agreement_ref(factory(), mutate_laa=mutate), "removed",
+            ), expected)
+
+    def test_receipt_independent_laa_checks_outrank_a_pending_receipt(self):
+        for factory, pointer in (
+            (lambda: self._source("single-htlc-direct-completed"), False),
+            (self._ulid_payment_source, True),
+        ):
+            for label, how, source, expected in self._cases(factory, pointer):
+                with self.subTest(case=label, receipt=how, pointer=pointer):
+                    self._assert_paths(source, expected, pointer=pointer)
+
+    def test_only_receipt_bound_carrier_fields_are_deferred(self):
+        def other_receipt(source):
+            for carrier in source["legacyAgreementAuthorityByPhaseKey"].values():
+                carrier["binding"]["evidenceReceiptHash"] = "e" * 64
+            return source
+
+        present = other_receipt(self._source("single-htlc-direct-completed"))
+        self._assert_paths(present, "fail")
+        removed = self._pending(
+            other_receipt(self._source("single-htlc-direct-completed")), "removed"
+        )
+        self._assert_paths(removed, "indeterminate")
+
+    def test_available_execution_authority_excludes_receiptless_candidates(self):
+        def contradict(field, value):
+            def mutate(source):
+                source["sessionExecutionAuthorityByPhaseKey"][self.PAYMENT_KEY][field] = value
+                return source
+            return mutate
+
+        for factory, pointer in (
+            (lambda: self._source("single-htlc-direct-completed"), False),
+            (self._ulid_payment_source, True),
+        ):
+            with self.subTest(case="genuine, receipt removed", pointer=pointer):
+                self._assert_paths(
+                    self._pending(factory(), "removed"), "indeterminate", pointer=pointer
+                )
+            unavailable = self._pending(factory(), "removed")
+            del unavailable["sessionExecutionAuthorityByPhaseKey"][self.PAYMENT_KEY]
+            with self.subTest(case="execution and receipt unavailable", pointer=pointer):
+                self._assert_paths(unavailable, "indeterminate", pointer=pointer)
+            for label, mutate in (
+                ("another orchestrator", contradict("phaseOrchestrator", "did:demos:buyer")),
+                ("another job", contradict("jobId", "01ARZ3NDEKTSV4RRFFQ69G5FAW")),
+                ("another invocation", contradict("phaseIndex", 1)),
+            ):
+                for how in ("present", "removed"):
+                    with self.subTest(case=label, receipt=how, pointer=pointer):
+                        self._assert_paths(
+                            self._pending(mutate(factory()), how), "fail", pointer=pointer
+                        )
+
+    def test_finality_bound_core_keeps_the_same_precedence(self):
+        import scripts.generate_settlement_finality_verification_vectors as finality
+        from test_settlement_finality_verification_vectors import decode_public_keys
+
+        def result(mismatch=False, drop_receipt=False, foreign=False):
+            factory = finality.FixtureFactory()
+            case = factory.strong_bundle_case("bft-final")
+            verification = next(iter(
+                case["authority"]["finalityVerificationByCanonicalRef"].values()
+            ))
+            case["bundle"]["agreementRef"] = factory.reference(
+                "agreement:bft-final",
+                "33" * 32 if mismatch
+                else finality.artifact_hash(verification["agreement"], "signatures"),
+            )
+            factory.sign_bundle(case["bundle"], finality.FINALITY_BUNDLE_DOMAIN)
+            factory.bind_current_laa_authority(case["bundle"], case["authority"])
+            authority = case["authority"]
+            if foreign:
+                for entry in authority["sessionExecutionAuthorityByPhaseKey"].values():
+                    entry["phaseOrchestrator"] = "did:demos:intruder"
+            if drop_receipt:
+                del authority["verifiedReceiptByCanonicalRef"][
+                    _key(case["bundle"]["settlementEvidence"][0])
+                ]
+            return R.validate_finality_bound_ebfab(
+                case["bundle"], authority["listing"], decode_public_keys(factory.trusted),
+                authority["referenceValidationByCanonicalRef"], authority["bundleLifecycle"],
+                authority["sessionExecutionAuthorityByPhaseKey"],
+                authority["verifiedReceiptByCanonicalRef"],
+                authority.get("finalityVerificationByCanonicalRef"), factory.trusted,
+                legacy_agreement_authority_by_phase_key=authority.get(
+                    "legacyAgreementAuthorityByPhaseKey"
+                ),
+            )[:2]
+
+        for label, kwargs, expected in (
+            ("joined", {}, "pass"),
+            ("joined, receipt removed", {"drop_receipt": True}, "indeterminate"),
+            ("mismatched agreementRef, receipt removed",
+             {"mismatch": True, "drop_receipt": True}, "fail"),
+            ("another orchestrator, receipt removed",
+             {"foreign": True, "drop_receipt": True}, "fail"),
+        ):
+            with self.subTest(case=label):
+                disposition, reason = result(**kwargs)
+                self.assertEqual(expected, disposition, reason)
+
+
 class LaaAgreementJoinPrecedenceTests(_SebFixtures, unittest.TestCase):
     """The agreementRef join keeps error > fail > indeterminate."""
 

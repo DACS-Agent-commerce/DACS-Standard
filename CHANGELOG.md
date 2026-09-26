@@ -259,7 +259,12 @@ The format used per release:
   checked against every row it could fill (a transition record only against
   its signed invocation), and unplaced members and signed pointers for
   missing invocations must admit a one-to-one assignment. A known ST-8
-  successor rejects only where every admitting entry would bind it.
+  successor rejects only where every admitting entry would bind it. A
+  payment whose receipt is unavailable or only observed defers only LAA's
+  receipt-hash and receipt-writer comparisons, so malformed LAA authority,
+  an authenticated agreement or `agreementRef` mismatch, and present
+  execution authority that names another job, invocation or orchestrator
+  still decide it on the EBFAB, finality-bound and released AB/FAB gates.
   Released `AttestationBundle`/`FaultAttestationBundle`
   traces no longer require the optional `errorClass` or read the
   non-action-bearing `retryExhausted`; a present `errorClass` that contradicts

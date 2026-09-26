@@ -1787,6 +1787,81 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                         if expected != "pass":
                             self.assertEqual(expected, resolved["disposition"])
 
+    def test_released_pending_payment_receipt_keeps_its_own_contradictions(self):
+        """A presented payment's receipt outage defers only receipt checks."""
+        def released(kind, *, mismatch=False, pending=None, foreign=False):
+            value = self._released_value("standard-completed", kind)
+            authority = value["authority"]
+            joined = next(iter(
+                authority["legacyAgreementAuthorityByPhaseKey"].values()
+            ))["laa"]["agreement"]["contentHash"]
+            value["bundle"]["agreementRef"] = {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": "dacs3:agreement:" + value["bundle"]["jobId"],
+                },
+                "contentHash": "d" * 64 if mismatch else joined,
+            }
+            self._resign_released(value, kind)
+            authority["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(authority)
+            )
+            payment = next(
+                key for key, resolution in authority["referenceValidationByCanonicalRef"].items()
+                if resolution["record"]["phase"] == "pay-dem"
+            )
+            if foreign:
+                authority["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"][
+                    "phaseOrchestrator"
+                ] = "did:demos:buyer"
+            receipts = authority["verifiedReceiptByCanonicalRef"]
+            if pending == "removed":
+                del receipts[payment]
+            elif pending == "observation":
+                prior = copy.deepcopy(receipts[payment])
+                receipts[payment].update({
+                    "observationDisposition": "indeterminate",
+                    "preservedReceiptHash": hashlib.sha256(R.canonical(prior)).hexdigest(),
+                    "observedAt": prior["observedAt"] + 1000,
+                })
+            return value
+
+        for kind in ("fault", "legacy"):
+            for label, kwargs, expected in (
+                ("joined", {}, "pass"),
+                ("joined, receipt removed", {"pending": "removed"}, "indeterminate"),
+                ("joined, receipt observation", {"pending": "observation"}, "indeterminate"),
+                ("mismatched agreementRef, receipt removed",
+                 {"mismatch": True, "pending": "removed"}, "fail"),
+                ("mismatched agreementRef, receipt observation",
+                 {"mismatch": True, "pending": "observation"}, "fail"),
+                ("another orchestrator, receipt removed",
+                 {"foreign": True, "pending": "removed"}, "fail"),
+            ):
+                value = released(kind, **kwargs)
+                with self.subTest(kind=kind, case=label):
+                    direct = self._direct(value, kind)
+                    self.assertEqual(expected, direct[0], direct[1])
+                    self.assertEqual(expected, self._reconcile(value)["decision"])
+        # The FAB pointer consumer reaches the same released gate.
+        for label, foreign, expected in (
+            ("genuine, receipt removed", False, "indeterminate"),
+            ("another orchestrator, receipt removed", True, "fail"),
+        ):
+            value = self._failed_payment_fixture()
+            authority = value["authority"]
+            if foreign:
+                authority["sessionExecutionAuthorityByPhaseKey"]["2:pay-cross-chain-htlc"][
+                    "phaseOrchestrator"
+                ] = "did:demos:buyer"
+            del authority["verifiedReceiptByCanonicalRef"][
+                self._key(value["bundle"]["settlementEvidence"][0])
+            ]
+            with self.subTest(path="pointer", case=label):
+                resolved = self._resolve(value)
+                self.assertFalse(resolved["ok"])
+                self.assertEqual(expected, resolved["disposition"], resolved["reason"])
+
     def test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement(self):
         for name, unrelated, expected in (
             ("joined", False, "pass"), ("valid-unrelated-agreement", True, "fail"),

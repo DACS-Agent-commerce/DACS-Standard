@@ -2694,6 +2694,125 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 with self.subTest(kind=kind, case=name, invariant="same-verdict-and-reason"):
                     self.assertEqual(1, len(verdicts), verdicts)
 
+    def test_authenticated_settlement_members_require_closed_shape_before_phase_dispatch(self):
+        """A settlement-domain signature cannot make a non-evidence phase inert."""
+        def append_non_evidence_member(value, *, cross_job):
+            source = self._failed_payment_fixture()
+            source_ref = source["bundle"]["settlementEvidence"][0]
+            resolution = copy.deepcopy(
+                source["authority"]["referenceValidationByCanonicalRef"][
+                    self._key(source_ref)
+                ]
+            )
+            record = resolution["record"]
+            record["phase"] = "commit-agreement"
+            record["jobId"] = (
+                "01ARZ3NDEKTSV4RRFFQ69G5FZZ"
+                if cross_job else value["bundle"]["jobId"]
+            )
+            self._resign_payment_record(record)
+            ref = copy.deepcopy(source_ref)
+            ref["contentHash"] = R.settlement_evidence_hash(record)
+            value["authority"]["referenceValidationByCanonicalRef"][
+                self._key(ref)
+            ] = resolution
+            value["bundle"]["settlementEvidence"].append(ref)
+
+        bases = (
+            ("failed-delivery", lambda: self._failed_delivery_value("failed-delivery")),
+            ("completed-storage", self._fixture),
+        )
+        for base_name, factory in bases:
+            for kind in ("legacy", "fault"):
+                for job in ("same", "cross"):
+                    value = factory()
+                    append_non_evidence_member(value, cross_job=job == "cross")
+                    self._as_released_kind(value, kind)
+                    dispositions = self._released_trace_dispositions(value, kind)
+                    with self.subTest(base=base_name, kind=kind, job=job):
+                        self.assertTrue(dispositions)
+                        self.assertTrue(
+                            all(result != "pass" for result in dispositions.values()),
+                            dispositions,
+                        )
+                        # The member is authenticated but violates the closed
+                        # SettlementEvidence shape, so each lane reports the
+                        # independently established malformed-input error.
+                        self.assertEqual(
+                            {path: "error" for path in dispositions}, dispositions
+                        )
+
+        # A closed pay-dem member still reaches its ordinary binding checks:
+        # same-job remains valid, while cross-job is a contradiction, not a
+        # malformed-input error.
+        for kind in ("legacy", "fault"):
+            same_job = self._released_value("standard-completed", kind)
+            with self.subTest(kind=kind, phase="pay-dem", job="same"):
+                self.assertEqual("pass", self._direct(same_job, kind)[0])
+                self.assertEqual("pass", self._reconcile(same_job)["decision"])
+
+            cross_job = self._released_value("standard-completed", kind)
+            replace_top_record(
+                cross_job["authority"],
+                "pay-dem",
+                lambda record: record.__setitem__(
+                    "jobId", "01ARZ3NDEKTSV4RRFFQ69G5FZZ"
+                ),
+                self.data["seeds"],
+            )
+            self._resign_released(cross_job, kind)
+            cross_job["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(cross_job["authority"])
+            )
+            with self.subTest(kind=kind, phase="pay-dem", job="cross"):
+                self.assertEqual("fail", self._direct(cross_job, kind)[0])
+                self.assertEqual("fail", self._reconcile(cross_job)["decision"])
+
+    def test_malformed_payment_lifecycle_outranks_absent_authority_maps(self):
+        """Present malformed lifecycle is an error even when a whole map is absent."""
+        for kind in ("legacy", "fault"):
+            for missing_map in (
+                "sessionExecutionAuthorityByPhaseKey",
+                "verifiedReceiptByCanonicalRef",
+            ):
+                malformed = self._st8_resolved_value(kind)
+                ref_key = self._key(malformed["bundle"]["settlementEvidence"][0])
+                malformed["authority"]["referenceValidationByCanonicalRef"][
+                    ref_key
+                ]["lifecycle"] = []
+                malformed["authority"].pop(missing_map)
+                expected = {
+                    "direct": "error",
+                    "reconcile": "error",
+                    "current-use": "error",
+                }
+                if kind == "fault":
+                    expected["pointer"] = "error"
+                with self.subTest(
+                    kind=kind, missing_map=missing_map, lifecycle="malformed"
+                ):
+                    self.assertEqual(
+                        expected,
+                        self._released_trace_dispositions(malformed, kind),
+                    )
+
+                control = self._st8_resolved_value(kind)
+                control["authority"].pop(missing_map)
+                expected = {
+                    "direct": "indeterminate",
+                    "reconcile": "indeterminate",
+                    "current-use": "indeterminate",
+                }
+                if kind == "fault":
+                    expected["pointer"] = "indeterminate"
+                with self.subTest(
+                    kind=kind, missing_map=missing_map, lifecycle="well-formed"
+                ):
+                    self.assertEqual(
+                        expected,
+                        self._released_trace_dispositions(control, kind),
+                    )
+
     def test_lifecycle_outage_does_not_mask_payment_invocation_reuse(self):
         # F-E within one member: a lifecycle outage is deferred, so the same
         # member still registers its invocation and a second authentic record

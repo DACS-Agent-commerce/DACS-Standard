@@ -5185,6 +5185,27 @@ def _validate_current_fab_delivery_admission(
         evidence_type = _authenticated_evidence_wire_type(record, pubkeys)
         if evidence_type is None:
             return ("error", "FAB evidence member cannot be authenticated and classified")
+        # Authentication under a settlement-family domain does not make an
+        # otherwise malformed record inert.  Validate the family's complete
+        # closed shape before dispatching on ``phase``; otherwise a signed
+        # non-evidence phase could fall through both the payment and delivery
+        # arms below.  This remains separate from EBFAB exact-set validation.
+        if evidence_type == "settlement" and not _settlement_evidence_shape_valid(record):
+            if isinstance(record, dict) and record.get("phase") in DELIVERY_PHASES:
+                reason = "legacy delivery evidence has a malformed closed shape"
+            elif isinstance(record, dict) and record.get("phase") in PAYMENT_PHASES:
+                reason = "FAB payment evidence has a malformed closed shape"
+            else:
+                reason = "FAB SettlementEvidence has a malformed closed shape"
+            return ("error", reason)
+        if (
+            evidence_type == "legacy-transition"
+            and not _legacy_transition_settlement_evidence_shape_valid(record)
+        ):
+            return (
+                "error",
+                "FAB LegacyTransitionSettlementEvidence has a malformed closed shape",
+            )
         if (
             not delivery_only
             and evidence_type == "settlement"
@@ -5341,6 +5362,25 @@ def _validate_current_fab_delivery_admission(
                 ):
                     return ("fail", "FAB payment evidence signature does not verify")
                 if not isinstance(execution, dict) or not isinstance(receipts, dict):
+                    # The absent map remains an outage, but it cannot mask a
+                    # deterministic receipt-independent rejection (including
+                    # malformed present lifecycle authority).  Empty maps are
+                    # the helper's representation of the missing authority;
+                    # it returns None while any released-row completion stays
+                    # admissible, preserving released AB/FAB membership rules.
+                    pending_failure = _released_pending_payment_failure(
+                        record, ref, resolution, evidence_type, bundle, listing,
+                        pubkeys, resolutions,
+                        execution if isinstance(execution, dict) else {},
+                        receipts if isinstance(receipts, dict) else {},
+                        payment_summary_by_key, actual_refs,
+                        authority.get(
+                            "legacyAgreementAuthorityByPhaseKey",
+                            _LAA_AUTHORITY_UNSPECIFIED,
+                        ),
+                    )
+                    if pending_failure is not None:
+                        return pending_failure
                     pending_reason = pending_reason or "FAB payment execution or receipt authority is unavailable"
                     return None
                 if ref_key not in receipts:

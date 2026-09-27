@@ -1997,6 +1997,12 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def unexplained_unsupported_f5_case(descriptor):
             self.family(descriptor, "domain-separated-signing")["unsupportedCases"][0]["reason"] = ""
 
+        def extra_f5_verify_case(descriptor):
+            verify = f5_case(descriptor, "cases", "signing::verify-ascii-hex-hash")
+            self.family(descriptor, "domain-separated-signing")["cases"].append(
+                {**copy.deepcopy(verify), "caseId": "signing::extra-verify", "signatureBytesHex": "00" * 64, "expected": False}
+            )
+
         def signed_scope_case_dropped(descriptor):
             self.family(descriptor, "signed-scope")["cases"].pop()
 
@@ -2011,8 +2017,8 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
         def adapter_source_digest_wrong(descriptor):
             descriptor["adapter"]["source"]["sha256"] = "0" * 64
 
-        # Prose claims and neutral-protocol pins that cannot be checked offline:
-        # only the reviewed digest guards them.
+        # Prose claims, neutral-protocol pins that cannot be checked offline, and
+        # the frozen case selection: only the reviewed digest guards them.
         digest_only = {
             "blocker_claimed_resolved",
             "limitation_contradicted",
@@ -2050,6 +2056,7 @@ class DacsAdapterReleaseValidatorTests(unittest.TestCase):
             verification_material_on_sign_case,
             sig6_case_without_source_verdict,
             signed_scope_case_dropped,
+            extra_f5_verify_case,
             other_protocol_id,
             handoff_question_dropped,
             second_primitive_control,

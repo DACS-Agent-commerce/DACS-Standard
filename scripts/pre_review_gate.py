@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 from pathlib import PurePosixPath
+import secrets
 import subprocess
 import sys
 
@@ -566,44 +567,79 @@ PINNED_UNIT_REGRESSIONS = {
     },
 }
 
+EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"
+EXACT_UNITTEST_SUMMARY = {
+    "errors": 0,
+    "expectedFailures": 0,
+    "failures": 0,
+    "skipped": 0,
+    "testsRun": 1,
+    "unexpectedSuccesses": 0,
+}
+
+# The runner reads a per-run nonce from stdin before the pinned test file is
+# loaded, and only after the selected test has run to completion does it emit
+# a completion record carrying that nonce.  An exit status of 0 alone (for
+# example SystemExit(0) at import or in setUpClass, or os._exit(0)) is never
+# accepted as evidence.
 EXACT_UNITTEST_RUNNER = """\
 import importlib.util
 import json
+import os
 import sys
 import unittest
 
-spec = importlib.util.spec_from_file_location("_dacs_exact_review_test", sys.argv[1])
-if spec is None or spec.loader is None:
-    raise SystemExit("cannot load code-pinned test file")
-module = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = module
-spec.loader.exec_module(module)
-suite = unittest.defaultTestLoader.loadTestsFromName(sys.argv[2], module)
-result = unittest.TestResult()
-suite.run(result)
-summary = {
-    "testsRun": result.testsRun,
-    "failures": len(result.failures),
-    "errors": len(result.errors),
-    "skipped": len(result.skipped),
-    "expectedFailures": len(result.expectedFailures),
-    "unexpectedSuccesses": len(result.unexpectedSuccesses),
-}
-accepted = (
-    result.testsRun == 1
-    and result.wasSuccessful()
-    and not result.failures
-    and not result.errors
-    and not result.skipped
-    and not result.expectedFailures
-    and not result.unexpectedSuccesses
-)
-if not accepted:
-    print(
-        "exact unittest contract failed: " + json.dumps(summary, sort_keys=True),
-        file=sys.stderr,
+
+def _run():
+    nonce = sys.stdin.readline().strip()
+    sys.stdin.close()
+    if len(nonce) != 64:
+        raise SystemExit("missing completion nonce")
+    record_fd = os.dup(1)
+    spec = importlib.util.spec_from_file_location("_dacs_exact_review_test", sys.argv[1])
+    if spec is None or spec.loader is None:
+        raise SystemExit("cannot load code-pinned test file")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    suite = unittest.defaultTestLoader.loadTestsFromName(sys.argv[2], module)
+    result = unittest.TestResult()
+    suite.run(result)
+    summary = {
+        "testsRun": result.testsRun,
+        "failures": len(result.failures),
+        "errors": len(result.errors),
+        "skipped": len(result.skipped),
+        "expectedFailures": len(result.expectedFailures),
+        "unexpectedSuccesses": len(result.unexpectedSuccesses),
+    }
+    accepted = (
+        result.testsRun == 1
+        and result.wasSuccessful()
+        and not result.failures
+        and not result.errors
+        and not result.skipped
+        and not result.expectedFailures
+        and not result.unexpectedSuccesses
     )
-    raise SystemExit(1)
+    if not accepted:
+        print(
+            "exact unittest contract failed: " + json.dumps(summary, sort_keys=True),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except Exception:
+            pass
+    record = "\\n%s %s %s\\n" % (
+        sys.argv[3], nonce, json.dumps(summary, sort_keys=True)
+    )
+    os.write(record_fd, record.encode("ascii"))
+
+
+_run()
 """
 
 REQUIRED_REVIEW_LENSES = {
@@ -1130,11 +1166,23 @@ def run_unit_regressions(manifest: dict) -> int:
     return _run_python_evidence(manifest["unitRegressions"], "regression")
 
 
+def _exact_unittest_completed(stdout: str, nonce: str) -> bool:
+    """Return whether the runner reported this run's exact passing summary."""
+    expected = " ".join((
+        EXACT_UNITTEST_COMPLETION_MARKER,
+        nonce,
+        json.dumps(EXACT_UNITTEST_SUMMARY, sort_keys=True),
+    ))
+    records = [line for line in stdout.splitlines() if nonce in line]
+    return records == [expected]
+
+
 def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
         _unittest_module(entry["file"], entry["test"], entry["id"])
         test_path = _within_test_root(entry["file"])
+        nonce = secrets.token_hex(32)
         completed = subprocess.run(
             [
                 sys.executable,
@@ -1142,13 +1190,17 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
                 EXACT_UNITTEST_RUNNER,
                 str(test_path),
                 entry["test"],
+                EXACT_UNITTEST_COMPLETION_MARKER,
             ],
             cwd=ROOT,
+            input=nonce + "\n",
             text=True,
             capture_output=True,
             env={**os.environ, "PYTHONPATH": python_path},
         )
-        if completed.returncode:
+        if completed.returncode or not _exact_unittest_completed(
+            completed.stdout, nonce
+        ):
             detail = (completed.stdout + completed.stderr).strip()
             failure_kind = (
                 "regression" if label == "regression"

@@ -157,9 +157,15 @@ class PreReviewGateTests(unittest.TestCase):
 
     def test_runner_loads_the_exact_unittest_file(self):
         entry = self.manifest["independentReviewEvidence"][0]
-        completed = mock.Mock(returncode=0, stdout="", stderr="")
+
+        def completed(command, **kwargs):
+            nonce = kwargs["input"].strip()
+            summary = json.dumps(self.gate.EXACT_UNITTEST_SUMMARY, sort_keys=True)
+            record = f"{command[5]} {nonce} {summary}\n"
+            return mock.Mock(returncode=0, stdout=record, stderr="")
+
         with mock.patch.object(
-            self.gate.subprocess, "run", return_value=completed
+            self.gate.subprocess, "run", side_effect=completed
         ) as run:
             self.assertEqual(
                 self.gate._run_python_evidence([entry], "review evidence"), 1
@@ -178,9 +184,86 @@ class PreReviewGateTests(unittest.TestCase):
             str((ROOT / entry["file"]).resolve()),
         )
         self.assertEqual(command[4], entry["test"])
+        self.assertEqual(command[5], self.gate.EXACT_UNITTEST_COMPLETION_MARKER)
+        self.assertEqual(len(run.call_args.kwargs["input"].strip()), 64)
         self.assertEqual(
             run.call_args.kwargs["env"]["PYTHONPATH"],
             os.pathsep.join((str(ROOT), str(ROOT / "tests"))),
+        )
+
+    def _run_temporary_evidence(self, body: str) -> int:
+        entry = {
+            "id": "exit-probe",
+            "file": "tests/test_exit_probe.py",
+            "test": "ExitProbeTests.test_probe",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "test_exit_probe.py"
+            path.write_text(body, encoding="utf-8")
+            with mock.patch.object(
+                self.gate, "_within_test_root", return_value=path
+            ):
+                return self.gate._run_python_evidence([entry], "review evidence")
+
+    def test_premature_zero_exit_is_not_review_evidence(self):
+        forged = json.dumps({
+            "errors": 0, "expectedFailures": 0, "failures": 0,
+            "skipped": 0, "testsRun": 1, "unexpectedSuccesses": 0,
+        }, sort_keys=True)
+        bodies = {
+            "import-system-exit": (
+                "import unittest\n"
+                "raise SystemExit(0)\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        self.fail('the selected test must never run')\n"
+            ),
+            "class-setup-system-exit": (
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    @classmethod\n"
+                "    def setUpClass(cls):\n"
+                "        raise SystemExit(0)\n"
+                "    def test_probe(self):\n"
+                "        self.fail('the selected test must never run')\n"
+            ),
+            "os-exit": (
+                "import os\n"
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        os._exit(0)\n"
+            ),
+            "forged-completion-record": (
+                "import os\n"
+                "import sys\n"
+                "import unittest\n"
+                f"sys.stdout.write(sys.argv[3] + ' ' + '0' * 64 + ' ' + {forged!r} + '\\n')\n"
+                "sys.stdout.flush()\n"
+                "os._exit(0)\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        pass\n"
+            ),
+        }
+        for name, body in bodies.items():
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    self.gate.GateError,
+                    "exit-probe: independent review evidence.*failing",
+                ):
+                    self._run_temporary_evidence(body)
+
+    def test_completed_passing_test_is_review_evidence(self):
+        self.assertEqual(
+            self._run_temporary_evidence(
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        print('ordinary test output')\n"
+                "        self.assertTrue(True)\n"
+            ),
+            1,
         )
 
     def test_ambient_pythonpath_cannot_shadow_code_pinned_test(self):

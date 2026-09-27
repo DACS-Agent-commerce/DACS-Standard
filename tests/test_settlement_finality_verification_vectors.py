@@ -6,6 +6,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,8 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
 from scripts.jcs import canonicalize  # noqa: E402
 from scripts.settlement_finality_reference import verify_finality  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+import dacs5_reference as D5  # noqa: E402
+import scripts.generate_settlement_finality_verification_vectors as finality_fixtures  # noqa: E402
 
 
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "settlement-finality-verification.json"
@@ -87,6 +90,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             authority["verifiedReceiptByCanonicalRef"],
             authority.get("finalityVerificationByCanonicalRef"),
             trust or self.trust,
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
+            legacy_agreement_authority_by_phase_key=authority.get(
+                "legacyAgreementAuthorityByPhaseKey"
+            ),
         )
 
     def entry(self, bundle, authority=None, *, evidence_receipt_contract=None):
@@ -110,6 +118,29 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         if evidence_receipt_contract is not None:
             entry["evidenceReceiptContract"] = evidence_receipt_contract
         return entry
+
+    @staticmethod
+    def cross_agreement_authority(case):
+        """Reclose LAA around a different verifier-owned agreement than FV trusts."""
+        authority = copy.deepcopy(case["authority"])
+        bundle = case["bundle"]
+        ref = bundle["settlementEvidence"][0]
+        ref_key = canonicalize(ref)
+        resolution = authority["referenceValidationByCanonicalRef"][ref_key]
+        phase_key = next(iter(authority["legacyAgreementAuthorityByPhaseKey"]))
+        alternate_hash = "33" * 32
+        resolution["agreementHash"] = alternate_hash
+        laa = authority["legacyAgreementAuthorityByPhaseKey"][phase_key]["laa"]
+        laa["agreement"]["contentHash"] = alternate_hash
+        authority["legacyAgreementAuthorityByPhaseKey"][phase_key] = (
+            D5.make_laa_phase_carrier(
+                laa, bundle, authority["listing"], phase_key,
+                resolution["record"], ref,
+                authority["verifiedReceiptByCanonicalRef"][ref_key],
+                authority["sessionExecutionAuthorityByPhaseKey"][phase_key],
+            )
+        )
+        return authority
 
     def resign_bundle(self, bundle):
         digest = bundle_hash(bundle)
@@ -141,6 +172,27 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
+
+    def test_finality_bound_postcommit_bundle_requires_agreement_ref(self):
+        factory = finality_fixtures.FixtureFactory()
+        case = factory.strong_bundle_case("block-depth")
+        authority = case["authority"]
+        bundle = case["bundle"]
+        factory.bind_legacy_commitment(bundle, authority)
+        authority["listing"]["pipeline"] = authority["listing"]["pipeline"][:2]
+        bundle["phaseSummary"] = bundle["phaseSummary"][:2]
+        bundle["settlementEvidence"] = []
+        authority["legacyAgreementAuthorityByPhaseKey"] = {}
+        listing_digest = D5.listing_hash(authority["listing"])
+        authority["listing"]["signature"]["value"] = factory.sign_digest(
+            "seller", D5.LISTING_DOMAIN, listing_digest
+        )
+        bundle["listingRef"]["contentHash"] = listing_digest
+        bundle.pop("agreementRef")
+        factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
+        disposition, reason, _ = self.strong_result(case, trust=factory.trusted)
+        self.assertEqual("fail", disposition, reason)
+        self.assertIn("lacks bundle agreementRef", reason)
 
     def test_all_fixture_vectors_execute_their_four_value_expectation(self):
         observed = {}
@@ -445,7 +497,380 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             with self.subTest(model=model):
                 decision, reason, keys = self.strong_result(case)
                 self.assertEqual("pass", decision, reason)
-                self.assertEqual([f"0:{case['bundle']['phaseSummary'][0]['kind']}"], keys)
+                payment = next(
+                    entry for entry in case["bundle"]["phaseSummary"]
+                    if entry["kind"].startswith("pay-")
+                )
+                phase_key = f"{payment['index']}:{payment['kind']}"
+                self.assertEqual([phase_key], keys)
+                self.assertEqual(
+                    {phase_key: "current-eligible"},
+                    keys.legacy_agreement_eligibility_by_phase_key,
+                )
+
+    def test_finality_bound_success_executes_shared_laa_qualification(self):
+        case = self.strong["block-depth"]
+        calls = []
+        original = D5._qualify_legacy_agreement_evidence
+
+        def recording_qualifier(*args, **kwargs):
+            calls.append((args[2], args[1]))
+            return original(*args, **kwargs)
+
+        with patch.object(D5, "_qualify_legacy_agreement_evidence", recording_qualifier):
+            decision, reason, keys = self.strong_result(case)
+        self.assertEqual("pass", decision, reason)
+        self.assertEqual([("2:pay-evm-erc20", "finality-bound")], calls)
+        self.assertEqual(
+            {"2:pay-evm-erc20": "current-eligible"},
+            keys.legacy_agreement_eligibility_by_phase_key,
+        )
+
+    def test_finality_bound_laa_authority_is_required_and_four_state(self):
+        case = self.strong["block-depth"]
+        phase_key = "2:pay-evm-erc20"
+        cases = []
+
+        omitted = copy.deepcopy(case["authority"])
+        omitted.pop("legacyAgreementAuthorityByPhaseKey")
+        cases.append(("omitted", omitted, "indeterminate"))
+
+        absent = copy.deepcopy(case["authority"])
+        absent["legacyAgreementAuthorityByPhaseKey"] = {}
+        cases.append(("phase-absent", absent, "indeterminate"))
+
+        malformed = copy.deepcopy(case["authority"])
+        malformed["legacyAgreementAuthorityByPhaseKey"] = []
+        cases.append(("map-malformed", malformed, "error"))
+
+        bad_carrier = copy.deepcopy(case["authority"])
+        bad_carrier["legacyAgreementAuthorityByPhaseKey"][phase_key] = None
+        cases.append(("carrier-malformed", bad_carrier, "error"))
+
+        mismatch = copy.deepcopy(case["authority"])
+        mismatch["legacyAgreementAuthorityByPhaseKey"][phase_key]["binding"][
+            "sessionId"
+        ] += "-wrong"
+        cases.append(("carrier-mismatch", mismatch, "fail"))
+
+        for name, authority, expected in cases:
+            with self.subTest(name=name):
+                decision, _, keys = self.strong_result(case, authority=authority)
+                self.assertEqual(expected, decision)
+                self.assertIsNone(keys)
+
+    def test_finality_bound_preserves_laa_nonpass_dispositions(self):
+        case = self.strong["block-depth"]
+        for expected in ("fail", "error", "indeterminate"):
+            with self.subTest(expected=expected), patch.object(
+                D5,
+                "_qualify_legacy_agreement_evidence",
+                return_value=(expected, "sentinel-" + expected, None),
+            ):
+                decision, reason, keys = self.strong_result(case)
+                self.assertEqual(expected, decision)
+                self.assertEqual("sentinel-" + expected, reason)
+                self.assertIsNone(keys)
+
+    def test_finality_bound_refuses_noncurrent_laa_eligibility(self):
+        case = self.strong["block-depth"]
+        for eligibility in ("historical-only", "transition-only"):
+            with self.subTest(eligibility=eligibility), patch.object(
+                D5,
+                "_qualify_legacy_agreement_evidence",
+                return_value=("pass", "audit-only", eligibility),
+            ):
+                decision, reason, keys = self.strong_result(case)
+                self.assertEqual("fail", decision)
+                self.assertIn(eligibility, reason)
+                self.assertIsNone(keys)
+
+    def test_finality_bound_joins_present_agreement_ref_to_laa(self):
+        for name, unrelated, expected in (
+            ("joined", False, "pass"), ("valid-unrelated-agreement", True, "fail"),
+        ):
+            factory = finality_fixtures.FixtureFactory()
+            case = factory.strong_bundle_case("block-depth")
+            bundle = case["bundle"]
+            fv_agreement = next(iter(
+                case["authority"]["finalityVerificationByCanonicalRef"].values()
+            ))["agreement"]
+            factory.bind_legacy_commitment(
+                bundle,
+                case["authority"],
+                agreement_hash="33" * 32 if unrelated else None,
+            )
+            decision, reason, phase_keys = self.strong_result(
+                case, trust=factory.trusted
+            )
+            with self.subTest(case=name):
+                self.assertEqual(expected, decision, reason)
+                if expected != "pass":
+                    self.assertIn("does not bind the signed bundle agreementRef", reason)
+                    self.assertIsNone(phase_keys)
+
+    def test_each_successful_payment_requires_its_own_laa_carrier(self):
+        factory = finality_fixtures.FixtureFactory()
+        case = factory.strong_bundle_case(
+            "block-depth", job_id="FV-392-multi-payment"
+        )
+        bundle = case["bundle"]
+        authority = case["authority"]
+        listing = authority["listing"]
+        first_payment = next(
+            entry for entry in bundle["phaseSummary"]
+            if entry["kind"].startswith("pay-")
+        )
+        phase = first_payment["kind"]
+        first_phase_key = f"{first_payment['index']}:{phase}"
+        first_ref = bundle["settlementEvidence"][0]
+        first_key = canonicalize(first_ref)
+        second_ref = copy.deepcopy(first_ref)
+        second_ref["anchor"]["locator"] += "-phase-1"
+        second_key = canonicalize(second_ref)
+
+        listing["pipeline"].append({"kind": phase})
+        listing["signature"] = {
+            "signer": finality_fixtures.CLAIMS["seller"],
+            "algorithm": "ed25519",
+            "value": factory.sign_digest(
+                "seller",
+                finality_fixtures.LISTING_DOMAIN,
+                finality_fixtures.artifact_hash(listing, "signature"),
+            ),
+        }
+        listing_ref = {
+            "listingId": listing["listingId"],
+            "version": listing["listingVersion"],
+            "contentHash": finality_fixtures.artifact_hash(listing, "signature"),
+        }
+        bundle["listingRef"] = copy.deepcopy(listing_ref)
+        bundle["phaseSummary"].append({
+            "index": 3,
+            "kind": phase,
+            "outcome": "ok",
+            "attestationRef": copy.deepcopy(second_ref),
+        })
+        bundle["settlementEvidence"].append(copy.deepcopy(second_ref))
+
+        candidate = authority["finalityVerificationByCanonicalRef"][first_key]
+        agreement = candidate["agreement"]
+        agreement["listingRef"] = copy.deepcopy(listing_ref)
+        agreement_hash = finality_fixtures.artifact_hash(agreement, "signatures")
+        agreement["signatures"] = [
+            {
+                "party": finality_fixtures.CLAIMS[role],
+                "algorithm": "ed25519",
+                "value": factory.sign_digest(
+                    role,
+                    finality_fixtures.AGREEMENT_DOMAIN,
+                    agreement_hash,
+                ),
+            }
+            for role in ("buyer", "seller")
+        ]
+        factory.trusted["sessionAuthorityByJob"][bundle["jobId"]][
+            "agreementHash"
+        ] = agreement_hash
+        bundle["agreementRef"]["contentHash"] = agreement_hash
+        authority["agreementSelectionResult"]["agreementRef"] = copy.deepcopy(
+            bundle["agreementRef"]
+        )
+        authority["referenceValidationByCanonicalRef"][second_key] = copy.deepcopy(
+            authority["referenceValidationByCanonicalRef"][first_key]
+        )
+        second_receipt = copy.deepcopy(
+            authority["verifiedReceiptByCanonicalRef"][first_key]
+        )
+        second_receipt["logicalAddress"] = second_receipt["logicalAddress"].rsplit(
+            ":", 1
+        )[0] + ":3"
+        second_receipt["nativeAddress"] = second_ref["anchor"]["locator"]
+        authority["verifiedReceiptByCanonicalRef"][second_key] = second_receipt
+        authority["sessionExecutionAuthorityByPhaseKey"]["3:" + phase] = {
+            **authority["sessionExecutionAuthorityByPhaseKey"][first_phase_key],
+            "phaseIndex": 3,
+        }
+        authority["finalityVerificationByCanonicalRef"][second_key] = copy.deepcopy(
+            candidate
+        )
+        factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
+        factory.bind_current_laa_authority(bundle, authority)
+
+        decision, reason, keys = self.strong_result(
+            case, authority=authority, trust=factory.trusted
+        )
+        self.assertEqual("pass", decision, reason)
+        self.assertEqual({first_phase_key, "3:" + phase}, set(keys))
+        self.assertEqual(
+            {first_phase_key, "3:" + phase},
+            set(authority["legacyAgreementAuthorityByPhaseKey"]),
+        )
+
+        authority["legacyAgreementAuthorityByPhaseKey"].pop("3:" + phase)
+        decision, reason, keys = self.strong_result(
+            case, authority=authority, trust=factory.trusted
+        )
+        self.assertEqual("indeterminate", decision)
+        self.assertIn("unavailable", reason)
+        self.assertIsNone(keys)
+
+    def test_finality_bound_without_successful_payment_needs_no_laa_carrier(self):
+        factory = finality_fixtures.FixtureFactory()
+        case = factory.strong_bundle_case(
+            "block-depth", job_id="FV-392-no-success"
+        )
+        bundle = case["bundle"]
+        authority = case["authority"]
+        listing = authority["listing"]
+        listing["pipeline"] = [
+            {"kind": "negotiate-fixed-price"},
+            {"kind": "commit-agreement"},
+            {"kind": "rate"},
+        ]
+        listing["signature"] = {
+            "signer": finality_fixtures.CLAIMS["seller"],
+            "algorithm": "ed25519",
+            "value": factory.sign_digest(
+                "seller",
+                finality_fixtures.LISTING_DOMAIN,
+                finality_fixtures.artifact_hash(listing, "signature"),
+            ),
+        }
+        bundle["listingRef"] = {
+            "listingId": listing["listingId"],
+            "version": listing["listingVersion"],
+            "contentHash": finality_fixtures.artifact_hash(listing, "signature"),
+        }
+        bundle["phaseSummary"] = [
+            {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+            {"index": 1, "kind": "commit-agreement", "outcome": "ok"},
+            {"index": 2, "kind": "rate", "outcome": "ok"},
+        ]
+        bundle["settlementEvidence"] = []
+        factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
+        authority.pop("legacyAgreementAuthorityByPhaseKey")
+        authority["finalityVerificationByCanonicalRef"] = {}
+        with patch.object(
+            D5,
+            "_qualify_legacy_agreement_evidence",
+            side_effect=AssertionError("no successful payment should invoke LAA"),
+        ):
+            decision, reason, keys = self.strong_result(
+                case, authority=authority, trust=factory.trusted
+            )
+        self.assertEqual("pass", decision, reason)
+        self.assertEqual([], keys)
+
+    def test_malformed_strong_listing_is_typed_error_in_reconciliation(self):
+        # F-D: a producer-authored Listing that JCS cannot hash is malformed
+        # input for the finality-bound lane, never an escaping exception.
+        case = copy.deepcopy(self.strong["block-depth"])
+        absent = {
+            "disposition": "absent",
+            "expectedJobId": case["bundle"]["jobId"],
+            "expectedRole": "seller",
+        }
+        for name, mutate, expected in (
+            ("control", lambda listing: None, "pass"),
+            ("unsafe-integer", lambda listing: listing.__setitem__("listingVersion", 2 ** 53), "error"),
+            ("lone-surrogate", lambda listing: listing["pipeline"][0].__setitem__("kind", "\ud800"), "error"),
+        ):
+            authority = copy.deepcopy(case["authority"])
+            mutate(authority["listing"])
+            # entry() registers the copy presence in the shared trust, so copy
+            # the trust only afterwards; the test must not depend on suite order.
+            present = self.entry(case["bundle"], authority)
+            absent_trust = copy.deepcopy(self.trust)
+            absent_trust["copyDispositionByJobRole"] = {
+                case["bundle"]["jobId"] + ":seller": "absent"
+            }
+            with self.subTest(case=name):
+                result = reconcile_authenticated_finality_copies(
+                    [present, absent],
+                    self.pubkeys,
+                    absent_trust,
+                )
+                self.assertEqual(expected, result["decision"], result["reason"])
+
+    def test_finality_bound_seb5_pointer_must_equal_its_top_level_member(self):
+        phase_key = "2:pay-evm-erc20"
+        for mutation in ("omitted", "exact", "dangling", "malformed"):
+            case = copy.deepcopy(self.strong["block-depth"])
+            bundle = case["bundle"]
+            authority = case["authority"]
+            entry = next(
+                row for row in bundle["phaseSummary"]
+                if row["kind"] == "pay-evm-erc20"
+            )
+            if mutation == "omitted":
+                entry.pop("attestationRef")
+            elif mutation == "dangling":
+                entry["attestationRef"]["contentHash"] = "0" * 64
+            elif mutation == "malformed":
+                entry["attestationRef"] = {"anchor": [], "contentHash": "0" * 64}
+            finality_fixtures.FixtureFactory().sign_bundle(
+                bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN
+            )
+            # The LAA carrier commits to the exact bundle; refresh it so only
+            # the pointer can decide the verdict.
+            ref = bundle["settlementEvidence"][0]
+            key = D5.canonical(ref).decode("utf-8")
+            authority["legacyAgreementAuthorityByPhaseKey"][phase_key] = (
+                D5.make_laa_phase_carrier(
+                    D5._laa_input_from_phase_carrier(
+                        authority["legacyAgreementAuthorityByPhaseKey"][phase_key]
+                    ),
+                    bundle,
+                    authority["listing"],
+                    phase_key,
+                    authority["referenceValidationByCanonicalRef"][key]["record"],
+                    ref,
+                    authority["verifiedReceiptByCanonicalRef"][key],
+                    authority["sessionExecutionAuthorityByPhaseKey"][phase_key],
+                )
+            )
+            with self.subTest(mutation=mutation):
+                decision, reason, keys = self.strong_result(case)
+                if mutation in {"omitted", "exact"}:
+                    self.assertEqual("pass", decision, reason)
+                elif mutation == "dangling":
+                    self.assertEqual("fail", decision, reason)
+                    self.assertEqual(
+                        "optional phase pointer contradicts settlementEvidence",
+                        str(reason),
+                    )
+                    self.assertIsNone(keys)
+                else:
+                    self.assertEqual("error", decision, reason)
+                    self.assertIsNone(keys)
+
+    def test_finality_bound_never_coerces_ordinary_payment_wire_type(self):
+        case = copy.deepcopy(self.strong["block-depth"])
+        compatibility = self.data["dacs5"]["compatibility"]
+        ordinary = compatibility["copies"]["evidence-bound"]
+        ordinary_ref = ordinary["settlementEvidence"][0]
+        bundle = case["bundle"]
+        bundle["settlementEvidence"] = [copy.deepcopy(ordinary_ref)]
+        next(
+            entry for entry in bundle["phaseSummary"]
+            if entry["kind"] == "pay-evm-erc20"
+        )["attestationRef"] = copy.deepcopy(ordinary_ref)
+        finality_fixtures.FixtureFactory().sign_bundle(
+            bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN
+        )
+        old_authority = compatibility["evidenceBoundAuthority"]
+        authority = case["authority"]
+        authority["referenceValidationByCanonicalRef"] = copy.deepcopy(
+            old_authority["referenceValidationByCanonicalRef"]
+        )
+        authority["verifiedReceiptByCanonicalRef"] = copy.deepcopy(
+            old_authority["verifiedReceiptByCanonicalRef"]
+        )
+        decision, reason, keys = self.strong_result(case, authority=authority)
+        self.assertEqual("fail", decision)
+        self.assertIn("wrong evidence family", reason)
+        self.assertIsNone(keys)
 
     def test_strong_bundle_rejects_cross_listing_agreement(self):
         case = self.strong["block-depth"]
@@ -455,6 +880,68 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         decision, reason, phase_keys = self.strong_result(case, authority=authority)
         self.assertEqual("fail", decision)
         self.assertIn("different listing", reason)
+        self.assertIsNone(phase_keys)
+
+    def test_finality_bound_joins_laa_and_fv_agreements(self):
+        case = self.strong["block-depth"]
+        self.assertEqual("pass", self.strong_result(case)[0])
+        authority = self.cross_agreement_authority(case)
+        decision, reason, phase_keys = self.strong_result(
+            case, authority=authority
+        )
+        self.assertEqual("fail", decision, reason)
+        self.assertIn("does not bind the signed bundle agreementRef", reason)
+        self.assertIsNone(phase_keys)
+
+        pointer_authority = {**authority, "finalityTrust": self.trust}
+        pointer = resolve_legacy_absolute_fault_pointer(
+            self.data["dacs5"]["pointer"], case["bundle"],
+            pubkeys=self.pubkeys, finality_bound_authority=pointer_authority,
+        )
+        self.assertFalse(pointer["ok"])
+        self.assertEqual("fail", pointer["decision"])
+        # Every pointer family reports the same typed "disposition" key.
+        self.assertEqual("fail", pointer["disposition"])
+        malformed_authority = copy.deepcopy(pointer_authority)
+        malformed_authority["listing"]["listingVersion"] = 2 ** 53
+        malformed = resolve_legacy_absolute_fault_pointer(
+            self.data["dacs5"]["pointer"], case["bundle"],
+            pubkeys=self.pubkeys, finality_bound_authority=malformed_authority,
+        )
+        self.assertFalse(malformed["ok"])
+        self.assertEqual("error", malformed["disposition"], malformed["reason"])
+
+        legacy = self.data["dacs5"]["compatibility"]["copies"]["legacy"]
+        reconciled = reconcile_authenticated_finality_copies(
+            [self.entry(case["bundle"], authority), self.entry(legacy)],
+            self.pubkeys, self.trust,
+        )
+        self.assertEqual("fail", reconciled["decision"])
+        self.assertIsNone(reconciled["bundle"])
+
+    def test_missing_finality_authority_keeps_indeterminate_on_cross_agreement(self):
+        case = self.strong["block-depth"]
+        authority = self.cross_agreement_authority(case)
+        trust = copy.deepcopy(self.trust)
+        trust.pop("sessionAuthorityByJob")
+        decision, reason, phase_keys = self.strong_result(
+            case, authority=authority, trust=trust
+        )
+        self.assertEqual("fail", decision)
+        self.assertIn("does not bind the signed bundle agreementRef", reason)
+        self.assertIsNone(phase_keys)
+
+    def test_unsupported_passing_finality_class_precedes_agreement_mismatch(self):
+        case = self.strong["block-depth"]
+        authority = self.cross_agreement_authority(case)
+        with patch.object(D5, "verify_finality", return_value={
+            "decision": "pass", "reason": "synthetic", "finalityClass": "unsupported",
+        }):
+            decision, reason, phase_keys = self.strong_result(
+                case, authority=authority
+            )
+        self.assertEqual("error", decision, reason)
+        self.assertIn("unsupported passing finality class", reason)
         self.assertIsNone(phase_keys)
 
     def test_dacs5_refuses_malformed_finality_agreement_without_exception(self):
@@ -555,7 +1042,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         pairs = [
             (second_strong, case["authority"]),
             (copies["evidence-bound"], old_authority),
-            (copies["fault"], None),
+            (copies["fault"], {**old_authority, "evidenceReceiptContract": "archival"}),
             (copies["legacy"], None),
         ]
         for older, authority in pairs:
@@ -575,8 +1062,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.trust,
             )
             with self.subTest(kind=bundle_type(older)):
-                self.assertEqual("pass", result["decision"], result["reason"])
-                self.assertEqual("finality-bound", bundle_type(result["bundle"]))
+                if bundle_type(older) == "legacy":
+                    self.assertEqual("indeterminate", result["decision"], result["reason"])
+                    self.assertIn("authority is unavailable", result["reason"])
+                    self.assertIsNone(result["bundle"])
+                else:
+                    self.assertEqual("pass", result["decision"], result["reason"])
+                    self.assertEqual("finality-bound", bundle_type(result["bundle"]))
 
     def test_invalid_strong_copy_cannot_fall_back_to_valid_legacy_copy(self):
         case = self.strong["block-depth"]
@@ -591,6 +1083,43 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         )
         self.assertEqual("fail", result["decision"])
         self.assertIsNone(result["bundle"])
+
+    def test_missing_strong_laa_carrier_cannot_fall_back_to_valid_legacy_copy(self):
+        case = self.strong["block-depth"]
+        authority = copy.deepcopy(case["authority"])
+        authority.pop("legacyAgreementAuthorityByPhaseKey")
+        legacy = self.data["dacs5"]["compatibility"]["copies"]["legacy"]
+        result = reconcile_authenticated_finality_copies(
+            [self.entry(case["bundle"], authority), self.entry(legacy)],
+            self.pubkeys,
+            self.trust,
+        )
+        self.assertEqual("indeterminate", result["decision"])
+        self.assertIn("legacy agreement authority", result["reason"])
+        self.assertIsNone(result["bundle"])
+
+    def test_finality_pointer_requires_typed_laa_carrier_authority(self):
+        case = self.strong["block-depth"]
+        pointer = self.data["dacs5"]["pointer"]
+        for name, replacement, expected in (
+            ("missing", None, "indeterminate"),
+            ("malformed", [], "error"),
+        ):
+            authority = copy.deepcopy(case["authority"])
+            if replacement is None:
+                authority.pop("legacyAgreementAuthorityByPhaseKey")
+            else:
+                authority["legacyAgreementAuthorityByPhaseKey"] = replacement
+            authority["finalityTrust"] = self.trust
+            with self.subTest(name=name):
+                result = resolve_legacy_absolute_fault_pointer(
+                    pointer,
+                    case["bundle"],
+                    pubkeys=self.pubkeys,
+                    finality_bound_authority=authority,
+                )
+                self.assertFalse(result["ok"])
+                self.assertEqual(expected, result["decision"])
 
     def test_archival_receipt_never_supplies_current_authority(self):
         case = self.strong["block-depth"]
@@ -614,24 +1143,46 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         absent_trust["copyDispositionByJobRole"] = {
             case["bundle"]["jobId"] + ":buyer": "absent"
         }
-        malformed = copy.deepcopy(older_entry)
-        receipt = next(iter(malformed["authority"]["verifiedReceiptByCanonicalRef"].values()))
-        receipt["transaction"] = None
         absent = reconcile_authenticated_finality_copies(
             [{"disposition": "absent", "expectedJobId": case["bundle"]["jobId"],
-              "expectedRole": "buyer"}, malformed], self.pubkeys, absent_trust
+              "expectedRole": "buyer"}, copy.deepcopy(older_entry)],
+            self.pubkeys,
+            absent_trust,
         )
-        self.assertNotEqual("pass", absent["decision"])
+        self.assertEqual("indeterminate", absent["decision"])
+        self.assertEqual(
+            "archival EBFAB requires independently passing finality-bound authority",
+            absent["reason"],
+        )
         self.assertIsNone(absent["bundle"])
 
         invalid_strong = copy.deepcopy(strong_entry)
         key = next(iter(invalid_strong["authority"]["finalityVerificationByCanonicalRef"]))
         invalid_strong["authority"]["finalityVerificationByCanonicalRef"][key]["context"]["observation"]["transactionRef"]["txHash"] = "ff" * 32
         invalid = reconcile_authenticated_finality_copies(
-            [invalid_strong, malformed], self.pubkeys, self.trust
+            [invalid_strong, copy.deepcopy(older_entry)], self.pubkeys, self.trust
         )
-        self.assertNotEqual("pass", invalid["decision"])
+        self.assertEqual("fail", invalid["decision"])
+        self.assertEqual(
+            "FV rejected successful payment: observation transaction reference differs from signed evidence",
+            invalid["reason"],
+        )
         self.assertIsNone(invalid["bundle"])
+
+        malformed = copy.deepcopy(older_entry)
+        receipt = next(
+            iter(malformed["authority"]["verifiedReceiptByCanonicalRef"].values())
+        )
+        receipt["transaction"] = None
+        malformed_archival = reconcile_authenticated_finality_copies(
+            [strong_entry, malformed], self.pubkeys, self.trust
+        )
+        self.assertEqual("fail", malformed_archival["decision"])
+        self.assertEqual(
+            "evidence does not resolve to exactly one authenticated phase receipt",
+            malformed_archival["reason"],
+        )
+        self.assertIsNone(malformed_archival["bundle"])
 
     def test_reconciliation_executes_conflict_absence_and_indeterminate_paths(self):
         case = self.strong["block-depth"]
@@ -785,7 +1336,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             authority["verifiedReceiptByCanonicalRef"],
         )
         self.assertTrue(ok, reason)
-        self.assertEqual(["0:pay-evm-erc20"], keys)
+        self.assertEqual(["2:pay-evm-erc20"], keys)
 
     def test_frozen_old_reader_refuses_new_bundle_and_pointer(self):
         case = self.strong["block-depth"]
@@ -828,6 +1379,9 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                     case["authority"]["verifiedReceiptByCanonicalRef"],
                     case["authority"]["finalityVerificationByCanonicalRef"],
                     self.trust,
+                    legacy_agreement_authority_by_phase_key=case["authority"][
+                        "legacyAgreementAuthorityByPhaseKey"
+                    ],
                 )[0])
 
 

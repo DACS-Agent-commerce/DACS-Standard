@@ -125,7 +125,7 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
         "transitionEvidence": {
             "resolution": "verified",
             "shape": "valid",
-            "discriminator": "legacyTransitionEvidenceVersion:1",
+            "legacyTransitionEvidenceVersion": "1",
             "signatureDomain": "dacs-legacy-transition-evidence:v1:",
             "agreementBindingMatches": True,
             "agreementHash": "agreement-hash-a",
@@ -746,7 +746,7 @@ def vectors() -> list[dict]:
             "laa-transition-audit-unknown-evidence-type", "error",
             "an unknown transition-evidence discriminator is not interpreted",
             operation="transition-audit",
-            changes={"transitionEvidence": {"discriminator": "legacyTransitionEvidenceVersion:99"}},
+            changes={"transitionEvidence": {"legacyTransitionEvidenceVersion": "99"}},
         ),
         case(
             "laa-transition-audit-ordinary-evidence-coercion", "error",

@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 8,
-  "hash": "3e077bbca69fa0150a76495b9cd772080d5bb12aee0fec70a3b39104f36f773e",
+  "hash": "ca2a40bfe4915d83ffad5856a6c677a812db7a193bd639f55e945092518aff47",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -30,12 +30,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-f59517cacfff2b6fd7120409b6561323f0c760c6aba7ee7992b560cd61f201ba",
                     "nativeAddress": "native-641a7fa7908d8c8f09af1d27d26e0250152308d8891e80a2ea355fc0a9fc9cde",
-                    "bundleContentHash": "9dee0514cd2bea4a480dc8f147b9884fd4396f51762cc818541225d0b81f89f6",
+                    "bundleContentHash": "ab2a0bdd13532bc538f53279ed09a01673913eb905ec874142032b33427ad127",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "o7uYx0tzbPd-Vz58jCUNANeS6jd8Q1BIDHMYv4TITvfCdeOhe_KghkTuTSw_7uOVzyS00ZCZPhE10N4H39jFDA"
+                      "value": "Ysk1dom5fmMdnTDVVo5YAFa2m81dAqOv60OMcFjMtx3HQTAfu9uf2D78AgqIOBwz7_axjz9B2b4DuKYGV2CnCA"
                     }
                   }
                 ],
@@ -54,7 +54,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-f59517cacfff2b6fd7120409b6561323f0c760c6aba7ee7992b560cd61f201ba",
                   "nativeAddress": "native-641a7fa7908d8c8f09af1d27d26e0250152308d8891e80a2ea355fc0a9fc9cde",
-                  "contentHash": "9dee0514cd2bea4a480dc8f147b9884fd4396f51762cc818541225d0b81f89f6",
+                  "contentHash": "ab2a0bdd13532bc538f53279ed09a01673913eb905ec874142032b33427ad127",
                   "transactionRef": "fixture-tx-current-569a080c093d36b948a64bd0e72a7185ba96f2156ac952bf10672dcee54f9dd9",
                   "writer": "did:demos:buyer",
                   "nonce": 100,
@@ -68,7 +68,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "VXrPe3ODIkZdSWVtdtjwbqhO2SJslZr9upHYVj9vMa0WANtg7LJfHBZ2n17JWpMgMz19sUti9RNEwJ21LcyYAA"
+                    "value": "4yV9aJOgMgMcpMa4XndKIko_IldAMDZYqM74OEy_8nfN1iX8GRje_dtsYmTdJ6L5Q97SPsNGcXs1RQukmkI1Dg"
                   }
                 }
               },
@@ -85,12 +85,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-bd9f9332c4b3d97147a167c65ccf43ba626da49bc0bfa071bf9971bf4d974f9e",
                     "nativeAddress": "native-d3001383f87f98f1585be97dafd3a287037744949fa7066970f1742852050418",
-                    "bundleContentHash": "9dee0514cd2bea4a480dc8f147b9884fd4396f51762cc818541225d0b81f89f6",
+                    "bundleContentHash": "ab2a0bdd13532bc538f53279ed09a01673913eb905ec874142032b33427ad127",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "NNH6DM8-lbVK6FkD1159v0AajJftpD_Zjqkn7g_ZDtirKHjukyNUl0dfwFGKRp9wcoPkdHHD4ThEXms3GN4VCA"
+                      "value": "61fcvmnoGDjSsAidpL48S-PQBOOBq0HRr-Rua9o6zIzGvMM3KqzO4_BOvZ4DvAUnP9xNf9AOTvnVRN6kG1JWAg"
                     }
                   }
                 ],
@@ -109,7 +109,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-bd9f9332c4b3d97147a167c65ccf43ba626da49bc0bfa071bf9971bf4d974f9e",
                   "nativeAddress": "native-d3001383f87f98f1585be97dafd3a287037744949fa7066970f1742852050418",
-                  "contentHash": "9dee0514cd2bea4a480dc8f147b9884fd4396f51762cc818541225d0b81f89f6",
+                  "contentHash": "ab2a0bdd13532bc538f53279ed09a01673913eb905ec874142032b33427ad127",
                   "transactionRef": "fixture-tx-current-bdb472f4f1d4be714b687e1971f3d01b7d06f808613c83ab2eb46c3bf68a2319",
                   "writer": "did:demos:seller",
                   "nonce": 101,
@@ -123,7 +123,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "C5N8GRIfoO7wzCkmZYbZy9ZoB3oo7osBlckdvfws5Vb-woe5FIiSFjO-Pi0bGo8E1nZ6CJYNDuqyMPvHevW7BA"
+                    "value": "gFfq7bTRHoI48xSjVTcoJuY5gFf23rMvcOb6_EgeGWAzCEif3MjuPlQ1ttw7FXYAb00JZksQcCsfZszIbMX0Cw"
                   }
                 }
               },
@@ -142,7 +142,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0"
+                "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
               },
               "parties": [
                 {
@@ -159,6 +159,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-evm-erc20",
                   "outcome": "ok",
                   "attestationRef": {
@@ -187,12 +197,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "kREmLu9eke30SCXitfkNU5bFUcOhvc9PebeZC017c_lazG8N0lDOzko0eoE_VhxPbzjGo9MTWTtzeaUk7jqlDQ"
+                  "value": "jkGBFEDKOAxxYiwJs6MqTUirN9jyn5X8j2ehn_vsVHg5bp_0I_aGHGq0Y3ksVXuYKLy9Ix3Kis8GTYdAHD_5Bw"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "96s1DoXld_KYJex1Vzioa3yNrmhOfi9GbH3H-OkUHyM6BH7JIXyBU3ZoHpzhQeSOR0DpXZLv80822J0oT1GwBw"
+                  "value": "AroIPslelVolbbpWiWv3lINkyLrJDoiTrhlSjT-Nr7jce0nVs44v88xVCj3ccusjGimVhc-Qu4k5FyKLMYzABg"
                 }
               ],
               "agreementRef": {
@@ -200,7 +210,7 @@
                   "kind": "storage-program",
                   "locator": "stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850"
                 },
-                "contentHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501"
+                "contentHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e"
               },
               "ratingRefs": [
                 {
@@ -221,7 +231,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0"
+                "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
               },
               "parties": [
                 {
@@ -238,6 +248,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-evm-erc20",
                   "outcome": "ok",
                   "attestationRef": {
@@ -266,12 +286,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "kREmLu9eke30SCXitfkNU5bFUcOhvc9PebeZC017c_lazG8N0lDOzko0eoE_VhxPbzjGo9MTWTtzeaUk7jqlDQ"
+                  "value": "jkGBFEDKOAxxYiwJs6MqTUirN9jyn5X8j2ehn_vsVHg5bp_0I_aGHGq0Y3ksVXuYKLy9Ix3Kis8GTYdAHD_5Bw"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "96s1DoXld_KYJex1Vzioa3yNrmhOfi9GbH3H-OkUHyM6BH7JIXyBU3ZoHpzhQeSOR0DpXZLv80822J0oT1GwBw"
+                  "value": "AroIPslelVolbbpWiWv3lINkyLrJDoiTrhlSjT-Nr7jce0nVs44v88xVCj3ccusjGimVhc-Qu4k5FyKLMYzABg"
                 }
               ],
               "agreementRef": {
@@ -279,7 +299,7 @@
                   "kind": "storage-program",
                   "locator": "stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850"
                 },
-                "contentHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501"
+                "contentHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e"
               },
               "ratingRefs": [
                 {
@@ -294,12 +314,18 @@
           },
           "checkpointsByNativeAddress": {},
           "bundleAuthorityByContentHash": {
-            "9dee0514cd2bea4a480dc8f147b9884fd4396f51762cc818541225d0b81f89f6": {
+            "ab2a0bdd13532bc538f53279ed09a01673913eb905ec874142032b33427ad127": {
               "listing": {
                 "listingId": "listing-finality-fixture",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "pay-evm-erc20"
                   }
@@ -307,7 +333,7 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "QST3DTMPkNGZzaDfDk-d0yiO1MkiZy3l3Yuxdre7zVKeLPVPySoZNpKsRdgZQ_Kel16Afw0xvaF2D50nR0sIDw"
+                  "value": "kIOi6ZX-8dgOiK7A03WDylKPtlI5jUPx7LQK1412rV_eb8p8dsald6LeGnXM4EQ-bF8915S7jA2wWEXRFaNBAA"
                 }
               },
               "referenceValidationByCanonicalRef": {
@@ -353,7 +379,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
+                  "sessionId": "session-finality-07d4077e7a3b4d27f5d8904f457c8f6744f51c40b17eff9fb5ce32a440397b81"
                 }
               },
               "bundleLifecycle": {
@@ -361,9 +389,9 @@
                 "independentlyResolvable": true
               },
               "sessionExecutionAuthorityByPhaseKey": {
-                "0:pay-evm-erc20": {
+                "2:pay-evm-erc20": {
                   "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
-                  "phaseIndex": 0,
+                  "phaseIndex": 2,
                   "phaseKind": "pay-evm-erc20",
                   "phaseOrchestrator": "did:demos:orchestrator",
                   "railId": "fixture:block-depth"
@@ -374,7 +402,7 @@
                   "receiptVersion": "1",
                   "substrate": "demos-testnet",
                   "finalityProfile": "demos-bft-final",
-                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAX:fixture%3Ablock-depth:0",
+                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAX:fixture%3Ablock-depth:2",
                   "nativeAddress": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df",
                   "contentHash": "f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1",
                   "transactionRef": {
@@ -495,7 +523,7 @@
                     "listingRef": {
                       "listingId": "listing-finality-fixture",
                       "version": 1,
-                      "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0"
+                      "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
                     },
                     "parties": [
                       {
@@ -544,12 +572,12 @@
                       {
                         "party": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "-P01UnMra2iH6WRudbBYSh7Cf6IzmDwrr0CMVxg7oI5mWvLEP5yv4ewY_h-6urtHU6FuPB4un8RyQX-_uzOXCg"
+                        "value": "wDX3_hvvFhK2rsxogK_lXIBs-NpT03p4842bLD4ElBwYwutAwnpjqEE3C8eBkUQBHs05-9cxjIf-7fs0IlumCA"
                       },
                       {
                         "party": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "clKT_nyQrjrwqhQ7r5y27IPbH4rMy-XFIjM5LJFe028nq7LEpzTIVpcaLuetwLL_BF3Sg1SaOF30x2nE6sDnAQ"
+                        "value": "YZQZrYEorn3Wh1-Z6oo0mboAFJLmhUjnt1_BOUYRhJR95Uu56HuJqBdMqXColCsGcEluKFjxvOBEQSyDWTmNCg"
                       }
                     ]
                   },
@@ -688,18 +716,86 @@
                     }
                   }
                 }
+              },
+              "agreementSelectionResult": {
+                "resolution": "verified",
+                "agreementRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850"
+                  },
+                  "contentHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e"
+                },
+                "agreementType": "legacy",
+                "proofVerified": true
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "2:pay-evm-erc20": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                      "phase": "pay-evm-erc20",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                      "sessionId": "session-finality-07d4077e7a3b4d27f5d8904f457c8f6744f51c40b17eff9fb5ce32a440397b81",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "96e24a2cc4015bee3f5022447817fcb78591a76a6c2c3244358c2984ca22eb7f",
+                    "bundleContentHash": "ab2a0bdd13532bc538f53279ed09a01673913eb905ec874142032b33427ad127",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+                    },
+                    "listingContentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
+                    "agreementContentHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                    "sessionId": "session-finality-07d4077e7a3b4d27f5d8904f457c8f6744f51c40b17eff9fb5ce32a440397b81",
+                    "phaseKey": "2:pay-evm-erc20",
+                    "phaseIndex": 2,
+                    "phase": "pay-evm-erc20",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df"
+                      },
+                      "contentHash": "f2ada84c6369cfc90e046280286178fcb3b1d84339d82538a977fd80e5e8fad1"
+                    },
+                    "evidenceReceiptHash": "1add2d60e977589bf08ccd345d78ae65160340767e3abb01f95e468aa0e2dd54",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
           "settlementBindingProofByCanonicalRef": {},
           "agreementsByCanonicalRef": {
-            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850\"},\"contentHash\":\"f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501\"}": {
+            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850\"},\"contentHash\":\"67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e\"}": {
               "agreementVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0"
+                "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
               },
               "parties": [
                 {
@@ -748,12 +844,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "-P01UnMra2iH6WRudbBYSh7Cf6IzmDwrr0CMVxg7oI5mWvLEP5yv4ewY_h-6urtHU6FuPB4un8RyQX-_uzOXCg"
+                  "value": "wDX3_hvvFhK2rsxogK_lXIBs-NpT03p4842bLD4ElBwYwutAwnpjqEE3C8eBkUQBHs05-9cxjIf-7fs0IlumCA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "clKT_nyQrjrwqhQ7r5y27IPbH4rMy-XFIjM5LJFe028nq7LEpzTIVpcaLuetwLL_BF3Sg1SaOF30x2nE6sDnAQ"
+                  "value": "YZQZrYEorn3Wh1-Z6oo0mboAFJLmhUjnt1_BOUYRhJR95Uu56HuJqBdMqXColCsGcEluKFjxvOBEQSyDWTmNCg"
                 }
               ]
             }
@@ -848,7 +944,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -864,7 +960,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -880,7 +976,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -896,7 +992,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -912,7 +1008,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -928,7 +1024,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -996,8 +1092,8 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAX:buyer:native-641a7fa7908d8c8f09af1d27d26e0250152308d8891e80a2ea355fc0a9fc9cde": "8723af340ffff5219bd7682e0fb87edcf5a5d1d7a3c47a458415d4ca374315d3",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAX:seller:native-d3001383f87f98f1585be97dafd3a287037744949fa7066970f1742852050418": "3b54d0c10a0e7150e1c0cdf5a5d9d2355f4d1f0971f438b3a25c384c5221a43f"
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAX:buyer:native-641a7fa7908d8c8f09af1d27d26e0250152308d8891e80a2ea355fc0a9fc9cde": "948b0e6a22ac94ab708ccef2ed19cdc9ddb96acbbd3161d4d64fa6ec0af43302",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAX:seller:native-d3001383f87f98f1585be97dafd3a287037744949fa7066970f1742852050418": "10273c89b4f17d071da3d52c9c783c216f0f9327cf9901644e3b895164da6237"
           }
         },
         "trustedContext": {
@@ -1097,12 +1193,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-fb0ea7177379e992f7706a4335391b886711a684ab75f2ea0c587d8bd7055a2a",
                     "nativeAddress": "native-44f235df4b05947e18ca52e9bc584d5bc08f855b260749673fd659f8d53c53df",
-                    "bundleContentHash": "6fa072b406b3a2d10c1b5818f891a621febd75af040f8eb630a9bc8dc20ea380",
+                    "bundleContentHash": "ba8171468191cf5c23016ec3ede2d2f5dc6077d5d701e198f33ed620c2c72b16",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "FbwwevE4ko9F-lwHwAj8wDsIJuzUi_n89kAQ8T_GkIIMcQ5zYT0i5kOuoiAnCAD8dewm3JWK_T7le3FoApfRBA"
+                      "value": "bBWmoy-LftHTRnBxObUOSPjDsEgH49SQ01YoDxnGOLbpxxid1NO_5xNg8bB3NdvwvCq3O25OyJ5ZJ7aiDG7FAw"
                     }
                   }
                 ],
@@ -1121,7 +1217,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-fb0ea7177379e992f7706a4335391b886711a684ab75f2ea0c587d8bd7055a2a",
                   "nativeAddress": "native-44f235df4b05947e18ca52e9bc584d5bc08f855b260749673fd659f8d53c53df",
-                  "contentHash": "6fa072b406b3a2d10c1b5818f891a621febd75af040f8eb630a9bc8dc20ea380",
+                  "contentHash": "ba8171468191cf5c23016ec3ede2d2f5dc6077d5d701e198f33ed620c2c72b16",
                   "transactionRef": "fixture-tx-current-c6d0ed12e0f856f956cfc75f35a3858a27985e689b1dcbf2508d993c5265e8f4",
                   "writer": "did:demos:buyer",
                   "nonce": 102,
@@ -1135,7 +1231,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "OWBy8yPlAt14JIUjFxQCRaMwPGIjE81drNq-yd4vNTIDxZlOA_S-j_3EiSXjgiEZN3wbzosF07g7U1V7751fDg"
+                    "value": "PRqs1H9409eZrGixkn6SgkALfCpMh3zutrc0mWuBOfsFBRg3-fk8JlZMjSlezeibZY_GUZdWrjGIkOooLh8wCQ"
                   }
                 }
               },
@@ -1152,12 +1248,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-071dc45090e2be35a24c53a8a35f1e90e4367aa55b618fb1de26c6d761c8083b",
                     "nativeAddress": "native-b28d6dc3ffe8aa2674209b884b7bcfe66d748c407f81143b5e29cb0a9124ee00",
-                    "bundleContentHash": "6fa072b406b3a2d10c1b5818f891a621febd75af040f8eb630a9bc8dc20ea380",
+                    "bundleContentHash": "ba8171468191cf5c23016ec3ede2d2f5dc6077d5d701e198f33ed620c2c72b16",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "IjsmzHgzcAZ3EZWgD_NqxGz3fKEdRlkABvZ4ut_LHulC9nrlipgnPRsi3nhDof8IK9h7wVuG4qoYA67X0vG1DQ"
+                      "value": "3WU4LBxSQnBZEo3kBfFgGTe1QGMwaQQ2xUuHH-c6Mfm6Zw69cfYHqyvCXW38vRyxACPw22fdnyNtJgYCU_9wBQ"
                     }
                   }
                 ],
@@ -1176,7 +1272,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-071dc45090e2be35a24c53a8a35f1e90e4367aa55b618fb1de26c6d761c8083b",
                   "nativeAddress": "native-b28d6dc3ffe8aa2674209b884b7bcfe66d748c407f81143b5e29cb0a9124ee00",
-                  "contentHash": "6fa072b406b3a2d10c1b5818f891a621febd75af040f8eb630a9bc8dc20ea380",
+                  "contentHash": "ba8171468191cf5c23016ec3ede2d2f5dc6077d5d701e198f33ed620c2c72b16",
                   "transactionRef": "fixture-tx-current-968b17199bab2d62fdb36d2c37ae833d986a9682ea2b097ba7b05fd3ae11302b",
                   "writer": "did:demos:seller",
                   "nonce": 103,
@@ -1190,7 +1286,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "uS6dAcyI_fFWboj2p10tGNVn2exaT9vvv4c35PPr4aFevDdlcEIMUZ-oD0PrGlDtkMfuq3piQz7ni969XaPmBA"
+                    "value": "4W-fjdZExTpLU0Mx5p9RkbYGOvh-8WLzl_29TWVlI5uoBDcQBbOfYoLYcvTZhyA3qQefunTtQmgnb4FvtgSnBw"
                   }
                 }
               },
@@ -1209,7 +1305,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0"
+                "contentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e"
               },
               "parties": [
                 {
@@ -1226,6 +1322,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-solana-spl",
                   "outcome": "ok",
                   "attestationRef": {
@@ -1254,12 +1360,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "Besq5niMWbRP9EodVBg6w4gJ-XiFWwh8JA-KmNHR6Ad1QeByhcakvCd9iDCRdHhOs5eVZkKNLxW6TRmr1K1DDQ"
+                  "value": "aILy2voDC6RwucEzGEZQM71ceITjIdbycHKmCYRAwgNIZRIi_H8MpWlQ2rGC3EimKHkEcdzXaUkOigvdbFMbAQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "92Jlv5Ny-_Ytz-sW1HBcLF8dPJbfDh7rzGxRDvofofITCiaTKkkebgzxR4qk0Pc0xDTDrLzRuaoAlGtPaIdvAw"
+                  "value": "b2ZKMfhYS4HOwnYKNbDT_R4wrg6IlCgK37dkJOi140dG0i1ZqQadKZy-J8H38A1vPjrayMihm-pW2SGHcNIFAg"
                 }
               ],
               "agreementRef": {
@@ -1267,7 +1373,7 @@
                   "kind": "storage-program",
                   "locator": "stor-0ff66c1aad000b9063a99483a88aa6d365016f4c144da32e66143e6fafd331fe"
                 },
-                "contentHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709"
+                "contentHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb"
               }
             },
             "native-b28d6dc3ffe8aa2674209b884b7bcfe66d748c407f81143b5e29cb0a9124ee00": {
@@ -1279,7 +1385,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0"
+                "contentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e"
               },
               "parties": [
                 {
@@ -1296,6 +1402,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-solana-spl",
                   "outcome": "ok",
                   "attestationRef": {
@@ -1324,12 +1440,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "Besq5niMWbRP9EodVBg6w4gJ-XiFWwh8JA-KmNHR6Ad1QeByhcakvCd9iDCRdHhOs5eVZkKNLxW6TRmr1K1DDQ"
+                  "value": "aILy2voDC6RwucEzGEZQM71ceITjIdbycHKmCYRAwgNIZRIi_H8MpWlQ2rGC3EimKHkEcdzXaUkOigvdbFMbAQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "92Jlv5Ny-_Ytz-sW1HBcLF8dPJbfDh7rzGxRDvofofITCiaTKkkebgzxR4qk0Pc0xDTDrLzRuaoAlGtPaIdvAw"
+                  "value": "b2ZKMfhYS4HOwnYKNbDT_R4wrg6IlCgK37dkJOi140dG0i1ZqQadKZy-J8H38A1vPjrayMihm-pW2SGHcNIFAg"
                 }
               ],
               "agreementRef": {
@@ -1337,18 +1453,24 @@
                   "kind": "storage-program",
                   "locator": "stor-0ff66c1aad000b9063a99483a88aa6d365016f4c144da32e66143e6fafd331fe"
                 },
-                "contentHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709"
+                "contentHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb"
               }
             }
           },
           "checkpointsByNativeAddress": {},
           "bundleAuthorityByContentHash": {
-            "6fa072b406b3a2d10c1b5818f891a621febd75af040f8eb630a9bc8dc20ea380": {
+            "ba8171468191cf5c23016ec3ede2d2f5dc6077d5d701e198f33ed620c2c72b16": {
               "listing": {
                 "listingId": "listing-finality-fixture",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "pay-solana-spl"
                   }
@@ -1356,7 +1478,7 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "-0dlOR3dlxWcU3Raoh1NuTj4ZmighkYkE2f166bPLOFQaqzq0pCmmQvC-h0S34upVH9y2i90yaXKGxqFNmiNBA"
+                  "value": "EznftrEckAiV87SLiGk6ElEJDMQUVj8XVo7QsvDca2iBf5CUn-Goc9HNQ_MESsXosdaQrYlSLisFQh_ZlFTbAw"
                 }
               },
               "referenceValidationByCanonicalRef": {
@@ -1402,7 +1524,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
+                  "sessionId": "session-finality-e74a41946a386ff146bcd53f6b754910cbbf8d586dd78a7bb990666a16d06b3f"
                 }
               },
               "bundleLifecycle": {
@@ -1410,9 +1534,9 @@
                 "independentlyResolvable": true
               },
               "sessionExecutionAuthorityByPhaseKey": {
-                "0:pay-solana-spl": {
+                "2:pay-solana-spl": {
                   "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
-                  "phaseIndex": 0,
+                  "phaseIndex": 2,
                   "phaseKind": "pay-solana-spl",
                   "phaseOrchestrator": "did:demos:orchestrator",
                   "railId": "fixture:commitment-level"
@@ -1423,7 +1547,7 @@
                   "receiptVersion": "1",
                   "substrate": "demos-testnet",
                   "finalityProfile": "demos-bft-final",
-                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAY:fixture%3Acommitment-level:0",
+                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAY:fixture%3Acommitment-level:2",
                   "nativeAddress": "stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4",
                   "contentHash": "7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912",
                   "transactionRef": {
@@ -1543,7 +1667,7 @@
                     "listingRef": {
                       "listingId": "listing-finality-fixture",
                       "version": 1,
-                      "contentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0"
+                      "contentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e"
                     },
                     "parties": [
                       {
@@ -1592,12 +1716,12 @@
                       {
                         "party": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "1axDw6CbIvQ4O2WXczQMEmyLA4jFMnf1CYgcOgmE6i7K98ImA9Fgpgy4Hu4ZADFalePeTSaokdVzmcGiLRUnDw"
+                        "value": "OCrdQGBaywkhvELzFaLVi5SSsXYQYIQ42SiaCtbMyMCYzxQ1adzpZk9lUhsd6MQ6qFgcydazw6lsf27Av2k3Aw"
                       },
                       {
                         "party": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "VrjAHABtB16lTZS9XRRDUxupDnQE7mg0wSuzw05RbYv2Qz75rTRX1UETS3cxfTW4IdsZn1XN2acp5YfFSCL0Dw"
+                        "value": "YPRP8cYe5rdR7cAPDGxPysfSub50CI3z1TKks_vxk_C3vLMHdDakxw2DWqlpjpDiwG8XZrXIvQqb2N869BT6CQ"
                       }
                     ]
                   },
@@ -1736,18 +1860,86 @@
                     }
                   }
                 }
+              },
+              "agreementSelectionResult": {
+                "resolution": "verified",
+                "agreementRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-0ff66c1aad000b9063a99483a88aa6d365016f4c144da32e66143e6fafd331fe"
+                  },
+                  "contentHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb"
+                },
+                "agreementType": "legacy",
+                "proofVerified": true
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "2:pay-solana-spl": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+                      "phase": "pay-solana-spl",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+                      "sessionId": "session-finality-e74a41946a386ff146bcd53f6b754910cbbf8d586dd78a7bb990666a16d06b3f",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "b021da516c612c5fb95cf5402eaa55c9bb080d29e0a5d9b7744d9cad05e217f8",
+                    "bundleContentHash": "ba8171468191cf5c23016ec3ede2d2f5dc6077d5d701e198f33ed620c2c72b16",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e"
+                    },
+                    "listingContentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e",
+                    "agreementContentHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
+                    "sessionId": "session-finality-e74a41946a386ff146bcd53f6b754910cbbf8d586dd78a7bb990666a16d06b3f",
+                    "phaseKey": "2:pay-solana-spl",
+                    "phaseIndex": 2,
+                    "phase": "pay-solana-spl",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-6e06856ebb323af66a3a6805edad82296172c3e672ddb618d46d7d0a9d24abd4"
+                      },
+                      "contentHash": "7502e038e9358ebacd89debf8458d057526317f6e7d3866eb6e31a7574762912"
+                    },
+                    "evidenceReceiptHash": "ee74de1d7019b4f91c9b1f5935de284e7b3d8b1212f21996c36541c68f953fba",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
           "settlementBindingProofByCanonicalRef": {},
           "agreementsByCanonicalRef": {
-            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-0ff66c1aad000b9063a99483a88aa6d365016f4c144da32e66143e6fafd331fe\"},\"contentHash\":\"caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709\"}": {
+            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-0ff66c1aad000b9063a99483a88aa6d365016f4c144da32e66143e6fafd331fe\"},\"contentHash\":\"61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb\"}": {
               "agreementVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAY",
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "ab8cc74bae1f1c6cb450d45d36b9abfb0987a3676df0bb9f301bceebc9f885a0"
+                "contentHash": "ace58acd44c53e3e4152b365e0f0631dc5b5733d4df5fcb4b62781ced9e2684e"
               },
               "parties": [
                 {
@@ -1796,12 +1988,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "1axDw6CbIvQ4O2WXczQMEmyLA4jFMnf1CYgcOgmE6i7K98ImA9Fgpgy4Hu4ZADFalePeTSaokdVzmcGiLRUnDw"
+                  "value": "OCrdQGBaywkhvELzFaLVi5SSsXYQYIQ42SiaCtbMyMCYzxQ1adzpZk9lUhsd6MQ6qFgcydazw6lsf27Av2k3Aw"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "VrjAHABtB16lTZS9XRRDUxupDnQE7mg0wSuzw05RbYv2Qz75rTRX1UETS3cxfTW4IdsZn1XN2acp5YfFSCL0Dw"
+                  "value": "YPRP8cYe5rdR7cAPDGxPysfSub50CI3z1TKks_vxk_C3vLMHdDakxw2DWqlpjpDiwG8XZrXIvQqb2N869BT6CQ"
                 }
               ]
             }
@@ -1881,7 +2073,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -1897,7 +2089,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -1913,7 +2105,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -1929,7 +2121,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -1945,7 +2137,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -1961,7 +2153,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -2029,8 +2221,8 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAY:buyer:native-44f235df4b05947e18ca52e9bc584d5bc08f855b260749673fd659f8d53c53df": "54ca8190d2c71000d82f4bf036658a2c703ec95c40513d89a559425e3796d80d",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAY:seller:native-b28d6dc3ffe8aa2674209b884b7bcfe66d748c407f81143b5e29cb0a9124ee00": "f77189084ede410c9e768d700dbcfb0a8cf58abdcebceb4d8f9a8edbedc915da"
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAY:buyer:native-44f235df4b05947e18ca52e9bc584d5bc08f855b260749673fd659f8d53c53df": "5c3b5e4c224a432a25fb21cd35650651f6e9de84df78fe07c9b0448ca3e54702",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAY:seller:native-b28d6dc3ffe8aa2674209b884b7bcfe66d748c407f81143b5e29cb0a9124ee00": "1338772425c78f7038e9dcae555f5134e69516184a492df9c1f0ee47cae5b212"
           }
         },
         "trustedContext": {
@@ -2130,12 +2322,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-4fb8def3984f0e4aa02fa3f0946789aff7d86614898d8efff0f3c56972d80b19",
                     "nativeAddress": "native-c8e475574584dbb143d83055a967208e3787d8ca153711997dab67b1e18b7767",
-                    "bundleContentHash": "1f2ce47fc48991544f0c82ebb0a146c3acfb7a8b70e3cd8af2c4a4dc79fc4446",
+                    "bundleContentHash": "6178d39cf777afb0346c0a08f44db374df614c9e23cfbdfcf93789c16f2443e3",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "qhwoNdC3_Fjb6cQ2lWII0WiXNTJDDi-OfNkSCmP19wXA3yHogmnEeT95pv-qOpCNgFXzE-OxM72w-M9MpnNkAg"
+                      "value": "cHJ3fiqw-2BPspu9Q8-Bi5a0XJNZdM2ZESaHd4TH_mRY5HIN2lD2fGQAzgpZD1Y0ebCwbpHDfW4BlZumxxPqBQ"
                     }
                   }
                 ],
@@ -2154,7 +2346,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-4fb8def3984f0e4aa02fa3f0946789aff7d86614898d8efff0f3c56972d80b19",
                   "nativeAddress": "native-c8e475574584dbb143d83055a967208e3787d8ca153711997dab67b1e18b7767",
-                  "contentHash": "1f2ce47fc48991544f0c82ebb0a146c3acfb7a8b70e3cd8af2c4a4dc79fc4446",
+                  "contentHash": "6178d39cf777afb0346c0a08f44db374df614c9e23cfbdfcf93789c16f2443e3",
                   "transactionRef": "fixture-tx-current-73dad6811c8e68738313288b1a47d6821112faf7b94af6b22e4947fe3ea4ab22",
                   "writer": "did:demos:buyer",
                   "nonce": 104,
@@ -2168,7 +2360,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "8gGWEdz3vcDFofklEfyPvf49t8NDnDnNA-Tb0vDkA7XPRB625qcKn8qaCHUgED6Igt6VKbKGjcNKN2dbIZQRAg"
+                    "value": "ZT-K94bydzxdPYFJw-6gK355tBAQI55T8GHR0cH1tbP6vowGHnOKSGBOxpcCE3O_vb7udiI_W5PjT9FIs0iODw"
                   }
                 }
               },
@@ -2185,12 +2377,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-d7c112e911cc5465d2bda2828c5cd92b67cb3362556db9de5a122d4096e470b2",
                     "nativeAddress": "native-7e39bb5cba1fd4bb677a8afdb624697a0edce28771cbedcf3213c53e6070cd31",
-                    "bundleContentHash": "1f2ce47fc48991544f0c82ebb0a146c3acfb7a8b70e3cd8af2c4a4dc79fc4446",
+                    "bundleContentHash": "6178d39cf777afb0346c0a08f44db374df614c9e23cfbdfcf93789c16f2443e3",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "KHR6fbJiaPhNW5Y28QgDlQxnKicOF1sefi_dxXkadgLRAOahtJb54hWqDiTpql2zMrGhCAEucup5xPqVf2R-Cw"
+                      "value": "XS4F3bRr3u8712o8uaIewbM60IoTBzIJBY1atzpw7TLOYJZZggXlLtKFdgZxFZpsKcrVTs9bq8fPI4AHtUcaCA"
                     }
                   }
                 ],
@@ -2209,7 +2401,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-d7c112e911cc5465d2bda2828c5cd92b67cb3362556db9de5a122d4096e470b2",
                   "nativeAddress": "native-7e39bb5cba1fd4bb677a8afdb624697a0edce28771cbedcf3213c53e6070cd31",
-                  "contentHash": "1f2ce47fc48991544f0c82ebb0a146c3acfb7a8b70e3cd8af2c4a4dc79fc4446",
+                  "contentHash": "6178d39cf777afb0346c0a08f44db374df614c9e23cfbdfcf93789c16f2443e3",
                   "transactionRef": "fixture-tx-current-459133697a0c8d5e20547ea1b1775fe3a17d408587d62af38ce9d63e31c43f64",
                   "writer": "did:demos:seller",
                   "nonce": 105,
@@ -2223,7 +2415,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "sJFx9xmA0_Hp1TAVWCLEdlSGrXlhfYhHmC-AgmtvZpYM0mNbNLf5VqjUH6Ey9fTOnvOjyx0fU390xmN5ftgGAQ"
+                    "value": "j7ZMsKyOYs_u-dwHN_Xn5lyGvcXfVXAw-qAP0n7AHBFVt3yB8mK33rQYRIme21u5ZbuaePynASQVJgruUzi5AQ"
                   }
                 }
               },
@@ -2242,7 +2434,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2"
+                "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
               },
               "parties": [
                 {
@@ -2259,6 +2451,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-dem",
                   "outcome": "ok",
                   "attestationRef": {
@@ -2287,12 +2489,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "Xi4mstt0_s_rrf0XEqAziP5l59mL7xKX2F2D-qinnfZy4plcM4QPe8r6Xl9TpckG3WBai3PX0WDnvVumGuScCQ"
+                  "value": "rM-PRpaMYu6gbD_GsnCxGU6mpWdeEPLPkXTOtNZ_xHAOupcSpYF2VvH3yVqTf0cT_o0QPc0upd6h5l2qh33KBg"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "f8eNyGUa69BSVjvkHZ5s_NAazfRrVfFpGXYp7ylX9zQMjcK6Vq0oTzq2K2wE5fhtM97PX8aCXZCGd7RWVj2eDg"
+                  "value": "WygVwIwi-CLYACmmlr2-PwOvUqAFBrTarV4dzjJgQEVV0ngN0XDWIshchXxJVsauMhnC60ctFQa7aH9vPP8DBA"
                 }
               ],
               "agreementRef": {
@@ -2300,7 +2502,7 @@
                   "kind": "storage-program",
                   "locator": "stor-cd5379de3aaefd2ba8b2fd20b9ace78b86a92cab8d135e2f2e4e04e83311d698"
                 },
-                "contentHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f"
+                "contentHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2"
               }
             },
             "native-7e39bb5cba1fd4bb677a8afdb624697a0edce28771cbedcf3213c53e6070cd31": {
@@ -2312,7 +2514,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2"
+                "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
               },
               "parties": [
                 {
@@ -2329,6 +2531,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-dem",
                   "outcome": "ok",
                   "attestationRef": {
@@ -2357,12 +2569,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "Xi4mstt0_s_rrf0XEqAziP5l59mL7xKX2F2D-qinnfZy4plcM4QPe8r6Xl9TpckG3WBai3PX0WDnvVumGuScCQ"
+                  "value": "rM-PRpaMYu6gbD_GsnCxGU6mpWdeEPLPkXTOtNZ_xHAOupcSpYF2VvH3yVqTf0cT_o0QPc0upd6h5l2qh33KBg"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "f8eNyGUa69BSVjvkHZ5s_NAazfRrVfFpGXYp7ylX9zQMjcK6Vq0oTzq2K2wE5fhtM97PX8aCXZCGd7RWVj2eDg"
+                  "value": "WygVwIwi-CLYACmmlr2-PwOvUqAFBrTarV4dzjJgQEVV0ngN0XDWIshchXxJVsauMhnC60ctFQa7aH9vPP8DBA"
                 }
               ],
               "agreementRef": {
@@ -2370,18 +2582,24 @@
                   "kind": "storage-program",
                   "locator": "stor-cd5379de3aaefd2ba8b2fd20b9ace78b86a92cab8d135e2f2e4e04e83311d698"
                 },
-                "contentHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f"
+                "contentHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2"
               }
             }
           },
           "checkpointsByNativeAddress": {},
           "bundleAuthorityByContentHash": {
-            "1f2ce47fc48991544f0c82ebb0a146c3acfb7a8b70e3cd8af2c4a4dc79fc4446": {
+            "6178d39cf777afb0346c0a08f44db374df614c9e23cfbdfcf93789c16f2443e3": {
               "listing": {
                 "listingId": "listing-finality-fixture",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "pay-dem"
                   }
@@ -2389,7 +2607,7 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "qfHuz6QIGWctv2f5nAUAehGBper5r8CqGYbEiqs-5S1ruMkly42nijlg_RRtSJOA2WRgmwFnMsxI1rPG3K1HDw"
+                  "value": "XUbDhZVTrfqFkCkC9KMyvlJ8Wn6266dclpAWEfsOHYfEgPnpH84K5_92l4Hx3soseGgJU5JyIwx4WXolVUSlCw"
                 }
               },
               "referenceValidationByCanonicalRef": {
@@ -2433,7 +2651,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
+                  "sessionId": "session-finality-c1a80275628aedc6075870d5132aa2b46f358862a00541610392f7e6f2748965"
                 }
               },
               "bundleLifecycle": {
@@ -2441,9 +2661,9 @@
                 "independentlyResolvable": true
               },
               "sessionExecutionAuthorityByPhaseKey": {
-                "0:pay-dem": {
+                "2:pay-dem": {
                   "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
-                  "phaseIndex": 0,
+                  "phaseIndex": 2,
                   "phaseKind": "pay-dem",
                   "phaseOrchestrator": "did:demos:orchestrator",
                   "railId": "fixture:bft-final"
@@ -2454,7 +2674,7 @@
                   "receiptVersion": "1",
                   "substrate": "demos-testnet",
                   "finalityProfile": "demos-bft-final",
-                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAZ:fixture%3Abft-final:0",
+                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAZ:fixture%3Abft-final:2",
                   "nativeAddress": "stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136",
                   "contentHash": "ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227",
                   "transactionRef": {
@@ -2577,7 +2797,7 @@
                     "listingRef": {
                       "listingId": "listing-finality-fixture",
                       "version": 1,
-                      "contentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2"
+                      "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
                     },
                     "parties": [
                       {
@@ -2626,12 +2846,12 @@
                       {
                         "party": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "nISYvmRBmTR8KJc94urux6dEKt0mQMFuL5Hc8KHsKGEH4PqUMzCvVP8A_831JAdAAI_hyOCiAiR6gxMep3KUBg"
+                        "value": "3tOYxmlYjCVTue4LYfWqqAXmd9PXfBH1pFwkUG0A8s0FC4VuJlQfKIRnonx281zA7wfH4BQyWwR7b3-akJawCQ"
                       },
                       {
                         "party": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "Wm2mcfstu8vFQvPy2dj-UkGLu-02yNkCAZZcxHWoRtRJcodO-Bm65t7QIrWoh906Xus6pSUPZ8ztBFV1__anAg"
+                        "value": "pjXlsSCz0PmX8berwzTNA4iM6a9XchJABQs13-mHtuQV-fBdJmiYYxa4pmLQBrSqzXxaP0vSc1ikC5N-sShrDg"
                       }
                     ]
                   },
@@ -2786,18 +3006,86 @@
                     }
                   }
                 }
+              },
+              "agreementSelectionResult": {
+                "resolution": "verified",
+                "agreementRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-cd5379de3aaefd2ba8b2fd20b9ace78b86a92cab8d135e2f2e4e04e83311d698"
+                  },
+                  "contentHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2"
+                },
+                "agreementType": "legacy",
+                "proofVerified": true
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "2:pay-dem": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+                      "phase": "pay-dem",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+                      "sessionId": "session-finality-c1a80275628aedc6075870d5132aa2b46f358862a00541610392f7e6f2748965",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "87a7cfcb932afdbe4641e563b27e12c520291478c3c32e7222a6a92794a38177",
+                    "bundleContentHash": "6178d39cf777afb0346c0a08f44db374df614c9e23cfbdfcf93789c16f2443e3",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
+                    },
+                    "listingContentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4",
+                    "agreementContentHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+                    "sessionId": "session-finality-c1a80275628aedc6075870d5132aa2b46f358862a00541610392f7e6f2748965",
+                    "phaseKey": "2:pay-dem",
+                    "phaseIndex": 2,
+                    "phase": "pay-dem",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-bca00b468302b2fb96c33789f75b393cefc23366886c4cf714776396ad351136"
+                      },
+                      "contentHash": "ad616f1dc784e86ef79aeea5de486369390b952853c0ee92713ac4cf6b3f8227"
+                    },
+                    "evidenceReceiptHash": "465ef823e325bc2ef784950a1c3e58e743362e6acd8dc6eeb364a29f4ab1e145",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
           "settlementBindingProofByCanonicalRef": {},
           "agreementsByCanonicalRef": {
-            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cd5379de3aaefd2ba8b2fd20b9ace78b86a92cab8d135e2f2e4e04e83311d698\"},\"contentHash\":\"93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f\"}": {
+            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cd5379de3aaefd2ba8b2fd20b9ace78b86a92cab8d135e2f2e4e04e83311d698\"},\"contentHash\":\"7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2\"}": {
               "agreementVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAZ",
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "ce458ea05a9f9da624bc3a6aa9f0058c300368817b0871d8101f446e28590ff2"
+                "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
               },
               "parties": [
                 {
@@ -2846,12 +3134,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "nISYvmRBmTR8KJc94urux6dEKt0mQMFuL5Hc8KHsKGEH4PqUMzCvVP8A_831JAdAAI_hyOCiAiR6gxMep3KUBg"
+                  "value": "3tOYxmlYjCVTue4LYfWqqAXmd9PXfBH1pFwkUG0A8s0FC4VuJlQfKIRnonx281zA7wfH4BQyWwR7b3-akJawCQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "Wm2mcfstu8vFQvPy2dj-UkGLu-02yNkCAZZcxHWoRtRJcodO-Bm65t7QIrWoh906Xus6pSUPZ8ztBFV1__anAg"
+                  "value": "pjXlsSCz0PmX8berwzTNA4iM6a9XchJABQs13-mHtuQV-fBdJmiYYxa4pmLQBrSqzXxaP0vSc1ikC5N-sShrDg"
                 }
               ]
             }
@@ -2931,7 +3219,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -2947,7 +3235,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -2963,7 +3251,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -2979,7 +3267,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -2995,7 +3283,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -3011,7 +3299,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -3079,8 +3367,8 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAZ:buyer:native-c8e475574584dbb143d83055a967208e3787d8ca153711997dab67b1e18b7767": "484728fda95631bb26f88b21893fec61e311f1847dd3c17e3f482438e8dcc5e7",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAZ:seller:native-7e39bb5cba1fd4bb677a8afdb624697a0edce28771cbedcf3213c53e6070cd31": "e7ded1b58e068301ce298173ffba3d10c2a7d1177a57ba5da0f53eb3e7a70a7b"
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAZ:buyer:native-c8e475574584dbb143d83055a967208e3787d8ca153711997dab67b1e18b7767": "8ed77ad9dd55224e5b482477fde640c133cfdea9a9de5752ce4571986d4ebab2",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAZ:seller:native-7e39bb5cba1fd4bb677a8afdb624697a0edce28771cbedcf3213c53e6070cd31": "e54024e862e8053ae356eb24a6ddfdecb7c2288c25813f79e037aa29dbe84fec"
           }
         },
         "trustedContext": {
@@ -3180,12 +3468,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-f86a51dfb7325a347af48ec3b4617d6acc22dbee42b4d58ec8eead4c01e26438",
                     "nativeAddress": "native-7b587abf5dfec012c46cedef81a999cf05cc67ae28c1274d0a05aa6dda8ba581",
-                    "bundleContentHash": "4f5f1c935351f1f8f7fefab8a3028733a53fb6ccc626aac5c1f3ed3ade4f5104",
+                    "bundleContentHash": "0cbf92d9484c1ba4d2559911868261430bfa7a6c41c4f25badde1a63c7392086",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "K8no1MSyKznQbCByAdhEuQyY5PdFBxBugBl1xmF6XkMyaegjU6aD8aqrbra5KPMj81lzr2GOhwLmhtjnDKvWBA"
+                      "value": "nCZWAv9NRclyvjlrdyPIqiuSfcG1F6QY59FD7LKq-ZljzfVUP4qhSo0Ebo0QrN6PH2PDOY4LnfGPJomVmLCBDg"
                     }
                   }
                 ],
@@ -3204,7 +3492,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-f86a51dfb7325a347af48ec3b4617d6acc22dbee42b4d58ec8eead4c01e26438",
                   "nativeAddress": "native-7b587abf5dfec012c46cedef81a999cf05cc67ae28c1274d0a05aa6dda8ba581",
-                  "contentHash": "4f5f1c935351f1f8f7fefab8a3028733a53fb6ccc626aac5c1f3ed3ade4f5104",
+                  "contentHash": "0cbf92d9484c1ba4d2559911868261430bfa7a6c41c4f25badde1a63c7392086",
                   "transactionRef": "fixture-tx-current-4d451b4363400fa37e71964279c7aafbb7c9731cfc73ca3266733c97c4b7469b",
                   "writer": "did:demos:buyer",
                   "nonce": 106,
@@ -3218,7 +3506,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "P1lqQJzuShc_Q5Plmd4s_hlrXlx7I3_8C8wi8ETw84WoI_qrQzXrmZQmFKDo4wkQVrXif2wMTVWOVsZ7-qiKCg"
+                    "value": "SveTQzokUL2B_UvlK3j2DFSnhPD7y7YYe8Rh6-AuYfM9Jo0vufEqhjRYJ-NLU5P7PvmliTT8OV--sKRn66CeBg"
                   }
                 }
               },
@@ -3235,12 +3523,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-b392c2fb0e94acb9cc67077032335827b62fbcc23eb4736fb9b321c818d73930",
                     "nativeAddress": "native-dc78b0d35c1dc1103b06658293378ed61bd009b98738cf8b59f0219d13cf9884",
-                    "bundleContentHash": "4f5f1c935351f1f8f7fefab8a3028733a53fb6ccc626aac5c1f3ed3ade4f5104",
+                    "bundleContentHash": "0cbf92d9484c1ba4d2559911868261430bfa7a6c41c4f25badde1a63c7392086",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "MRvLZ-5-JJGY4W0sSmeWPiY8YWVodHwWWKttgimID9exeCknD3OCnbIyG2KtpGNsxHCLObctdXloSlPV4y4WAQ"
+                      "value": "jnPpk4nWyMnSQVu4qsIWShbLmMi-fXN4Wy5H191VyxSzv9C9OKmof0UUqAVMbB9HlutHfZxZ0UrV7-KHQz0kAg"
                     }
                   }
                 ],
@@ -3259,7 +3547,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-b392c2fb0e94acb9cc67077032335827b62fbcc23eb4736fb9b321c818d73930",
                   "nativeAddress": "native-dc78b0d35c1dc1103b06658293378ed61bd009b98738cf8b59f0219d13cf9884",
-                  "contentHash": "4f5f1c935351f1f8f7fefab8a3028733a53fb6ccc626aac5c1f3ed3ade4f5104",
+                  "contentHash": "0cbf92d9484c1ba4d2559911868261430bfa7a6c41c4f25badde1a63c7392086",
                   "transactionRef": "fixture-tx-current-e1e0c8a0fbc08c6b943e9efec90e1798b306ad771203750e80c474af4de06959",
                   "writer": "did:demos:seller",
                   "nonce": 107,
@@ -3273,7 +3561,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "y7zsel6vgTEHucNyfZbWaz8UUJ_3H0LgiXK4bUUoM2ijdoBxyilWQ74xNKp_6qNkgaNG89p4T77bveqdCQKXDw"
+                    "value": "yRhTAJZBJHbL7qRarxJw_NvVzkWU0I4kUEQ-1vb9Y-r-BrSt8hTz1uy_i_ECCYvcfabeYgdY8PrNBV4_2qy_Dw"
                   }
                 }
               },
@@ -3292,7 +3580,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+                "contentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c"
               },
               "parties": [
                 {
@@ -3309,6 +3597,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-ap2",
                   "outcome": "ok",
                   "attestationRef": {
@@ -3337,12 +3635,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "M-eQ4VIIl0T3qiw3JKYSjEUiy4DC3dCvnitbWLaRCZ-optfNlecgCpvKofhJRNZG3w6yzZAWwrVM9P1N2_JEAg"
+                  "value": "-Jg1C5_OptR4iMiRKkx2zfLnSSnXnc31Jp79fD87q2_2CjHFoqNwH0A-V4RicutdzTG7e54jY2JKxqS-mrWECA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "YOC5_3gKUClQXWQXrHcfSge7Tjj9iinQqizhBlxLmtONlnfI8UKFqvrEb_K_Wx1tQHkZWTIiNszRmdwq8-S-Cw"
+                  "value": "g7EuHFb6N1Kpf8UrjLcwb6SA3YGdUNi6THQHiOC3SyvtyN6aavQAX0VY3QAB3UYqUDP4H1XbQRnesAkJ2DdNBA"
                 }
               ],
               "agreementRef": {
@@ -3350,7 +3648,7 @@
                   "kind": "storage-program",
                   "locator": "stor-590d5a1117cf4506d3d488a8677232ae56321fc226dcc749b55c83878b2751d0"
                 },
-                "contentHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554"
+                "contentHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f"
               }
             },
             "native-dc78b0d35c1dc1103b06658293378ed61bd009b98738cf8b59f0219d13cf9884": {
@@ -3362,7 +3660,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+                "contentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c"
               },
               "parties": [
                 {
@@ -3379,6 +3677,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-ap2",
                   "outcome": "ok",
                   "attestationRef": {
@@ -3407,12 +3715,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "M-eQ4VIIl0T3qiw3JKYSjEUiy4DC3dCvnitbWLaRCZ-optfNlecgCpvKofhJRNZG3w6yzZAWwrVM9P1N2_JEAg"
+                  "value": "-Jg1C5_OptR4iMiRKkx2zfLnSSnXnc31Jp79fD87q2_2CjHFoqNwH0A-V4RicutdzTG7e54jY2JKxqS-mrWECA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "YOC5_3gKUClQXWQXrHcfSge7Tjj9iinQqizhBlxLmtONlnfI8UKFqvrEb_K_Wx1tQHkZWTIiNszRmdwq8-S-Cw"
+                  "value": "g7EuHFb6N1Kpf8UrjLcwb6SA3YGdUNi6THQHiOC3SyvtyN6aavQAX0VY3QAB3UYqUDP4H1XbQRnesAkJ2DdNBA"
                 }
               ],
               "agreementRef": {
@@ -3420,18 +3728,24 @@
                   "kind": "storage-program",
                   "locator": "stor-590d5a1117cf4506d3d488a8677232ae56321fc226dcc749b55c83878b2751d0"
                 },
-                "contentHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554"
+                "contentHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f"
               }
             }
           },
           "checkpointsByNativeAddress": {},
           "bundleAuthorityByContentHash": {
-            "4f5f1c935351f1f8f7fefab8a3028733a53fb6ccc626aac5c1f3ed3ade4f5104": {
+            "0cbf92d9484c1ba4d2559911868261430bfa7a6c41c4f25badde1a63c7392086": {
               "listing": {
                 "listingId": "listing-finality-fixture",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "pay-ap2"
                   }
@@ -3439,7 +3753,7 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "Wz-uZC25Yb4gm2OoejaPEMLZBos05lZNoVV9w-hMrc219WE53HkorU4jWttQF4hZ2R1N4mD_aEfXWZ7-jrX8AQ"
+                  "value": "uvhHTuRBdPgBJ2mhorWlVrSWUT4MS1yWk7aUhZzeXgtz-1E3dd6WH-Sq-1YEDBNH_rmyIm7xZvWlWSR-tdh5AQ"
                 }
               },
               "referenceValidationByCanonicalRef": {
@@ -3495,7 +3809,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
+                  "sessionId": "session-finality-35a65b54f2e45d2c8d46a7317fbc76a164e03a360bc40ecca8b4b587e2b8c749"
                 }
               },
               "bundleLifecycle": {
@@ -3503,9 +3819,9 @@
                 "independentlyResolvable": true
               },
               "sessionExecutionAuthorityByPhaseKey": {
-                "0:pay-ap2": {
+                "2:pay-ap2": {
                   "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
-                  "phaseIndex": 0,
+                  "phaseIndex": 2,
                   "phaseKind": "pay-ap2",
                   "phaseOrchestrator": "did:demos:orchestrator",
                   "railId": "fixture:provider-sr3"
@@ -3516,7 +3832,7 @@
                   "receiptVersion": "1",
                   "substrate": "demos-testnet",
                   "finalityProfile": "demos-bft-final",
-                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB0:fixture%3Aprovider-sr3:0",
+                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB0:fixture%3Aprovider-sr3:2",
                   "nativeAddress": "stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766",
                   "contentHash": "23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b",
                   "transactionRef": {
@@ -3636,7 +3952,7 @@
                     "listingRef": {
                       "listingId": "listing-finality-fixture",
                       "version": 1,
-                      "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+                      "contentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c"
                     },
                     "parties": [
                       {
@@ -3685,12 +4001,12 @@
                       {
                         "party": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "kGLVDoUqO29D9M210V8iEFxNi0hMX-i_q3WQnDoiaOMu4q3CqGqGmjlCfhZvwUypTJ3f9HrhwHHrIbTdoihxBA"
+                        "value": "Br6Nrs2WibvCQRX0eWuiNWzwC52d3Dn1wdqsKOUuXE24PlS6vSIj65U_Z6a8eBkXOuZ9DKyA0x-TqqQWn6cDDQ"
                       },
                       {
                         "party": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "HAFOHGSoePI28g6yHvu88nVH9iJ4vgT7cbPVSM-AioIGYA4ueJH9j6XiRV2Ik4ruysfL44zJsiIYf6BnOAPmDw"
+                        "value": "dbBL6kgOjKFMQaIkvI4ekjTEzyzqT6bu9XPdn1pXViN0j5dZpz7XmcgKbtxuWVz_Mk-h3V3q4Zwe_ur-nCGQAA"
                       }
                     ]
                   },
@@ -3855,6 +4171,74 @@
                     }
                   }
                 }
+              },
+              "agreementSelectionResult": {
+                "resolution": "verified",
+                "agreementRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-590d5a1117cf4506d3d488a8677232ae56321fc226dcc749b55c83878b2751d0"
+                  },
+                  "contentHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f"
+                },
+                "agreementType": "legacy",
+                "proofVerified": true
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "2:pay-ap2": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                      "phase": "pay-ap2",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                      "sessionId": "session-finality-35a65b54f2e45d2c8d46a7317fbc76a164e03a360bc40ecca8b4b587e2b8c749",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "a61838697481aa5237d2544ecbcd307d7c322400c7dc0f10392d61d1a36f5f43",
+                    "bundleContentHash": "0cbf92d9484c1ba4d2559911868261430bfa7a6c41c4f25badde1a63c7392086",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c"
+                    },
+                    "listingContentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c",
+                    "agreementContentHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                    "sessionId": "session-finality-35a65b54f2e45d2c8d46a7317fbc76a164e03a360bc40ecca8b4b587e2b8c749",
+                    "phaseKey": "2:pay-ap2",
+                    "phaseIndex": 2,
+                    "phase": "pay-ap2",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766"
+                      },
+                      "contentHash": "23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b"
+                    },
+                    "evidenceReceiptHash": "17df441c791905a837c48ecc87e8301051ffd7d9a424e6ecd004d83f5c7727a7",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
@@ -3862,7 +4246,7 @@
             "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-46fe3223e5b0bf431ebd6d9bf21938194758acd7185eb21f6a4cb83bf9f6d766\"},\"contentHash\":\"23555a6a6fbd5dcefd0c7fef87efee37f3b7cc2fc57507791db8d79359e55f0b\"}": {
               "syntheticSettlementBindingProofVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
-              "phaseIndex": 0,
+              "phaseIndex": 2,
               "phase": "pay-ap2",
               "paymentTxRefsHash": "e699648a0fe8f053ee05ce4bed7d110681037a63402565b49a2a8c199d8a2318",
               "state": "match",
@@ -3870,18 +4254,18 @@
               "signature": {
                 "signer": "fixture:current-use-native-authority",
                 "algorithm": "ed25519",
-                "value": "A9z5elnaM0sfuHa5q6y8hEgQp9XnKEqSqo7aCh3PzqHT7S8Yk3hxLK292ewKnDhIoNZBuxuaItpv39ZdNS-1Ag"
+                "value": "H8u85JRIqcVoETqk359a-6zZDYjUIlajSgKRetgpJLtFkAlqMAzhcTHq58ZyVoA1zFxpDVus_V4AdkyrSiawBA"
               }
             }
           },
           "agreementsByCanonicalRef": {
-            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-590d5a1117cf4506d3d488a8677232ae56321fc226dcc749b55c83878b2751d0\"},\"contentHash\":\"65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554\"}": {
+            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-590d5a1117cf4506d3d488a8677232ae56321fc226dcc749b55c83878b2751d0\"},\"contentHash\":\"25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f\"}": {
               "agreementVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "f6319b78e4c65de4e25538ffd5d9adbdde9f8ae89397cc7b323c90dac887a98d"
+                "contentHash": "79ad78a99157b8c0d2383e77ab83f44dffae13a7231e88d871117c44e9a99f6c"
               },
               "parties": [
                 {
@@ -3930,12 +4314,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "kGLVDoUqO29D9M210V8iEFxNi0hMX-i_q3WQnDoiaOMu4q3CqGqGmjlCfhZvwUypTJ3f9HrhwHHrIbTdoihxBA"
+                  "value": "Br6Nrs2WibvCQRX0eWuiNWzwC52d3Dn1wdqsKOUuXE24PlS6vSIj65U_Z6a8eBkXOuZ9DKyA0x-TqqQWn6cDDQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "HAFOHGSoePI28g6yHvu88nVH9iJ4vgT7cbPVSM-AioIGYA4ueJH9j6XiRV2Ik4ruysfL44zJsiIYf6BnOAPmDw"
+                  "value": "dbBL6kgOjKFMQaIkvI4ekjTEzyzqT6bu9XPdn1pXViN0j5dZpz7XmcgKbtxuWVz_Mk-h3V3q4Zwe_ur-nCGQAA"
                 }
               ]
             }
@@ -4015,7 +4399,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -4031,7 +4415,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -4047,7 +4431,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -4063,7 +4447,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -4079,7 +4463,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -4095,7 +4479,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -4163,8 +4547,8 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB0:buyer:native-7b587abf5dfec012c46cedef81a999cf05cc67ae28c1274d0a05aa6dda8ba581": "6b833cf154a73e266622e1e19c33cb2f67ffca328d61666aef1f661f57545c16",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB0:seller:native-dc78b0d35c1dc1103b06658293378ed61bd009b98738cf8b59f0219d13cf9884": "5fe0050752d3bbf0786c716378118a4930b71942c2181ea7f24037c3c34d1047"
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB0:buyer:native-7b587abf5dfec012c46cedef81a999cf05cc67ae28c1274d0a05aa6dda8ba581": "3525422902884d801720b0dae3c2740fda7c192817e5cfa7e713c3f161308d97",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB0:seller:native-dc78b0d35c1dc1103b06658293378ed61bd009b98738cf8b59f0219d13cf9884": "8f2fab69ef6b5c17dfe1a63b83f2c8a9350154f516fef57a5789db773129e0da"
           }
         },
         "trustedContext": {
@@ -4264,12 +4648,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-fd9fa9e2f75e18768d8e13b39cc536b123b39fa3e7f90e9bbb76af270dc2b63f",
                     "nativeAddress": "native-e66538fbbf93f940fedf44838e7e8b99eda050461e864c3179527aa48b73db82",
-                    "bundleContentHash": "b546d21a99fa9a6046a2d68b16ee94707fb644bd84ea285b28d3685e1e9cd8f0",
+                    "bundleContentHash": "0ac7d56094847d2ab5351e1698e0c07ccb86f4e21e554a8f58921a940a83ef89",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "rqv6i53OcvaGxb0lCcdQ7NlH5XhmLYtBl3qcVvxs9YS0ZvlMNYIfSoh8JfBLege0qmnpjjT3efF0Ebjy94tFAA"
+                      "value": "SicFQgaoNWB18rFqHy3uVzRIQuOe45zHfkLxApcGLlGYHqwMokL6UX9duueNQWEvq1-JioSh4MnzmNeO1oXFAw"
                     }
                   }
                 ],
@@ -4288,7 +4672,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-fd9fa9e2f75e18768d8e13b39cc536b123b39fa3e7f90e9bbb76af270dc2b63f",
                   "nativeAddress": "native-e66538fbbf93f940fedf44838e7e8b99eda050461e864c3179527aa48b73db82",
-                  "contentHash": "b546d21a99fa9a6046a2d68b16ee94707fb644bd84ea285b28d3685e1e9cd8f0",
+                  "contentHash": "0ac7d56094847d2ab5351e1698e0c07ccb86f4e21e554a8f58921a940a83ef89",
                   "transactionRef": "fixture-tx-current-dc2a103271b47c29aed40d9cc1d9627d3487ee9085a487c2fe7a557a2f8ea1d7",
                   "writer": "did:demos:buyer",
                   "nonce": 108,
@@ -4302,7 +4686,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "4IPBadhfAhruiUEK7uEDNLYiyIw5uZAn02SSAchK0Wkw9JZ9IGjYncVFI92-tyn59X7Cy8zOEny0L0pPd0lLDQ"
+                    "value": "pEmgRo1FNMGTEIV1HPpbgfDonIRsXR30639HabqsR6QHwvEISTGMQ_YZsjfOYif60bK-3P30m8eXJf-O-6OHBA"
                   }
                 }
               },
@@ -4319,12 +4703,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-ab757d669e93f88e7e5e42734790ca7ac4f4c537f04f919faa8fb1eaac658b97",
                     "nativeAddress": "native-d5c20dfbcea277e03d419cb759a8be58a6d253252ec53c0b591be3c8a4dec878",
-                    "bundleContentHash": "b546d21a99fa9a6046a2d68b16ee94707fb644bd84ea285b28d3685e1e9cd8f0",
+                    "bundleContentHash": "0ac7d56094847d2ab5351e1698e0c07ccb86f4e21e554a8f58921a940a83ef89",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "HH5R9x6EOEYFjJDr4NNGSAbtZ9dBIBdAHP_MOJBMiFAHlzKYhAzqaRfCQzRJVhlIKXDSamtLN9M-Ifo1uSlbDg"
+                      "value": "9x1t8esuyZEWa6gK0VRc0MrOgwYWd7upSk6UjMbb4YJM2wotFdejLsgxHqpV04UQDEGMFg21PHhV-_gx9YRDAg"
                     }
                   }
                 ],
@@ -4343,7 +4727,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-ab757d669e93f88e7e5e42734790ca7ac4f4c537f04f919faa8fb1eaac658b97",
                   "nativeAddress": "native-d5c20dfbcea277e03d419cb759a8be58a6d253252ec53c0b591be3c8a4dec878",
-                  "contentHash": "b546d21a99fa9a6046a2d68b16ee94707fb644bd84ea285b28d3685e1e9cd8f0",
+                  "contentHash": "0ac7d56094847d2ab5351e1698e0c07ccb86f4e21e554a8f58921a940a83ef89",
                   "transactionRef": "fixture-tx-current-b7ec9eefd25f005dc735eb80f323ea01d19b173ab9115a31577ece81848d2716",
                   "writer": "did:demos:seller",
                   "nonce": 109,
@@ -4357,7 +4741,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "W4JNbn8Ir4XdxoKQqTilUM-mu55Dwq84SzSkDz2ui6xnrrp3pDC_gAErw2wyQqb8VnqnbCU9Z0GP6Sf-hmKuBg"
+                    "value": "vk7Ou6Li9dimCu8JgBIptZ5Yl0u3BK-60B6GgtMyYh9PiNIPXCAe4GkxUGw004jS1Oo4rWgWLVi2eYCnGjqCDw"
                   }
                 }
               },
@@ -4376,7 +4760,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8"
+                "contentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e"
               },
               "parties": [
                 {
@@ -4393,6 +4777,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-cross-chain-htlc",
                   "outcome": "ok",
                   "attestationRef": {
@@ -4421,12 +4815,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "aHXqy0eUmR4RRzuit3RHX4_9e9702CCi2wViIUMS17j9tHYTzdllB3lUM7cP7R8KMGihzXgdz0lj_LOqHIqVDQ"
+                  "value": "SLkBzWU_htBPJWgeM2Ae-6vjVoZHYc4L86qgk4WM7Z6oFEuPTWbck4AuzPskbtz5UxdQ9mUcMCI5mYN1YchBDA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "za4rIOHHed9DZ13LN1fMMV7plovqvFsUTdJqiQDtjSTK4dhzI5MnsUFKNxmi_u5QKwHb34qYtEEqqjvTDdddCA"
+                  "value": "ADNJZ0eneVQ3U7swp7Gt33tpc5TgNTrCl6d6G9QB30NIEhgEBFFSrs2TxteXMMd9eyAzVlOLR82AUgHlgn28CA"
                 }
               ],
               "agreementRef": {
@@ -4434,7 +4828,7 @@
                   "kind": "storage-program",
                   "locator": "stor-710ae6d360d1aca1a1fcbc78dd1210d8a9817b5fea750cd149a99b83cae8f897"
                 },
-                "contentHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a"
+                "contentHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172"
               }
             },
             "native-d5c20dfbcea277e03d419cb759a8be58a6d253252ec53c0b591be3c8a4dec878": {
@@ -4446,7 +4840,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8"
+                "contentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e"
               },
               "parties": [
                 {
@@ -4463,6 +4857,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-cross-chain-htlc",
                   "outcome": "ok",
                   "attestationRef": {
@@ -4491,12 +4895,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "aHXqy0eUmR4RRzuit3RHX4_9e9702CCi2wViIUMS17j9tHYTzdllB3lUM7cP7R8KMGihzXgdz0lj_LOqHIqVDQ"
+                  "value": "SLkBzWU_htBPJWgeM2Ae-6vjVoZHYc4L86qgk4WM7Z6oFEuPTWbck4AuzPskbtz5UxdQ9mUcMCI5mYN1YchBDA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "za4rIOHHed9DZ13LN1fMMV7plovqvFsUTdJqiQDtjSTK4dhzI5MnsUFKNxmi_u5QKwHb34qYtEEqqjvTDdddCA"
+                  "value": "ADNJZ0eneVQ3U7swp7Gt33tpc5TgNTrCl6d6G9QB30NIEhgEBFFSrs2TxteXMMd9eyAzVlOLR82AUgHlgn28CA"
                 }
               ],
               "agreementRef": {
@@ -4504,18 +4908,24 @@
                   "kind": "storage-program",
                   "locator": "stor-710ae6d360d1aca1a1fcbc78dd1210d8a9817b5fea750cd149a99b83cae8f897"
                 },
-                "contentHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a"
+                "contentHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172"
               }
             }
           },
           "checkpointsByNativeAddress": {},
           "bundleAuthorityByContentHash": {
-            "b546d21a99fa9a6046a2d68b16ee94707fb644bd84ea285b28d3685e1e9cd8f0": {
+            "0ac7d56094847d2ab5351e1698e0c07ccb86f4e21e554a8f58921a940a83ef89": {
               "listing": {
                 "listingId": "listing-finality-fixture",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "pay-cross-chain-htlc"
                   }
@@ -4523,7 +4933,7 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "CWvSWn6hEHOS2coKXfb1PI9lqRiyi5orMFJtiwmkvakvr7zyrIYjXxatYdEAF74fpUG2PuTdGtCb8mReMpK7CQ"
+                  "value": "vufykwKsivhWOpIkSGAGCcCgKV0z1okas08HeFy2DEXhNGqtePCyFL5TE4XFHVxXVPjhc0b53dbSLBpGxe8NDg"
                 }
               },
               "referenceValidationByCanonicalRef": {
@@ -4586,7 +4996,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
+                  "sessionId": "session-finality-5dfec6ea4c1a096ebe23df28d62849d985c6f657e587c9b24e72398b282e34b5"
                 }
               },
               "bundleLifecycle": {
@@ -4594,9 +5006,9 @@
                 "independentlyResolvable": true
               },
               "sessionExecutionAuthorityByPhaseKey": {
-                "0:pay-cross-chain-htlc": {
+                "2:pay-cross-chain-htlc": {
                   "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
-                  "phaseIndex": 0,
+                  "phaseIndex": 2,
                   "phaseKind": "pay-cross-chain-htlc",
                   "phaseOrchestrator": "did:demos:orchestrator",
                   "railId": "fixture:htlc-reveal"
@@ -4607,7 +5019,7 @@
                   "receiptVersion": "1",
                   "substrate": "demos-testnet",
                   "finalityProfile": "demos-bft-final",
-                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB1:fixture%3Ahtlc-reveal:0",
+                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB1:fixture%3Ahtlc-reveal:2",
                   "nativeAddress": "stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a",
                   "contentHash": "e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d",
                   "transactionRef": {
@@ -4765,7 +5177,7 @@
                     "listingRef": {
                       "listingId": "listing-finality-fixture",
                       "version": 1,
-                      "contentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8"
+                      "contentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e"
                     },
                     "parties": [
                       {
@@ -4814,12 +5226,12 @@
                       {
                         "party": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "ajAKT98SL0ycW_9pQoKI9q5QJb1ayC7eaSv0lcEL2vvcvyMkiCzBrnZ1xE-e_xlb2VXtdCX-tTfqBjmK3t9rDA"
+                        "value": "wQ1fl3zywrlnghydYVC3F8gZSryvBMDNfe0hACkeobKfiY9KUbK9TFMUThiw99Zf0dlMXwqBF-lWME-_PaceBA"
                       },
                       {
                         "party": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "sjugXu6ZCXbXt0Ffy2u3xQNXSQiZdbrfjcMA0MDNVJJ-ffenP9YlR9Hpv6yCu63dzc3LcbKmJ0qBVxDf2142Cg"
+                        "value": "IWJbGVCKZr3yDLN5Xynq-xKfAfSIh_TYhvTCMqB2QnLJai4E1V8NcjGRX8kTqJx533Nihii7RujY6C8cVDznCw"
                       }
                     ]
                   },
@@ -5351,18 +5763,86 @@
                     }
                   }
                 }
+              },
+              "agreementSelectionResult": {
+                "resolution": "verified",
+                "agreementRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-710ae6d360d1aca1a1fcbc78dd1210d8a9817b5fea750cd149a99b83cae8f897"
+                  },
+                  "contentHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172"
+                },
+                "agreementType": "legacy",
+                "proofVerified": true
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "2:pay-cross-chain-htlc": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+                      "phase": "pay-cross-chain-htlc",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+                      "sessionId": "session-finality-5dfec6ea4c1a096ebe23df28d62849d985c6f657e587c9b24e72398b282e34b5",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "9a724527c665d2920dec12a4959b2b4832cc4ddde373b55132c8daf3faec5871",
+                    "bundleContentHash": "0ac7d56094847d2ab5351e1698e0c07ccb86f4e21e554a8f58921a940a83ef89",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e"
+                    },
+                    "listingContentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e",
+                    "agreementContentHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
+                    "sessionId": "session-finality-5dfec6ea4c1a096ebe23df28d62849d985c6f657e587c9b24e72398b282e34b5",
+                    "phaseKey": "2:pay-cross-chain-htlc",
+                    "phaseIndex": 2,
+                    "phase": "pay-cross-chain-htlc",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-c048f4596fafa6c1887dbd500c5b7617b0eb0c7afe146eca5f5e6efd73ae580a"
+                      },
+                      "contentHash": "e884ee8d0e15bc9414e317a75ad5f8463de32ac6b2d877dbd294a3294ab6db9d"
+                    },
+                    "evidenceReceiptHash": "09dbe256e5a651caeeb1f83b69c94176d51a1efbf7fa922144a010e1b839df4e",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
           "settlementBindingProofByCanonicalRef": {},
           "agreementsByCanonicalRef": {
-            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-710ae6d360d1aca1a1fcbc78dd1210d8a9817b5fea750cd149a99b83cae8f897\"},\"contentHash\":\"b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a\"}": {
+            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-710ae6d360d1aca1a1fcbc78dd1210d8a9817b5fea750cd149a99b83cae8f897\"},\"contentHash\":\"dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172\"}": {
               "agreementVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB1",
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "d76c08700850b0239aac89a56288385993d11e1833f6a335dbb1b8fa95ddddc8"
+                "contentHash": "940747ef49be45bb72d99944163651cc7a2cd363e23cea3b170dc1ce8f6e790e"
               },
               "parties": [
                 {
@@ -5411,12 +5891,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "ajAKT98SL0ycW_9pQoKI9q5QJb1ayC7eaSv0lcEL2vvcvyMkiCzBrnZ1xE-e_xlb2VXtdCX-tTfqBjmK3t9rDA"
+                  "value": "wQ1fl3zywrlnghydYVC3F8gZSryvBMDNfe0hACkeobKfiY9KUbK9TFMUThiw99Zf0dlMXwqBF-lWME-_PaceBA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "sjugXu6ZCXbXt0Ffy2u3xQNXSQiZdbrfjcMA0MDNVJJ-ffenP9YlR9Hpv6yCu63dzc3LcbKmJ0qBVxDf2142Cg"
+                  "value": "IWJbGVCKZr3yDLN5Xynq-xKfAfSIh_TYhvTCMqB2QnLJai4E1V8NcjGRX8kTqJx533Nihii7RujY6C8cVDznCw"
                 }
               ]
             }
@@ -5496,7 +5976,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -5512,7 +5992,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -5528,7 +6008,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -5544,7 +6024,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -5560,7 +6040,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -5576,7 +6056,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -5644,8 +6124,8 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB1:buyer:native-e66538fbbf93f940fedf44838e7e8b99eda050461e864c3179527aa48b73db82": "9beb653c5ba36e6c32a0251ce5790ec211108ae72f2717d2225c0d3920cd11d6",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB1:seller:native-d5c20dfbcea277e03d419cb759a8be58a6d253252ec53c0b591be3c8a4dec878": "1d42050662b157b148796f570cb5bbfd248e4f2796b1314dde2b4a3caa3aa774"
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB1:buyer:native-e66538fbbf93f940fedf44838e7e8b99eda050461e864c3179527aa48b73db82": "19989c25d6d7734086e2b9746b54b6eae65e3dcf78a56321306aae1b968545f0",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB1:seller:native-d5c20dfbcea277e03d419cb759a8be58a6d253252ec53c0b591be3c8a4dec878": "a7a0489bc84c0028325f743c209a668c5b2f2b68acaf1e4a760f7e42ce923152"
           }
         },
         "trustedContext": {
@@ -5745,12 +6225,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-61924a44bd2e48b1437264a48a44d997a6dc00f66cb61104694688ec688c231d",
                     "nativeAddress": "native-0d9c167cfcb376b6336e669d8bf1c8fbc9f5832ac73189cac8958bb971233168",
-                    "bundleContentHash": "78b84247bb572d8da2b9e940a6114b3d6114f7f6d4232aa3cf46f1cd7009b330",
+                    "bundleContentHash": "8ff07d8b1459de8f2592f048cb03a5ede06ff83af1d3f3077114745c92700614",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "tP1Ho-aGmF1oOjlvnKSNr_TJYNFRxAki7cmGR77neIqt99fulTIq-1H4AECjmV0GMJht6n_-NST_xvBTyF9cAQ"
+                      "value": "piWohEwOfi9df-BPk9asZ-S6BIy7DfxMfhp1qlNiFbIDOJqUH1IJKos3fmagaW26yizGxrX5mCqm0SdGhnJkDQ"
                     }
                   }
                 ],
@@ -5769,7 +6249,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-61924a44bd2e48b1437264a48a44d997a6dc00f66cb61104694688ec688c231d",
                   "nativeAddress": "native-0d9c167cfcb376b6336e669d8bf1c8fbc9f5832ac73189cac8958bb971233168",
-                  "contentHash": "78b84247bb572d8da2b9e940a6114b3d6114f7f6d4232aa3cf46f1cd7009b330",
+                  "contentHash": "8ff07d8b1459de8f2592f048cb03a5ede06ff83af1d3f3077114745c92700614",
                   "transactionRef": "fixture-tx-current-6cd8039d4d258d61fdfa3d5198f91327c53b52e1f792eeaa809288beae1b61a9",
                   "writer": "did:demos:buyer",
                   "nonce": 110,
@@ -5783,7 +6263,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "ZwXGDYmfETzTAy-ZgPvE9isRLtq2mMw0Wtv4vixP681BB-Lzrj_Y77Q2bOUautCRjYW4pfYD6UwVpjeTNNK0Ag"
+                    "value": "xsKYbKxHhXjy_vyjzpnfm5lEDFWAivNNge1BDAUdQlnJyGDuu6ROeUfd9gONHTW5loJitqaCM8QrX_yPjPptCg"
                   }
                 }
               },
@@ -5800,12 +6280,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-d01e4d2e55ebae55939e4f8c9838e87da09f5f035a01e80ba77fd69ee35a8315",
                     "nativeAddress": "native-5a42d737314ce3bc7b83bd946afa0b32403173f4f7e8cebf05a20a0bae239fbb",
-                    "bundleContentHash": "78b84247bb572d8da2b9e940a6114b3d6114f7f6d4232aa3cf46f1cd7009b330",
+                    "bundleContentHash": "8ff07d8b1459de8f2592f048cb03a5ede06ff83af1d3f3077114745c92700614",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "cIhu-Kow62Xm-22cNIGCmKpqA7knJdG-huIPNKSx3cW4qgCo8v1V6CRinar0wHMhQOTtkytlsGjNxqFSztseBg"
+                      "value": "0aFd6WZA3B8mI9-hEupK6fJYliBeR8b2ojG8tF8jEvB8sLoA4BJwMIOhKshyfOjK9J1FIN7ov5ra6YSGZx5KBA"
                     }
                   }
                 ],
@@ -5824,7 +6304,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-d01e4d2e55ebae55939e4f8c9838e87da09f5f035a01e80ba77fd69ee35a8315",
                   "nativeAddress": "native-5a42d737314ce3bc7b83bd946afa0b32403173f4f7e8cebf05a20a0bae239fbb",
-                  "contentHash": "78b84247bb572d8da2b9e940a6114b3d6114f7f6d4232aa3cf46f1cd7009b330",
+                  "contentHash": "8ff07d8b1459de8f2592f048cb03a5ede06ff83af1d3f3077114745c92700614",
                   "transactionRef": "fixture-tx-current-b8441e178fd5b7fa63e6555236943e3ac17e4bd9dadeaa17840813606748a4b6",
                   "writer": "did:demos:seller",
                   "nonce": 111,
@@ -5838,7 +6318,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "vovqItROjDsIhjoFa3vCL-1uS7HTm4vNGET30ToAJKGiPdiCKBXVR1H421xKNu9fzhrsdBvyRFKixH3lbCaWBQ"
+                    "value": "4TWxqBuUDDw8BM74ycMmC4MGXiSBhw4XdYlcyr_uVkvc70PuecbV2gpOTo2k5Y9j9FrFMp7qHrh0gkGNYosnBA"
                   }
                 }
               },
@@ -5857,7 +6337,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2"
+                "contentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739"
               },
               "parties": [
                 {
@@ -5874,6 +6354,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-cross-chain-liquidity-tank",
                   "outcome": "ok",
                   "attestationRef": {
@@ -5902,12 +6392,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "FZd1nl2rsyarkwMxVjQgm-YCCt3ySLvnQwaAqF4jaO1XSyTqDEZClPKrpwWbwCOL1qy0Ugebn39oCOeCZmDMCQ"
+                  "value": "DyyTW_V8A4iRBnqZ_Pov6I8ch6pRjiqYD6Kde60lak1WKTR3sRboM7nlyH_xt0iIQ2zbpUng7c8nlDE6xAkZDQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "zfF0UL6QXmmWIdoNxTARNv093LduW3uRrISzI22MF60aHT_z-DJPa_QJut15ceg--VkgJLUSFL-NhmF5YPCgAA"
+                  "value": "LsavdBg74gNxve41ab14aT6GNAsl_DVSgusMruACIvPjs037lIi_q1HCgCunpjknjULBykS78kuNCK_BhukNAw"
                 }
               ],
               "agreementRef": {
@@ -5915,7 +6405,7 @@
                   "kind": "storage-program",
                   "locator": "stor-bbf862675504874962f370defaea39fd34ac19d4764f76a369aa5039d9e1fa83"
                 },
-                "contentHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b"
+                "contentHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed"
               }
             },
             "native-5a42d737314ce3bc7b83bd946afa0b32403173f4f7e8cebf05a20a0bae239fbb": {
@@ -5927,7 +6417,7 @@
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2"
+                "contentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739"
               },
               "parties": [
                 {
@@ -5944,6 +6434,16 @@
               "phaseSummary": [
                 {
                   "index": 0,
+                  "kind": "negotiate-fixed-price",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 1,
+                  "kind": "commit-agreement",
+                  "outcome": "ok"
+                },
+                {
+                  "index": 2,
                   "kind": "pay-cross-chain-liquidity-tank",
                   "outcome": "ok",
                   "attestationRef": {
@@ -5972,12 +6472,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "FZd1nl2rsyarkwMxVjQgm-YCCt3ySLvnQwaAqF4jaO1XSyTqDEZClPKrpwWbwCOL1qy0Ugebn39oCOeCZmDMCQ"
+                  "value": "DyyTW_V8A4iRBnqZ_Pov6I8ch6pRjiqYD6Kde60lak1WKTR3sRboM7nlyH_xt0iIQ2zbpUng7c8nlDE6xAkZDQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "zfF0UL6QXmmWIdoNxTARNv093LduW3uRrISzI22MF60aHT_z-DJPa_QJut15ceg--VkgJLUSFL-NhmF5YPCgAA"
+                  "value": "LsavdBg74gNxve41ab14aT6GNAsl_DVSgusMruACIvPjs037lIi_q1HCgCunpjknjULBykS78kuNCK_BhukNAw"
                 }
               ],
               "agreementRef": {
@@ -5985,18 +6485,24 @@
                   "kind": "storage-program",
                   "locator": "stor-bbf862675504874962f370defaea39fd34ac19d4764f76a369aa5039d9e1fa83"
                 },
-                "contentHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b"
+                "contentHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed"
               }
             }
           },
           "checkpointsByNativeAddress": {},
           "bundleAuthorityByContentHash": {
-            "78b84247bb572d8da2b9e940a6114b3d6114f7f6d4232aa3cf46f1cd7009b330": {
+            "8ff07d8b1459de8f2592f048cb03a5ede06ff83af1d3f3077114745c92700614": {
               "listing": {
                 "listingId": "listing-finality-fixture",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "pay-cross-chain-liquidity-tank"
                   }
@@ -6004,7 +6510,7 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "G94ynWvDYIOFFRFoR4A8hchhn11bQJh1BBHlKMpuMxRFkN7J8VO588gQDF2PpKiCL_JBWpWu65zUOWRg0RmIDA"
+                  "value": "Grkg012ZgLggFoZA4sL-H8lGzWjr0oJClbML6OkYbzksnH6xIx3rLU1vBWuEnP-CJJsQ-bIvV5Bgh5XpWdmwBQ"
                 }
               },
               "referenceValidationByCanonicalRef": {
@@ -6051,7 +6557,9 @@
                   "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": true
-                  }
+                  },
+                  "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
+                  "sessionId": "session-finality-0c6a77502214ff904c1f22edda7c44d44906d203e8a1010c2a8a92124e6eedbd"
                 }
               },
               "bundleLifecycle": {
@@ -6059,9 +6567,9 @@
                 "independentlyResolvable": true
               },
               "sessionExecutionAuthorityByPhaseKey": {
-                "0:pay-cross-chain-liquidity-tank": {
+                "2:pay-cross-chain-liquidity-tank": {
                   "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
-                  "phaseIndex": 0,
+                  "phaseIndex": 2,
                   "phaseKind": "pay-cross-chain-liquidity-tank",
                   "phaseOrchestrator": "did:demos:orchestrator",
                   "railId": "fixture:liquidity-tank"
@@ -6072,7 +6580,7 @@
                   "receiptVersion": "1",
                   "substrate": "demos-testnet",
                   "finalityProfile": "demos-bft-final",
-                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB2:fixture%3Aliquidity-tank:0",
+                  "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FB2:fixture%3Aliquidity-tank:2",
                   "nativeAddress": "stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f",
                   "contentHash": "fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4",
                   "transactionRef": {
@@ -6233,7 +6741,7 @@
                     "listingRef": {
                       "listingId": "listing-finality-fixture",
                       "version": 1,
-                      "contentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2"
+                      "contentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739"
                     },
                     "parties": [
                       {
@@ -6282,12 +6790,12 @@
                       {
                         "party": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "8v8YNYjKQfHkDSEnBDWyO4Gd2RkoPV8UzaFXUTw1BfJw25GyDlGj3eT5ppTceOk1pm0-olprFKjK2xX4ELKBCw"
+                        "value": "QSZkbBs1i8Y_vDNUhesGay5v9WM4PL-1mAQTv4HP3Myntom8rbcJK4YoEQKV0XGyGk8mZGkjLTAGpyrEvsYJDQ"
                       },
                       {
                         "party": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "IEz7kVa_h06NBPpRNU-yV7n3OO365I-G2bYr__c4BIaOBELeGAMLHArcRpUcUO0WEHsvrABfQktC1fA-h4WTBg"
+                        "value": "AWz8RTxDDQZXc-QrK-M5LKLo183mzyiy4XzHPDZFHzrXl4XtzcNS8oQe6yftoZeziN8Ueu0P3ajkuHjrKykEAw"
                       }
                     ]
                   },
@@ -6704,18 +7212,86 @@
                     }
                   }
                 }
+              },
+              "agreementSelectionResult": {
+                "resolution": "verified",
+                "agreementRef": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-bbf862675504874962f370defaea39fd34ac19d4764f76a369aa5039d9e1fa83"
+                  },
+                  "contentHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed"
+                },
+                "agreementType": "legacy",
+                "proofVerified": true
+              },
+              "legacyAgreementAuthorityByPhaseKey": {
+                "2:pay-cross-chain-liquidity-tank": {
+                  "laa": {
+                    "operation": "authorize-payment",
+                    "pipelineHasPayment": true,
+                    "agreement": {
+                      "artifact": "payee-bound",
+                      "shape": "valid",
+                      "partySignaturesValid": true,
+                      "contentHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+                      "phase": "pay-cross-chain-liquidity-tank",
+                      "listingRef": {
+                        "listingId": "listing-finality-fixture",
+                        "version": 1,
+                        "contentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739"
+                      },
+                      "pbVerified": true
+                    },
+                    "sessionAuthority": {
+                      "state": "verified",
+                      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+                      "sessionId": "session-finality-0c6a77502214ff904c1f22edda7c44d44906d203e8a1010c2a8a92124e6eedbd",
+                      "orchestratorPrimaryClaim": "did:demos:orchestrator"
+                    }
+                  },
+                  "binding": {
+                    "laaContentHash": "a79fc58f7cffadb44e9e7239ce655fb56f173b9d1c3cd79eefa3aedcfc719a36",
+                    "bundleContentHash": "8ff07d8b1459de8f2592f048cb03a5ede06ff83af1d3f3077114745c92700614",
+                    "listingRef": {
+                      "listingId": "listing-finality-fixture",
+                      "version": 1,
+                      "contentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739"
+                    },
+                    "listingContentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739",
+                    "agreementContentHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
+                    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
+                    "sessionId": "session-finality-0c6a77502214ff904c1f22edda7c44d44906d203e8a1010c2a8a92124e6eedbd",
+                    "phaseKey": "2:pay-cross-chain-liquidity-tank",
+                    "phaseIndex": 2,
+                    "phase": "pay-cross-chain-liquidity-tank",
+                    "phaseOrchestrator": "did:demos:orchestrator",
+                    "evidenceSigner": "did:demos:orchestrator",
+                    "evidenceContentHash": "fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4",
+                    "evidenceRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-c7ac3263d75644b61ff547bb2aebc365e82d3c18003a9b219d1c506bd633494f"
+                      },
+                      "contentHash": "fa144fe37dd669a291a565bf8adfb2c52299ac3c35dc6c46873d3f61a7591be4"
+                    },
+                    "evidenceReceiptHash": "80b2f18f9356e00099508ff90350190d2120281d74fc4b99fb25632d40c178ef",
+                    "receiptWriter": "did:demos:orchestrator"
+                  }
+                }
               }
             }
           },
           "settlementBindingProofByCanonicalRef": {},
           "agreementsByCanonicalRef": {
-            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bbf862675504874962f370defaea39fd34ac19d4764f76a369aa5039d9e1fa83\"},\"contentHash\":\"bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b\"}": {
+            "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bbf862675504874962f370defaea39fd34ac19d4764f76a369aa5039d9e1fa83\"},\"contentHash\":\"0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed\"}": {
               "agreementVersion": "1",
               "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FB2",
               "listingRef": {
                 "listingId": "listing-finality-fixture",
                 "version": 1,
-                "contentHash": "dc6fb62f184420376a249bbf663faeb65720fc09460667c91896f50bd54dada2"
+                "contentHash": "2e1cb7b72e310bfd137cf28da08a15dcb308e9a015443f6af5e6e178750f1739"
               },
               "parties": [
                 {
@@ -6764,12 +7340,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "8v8YNYjKQfHkDSEnBDWyO4Gd2RkoPV8UzaFXUTw1BfJw25GyDlGj3eT5ppTceOk1pm0-olprFKjK2xX4ELKBCw"
+                  "value": "QSZkbBs1i8Y_vDNUhesGay5v9WM4PL-1mAQTv4HP3Myntom8rbcJK4YoEQKV0XGyGk8mZGkjLTAGpyrEvsYJDQ"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "IEz7kVa_h06NBPpRNU-yV7n3OO365I-G2bYr__c4BIaOBELeGAMLHArcRpUcUO0WEHsvrABfQktC1fA-h4WTBg"
+                  "value": "AWz8RTxDDQZXc-QrK-M5LKLo183mzyiy4XzHPDZFHzrXl4XtzcNS8oQe6yftoZeziN8Ueu0P3ajkuHjrKykEAw"
                 }
               ]
             }
@@ -6849,7 +7425,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -6865,7 +7441,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -6881,7 +7457,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -6897,7 +7473,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -6913,7 +7489,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -6929,7 +7505,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -6997,8 +7573,8 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB2:buyer:native-0d9c167cfcb376b6336e669d8bf1c8fbc9f5832ac73189cac8958bb971233168": "d017eb5d6ee963c540933d90d08f56e0e5024d00d31d56d7f2b3692225121eba",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB2:seller:native-5a42d737314ce3bc7b83bd946afa0b32403173f4f7e8cebf05a20a0bae239fbb": "ac9481e72dda515d94ce3c2563506f066d99792991ac815777e8ed01f4fb71c7"
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB2:buyer:native-0d9c167cfcb376b6336e669d8bf1c8fbc9f5832ac73189cac8958bb971233168": "591ec5e6e994f2a66834fc6ad64b184009d991f9fdc081c172a6cac5b41d8f69",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FB2:seller:native-5a42d737314ce3bc7b83bd946afa0b32403173f4f7e8cebf05a20a0bae239fbb": "fa02273e7e94aef44444e91e9866e672d150fcf9e6cc2b3cc1b89a4af809e063"
           }
         },
         "trustedContext": {
@@ -7095,12 +7671,12 @@
                     "role": "buyer",
                     "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
                     "nativeAddress": "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0",
-                    "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                    "bundleContentHash": "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f",
                     "signer": "did:demos:buyer",
                     "signature": {
                       "signer": "did:demos:buyer",
                       "algorithm": "ed25519",
-                      "value": "rsvnbbnLpw1uIG_GgAotpFqDAchZeqTuhQxQie-hkJTjc50-tCROjcyB4P70E71rIBB-EyMhQKLMv6A6ft17Aw"
+                      "value": "Nl9mWCFd8VjB0nxn5OMLWbD68BZgB8HXEqaMKDzcL8HJeulF0LCySpmNGP5ynmQ_Dwwbq2hFy-7mg9kopjCFCA"
                     }
                   }
                 ],
@@ -7119,7 +7695,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
                   "nativeAddress": "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0",
-                  "contentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                  "contentHash": "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f",
                   "transactionRef": "fixture-tx-current-read-ece8d37b5a50eca771afbcb3b46a40bf475655c23694d9dbce13a45c1382d737",
                   "writer": "did:demos:buyer",
                   "nonce": 30,
@@ -7133,13 +7709,13 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "U0YAi1Gx6ZqvuKzdOHmnJS1CLX7brdjdBw7X4WL6vdL-C7xezSGSYtQS6gBM2GXKowxp3eXlVoCHaqVnWgMUDg"
+                    "value": "BPFhrvz40hgRvUfs--DrybsmSwT0yM4Rqzii2YrXv0_Jj4eW5W6RzrcnaZgvzliKv9OGnff_Nflh3XfqDWMwDA"
                   }
                 }
               },
               "legacyEraEvidenceByNativeAddress": {
                 "native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0": {
-                  "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                  "bundleContentHash": "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f",
                   "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                   "resolvedRole": "buyer",
                   "substrate": "dacs-current-use-synthetic-write-input-v1",
@@ -7192,7 +7768,7 @@
                     "subjectRole": "buyer",
                     "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
                     "nativeAddress": "native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151",
-                    "contentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                    "contentHash": "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f",
                     "transactionRef": "fixture-tx-historical-ece8d37b5a50eca771afbcb3b46a40bf475655c23694d9dbce13a45c1382d737",
                     "writer": "did:demos:buyer",
                     "nonce": 10,
@@ -7206,7 +7782,7 @@
                     "signature": {
                       "signer": "fixture:current-use-native-authority",
                       "algorithm": "ed25519",
-                      "value": "fnzfQA6EN922e74sSYalU5h0ZWhOmZo3k1VtaM_a6-wTmzVy-Oj1rlXwuYXO7_UdAjn2gwkm0e9vkicXlEqHAw"
+                      "value": "wXn82sGUebLzLwz4ZYf4KCORv-AU1WzE1cLbTnriBLaqWv1NnNfGp7qadneykpqm4spkKtm2Qj08bJDewoylAw"
                     }
                   },
                   "originalMapping": {
@@ -7217,12 +7793,12 @@
                       "role": "buyer",
                       "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
                       "nativeAddress": "native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151",
-                      "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                      "bundleContentHash": "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f",
                       "signer": "did:demos:buyer",
                       "signature": {
                         "signer": "did:demos:buyer",
                         "algorithm": "ed25519",
-                        "value": "vCwb3OgpjMhbJpz3zMvoZlRxps46FgU9xSkpqroqHrc6hcGg8r1j9_zNafDWOn9N8Q3Hbf6xLK__ziSIH4u2CQ"
+                        "value": "vZ253vQWGP7RSe9-5FXqENyZM3g_mfjzWCvGh2cJkkUgBA_ZOASn5R3mklurOsoSeUOl3hHmhgcd7e-srF7HCA"
                       }
                     },
                     "selectionContext": {
@@ -7233,12 +7809,12 @@
                           "role": "buyer",
                           "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
                           "nativeAddress": "native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151",
-                          "bundleContentHash": "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a",
+                          "bundleContentHash": "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f",
                           "signer": "did:demos:buyer",
                           "signature": {
                             "signer": "did:demos:buyer",
                             "algorithm": "ed25519",
-                            "value": "vCwb3OgpjMhbJpz3zMvoZlRxps46FgU9xSkpqroqHrc6hcGg8r1j9_zNafDWOn9N8Q3Hbf6xLK__ziSIH4u2CQ"
+                            "value": "vZ253vQWGP7RSe9-5FXqENyZM3g_mfjzWCvGh2cJkkUgBA_ZOASn5R3mklurOsoSeUOl3hHmhgcd7e-srF7HCA"
                           }
                         }
                       ],
@@ -7266,12 +7842,12 @@
                     "role": "seller",
                     "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
                     "nativeAddress": "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe",
-                    "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                    "bundleContentHash": "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0",
                     "signer": "did:demos:seller",
                     "signature": {
                       "signer": "did:demos:seller",
                       "algorithm": "ed25519",
-                      "value": "G6HHIua-Nte3lqm0vwjfCv_W2-vB7ti1A_xwSulh2zYE101O9nsyzHlxpxHLUG5QjDIojCAdJxGkJDWguPeuBQ"
+                      "value": "b-X7h5NBX7f0CeH8mXDKbae8gQfsjkpYndRnzz5NjL6BJR_gYyTuLfpbN1wr5uPVNYKJvHoiJLyE4PNlqZQNDQ"
                     }
                   }
                 ],
@@ -7290,7 +7866,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
                   "nativeAddress": "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe",
-                  "contentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                  "contentHash": "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0",
                   "transactionRef": "fixture-tx-current-read-8008433571eeb675b69dd23bca87c89f2944a0fb032dbb2e165ad9077092d8a5",
                   "writer": "did:demos:seller",
                   "nonce": 31,
@@ -7304,13 +7880,13 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "kmJPqS0L9vUD5q0EU3_YSGhh9e4cRB_fJcz49ZrGfkWDLybXiHyIi2k49skcNBFuAGjXxbKGO0g_qa_A1tRkAA"
+                    "value": "XGd7B6MO4pHQAEcabxAITedfAVWW9qRkgnyhEh4RnMTqNOYclsLVi6vKVdMPUZdvv-WSoPN2SnHG1KeIzxmPBw"
                   }
                 }
               },
               "legacyEraEvidenceByNativeAddress": {
                 "native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe": {
-                  "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                  "bundleContentHash": "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0",
                   "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
                   "resolvedRole": "seller",
                   "substrate": "dacs-current-use-synthetic-write-input-v1",
@@ -7363,7 +7939,7 @@
                     "subjectRole": "seller",
                     "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
                     "nativeAddress": "native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2",
-                    "contentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                    "contentHash": "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0",
                     "transactionRef": "fixture-tx-historical-8008433571eeb675b69dd23bca87c89f2944a0fb032dbb2e165ad9077092d8a5",
                     "writer": "did:demos:seller",
                     "nonce": 11,
@@ -7377,7 +7953,7 @@
                     "signature": {
                       "signer": "fixture:current-use-native-authority",
                       "algorithm": "ed25519",
-                      "value": "dQYdJ-TA1yKUhsvlpYMRmQrCwJlMrc7AhHsQWkjweJhoFc2fm1_yOWUoGJqr_ctw8OREcl1w-N_3GzFdTYY2Cw"
+                      "value": "y7czG4d6YUqIxOUeZ7zTSNr7OHsDW0RJqV-gps_RscRWIESKEF2tsgKRAbEbEeVk4EoVXfDscSEhfo0datd1Ag"
                     }
                   },
                   "originalMapping": {
@@ -7388,12 +7964,12 @@
                       "role": "seller",
                       "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
                       "nativeAddress": "native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2",
-                      "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                      "bundleContentHash": "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0",
                       "signer": "did:demos:seller",
                       "signature": {
                         "signer": "did:demos:seller",
                         "algorithm": "ed25519",
-                        "value": "51Q746pBAnpwQ-3wm-PzTHZCscmX1mO_bRsifzN5zDYxK743i0nS7sE8b8d70e0bMy_kpqL-4ZlW1svzwlalCg"
+                        "value": "uAF2XRrnHqBHsbSL7G_wq_DswNpy8Rq3uqBSU8IUM8kpiJcsLy47qUMOel0uKxHSEXbRl7AxFmoSLB9DYI4-Bw"
                       }
                     },
                     "selectionContext": {
@@ -7404,12 +7980,12 @@
                           "role": "seller",
                           "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
                           "nativeAddress": "native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2",
-                          "bundleContentHash": "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4",
+                          "bundleContentHash": "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0",
                           "signer": "did:demos:seller",
                           "signature": {
                             "signer": "did:demos:seller",
                             "algorithm": "ed25519",
-                            "value": "51Q746pBAnpwQ-3wm-PzTHZCscmX1mO_bRsifzN5zDYxK743i0nS7sE8b8d70e0bMy_kpqL-4ZlW1svzwlalCg"
+                            "value": "uAF2XRrnHqBHsbSL7G_wq_DswNpy8Rq3uqBSU8IUM8kpiJcsLy47qUMOel0uKxHSEXbRl7AxFmoSLB9DYI4-Bw"
                           }
                         }
                       ],
@@ -7438,7 +8014,7 @@
               "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": "358649fa8c6193aada761f201023811363d6fafe822f3689e0fc3ac3d6f33668"
+                "contentHash": "ce39b966c9f8bbde0c7eee547157c4c70941377e38dd76696d7de31064e774fd"
               },
               "parties": [
                 {
@@ -7462,12 +8038,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "AndyiVoDwVEfS-Tj-0B2to3ZMxFsxwWvu9mVL0cRX-KoOhHRkHlh5KPjxqYlJ03e8gpSYtquXSfv4Ok2tbn0DQ"
+                  "value": "_d7-Z5xQ3OVsQ4AlnXmkjWAAV9VVsflFIwi-DpD6Lj4itTR0E9ftjgXL9n1anxUuyuFQ9-QtUiJGC76CbpSlBw"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "baB3HsOf-jMF8fC2CoOgmhg8O9tI-iHpvSjADZzptXIKFquVRk4PmfsdD5BX0wkwsdvwi93sy5G0hNesqnthBw"
+                  "value": "3SAKKDfajeAmMNI26x8NAs1LildfWNnRp_-0LeuEiN42SDLOTcwCj4npJzjQnQAYb3QlmzYB0zQ7bFhgTi_AAg"
                 }
               ]
             },
@@ -7479,7 +8055,7 @@
               "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": "358649fa8c6193aada761f201023811363d6fafe822f3689e0fc3ac3d6f33668"
+                "contentHash": "ce39b966c9f8bbde0c7eee547157c4c70941377e38dd76696d7de31064e774fd"
               },
               "parties": [
                 {
@@ -7503,12 +8079,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "08IkkG5sr-8wEt2o2_cHr0Rr0HXC2ETNN-mKlShaGlY9je5CxylAdoQbXDB-yh6RTOfbrkYMX0vkk1on48BfDw"
+                  "value": "04BuqgjOkaKHn9cO7d-UdsNHnIAy9h_4qhaqJGsbHeUCyebWr5HzAniE1WIFcAKHXLTsmiaQulYNPwYQkFlUCA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "HpJzuCnXq2nzOXkAHCyZtUCrkb1NRH4eN6aSgxIWE7EeHNgrmgiGECdSpYvoun5b3alx-EJL3Kk1KEARnce7CQ"
+                  "value": "_tsoWvhI0-J97i1lfYTNfXW-clKLCmcUF5Na-pS3iBWdKDApirepQhkiam6bdxd7XX7CsK8AaLDCVwMXnSnVAQ"
                 }
               ]
             },
@@ -7520,7 +8096,7 @@
               "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": "358649fa8c6193aada761f201023811363d6fafe822f3689e0fc3ac3d6f33668"
+                "contentHash": "ce39b966c9f8bbde0c7eee547157c4c70941377e38dd76696d7de31064e774fd"
               },
               "parties": [
                 {
@@ -7544,12 +8120,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "AndyiVoDwVEfS-Tj-0B2to3ZMxFsxwWvu9mVL0cRX-KoOhHRkHlh5KPjxqYlJ03e8gpSYtquXSfv4Ok2tbn0DQ"
+                  "value": "_d7-Z5xQ3OVsQ4AlnXmkjWAAV9VVsflFIwi-DpD6Lj4itTR0E9ftjgXL9n1anxUuyuFQ9-QtUiJGC76CbpSlBw"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "baB3HsOf-jMF8fC2CoOgmhg8O9tI-iHpvSjADZzptXIKFquVRk4PmfsdD5BX0wkwsdvwi93sy5G0hNesqnthBw"
+                  "value": "3SAKKDfajeAmMNI26x8NAs1LildfWNnRp_-0LeuEiN42SDLOTcwCj4npJzjQnQAYb3QlmzYB0zQ7bFhgTi_AAg"
                 }
               ]
             },
@@ -7561,7 +8137,7 @@
               "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": "358649fa8c6193aada761f201023811363d6fafe822f3689e0fc3ac3d6f33668"
+                "contentHash": "ce39b966c9f8bbde0c7eee547157c4c70941377e38dd76696d7de31064e774fd"
               },
               "parties": [
                 {
@@ -7585,12 +8161,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "08IkkG5sr-8wEt2o2_cHr0Rr0HXC2ETNN-mKlShaGlY9je5CxylAdoQbXDB-yh6RTOfbrkYMX0vkk1on48BfDw"
+                  "value": "04BuqgjOkaKHn9cO7d-UdsNHnIAy9h_4qhaqJGsbHeUCyebWr5HzAniE1WIFcAKHXLTsmiaQulYNPwYQkFlUCA"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "HpJzuCnXq2nzOXkAHCyZtUCrkb1NRH4eN6aSgxIWE7EeHNgrmgiGECdSpYvoun5b3alx-EJL3Kk1KEARnce7CQ"
+                  "value": "_tsoWvhI0-J97i1lfYTNfXW-clKLCmcUF5Na-pS3iBWdKDApirepQhkiam6bdxd7XX7CsK8AaLDCVwMXnSnVAQ"
                 }
               ]
             }
@@ -7609,12 +8185,18 @@
             }
           },
           "bundleAuthorityByContentHash": {
-            "4bb1e36734bba57b08dee8a049298e88e31b32e2aa05cceafe77b92bb86cd22a": {
+            "6e14f689002c918244efc031589146de38b6a73796c5595d28bd866363dc476f": {
               "listing": {
                 "listingId": "listing-historical-nonpayment",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "deliver-storage-program"
                   }
@@ -7622,16 +8204,25 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "TM09904YNsaU1W6_FFwGkHSwUJNtnlqESginhpe_v4fLz_zyTflzYwD2jVlhRCGvFYiXQJ_ecJv_BQ277-OKCw"
+                  "value": "DZ0wUi64yVNtcaMPjO6o_r5-heuvlu0I6Urr_hHvQkuzlfXr5elkBV0fmQUNynG1tJ7K5Ot9_0mmFuey7EOYCw"
                 }
-              }
+              },
+              "referenceValidationByCanonicalRef": {},
+              "sessionExecutionAuthorityByPhaseKey": {},
+              "verifiedReceiptByCanonicalRef": {}
             },
-            "ec932868447edb8ae93a90f64050ff9fd6d2a0eaf5412465760f5d0f3d96a3c4": {
+            "7bd4c4b59c3615b206d0be7b8adb0ec4fe509196b9f9b3828a32a3009f1025e0": {
               "listing": {
                 "listingId": "listing-historical-nonpayment",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "deliver-storage-program"
                   }
@@ -7639,9 +8230,12 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "TM09904YNsaU1W6_FFwGkHSwUJNtnlqESginhpe_v4fLz_zyTflzYwD2jVlhRCGvFYiXQJ_ecJv_BQ277-OKCw"
+                  "value": "DZ0wUi64yVNtcaMPjO6o_r5-heuvlu0I6Urr_hHvQkuzlfXr5elkBV0fmQUNynG1tJ7K5Ot9_0mmFuey7EOYCw"
                 }
-              }
+              },
+              "referenceValidationByCanonicalRef": {},
+              "sessionExecutionAuthorityByPhaseKey": {},
+              "verifiedReceiptByCanonicalRef": {}
             }
           },
           "settlementBindingProofByCanonicalRef": {},
@@ -7721,7 +8315,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -7737,7 +8331,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -7753,7 +8347,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -7769,7 +8363,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -7785,7 +8379,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -7801,7 +8395,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -7869,11 +8463,11 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:buyer:native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0": "27fb541f4c272816a5e02de257eeedeef01d9abef1adba5ed5a85a756d0fa5a9",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:buyer:native-f9c235f3d155495e20a9fafcc64d07c36a9b2cb2afa8255fc6d176839aa16fa0": "db1271e7baffe93b79784d31bfc679b1c2cdf42eb998763335f53d481916d308",
             "dacs-current-use-synthetic-write-input-v1:checkpoint:dacs-current-use-synthetic-write-input-v1:steward:native-4533ad5b71e9e0fc25e772dfa3519217cecb501ce3f6434d0a0d4f56f1d293e3": "70b86e3c94695370ddb54f7ab43618b0530d2f43a6de77f7ca9b98794e1a5fad",
-            "dacs-current-use-synthetic-write-input-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:buyer:native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151": "8c4c58544638110795159f69b944a5ae2f4fe5c53f57ecbd54f1340c79c2dc80",
-            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:seller:native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe": "b4efb763a89667dacafe62c8c1a6bfcbcb3316e69d70f36cacf685f9e6bcce67",
-            "dacs-current-use-synthetic-write-input-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:seller:native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2": "84b6144dabe1b3312ddb2f4e19008a3fc4c6ba3d2edb6b24ddbf5bd198bb0016"
+            "dacs-current-use-synthetic-write-input-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:buyer:native-814b544f5ce5843472e22d6aaaf88d079696a35fe8c642056cbf02747eddc151": "c0ce9aede2cbb324aa236860d7ff78af1cd33ac123675083fa2ae85ffb33e539",
+            "dacs-current-use-synthetic-write-input-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:seller:native-291bf391ce3af599be5f95b46ddbf46882239db1dd2547f541fca966334326fe": "ec95253aa0d7f24c5000225d214a1bf31ab127b5f9c4a6d2e1f11eff60a9e8c1",
+            "dacs-current-use-synthetic-write-input-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAV:seller:native-89e9f786089981e30fcd9b7a923b0675f4818f1d4b56aabe440d12602da2d7c2": "0deeda3e90e05b9a2db508464f402fe8e7ace97c80da8945694560717df219e3"
           }
         },
         "trustedContext": {
@@ -7971,7 +8565,7 @@
                 "subjectRole": "buyer",
                 "logicalAddress": "stor-ee1faebea06990aa74d9e4ae3d210a487e20e9c9dc5ba6db570baa30f48ca960",
                 "nativeAddress": "pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda",
-                "contentHash": "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f",
+                "contentHash": "f68f066cb5fb87664ababd1f11bab2711c1ec5dbd97f8ed9fab0f08522f96ce5",
                 "transactionRef": "fixture-tx-current-read-6d10bbbf9dc9bff32e96db209d41a1c0be8b632eb04d40e92e552cacaa195585",
                 "writer": "did:demos:buyer",
                 "nonce": 30,
@@ -7985,11 +8579,11 @@
                 "signature": {
                   "signer": "fixture:current-use-native-authority",
                   "algorithm": "ed25519",
-                  "value": "CqYRTyYyBrP8dKKQCfXE-vxokJl_fLIDWtJ6xLdG-rUWoYI4xh5U7NaV1rtOXc0NQ_B8Gfql9ofitY8bU0WmCA"
+                  "value": "hW69hU5j2_WgZGUx43AhvTJ5KBDGl2NZYWoJdglV4fNDIxY9nQVUwDyeEl2o9Cx134hFZ5N-39ngfIf-WcSACg"
                 }
               },
               "legacyEraEvidence": {
-                "bundleContentHash": "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f",
+                "bundleContentHash": "f68f066cb5fb87664ababd1f11bab2711c1ec5dbd97f8ed9fab0f08522f96ce5",
                 "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
                 "resolvedRole": "buyer",
                 "substrate": "dacs-current-use-synthetic-pure-v1",
@@ -8027,7 +8621,7 @@
                   "subjectRole": "buyer",
                   "logicalAddress": "stor-ee1faebea06990aa74d9e4ae3d210a487e20e9c9dc5ba6db570baa30f48ca960",
                   "nativeAddress": "pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda",
-                  "contentHash": "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f",
+                  "contentHash": "f68f066cb5fb87664ababd1f11bab2711c1ec5dbd97f8ed9fab0f08522f96ce5",
                   "transactionRef": "fixture-tx-historical-6d10bbbf9dc9bff32e96db209d41a1c0be8b632eb04d40e92e552cacaa195585",
                   "writer": "did:demos:buyer",
                   "nonce": 10,
@@ -8041,7 +8635,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "mrN_x5D1bSNCa461gVt3nN-zxL_JAYm4ZVeov-5xO8RAkbuho96aP4gemgKigK-YAMv_F9YcMSmWvLUMuuZdAw"
+                    "value": "1UBL-hOk1nFU7AguojJIOFBB9iVJubd4MMIDQtKhXBGq5j3h15sgdkc36qm4jDTQnoae8w5agL7Ktn9duAq_DQ"
                   }
                 },
                 "originalMapping": {
@@ -8066,7 +8660,7 @@
                 "subjectRole": "seller",
                 "logicalAddress": "stor-d15eae1735ce8a8e1eaf634351a245cf5a70992aec46fc5dae498d4cd2ec6bec",
                 "nativeAddress": "pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd",
-                "contentHash": "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4",
+                "contentHash": "1d736fff4dc01e0beb9f5a0acbd3cfbeb2a463f2e3fd5efd7d61d28c5d5999fe",
                 "transactionRef": "fixture-tx-current-read-6fc078bba45269f7fb3b14e7476dce6e99a9f6b8acc245d949a3e6df7ccd1c5e",
                 "writer": "did:demos:seller",
                 "nonce": 31,
@@ -8080,11 +8674,11 @@
                 "signature": {
                   "signer": "fixture:current-use-native-authority",
                   "algorithm": "ed25519",
-                  "value": "DcuXEU42nXFgxysbuI6hYsh0Pl_A1YUDFXXL4DR1qrB_pHnGcr48kqiSvgq1y4POz2gI6MA8zSTy32zewwM2Cg"
+                  "value": "46aKrYVoorAAtRrfnBuSm4tQoQVCIuXRFHwVfC3BlFTTRHogGOxBAeHBuqAOd2o23N2ZsNnfNN5-z8CslRFNCg"
                 }
               },
               "legacyEraEvidence": {
-                "bundleContentHash": "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4",
+                "bundleContentHash": "1d736fff4dc01e0beb9f5a0acbd3cfbeb2a463f2e3fd5efd7d61d28c5d5999fe",
                 "resolvedJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
                 "resolvedRole": "seller",
                 "substrate": "dacs-current-use-synthetic-pure-v1",
@@ -8122,7 +8716,7 @@
                   "subjectRole": "seller",
                   "logicalAddress": "stor-d15eae1735ce8a8e1eaf634351a245cf5a70992aec46fc5dae498d4cd2ec6bec",
                   "nativeAddress": "pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd",
-                  "contentHash": "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4",
+                  "contentHash": "1d736fff4dc01e0beb9f5a0acbd3cfbeb2a463f2e3fd5efd7d61d28c5d5999fe",
                   "transactionRef": "fixture-tx-historical-6fc078bba45269f7fb3b14e7476dce6e99a9f6b8acc245d949a3e6df7ccd1c5e",
                   "writer": "did:demos:seller",
                   "nonce": 11,
@@ -8136,7 +8730,7 @@
                   "signature": {
                     "signer": "fixture:current-use-native-authority",
                     "algorithm": "ed25519",
-                    "value": "j5cBPir_pbprOtd8GzJ3irtFTTHbfsZWZxzIiQqlSf2SbejS4tI5g1waENZhBUt2uSBQW_PRR0UUqctZjn_qBg"
+                    "value": "5jHlQ0l0O6iH5LTmUGMur35sgHDUJ8h9T1tkZIX7ubN4a8GT9x-OPg28LUClOyAvrR7n5Jy76yk8Waqqx6FrCw"
                   }
                 },
                 "originalMapping": {
@@ -8161,7 +8755,7 @@
               "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": "358649fa8c6193aada761f201023811363d6fafe822f3689e0fc3ac3d6f33668"
+                "contentHash": "ce39b966c9f8bbde0c7eee547157c4c70941377e38dd76696d7de31064e774fd"
               },
               "parties": [
                 {
@@ -8185,12 +8779,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "uYL1DDaG_oVGZgyjouUhrArhAen-Y3zX8stThcR-n0tsVvW3cgjGNfE4VX-8ZSjwEL1N5WPLK2Bl2n2wPKMMDw"
+                  "value": "-76C_-2xzCUG7FC9mzFg99yPTVtOEgdu8uFbWXQkUOfJhnvEj_CdIGAV-zB9ofRtbNjs28k5O0UmLO_57vZSCg"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "nFh9N0_VdvvT1gcYt1kIz4zsXcJVQbv1fwI4GQZYzxWy9TXPvQfWz7JVnOo96bB_yoR0rO0SF-cdPNoRIkjDBg"
+                  "value": "4pToLTBp4x7HxqcFHWJNTnbbx8G0b6pZ89QkrpQSKoDwkC7mxlVKIUR77NLmO8vSaJ4V5BgDLEQ2Rt55bbKKDw"
                 }
               ]
             },
@@ -8202,7 +8796,7 @@
               "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": "358649fa8c6193aada761f201023811363d6fafe822f3689e0fc3ac3d6f33668"
+                "contentHash": "ce39b966c9f8bbde0c7eee547157c4c70941377e38dd76696d7de31064e774fd"
               },
               "parties": [
                 {
@@ -8226,12 +8820,12 @@
                 {
                   "party": "did:demos:buyer",
                   "algorithm": "ed25519",
-                  "value": "Bw8OY1C_EVu8hksTWW7DCWMXuHyAiK0Vrw6kmqNyb7KBTFjuZnYujPA2fbs_u7OpnIQrcWBlrp_RN0YUqWTKAQ"
+                  "value": "qrC6iOIciwTDWLdIt_XiZIW9roDdjHbi3PeNUBWstk_L_RaOxWF2wbn-niTXcfnIq-7CF86WjFrAkXNWVIYSCw"
                 },
                 {
                   "party": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "DwgXjVcCV_FTLSG8C43kwvsQuU819cQx5ST1r6kwM-zPoX_V6tfwY_shKyoXLYPrMAwscjviqLs0Va46dfk_AQ"
+                  "value": "LfviWjC3-nzhYAGEf2q_GMdXE9cKx_AKgWlvQjaBaQHPdsDRNyYMpRo-hIjlnsMLExFNFBqctuOPY2O2of-jAw"
                 }
               ]
             }
@@ -8250,12 +8844,18 @@
             }
           },
           "bundleAuthorityByContentHash": {
-            "f71957862a52a9e820bbff5e20b282a4ab9b7db094bf86f593a302308e8f369f": {
+            "f68f066cb5fb87664ababd1f11bab2711c1ec5dbd97f8ed9fab0f08522f96ce5": {
               "listing": {
                 "listingId": "listing-historical-nonpayment",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "deliver-storage-program"
                   }
@@ -8263,16 +8863,25 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "TM09904YNsaU1W6_FFwGkHSwUJNtnlqESginhpe_v4fLz_zyTflzYwD2jVlhRCGvFYiXQJ_ecJv_BQ277-OKCw"
+                  "value": "DZ0wUi64yVNtcaMPjO6o_r5-heuvlu0I6Urr_hHvQkuzlfXr5elkBV0fmQUNynG1tJ7K5Ot9_0mmFuey7EOYCw"
                 }
-              }
+              },
+              "referenceValidationByCanonicalRef": {},
+              "sessionExecutionAuthorityByPhaseKey": {},
+              "verifiedReceiptByCanonicalRef": {}
             },
-            "9f9bf2686764a8af3c58335496cb7ca3f636baa5234b1304574c374ba5ff6ef4": {
+            "1d736fff4dc01e0beb9f5a0acbd3cfbeb2a463f2e3fd5efd7d61d28c5d5999fe": {
               "listing": {
                 "listingId": "listing-historical-nonpayment",
                 "listingVersion": 1,
                 "sellerPrimaryClaim": "did:demos:seller",
                 "pipeline": [
+                  {
+                    "kind": "negotiate-fixed-price"
+                  },
+                  {
+                    "kind": "commit-agreement"
+                  },
                   {
                     "kind": "deliver-storage-program"
                   }
@@ -8280,9 +8889,12 @@
                 "signature": {
                   "signer": "did:demos:seller",
                   "algorithm": "ed25519",
-                  "value": "TM09904YNsaU1W6_FFwGkHSwUJNtnlqESginhpe_v4fLz_zyTflzYwD2jVlhRCGvFYiXQJ_ecJv_BQ277-OKCw"
+                  "value": "DZ0wUi64yVNtcaMPjO6o_r5-heuvlu0I6Urr_hHvQkuzlfXr5elkBV0fmQUNynG1tJ7K5Ot9_0mmFuey7EOYCw"
                 }
-              }
+              },
+              "referenceValidationByCanonicalRef": {},
+              "sessionExecutionAuthorityByPhaseKey": {},
+              "verifiedReceiptByCanonicalRef": {}
             }
           },
           "settlementBindingProofByCanonicalRef": {},
@@ -8362,7 +8974,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:block-depth",
                 "railVersion": 1,
-                "agreementHash": "f9765d67a75507d5c3085b4119d3f318afdf6a5255ceb52b8cfe66e04607c501",
+                "agreementHash": "67476fed6f3391890894905f3790ba31dee2ae505aeeb929d62609aba3c4924e",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -8378,7 +8990,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:commitment-level",
                 "railVersion": 1,
-                "agreementHash": "caf72ceaaf6102f6befbd6a702b5a0ed16fd34033f7c525bada1d3fa689a9709",
+                "agreementHash": "61960983299eb0f1da4ea5cc056a53a92644e690d6d70a217abc21964e9764fb",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -8394,7 +9006,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:bft-final",
                 "railVersion": 1,
-                "agreementHash": "93fbcb04baa6221cbc0f98abad33ca77be90a4f0d84e1ef6917265ff2460655f",
+                "agreementHash": "7509bfbac601401cf8dfe180ef905cfb7fcec2fa91961d2ebf06472de797afb2",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -8410,7 +9022,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:provider-sr3",
                 "railVersion": 1,
-                "agreementHash": "65de668d89e52db49432086a4978f1219d4fe7a39d26b6d15fca5f0d2f55b554",
+                "agreementHash": "25aa416b5fab4cf81af6db5fffb203ac25b6de3415b0e5b5c0ba8bb561bf063f",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -8426,7 +9038,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:htlc-reveal",
                 "railVersion": 1,
-                "agreementHash": "b87e4f124e99d67ef6be7c278244edf9e6631959031252cb02764ae7395b1d9a",
+                "agreementHash": "dd119d61a19d11d10f67acb0714163c6d786b3808d718c98c11fcbc37a060172",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -8442,7 +9054,7 @@
                 "phaseOrchestrator": "did:demos:orchestrator",
                 "railId": "fixture:liquidity-tank",
                 "railVersion": 1,
-                "agreementHash": "bdd237304962b9b50b8c03c9f02f43158c4b78815469954fa98dbdd23a13540b",
+                "agreementHash": "0882167fc13900d5eeefd992252edd3458b25c7de45eeff36c1d19be68769eed",
                 "partyClaims": {
                   "buyer": "did:demos:buyer",
                   "seller": "did:demos:seller"
@@ -8510,11 +9122,11 @@
           },
           "authenticatedAbsenceByJobRole": {},
           "pinnedSyntheticAnchorProofHashBySubject": {
-            "dacs-current-use-synthetic-pure-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:buyer:pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda": "5bf9198a0993576a5864ed0b881bc8154f7ea2b275ec2f80364e19819695172a",
+            "dacs-current-use-synthetic-pure-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:buyer:pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda": "e16444bba73ae56d98f95d4b103e0c5d1ea4fab8a5e832cbde53664e6c88780b",
             "dacs-current-use-synthetic-pure-v1:checkpoint:dacs-current-use-synthetic-pure-v1:steward:pure-02e129ea0d0f62b7ac96b4cc515737e0d0974b18b0923a07141c9cb83f6b2335": "934fd4fecdff26455ca119ae5314b2256eb25ee84669ff9e122f856b28471af3",
-            "dacs-current-use-synthetic-pure-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:buyer:pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda": "17bdb2f6019725f31ae53f5a8327d9ecd8f3b6c5085da2ed9514a1666a6246ef",
-            "dacs-current-use-synthetic-pure-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:seller:pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd": "9fe9c2bad1da6c56599d0bb8be50c7db0344bbc1c2d8a43bef3449214f7c3372",
-            "dacs-current-use-synthetic-pure-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:seller:pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd": "7589ccb958b49a511310e4f1fa35efdd94126e4de478b2d73d9df9cf48e5bedd"
+            "dacs-current-use-synthetic-pure-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:buyer:pure-8a2934af9107e7dde194cf06b030efaf8b1e3b15e65865147fcca9ab4ef44bda": "b72a8712bf9bf3b0ac81a3766fe3f5f5f0dc0ec2fad5efcb71137bce317a9391",
+            "dacs-current-use-synthetic-pure-v1:current-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:seller:pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd": "0cd8e3f42dbf69ec931af35a3740e4f92b3dac0f32a13548abf327ed44184dd1",
+            "dacs-current-use-synthetic-pure-v1:historical-bundle:01ARZ3NDEKTSV4RRFFQ69G5FAW:seller:pure-cd19e6d1f45cb7e6f189ec17eda652016ff1c290e7fef17169fd2a0dfbb36bcd": "7a21c733d3e119bb01dc811ddf37e16637c519618d80f82caa214535dab33aa3"
           }
         },
         "trustedContext": {

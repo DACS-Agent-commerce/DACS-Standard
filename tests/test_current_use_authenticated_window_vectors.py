@@ -165,7 +165,9 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
         request = replay["requests"][0]
         native = request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]["nativeAddress"]
         bundle = replay["dependencies"]["bundlesByNativeAddress"][native]
-        self.assertEqual(["pay-evm-erc20", "rate"], [
+        self.assertEqual([
+            "negotiate-fixed-price", "commit-agreement", "pay-evm-erc20", "rate",
+        ], [
             phase["kind"] for phase in bundle["phaseSummary"]
         ])
         authority = replay["dependencies"]["bundleAuthorityByContentHash"][
@@ -203,9 +205,18 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
                 authority = replay["dependencies"]["bundleAuthorityByContentHash"][
                     request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]["bundleContentHash"]
                 ]
-                self.assertEqual("pay-alternative", authority["listing"]["pipeline"][0]["kind"])
-                self.assertEqual(2, len(authority["listing"]["pipeline"][0]["parameters"]["alternatives"]))
-                self.assertEqual(bundle["phaseSummary"][0]["kind"], authority["effectivePipeline"][0]["kind"])
+                alternative_index = next(
+                    index for index, step in enumerate(authority["listing"]["pipeline"])
+                    if step.get("kind") == "pay-alternative"
+                )
+                self.assertEqual(
+                    2,
+                    len(authority["listing"]["pipeline"][alternative_index]["parameters"]["alternatives"]),
+                )
+                self.assertEqual(
+                    bundle["phaseSummary"][alternative_index]["kind"],
+                    authority["effectivePipeline"][alternative_index]["kind"],
+                )
                 self.assertNotEqual(authority["listing"]["pipeline"], authority["effectivePipeline"])
                 # A missing proof must not be the first reason for refusal: the
                 # unsupported APR authority is rejected before proof lookup.

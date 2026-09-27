@@ -873,7 +873,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             expected_jobid=bundle["jobId"],
             expected_role=role,
         )
-        self.assertTrue(result["ok"], result["reason"])
+        self.assertFalse(result["ok"])
+        self.assertEqual("indeterminate", result.get("disposition"))
 
         unbound = R.resolve_absolute_fault_pointer(
             pointer,
@@ -883,7 +884,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             expected_jobid=bundle["jobId"],
             expected_role=role,
         )
-        self.assertTrue(unbound["ok"], unbound["reason"])
+        self.assertFalse(unbound["ok"])
+        self.assertEqual("indeterminate", unbound.get("disposition"))
 
         missing_role = R.trusted_current_context([])
         refused = R.resolve_absolute_fault_pointer(

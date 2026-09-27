@@ -13,6 +13,36 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — current-delivery admission corrective boundary
+
+- **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,
+  DACS-5 v0.7 §10.4.3) — historical delivery-shaped `SettlementEvidence` no
+  longer establishes current delivery admission, including through the existing
+  Boolean reference-validator entry point. Current delivery uses the distinct
+  `DeliveryEvidence` contract; historical bytes remain eligible only for an
+  explicitly selected, non-authorizing frozen archival/audit path. This changes
+  the meaning of existing admission behaviour, not the historical bytes or the
+  released bundle discriminators, and is not an ordinary additive-minor claim.
+- **Coordinated migration** — the complete candidate tuple is CORE v0.3 /
+  DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7.
+  [PROFILE](spec/PROFILE.md) requires the exact coordinated release tag or
+  immutable specification commit before live activation; mixed corrective and
+  pre-corrective live participants are unsupported. The
+  [reference-validator migration guide](docs/pr333-reference-validator-migration.md)
+  distinguishes current and archival helper names, result shapes, and limits.
+- **Released AB/FAB rejection-category policy** (DACS-5 §10.4.3) — use `fail`
+  when rejection is established and unavailable context leaves only the
+  `fail`/`error` category unresolved. Independently established malformed-input
+  and explicit normative `error` results retain precedence; unresolved
+  admissibility remains `indeterminate`. This does not change archival
+  semantics or impose EBFAB payment exact-set obligations on older bundle types.
+- **Agreement admission after authenticated commitment** (DACS-5 §10.4.3,
+  DACS-3 §8.5.3) — a completed commitment requires the bundle's exact
+  `agreementRef`, including failed or aborted terminals after that point; the
+  verifier-owned agreement type and signed selected commitment phase must
+  agree under the five-way dispatch. Precommit omission remains valid, and
+  released AB/FAB do not acquire EBFAB payment exact-set rules.
+
 ### Changed — legacy agreement activation boundary
 
 - **Current pay-bearing sessions require payout binding** (#377) — adds the
@@ -213,6 +243,91 @@ The format used per release:
   total, and derives standalone payload-attestation locators from authenticated
   job/phase/method/attempt context. Missing authority remains indeterminate;
   malformed input errors and authenticated contradictions fail.
+- **Legacy delivery and released-bundle payment membership** (#333) — PDE-7
+  delivery-shaped `SettlementEvidence` is readable only by a named
+  archival/audit verifier. Current EBFAB and finality-bound admission reject
+  it. An authenticated, exactly mapped legacy delivery on a released
+  `AttestationBundle` or `FaultAttestationBundle` is audit-valid but
+  current-ineligible: comparison-only in reconciliation, `indeterminate` for
+  pointer and current-use consumers. So is a successful payment whose LAA
+  pass is only `historical-only` or `transition-only`. Every consumer and
+  both archival lanes apply the same PDE-7 checks, so a repeated pipeline
+  kind, an indexed evidence address, or a legacy-closure contradiction fails.
+  Released-bundle payment membership stays a producer obligation, so a
+  payment record a copy omits never changes its disposition, even one
+  anchored later; omission detection requires an EBFAB. Every presented
+  payment member of an AttestationBundle or FAB is still fully validated; an
+  authentic ST-8 `:resolved` success passes under the SEB-3 edge rules, and
+  an `ok` row without a member is `indeterminate`. The reconciliation entry
+  now holds the receipt-contract label for every copy kind. A well-formed
+  indeterminate receipt observation is `indeterminate`, and unavailable
+  execution authority is distinguished from malformed. Current-use counts
+  only a copy's own listed members and signed rows toward the CUR-5 hold. An
+  AttestationBundle without current `DeliveryEvidence` is `indeterminate`
+  rather than failing the FAB-only delivery gate. Unavailable ST-8 interim
+  authority on a released copy is `indeterminate`, not `fail`; only the phase
+  orchestrator's own nonce- and reference-bound receipt at the ordinary PC-2
+  address can contradict the edge, so another writer's receipt there is inert.
+  An outage on a member that cannot fill a missing delivery invocation no
+  longer masks an incomplete released delivery set as `indeterminate`. An EBFAB or
+  finality-bound bundle or Listing that JCS cannot hash is a typed `error` on
+  direct, pointer and reconciliation paths. The released-copy verdict no
+  longer depends on member order. The `encrypt-to-buyer`
+  text now separates the producer's sealing duty from DV-3's
+  recipient/ciphertext check, and THREAT-MODEL records decryptability as a
+  residual.
+- **Four-state precedence and released-trace semantics** (#333) — on the EBFAB
+  and finality-bound cores (direct, Boolean, pointer and reconciliation
+  consumers), a well-formed receipt observation, unavailable LAA authority,
+  an unavailable member resolution or receipt, unavailable delivery execution
+  authority, and unavailable FV authority are pending under SEB-6. Every
+  independent member, set, pointer, ST-8 and lifecycle check still runs, so a
+  deterministic `fail` or `error` elsewhere is never downgraded to
+  `indeterminate`. A member whose execution authority is unavailable still
+  binds its present receipt against the only entry that could admit it, a
+  payment without a receipt still has its signed kind, outcome and ST-8 edge
+  checked against every row it could fill (a transition record only against
+  its signed invocation), and unplaced members and signed pointers for
+  missing invocations must admit a one-to-one assignment. A known ST-8
+  successor rejects only where every admitting entry would bind it. A
+  payment whose receipt is unavailable or only observed defers only LAA's
+  receipt-hash comparison, so malformed LAA authority, a carrier naming a
+  receipt writer other than the evidence signer, an authenticated agreement
+  or `agreementRef` mismatch, and present execution authority that names
+  another job, invocation or orchestrator still decide it on the EBFAB,
+  finality-bound and released AB/FAB gates. An unbindable execution rail,
+  nonce or non-integer invocation excludes such a candidate too, and a
+  receipt-hash contradiction no longer outranks malformed LAA authority.
+  The released gate runs its execution-entry, lifecycle, phase-kind,
+  outcome, ST-8 row-class, supersession-edge and LAA checks in the same
+  order whether the receipt is established, absent or only observed. While
+  the row's execution entry is unavailable, a present receipt binds the
+  only entry that could admit it, as on EBFAB, and its ST-8 edge decides
+  only where that entry would, unpinned or pinned to the receipt's own
+  nonce; a receipt whose address no entry could bind is rejected. An
+  unavailable ST-8 interim no longer skips the member's LAA checks.
+  Released `AttestationBundle`/`FaultAttestationBundle`
+  traces no longer require the optional `errorClass` or read the
+  non-action-bearing `retryExhausted`; a present `errorClass` that contradicts
+  the co-signed outcome still fails, an incomplete failed trace is
+  `indeterminate` without masking a member contradiction, and an ST-8 interim
+  row without `errorClass` takes its class only from the co-signed outcome.
+  EBFAB keeps SEB-1 exact completeness. Dependency receipts are checked for
+  shape (`error`) and reference contradiction (`fail`) before missing entry
+  authority (`indeterminate`). An authenticated self-signed proof with the
+  wrong method kind or payload hash is `fail`; only unevaluable input is
+  `error`. A non-string `faultedParty` is rejected content at both post-fetch
+  entry points, and an unselected or unparseable job-bound candidate is inert.
+- **Agreement authority join** (#333) — when a signed bundle carries
+  `agreementRef`, every LAA-qualified successful payment on the EBFAB,
+  finality-bound, and released AB/FAB paths (direct, pointer and
+  reconciliation) must be qualified by that same agreement; a valid but
+  unrelated agreement fails, a malformed `agreementRef` or agreement hash is
+  `error`, and malformed LAA or FV authority still outranks the mismatch. The
+  identity-bundle payment stage now applies DACS-4 LAA-2 before the payment
+  effect, so a non-payee `IdentityBoundAgreementDocument` is refused there as it
+  already was at terminal admission. The two affected identity-bundle vectors
+  now expect `fail`.
 
 ### Fixed — delivery closure reference validation
 

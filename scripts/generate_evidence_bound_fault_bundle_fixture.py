@@ -173,7 +173,7 @@ def settlement_finality(phase, observed_at):
 
 
 def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success", reason=None,
-                  supersedes=None, label_suffix=""):
+                  supersedes=None, label_suffix="", execution_authority_role="seller"):
     delivery = phase.startswith("deliver-")
     record = {
         ("deliveryEvidenceVersion" if delivery else "evidenceVersion"): "1",
@@ -221,9 +221,9 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
     domain = DELIVERY_EVIDENCE_DOMAIN if delivery else SETTLEMENT_EVIDENCE_DOMAIN
     payload = (domain + evidence_hash(record)).encode("utf-8")
     record["signature"] = {
-        "signer": CLAIMS["seller"],
+        "signer": CLAIMS[execution_authority_role],
         "algorithm": "ed25519",
-        "value": b64u(signing_keys["seller"].sign(payload)),
+        "value": b64u(signing_keys[execution_authority_role].sign(payload)),
     }
     label = f"{job_id}:{phase_index}:{phase}{label_suffix}"
     ref = {
@@ -237,11 +237,18 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
 
 
 def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
-                                   outcome="success", reason=None, mutation=None):
+                                   outcome="success", reason=None, mutation=None,
+                                   execution_authority_role="orchestrator"):
     """Create DeliveryEvidence plus the resolved, phase-specific inner closure."""
     if outcome == "failure":
         record, ref = make_evidence(
-            job_id, phase, phase_index, signing_keys, outcome=outcome, reason=reason
+            job_id,
+            phase,
+            phase_index,
+            signing_keys,
+            outcome=outcome,
+            reason=reason,
+            execution_authority_role=execution_authority_role,
         )
         return record, ref, None, {}
 
@@ -534,8 +541,8 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
     }
     sign_artifact(
         record,
-        signing_keys["seller"],
-        CLAIMS["seller"],
+        signing_keys[execution_authority_role],
+        CLAIMS[execution_authority_role],
         DELIVERY_EVIDENCE_DOMAIN,
     )
     label = f"{job_id}:{phase_index}:{phase}"
@@ -586,7 +593,11 @@ def make_legacy_delivery_evidence(
         return record, ref, None, {}
 
     current, _, closure, native_observations = make_current_delivery_evidence(
-        job_id, phase, phase_index, signing_keys
+        job_id,
+        phase,
+        phase_index,
+        signing_keys,
+        execution_authority_role="seller",
     )
     fields = {
         "deliverableContentHash": current["deliverableContentHash"],

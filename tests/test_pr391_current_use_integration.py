@@ -64,6 +64,11 @@ class Pr391CurrentUseIntegrationTests(unittest.TestCase):
             digest = R.bundle_hash(bundle)
             factory.dependencies["bundleAuthorityByContentHash"][digest] = {
                 "listing": copy.deepcopy(listing),
+                "referenceValidationByCanonicalRef": {},
+                "sessionExecutionAuthorityByPhaseKey": {},
+                "verifiedReceiptByCanonicalRef": {},
+                "deliveryArtifactAuthorityByPhaseKey": {},
+                "trustedNativeTransactionObservationsByCanonicalRef": {},
             }
 
             legacy_logical = R.legacy_logical_address(JOB_ID, role)

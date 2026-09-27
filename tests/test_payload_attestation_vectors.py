@@ -102,7 +102,15 @@ def evaluate(vector, seeds):
         return "error"
     try:
         return _evaluate_admitted_projection(vector, seeds)
-    except (KeyError, TypeError, ValueError, UnicodeError):
+    except (
+        AttributeError,
+        KeyError,
+        OverflowError,
+        RecursionError,
+        TypeError,
+        ValueError,
+        UnicodeError,
+    ):
         return "error"
 
 
@@ -210,10 +218,12 @@ def _evaluate_admitted_projection(vector, seeds):
     if (resolved.get("reference") != method_ref
             or canonical_bytes(resolved.get("artifact")) != canonical_bytes(method_evidence)):
         return "fail"
-    if method_evidence.get("disposition") == "unavailable":
-        return "indeterminate"
+    # Authenticate the complete reference (including address) and content hash
+    # before any semantic dispatch on the resolved method-proof bytes.
     if method_ref.get("contentHash") != hash_hex(method_evidence):
         return "fail"
+    if method_evidence.get("disposition") == "unavailable":
+        return "indeterminate"
     method_disposition, _ = R.validate_delivery_method_evidence(
         method,
         method_evidence,
@@ -251,6 +261,7 @@ class PayloadAttestationVectorTests(unittest.TestCase):
 
     def test_vector_hash_count_and_unique_names(self):
         vectors = self.data["vectors"]
+        self.assertEqual(self.data["hashRecipe"], "sha256(RFC 8785 JCS of vectors)")
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(
             self.data["hash"],
@@ -264,6 +275,25 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector, seeds), vector["expected"])
+
+    def test_malformed_nested_projection_members_are_errors(self):
+        import generate_payload_attestation_vectors as G
+
+        seeds = self.data["publicTestSeeds"]
+        for name, mutate in (
+            (
+                "listing-offering",
+                lambda case: case["listing"].__setitem__("offering", []),
+            ),
+            (
+                "agreement-deliverable",
+                lambda case: case["agreement"].__setitem__("deliverable", []),
+            ),
+        ):
+            case = G.base_case()
+            mutate(case)
+            with self.subTest(member=name):
+                self.assertEqual(evaluate(case, seeds), "error")
 
     def test_generator_is_byte_deterministic(self):
         result = subprocess.run(

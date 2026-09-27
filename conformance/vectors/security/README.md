@@ -41,7 +41,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
-| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 53 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
@@ -67,8 +67,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 27 | `fail` / `indeterminate` / `pass` |
-| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 63 | `error` / `fail` / `indeterminate` / `pass` |
+| [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
+| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 83 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 47 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
@@ -409,7 +409,7 @@ python3 -m unittest tests.test_alternative_payment_projection_vectors -v
 
 ### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9
 
-27 candidate vectors make the attested-payload success gate executable. The two
+28 candidate vectors make the attested-payload success gate executable. The two
 positive cases carry genuine deterministic Ed25519 signatures over the distinct
 `dacs-payload-attestation:v1:` and `dacs-evidence:v1:` domains: one composes a
 finalized DAHR `web2Request` commitment, and one proves that `self-signed`
@@ -423,7 +423,8 @@ job/agreement/DeliverableSpec/method/payload mismatch, a bad native-evidence
 hash, missing or unauthenticated DAHR transaction evidence, request/response
 substitution, a non-pass payload decision, a stale record reference, and
 cross-session replay. An otherwise well-formed but unavailable method proof
-stays `indeterminate`.
+stays `indeterminate`, while an unauthenticated semantic unavailability marker
+cannot preempt the resolved reference/address/content-hash checks.
 
 Every vector carries the signed listing context, committed agreement tuple,
 exact payload bytes, method-native evidence, `PayloadAttestationRecord`,
@@ -438,7 +439,7 @@ python3 -m unittest tests.test_payload_attestation_vectors -v
 
 ### `phase-bound-delivery-evidence-v0.7.json` — §9.7 PDE-1..PDE-8
 
-63 deterministic vectors execute the current `DeliveryEvidence` wire contract
+82 deterministic vectors execute the current `DeliveryEvidence` wire contract
 and its DACS-5 one-to-one mapping through fully shaped, three-party-signed
 `FaultAttestationBundle` artifacts. The attested-delivery positives resolve and
 execute the DPA-3..DPA-9 payload/method-evidence chain, while the companion SEB
@@ -464,6 +465,19 @@ top-level and phase-summary members, wrong optional pointers, success-only
 closure, signed evidence/phase-summary outcome agreement, legacy DV-5 refusal,
 and composition with a genuinely signed payment `SettlementEvidence` in the
 same production-shaped bundle.
+
+Bundle-scoped current-delivery ownership cases keep byte-identical signed
+`EntitlementRecord` values valid at distinct phase-indexed normative anchors,
+while rejecting an actual complete-reference replay. Load-bearing negatives
+then isolate cross-phase reuse of signed inner artifacts, `credentialRef`,
+credential cleartext identity, `methodEvidenceRef`, normalized method proofs,
+self-signed proofs expressed through equivalent UTF-8/Base64URL byte forms,
+and native transactions. Positive controls retain independent credentials,
+independent first grants, consensus-backed proofs, and self-signed proofs.
+The bounded current-delivery fixture does not carry authenticated predecessor
+grants or repayment evidence, so nonzero `renewalSeq` is rejected rather than
+treated as an independently authorized renewal. The ownership ledger
+is not applied to storage delivery or the frozen PDE-7 historical arm.
 
 Resolver-only fixture metadata carries exact bytes and authenticated storage
 authority without adding members to any signed wire artifact. Arbitrary payload
@@ -495,10 +509,12 @@ validates a sole supplied candidate even when its reported reference differs;
 it does not guess among multiple unrelated records when no exact reference
 matches.
 
-The #333 generator-source changes are not reflected in the checked-in signed
-JSON while signed adversarial fixture regeneration is held. Benign unsigned
-boundary coverage for selector admission, exact bytes, storage authority,
-receipt lifecycle, locator binding, and malformed collections is executable as:
+The checked-in signed JSON is deterministically regenerated from the #333
+generator sources. It includes fully resolved cross-phase replay, method-proof
+address/hash-before-semantics, and exact EntitlementRecord known-schema cases;
+the focused unit coverage additionally pins selector admission, shared bundle
+signer/SIG-6 policy, exact bytes, storage authority, receipt lifecycle, locator
+binding, and malformed collections. Execute the adjacent boundary suite as:
 
 ```sh
 python3 -m unittest tests.test_bundle_pointer_admission_delivery_authority -v
@@ -1874,8 +1890,12 @@ Liquidity-tank verifies coordinator, source and destination arms and exact bridg
 transfer, asset and amount binding.
 
 The same corpus executes the distinct DACS-5 finality-bound bundle and pointer,
-all six FV models, non-pass propagation, new/new and new/older authenticated
-reconciliation, no weaker fallback, and frozen-reader refusal. Each EBFAB
+all six FV models, exact per-successful-payment authenticated LAA carriers,
+four-state LAA non-pass propagation, new/new and new/older authenticated
+reconciliation, no weaker fallback, and frozen-reader refusal. Strong finality
+does not supply agreement-era authority: missing carrier authority is
+indeterminate, malformed authority is error, contradiction is fail, and only a
+passing current-agreement carrier is current-eligible. Each EBFAB
 reconciliation entry explicitly selects the verifier-owned `current` or
 `archival` evidence receipt contract; the consumer never infers it from a
 strong peer or retries under the other contract. An archival selection is

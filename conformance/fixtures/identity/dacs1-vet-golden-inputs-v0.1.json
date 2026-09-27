@@ -917,6 +917,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-001",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -937,6 +938,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-002",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -957,6 +959,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-003",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -977,6 +980,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-004",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -997,6 +1001,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-005",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1017,6 +1022,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-006",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1037,6 +1043,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-007",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1057,6 +1064,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-008",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1077,6 +1085,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-009",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1097,6 +1106,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-010",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1117,6 +1127,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-011",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1137,6 +1148,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-012",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1157,6 +1169,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-013",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1177,6 +1190,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-014",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1197,6 +1211,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-015",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1217,6 +1232,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-016",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1237,6 +1253,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-017",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1257,6 +1274,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-018",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1277,6 +1295,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-019",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1297,6 +1316,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-020",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1317,6 +1337,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-021",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1337,6 +1358,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-022",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1357,6 +1379,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-023",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1377,6 +1400,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-024",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1397,6 +1421,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-025",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1417,6 +1442,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-026",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1437,6 +1463,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-027",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1457,6 +1484,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-028",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1477,6 +1505,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-029",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1497,6 +1526,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-030",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1517,6 +1547,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-031",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1537,6 +1568,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-032",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1557,6 +1589,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-033",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1577,6 +1610,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-034",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1597,6 +1631,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-035",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1617,6 +1652,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-036",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1637,6 +1673,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-037",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1657,6 +1694,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-038",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1677,6 +1715,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-039",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1697,6 +1736,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-040",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1717,6 +1757,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-041",
+        "verifierIdentityChallengeId": null,
         "trustedNow": 1900000000000,
         "recordReceiptId": null,
         "recordAnchorBinding": null
@@ -1737,6 +1778,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-042",
+        "verifierIdentityChallengeId": "dacs-366-challenge-042-verifier-identity",
         "trustedNow": 1900000001000,
         "recordReceiptId": "dacs-366-vet-invocation-042-record-receipt",
         "recordAnchorBinding": {
@@ -1762,6 +1804,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-043",
+        "verifierIdentityChallengeId": "dacs-366-challenge-043-verifier-identity",
         "trustedNow": 1900000001000,
         "recordReceiptId": "dacs-366-vet-invocation-043-record-receipt",
         "recordAnchorBinding": {
@@ -1787,6 +1830,7 @@
         "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
         "recipeRegistryVersion": 1,
         "challengeId": "dacs-366-challenge-044",
+        "verifierIdentityChallengeId": "dacs-366-challenge-044-verifier-identity",
         "trustedNow": 1900000001000,
         "recordReceiptId": "dacs-366-vet-invocation-044-record-receipt",
         "recordAnchorBinding": {
@@ -2345,6 +2389,19 @@
         "expiresAt": 1900000060000
       },
       {
+        "challengeId": "dacs-366-challenge-042-verifier-identity",
+        "nonce": "b6fb88f3d425eb70761c11d41c38f2c75c2582ab75ddbd985d15165646b88c91",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "issuedBy": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
         "challengeId": "dacs-366-challenge-043",
         "nonce": "478330181f550b9fa25ab2a60216ff2c28780b275ecbd6733910d74c23e086a2",
         "jobId": "01J00000000000000000000363",
@@ -2358,6 +2415,19 @@
         "expiresAt": 1900000060000
       },
       {
+        "challengeId": "dacs-366-challenge-043-verifier-identity",
+        "nonce": "9fcee24b786e25999df60d0227191e081fd935718acae4db184b61261a7197fd",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "issuedBy": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
         "challengeId": "dacs-366-challenge-044",
         "nonce": "597cf21fa42cf4dc204a2f33791e9ee891adc4d6607273e3b89eaa69fb6afbef",
         "jobId": "01J00000000000000000000363",
@@ -2367,6 +2437,19 @@
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-044-verifier-identity",
+        "nonce": "e13188d28c9cd092ba68ee74860f562801e53cf34fd678eea2c6e87aead730e5",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "issuedBy": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
         "issuedAt": 1899999990000,
         "expiresAt": 1900000060000
       }
@@ -2450,7 +2533,7 @@
     }
   },
   "count": 30,
-  "hash": "c214cac85a77d5fc917922039d2ec139d8941672b234ab2ec346475de210da7f",
+  "hash": "584f84194e14a23145676e7b83f5cdc0e60f1dd2b2dc8b18c662dcff2e316bc0",
   "cases": [
     {
       "name": "dacs1-cci-lei-defect",
@@ -6579,7 +6662,7 @@
       "name": "vet-oneof-error-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, retryable error outranks a conclusive failing alternative.",
-      "inputHash": "364ee816f6ed07610b416af1a3b7bc5bf77d1afcaa9b10e8149eed4100f7b121",
+      "inputHash": "fbea863cb31aeee7f1189aea4320a45347c88dff0f4ca1224595595f05203f12",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -6793,11 +6876,11 @@
                     "signatures": [
                       {
                         "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                        "signature": "kmgP6S6IK_LvBqpbGEYCRJUzhEHRnsSPPQsTeRo2EyAMKMnLFXi9CMX43MouVrUTAmo1vohRWBONWIsAvsnRCg"
+                        "signature": "gPZp-exKi-5RNZJO161Lvnv1dP6Q3m-zfPnyk5qvZ60Hxk6hE54q5LrTwGwALP3WVvpy-SniU2UYfAtDDR2hBA"
                       }
                     ]
                   },
-                  "sessionNonce": "914de4c9abb6859ea9f0627df7a1f0881548ce01aa8cff5df85f4d9574594aaa"
+                  "sessionNonce": "b6fb88f3d425eb70761c11d41c38f2c75c2582ab75ddbd985d15165646b88c91"
                 },
                 "sessionContext": {
                   "jobId": "01J00000000000000000000363",
@@ -6821,7 +6904,7 @@
       "name": "vet-oneof-indeterminate-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, indeterminate outranks fail when no error or pass exists.",
-      "inputHash": "db3e2f03a74ea5f4e6d584a985669f416bbeb1e13d64fc390553c44438795cef",
+      "inputHash": "64ea16fa994f4b270f0539c70243e2ab99246142cca65825fbce02e1e4e47722",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -7035,11 +7118,11 @@
                     "signatures": [
                       {
                         "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                        "signature": "znVRNm7qCpA_SCO15biSVgoMpMYz8dtaW1fQ_-x1tsu-Kq198NOh6AWVBxUhI9tfTjlXVzYElykcA2Kf7PklBw"
+                        "signature": "AxVLxu5ttpC7ThbiHqKGMA4APl3RyWP4PVW33nSWUqAtXvgAas6DjiPScp95Er9GQLA5J6sOrBITu6DnHfcaAA"
                       }
                     ]
                   },
-                  "sessionNonce": "478330181f550b9fa25ab2a60216ff2c28780b275ecbd6733910d74c23e086a2"
+                  "sessionNonce": "9fcee24b786e25999df60d0227191e081fd935718acae4db184b61261a7197fd"
                 },
                 "sessionContext": {
                   "jobId": "01J00000000000000000000363",
@@ -7063,7 +7146,7 @@
       "name": "vet-cross-accumulator-fail-over-error",
       "spec": "§7.7.1",
       "summary": "A required hard fail outranks a separate oneOf error globally.",
-      "inputHash": "a515040485b68d10fa8bcb9cf3224317cd571870e5e12ca44cd8c483fc3c9ad0",
+      "inputHash": "f459398917ee7bdee50046a54937b8570a555e315f74d19bab6d09caab9a4aa6",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -7278,11 +7361,11 @@
                     "signatures": [
                       {
                         "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                        "signature": "CLqhLsNRvx3XcCkbB6yJuWR8RC53nlLYcdMgfjBvISATwLTYhO0M9-oT4xlEPiMWynwjlVz2elEqiwmnLGLMCQ"
+                        "signature": "sCz1Q5Z_7-ArjF2uHerJDdnrzBK7yWzuBDiAfilAKeJqCMtSukf5fJFDFYSPM2cvTu_gc6941--lzZ4vhWh3AA"
                       }
                     ]
                   },
-                  "sessionNonce": "597cf21fa42cf4dc204a2f33791e9ee891adc4d6607273e3b89eaa69fb6afbef"
+                  "sessionNonce": "e13188d28c9cd092ba68ee74860f562801e53cf34fd678eea2c6e87aead730e5"
                 },
                 "sessionContext": {
                   "jobId": "01J00000000000000000000363",

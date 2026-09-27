@@ -395,6 +395,7 @@ class VetAdmissionCapability:
     invocation_id: str
     challenge_id: str
     nonce: str
+    presentation_bytes: bytes
     job_id: str
     actor: str
     evaluated_party: str
@@ -406,10 +407,28 @@ class VetAdmissionCapability:
     phase_orchestrator: str
     anchor_writer: str
     recipe_registry_version: int
+    verifier_identity_challenge_id: str | None
     trusted_now: int
     session_start: str
     record_receipt_id: str | None
     record_anchor_binding: dict | None
+
+
+@dataclass(frozen=True)
+class VerifierIdentityAdmissionCapability:
+    """A separate nonce-consuming admission for the verifier's presentation."""
+
+    invocation_id: str
+    challenge_id: str
+    nonce: str
+    presentation_bytes: bytes
+    job_id: str
+    actor: str
+    presented_party: str
+    phase_index: int
+    attempt: int
+    issued_by: str
+    trusted_now: int
 
 
 class VetReferenceRuntime:
@@ -420,7 +439,8 @@ class VetReferenceRuntime:
         "attempt", "actor", "evaluatedParty", "primaryClaim",
         "expectedVerifierRole",
         "expectedVerifier", "phaseOrchestrator", "anchorWriter",
-        "recipeRegistryVersion", "challengeId", "trustedNow",
+        "recipeRegistryVersion", "challengeId", "verifierIdentityChallengeId",
+        "trustedNow",
         "recordReceiptId", "recordAnchorBinding",
     }
 
@@ -464,6 +484,11 @@ class VetReferenceRuntime:
             or not isinstance(context.get("sessionStart"), str)
             or context["sessionStart"] not in self.sessions
             or not isinstance(context.get("challengeId"), str)
+            or (
+                context.get("verifierIdentityChallengeId") is not None
+                and not isinstance(context["verifierIdentityChallengeId"], str)
+            )
+            or context.get("verifierIdentityChallengeId") == context.get("challengeId")
         ):
             return None
         session = self.sessions[context["sessionStart"]]
@@ -496,6 +521,10 @@ class VetReferenceRuntime:
         receipt_id = context.get("recordReceiptId")
         binding = context.get("recordAnchorBinding")
         if (receipt_id is None) != (binding is None):
+            return None
+        if (receipt_id is None) != (
+            context.get("verifierIdentityChallengeId") is None
+        ):
             return None
         if receipt_id is not None and (
             not isinstance(receipt_id, str)
@@ -536,10 +565,15 @@ class VetReferenceRuntime:
             or bundle.get("presentedBy") != context["primaryClaim"]
         ):
             return None
+        try:
+            presentation_bytes = canonical_bytes(bundle)
+        except (TypeError, ValueError, UnicodeError):
+            return None
         return VetAdmissionCapability(
             invocation_id,
             context["challengeId"],
             issuance.nonce,
+            presentation_bytes,
             context["jobId"],
             context["actor"],
             context["evaluatedParty"],
@@ -551,10 +585,61 @@ class VetReferenceRuntime:
             context["phaseOrchestrator"],
             context["anchorWriter"],
             context["recipeRegistryVersion"],
+            context["verifierIdentityChallengeId"],
             context["trustedNow"],
             context["sessionStart"],
             context["recordReceiptId"],
             copy.deepcopy(context["recordAnchorBinding"]),
+        )
+
+    def admit_verifier_identity(self, authority, bundle):
+        if not isinstance(authority, dict):
+            return None
+        invocation_id = authority.get("invocation")
+        if not isinstance(invocation_id, str):
+            return None
+        context = self._trusted_invocation(invocation_id)
+        if context is None:
+            return None
+        challenge_id = context["verifierIdentityChallengeId"]
+        if not isinstance(challenge_id, str):
+            return None
+        try:
+            issuance = self.nonce_ledger.consume(
+                challenge_id,
+                presentation_nonce(bundle),
+                context["trustedNow"],
+            )
+        except NonceRejected:
+            return None
+        if (
+            issuance.job_id != context["jobId"]
+            or issuance.actor != context["actor"]
+            or issuance.evaluated_party != context["expectedVerifier"]
+            or issuance.phase_index != context["phaseIndex"]
+            or issuance.attempt != context["attempt"]
+            or issuance.expected_verifier != context["phaseOrchestrator"]
+            or issuance.issued_by != context["phaseOrchestrator"]
+            or not isinstance(bundle, dict)
+            or bundle.get("presentedBy") != context["expectedVerifier"]
+        ):
+            return None
+        try:
+            presentation_bytes = canonical_bytes(bundle)
+        except (TypeError, ValueError, UnicodeError):
+            return None
+        return VerifierIdentityAdmissionCapability(
+            invocation_id,
+            challenge_id,
+            issuance.nonce,
+            presentation_bytes,
+            context["jobId"],
+            context["actor"],
+            issuance.evaluated_party,
+            context["phaseIndex"],
+            context["attempt"],
+            issuance.issued_by,
+            context["trustedNow"],
         )
 
 
@@ -570,12 +655,28 @@ def verify_bundle(bundle, admission=None):
         "bundleVersion", "presentedBy", "presentedAt", "claims", "presentation"
     } <= set(bundle):
         return False
+    try:
+        presentation_bytes = canonical_bytes(bundle)
+    except (TypeError, ValueError, UnicodeError):
+        return False
     if (
         bundle.get("bundleVersion") != "1"
         or not exact_safe_integer(bundle.get("presentedAt"), minimum=0)
         or (
             admission is not None
             and presentation_nonce(bundle) != admission.nonce
+        )
+        or (
+            admission is not None
+            and presentation_bytes != admission.presentation_bytes
+        )
+        or (
+            isinstance(admission, VetAdmissionCapability)
+            and bundle.get("presentedBy") != admission.primary_claim
+        )
+        or (
+            isinstance(admission, VerifierIdentityAdmissionCapability)
+            and bundle.get("presentedBy") != admission.presented_party
         )
     ):
         return False
@@ -1304,7 +1405,8 @@ def authenticated_record_time(
 
 
 def authenticate_production_aggregate(
-    value, trusted_context, recipes, result_context, admission, runtime
+    value, trusted_context, recipes, result_context, admission,
+    verifier_identity_admission, runtime
 ):
     if not isinstance(value, dict) or not isinstance(trusted_context, dict):
         return None
@@ -1399,8 +1501,17 @@ def authenticate_production_aggregate(
     except (AttributeError, TypeError, ValueError, UnicodeError):
         return None
     if (
-        not verify_bundle(bundle, admission)
-        or not verify_bundle(verifier_identity, admission)
+        verifier_identity_admission is None
+        or verifier_identity_admission.invocation_id != admission.invocation_id
+        or verifier_identity_admission.job_id != admission.job_id
+        or verifier_identity_admission.actor != admission.actor
+        or verifier_identity_admission.phase_index != admission.phase_index
+        or verifier_identity_admission.attempt != admission.attempt
+        or verifier_identity_admission.presented_party != admission.expected_verifier
+        or verifier_identity_admission.issued_by != admission.phase_orchestrator
+        or verifier_identity_admission.trusted_now != admission.trusted_now
+        or not verify_bundle(bundle, admission)
+        or not verify_bundle(verifier_identity, verifier_identity_admission)
         or verifier_identity.get("presentedBy") != admission.expected_verifier
         or signature.get("signer") != admission.expected_verifier
         or record_ref.get("signer") != admission.expected_verifier
@@ -1474,9 +1585,14 @@ def aggregate_output(value, trusted_context, recipes, result_context, runtime):
         vet_input = authority.get("vetInput") if isinstance(authority, dict) else None
         bundle = vet_input.get("bundleToVet") if isinstance(vet_input, dict) else None
         admission = active_runtime.admit(authority, bundle)
+        verifier_identity_admission = active_runtime.admit_verifier_identity(
+            authority,
+            vet_input.get("verifierIdentity") if isinstance(vet_input, dict) else None,
+        )
     except (AttributeError, TypeError, ValueError, UnicodeError):
         admission = None
-    if admission is None:
+        verifier_identity_admission = None
+    if admission is None or verifier_identity_admission is None:
         return {"decision": "error", "reasons": ["aggregation authority invalid"]}
     try:
         projection = authenticate_production_aggregate(
@@ -1485,6 +1601,7 @@ def aggregate_output(value, trusted_context, recipes, result_context, runtime):
             recipes,
             result_context,
             admission,
+            verifier_identity_admission,
             active_runtime,
         )
     except (KeyError, TypeError, ValueError, UnicodeError):
@@ -1815,6 +1932,118 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             "the exact issued nonce is consumed before later bundle binding fails",
         )
 
+    def test_aggregate_presentations_use_distinct_challenges_and_capabilities(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "vet-oneof-error-over-fail"
+        )
+        evaluation = case["evaluations"]["result"]
+        value = evaluation["input"]
+        authority = value["authority"]
+        vet_input = authority["vetInput"]
+        invocation = self.document["trustedContext"]["vetInvocations"][
+            authority["invocation"]
+        ]
+        bundle_challenge = invocation["challengeId"]
+        verifier_challenge = invocation["verifierIdentityChallengeId"]
+        issuances = {
+            item["challengeId"]: item
+            for item in self.document["trustedContext"]["nonceIssuances"]
+        }
+        self.assertNotEqual(bundle_challenge, verifier_challenge)
+        self.assertNotEqual(
+            issuances[bundle_challenge]["nonce"],
+            issuances[verifier_challenge]["nonce"],
+        )
+        self.assertEqual(
+            vet_input["bundleToVet"]["presentedBy"],
+            issuances[bundle_challenge]["evaluatedParty"],
+        )
+        self.assertEqual(
+            vet_input["verifierIdentity"]["presentedBy"],
+            issuances[verifier_challenge]["evaluatedParty"],
+        )
+        self.assertEqual(
+            invocation["phaseOrchestrator"],
+            issuances[verifier_challenge]["issuedBy"],
+        )
+
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        bundle_admission = runtime.admit(authority, vet_input["bundleToVet"])
+        verifier_admission = runtime.admit_verifier_identity(
+            authority, vet_input["verifierIdentity"]
+        )
+        self.assertIsNotNone(bundle_admission)
+        self.assertIsNotNone(verifier_admission)
+        self.assertTrue(runtime.nonce_ledger.consumed(bundle_challenge))
+        self.assertTrue(runtime.nonce_ledger.consumed(verifier_challenge))
+        # Nested validation may recheck one accepted presentation through its
+        # own capability without attempting another ledger consumption.
+        self.assertTrue(verify_bundle(vet_input["bundleToVet"], bundle_admission))
+        self.assertTrue(verify_bundle(vet_input["bundleToVet"], bundle_admission))
+        self.assertTrue(verify_bundle(
+            vet_input["verifierIdentity"], verifier_admission
+        ))
+        self.assertTrue(verify_bundle(
+            vet_input["verifierIdentity"], verifier_admission
+        ))
+        changed_identity = copy.deepcopy(vet_input["verifierIdentity"])
+        changed_identity["presentedAt"] -= 1
+        changed_identity = resign_bundle(
+            changed_identity,
+            fixture_private_key("verifier"),
+            public_ref(fixture_private_key("verifier")),
+        )
+        self.assertFalse(verify_bundle(changed_identity, verifier_admission))
+        self.assertFalse(verify_bundle(
+            vet_input["verifierIdentity"], bundle_admission
+        ))
+        self.assertFalse(verify_bundle(
+            vet_input["bundleToVet"], verifier_admission
+        ))
+
+        wrong_bundle = copy.deepcopy(evaluation)
+        wrong_vet_input = wrong_bundle["input"]["authority"]["vetInput"]
+        wrong_vet_input["bundleToVet"]["sessionNonce"] = "00" * 16
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        self.assertIsNone(runtime.admit(
+            wrong_bundle["input"]["authority"], wrong_vet_input["bundleToVet"]
+        ))
+        self.assertIsNotNone(runtime.admit_verifier_identity(
+            wrong_bundle["input"]["authority"], wrong_vet_input["verifierIdentity"]
+        ))
+        self.assertFalse(runtime.nonce_ledger.consumed(bundle_challenge))
+        self.assertTrue(runtime.nonce_ledger.consumed(verifier_challenge))
+
+        reused = copy.deepcopy(evaluation)
+        reused_vet_input = reused["input"]["authority"]["vetInput"]
+        reused_identity = reused_vet_input["verifierIdentity"]
+        reused_identity["sessionNonce"] = reused_vet_input["bundleToVet"][
+            "sessionNonce"
+        ]
+        reused_vet_input["verifierIdentity"] = resign_bundle(
+            reused_identity,
+            fixture_private_key("verifier"),
+            public_ref(fixture_private_key("verifier")),
+        )
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        bundle_admission = runtime.admit(
+            reused["input"]["authority"], reused_vet_input["bundleToVet"]
+        )
+        self.assertIsNotNone(bundle_admission)
+        self.assertIsNone(runtime.admit_verifier_identity(
+            reused["input"]["authority"], reused_vet_input["verifierIdentity"]
+        ))
+        self.assertTrue(runtime.nonce_ledger.consumed(bundle_challenge))
+        self.assertFalse(runtime.nonce_ledger.consumed(verifier_challenge))
+        self.assertFalse(verify_bundle(
+            reused_vet_input["verifierIdentity"], bundle_admission
+        ))
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            execute_once(reused, self.document),
+        )
+
     def test_invocation_context_authenticates_phase_actor_and_authorities(self):
         case = next(
             item for item in self.cases
@@ -1925,12 +2154,17 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             evaluation["input"]["authority"],
             evaluation["input"]["authority"]["vetInput"]["bundleToVet"],
         )
+        verifier_identity_admission = runtime.admit_verifier_identity(
+            evaluation["input"]["authority"],
+            evaluation["input"]["authority"]["vetInput"]["verifierIdentity"],
+        )
         projection = authenticate_production_aggregate(
             evaluation["input"],
             self.document["trustedContext"],
             self.recipes,
             self.result_context,
             admission,
+            verifier_identity_admission,
             runtime,
         )
         self.assertEqual(
@@ -2216,9 +2450,15 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     changed["authority"], changed["authority"]["vetInput"]["bundleToVet"]
                 )
                 self.assertIsNotNone(admission)
+                verifier_identity_admission = runtime.admit_verifier_identity(
+                    changed["authority"],
+                    changed["authority"]["vetInput"]["verifierIdentity"],
+                )
+                self.assertIsNotNone(verifier_identity_admission)
                 self.assertIsNone(authenticate_production_aggregate(
                     changed, self.document["trustedContext"], self.recipes,
-                    self.result_context, admission, runtime,
+                    self.result_context, admission, verifier_identity_admission,
+                    runtime,
                 ))
                 self.assertEqual(
                     {"decision": "error", "reasons": ["aggregation authority invalid"]},

@@ -140,6 +140,8 @@ def register_invocation(
     bundle: dict,
     *,
     actor: str = "buyer",
+    verifier_identity_challenge_id: str | None = None,
+    verifier_identity: dict | None = None,
     record_receipt_id: str | None = None,
     record_anchor_binding: dict | None = None,
 ) -> None:
@@ -158,6 +160,22 @@ def register_invocation(
         "issuedAt": NOW - 10_000,
         "expiresAt": NOW + 60_000,
     })
+    if (verifier_identity_challenge_id is None) != (verifier_identity is None):
+        raise ValueError("verifier identity challenge and presentation must be paired")
+    if verifier_identity is not None:
+        _NONCE_ISSUANCES.append({
+            "challengeId": verifier_identity_challenge_id,
+            "nonce": verifier_identity["sessionNonce"],
+            "jobId": JOB_ID,
+            "actor": actor,
+            "evaluatedParty": verifier_identity["presentedBy"],
+            "phaseIndex": PHASE_INDEX,
+            "attempt": 1,
+            "expectedVerifier": PHASE_ORCHESTRATOR_REF,
+            "issuedBy": PHASE_ORCHESTRATOR_REF,
+            "issuedAt": NOW - 10_000,
+            "expiresAt": NOW + 60_000,
+        })
     _INVOCATIONS[invocation_id] = {
         "jobId": JOB_ID,
         "sessionStart": SESSION_START,
@@ -174,6 +192,7 @@ def register_invocation(
         "anchorWriter": ANCHOR_WRITER_REF,
         "recipeRegistryVersion": RECIPE_REGISTRY_VERSION,
         "challengeId": challenge_id,
+        "verifierIdentityChallengeId": verifier_identity_challenge_id,
         "trustedNow": NOW + (1_000 if record_receipt_id else 0),
         "recordReceiptId": record_receipt_id,
         "recordAnchorBinding": copy.deepcopy(record_anchor_binding),
@@ -505,12 +524,18 @@ def aggregate_evaluation(
 ) -> dict:
     invocation_id, challenge_id, bound_bundle = begin_invocation(bundle)
     record, record_ref = signed_composite(bound_bundle, req, resolved, decision)
+    verifier_identity_challenge_id = challenge_id + "-verifier-identity"
+    verifier_identity_nonce = hashlib.sha256(
+        ("dacs-366:orchestrator-issued:verifier-identity:" + invocation_id).encode(
+            "ascii"
+        )
+    ).hexdigest()
     verifier_identity = bind_session_nonce(signed_bundle(
         [claim(VERIFIER_REF, issuedAt=NOW - 1_000)],
         presented_by=VERIFIER_REF,
         signer=VERIFIER,
         signer_ref=VERIFIER_REF,
-    ), bound_bundle["sessionNonce"])
+    ), verifier_identity_nonce)
     logical_address = composite_logical_address(JOB_ID, bound_bundle["presentedBy"])
     native_address = record_ref["anchor"]["locator"]
     receipt_id = invocation_id + "-record-receipt"
@@ -549,6 +574,8 @@ def aggregate_evaluation(
         invocation_id,
         challenge_id,
         bound_bundle,
+        verifier_identity_challenge_id=verifier_identity_challenge_id,
+        verifier_identity=verifier_identity,
         record_receipt_id=receipt_id,
         record_anchor_binding=anchor_binding,
     )

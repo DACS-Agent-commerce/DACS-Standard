@@ -13,12 +13,13 @@ The format used per release:
 
 ## [Unreleased]
 
-### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6)
+### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened
-  session-presentation and Vet rules below are included in the existing
-  unreleased coordinated corrective candidate while retaining the current
-  CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 labels and complete module tuple. This
+  session-presentation and Vet rules below were introduced with DACS-1 v0.7
+  and remain included in the existing unreleased coordinated corrective
+  candidate. The current complete tuple is CORE v0.3 / DACS-1 v0.8 / DACS-2
+  v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7. This
   is a breaking pre-v1 correction, not an ordinary additive or same-version
   interoperability claim. Live use requires a future exact coordinated
   release tag or immutable specification commit plus the complete tuple to be

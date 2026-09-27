@@ -1257,6 +1257,29 @@ obey the `generatedAt` chronology above and do not alter the signed record.
 signed_bytes := "dacs-composite:v1:" || composite_hash
 In v0.1, the composite record carries a single verifier signature. Multi-party composition (e.g., two-sided independent Vet records cross-referenced into one) is deferred to v2.
 
+#### 7.7.3 Production presentation admission
+
+`bundleToVet` and `verifierIdentity` are separate identity presentations at
+separate admission points.  Each MUST carry its own globally distinct CORE
+§B.8 challenge, issuer-owned SN-4 ledger record, and admission capability.  The
+expected verifier (or the orchestrator acting on its behalf) issues and checks
+the `bundleToVet` challenge.  The independently authenticated receiver of the
+verifier's presentation — normally the phase orchestrator — issues and checks
+the `verifierIdentity` challenge.  Neither presenter chooses its challenge,
+and a challenge issued for either presentation MUST NOT authorize the other,
+even when both presentations share a `jobId`, attempt, phase, or co-resident
+role.
+
+Each matching challenge MUST be consumed independently, before later
+presentation, requirement, result, composite-signature, or receipt processing
+can fail.  A successful admission MAY yield an internal capability for nested
+checks of that same exact accepted presentation.  Such a capability is bound
+to the admitted presenter and presentation bytes: it MAY be reused to recheck
+those bytes without consuming the ledger again, but MUST NOT authorize a
+changed, re-signed, or different party's presentation.  The challenges,
+ledger records, and capabilities remain verifier/orchestrator-owned execution
+state and are not fields of either signed `IdentityBundle`.
+
 ### 7.8 The vet-credentials phase
 
 ```
@@ -1284,13 +1307,13 @@ The handler boundary also carries a verifier-owned `VetInvocationContext` as
 execution state, outside both types above and every signed artifact.  It
 authenticates the active `vet-pending` session and phase index, attempt,
 `actor`/evaluated party and selected primary claim, recipe-registry pin,
-verifier-issued CORE §B.8 challenge and mutable ledger, `trustedNow`, expected
-verifier role and identity, phase orchestrator, anchor writer, and the resolved
-record receipt/binding when produced.  The expected verifier is selected
-explicitly from that context: it is the counterparty, or the orchestrator acting
-on its behalf as CORE §B.8 permits.  It is never selected from
-`verifierIdentity.presentedBy`.  The independently authenticated expected
-identity MUST equal `verifierIdentity.presentedBy`, the composite signature
+the two distinct §7.7.3 CORE §B.8 challenges and mutable issuer ledgers,
+`trustedNow`, expected verifier role and identity, phase orchestrator, anchor
+writer, and the resolved record receipt/binding when produced.  The expected
+verifier is selected explicitly from that context: it is the counterparty, or
+the orchestrator acting on its behalf as CORE §B.8 permits.  It is never
+selected from `verifierIdentity.presentedBy`.  The independently authenticated
+expected identity MUST equal `verifierIdentity.presentedBy`, the composite signature
 signer and `recordRef.signer`; the presentation, composite signature and receipt
 are then verified normally.  VerifyResult signer/evidence authority remains the
 recipe/result authority and is resolved independently.  A caller-deserialised

@@ -22,7 +22,7 @@
   "inputBindings": {
     "dacs1-vet-golden-inputs-v0.1": {
       "path": "conformance/fixtures/identity/dacs1-vet-golden-inputs-v0.1.json",
-      "sha256": "3f4df9b2101d3bc6516091516a9d926dc51491d65fc869588bc489f6a5dd0873",
+      "sha256": "06326e6c37cea7fc0f97adb3bed8fbe03c5ec5f8845e50facf4b5688fffdc7af",
       "caseCount": 30,
       "scope": "The 13 DACS-1 and 17 Vet manifest cases listed under the same IDs in the bound fixture."
     }

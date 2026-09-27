@@ -51,15 +51,15 @@ def authority_reference(name, phase_key):
     }
 
 
-def current_agreement_hash(job_id, phase_key):
+def current_agreement_hash(job_id, phase_key=None):
     return hashlib.sha256(
-        ("current-agreement:" + job_id + ":" + phase_key).encode()
+        ("current-agreement:" + job_id).encode()
     ).hexdigest()
 
 
-def current_session_id(job_id, phase_key):
+def current_session_id(job_id, phase_key=None):
     return "session-" + hashlib.sha256(
-        (job_id + ":" + phase_key).encode()
+        job_id.encode()
     ).hexdigest()
 
 
@@ -331,6 +331,20 @@ def make_authority(name, definition, signing_keys):
         "finalisedAt": 1785859200000,
         "signatures": [],
     }
+    successful_commit = next((
+        entry for entry in phase_summary
+        if entry.get("outcome") == "ok"
+        and entry.get("kind", "").startswith("commit-")
+    ), None)
+    if successful_commit is not None:
+        agreement_ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + job_id,
+            },
+            "contentHash": current_agreement_hash(job_id),
+        }
+        bundle["agreementRef"] = agreement_ref
     F.sign_bundle(bundle, "evidence-bound", signing_keys)
 
     if definition.get("corruptListingSignature"):
@@ -361,6 +375,14 @@ def make_authority(name, definition, signing_keys):
             "archival" if definition.get("legacyDeliveryEvidence") is True else "current"
         ),
     }
+    if successful_commit is not None:
+        authority["additionalCommitPhase"] = successful_commit["kind"]
+        authority["agreementSelectionResult"] = {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(bundle["agreementRef"]),
+            "agreementType": "payee-bound",
+            "proofVerified": True,
+        }
     current_laa_by_phase_key = {}
     for ref in settlement_evidence:
         ref_key = F.canonical(ref).decode("utf-8")
@@ -438,7 +460,12 @@ def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
     authority["referenceValidationByCanonicalRef"][new_key] = resolution
     authority["verifiedReceiptByCanonicalRef"][new_key] = top_receipt
     authority["bundle"]["settlementEvidence"][position] = new_ref
-    authority["bundle"]["phaseSummary"][position]["attestationRef"] = new_ref
+    summary_entry = next(
+        entry for entry in authority["bundle"]["phaseSummary"]
+        if entry.get("index") == record.get("phaseIndex")
+        and entry.get("kind") == record.get("phase")
+    )
+    summary_entry["attestationRef"] = new_ref
 
     closure = authority["deliveryArtifactAuthorityByPhaseKey"][phase_key]
     refreshed_receipts = F.make_delivery_closure_receipts(
@@ -757,6 +784,94 @@ def generate(source):
     if "execution-authority-indeterminate" not in data["reasonPrecedence"]:
         data["reasonPrecedence"].insert(1, "execution-authority-indeterminate")
     definitions = semantic_definitions(data)
+    for definition in definitions.values():
+        if definition.get("legacyDeliveryEvidence") is True:
+            # These frozen comparison-only authorities are not current terminal
+            # admission fixtures.  Preserve their historical signed phase bytes.
+            if definition.get("listingPipeline", [])[:2] == [
+                "negotiate-fixed-price", "commit-payee-bound-agreement",
+            ]:
+                definition["listingPipeline"] = definition["listingPipeline"][2:]
+                definition["phaseSummary"] = [
+                    {**entry, "index": entry["index"] - 2}
+                    for entry in definition["phaseSummary"][2:]
+                ]
+            continue
+        definition["listingPipeline"] = [
+            "commit-payee-bound-agreement"
+            if kind == "commit-agreement" else kind
+            for kind in definition["listingPipeline"]
+        ]
+        for entry in definition["phaseSummary"]:
+            if entry.get("kind") == "commit-agreement":
+                entry["kind"] = "commit-payee-bound-agreement"
+        commitment_indexes = [
+            index for index, kind in enumerate(definition["listingPipeline"])
+            if kind.startswith("commit-")
+        ]
+        negotiation_indexes = [
+            index for index, kind in enumerate(definition["listingPipeline"])
+            if kind.startswith("negotiate-")
+        ]
+        if (
+            len(commitment_indexes) == 1
+            and len(negotiation_indexes) == 1
+            and negotiation_indexes[0] == commitment_indexes[0] - 1
+            and negotiation_indexes[0] > 0
+            and definition["listingPipeline"][negotiation_indexes[0] - 1]
+            == "vet-credentials"
+        ):
+            removed_index = negotiation_indexes[0] - 1
+            definition["listingPipeline"].pop(removed_index)
+            definition["phaseSummary"] = [
+                entry for entry in definition["phaseSummary"]
+                if entry["index"] != removed_index
+            ]
+            for entry in definition["phaseSummary"]:
+                if entry["index"] > removed_index:
+                    entry["index"] -= 1
+        elif len(commitment_indexes) == 1 and not negotiation_indexes:
+            commitment_index = commitment_indexes[0]
+            if (
+                commitment_index > 0
+                and definition["listingPipeline"][commitment_index - 1]
+                == "vet-credentials"
+            ):
+                definition["listingPipeline"][commitment_index - 1] = (
+                    "negotiate-fixed-price"
+                )
+                for entry in definition["phaseSummary"]:
+                    if entry["index"] == commitment_index - 1:
+                        entry["kind"] = "negotiate-fixed-price"
+            else:
+                definition["listingPipeline"].insert(
+                    commitment_index, "negotiate-fixed-price"
+                )
+                for entry in definition["phaseSummary"]:
+                    if entry["index"] >= commitment_index:
+                        entry["index"] += 1
+                definition["phaseSummary"].insert(commitment_index, {
+                    "index": commitment_index,
+                    "kind": "negotiate-fixed-price",
+                    "outcome": "ok",
+                })
+        if not any(
+            kind.startswith("commit-")
+            for kind in definition["listingPipeline"]
+        ):
+            definition["listingPipeline"] = [
+                "negotiate-fixed-price",
+                "commit-payee-bound-agreement",
+                *definition["listingPipeline"],
+            ]
+            if definition["phaseSummary"]:
+                for entry in definition["phaseSummary"]:
+                    entry["index"] += 2
+                definition["phaseSummary"] = [
+                    {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+                    {"index": 1, "kind": "commit-payee-bound-agreement", "outcome": "ok"},
+                    *definition["phaseSummary"],
+                ]
     definitions["completed-storage-delivery"] = {
         "listingPipeline": ["deliver-storage-program"],
         "bundleOutcome": "completed",
@@ -1252,6 +1367,32 @@ def generate(source):
         }
     }
 
+    # Definitions added locally below the source-corpus migration loop are
+    # full terminal fixtures too; give each the same valid PS-1/PS-2 prefix.
+    terminal_prefix_added = set()
+    for definition_name, definition in definitions.items():
+        if definition.get("legacyDeliveryEvidence") is True:
+            continue
+        if any(
+            kind.startswith("commit-")
+            for kind in definition["listingPipeline"]
+        ):
+            continue
+        definition["listingPipeline"] = [
+            "negotiate-fixed-price",
+            "commit-payee-bound-agreement",
+            *definition["listingPipeline"],
+        ]
+        if definition["phaseSummary"]:
+            for entry in definition["phaseSummary"]:
+                entry["index"] += 2
+            definition["phaseSummary"] = [
+                {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+                {"index": 1, "kind": "commit-payee-bound-agreement", "outcome": "ok"},
+                *definition["phaseSummary"],
+            ]
+        terminal_prefix_added.add(definition_name)
+
     signing_keys = F.keys()
     data["generator"] = "scripts/generate_bundle_settlement_evidence_vectors.py"
     data["seeds"] = F.SEEDS
@@ -1300,6 +1441,31 @@ def generate(source):
                 authenticated_records[ref] = record
         else:
             authenticated_records = copy.deepcopy(vector_input.get("authenticatedRecordByRef", {}))
+
+        # Component-vector record maps predate the terminal Listing prefix.
+        # Rebind their phase keys by phase-kind occurrence to the authenticated
+        # authority generated above, including signed optional pointer keys.
+        phase_key_remap = {}
+        if vector_input.get("executionAuthorityRef") in terminal_prefix_added:
+            for record in authenticated_records.values():
+                phase_key = record.get("phaseKey") if isinstance(record, dict) else None
+                if isinstance(phase_key, str) and ":" in phase_key:
+                    index_text, phase_kind = phase_key.split(":", 1)
+                    phase_key_remap[phase_key] = (
+                        str(int(index_text) + 2) + ":" + phase_kind
+                    )
+        for record in authenticated_records.values():
+            if isinstance(record, dict) and record.get("phaseKey") in phase_key_remap:
+                record["phaseKey"] = phase_key_remap[record["phaseKey"]]
+        if vector["name"] == "bundle-settlement-bijection-equal-count-wrong-phase-reject":
+            authenticated_records["ref-wrong"]["phaseKey"] = (
+                "4:deliver-attested-payload"
+            )
+        if isinstance(vector_input.get("pointerMap"), dict):
+            vector_input["pointerMap"] = {
+                phase_key_remap.get(key, key): ref
+                for key, ref in vector_input["pointerMap"].items()
+            }
 
         def st8_reason(phase_key):
             phase = phase_key.split(":", 1)[1] if isinstance(phase_key, str) and ":" in phase_key else None

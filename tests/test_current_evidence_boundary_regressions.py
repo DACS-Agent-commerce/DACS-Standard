@@ -49,6 +49,58 @@ def _encode(value):
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
+def _bind_archival_delivery_to_current_commitment(authority, seeds):
+    """Give a frozen delivery fixture valid current terminal Listing authority."""
+    listing = authority["listing"]
+    bundle = authority["bundle"]
+    prefix = [
+        {"kind": "negotiate-fixed-price"},
+        {"kind": "commit-agreement"},
+    ]
+    if listing.get("pipeline", [])[:2] != prefix:
+        listing["pipeline"] = copy.deepcopy(prefix) + listing["pipeline"]
+        for entry in bundle["phaseSummary"]:
+            entry["index"] += 2
+        bundle["phaseSummary"] = [
+            {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+            {"index": 1, "kind": "commit-agreement", "outcome": "ok"},
+            *bundle["phaseSummary"],
+        ]
+        authority["sessionExecutionAuthorityByPhaseKey"] = {
+            f"{int(key.split(':', 1)[0]) + 2}:{key.split(':', 1)[1]}": {
+                **execution,
+                "phaseIndex": execution["phaseIndex"] + 2,
+            }
+            for key, execution in authority[
+                "sessionExecutionAuthorityByPhaseKey"
+            ].items()
+        }
+        authority["deliveryArtifactAuthorityByPhaseKey"] = {
+            f"{int(key.split(':', 1)[0]) + 2}:{key.split(':', 1)[1]}": closure
+            for key, closure in authority[
+                "deliveryArtifactAuthorityByPhaseKey"
+            ].items()
+        }
+    resign_listing(listing, seeds["seller"])
+    bundle["listingRef"]["contentHash"] = R.listing_hash(listing)
+    agreement_ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:" + bundle["jobId"],
+        },
+        "contentHash": hashlib.sha256(
+            (bundle["jobId"] + ":legacy-agreement").encode("utf-8")
+        ).hexdigest(),
+    }
+    bundle["agreementRef"] = copy.deepcopy(agreement_ref)
+    authority["agreementSelectionResult"] = {
+        "resolution": "verified",
+        "agreementRef": copy.deepcopy(agreement_ref),
+        "agreementType": "legacy",
+        "proofVerified": True,
+    }
+
+
 class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -149,8 +201,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         old_deliverable_key = R.canonical(old_deliverable_ref).decode("utf-8")
 
         record["jobId"] = CURRENT_JOB
+        phase_index = record["phaseIndex"]
         record["deliverableAnchor"]["locator"] = (
-            "dacs4:deliverable:%s:0" % CURRENT_JOB
+            "dacs4:deliverable:%s:%s" % (CURRENT_JOB, phase_index)
         )
         self._resign_record(record, signer_role="orchestrator")
         new_ref = copy.deepcopy(old_ref)
@@ -159,7 +212,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         source["referenceValidationByCanonicalRef"][new_key] = resolution
 
         top_receipt = source["verifiedReceiptByCanonicalRef"].pop(old_key)
-        top_receipt["logicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        top_receipt["logicalAddress"] = (
+            "dacs4:delivery:%s:%s" % (CURRENT_JOB, phase_index)
+        )
         top_receipt["contentHash"] = new_ref["contentHash"]
         source["verifiedReceiptByCanonicalRef"][new_key] = top_receipt
 
@@ -181,18 +236,23 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             R.canonical(new_deliverable_ref).decode("utf-8")
         ] = deliverable_authority
         closure = source["deliveryArtifactAuthorityByPhaseKey"][
-            "0:deliver-storage-program"
+            "2:deliver-storage-program"
         ]["deliverable"]
         closure["logicalAddress"] = new_deliverable_ref["anchor"]["locator"]
         closure["nativeAddress"] = new_deliverable_ref["anchor"]["locator"]
         execution = source["sessionExecutionAuthorityByPhaseKey"][
-            "0:deliver-storage-program"
+            "2:deliver-storage-program"
         ]
         execution["jobId"] = CURRENT_JOB
-        execution["evidenceLogicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        execution["evidenceLogicalAddress"] = (
+            "dacs4:delivery:%s:%s" % (CURRENT_JOB, phase_index)
+        )
 
         bundle["settlementEvidence"] = [new_ref]
-        bundle["phaseSummary"][0]["attestationRef"] = copy.deepcopy(new_ref)
+        next(
+            entry for entry in bundle["phaseSummary"]
+            if "attestationRef" in entry
+        )["attestationRef"] = copy.deepcopy(new_ref)
         pointer = {
             "faultBundleVersion": "1",
             "pointerKind": "extended",
@@ -312,7 +372,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         authority["referenceValidationByCanonicalRef"][new_key] = resolution
         authority["verifiedReceiptByCanonicalRef"][new_key] = receipt
         bundle["settlementEvidence"] = [new_ref]
-        bundle["phaseSummary"][0]["attestationRef"] = copy.deepcopy(new_ref)
+        next(
+            entry for entry in bundle["phaseSummary"]
+            if "attestationRef" in entry
+        )["attestationRef"] = copy.deepcopy(new_ref)
         self._resign_bundle_and_pointer(value)
 
     def _resolve(self, value):
@@ -425,6 +488,61 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 missing = self._reconcile(value)
                 self.assertEqual("indeterminate", missing["decision"], missing["reason"])
                 self.assertIn("legacy agreement", missing["reason"])
+
+    def test_zero_member_current_ab_still_enforces_commitment_agreement_semantics(self):
+        value = self._fixture()
+        self._as_released_kind(value, "legacy")
+        authority = value["authority"]
+        bundle = value["bundle"]
+        listing = authority["listing"]
+        listing["pipeline"] = [
+            {"kind": "negotiate-fixed-price"},
+            {"kind": "commit-agreement"},
+        ]
+        bundle["phaseSummary"] = [
+            {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+            {"index": 1, "kind": "commit-agreement", "outcome": "ok"},
+        ]
+        bundle["settlementEvidence"] = []
+        resign_listing(listing, self.data["seeds"]["seller"])
+        bundle["listingRef"]["contentHash"] = R.listing_hash(listing)
+        agreement_ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + bundle["jobId"],
+            },
+            "contentHash": "a" * 64,
+        }
+        bundle["agreementRef"] = copy.deepcopy(agreement_ref)
+        authority["agreementSelectionResult"] = {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(agreement_ref),
+            "agreementType": "legacy",
+            "proofVerified": True,
+        }
+        self._resign_released(value, "legacy")
+        exact = self._reconcile(value)
+        self.assertEqual("pass", exact["decision"], exact["reason"])
+
+        missing_authority = copy.deepcopy(value)
+        missing_authority["authority"].pop("agreementSelectionResult")
+        result = self._reconcile(missing_authority)
+        self.assertEqual("indeterminate", result["decision"], result["reason"])
+
+        missing_ref = copy.deepcopy(value)
+        missing_ref["bundle"].pop("agreementRef")
+        self._resign_released(missing_ref, "legacy")
+        result = self._reconcile(missing_ref)
+        self.assertEqual("fail", result["decision"], result["reason"])
+
+        precommit = copy.deepcopy(value)
+        precommit["bundle"].pop("agreementRef")
+        precommit["authority"].pop("agreementSelectionResult")
+        precommit["bundle"]["phaseSummary"] = []
+        precommit["bundle"]["outcome"] = "aborted-by-self"
+        self._resign_released(precommit, "legacy")
+        result = self._reconcile(precommit)
+        self.assertEqual("pass", result["decision"], result["reason"])
 
     def _assert_payment_admission_paths(self, value, expected):
         direct, reason = R._validate_current_fab_delivery_admission(
@@ -1041,6 +1159,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             replace_top_record(
                 authority, "deliver-storage-program", mutate, self.data["seeds"]
             )
+        _bind_archival_delivery_to_current_commitment(
+            authority, self.data["seeds"]
+        )
         bundle.pop("evidenceBoundFaultBundleVersion")
         role = bundle["anchoredByRole"]
         signer = next(
@@ -1143,10 +1264,11 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             # PDE-2's address space belongs to DeliveryEvidence; a legacy
             # record there is not an unindexed PDE-7 read.
             authority = value["authority"]
-            address = "dacs4:delivery:%s:0" % CURRENT_JOB
-            authority["sessionExecutionAuthorityByPhaseKey"][
-                "0:deliver-storage-program"
-            ]["evidenceLogicalAddress"] = address
+            address = "dacs4:delivery:%s:2" % CURRENT_JOB
+            phase_key = next(iter(authority["sessionExecutionAuthorityByPhaseKey"]))
+            authority["sessionExecutionAuthorityByPhaseKey"][phase_key][
+                "evidenceLogicalAddress"
+            ] = address
             key = R.canonical(value["bundle"]["settlementEvidence"][0]).decode("utf-8")
             authority["verifiedReceiptByCanonicalRef"][key]["logicalAddress"] = address
 
@@ -1345,7 +1467,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             value = self._legacy_delivery_value(kind)
             authority = value["authority"]
             listing = authority["listing"]
-            listing["pipeline"].append(copy.deepcopy(listing["pipeline"][0]))
+            listing["pipeline"].append(copy.deepcopy(listing["pipeline"][-1]))
             resign_listing(listing, self.data["seeds"]["seller"])
             value["bundle"]["listingRef"]["contentHash"] = R.listing_hash(listing)
             value["bundle"]["outcome"] = "aborted-by-self"
@@ -1526,9 +1648,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         ):
             for malformed in ([], "x", 7, {"jobId": []}):
                 value = factory()
-                value["authority"]["sessionExecutionAuthorityByPhaseKey"][
-                    "0:deliver-storage-program"
-                ] = malformed
+                execution = value["authority"]["sessionExecutionAuthorityByPhaseKey"]
+                execution[next(iter(execution))] = malformed
                 with self.subTest(delivery=label, execution=malformed):
                     self.assertEqual(
                         ("error", "delivery execution authority is malformed"),
@@ -1538,9 +1659,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     )
                     self.assertEqual("error", self._reconcile(value)["decision"])
             value = factory()
-            del value["authority"]["sessionExecutionAuthorityByPhaseKey"][
-                "0:deliver-storage-program"
-            ]
+            execution = value["authority"]["sessionExecutionAuthorityByPhaseKey"]
+            del execution[next(iter(execution))]
             with self.subTest(delivery=label, execution="absent"):
                 self.assertEqual(
                     ("indeterminate", "delivery execution authority is unavailable"),
@@ -1746,6 +1866,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             }
             self._resign_released(value, kind)
             authority = value["authority"]
+            authority["agreementSelectionResult"]["agreementRef"] = copy.deepcopy(
+                value["bundle"]["agreementRef"]
+            )
             if identity_only:
                 for carrier in authority["legacyAgreementAuthorityByPhaseKey"].values():
                     carrier["laa"]["agreement"].update({
@@ -2253,6 +2376,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 },
                 "contentHash": "c" * 64 if unrelated else joined,
             }
+            authority["agreementSelectionResult"]["agreementRef"] = copy.deepcopy(
+                bundle["agreementRef"]
+            )
             resign_ebfab(bundle, self.data["seeds"])
             authority["legacyAgreementAuthorityByPhaseKey"] = (
                 refreshed_laa_phase_carriers(authority)
@@ -2274,6 +2400,47 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 if expected != "pass":
                     self.assertEqual(expected, resolved["disposition"], resolved["reason"])
                     self.assertIn("agreementRef", resolved["reason"])
+
+    def test_archival_label_cannot_bypass_current_fab_pointer_agreement_gate(self):
+        value = self._fixture()
+        bundle = value["bundle"]
+        authority = value["authority"]
+        listing = authority["listing"]
+        listing["pipeline"] = listing["pipeline"][:2]
+        bundle["phaseSummary"] = bundle["phaseSummary"][:2]
+        bundle["settlementEvidence"] = []
+        bundle.pop("agreementRef")
+        authority["deliveryEvidenceProfile"] = "archival"
+        authority["referenceValidationByCanonicalRef"] = {}
+        authority["sessionExecutionAuthorityByPhaseKey"] = {}
+        authority["verifiedReceiptByCanonicalRef"] = {}
+        authority["deliveryArtifactAuthorityByPhaseKey"] = {}
+        resign_listing(listing, self.data["seeds"]["seller"])
+        bundle["listingRef"]["contentHash"] = R.listing_hash(listing)
+        self._resign_bundle_and_pointer(value)
+
+        current = R.resolve_absolute_fault_pointer(
+            value["pointer"],
+            bundle,
+            pubkeys=value["keys"],
+            ebfab_authority=authority,
+            trusted_contexts=value["trusted"],
+            expected_jobid=CURRENT_JOB,
+            expected_role=value["role"],
+        )
+        self.assertFalse(current["ok"])
+        self.assertEqual("fail", current["disposition"], current["reason"])
+        self.assertIn("agreementRef", current["reason"])
+
+        archival = R.resolve_legacy_absolute_fault_pointer(
+            value["pointer"],
+            bundle,
+            pubkeys=self.pubkeys,
+            ebfab_authority=authority,
+            expected_jobid=CURRENT_JOB,
+            expected_role=value["role"],
+        )
+        self.assertTrue(archival["ok"], archival["reason"])
 
     def test_released_st8_interim_authority_is_four_state_typed(self):
         # F-C: an exact authentic :resolved success whose interim authority is
@@ -2353,6 +2520,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             source["sessionExecutionAuthorityByPhaseKey"], source["verifiedReceiptByCanonicalRef"],
             source["deliveryArtifactAuthorityByPhaseKey"],
             source["trustedNativeTransactionObservationsByCanonicalRef"],
+            additional_commit_phase=source.get("additionalCommitPhase"),
+            agreement_selection_result=source.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=source["legacyAgreementAuthorityByPhaseKey"],
         )
         self.assertEqual(
@@ -2436,6 +2605,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 source["trustedNativeTransactionObservationsByCanonicalRef"],
             )
             laa = {
+                "additional_commit_phase": source.get("additionalCommitPhase"),
+                "agreement_selection_result": source.get("agreementSelectionResult"),
                 "legacy_agreement_authority_by_phase_key":
                     source["legacyAgreementAuthorityByPhaseKey"],
             }
@@ -2764,6 +2935,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             source["sessionExecutionAuthorityByPhaseKey"], source["verifiedReceiptByCanonicalRef"],
             source["deliveryArtifactAuthorityByPhaseKey"],
             source["trustedNativeTransactionObservationsByCanonicalRef"],
+            additional_commit_phase=source.get("additionalCommitPhase"),
+            agreement_selection_result=source.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=source["legacyAgreementAuthorityByPhaseKey"],
         )
         self.assertEqual("pass", disposition, reason)
@@ -2843,7 +3016,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             twin = "repeated-self-signed-distinct-proof-completed"
             for name in ("lifecycle", "receipt"):
                 value = self._released_value(twin, kind)
-                self._omit_members(value, kind, lambda record: record.get("phaseIndex") == 1)
+                self._omit_members(value, kind, lambda record: record.get("phaseIndex") == 3)
                 remaining = self._key(value["bundle"]["settlementEvidence"][0])
                 if name == "lifecycle":
                     value["authority"]["referenceValidationByCanonicalRef"][remaining].pop(
@@ -2991,9 +3164,13 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         for label, keep_pointer, members, expected in fab_cases:
             value = self._fixture()
             delivery = value["bundle"]["settlementEvidence"][0]
-            self.assertEqual(delivery, value["bundle"]["phaseSummary"][0]["attestationRef"])
+            summary = next(
+                entry for entry in value["bundle"]["phaseSummary"]
+                if "attestationRef" in entry
+            )
+            self.assertEqual(delivery, summary["attestationRef"])
             if not keep_pointer:
-                value["bundle"]["phaseSummary"][0].pop("attestationRef")
+                summary.pop("attestationRef")
             with self.subTest(kind="fault", case=label):
                 direct, dispositions = verdicts(value, "fault", members(value, delivery))
                 self.assertEqual((expected,) * 4, dispositions, direct)
@@ -3011,7 +3188,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             legacy = value["bundle"]["settlementEvidence"][0]
             value["authority"]["verifiedReceiptByCanonicalRef"].pop(self._key(legacy))
             if aim_pointer:
-                value["bundle"]["phaseSummary"][0]["attestationRef"] = unknown("09")
+                next(
+                    entry for entry in value["bundle"]["phaseSummary"]
+                    if "attestationRef" in entry
+                )["attestationRef"] = unknown("09")
             with self.subTest(kind="fault", case=label):
                 direct, dispositions = verdicts(value, "fault", [legacy])
                 self.assertEqual((expected,) * 4, dispositions, direct)
@@ -3042,7 +3222,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     key=lambda ref: resolutions[self._key(ref)]["record"]["phaseIndex"],
                 )
                 row_1 = next(
-                    entry for entry in value["bundle"]["phaseSummary"] if entry["index"] == 1
+                    entry for entry in value["bundle"]["phaseSummary"] if entry["index"] == 3
                 )
                 self.assertEqual(d1, row_1["attestationRef"])
                 if row_1_pointer == "d0":
@@ -3064,7 +3244,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         # rejection into indeterminate. Unavailable or malformed execution
         # authority keeps the deferral.
         exact_set = ("fail", "FAB DeliveryEvidence is not the exact delivery invocation set")
-        delivery_key = "0:deliver-storage-program"
+        def delivery_key(value):
+            return next(iter(value["authority"]["sessionExecutionAuthorityByPhaseKey"]))
 
         def signer_of(value, member):
             return value["authority"]["referenceValidationByCanonicalRef"][
@@ -3132,7 +3313,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     self.assertEqual(exact_set, direct)
 
         def entry(value):
-            return value["authority"]["sessionExecutionAuthorityByPhaseKey"][delivery_key]
+            return value["authority"]["sessionExecutionAuthorityByPhaseKey"][
+                delivery_key(value)
+            ]
 
         def other_job(value):
             entry(value)["jobId"] = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
@@ -3144,7 +3327,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             value["authority"].pop("verifiedReceiptByCanonicalRef")
 
         def no_entry(value):
-            value["authority"]["sessionExecutionAuthorityByPhaseKey"].pop(delivery_key)
+            value["authority"]["sessionExecutionAuthorityByPhaseKey"].pop(
+                delivery_key(value)
+            )
 
         def no_execution(value):
             value["authority"].pop("sessionExecutionAuthorityByPhaseKey")
@@ -3175,7 +3360,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 delivery = value["bundle"]["settlementEvidence"][0]
                 self.assertEqual(signer_of(value, delivery), entry(value)["phaseOrchestrator"])
                 self.assertTrue(signer_of(value, delivery).endswith(":orchestrator"))
-                value["bundle"]["phaseSummary"][0].pop("attestationRef")
+                next(
+                    entry for entry in value["bundle"]["phaseSummary"]
+                    if "attestationRef" in entry
+                ).pop("attestationRef")
                 if kind == "legacy":
                     value["bundle"].pop("faultBundleVersion")
                 member = stand_in(value, delivery, role, with_receipt=with_receipt)
@@ -3194,7 +3382,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             value = self._legacy_delivery_value("fault")
             legacy = value["bundle"]["settlementEvidence"][0]
             self.assertEqual(signer_of(value, legacy), entry(value)["phaseOrchestrator"])
-            value["bundle"]["phaseSummary"][0].pop("attestationRef")
+            next(
+                entry for entry in value["bundle"]["phaseSummary"]
+                if "attestationRef" in entry
+            ).pop("attestationRef")
             if role is None:
                 value["authority"]["verifiedReceiptByCanonicalRef"].pop(self._key(legacy))
                 members = [legacy]
@@ -3218,7 +3409,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     key=lambda ref: resolutions[self._key(ref)]["record"]["phaseIndex"],
                 )
                 orchestrator = value["authority"]["sessionExecutionAuthorityByPhaseKey"][
-                    "1:deliver-attested-payload"
+                    "3:deliver-attested-payload"
                 ]["phaseOrchestrator"]
                 self.assertEqual(signer_of(value, d1), orchestrator)
                 role = (
@@ -3226,7 +3417,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     if excluded else orchestrator.rsplit(":", 1)[1]
                 )
                 row_1 = next(
-                    row for row in value["bundle"]["phaseSummary"] if row["index"] == 1
+                    row for row in value["bundle"]["phaseSummary"] if row["index"] == 3
                 )
                 row_1.pop("attestationRef")
                 check(kind, label, value, [d0, stand_in(value, d1, role)], expected)
@@ -3240,8 +3431,9 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         # presenting no current DeliveryEvidence stays CUR-5 indeterminate,
         # so its reason is not pinned here.
         exact_set = ("fail", "FAB DeliveryEvidence is not the exact delivery invocation set")
-        delivery_key = "0:deliver-storage-program"
-        pde2 = "dacs4:delivery:%s:0" % CURRENT_JOB
+        def delivery_key(value):
+            return next(iter(value["authority"]["sessionExecutionAuthorityByPhaseKey"]))
+        pde2 = "dacs4:delivery:%s:2" % CURRENT_JOB
 
         def verdicts(value, kind):
             """Each lane's disposition, required to be identical in every member order."""
@@ -3299,12 +3491,13 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             """
             value = self._legacy_delivery_value("fault")
             member = value["bundle"]["settlementEvidence"][0]
-            entry = value["authority"]["sessionExecutionAuthorityByPhaseKey"][delivery_key]
+            key = delivery_key(value)
+            entry = value["authority"]["sessionExecutionAuthorityByPhaseKey"][key]
             own = entry["evidenceLogicalAddress"]
             self.assertFalse(R._is_current_delivery_evidence_address(own, CURRENT_JOB))
             self.assertEqual(
                 R._delivery_execution_authority_status(
-                    value["authority"]["sessionExecutionAuthorityByPhaseKey"], delivery_key
+                    value["authority"]["sessionExecutionAuthorityByPhaseKey"], key
                 ),
                 None,
             )
@@ -3326,7 +3519,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             elif address != "own":
                 entry["evidenceLogicalAddress"] = address
             if not pointer:
-                value["bundle"]["phaseSummary"][0].pop("attestationRef")
+                next(
+                    entry for entry in value["bundle"]["phaseSummary"]
+                    if "attestationRef" in entry
+                ).pop("attestationRef")
             value["bundle"]["settlementEvidence"] = members
             return value
 
@@ -3334,9 +3530,13 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             """A current FAB (PDE-2 execution address), D omitted, stand-in presented."""
             value = self._fixture()
             delivery = value["bundle"]["settlementEvidence"][0]
-            entry = value["authority"]["sessionExecutionAuthorityByPhaseKey"][delivery_key]
+            key = delivery_key(value)
+            entry = value["authority"]["sessionExecutionAuthorityByPhaseKey"][key]
             self.assertEqual(pde2, entry["evidenceLogicalAddress"])
-            value["bundle"]["phaseSummary"][0].pop("attestationRef")
+            next(
+                entry for entry in value["bundle"]["phaseSummary"]
+                if "attestationRef" in entry
+            ).pop("attestationRef")
             if not legacy_stand_in:
                 # Control: current DeliveryEvidence ignores the entry address.
                 resolution = copy.deepcopy(
@@ -3420,7 +3620,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     receipts[self._key(twin_ref)] = twin_receipt
                     members = [first_ref, twin_ref]
                     bundle["settlementEvidence"] = list(reversed(members)) if reverse else members
-                    bundle["phaseSummary"][0].pop("attestationRef")
+                    next(
+                        entry for entry in bundle["phaseSummary"]
+                        if "attestationRef" in entry
+                    ).pop("attestationRef")
                     if drop_lifecycle:
                         canonical_first = min(members, key=R.canonical)
                         resolutions[self._key(canonical_first)].pop("lifecycle")
@@ -3702,14 +3905,17 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         new_key = R.canonical(new_ref).decode("utf-8")
         source["referenceValidationByCanonicalRef"][new_key] = resolution
         receipt = source["verifiedReceiptByCanonicalRef"].pop(old_key)
-        receipt["logicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        receipt["logicalAddress"] = "dacs4:delivery:%s:2" % CURRENT_JOB
         receipt["contentHash"] = new_ref["contentHash"]
         source["verifiedReceiptByCanonicalRef"][new_key] = receipt
-        execution = source["sessionExecutionAuthorityByPhaseKey"]["0:deliver-storage-program"]
+        execution = source["sessionExecutionAuthorityByPhaseKey"]["2:deliver-storage-program"]
         execution["jobId"] = CURRENT_JOB
-        execution["evidenceLogicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        execution["evidenceLogicalAddress"] = "dacs4:delivery:%s:2" % CURRENT_JOB
         bundle["settlementEvidence"] = [new_ref]
-        bundle["phaseSummary"][0]["attestationRef"] = copy.deepcopy(new_ref)
+        next(
+            entry for entry in bundle["phaseSummary"]
+            if "attestationRef" in entry
+        )["attestationRef"] = copy.deepcopy(new_ref)
         role = bundle["anchoredByRole"]
         signer = next(p["primaryClaim"] for p in bundle["parties"] if p["role"] == role)
         value = {
@@ -3884,6 +4090,289 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 results = self._released_trace_dispositions(value, kind)
                 self.assertEqual({path: "fail" for path in results}, results)
 
+    def _commit_ebfab_case(self, phase, agreement_type, *, outcome="ok"):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        bundle = authority["bundle"]
+        listing = authority["listing"]
+        negotiation_phase = (
+            "negotiate-sealed-envelope-complete"
+            if phase == "commit-selection-bound-agreement"
+            else "negotiate-fixed-price"
+        )
+        listing["pipeline"] = [
+            {"kind": negotiation_phase},
+            {"kind": phase},
+        ]
+        bundle["settlementEvidence"] = []
+        bundle["phaseSummary"] = [
+            {"index": 0, "kind": negotiation_phase, "outcome": "ok"},
+        ]
+        row = {"index": 1, "kind": phase, "outcome": outcome}
+        if outcome == "fail":
+            row["errorClass"] = "permanent"
+            bundle["outcome"] = "failed-perm"
+            bundle["faultedParty"] = "seller"
+            authority["bundleLifecycle"] = {
+                "state": "included",
+                "independentlyResolvable": False,
+            }
+        bundle["phaseSummary"].append(row)
+        resign_listing(listing, self.data["seeds"]["seller"])
+        bundle["listingRef"]["contentHash"] = R.listing_hash(listing)
+        agreement_ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + bundle["jobId"],
+            },
+            "contentHash": "a" * 64,
+        }
+        bundle.pop("agreementRef", None)
+        authority.pop("agreementSelectionResult", None)
+        if outcome == "ok":
+            bundle["agreementRef"] = copy.deepcopy(agreement_ref)
+            authority["agreementSelectionResult"] = {
+                "resolution": "verified",
+                "agreementRef": copy.deepcopy(agreement_ref),
+                "agreementType": agreement_type,
+                "proofVerified": True,
+            }
+        authority["additionalCommitPhase"] = (
+            phase if phase in R.ADDITIVE_COMMIT_PHASES else None
+        )
+        resign_ebfab(bundle, self.data["seeds"])
+        return authority
+
+    def _validate_commit_ebfab(self, authority):
+        return R.validate_ebfab_disposition(
+            authority["bundle"],
+            authority["listing"],
+            self.pubkeys,
+            authority["referenceValidationByCanonicalRef"],
+            authority["bundleLifecycle"],
+            authority["sessionExecutionAuthorityByPhaseKey"],
+            authority["verifiedReceiptByCanonicalRef"],
+            authority["deliveryArtifactAuthorityByPhaseKey"],
+            authority["trustedNativeTransactionObservationsByCanonicalRef"],
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
+            legacy_agreement_authority_by_phase_key={},
+        )
+
+    def test_commitment_agreement_matrix_is_exact_and_selection_has_no_fallback(self):
+        matrix = list(R.COMMITMENT_PHASE_TO_AGREEMENT_TYPE.items())
+        for index, (phase, agreement_type) in enumerate(matrix):
+            authority = self._commit_ebfab_case(phase, agreement_type)
+            disposition, reason, _ = self._validate_commit_ebfab(authority)
+            with self.subTest(phase=phase, pairing="diagonal"):
+                expected = "indeterminate" if agreement_type == "sealed-selection" else "pass"
+                self.assertEqual(expected, disposition, reason)
+                if agreement_type == "sealed-selection":
+                    self.assertIn("SAC-8", reason)
+
+            wrong_type = matrix[(index + 1) % len(matrix)][1]
+            authority["agreementSelectionResult"]["agreementType"] = wrong_type
+            disposition, reason, _ = self._validate_commit_ebfab(authority)
+            with self.subTest(phase=phase, pairing="off-diagonal"):
+                self.assertEqual("fail", disposition, reason)
+                self.assertIn("signed commitment phase", reason)
+
+        invalid_pairs = (
+            ("commit-selection-bound-agreement", "sealed-selection", "negotiate-fixed-price"),
+            ("commit-agreement", "legacy", "negotiate-sealed-envelope-complete"),
+        )
+        for phase, agreement_type, negotiation in invalid_pairs:
+            authority = self._commit_ebfab_case(phase, agreement_type)
+            authority["listing"]["pipeline"][0]["kind"] = negotiation
+            authority["bundle"]["phaseSummary"][0]["kind"] = negotiation
+            resign_listing(authority["listing"], self.data["seeds"]["seller"])
+            authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+                authority["listing"]
+            )
+            resign_ebfab(authority["bundle"], self.data["seeds"])
+            with self.subTest(phase=phase, negotiation=negotiation):
+                self.assertEqual("fail", self._validate_commit_ebfab(authority)[0])
+
+        structural = self._commit_ebfab_case("commit-agreement", "legacy")
+        for mutation in ("missing", "duplicate", "nonadjacent"):
+            authority = copy.deepcopy(structural)
+            if mutation == "missing":
+                del authority["listing"]["pipeline"][0]
+                del authority["bundle"]["phaseSummary"][0]
+                authority["bundle"]["phaseSummary"][0]["index"] = 0
+            elif mutation == "duplicate":
+                authority["listing"]["pipeline"].insert(
+                    1, {"kind": "negotiate-rfq"}
+                )
+                authority["bundle"]["phaseSummary"].insert(
+                    1, {"index": 1, "kind": "negotiate-rfq", "outcome": "ok"}
+                )
+                authority["bundle"]["phaseSummary"][2]["index"] = 2
+            else:
+                authority["listing"]["pipeline"].insert(1, {"kind": "vet-credentials"})
+                authority["bundle"]["phaseSummary"].insert(
+                    1, {"index": 1, "kind": "vet-credentials", "outcome": "ok"}
+                )
+                authority["bundle"]["phaseSummary"][2]["index"] = 2
+            resign_listing(authority["listing"], self.data["seeds"]["seller"])
+            authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+                authority["listing"]
+            )
+            resign_ebfab(authority["bundle"], self.data["seeds"])
+            with self.subTest(structure=mutation):
+                self.assertEqual("fail", self._validate_commit_ebfab(authority)[0])
+
+    def test_successful_commit_requires_exact_agreement_authority_on_ebfab_and_released(self):
+        phase = "commit-payee-bound-agreement"
+        authority = self._commit_ebfab_case(phase, "payee-bound")
+
+        missing_ref = copy.deepcopy(authority)
+        missing_ref["bundle"].pop("agreementRef")
+        resign_ebfab(missing_ref["bundle"], self.data["seeds"])
+        self.assertEqual("fail", self._validate_commit_ebfab(missing_ref)[0])
+
+        missing_ref_unavailable = copy.deepcopy(missing_ref)
+        missing_ref_unavailable.pop("agreementSelectionResult")
+        self.assertEqual(
+            "fail", self._validate_commit_ebfab(missing_ref_unavailable)[0]
+        )
+
+        missing_ref_malformed = copy.deepcopy(missing_ref)
+        missing_ref_malformed["agreementSelectionResult"] = []
+        self.assertEqual(
+            "error", self._validate_commit_ebfab(missing_ref_malformed)[0]
+        )
+
+        malformed_ref = copy.deepcopy(authority)
+        malformed_ref["bundle"]["agreementRef"] = {"contentHash": "a" * 64}
+        resign_ebfab(malformed_ref["bundle"], self.data["seeds"])
+        disposition, reason, _ = self._validate_commit_ebfab(malformed_ref)
+        self.assertEqual("error", disposition, reason)
+
+        unavailable_type = copy.deepcopy(authority)
+        unavailable_type["agreementSelectionResult"].pop("agreementType")
+        self.assertEqual(
+            "indeterminate", self._validate_commit_ebfab(unavailable_type)[0]
+        )
+
+        for kind in ("legacy", "fault"):
+            value = self._fixture()
+            bundle = value["bundle"]
+            released_authority = value["authority"]
+            listing = released_authority["listing"]
+            listing["pipeline"] = [
+                {"kind": "negotiate-fixed-price"},
+                {"kind": phase},
+            ]
+            bundle["phaseSummary"] = [
+                {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+                {"index": 1, "kind": phase, "outcome": "ok"},
+            ]
+            bundle["settlementEvidence"] = []
+            resign_listing(listing, self.data["seeds"]["seller"])
+            bundle["listingRef"]["contentHash"] = R.listing_hash(listing)
+            released_authority["additionalCommitPhase"] = phase
+            released_authority["agreementSelectionResult"] = copy.deepcopy(
+                authority["agreementSelectionResult"]
+            )
+            self._resign_released(value, kind)
+            with self.subTest(kind=kind):
+                disposition, reason = R._validate_current_fab_delivery_admission(
+                    bundle,
+                    released_authority,
+                    self.pubkeys,
+                    ordinary_current=kind == "legacy",
+                )
+                self.assertEqual("fail", disposition, reason)
+                self.assertIn("agreementRef", reason)
+
+            null_ref = copy.deepcopy(value)
+            null_ref["bundle"]["agreementRef"] = None
+            self._resign_released(null_ref, kind)
+            with self.subTest(kind=kind, agreement_ref="null"):
+                disposition, reason = R._validate_current_fab_delivery_admission(
+                    null_ref["bundle"],
+                    null_ref["authority"],
+                    self.pubkeys,
+                    ordinary_current=kind == "legacy",
+                )
+                self.assertEqual("error", disposition, reason)
+                self.assertIn("malformed", reason)
+
+    def test_commit_omission_before_success_and_historical_record_forms_are_preserved(self):
+        precommit = self._commit_ebfab_case(
+            "commit-payee-bound-agreement", "payee-bound", outcome="fail"
+        )
+        precommit["bundle"]["phaseSummary"] = []
+        precommit["bundle"]["outcome"] = "aborted-by-self"
+        precommit["bundle"]["faultedParty"] = "seller"
+        precommit["bundleLifecycle"] = {
+            "state": "included", "independentlyResolvable": False,
+        }
+        resign_ebfab(precommit["bundle"], self.data["seeds"])
+        self.assertEqual("pass", self._validate_commit_ebfab(precommit)[0])
+
+        precommit_with_ref = copy.deepcopy(precommit)
+        precommit_with_ref["bundle"]["agreementRef"] = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + precommit_with_ref["bundle"]["jobId"],
+            },
+            "contentHash": "a" * 64,
+        }
+        resign_ebfab(precommit_with_ref["bundle"], self.data["seeds"])
+        disposition, reason, _ = self._validate_commit_ebfab(precommit_with_ref)
+        self.assertEqual("fail", disposition, reason)
+        self.assertIn("without a successful commitment", reason)
+
+        failed_commit = self._commit_ebfab_case(
+            "commit-payee-bound-agreement", "payee-bound", outcome="fail"
+        )
+        self.assertNotIn("agreementRef", failed_commit["bundle"])
+        self.assertEqual("pass", self._validate_commit_ebfab(failed_commit)[0])
+
+        failed_commit_with_ref = copy.deepcopy(failed_commit)
+        failed_commit_with_ref["bundle"]["agreementRef"] = copy.deepcopy(
+            precommit_with_ref["bundle"]["agreementRef"]
+        )
+        resign_ebfab(failed_commit_with_ref["bundle"], self.data["seeds"])
+        disposition, reason, _ = self._validate_commit_ebfab(failed_commit_with_ref)
+        self.assertEqual("fail", disposition, reason)
+        self.assertIn("without a successful commitment", reason)
+
+        for phase, agreement_type in (
+            ("commit-agreement", "legacy"),
+            ("commit-payee-bound-agreement", "payee-bound"),
+        ):
+            for record_type in ("CommitmentRecord", "FinalityCommitmentRecord"):
+                authority = self._commit_ebfab_case(phase, agreement_type)
+                authority["agreementSelectionResult"]["commitmentRecordType"] = record_type
+                with self.subTest(phase=phase, record_type=record_type):
+                    self.assertEqual("pass", self._validate_commit_ebfab(authority)[0])
+
+    def test_agreement_dispositions_do_not_mask_member_failures_or_errors(self):
+        unavailable = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        unavailable.pop("agreementSelectionResult")
+        unavailable["bundle"]["settlementEvidence"].append(copy.deepcopy(
+            unavailable["bundle"]["settlementEvidence"][0]
+        ))
+        resign_ebfab(unavailable["bundle"], self.data["seeds"])
+        disposition, reason, _ = self._validate_commit_ebfab(unavailable)
+        self.assertEqual("fail", disposition, reason)
+        self.assertIn("duplicate", reason)
+
+        malformed = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        malformed["agreementSelectionResult"]["agreementType"] = "legacy"
+        delivery_key = next(iter(malformed["deliveryArtifactAuthorityByPhaseKey"]))
+        malformed["deliveryArtifactAuthorityByPhaseKey"][delivery_key] = []
+        disposition, reason, _ = self._validate_commit_ebfab(malformed)
+        self.assertEqual("error", disposition, reason)
+
 class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -3948,9 +4437,7 @@ class ExplicitReconciliationReceiptContractTests(unittest.TestCase):
         ref_key = R.canonical(ref).decode("utf-8")
         record = authority["referenceValidationByCanonicalRef"][ref_key]["record"]
         receipt = authority["verifiedReceiptByCanonicalRef"][ref_key]
-        agreement_hash = hashlib.sha256(
-            (bundle["jobId"] + ":current-agreement").encode()
-        ).hexdigest()
+        agreement_hash = bundle["agreementRef"]["contentHash"]
         laa = {
             "operation": "authorize-payment",
             "pipelineHasPayment": True,
@@ -4327,7 +4814,9 @@ class EntitlementCredentialRefBoundaryTests(unittest.TestCase):
         kwargs = {
             "legacy_agreement_authority_by_phase_key": (
                 refreshed_laa_phase_carriers(authority)
-            )
+            ),
+            "additional_commit_phase": authority.get("additionalCommitPhase"),
+            "agreement_selection_result": authority.get("agreementSelectionResult"),
         }
         boolean_result = R.validate_ebfab(*args, **kwargs)
         disposition_result = R.validate_ebfab_disposition(*args, **kwargs)
@@ -4335,7 +4824,7 @@ class EntitlementCredentialRefBoundaryTests(unittest.TestCase):
 
     def _mutate_entitlement(self, authority, mutation, *, credential_free=False):
         closure = authority["deliveryArtifactAuthorityByPhaseKey"][
-            "2:deliver-entitlement"
+            "4:deliver-entitlement"
         ]
         entitlement = closure["entitlementRecord"]["artifact"]
         if credential_free:
@@ -4404,7 +4893,7 @@ class EntitlementCredentialRefBoundaryTests(unittest.TestCase):
 
         encrypted = copy.deepcopy(buyer_only)
         closure = encrypted["deliveryArtifactAuthorityByPhaseKey"][
-            "2:deliver-entitlement"
+            "4:deliver-entitlement"
         ]
         entitlement = closure["entitlementRecord"]["artifact"]
         entitlement["credentialRef"]["accessModel"] = "encrypt-to-buyer"
@@ -4486,6 +4975,9 @@ class HistoricalEvidenceBindingTests(unittest.TestCase):
             self.data["executionAuthorities"]["legacy-storage-completed"]
         )
         bundle = authority["bundle"]
+        _bind_archival_delivery_to_current_commitment(
+            authority, self.data["seeds"]
+        )
         bundle.pop("evidenceBoundFaultBundleVersion")
         bundle["faultBundleVersion"] = "1"
         self._sign_bundle(bundle)

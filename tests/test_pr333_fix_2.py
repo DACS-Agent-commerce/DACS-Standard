@@ -62,6 +62,8 @@ class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):
             authority.get("verifiedReceiptByCanonicalRef"),
             authority.get("deliveryArtifactAuthorityByPhaseKey"),
             authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
             **R._legacy_agreement_authority_kwargs(authority),
         )
 
@@ -76,6 +78,8 @@ class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):
             authority.get("verifiedReceiptByCanonicalRef"),
             authority.get("deliveryArtifactAuthorityByPhaseKey"),
             authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
             **R._legacy_agreement_authority_kwargs(authority),
         )
 

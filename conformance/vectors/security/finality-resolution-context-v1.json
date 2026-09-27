@@ -18,7 +18,7 @@
     },
     "sessionAuthorityByJob": {
       "01K50M2V4W8Z7J6N5P3T1H9GQC": {
-        "agreementHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+        "agreementHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
         "asset": "USDC",
         "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
         "partyClaims": {
@@ -96,14 +96,14 @@
               "acquiredAt": 1900000005000,
               "authorityId": "observer-a",
               "queryNonce": "fixture-composite-source-392-d2",
-              "responseHash": "a024492798e900ab2581033597bbb64a1670cbb4e56efd70ea79b6f82794ef29",
+              "responseHash": "a730faae8cbcb2497da49426de99e0c8d5e890c204bcfd07fe9754c8f9ab7926",
               "status": "obtained"
             },
             {
               "acquiredAt": 1900000005001,
               "authorityId": "observer-b",
               "queryNonce": "fixture-composite-source-392-d2",
-              "responseHash": "89372c728fd8391c35a73f174c4dc3a963ca6e92bb9fb007fa8e76a80ee23edf",
+              "responseHash": "2bb8cf4bbdb4dbd8acc91928fdc431758befea497a9bb7f14a01bee0386c898f",
               "status": "obtained"
             }
           ],
@@ -124,9 +124,9 @@
               "maxObservationAgeMs": 60000
             },
             "agreement": {
-              "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+              "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
               "contentRef": {
-                "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                 "kind": "authenticated-fixture"
               }
             },
@@ -167,11 +167,11 @@
                 "payer": "did:demos:buyer",
                 "seller": "did:demos:seller"
               },
-              "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+              "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
             },
             "subject": {
               "compositeLegId": "source",
-              "compositeRelationshipHash": "9c1a6e1d1582216358655d3522ae7313cbd268c1eaf87acf85829127c508e251",
+              "compositeRelationshipHash": "0f206e83910e2b78700fb728a3a46d1c2e16660060d7d94d9244c16a04d73713",
               "settlementEvidenceHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787",
               "transactionSubject": [
                 {
@@ -238,7 +238,7 @@
                 "policyId": "dacs-finality-all-authorities-fixture",
                 "policyVersion": "1"
               },
-              "queryHash": "d92fbfa8a2c6193111cd17583d2a2cd9ace554d38a853133af41d03fc3b56565",
+              "queryHash": "baa3b363877bbf9326313f1d95ca650c71e8cff66fd5681f9cdba6e711492c3d",
               "response": {
                 "observation": {
                   "kind": "chain",
@@ -379,7 +379,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "keyId": "observer-a-key",
-                "value": "4V6rzfrzcmPz2xWi3lj8zY05_wAem0pTNjBabRBxEkWS2eex4XsOrsaJbQoDTXs6VFXhhdoB78sTAcMbG7p3Cg"
+                "value": "dk9-8-w-NKeZEWZk4MM0ko8hMLUotEtVK5rcMeAxeRdhETMJAOMq-3vv4ZlmjMtK0N7zcrakvcaIKeA0V9j7DA"
               },
               "signedObservationTime": 1900000000000,
               "transportMetadata": {
@@ -401,7 +401,7 @@
                 "policyId": "dacs-finality-all-authorities-fixture",
                 "policyVersion": "1"
               },
-              "queryHash": "d92fbfa8a2c6193111cd17583d2a2cd9ace554d38a853133af41d03fc3b56565",
+              "queryHash": "baa3b363877bbf9326313f1d95ca650c71e8cff66fd5681f9cdba6e711492c3d",
               "response": {
                 "observation": {
                   "kind": "chain",
@@ -542,7 +542,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "keyId": "observer-b-key",
-                "value": "pFg-BM-NcPwnCuDk-MFFGLndhzYAGyfQ54a08o-ROjacG2IonXXqZYmhiTsuS_eUZLXny7Swq9KHxlPtt_-fAA"
+                "value": "ZJIgh66DoQu5nwJxF4lF2LscsUQlrn21a9wKoMrPni3gcmgrIOFQD-22UNfD53dKMzBzYzKnPMf8dtcpRqk-Ag"
               },
               "signedObservationTime": 1900000000000,
               "transportMetadata": {
@@ -561,7 +561,7 @@
             "generatedAt": 1899000000000,
             "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
             "listingRef": {
-              "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+              "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
               "listingId": "listing-finality-fixture",
               "version": 1
             },
@@ -595,12 +595,12 @@
               {
                 "algorithm": "ed25519",
                 "party": "did:demos:buyer",
-                "value": "9_TfihmgsBZZMMwp4NUJwLwwbp8VSn2oGZTTcuSEJpA7MTqwoW_u1V9y3P8N8ED5S0fBh8B8Kf8qBVl47EJhBA"
+                "value": "5ooNK1zUGYIU1mlzOAQ7tWGkgyWTLFJj8NvJETODZb6NAXLg_ql4SLmWzvtb3X2yP684UBoHCoIFe7z7EFV8DQ"
               },
               {
                 "algorithm": "ed25519",
                 "party": "did:demos:seller",
-                "value": "KBdETW8Dg5C6KXn4_cc5s8y9xNxXPtRoBB7C9NxUivvkRzSwDlF28AiQJV2IewZLm_gIMQbNq8iPMvjwbDqwAQ"
+                "value": "bWG8CWOEnDN8JmIRI61X7q8TV9w4uAmN2xEbhLdL6cnfUGZtZM0dexg1BsDCauDM5IYOoUBPjjcQKQGLuThfCQ"
               }
             ],
             "terms": {
@@ -630,9 +630,9 @@
                 "maxObservationAgeMs": 60000
               },
               "agreement": {
-                "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                 "contentRef": {
-                  "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                  "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                   "kind": "authenticated-fixture"
                 }
               },
@@ -673,11 +673,11 @@
                   "payer": "did:demos:buyer",
                   "seller": "did:demos:seller"
                 },
-                "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+                "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
               },
               "subject": {
                 "compositeLegId": "source",
-                "compositeRelationshipHash": "9c1a6e1d1582216358655d3522ae7313cbd268c1eaf87acf85829127c508e251",
+                "compositeRelationshipHash": "0f206e83910e2b78700fb728a3a46d1c2e16660060d7d94d9244c16a04d73713",
                 "settlementEvidenceHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787",
                 "transactionSubject": [
                   {
@@ -695,14 +695,14 @@
                   "acquiredAt": 1900000005000,
                   "authorityId": "observer-a",
                   "queryNonce": "fixture-composite-source-392-d2",
-                  "responseHash": "a024492798e900ab2581033597bbb64a1670cbb4e56efd70ea79b6f82794ef29",
+                  "responseHash": "a730faae8cbcb2497da49426de99e0c8d5e890c204bcfd07fe9754c8f9ab7926",
                   "status": "obtained"
                 },
                 {
                   "acquiredAt": 1900000005001,
                   "authorityId": "observer-b",
                   "queryNonce": "fixture-composite-source-392-d2",
-                  "responseHash": "89372c728fd8391c35a73f174c4dc3a963ca6e92bb9fb007fa8e76a80ee23edf",
+                  "responseHash": "2bb8cf4bbdb4dbd8acc91928fdc431758befea497a9bb7f14a01bee0386c898f",
                   "status": "obtained"
                 }
               ],
@@ -734,7 +734,7 @@
                   "policyId": "dacs-finality-all-authorities-fixture",
                   "policyVersion": "1"
                 },
-                "queryHash": "d92fbfa8a2c6193111cd17583d2a2cd9ace554d38a853133af41d03fc3b56565",
+                "queryHash": "baa3b363877bbf9326313f1d95ca650c71e8cff66fd5681f9cdba6e711492c3d",
                 "response": {
                   "observation": {
                     "kind": "chain",
@@ -875,7 +875,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "keyId": "observer-a-key",
-                  "value": "4V6rzfrzcmPz2xWi3lj8zY05_wAem0pTNjBabRBxEkWS2eex4XsOrsaJbQoDTXs6VFXhhdoB78sTAcMbG7p3Cg"
+                  "value": "dk9-8-w-NKeZEWZk4MM0ko8hMLUotEtVK5rcMeAxeRdhETMJAOMq-3vv4ZlmjMtK0N7zcrakvcaIKeA0V9j7DA"
                 },
                 "signedObservationTime": 1900000000000,
                 "transportMetadata": {
@@ -897,7 +897,7 @@
                   "policyId": "dacs-finality-all-authorities-fixture",
                   "policyVersion": "1"
                 },
-                "queryHash": "d92fbfa8a2c6193111cd17583d2a2cd9ace554d38a853133af41d03fc3b56565",
+                "queryHash": "baa3b363877bbf9326313f1d95ca650c71e8cff66fd5681f9cdba6e711492c3d",
                 "response": {
                   "observation": {
                     "kind": "chain",
@@ -1038,7 +1038,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "keyId": "observer-b-key",
-                  "value": "pFg-BM-NcPwnCuDk-MFFGLndhzYAGyfQ54a08o-ROjacG2IonXXqZYmhiTsuS_eUZLXny7Swq9KHxlPtt_-fAA"
+                  "value": "ZJIgh66DoQu5nwJxF4lF2LscsUQlrn21a9wKoMrPni3gcmgrIOFQD-22UNfD53dKMzBzYzKnPMf8dtcpRqk-Ag"
                 },
                 "signedObservationTime": 1900000000000,
                 "transportMetadata": {
@@ -1148,14 +1148,14 @@
               "acquiredAt": 1900000005050,
               "authorityId": "observer-a",
               "queryNonce": "fixture-composite-destination-392-d2",
-              "responseHash": "6d4a67bda246160d0514e430b4cb0cacc33bcd24634f36a2a3eb0c0998017929",
+              "responseHash": "82c9c27fe967cabb318c89ef750c728b87751bb1e8d18e1a03c8e59abb0b8fb5",
               "status": "obtained"
             },
             {
               "acquiredAt": 1900000005051,
               "authorityId": "observer-b",
               "queryNonce": "fixture-composite-destination-392-d2",
-              "responseHash": "9810bbcfec7389c4091621fb6f0a0876074635fe26a78af26dc930ae9c024e5b",
+              "responseHash": "8e67c429376aedaa2e5f4738a788361cd355c43bd08d71d5882a71a22d47d5fb",
               "status": "obtained"
             }
           ],
@@ -1176,9 +1176,9 @@
               "maxObservationAgeMs": 60000
             },
             "agreement": {
-              "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+              "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
               "contentRef": {
-                "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                 "kind": "authenticated-fixture"
               }
             },
@@ -1219,11 +1219,11 @@
                 "payer": "did:demos:buyer",
                 "seller": "did:demos:seller"
               },
-              "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+              "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
             },
             "subject": {
               "compositeLegId": "destination",
-              "compositeRelationshipHash": "9c1a6e1d1582216358655d3522ae7313cbd268c1eaf87acf85829127c508e251",
+              "compositeRelationshipHash": "0f206e83910e2b78700fb728a3a46d1c2e16660060d7d94d9244c16a04d73713",
               "settlementEvidenceHash": "6cc3fc1c7e715bb4c0d10f44f1a746d6ffea40629901117b3b80e055b003c705",
               "transactionSubject": [
                 {
@@ -1290,7 +1290,7 @@
                 "policyId": "dacs-finality-all-authorities-fixture",
                 "policyVersion": "1"
               },
-              "queryHash": "bef9fe0de10cc4e737f7278156199d3b1845253a38365d25c5738f3f4de184fa",
+              "queryHash": "ffcf3ba09c58bfc139b26b754de5058bb80ca80af03c903c1031b2263f812a9d",
               "response": {
                 "observation": {
                   "kind": "chain",
@@ -1443,7 +1443,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "keyId": "observer-a-key",
-                "value": "QRO5gCxhpP2XKNPMOX2MCfl87CdDefod2hV4Qe-fgy10qoolQZcny9exarNR6XwH1By-EfmJGQY7-XKDLXkXBw"
+                "value": "HTwYBGGZdVW6cvELqb8N4RiRA8uH4HsF0sN8VmJocrHoNj9V3GG05z-BS3zTMCXn5sAS-RecunLkiTPr_G3VDA"
               },
               "signedObservationTime": 1900000000000,
               "transportMetadata": {
@@ -1465,7 +1465,7 @@
                 "policyId": "dacs-finality-all-authorities-fixture",
                 "policyVersion": "1"
               },
-              "queryHash": "bef9fe0de10cc4e737f7278156199d3b1845253a38365d25c5738f3f4de184fa",
+              "queryHash": "ffcf3ba09c58bfc139b26b754de5058bb80ca80af03c903c1031b2263f812a9d",
               "response": {
                 "observation": {
                   "kind": "chain",
@@ -1618,7 +1618,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "keyId": "observer-b-key",
-                "value": "m6oxGYNTiKCKMLw_vLwdKs8wCR-OgPq0v0da-HOKwlfRK5dt7XVyiHw-zzA8y-FLoP4ZQ0CYzNCRXLpUnozLDQ"
+                "value": "FYEPudqBj6fi3f0Lze1NQE_OzD7B2YQ3OuU9jLH-2BgRX6Ar71wOtr5eKiN-qvhMhX40Yldl2LO8c04FM_u8CA"
               },
               "signedObservationTime": 1900000000000,
               "transportMetadata": {
@@ -1635,7 +1635,7 @@
             "acquiredAt": 1900000005000,
             "authorityId": "observer-b",
             "queryNonce": "fixture-composite-destination-392-d2",
-            "responseHash": "8bf50dddfd6d9da387dea7c3b8c360773479dff5e4a9332c4855b8a0e943bc59",
+            "responseHash": "f5f22d296e22b15bb691070683d0346b1a6f4dfceeeb796eac67d11c1f0204ad",
             "status": "obtained"
           },
           "response": {
@@ -1652,7 +1652,7 @@
               "policyId": "dacs-finality-all-authorities-fixture",
               "policyVersion": "1"
             },
-            "queryHash": "bef9fe0de10cc4e737f7278156199d3b1845253a38365d25c5738f3f4de184fa",
+            "queryHash": "ffcf3ba09c58bfc139b26b754de5058bb80ca80af03c903c1031b2263f812a9d",
             "response": {
               "reason": "maintenance",
               "status": "unavailable"
@@ -1660,7 +1660,7 @@
             "signature": {
               "algorithm": "ed25519",
               "keyId": "observer-b-key",
-              "value": "R6aisn9hfE-YLHbFvFkj_EsIHHHuEBfNWTgdnP8k517esVRRERoKTEfCC3cj67UwQJlGG47gnPdj1l7hhE5FDA"
+              "value": "6kljjPVD5eMIClbPpoUznhT0Do_8NWSpgR2IlmS6giusGjA6QCOECVd_eK--3QyL4gFSAFcdza_9dLGkWDZOCA"
             },
             "signedObservationTime": 1900000004900
           }
@@ -1672,7 +1672,7 @@
             "generatedAt": 1899000000000,
             "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
             "listingRef": {
-              "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+              "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
               "listingId": "listing-finality-fixture",
               "version": 1
             },
@@ -1706,12 +1706,12 @@
               {
                 "algorithm": "ed25519",
                 "party": "did:demos:buyer",
-                "value": "9_TfihmgsBZZMMwp4NUJwLwwbp8VSn2oGZTTcuSEJpA7MTqwoW_u1V9y3P8N8ED5S0fBh8B8Kf8qBVl47EJhBA"
+                "value": "5ooNK1zUGYIU1mlzOAQ7tWGkgyWTLFJj8NvJETODZb6NAXLg_ql4SLmWzvtb3X2yP684UBoHCoIFe7z7EFV8DQ"
               },
               {
                 "algorithm": "ed25519",
                 "party": "did:demos:seller",
-                "value": "KBdETW8Dg5C6KXn4_cc5s8y9xNxXPtRoBB7C9NxUivvkRzSwDlF28AiQJV2IewZLm_gIMQbNq8iPMvjwbDqwAQ"
+                "value": "bWG8CWOEnDN8JmIRI61X7q8TV9w4uAmN2xEbhLdL6cnfUGZtZM0dexg1BsDCauDM5IYOoUBPjjcQKQGLuThfCQ"
               }
             ],
             "terms": {
@@ -1741,9 +1741,9 @@
                 "maxObservationAgeMs": 60000
               },
               "agreement": {
-                "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                 "contentRef": {
-                  "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                  "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                   "kind": "authenticated-fixture"
                 }
               },
@@ -1784,11 +1784,11 @@
                   "payer": "did:demos:buyer",
                   "seller": "did:demos:seller"
                 },
-                "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+                "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
               },
               "subject": {
                 "compositeLegId": "destination",
-                "compositeRelationshipHash": "9c1a6e1d1582216358655d3522ae7313cbd268c1eaf87acf85829127c508e251",
+                "compositeRelationshipHash": "0f206e83910e2b78700fb728a3a46d1c2e16660060d7d94d9244c16a04d73713",
                 "settlementEvidenceHash": "6cc3fc1c7e715bb4c0d10f44f1a746d6ffea40629901117b3b80e055b003c705",
                 "transactionSubject": [
                   {
@@ -1806,14 +1806,14 @@
                   "acquiredAt": 1900000005050,
                   "authorityId": "observer-a",
                   "queryNonce": "fixture-composite-destination-392-d2",
-                  "responseHash": "6d4a67bda246160d0514e430b4cb0cacc33bcd24634f36a2a3eb0c0998017929",
+                  "responseHash": "82c9c27fe967cabb318c89ef750c728b87751bb1e8d18e1a03c8e59abb0b8fb5",
                   "status": "obtained"
                 },
                 {
                   "acquiredAt": 1900000005051,
                   "authorityId": "observer-b",
                   "queryNonce": "fixture-composite-destination-392-d2",
-                  "responseHash": "9810bbcfec7389c4091621fb6f0a0876074635fe26a78af26dc930ae9c024e5b",
+                  "responseHash": "8e67c429376aedaa2e5f4738a788361cd355c43bd08d71d5882a71a22d47d5fb",
                   "status": "obtained"
                 }
               ],
@@ -1845,7 +1845,7 @@
                   "policyId": "dacs-finality-all-authorities-fixture",
                   "policyVersion": "1"
                 },
-                "queryHash": "bef9fe0de10cc4e737f7278156199d3b1845253a38365d25c5738f3f4de184fa",
+                "queryHash": "ffcf3ba09c58bfc139b26b754de5058bb80ca80af03c903c1031b2263f812a9d",
                 "response": {
                   "observation": {
                     "kind": "chain",
@@ -1998,7 +1998,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "keyId": "observer-a-key",
-                  "value": "QRO5gCxhpP2XKNPMOX2MCfl87CdDefod2hV4Qe-fgy10qoolQZcny9exarNR6XwH1By-EfmJGQY7-XKDLXkXBw"
+                  "value": "HTwYBGGZdVW6cvELqb8N4RiRA8uH4HsF0sN8VmJocrHoNj9V3GG05z-BS3zTMCXn5sAS-RecunLkiTPr_G3VDA"
                 },
                 "signedObservationTime": 1900000000000,
                 "transportMetadata": {
@@ -2020,7 +2020,7 @@
                   "policyId": "dacs-finality-all-authorities-fixture",
                   "policyVersion": "1"
                 },
-                "queryHash": "bef9fe0de10cc4e737f7278156199d3b1845253a38365d25c5738f3f4de184fa",
+                "queryHash": "ffcf3ba09c58bfc139b26b754de5058bb80ca80af03c903c1031b2263f812a9d",
                 "response": {
                   "observation": {
                     "kind": "chain",
@@ -2173,7 +2173,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "keyId": "observer-b-key",
-                  "value": "m6oxGYNTiKCKMLw_vLwdKs8wCR-OgPq0v0da-HOKwlfRK5dt7XVyiHw-zzA8y-FLoP4ZQ0CYzNCRXLpUnozLDQ"
+                  "value": "FYEPudqBj6fi3f0Lze1NQE_OzD7B2YQ3OuU9jLH-2BgRX6Ar71wOtr5eKiN-qvhMhX40Yldl2LO8c04FM_u8CA"
                 },
                 "signedObservationTime": 1900000000000,
                 "transportMetadata": {
@@ -2278,7 +2278,7 @@
       }
     ],
     "relationship": {
-      "agreementHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+      "agreementHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
       "compositeTransactionId": "fixture-composite-transaction-392-d2",
       "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
       "legIds": [
@@ -2286,7 +2286,7 @@
         "destination"
       ],
       "phaseIndex": 0,
-      "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+      "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
     },
     "want": {
       "decision": "pass"
@@ -2295,6 +2295,18 @@
   "count": 11,
   "dacs5Consumer": {
     "authority": {
+      "agreementSelectionResult": {
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850"
+          },
+          "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91"
+        },
+        "agreementType": "legacy",
+        "proofVerified": true,
+        "resolution": "verified"
+      },
       "bundleLifecycle": {
         "independentlyResolvable": true,
         "state": "finalized"
@@ -2307,7 +2319,7 @@
             "generatedAt": 1899000000000,
             "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
             "listingRef": {
-              "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+              "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
               "listingId": "listing-finality-fixture",
               "version": 1
             },
@@ -2341,12 +2353,12 @@
               {
                 "algorithm": "ed25519",
                 "party": "did:demos:buyer",
-                "value": "9_TfihmgsBZZMMwp4NUJwLwwbp8VSn2oGZTTcuSEJpA7MTqwoW_u1V9y3P8N8ED5S0fBh8B8Kf8qBVl47EJhBA"
+                "value": "5ooNK1zUGYIU1mlzOAQ7tWGkgyWTLFJj8NvJETODZb6NAXLg_ql4SLmWzvtb3X2yP684UBoHCoIFe7z7EFV8DQ"
               },
               {
                 "algorithm": "ed25519",
                 "party": "did:demos:seller",
-                "value": "KBdETW8Dg5C6KXn4_cc5s8y9xNxXPtRoBB7C9NxUivvkRzSwDlF28AiQJV2IewZLm_gIMQbNq8iPMvjwbDqwAQ"
+                "value": "bWG8CWOEnDN8JmIRI61X7q8TV9w4uAmN2xEbhLdL6cnfUGZtZM0dexg1BsDCauDM5IYOoUBPjjcQKQGLuThfCQ"
               }
             ],
             "terms": {
@@ -2376,9 +2388,9 @@
                 "maxObservationAgeMs": 60000
               },
               "agreement": {
-                "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                 "contentRef": {
-                  "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+                  "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
                   "kind": "authenticated-fixture"
                 }
               },
@@ -2419,7 +2431,7 @@
                   "payer": "did:demos:buyer",
                   "seller": "did:demos:seller"
                 },
-                "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+                "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
               },
               "subject": {
                 "compositeLegId": null,
@@ -2441,14 +2453,14 @@
                   "acquiredAt": 1900000004750,
                   "authorityId": "observer-b",
                   "queryNonce": "fixture-query-nonce-392-d2",
-                  "responseHash": "5840a9f89e2511cc277bcd2fcd37f874782cd976c580bd8bec086ffeddae2369",
+                  "responseHash": "f10031261f19f6c79833ac99493a71bbbd3e688d6961f2456fb2ec0c0a308298",
                   "status": "obtained"
                 },
                 {
                   "acquiredAt": 1900000005000,
                   "authorityId": "observer-a",
                   "queryNonce": "fixture-query-nonce-392-d2",
-                  "responseHash": "49437a8468cbba826cb5fd648ced2becc4c93c37df83f36d5ad1b0667b345f82",
+                  "responseHash": "9a4e13e8173f2b664dcfbbf1f77ef8c0ee1d1975637afab1a877ca08c6d623c7",
                   "status": "obtained"
                 }
               ],
@@ -2480,7 +2492,7 @@
                   "policyId": "dacs-finality-all-authorities-fixture",
                   "policyVersion": "1"
                 },
-                "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+                "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
                 "response": {
                   "observation": {
                     "kind": "chain",
@@ -2621,7 +2633,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "keyId": "observer-b-key",
-                  "value": "xnh5xRHUHdseUhCcfI11tYNqk3ksJ2erbJ6QATL1tuMkrzR71cae-1iPXcINnCBRsvkrhi3CoS1wmSLANa8XCw"
+                  "value": "iDamlLIGZbXKIUQDxKZK2WCY76COZ2Rxdca-wDJZNyol0aL0D12_f5RyVenjXuCJLtVSk9m1-deZw473OCQjCA"
                 },
                 "signedObservationTime": 1900000000000,
                 "transportMetadata": {
@@ -2643,7 +2655,7 @@
                   "policyId": "dacs-finality-all-authorities-fixture",
                   "policyVersion": "1"
                 },
-                "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+                "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
                 "response": {
                   "observation": {
                     "kind": "chain",
@@ -2784,7 +2796,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "keyId": "observer-a-key",
-                  "value": "XPRT5cR6nFRcprlpwZmPzTVFDn7LlVZmsziCnfRac4mMXsrhfAU1PBpVk3hHNsO19ZIJ_Aw1b88Eujy4RV9DCg"
+                  "value": "lBg1iXgf7-PAz6sXd5mmSS3KxcKG7GP5FihO11jwJp90iHUSMlRe00HdwSj5MQCywYrc60SwXtY3jSpCSUwiBA"
                 },
                 "signedObservationTime": 1900000000000,
                 "transportMetadata": {
@@ -2888,12 +2900,12 @@
         }
       },
       "legacyAgreementAuthorityByPhaseKey": {
-        "0:pay-evm-erc20": {
+        "2:pay-evm-erc20": {
           "binding": {
-            "agreementContentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
-            "bundleContentHash": "00481f57f1020edb22b947f7f667daca0f5974186f27b175d4055db25f2b3755",
+            "agreementContentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
+            "bundleContentHash": "f4b1fc105de58f2a0857891a53ee21e60183cb5af7d78e0e3fc53828bbbbf233",
             "evidenceContentHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787",
-            "evidenceReceiptHash": "9d35d7652cb332deec8af3092f1db097adecc39f114e8001752b8ea956ba9cc0",
+            "evidenceReceiptHash": "021c99ff9046d4f1ff1fb61bb5795175de11e17696432fb7788c184d191b2cc9",
             "evidenceRef": {
               "anchor": {
                 "kind": "storage-program",
@@ -2903,27 +2915,27 @@
             },
             "evidenceSigner": "did:demos:orchestrator",
             "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
-            "laaContentHash": "97e279a7b77f76a343fdeb2a6cbb1fd557f37d8eaa16b4ee06f468527624e45a",
-            "listingContentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+            "laaContentHash": "4cbccd02568aaf660ebbaa5018fd7139658bcf8dd4635f1becb7c84be577665b",
+            "listingContentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
             "listingRef": {
-              "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+              "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
               "listingId": "listing-finality-fixture",
               "version": 1
             },
             "phase": "pay-evm-erc20",
-            "phaseIndex": 0,
-            "phaseKey": "0:pay-evm-erc20",
+            "phaseIndex": 2,
+            "phaseKey": "2:pay-evm-erc20",
             "phaseOrchestrator": "did:demos:orchestrator",
             "receiptWriter": "did:demos:orchestrator",
-            "sessionId": "session-finality-ba87196beca094d7d5add3a702c32799f42e2a8d32e1a2d93ebece58b7d4e737"
+            "sessionId": "session-finality-cbade20f32845448a2b94da241c14716687e89b1b30df4f4b6e2fa0df6e968a3"
           },
           "laa": {
             "agreement": {
               "artifact": "payee-bound",
-              "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+              "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
               "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
               "listingRef": {
-                "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+                "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
                 "listingId": "listing-finality-fixture",
                 "version": 1
               },
@@ -2937,7 +2949,7 @@
             "sessionAuthority": {
               "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
               "orchestratorPrimaryClaim": "did:demos:orchestrator",
-              "sessionId": "session-finality-ba87196beca094d7d5add3a702c32799f42e2a8d32e1a2d93ebece58b7d4e737",
+              "sessionId": "session-finality-cbade20f32845448a2b94da241c14716687e89b1b30df4f4b6e2fa0df6e968a3",
               "state": "verified"
             }
           }
@@ -2948,6 +2960,12 @@
         "listingVersion": 1,
         "pipeline": [
           {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
             "kind": "pay-evm-erc20"
           }
         ],
@@ -2955,12 +2973,12 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:seller",
-          "value": "QST3DTMPkNGZzaDfDk-d0yiO1MkiZy3l3Yuxdre7zVKeLPVPySoZNpKsRdgZQ_Kel16Afw0xvaF2D50nR0sIDw"
+          "value": "kIOi6ZX-8dgOiK7A03WDylKPtlI5jUPx7LQK1412rV_eb8p8dsald6LeGnXM4EQ-bF8915S7jA2wWEXRFaNBAA"
         }
       },
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df\"},\"contentHash\":\"87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787\"}": {
-          "agreementHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+          "agreementHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
           "lifecycle": {
             "independentlyResolvable": true,
             "state": "finalized"
@@ -3003,13 +3021,13 @@
               "value": "w0nNDM0Om4QYZ4dGTvgM61s_C2BezF4eDNXOIRxuWcJbKWXdJffwLHieZTtAnocAbDLJhzC_l8xoNrGEsL11Bg"
             }
           },
-          "sessionId": "session-finality-ba87196beca094d7d5add3a702c32799f42e2a8d32e1a2d93ebece58b7d4e737"
+          "sessionId": "session-finality-cbade20f32845448a2b94da241c14716687e89b1b30df4f4b6e2fa0df6e968a3"
         }
       },
       "sessionExecutionAuthorityByPhaseKey": {
-        "0:pay-evm-erc20": {
+        "2:pay-evm-erc20": {
           "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
-          "phaseIndex": 0,
+          "phaseIndex": 2,
           "phaseKind": "pay-evm-erc20",
           "phaseOrchestrator": "did:demos:orchestrator",
           "railId": "fixture:block-depth"
@@ -3028,7 +3046,7 @@
             "value": "23373bdc811d85ce2d3d68b54db5b2496c9609cbdf94e762abda7911dff70b4a"
           },
           "finalityProfile": "demos-bft-final",
-          "logicalAddress": "dacs4:payment:01K50M2V4W8Z7J6N5P3T1H9GQC:fixture%3Ablock-depth:0",
+          "logicalAddress": "dacs4:payment:01K50M2V4W8Z7J6N5P3T1H9GQC:fixture%3Ablock-depth:2",
           "nativeAddress": "stor-908188cf2e75cdbcd7ef772227fc33f61ed9ac59e5a4c25a44a0dd42369ca5df",
           "nonce": "0",
           "observationDisposition": "established",
@@ -3045,13 +3063,20 @@
       }
     },
     "bundle": {
+      "agreementRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "stor-cdf8f3f7f8c6ff46aaca3713c91c650b1a03df80101f248276c22aecdc26a850"
+        },
+        "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91"
+      },
       "anchoredByRole": "buyer",
       "faultedParty": "none",
       "finalisedAt": 1900000000000,
       "finalityBoundEvidenceFaultBundleVersion": "1",
       "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
       "listingRef": {
-        "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+        "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
         "listingId": "listing-finality-fixture",
         "version": 1
       },
@@ -3070,6 +3095,16 @@
       ],
       "phaseSummary": [
         {
+          "index": 0,
+          "kind": "negotiate-fixed-price",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
           "attestationRef": {
             "anchor": {
               "kind": "storage-program",
@@ -3077,7 +3112,7 @@
             },
             "contentHash": "87897e0446ec22784736f9d6373325edd8135d5995591db5034abcca4df9b787"
           },
-          "index": 0,
+          "index": 2,
           "kind": "pay-evm-erc20",
           "outcome": "ok"
         }
@@ -3097,12 +3132,12 @@
         {
           "algorithm": "ed25519",
           "party": "did:demos:buyer",
-          "value": "fa1OCXCqWGnAOdErZ9SC3NUbdBfND2MQRqe-9WBtiQVznf9Ia2vqY12rYxGi9zOq5fu45jZF9tj6kDKNbE87CQ"
+          "value": "0BDwt7q1tg8l4g11M5lJ4ykf3y6C4ovG3Cgruc18wWLUA2f-ZINgqds3e0ySroC8ZYY5zlRBatZhUQ2HKG8vCA"
         },
         {
           "algorithm": "ed25519",
           "party": "did:demos:seller",
-          "value": "R3nTWoOc8KnHSX9mRiTLkHdx7EmecsDs--6H_OkmVYJlEkphGU2fZOvVfDWsR77RDbRQrD9A33gllji20hRwDw"
+          "value": "fm-9XXSUmJBNg7dpXcwwY_9QEpfnQseEYgu1TUSOrCyDLa0HVUTBo1k8hELEYlURG9wlPGlskoFFj3JrqZNQAg"
         }
       ],
       "vetRecords": []
@@ -3110,13 +3145,13 @@
     "model": "block-depth",
     "pointer": {
       "finalityBoundEvidenceFaultBundleVersion": "1",
-      "fullBundleContentHash": "00481f57f1020edb22b947f7f667daca0f5974186f27b175d4055db25f2b3755",
+      "fullBundleContentHash": "f4b1fc105de58f2a0857891a53ee21e60183cb5af7d78e0e3fc53828bbbbf233",
       "fullBundleUrl": "https://example.invalid/finality-bound-bundle.json",
       "pointerKind": "extended",
       "signature": {
         "algorithm": "ed25519",
         "signer": "did:demos:buyer",
-        "value": "MV7vcl-N7aGmmOqaPxkpgl9vKGo8E23oOeFXJ8z5dKK_avywo2xk9DMLxJcYr1gg0b57sV1dGWbygaJu-DguDw"
+        "value": "N47_lwOutTHgoN9s8qUjXT2KJKfBpURLwIzO34BW-O80F_eLWiFECPMiEC4VvhIp0dOpVNoKHp6oMDs0ckyAAg"
       }
     }
   },
@@ -3129,14 +3164,14 @@
           "acquiredAt": 1900000004750,
           "authorityId": "observer-b",
           "queryNonce": "fixture-query-nonce-392-d2",
-          "responseHash": "5840a9f89e2511cc277bcd2fcd37f874782cd976c580bd8bec086ffeddae2369",
+          "responseHash": "f10031261f19f6c79833ac99493a71bbbd3e688d6961f2456fb2ec0c0a308298",
           "status": "obtained"
         },
         {
           "acquiredAt": 1900000005000,
           "authorityId": "observer-a",
           "queryNonce": "fixture-query-nonce-392-d2",
-          "responseHash": "49437a8468cbba826cb5fd648ced2becc4c93c37df83f36d5ad1b0667b345f82",
+          "responseHash": "9a4e13e8173f2b664dcfbbf1f77ef8c0ee1d1975637afab1a877ca08c6d623c7",
           "status": "obtained"
         }
       ],
@@ -3157,9 +3192,9 @@
           "maxObservationAgeMs": 60000
         },
         "agreement": {
-          "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+          "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
           "contentRef": {
-            "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+            "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
             "kind": "authenticated-fixture"
           }
         },
@@ -3200,7 +3235,7 @@
             "payer": "did:demos:buyer",
             "seller": "did:demos:seller"
           },
-          "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+          "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
         },
         "subject": {
           "compositeLegId": null,
@@ -3271,7 +3306,7 @@
             "policyId": "dacs-finality-all-authorities-fixture",
             "policyVersion": "1"
           },
-          "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+          "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
           "response": {
             "observation": {
               "kind": "chain",
@@ -3412,7 +3447,7 @@
           "signature": {
             "algorithm": "ed25519",
             "keyId": "observer-a-key",
-            "value": "XPRT5cR6nFRcprlpwZmPzTVFDn7LlVZmsziCnfRac4mMXsrhfAU1PBpVk3hHNsO19ZIJ_Aw1b88Eujy4RV9DCg"
+            "value": "lBg1iXgf7-PAz6sXd5mmSS3KxcKG7GP5FihO11jwJp90iHUSMlRe00HdwSj5MQCywYrc60SwXtY3jSpCSUwiBA"
           },
           "signedObservationTime": 1900000000000,
           "transportMetadata": {
@@ -3434,7 +3469,7 @@
             "policyId": "dacs-finality-all-authorities-fixture",
             "policyVersion": "1"
           },
-          "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+          "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
           "response": {
             "observation": {
               "kind": "chain",
@@ -3575,7 +3610,7 @@
           "signature": {
             "algorithm": "ed25519",
             "keyId": "observer-b-key",
-            "value": "xnh5xRHUHdseUhCcfI11tYNqk3ksJ2erbJ6QATL1tuMkrzR71cae-1iPXcINnCBRsvkrhi3CoS1wmSLANa8XCw"
+            "value": "iDamlLIGZbXKIUQDxKZK2WCY76COZ2Rxdca-wDJZNyol0aL0D12_f5RyVenjXuCJLtVSk9m1-deZw473OCQjCA"
           },
           "signedObservationTime": 1900000000000,
           "transportMetadata": {
@@ -3593,7 +3628,7 @@
         "generatedAt": 1899000000000,
         "jobId": "01K50M2V4W8Z7J6N5P3T1H9GQC",
         "listingRef": {
-          "contentHash": "20bcb31519b9ab030b77fb0b3f4cbeb56eb796f8425df623b31825c7717808a0",
+          "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4",
           "listingId": "listing-finality-fixture",
           "version": 1
         },
@@ -3627,12 +3662,12 @@
           {
             "algorithm": "ed25519",
             "party": "did:demos:buyer",
-            "value": "9_TfihmgsBZZMMwp4NUJwLwwbp8VSn2oGZTTcuSEJpA7MTqwoW_u1V9y3P8N8ED5S0fBh8B8Kf8qBVl47EJhBA"
+            "value": "5ooNK1zUGYIU1mlzOAQ7tWGkgyWTLFJj8NvJETODZb6NAXLg_ql4SLmWzvtb3X2yP684UBoHCoIFe7z7EFV8DQ"
           },
           {
             "algorithm": "ed25519",
             "party": "did:demos:seller",
-            "value": "KBdETW8Dg5C6KXn4_cc5s8y9xNxXPtRoBB7C9NxUivvkRzSwDlF28AiQJV2IewZLm_gIMQbNq8iPMvjwbDqwAQ"
+            "value": "bWG8CWOEnDN8JmIRI61X7q8TV9w4uAmN2xEbhLdL6cnfUGZtZM0dexg1BsDCauDM5IYOoUBPjjcQKQGLuThfCQ"
           }
         ],
         "terms": {
@@ -3662,9 +3697,9 @@
             "maxObservationAgeMs": 60000
           },
           "agreement": {
-            "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+            "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
             "contentRef": {
-              "contentHash": "e59f0ef1483575e0647a3299e96991a9370ca6d0074889ba61521138a7663e46",
+              "contentHash": "7a12458b79bc95752909d7f2d9599c53d3d40c0aa935b335bc4a89434b6b8c91",
               "kind": "authenticated-fixture"
             }
           },
@@ -3705,7 +3740,7 @@
               "payer": "did:demos:buyer",
               "seller": "did:demos:seller"
             },
-            "sessionIdentityHash": "486e9bc85e758a32e049517b017f0e5193c80f08efc0db1e9e1a28c36c894afb"
+            "sessionIdentityHash": "0d9398b40ca388c1d1606354d870297b52564c6f34c8f5e7222dee42d6e37e20"
           },
           "subject": {
             "compositeLegId": null,
@@ -3727,14 +3762,14 @@
               "acquiredAt": 1900000004750,
               "authorityId": "observer-b",
               "queryNonce": "fixture-query-nonce-392-d2",
-              "responseHash": "5840a9f89e2511cc277bcd2fcd37f874782cd976c580bd8bec086ffeddae2369",
+              "responseHash": "f10031261f19f6c79833ac99493a71bbbd3e688d6961f2456fb2ec0c0a308298",
               "status": "obtained"
             },
             {
               "acquiredAt": 1900000005000,
               "authorityId": "observer-a",
               "queryNonce": "fixture-query-nonce-392-d2",
-              "responseHash": "49437a8468cbba826cb5fd648ced2becc4c93c37df83f36d5ad1b0667b345f82",
+              "responseHash": "9a4e13e8173f2b664dcfbbf1f77ef8c0ee1d1975637afab1a877ca08c6d623c7",
               "status": "obtained"
             }
           ],
@@ -3766,7 +3801,7 @@
               "policyId": "dacs-finality-all-authorities-fixture",
               "policyVersion": "1"
             },
-            "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+            "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
             "response": {
               "observation": {
                 "kind": "chain",
@@ -3907,7 +3942,7 @@
             "signature": {
               "algorithm": "ed25519",
               "keyId": "observer-b-key",
-              "value": "xnh5xRHUHdseUhCcfI11tYNqk3ksJ2erbJ6QATL1tuMkrzR71cae-1iPXcINnCBRsvkrhi3CoS1wmSLANa8XCw"
+              "value": "iDamlLIGZbXKIUQDxKZK2WCY76COZ2Rxdca-wDJZNyol0aL0D12_f5RyVenjXuCJLtVSk9m1-deZw473OCQjCA"
             },
             "signedObservationTime": 1900000000000,
             "transportMetadata": {
@@ -3929,7 +3964,7 @@
               "policyId": "dacs-finality-all-authorities-fixture",
               "policyVersion": "1"
             },
-            "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+            "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
             "response": {
               "observation": {
                 "kind": "chain",
@@ -4070,7 +4105,7 @@
             "signature": {
               "algorithm": "ed25519",
               "keyId": "observer-a-key",
-              "value": "XPRT5cR6nFRcprlpwZmPzTVFDn7LlVZmsziCnfRac4mMXsrhfAU1PBpVk3hHNsO19ZIJ_Aw1b88Eujy4RV9DCg"
+              "value": "lBg1iXgf7-PAz6sXd5mmSS3KxcKG7GP5FihO11jwJp90iHUSMlRe00HdwSj5MQCywYrc60SwXtY3jSpCSUwiBA"
             },
             "signedObservationTime": 1900000000000,
             "transportMetadata": {
@@ -4186,7 +4221,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-a",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "6d214ed1b8fdb815e3aab8130e00b2e598e20f10d1c15adbf87490c793f6afeb",
+        "responseHash": "137afde72089e059bdde308cb0a3c5d14e1727182ffe08efdfe1a0b86934679b",
         "status": "obtained"
       },
       "response": {
@@ -4203,7 +4238,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+        "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
         "response": {
           "observation": {
             "kind": "chain",
@@ -4350,7 +4385,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-a-key",
-          "value": "yo6zv7LFkj9T_GOLdUqDkeT1hvVf2ziEvvpznmCpST_ixtg56zhlWeARaIGHs6eThQgDfXT3sEOxpNHVHJisCw"
+          "value": "4vyF63sIOqTI4Rfd4I5Y597kmvHIJHRBXgrr7EpihMCLY4tjUyA4xcEk-I1kf7F_cjyeO4KYcWidVGcOR-V9AQ"
         },
         "signedObservationTime": 1900000000000
       }
@@ -4360,7 +4395,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-a",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "1fca83c54957ce04df8146366923054c2f76857cd78ef57ad378687b660b822e",
+        "responseHash": "2024022d5dcc4b7ad96e8c04bb5c79dcf9fe91c30bcd300f08ac683c12920c1b",
         "status": "obtained"
       },
       "response": {
@@ -4377,7 +4412,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+        "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
         "response": {
           "observation": {
             "kind": "chain",
@@ -4518,7 +4553,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-a-key",
-          "value": "WESA4r3lA97uhQXhsQmZlIc9biVkNAg3-29yOeVjVSDuhkHiBJf2As6m9oRvKB8UzfVd9uICcwp_jnhKwI9XDg"
+          "value": "31No5mpNjEBaOoC8F-E-uJor_fVe03WoJmy7PLQEPOiFdGLJQ0ZncjJyABhuu5kYkT_Y0YFGzSN-m2w0PxcxAg"
         },
         "signedObservationTime": 1900000000000
       }
@@ -4528,7 +4563,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-a",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "4eab9e1ca9f8bceae4dabcd2d8a3faadb0578511fdfab4fe1b162d4ff535e915",
+        "responseHash": "7422307437e2c7be23d5020b0c37bf03a40bdca036a92bd74c3d3e95da013a3e",
         "status": "obtained"
       },
       "response": {
@@ -4545,7 +4580,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+        "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
         "response": {
           "observation": {
             "kind": "chain",
@@ -4686,7 +4721,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-a-key",
-          "value": "vgV3-vxWwoNjsscSOKxWN3Mf7s9YmWU51XTuU7Lpu5OXIlMBynFZcEfI_go2tKVSdPHK5-uQ7cnGPv_GnJKJAw"
+          "value": "Qj-NBLVexHt6yAJYNahcTruczNL1tJHKNkAqV4bKj_KtbZNT46p4fjzYxMAktri4SZjcyZQVpGTV9WlldaKfDQ"
         },
         "signedObservationTime": 1900000000000
       }
@@ -4696,7 +4731,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-a",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "fe40fad59b2bceb641c6f7df29e2d8a10905c98dab50e79c9e7c3b491848bd9c",
+        "responseHash": "28e5fd3794ad74e03c91fcdef8745ec40aa65c56d936dccfeef0e6161c7fb96e",
         "status": "obtained"
       },
       "response": {
@@ -4713,7 +4748,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+        "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
         "response": {
           "observation": {
             "kind": "chain",
@@ -4854,7 +4889,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-a-key",
-          "value": "iWmM8K4BTbntOPvFEB6_aebRGyT2rxEOb-guiTN5AW2_MduZAFZHyoGQlM0YTT_qJpPMwxSlEHRa3RvjVuweCg"
+          "value": "dy-jCZOlnYkaQhh5k3kBTiLy7JG1nm61PmNHFh1aEtjCRbnv3W-NOlz1_H0V52xb8F1f4NV6qmUq-xnwhUaNDw"
         },
         "signedObservationTime": 1900000005001
       }
@@ -4864,7 +4899,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-b",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "f2cc44daa40e66619bc5f54f4eb95ea271e5e3514afd5d4c154e5394de0d013d",
+        "responseHash": "3636bceb20cba0f724850c525102f2b6c8c390bb31acc86ef93380484b7e9c67",
         "status": "obtained"
       },
       "response": {
@@ -4881,7 +4916,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "43f2ca548ef650c0daaa77c9cf1ecfdfc8fbbe371da1fabaf5bdb772b36fcbc5",
+        "queryHash": "05e9bdf021884ead1b2fe767caa964c7450c1c26a0989a740006834b024dc149",
         "response": {
           "observation": {
             "kind": "chain",
@@ -5022,7 +5057,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-b-key",
-          "value": "JXPwLiR33TDuUgpzRk2RPRcLlAkozx4mauS0h1vQSEzWmZ0JdELj-rEJ1PV0VwgQ81HVeufsSIyTozjisCrKCw"
+          "value": "m-qLmBctRPAku8u_2eFu3cCjk_-EB84lq_QKVY4U1Ca1cRR4BFJZRydh_-d9MdloIztUpjVIyd_I2AauFIfGDg"
         },
         "signedObservationTime": 1900000000000
       }
@@ -5032,7 +5067,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-a",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "32900ce0500f7e836fdd9dd99946695e1798fa0ca2ea22e79a1c8bd9f7c9b12d",
+        "responseHash": "158177c1cec14ba43ffd0a6e2fc4d574429ff9fb5a6a13ddd3065bbc640a3b11",
         "status": "obtained"
       },
       "response": {
@@ -5049,7 +5084,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+        "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
         "response": {
           "observation": {
             "kind": "chain",
@@ -5190,7 +5225,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-a-key",
-          "value": "2E0EfSoH8Be5UpoMNp_J3tcHSi2uxVX9FiWUKIJtalXITyu5GjnS6eMs9v1qlEhYePoRXxlGfZfSKBRFLaq7AA"
+          "value": "pN3q7PPrqeq7vJVvyDnED_2opSxBb4EvGkccCoPgaeqTKOYVwDN44G5onjZFCLHqH19uf7W1eAxidc0FEynnDw"
         },
         "signedObservationTime": 1899999944999
       }
@@ -5200,7 +5235,7 @@
         "acquiredAt": 1900000005000,
         "authorityId": "observer-b",
         "queryNonce": "fixture-query-nonce-392-d2",
-        "responseHash": "99773787ab2d09733f81cbbca791582e864f38b11d4c7491fe1d5d0c8e0e2b11",
+        "responseHash": "58bbb1c15dad87df6c85a8d510ce12089b7b5b809d356b691546acbd84772ebc",
         "status": "obtained"
       },
       "response": {
@@ -5217,7 +5252,7 @@
           "policyId": "dacs-finality-all-authorities-fixture",
           "policyVersion": "1"
         },
-        "queryHash": "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+        "queryHash": "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
         "response": {
           "reason": "maintenance",
           "status": "unavailable"
@@ -5225,7 +5260,7 @@
         "signature": {
           "algorithm": "ed25519",
           "keyId": "observer-b-key",
-          "value": "y7h5zoHlJ7rCzyuHVsmbADuTPgDD_KH_gyRDMAhsRtLXx-XHP-V4RfIZnKBqxNjXqrixRfWI8ZCGd4viUSxcAA"
+          "value": "XR0DwZZDCVgb_G4eks5wJ1bqzMG_YVTW9OVAuNhUN0A4T6Fh_TAmWFy7dwBV-MwSAMDztTaeyjtD-rPT_9V8Cw"
         },
         "signedObservationTime": 1900000004900
       }

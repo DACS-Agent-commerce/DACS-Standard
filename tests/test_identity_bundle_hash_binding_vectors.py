@@ -2734,6 +2734,24 @@ def validate_terminal_authority(
                 verified_receipts,
             )
         )
+    agreement_type = next((
+        selected_type
+        for discriminator, selected_type in (
+            ("agreementVersion", "legacy"),
+            ("payeeBoundAgreementVersion", "payee-bound"),
+            ("identityBoundAgreementVersion", "identity-bound"),
+            ("identityBoundPayeeAgreementVersion", "identity-bound-payee"),
+            ("sealedSelectionAgreementVersion", "sealed-selection"),
+        )
+        if isinstance(context.get("agreement"), dict)
+        and discriminator in context["agreement"]
+    ), None)
+    agreement_selection_result = {
+        "resolution": "verified",
+        "agreementRef": copy.deepcopy(bundle.get("agreementRef")),
+        "agreementType": agreement_type,
+        "proofVerified": True,
+    }
     seb_disposition, seb_reason, _ = seb_validator(
         bundle,
         context.get("listing"),
@@ -2754,6 +2772,7 @@ def validate_terminal_authority(
         additional_commit_phase=(
             phase if phase != generator.PHASES["agreement"] else None
         ),
+        agreement_selection_result=agreement_selection_result,
         **seb_kwargs,
     )
     if seb_disposition != "pass":
@@ -3202,6 +3221,18 @@ def terminal_reputation_authority(context: dict, artifact: str) -> dict:
             authority.get("deliveryArtifactAuthorityByPhaseKey")
         ),
         "additionalCommitPhase": generator.PHASES[artifact],
+        "agreementSelectionResult": {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(bundle.get("agreementRef")),
+            "agreementType": {
+                "agreement": "legacy",
+                "payeeBoundAgreement": "payee-bound",
+                "identityBoundAgreement": "identity-bound",
+                "identityBoundPayeeAgreement": "identity-bound-payee",
+                "sealedSelectionAgreement": "sealed-selection",
+            }.get(artifact),
+            "proofVerified": True,
+        },
     }
     result["legacyAgreementAuthorityByPhaseKey"] = (
         _current_terminal_laa_carriers(

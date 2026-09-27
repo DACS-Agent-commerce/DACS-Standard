@@ -90,6 +90,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             authority["verifiedReceiptByCanonicalRef"],
             authority.get("finalityVerificationByCanonicalRef"),
             trust or self.trust,
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=authority.get(
                 "legacyAgreementAuthorityByPhaseKey"
             ),
@@ -125,7 +127,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         ref = bundle["settlementEvidence"][0]
         ref_key = canonicalize(ref)
         resolution = authority["referenceValidationByCanonicalRef"][ref_key]
-        phase_key = "0:" + resolution["record"]["phase"]
+        phase_key = next(iter(authority["legacyAgreementAuthorityByPhaseKey"]))
         alternate_hash = "33" * 32
         resolution["agreementHash"] = alternate_hash
         laa = authority["legacyAgreementAuthorityByPhaseKey"][phase_key]["laa"]
@@ -170,6 +172,27 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
+
+    def test_finality_bound_postcommit_bundle_requires_agreement_ref(self):
+        factory = finality_fixtures.FixtureFactory()
+        case = factory.strong_bundle_case("block-depth")
+        authority = case["authority"]
+        bundle = case["bundle"]
+        factory.bind_legacy_commitment(bundle, authority)
+        authority["listing"]["pipeline"] = authority["listing"]["pipeline"][:2]
+        bundle["phaseSummary"] = bundle["phaseSummary"][:2]
+        bundle["settlementEvidence"] = []
+        authority["legacyAgreementAuthorityByPhaseKey"] = {}
+        listing_digest = D5.listing_hash(authority["listing"])
+        authority["listing"]["signature"]["value"] = factory.sign_digest(
+            "seller", D5.LISTING_DOMAIN, listing_digest
+        )
+        bundle["listingRef"]["contentHash"] = listing_digest
+        bundle.pop("agreementRef")
+        factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
+        disposition, reason, _ = self.strong_result(case, trust=factory.trusted)
+        self.assertEqual("fail", disposition, reason)
+        self.assertIn("lacks bundle agreementRef", reason)
 
     def test_all_fixture_vectors_execute_their_four_value_expectation(self):
         observed = {}
@@ -474,9 +497,14 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             with self.subTest(model=model):
                 decision, reason, keys = self.strong_result(case)
                 self.assertEqual("pass", decision, reason)
-                self.assertEqual([f"0:{case['bundle']['phaseSummary'][0]['kind']}"], keys)
+                payment = next(
+                    entry for entry in case["bundle"]["phaseSummary"]
+                    if entry["kind"].startswith("pay-")
+                )
+                phase_key = f"{payment['index']}:{payment['kind']}"
+                self.assertEqual([phase_key], keys)
                 self.assertEqual(
-                    {f"0:{case['bundle']['phaseSummary'][0]['kind']}": "current-eligible"},
+                    {phase_key: "current-eligible"},
                     keys.legacy_agreement_eligibility_by_phase_key,
                 )
 
@@ -492,15 +520,15 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         with patch.object(D5, "_qualify_legacy_agreement_evidence", recording_qualifier):
             decision, reason, keys = self.strong_result(case)
         self.assertEqual("pass", decision, reason)
-        self.assertEqual([("0:pay-evm-erc20", "finality-bound")], calls)
+        self.assertEqual([("2:pay-evm-erc20", "finality-bound")], calls)
         self.assertEqual(
-            {"0:pay-evm-erc20": "current-eligible"},
+            {"2:pay-evm-erc20": "current-eligible"},
             keys.legacy_agreement_eligibility_by_phase_key,
         )
 
     def test_finality_bound_laa_authority_is_required_and_four_state(self):
         case = self.strong["block-depth"]
-        phase_key = "0:pay-evm-erc20"
+        phase_key = "2:pay-evm-erc20"
         cases = []
 
         omitted = copy.deepcopy(case["authority"])
@@ -567,13 +595,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             fv_agreement = next(iter(
                 case["authority"]["finalityVerificationByCanonicalRef"].values()
             ))["agreement"]
-            bundle["agreementRef"] = factory.reference(
-                "agreement:block-depth",
-                "33" * 32 if unrelated
-                else finality_fixtures.artifact_hash(fv_agreement, "signatures"),
+            factory.bind_legacy_commitment(
+                bundle,
+                case["authority"],
+                agreement_hash="33" * 32 if unrelated else None,
             )
-            factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
-            factory.bind_current_laa_authority(bundle, case["authority"])
             decision, reason, phase_keys = self.strong_result(
                 case, trust=factory.trusted
             )
@@ -591,7 +617,12 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         bundle = case["bundle"]
         authority = case["authority"]
         listing = authority["listing"]
-        phase = bundle["phaseSummary"][0]["kind"]
+        first_payment = next(
+            entry for entry in bundle["phaseSummary"]
+            if entry["kind"].startswith("pay-")
+        )
+        phase = first_payment["kind"]
+        first_phase_key = f"{first_payment['index']}:{phase}"
         first_ref = bundle["settlementEvidence"][0]
         first_key = canonicalize(first_ref)
         second_ref = copy.deepcopy(first_ref)
@@ -615,7 +646,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         }
         bundle["listingRef"] = copy.deepcopy(listing_ref)
         bundle["phaseSummary"].append({
-            "index": 1,
+            "index": 3,
             "kind": phase,
             "outcome": "ok",
             "attestationRef": copy.deepcopy(second_ref),
@@ -641,6 +672,10 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         factory.trusted["sessionAuthorityByJob"][bundle["jobId"]][
             "agreementHash"
         ] = agreement_hash
+        bundle["agreementRef"]["contentHash"] = agreement_hash
+        authority["agreementSelectionResult"]["agreementRef"] = copy.deepcopy(
+            bundle["agreementRef"]
+        )
         authority["referenceValidationByCanonicalRef"][second_key] = copy.deepcopy(
             authority["referenceValidationByCanonicalRef"][first_key]
         )
@@ -649,12 +684,12 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         )
         second_receipt["logicalAddress"] = second_receipt["logicalAddress"].rsplit(
             ":", 1
-        )[0] + ":1"
+        )[0] + ":3"
         second_receipt["nativeAddress"] = second_ref["anchor"]["locator"]
         authority["verifiedReceiptByCanonicalRef"][second_key] = second_receipt
-        authority["sessionExecutionAuthorityByPhaseKey"]["1:" + phase] = {
-            **authority["sessionExecutionAuthorityByPhaseKey"]["0:" + phase],
-            "phaseIndex": 1,
+        authority["sessionExecutionAuthorityByPhaseKey"]["3:" + phase] = {
+            **authority["sessionExecutionAuthorityByPhaseKey"][first_phase_key],
+            "phaseIndex": 3,
         }
         authority["finalityVerificationByCanonicalRef"][second_key] = copy.deepcopy(
             candidate
@@ -666,13 +701,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             case, authority=authority, trust=factory.trusted
         )
         self.assertEqual("pass", decision, reason)
-        self.assertEqual({"0:" + phase, "1:" + phase}, set(keys))
+        self.assertEqual({first_phase_key, "3:" + phase}, set(keys))
         self.assertEqual(
-            {"0:" + phase, "1:" + phase},
+            {first_phase_key, "3:" + phase},
             set(authority["legacyAgreementAuthorityByPhaseKey"]),
         )
 
-        authority["legacyAgreementAuthorityByPhaseKey"].pop("1:" + phase)
+        authority["legacyAgreementAuthorityByPhaseKey"].pop("3:" + phase)
         decision, reason, keys = self.strong_result(
             case, authority=authority, trust=factory.trusted
         )
@@ -688,7 +723,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         bundle = case["bundle"]
         authority = case["authority"]
         listing = authority["listing"]
-        listing["pipeline"] = [{"kind": "rate"}]
+        listing["pipeline"] = [
+            {"kind": "negotiate-fixed-price"},
+            {"kind": "commit-agreement"},
+            {"kind": "rate"},
+        ]
         listing["signature"] = {
             "signer": finality_fixtures.CLAIMS["seller"],
             "algorithm": "ed25519",
@@ -703,7 +742,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             "version": listing["listingVersion"],
             "contentHash": finality_fixtures.artifact_hash(listing, "signature"),
         }
-        bundle["phaseSummary"] = [{"index": 0, "kind": "rate", "outcome": "ok"}]
+        bundle["phaseSummary"] = [
+            {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+            {"index": 1, "kind": "commit-agreement", "outcome": "ok"},
+            {"index": 2, "kind": "rate", "outcome": "ok"},
+        ]
         bundle["settlementEvidence"] = []
         factory.sign_bundle(bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN)
         authority.pop("legacyAgreementAuthorityByPhaseKey")
@@ -751,12 +794,15 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertEqual(expected, result["decision"], result["reason"])
 
     def test_finality_bound_seb5_pointer_must_equal_its_top_level_member(self):
-        phase_key = "0:pay-evm-erc20"
+        phase_key = "2:pay-evm-erc20"
         for mutation in ("omitted", "exact", "dangling", "malformed"):
             case = copy.deepcopy(self.strong["block-depth"])
             bundle = case["bundle"]
             authority = case["authority"]
-            entry = bundle["phaseSummary"][0]
+            entry = next(
+                row for row in bundle["phaseSummary"]
+                if row["kind"] == "pay-evm-erc20"
+            )
             if mutation == "omitted":
                 entry.pop("attestationRef")
             elif mutation == "dangling":
@@ -806,7 +852,10 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         ordinary_ref = ordinary["settlementEvidence"][0]
         bundle = case["bundle"]
         bundle["settlementEvidence"] = [copy.deepcopy(ordinary_ref)]
-        bundle["phaseSummary"][0]["attestationRef"] = copy.deepcopy(ordinary_ref)
+        next(
+            entry for entry in bundle["phaseSummary"]
+            if entry["kind"] == "pay-evm-erc20"
+        )["attestationRef"] = copy.deepcopy(ordinary_ref)
         finality_fixtures.FixtureFactory().sign_bundle(
             bundle, finality_fixtures.FINALITY_BUNDLE_DOMAIN
         )
@@ -841,7 +890,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             case, authority=authority
         )
         self.assertEqual("fail", decision, reason)
-        self.assertIn("LAA agreement differs", reason)
+        self.assertIn("does not bind the signed bundle agreementRef", reason)
         self.assertIsNone(phase_keys)
 
         pointer_authority = {**authority, "finalityTrust": self.trust}
@@ -875,10 +924,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         authority = self.cross_agreement_authority(case)
         trust = copy.deepcopy(self.trust)
         trust.pop("sessionAuthorityByJob")
-        decision, _, phase_keys = self.strong_result(
+        decision, reason, phase_keys = self.strong_result(
             case, authority=authority, trust=trust
         )
-        self.assertEqual("indeterminate", decision)
+        self.assertEqual("fail", decision)
+        self.assertIn("does not bind the signed bundle agreementRef", reason)
         self.assertIsNone(phase_keys)
 
     def test_unsupported_passing_finality_class_precedes_agreement_mismatch(self):
@@ -1286,7 +1336,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             authority["verifiedReceiptByCanonicalRef"],
         )
         self.assertTrue(ok, reason)
-        self.assertEqual(["0:pay-evm-erc20"], keys)
+        self.assertEqual(["2:pay-evm-erc20"], keys)
 
     def test_frozen_old_reader_refuses_new_bundle_and_pointer(self):
         case = self.strong["block-depth"]

@@ -9,6 +9,14 @@ The current composed v0.8 candidate also separates the AP2 provider-status attes
 
 Its v0.7 delivery addition is the distinct signed, phase-indexed `DeliveryEvidence` type and PDE-1..PDE-8; historical delivery-shaped `SettlementEvidence` remains readable only under PDE-7 and is never silently rewritten.
 
+**Breaking pre-v1 current-delivery admission correction.** DACS-4 v0.8,
+DACS-5 v0.7, and CORE v0.3 explicitly declare the change from historical
+delivery-shaped `SettlementEvidence` admission to current `DeliveryEvidence`
+and PDE-8 admission. PDE-7 remains a frozen, explicitly selected,
+non-authorizing archival/audit path. This is not ordinary additive-minor
+compatibility; the complete tuple, exact coordinated release pin, and refusal
+of mixed live operation follow CORE §11.1.2 and [PROFILE](PROFILE.md).
+
 **Unallocated compatibility proposal (#392).** The finality-bound evidence type, rail profile, and FV-1..FV-10 verifier below are candidate additive contracts. They do not allocate a DACS-4 minor or reinterpret any existing `SettlementEvidence` bytes.
 
 ### 9.1 Abstract

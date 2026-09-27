@@ -67,6 +67,7 @@ LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN = "dacs-legacy-bundle-checkpoint-binding
 RATING_DOMAIN = "dacs-rating:v1:"
 _LAA_AUTHORITY_UNSPECIFIED = object()
 _LAA_ARCHIVAL_AUDIT_UNSPECIFIED = object()
+_AGREEMENT_SELECTION_UNSPECIFIED = object()
 
 # These two domains are deliberately fixture-only.  They authenticate the synthetic
 # native observations used by this offline executable reference; they are not DACS
@@ -140,13 +141,40 @@ SUPPORTED_PHASES = frozenset({
     "negotiate-fixed-price",
     "negotiate-rfq",
     "negotiate-sealed-envelope",
+    "negotiate-sealed-envelope-procurement",
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
     "commit-agreement",
+    "commit-payee-bound-agreement",
+    "commit-identity-bound-agreement",
+    "commit-identity-bound-payee-agreement",
+    "commit-selection-bound-agreement",
     "rate",
 }) | EVIDENCE_PHASES
 ADDITIVE_COMMIT_PHASES = frozenset({
     "commit-payee-bound-agreement",
     "commit-identity-bound-agreement",
     "commit-identity-bound-payee-agreement",
+    "commit-selection-bound-agreement",
+})
+COMMITMENT_PHASE_TO_AGREEMENT_TYPE = {
+    "commit-agreement": "legacy",
+    "commit-payee-bound-agreement": "payee-bound",
+    "commit-identity-bound-agreement": "identity-bound",
+    "commit-identity-bound-payee-agreement": "identity-bound-payee",
+    "commit-selection-bound-agreement": "sealed-selection",
+}
+NEGOTIATION_PHASES = frozenset({
+    "negotiate-fixed-price",
+    "negotiate-rfq",
+    "negotiate-sealed-envelope",
+    "negotiate-sealed-envelope-procurement",
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
+})
+COMPLETE_SELECTION_NEGOTIATION_PHASES = frozenset({
+    "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
 })
 SUPPORTED_ATTESTATION_ANCHOR_KINDS = frozenset({"storage-program", "ipfs", "https"})
 SUPPORTED_SETTLEMENT_FINALITY_MODELS = frozenset({
@@ -2508,6 +2536,7 @@ def _validate_bound_fault_bundle(
     expected_kind,
     effective_pipeline=None,
     additional_commit_phase=None,
+    agreement_selection_result=_AGREEMENT_SELECTION_UNSPECIFIED,
     legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
     _receipt_validator=_validate_current_evidence_receipt,
 ):
@@ -2518,6 +2547,12 @@ def _validate_bound_fault_bundle(
     settlementEvidence bijection, and the SR-2 lifecycle threshold. It intentionally
     remains test support rather than a general DACS validator.
     """
+    if (
+        isinstance(bundle, dict)
+        and "agreementRef" in bundle
+        and not _attestation_ref_shape_valid(bundle.get("agreementRef"))
+    ):
+        return (False, _DispositionReason("bundle agreementRef is malformed", "error"), None)
     if bundle_type(bundle) != expected_kind:
         reason = (
             "not an EvidenceBoundFaultAttestationBundle"
@@ -2744,6 +2779,19 @@ def _validate_bound_fault_bundle(
             return (False, "aborted phaseSummary is not the completed prefix before no-result abort", None)
     else:
         return (False, "unsupported EBFAB outcome", None)
+
+    agreement_disposition, agreement_reason = _agreement_commitment_disposition(
+        bundle, pipeline, summary, agreement_selection_result
+    )
+    agreement_closure_result = None
+    if agreement_disposition == "error":
+        return (
+            False,
+            _DispositionReason(agreement_reason, agreement_disposition),
+            None,
+        )
+    if agreement_disposition != "pass":
+        agreement_closure_result = (agreement_disposition, agreement_reason)
 
     actual_refs = bundle.get("settlementEvidence")
     if not isinstance(actual_refs, list):
@@ -3248,8 +3296,12 @@ def _validate_bound_fault_bundle(
         bundle_lifecycle.get("state"), {"included", "finalized"}
     ):
         return (False, "failed or aborted EBFAB is not included or finalized", None)
-    if pending_closure_result is not None:
-        disposition, reason = pending_closure_result
+    final_closure_result = _combine_closure_results([
+        result for result in (pending_closure_result, agreement_closure_result)
+        if result is not None
+    ])
+    if final_closure_result[0] != "pass":
+        disposition, reason = final_closure_result
         return (False, _DispositionReason(reason, disposition), None)
     return (
         True,
@@ -3271,6 +3323,7 @@ def validate_ebfab(
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    agreement_selection_result=_AGREEMENT_SELECTION_UNSPECIFIED,
     legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
 ):
     """Validate current EBFAB admission; archival delivery uses a named API."""
@@ -3289,6 +3342,7 @@ def validate_ebfab(
             trusted_native_observations_by_canonical_ref,
             effective_pipeline=effective_pipeline,
             additional_commit_phase=additional_commit_phase,
+            agreement_selection_result=agreement_selection_result,
             legacy_agreement_authority_by_phase_key=(
                 legacy_agreement_authority_by_phase_key
             ),
@@ -3326,6 +3380,7 @@ def _validate_finality_bound_ebfab(
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    agreement_selection_result=_AGREEMENT_SELECTION_UNSPECIFIED,
     legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
 ):
     """Execute the distinct finality-bound bundle consumer and propagate FV decisions.
@@ -3372,6 +3427,7 @@ def _validate_finality_bound_ebfab(
         expected_kind="finality-bound",
         effective_pipeline=effective_pipeline,
         additional_commit_phase=additional_commit_phase,
+        agreement_selection_result=agreement_selection_result,
         legacy_agreement_authority_by_phase_key=(
             legacy_agreement_authority_by_phase_key
         ),
@@ -3598,6 +3654,9 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                     authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
                     effective_pipeline=authority.get("effectivePipeline"),
                     additional_commit_phase=authority.get("additionalCommitPhase"),
+                    agreement_selection_result=authority.get(
+                        "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+                    ),
                     **_legacy_agreement_authority_kwargs(authority),
                 )
             if result[0] != "pass":
@@ -3630,6 +3689,9 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
                 authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
                 effective_pipeline=authority.get("effectivePipeline"),
                 additional_commit_phase=authority.get("additionalCommitPhase"),
+                agreement_selection_result=authority.get(
+                    "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+                ),
                 **_legacy_agreement_authority_kwargs(authority),
             )
             if disposition != "pass":
@@ -3679,26 +3741,10 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
             ):
                 nonpasses.append((kind, "error", "older bundle phaseSummary is malformed"))
                 continue
-            # DACS-5 §10.4.3: every presented payment member of a released
-            # copy is fully validated, and every delivery or successful
-            # payment row needs its current authority. A copy with neither
-            # keeps its released comparison semantics.
-            ordinary_current_evidence = (
-                kind == "legacy"
-                and not archival_copy
-                and (
-                    bool(bundle.get("settlementEvidence"))
-                    or any(
-                        phase["kind"] in DELIVERY_PHASES
-                        or (
-                            phase["kind"] in PAYMENT_PHASES
-                            and phase.get("outcome") == "ok"
-                        )
-                        for phase in summary_rows
-                    )
-                )
-            )
-            if ordinary_current_evidence:
+            # Every non-archival AttestationBundle enters current admission,
+            # including zero-member traces: commitment/agreementRef semantics
+            # do not depend on whether a payment or delivery member exists.
+            if kind == "legacy" and not archival_copy:
                 try:
                     disposition, reason = _validate_current_fab_delivery_admission(
                         bundle, authority, pubkeys, ordinary_current=True
@@ -3889,6 +3935,9 @@ def _tagged_legacy_copy_validation_for_derive(tagged):
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
         additional_commit_phase=authority.get("additionalCommitPhase"),
+        agreement_selection_result=authority.get(
+            "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+        ),
         **_legacy_agreement_authority_kwargs(authority),
     )
     eligibility = getattr(
@@ -4969,6 +5018,30 @@ def _validate_current_fab_delivery_admission(
     trace_disposition, trace_reason = _released_execution_trace_disposition(
         bundle, pipeline, phase_set=phase_set
     )
+    agreement_disposition, agreement_reason = _agreement_commitment_disposition(
+        bundle,
+        pipeline,
+        summary,
+        authority.get(
+            "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+        ),
+    )
+    if agreement_disposition == "error":
+        return (agreement_disposition, "FAB " + agreement_reason)
+    agreement_closure_result = (
+        None if agreement_disposition == "pass"
+        else (agreement_disposition, "FAB " + agreement_reason)
+    )
+
+    def _released_agreement_result(result):
+        if agreement_closure_result is None:
+            return result
+        base_disposition = "pass" if result[0] == "current-ineligible" else result[0]
+        combined = _combine_closure_results([
+            (base_disposition, result[1]), agreement_closure_result,
+        ])
+        return result if combined[0] == "pass" else combined
+
     if trace_disposition == "indeterminate" and not _trace_pending:
         # An incomplete trace is pending, not a verdict: every member is still
         # checked against the signed prefix, and a deterministic result wins.
@@ -4978,7 +5051,7 @@ def _validate_current_fab_delivery_admission(
         )
         if member_result[0] in {"fail", "error"}:
             return member_result
-        return ("indeterminate", "FAB " + trace_reason)
+        return _released_agreement_result(("indeterminate", "FAB " + trace_reason))
     if trace_disposition not in {"pass", "indeterminate"}:
         return ("fail", "FAB execution trace contradicts the authenticated pipeline")
 
@@ -5672,16 +5745,18 @@ def _validate_current_fab_delivery_admission(
             and not uncovered_keys & set(pointer_by_key)
             and len(uncovered_keys) <= len(unknown_members)
         ):
-            return (
+            return _released_agreement_result((
                 "indeterminate",
                 pending_reason or "FAB delivery reference resolution is unavailable",
-            )
+            ))
         if ordinary_current and not current_delivery_presented:
             # PDE-8 applies once a bundle references current DeliveryEvidence,
             # and the FAB-only delivery gate has no AttestationBundle
             # counterpart. An older AB that presents none is incomplete
             # evidence under CUR-5, not a contradiction.
-            return ("indeterminate", "ordinary bundle delivery row lacks current DeliveryEvidence")
+            return _released_agreement_result(
+                ("indeterminate", "ordinary bundle delivery row lacks current DeliveryEvidence")
+            )
         return ("fail", "FAB DeliveryEvidence is not the exact delivery invocation set")
     # Released bundles have no consumer payment exact-set (DACS-5 §10.4.3).
     # Every presented member is fully bound above. A signed `ok` row without a
@@ -5689,7 +5764,7 @@ def _validate_current_fab_delivery_admission(
     # failure, or a record the verifier learns of later, never changes this
     # copy's disposition.
     if not delivery_only and set(payment_expected_by_key) - set(payment_success_keys):
-        return (
+        return _released_agreement_result((
             "indeterminate",
             pending_reason
             or (
@@ -5697,25 +5772,29 @@ def _validate_current_fab_delivery_admission(
                 if unavailable_resolution
                 else "successful payment lacks a presented LAA-qualified evidence member"
             ),
-        )
+        ))
     if unavailable_resolution:
-        return ("indeterminate", "FAB evidence classification authority is unavailable")
+        return _released_agreement_result(
+            ("indeterminate", "FAB evidence classification authority is unavailable")
+        )
     if pending_reason is not None:
-        return ("indeterminate", pending_reason)
+        return _released_agreement_result(("indeterminate", pending_reason))
     # Reconciliation keeps a current-ineligible copy for comparison only;
     # pointer and current-use callers report indeterminate. Never current
     # authority.
     if ineligible_payment_keys:
-        return (
+        return _released_agreement_result((
             "current-ineligible",
             "legacy-agreement payment is audit-valid but current-ineligible",
-        )
+        ))
     if legacy_delivery_keys:
-        return (
+        return _released_agreement_result((
             "current-ineligible",
             "legacy delivery is audit-valid but current-ineligible",
-        )
-    return ("pass", "FAB current delivery evidence and closure passed")
+        ))
+    return _released_agreement_result(
+        ("pass", "FAB current delivery evidence and closure passed")
+    )
 
 
 def _resolve_absolute_fault_pointer_payload(
@@ -5834,6 +5913,9 @@ def _resolve_absolute_fault_pointer_payload(
             ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
             effective_pipeline=ebfab_authority.get("effectivePipeline"),
             additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
+            agreement_selection_result=ebfab_authority.get(
+                "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+            ),
             **_legacy_agreement_authority_kwargs(ebfab_authority),
         )
         if seb_disposition != "pass":
@@ -5868,6 +5950,9 @@ def _resolve_absolute_fault_pointer_payload(
             finality_bound_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
             effective_pipeline=finality_bound_authority.get("effectivePipeline"),
             additional_commit_phase=finality_bound_authority.get("additionalCommitPhase"),
+            agreement_selection_result=finality_bound_authority.get(
+                "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+            ),
             **_legacy_agreement_authority_kwargs(finality_bound_authority),
         )
         if decision != "pass":
@@ -6205,6 +6290,128 @@ def _laa_bound_to_tag(laa, tag, session_authority):
             if container.get("sessionId") != session_id:
                 return False
     return True
+
+
+def _agreement_commitment_disposition(
+    bundle,
+    effective_pipeline,
+    phase_summary,
+    agreement_selection_result=_AGREEMENT_SELECTION_UNSPECIFIED,
+):
+    """Authenticate the terminal bundle's DACS-3 commitment selection.
+
+    ``agreementSelectionResult`` is verifier-owned authority.  It records the
+    exact resolved agreement reference, the independently selected artifact
+    type, and whether the type-specific agreement proof passed.  The signed
+    effective pipeline and phaseSummary remain the authority for whether a
+    commitment completed and which commitment handler ran.
+
+    This gate deliberately does not consult per-payment LAA carriers: a bundle
+    can complete commitment and then fail before producing payment evidence.
+    """
+    agreement_ref_present = isinstance(bundle, dict) and "agreementRef" in bundle
+    agreement_ref = bundle.get("agreementRef") if agreement_ref_present else None
+    if agreement_ref_present and not _attestation_ref_shape_valid(agreement_ref):
+        return ("error", "bundle agreementRef is malformed")
+    if not isinstance(effective_pipeline, list) or not isinstance(phase_summary, list):
+        return ("error", "agreement commitment pipeline or trace is malformed")
+
+    selected_steps = [
+        (index, step.get("kind"))
+        for index, step in enumerate(effective_pipeline)
+        if isinstance(step, dict)
+        and step.get("kind") in COMMITMENT_PHASE_TO_AGREEMENT_TYPE
+    ]
+    successful_rows = [
+        (entry.get("index"), entry.get("kind"))
+        for entry in phase_summary
+        if isinstance(entry, dict)
+        and entry.get("kind") in COMMITMENT_PHASE_TO_AGREEMENT_TYPE
+        and entry.get("outcome") == "ok"
+    ]
+    authority_unavailable = (
+        agreement_selection_result is _AGREEMENT_SELECTION_UNSPECIFIED
+        or agreement_selection_result is None
+    )
+    resolution = selected_ref = selected_type = proof_verified = None
+    if successful_rows and not authority_unavailable:
+        if not isinstance(agreement_selection_result, dict):
+            return ("error", "agreement selection authority is malformed")
+        resolution = agreement_selection_result.get("resolution")
+        if resolution is not None and not isinstance(resolution, str):
+            return ("error", "agreement selection resolution is malformed")
+        selected_ref = agreement_selection_result.get("agreementRef")
+        if selected_ref is not None and not _attestation_ref_shape_valid(selected_ref):
+            return ("error", "agreement selection reference is malformed")
+        selected_type = agreement_selection_result.get("agreementType")
+        if selected_type is not None and not isinstance(selected_type, str):
+            return ("error", "agreement selection type is malformed")
+        proof_verified = agreement_selection_result.get("proofVerified")
+        if proof_verified is not None and not isinstance(proof_verified, bool):
+            return ("error", "agreement selection proof result is malformed")
+        unavailable_resolutions = {"unavailable", "conflicting", "pruned", "reorged"}
+        if resolution not in unavailable_resolutions | {"verified", None}:
+            return ("error", "agreement selection resolution is unsupported")
+    negotiation_steps = [
+        (index, step.get("kind"))
+        for index, step in enumerate(effective_pipeline)
+        if isinstance(step, dict) and step.get("kind") in NEGOTIATION_PHASES
+    ]
+    if len(negotiation_steps) != 1 or len(selected_steps) != 1:
+        return (
+            "fail",
+            "agreement commitment requires exactly one recognized negotiation and commitment phase",
+        )
+    negotiation_index, negotiation_phase = negotiation_steps[0]
+    commitment_index, commitment_phase = selected_steps[0]
+    if commitment_index != negotiation_index + 1:
+        return ("fail", "agreement commitment does not immediately follow negotiation")
+    complete_selection = negotiation_phase in COMPLETE_SELECTION_NEGOTIATION_PHASES
+    selection_commitment = commitment_phase == "commit-selection-bound-agreement"
+    if complete_selection != selection_commitment:
+        return ("fail", "negotiation phase is incompatible with the commitment phase")
+    if not successful_rows:
+        if agreement_ref_present:
+            return ("fail", "bundle agreementRef is present without a successful commitment")
+        return ("pass", "authenticated execution did not complete a commitment")
+    if len(selected_steps) != 1 or successful_rows != selected_steps:
+        return ("fail", "successful agreement commitment is not the unique signed selection")
+    if selected_type is not None and selected_type not in set(
+        COMMITMENT_PHASE_TO_AGREEMENT_TYPE.values()
+    ):
+        return ("fail", "agreement selection type is unsupported")
+
+    if agreement_ref is None:
+        return ("fail", "successful agreement commitment lacks bundle agreementRef")
+    if authority_unavailable:
+        return ("indeterminate", "agreement selection authority is unavailable")
+
+    expected_phase = selected_steps[0][1]
+    expected_type = COMMITMENT_PHASE_TO_AGREEMENT_TYPE[expected_phase]
+    if selected_ref is not None and canonical(selected_ref) != canonical(agreement_ref):
+        return ("fail", "agreement selection does not bind bundle agreementRef")
+    if selected_type is not None and selected_type != expected_type:
+        return ("fail", "agreement type does not match the signed commitment phase")
+    if proof_verified is False:
+        return ("fail", "selected agreement proof did not verify")
+
+    if (
+        resolution != "verified"
+        or selected_ref is None
+        or selected_type is None
+        or proof_verified is None
+    ):
+        return ("indeterminate", "agreement selection resolution, type, or proof is unavailable")
+    if expected_type == "sealed-selection":
+        # SAC-8 requires independent candidate-set and winner reproduction.  The
+        # bounded DACS-5 reference does not implement that oracle, so an exact
+        # type/ref match remains non-authorizing rather than falling back to a
+        # weaker agreement family.
+        return (
+            "indeterminate",
+            "sealed-selection SAC-8 authority is unsupported by this reference",
+        )
+    return ("pass", "agreement commitment selection passed")
 
 
 def _laa_derivation_eligible(tag, session_authority):
@@ -8299,6 +8506,9 @@ def _validate_current_use_type_authority(bundle, dependencies, verifier_config):
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
         additional_commit_phase=authority.get("additionalCommitPhase"),
+        agreement_selection_result=authority.get(
+            "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+        ),
         **_legacy_agreement_authority_kwargs(authority))
     if decision != "pass":
         return (decision, reason, None)
@@ -8748,14 +8958,41 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
     ):
         return ("fail", "historical listing signature does not verify")
     pipeline = listing.get("pipeline")
+    phase_set = SUPPORTED_PHASES
+    additional_commit_phase = authority.get("additionalCommitPhase")
+    if additional_commit_phase is not None:
+        if not _string_member(additional_commit_phase, ADDITIVE_COMMIT_PHASES):
+            return ("error", "historical additional commitment phase is unsupported")
+        phase_set = phase_set | {additional_commit_phase}
     trace_disposition, _trace_reason = _released_execution_trace_disposition(
-        bundle, pipeline
+        bundle, pipeline, phase_set=phase_set
     )
     if trace_disposition != "pass":
         return ("indeterminate", "historical execution trace is incomplete or outcome-inconsistent")
+    agreement_disposition, agreement_reason = _agreement_commitment_disposition(
+        bundle,
+        pipeline,
+        bundle.get("phaseSummary"),
+        authority.get(
+            "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+        ),
+    )
+    if agreement_disposition == "error":
+        return (agreement_disposition, "historical " + agreement_reason)
+    agreement_closure_result = (
+        None if agreement_disposition == "pass"
+        else (agreement_disposition, "historical " + agreement_reason)
+    )
+
+    def _historical_agreement_result(result):
+        if agreement_closure_result is None:
+            return result
+        return _combine_closure_results([result, agreement_closure_result])
     evidence_refs = bundle.get("settlementEvidence")
     if not isinstance(evidence_refs, list):
-        return ("indeterminate", "historical settlementEvidence is unavailable")
+        return _historical_agreement_result(
+            ("indeterminate", "historical settlementEvidence is unavailable")
+        )
     summary = bundle["phaseSummary"]
     expected_entries = [entry for entry in summary if entry.get("kind") in EVIDENCE_PHASES]
     delivery_entries = [entry for entry in expected_entries if entry.get("kind") in DELIVERY_PHASES]
@@ -8781,24 +9018,37 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
             bundle, authority, public_keys, delivery_only=kind == "legacy"
         )
         if delivery_disposition == "current-ineligible":
-            return ("indeterminate", "authenticated " + delivery_reason)
+            return _historical_agreement_result(
+                ("indeterminate", "authenticated " + delivery_reason)
+            )
         if delivery_disposition != "pass":
-            return (delivery_disposition, delivery_reason)
+            return _historical_agreement_result(
+                (delivery_disposition, delivery_reason)
+            )
     payment_entries = (
         [entry for entry in expected_entries if entry.get("kind") in PAYMENT_PHASES]
         if current_delivery else expected_entries
     )
     if not expected_entries:
         if evidence_refs:
-            return ("indeterminate", "historical evidence cannot be matched to the complete execution trace")
-        return ("pass", "authenticated complete historical trace establishes no payment invocation")
+            return _historical_agreement_result((
+                "indeterminate",
+                "historical evidence cannot be matched to the complete execution trace",
+            ))
+        return _historical_agreement_result(
+            ("pass", "authenticated complete historical trace establishes no payment invocation")
+        )
     if any(entry.get("kind") in PAYMENT_PHASES and entry.get("outcome") == "ok"
            for entry in expected_entries):
-        return ("indeterminate", "successful historical payment lacks exact stronger finality")
+        return _historical_agreement_result(
+            ("indeterminate", "successful historical payment lacks exact stronger finality")
+        )
     execution = authority.get("sessionExecutionAuthorityByPhaseKey")
     receipts = authority.get("verifiedReceiptByCanonicalRef")
     if not all(isinstance(value, dict) for value in (resolutions, execution, receipts)):
-        return ("indeterminate", "authenticated historical execution evidence is unavailable")
+        return _historical_agreement_result(
+            ("indeterminate", "authenticated historical execution evidence is unavailable")
+        )
     raw_ids = [canonical(ref) for ref in evidence_refs if isinstance(ref, dict)]
     if len(raw_ids) != len(evidence_refs) or len(raw_ids) != len(set(raw_ids)):
         return ("fail", "historical settlementEvidence is malformed or duplicated")
@@ -8809,7 +9059,9 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
     for ref in evidence_refs:
         resolution = resolutions.get(canonical(ref).decode("utf-8"))
         if resolution is None:
-            return ("indeterminate", "authenticated historical evidence resolution is unavailable")
+            return _historical_agreement_result(
+                ("indeterminate", "authenticated historical evidence resolution is unavailable")
+            )
         record = resolution.get("record") if isinstance(resolution, dict) else None
         if current_delivery and isinstance(record, dict) and record.get("phase") in DELIVERY_PHASES:
             # The current delivery gate authenticated this exact member, its
@@ -8854,7 +9106,9 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
         if not binding_ok:
             if getattr(binding_result, "disposition", None) == "error":
                 return ("error", binding_result)
-            return ("indeterminate", "historical settlement evidence lacks authenticated execution binding")
+            return _historical_agreement_result(
+                ("indeterminate", "historical settlement evidence lacks authenticated execution binding")
+            )
         phase_key, resolved = binding_result
         if record.get("phase") in DELIVERY_PHASES:
             # PDE-7 is an archival read arm only.  A signed, address-bound
@@ -8894,11 +9148,15 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
                 and record.get("outcome") == "success"
             )
         ):
-            return ("indeterminate", "successful or superseding historical payment lacks exact stronger finality")
+            return _historical_agreement_result(
+                ("indeterminate", "successful or superseding historical payment lacks exact stronger finality")
+            )
         if record.get("phase") in {
             "pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank",
         }:
-            return ("indeterminate", "historical cross-chain settlement requires stronger finality")
+            return _historical_agreement_result(
+                ("indeterminate", "historical cross-chain settlement requires stronger finality")
+            )
         summary_entry = next((
             entry for entry in payment_entries
             if phase_key == "%d:%s" % (entry["index"], entry["kind"])
@@ -8926,17 +9184,23 @@ def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_c
         actual_ref_by_key[phase_key] = ref
     expected_keys = ["%d:%s" % (entry["index"], entry["kind"]) for entry in payment_entries]
     if len(actual_keys) != len(set(actual_keys)) or set(actual_keys) != set(expected_keys):
-        return ("indeterminate", "historical settlementEvidence is not the complete phase-result set")
+        return _historical_agreement_result(
+            ("indeterminate", "historical settlementEvidence is not the complete phase-result set")
+        )
     for entry in payment_entries:
         pointer = entry.get("attestationRef")
         phase_key = "%d:%s" % (entry["index"], entry["kind"])
         if pointer is not None and canonical(pointer) != canonical(actual_ref_by_key[phase_key]):
             return ("fail", "historical phase pointer contradicts settlementEvidence")
     if legacy_pending_reason is not None:
-        return ("indeterminate", legacy_pending_reason)
+        return _historical_agreement_result(("indeterminate", legacy_pending_reason))
     if legacy_delivery_seen:
-        return ("indeterminate", "authenticated legacy delivery is audit-valid but current-ineligible")
-    return ("pass", "authenticated complete historical evidence establishes nonpayment")
+        return _historical_agreement_result(
+            ("indeterminate", "authenticated legacy delivery is audit-valid but current-ineligible")
+        )
+    return _historical_agreement_result(
+        ("pass", "authenticated complete historical evidence establishes nonpayment")
+    )
 
 
 def _job_successful_payment_without_strong_finality(bundle, dependencies):
@@ -13539,8 +13803,10 @@ def _validate_ebfab_boolean(
     *,
     effective_pipeline=None,
     additional_commit_phase=None,
+    agreement_selection_result=_AGREEMENT_SELECTION_UNSPECIFIED,
     legacy_agreement_authority_by_phase_key=_LAA_AUTHORITY_UNSPECIFIED,
     _receipt_validator=_validate_current_evidence_receipt,
+    _enforce_agreement_commitment=True,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -13549,6 +13815,12 @@ def _validate_ebfab_boolean(
     settlementEvidence bijection, and the SR-2 lifecycle threshold. It intentionally
     remains test support rather than a general DACS validator.
     """
+    if (
+        isinstance(bundle, dict)
+        and "agreementRef" in bundle
+        and not _attestation_ref_shape_valid(bundle.get("agreementRef"))
+    ):
+        return (False, _DispositionReason("bundle agreementRef is malformed", "error"), None)
     if not _full_bundle_family_shape_valid(bundle, "evidence-bound"):
         return (False, "not an EvidenceBoundFaultAttestationBundle", None)
     if not _absolute_fault_bundle_shape_valid(bundle, "evidence-bound"):
@@ -13765,6 +14037,23 @@ def _validate_ebfab_boolean(
             return (False, "aborted phaseSummary is not the completed prefix before no-result abort", None)
     else:
         return (False, "unsupported EBFAB outcome", None)
+
+    agreement_disposition, agreement_reason = (
+        _agreement_commitment_disposition(
+            bundle, pipeline, summary, agreement_selection_result
+        )
+        if _enforce_agreement_commitment
+        else ("pass", "archival comparison-only profile")
+    )
+    agreement_closure_result = None
+    if agreement_disposition == "error":
+        return (
+            False,
+            _DispositionReason(agreement_reason, agreement_disposition),
+            None,
+        )
+    if agreement_disposition != "pass":
+        agreement_closure_result = (agreement_disposition, agreement_reason)
 
     actual_refs = bundle.get("settlementEvidence")
     if not isinstance(actual_refs, list):
@@ -14243,8 +14532,12 @@ def _validate_ebfab_boolean(
         bundle_lifecycle.get("state"), {"included", "finalized"}
     ):
         return (False, "failed or aborted EBFAB is not included or finalized", None)
-    if pending_closure_result is not None:
-        disposition, reason = pending_closure_result
+    final_closure_result = _combine_closure_results([
+        result for result in (pending_closure_result, agreement_closure_result)
+        if result is not None
+    ])
+    if final_closure_result[0] != "pass":
+        disposition, reason = final_closure_result
         return (False, _DispositionReason(reason, disposition), None)
     return (
         True,
@@ -14280,6 +14573,7 @@ def validate_legacy_ebfab_disposition(*args, **kwargs):
     selected["legacy_agreement_authority_by_phase_key"] = (
         _LAA_ARCHIVAL_AUDIT_UNSPECIFIED
     )
+    selected["_enforce_agreement_commitment"] = False
     return _validate_ebfab_disposition_with_receipts(
         _validate_legacy_evidence_receipt, args, selected
     )
@@ -14290,6 +14584,7 @@ def validate_archival_audit_ebfab_disposition(*args, **kwargs):
     selected["legacy_agreement_authority_by_phase_key"] = (
         _LAA_ARCHIVAL_AUDIT_UNSPECIFIED
     )
+    selected["_enforce_agreement_commitment"] = False
     return _validate_ebfab_disposition_with_receipts(
         _validate_current_evidence_receipt, args, selected
     )
@@ -14381,6 +14676,9 @@ def _tagged_copy_validation_for_derive(
         ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         effective_pipeline=ebfab_authority.get("effectivePipeline"),
         additional_commit_phase=ebfab_authority.get("additionalCommitPhase"),
+        agreement_selection_result=ebfab_authority.get(
+            "agreementSelectionResult", _AGREEMENT_SELECTION_UNSPECIFIED
+        ),
         **_legacy_agreement_authority_kwargs(ebfab_authority),
     )
     eligibility = getattr(

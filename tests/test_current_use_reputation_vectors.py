@@ -829,7 +829,10 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         ref = bundle["settlementEvidence"][0]
         ref_key = D5.canonical(ref).decode("utf-8")
         resolution = authority["referenceValidationByCanonicalRef"][ref_key]
-        phase_key = "0:" + resolution["record"]["phase"]
+        phase_key = next(
+            key for key in authority["legacyAgreementAuthorityByPhaseKey"]
+            if key.endswith(":" + resolution["record"]["phase"])
+        )
         resolution["agreementHash"] = "33" * 32
         laa = authority["legacyAgreementAuthorityByPhaseKey"][phase_key]["laa"]
         laa["agreement"]["contentHash"] = resolution["agreementHash"]

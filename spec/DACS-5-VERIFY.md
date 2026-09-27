@@ -6,6 +6,15 @@
 
 **Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.7** on the common DACS v0.1 baseline. v0.7 adds target-signed `SessionParticipationAdmission` and SPA-1..SPA-8 for exact source-backed obligation, authenticated receipt lifecycle, independently verified timeout outcome, and completed-rate-phase admission. v0.6 applies DACS-4 legacy-agreement era admission (including exclusive legacy-transition evidence), consumes DACS-3 `SealedSelectionAgreementDocument` with SAC-8 receipt reproduction, and adds authenticated business-outcome occurrence for reputation windows. v0.5 participates in the CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 added `audit-pending`, finalized/resolvable dependency admission, `EvidenceBoundFaultAttestationBundle`, and distinct settlement-verified derivations while preserving released v0.3 derivation semantics. v0.3 added payee-bound Agreement consumption, signed `BundleBinding`, and `FaultAttestationBundle`. **Depends on:** SR-1 for cross-substrate primary-claim keying and SR-2 for bundle anchoring; composes with ERC-8004 as an OPTIONAL publication surface. **Used by:** subsequent DACS-1 reputation lookups and external auditors.
 
+**Breaking pre-v1 current-delivery admission correction.** DACS-5 v0.7,
+DACS-4 v0.8, and CORE v0.3 explicitly declare current-only delivery admission,
+including the existing Boolean reference-validator entry point. Historical
+delivery-shaped `SettlementEvidence` is eligible only for an explicitly
+selected non-authorizing PDE-7 archival/audit path, not current authority.
+The complete tuple, exact coordinated release pin, and refusal of mixed live
+operation follow CORE §11.1.2 and [PROFILE](PROFILE.md). This correction does
+not impose EBFAB payment exact-set obligations on released AB/FAB types.
+
 **Unallocated compatibility proposals (#391/#392).** The finality-bound bundle,
 pointer, legacy activation artifacts, and coordinated current-use derivation below
 are candidate additive types. They do not allocate a DACS-5 minor or alter any
@@ -302,7 +311,7 @@ type AttestationBundle = {
 
   listingRef: { listingId: string; version: number; contentHash: string }
 
-  agreementRef?: AttestationRef               // present iff the session reached commit-completed or later; omitted only when terminated before the agreement commitment phase (see §10.4.3)
+  agreementRef?: AttestationRef               // present iff authenticated execution reached commit-completed; omitted when no commitment completed (see §10.4.3)
 
   cancellation?: CancellationMarker           // present only on an aborted-by-self/other claimed as a policy-permitted pre-commit cancellation (§10.3.1 ST-10); verified at reputation-derivation time against the signed listing, never trusted as asserted
 
@@ -854,14 +863,30 @@ released bundle shapes because the new Listing phase was unknown—and therefore
 unusable—to pre-APR readers; it does not reinterpret any historical valid
 Listing or bundle bytes.
 
-**Agreement dispatch and identity-bound admission; independent selection admission.** For every terminal bundle
-that carries `agreementRef`, the producer and consumer MUST resolve and verify
-the signed Listing, fetched agreement, and commitment record before accepting
-the bundle as terminal evidence. They apply DACS-3's exact five-way signed
-phase/artifact/domain dispatch independently of the commitment-record form. An
-unsupported, missing, dual, renamed, or mismatched discriminator is rejected
-before terminal admission or counting; neither `agreementRef` nor a bundle type
-label establishes an agreement schema. When the signed phase selects either
+**Agreement dispatch and identity-bound admission; independent selection admission.**
+For every terminal bundle, the producer and consumer MUST authenticate the
+signed Listing, effective pipeline, and signed execution trace before terminal
+admission. When
+that authenticated trace contains a successfully completed DACS-3 commitment
+phase, `agreementRef` MUST be present and must identify the exact selected
+agreement; a missing reference is a deterministic rejection even if a later
+payment failed or no payment evidence is presented. When no commitment
+completed, omission is valid and MUST NOT be rejected merely because the wire
+field is optional. A consumer MUST NOT infer completion or the selected
+agreement type from a bundle field, an unverified trace, or a caller label;
+missing otherwise-consistent authority is `indeterminate`. A malformed present
+reference is `error` under the applicable input rules.
+
+The producer and consumer MUST resolve and verify the fetched agreement and
+commitment record when the authenticated execution selected a completed
+commitment. They apply DACS-3's exact five-way signed phase/artifact/domain
+dispatch independently of the commitment-record form, including the historical
+`commit-agreement` case. An unsupported, missing, dual, renamed, or mismatched
+discriminator is rejected before terminal admission or counting; neither
+`agreementRef` nor a bundle type label establishes an agreement schema. A
+verifier-owned agreement-type result MUST equal the signed selected commitment
+phase, not merely add another phase to an accepted set. When the signed phase
+selects either
 identity-bound artifact, both sides MUST run the §10.4
 `IdentityBoundTerminalVerificationInput` procedure and obtain `verified` before
 constructing, admitting, closing on, or counting the bundle. Missing or
@@ -886,6 +911,18 @@ A failed or aborted bundle MUST be produced when the session reaches its termina
 - DACS-5 ratings (if the rate phase ran).
 
 The bundle MUST NOT include references to any record outside the session’s scope.
+
+**Released AB/FAB current-consumer rejection category (normative).** When a
+current consumer of a released `AttestationBundle` or `FaultAttestationBundle`
+has established that the copy cannot be admitted, but unavailable context
+leaves only the choice between `fail` and `error` unresolved, it MUST return
+`fail`, not `indeterminate`. This rule applies only to that rejection-category
+ambiguity: it MUST NOT replace an independently established malformed-input
+`error` or another applicable rule's explicit `error` result. When the missing
+authority could still change whether the copy is admissible, the result remains
+`indeterminate`. This does not change archival semantics, general error
+precedence, or the narrower SEB contract of the distinct EBFAB type, and does
+not require an older AB/FAB to satisfy EBFAB payment exact-set rules.
 
 **Exact current delivery mapping (PDE-8).** When a bundle references current
 `DeliveryEvidence`, a consumer MUST construct the expected multiset of executed

@@ -4,6 +4,13 @@
 
 > Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 defines portable logical-to-native resolution and the non-recursive registry bootstrap, adds mandatory raw JSON admission before canonicalisation, hashing, or signature verification, and registers the DACS-4 finality-bound settlement-evidence, finality-observation-response, legacy-agreement activation-checkpoint, legacy-payment-reservation, and legacy-transition-evidence signature domains; it is a declared pre-v1 corrective profile boundary under §11.1.2 and pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
+**Breaking pre-v1 current-delivery admission correction.** CORE v0.3,
+DACS-4 v0.8, and DACS-5 v0.7 declare the current-versus-archival delivery
+boundary under §11.1.2. Historical delivery-shaped `SettlementEvidence` no
+longer establishes current delivery admission; its frozen PDE-7 audit path
+remains explicitly selected and non-authorizing. The complete candidate tuple
+and release-pin requirements are in [PROFILE](PROFILE.md).
+
 ## About this document
 
 This document specifies DACS — the Demos Agent Commerce Standards — across five per-stage standards: DACS-1 (Identify), DACS-2 (Vet), DACS-3 (Negotiate), DACS-4 (Settle), and DACS-5 (Verify). Shared material (terminology, substrate capabilities, the Demos production mapping, references) is presented once in the front and back matter rather than repeated per chapter. Each per-stage chapter contains the material specific to that stage. The companion DACS Dev Tasks working document is published separately and is **not** part of the standards.
@@ -1057,6 +1064,24 @@ CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and 
 CORE v0.3 together with DACS-1 v0.8, DACS-2 v0.6, DACS-3 v0.6, DACS-4 v0.8, and DACS-5 v0.7 declares the same boundary for the DACS-3 channel-message wire (DACS-3 §8.3.3, #349): the historical Demos `ChannelMessage` with its bare-lowercase-hex signature and raw-32-byte-digest `dacs-channelmsg:v1:` framing is replaced by the discriminated `CanonicalChannelMessage` carrying the exclusive `canonicalChannelMessageVersion: "1"` discriminator, the version-1 signature envelope, and the byte-exact `dacs-canonical-channel-message:v1:` plus ASCII lowercase-hex-digest signed-byte framing. The historical wire is archival-only under the explicit `legacy-import` operation; `current-read` refuses it without fallback. The same complete tuple in `PROFILE.md` is the candidate profile for this replacement; these versions do not claim ordinary cross-minor compatibility with a pre-v0.6 channel-message profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
+
+**Current-delivery admission correction (normative).** CORE v0.3, DACS-4 v0.8,
+and DACS-5 v0.7 declare a **breaking pre-v1 correction** to the existing
+delivery-admission behaviour: historical delivery-shaped `SettlementEvidence`
+does not establish current delivery, bundle, metric, reputation, or volume
+authority. Current delivery uses the distinct `DeliveryEvidence` contract and
+PDE-8; frozen historical verification is available only through the explicitly
+selected non-authorizing PDE-7 archival/audit path. This declaration covers
+the current-only meaning of the existing Boolean reference-validator entry
+point as well as current protocol consumers; an unchanged function name or
+bundle discriminator is not a claim of unchanged admission semantics. The
+complete coordinated tuple is CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6 /
+DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7. The exact release pin and admission
+conditions above apply; mixed corrective/pre-corrective live operation is
+unsupported. This declaration neither activates an unreleased profile nor
+extends EBFAB payment exact-set rules to released AB/FAB types. The
+[reference-validator migration guide](../docs/pr333-reference-validator-migration.md)
+records the repository helper names without making them SDK API requirements.
 
 **DACS-5 bundle-family admission (normative).** Bundle-or-pointer admission MUST
 enter through protocol-owned context established independently of the untrusted

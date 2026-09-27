@@ -99,6 +99,8 @@ class _SebFixtures:
 
     def _laa(self, source):
         return {
+            "additional_commit_phase": source.get("additionalCommitPhase"),
+            "agreement_selection_result": source.get("agreementSelectionResult"),
             "legacy_agreement_authority_by_phase_key":
                 source["legacyAgreementAuthorityByPhaseKey"],
         }
@@ -230,7 +232,7 @@ class _SebFixtures:
             "contentHash": record["deliverableContentHash"],
         }
         record["jobId"] = CURRENT_JOB
-        record["deliverableAnchor"]["locator"] = "dacs4:deliverable:%s:0" % CURRENT_JOB
+        record["deliverableAnchor"]["locator"] = "dacs4:deliverable:%s:2" % CURRENT_JOB
         signer = record["signature"]["signer"]
         record["signature"] = {"signer": signer, "algorithm": "ed25519", "value": ""}
         record["signature"]["value"] = self._sign(
@@ -241,7 +243,7 @@ class _SebFixtures:
         new_ref["contentHash"] = R.delivery_evidence_hash(record)
         source["referenceValidationByCanonicalRef"][_key(new_ref)] = resolution
         top_receipt = source["verifiedReceiptByCanonicalRef"].pop(_key(old_ref))
-        top_receipt["logicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        top_receipt["logicalAddress"] = "dacs4:delivery:%s:2" % CURRENT_JOB
         top_receipt["contentHash"] = new_ref["contentHash"]
         source["verifiedReceiptByCanonicalRef"][_key(new_ref)] = top_receipt
         locator = record["deliverableAnchor"]["locator"]
@@ -253,14 +255,17 @@ class _SebFixtures:
         deliverable["receipt"]["logicalAddress"] = locator
         deliverable["receipt"]["nativeAddress"] = locator
         source["verifiedReceiptByCanonicalRef"][_key(new_deliverable_ref)] = deliverable
-        closure = source["deliveryArtifactAuthorityByPhaseKey"]["0:deliver-storage-program"]
+        closure = source["deliveryArtifactAuthorityByPhaseKey"]["2:deliver-storage-program"]
         closure["deliverable"]["logicalAddress"] = locator
         closure["deliverable"]["nativeAddress"] = locator
-        execution = source["sessionExecutionAuthorityByPhaseKey"]["0:deliver-storage-program"]
+        execution = source["sessionExecutionAuthorityByPhaseKey"]["2:deliver-storage-program"]
         execution["jobId"] = CURRENT_JOB
-        execution["evidenceLogicalAddress"] = "dacs4:delivery:%s:0" % CURRENT_JOB
+        execution["evidenceLogicalAddress"] = "dacs4:delivery:%s:2" % CURRENT_JOB
         bundle["settlementEvidence"] = [new_ref]
-        bundle["phaseSummary"][0]["attestationRef"] = copy.deepcopy(new_ref)
+        next(
+            entry for entry in bundle["phaseSummary"]
+            if entry.get("kind") == "deliver-storage-program"
+        )["attestationRef"] = copy.deepcopy(new_ref)
         resign_ebfab(bundle, self.data["seeds"])
         return source
 
@@ -382,9 +387,9 @@ class SebSixPendingPrecedenceTests(_SebFixtures, unittest.TestCase):
                 self._assert_paths(source, expected)
         for label, source, expected in (
             ("pointer alone", without_execution(
-                self._ulid_delivery_source(), "0:deliver-storage-program"), "indeterminate"),
+                self._ulid_delivery_source(), "2:deliver-storage-program"), "indeterminate"),
             ("pointer lifecycle fail", self._without_lifecycle_finality(without_execution(
-                self._ulid_delivery_source(), "0:deliver-storage-program")), "fail"),
+                self._ulid_delivery_source(), "2:deliver-storage-program")), "fail"),
         ):
             with self.subTest(case=label):
                 self._assert_paths(source, expected, pointer=True)
@@ -553,11 +558,11 @@ class SebSixSameMemberPrecedenceTests(_SebFixtures, unittest.TestCase):
         source = self._source("repeated-pay-completed")
         second = next(
             _key(ref) for ref in source["bundle"]["settlementEvidence"]
-            if source["verifiedReceiptByCanonicalRef"][_key(ref)]["logicalAddress"].endswith(":1")
+            if source["verifiedReceiptByCanonicalRef"][_key(ref)]["logicalAddress"].endswith(":3")
         )
         receipt = source["verifiedReceiptByCanonicalRef"][second]
-        receipt["logicalAddress"] = receipt["logicalAddress"][:-2] + ":0"
-        del source["sessionExecutionAuthorityByPhaseKey"]["0:pay-dem"]
+        receipt["logicalAddress"] = receipt["logicalAddress"][:-2] + ":2"
+        del source["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"]
         self._assert_paths(source, "fail")
 
     def test_no_single_outage_downgrades_a_shipped_rejection(self):
@@ -575,9 +580,7 @@ class SebSixSameMemberPrecedenceTests(_SebFixtures, unittest.TestCase):
             )
             return verifier(
                 *self._args(copy.deepcopy(source)),
-                legacy_agreement_authority_by_phase_key=source.get(
-                    "legacyAgreementAuthorityByPhaseKey", {}
-                ),
+                **self._laa(source),
             )[0]
 
         downgraded = []
@@ -742,6 +745,9 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
             },
             "contentHash": "d" * 64 if mismatch else joined,
         }
+        source["agreementSelectionResult"]["agreementRef"] = copy.deepcopy(
+            source["bundle"]["agreementRef"]
+        )
         resign_ebfab(source["bundle"], self.data["seeds"])
         if mutate_laa is not None:
             for carrier in source["legacyAgreementAuthorityByPhaseKey"].values():
@@ -893,13 +899,11 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
             verification = next(iter(
                 case["authority"]["finalityVerificationByCanonicalRef"].values()
             ))
-            case["bundle"]["agreementRef"] = factory.reference(
-                "agreement:bft-final",
-                "33" * 32 if mismatch
-                else finality.artifact_hash(verification["agreement"], "signatures"),
+            factory.bind_legacy_commitment(
+                case["bundle"],
+                case["authority"],
+                agreement_hash="33" * 32 if mismatch else None,
             )
-            factory.sign_bundle(case["bundle"], finality.FINALITY_BUNDLE_DOMAIN)
-            factory.bind_current_laa_authority(case["bundle"], case["authority"])
             authority = case["authority"]
             if foreign:
                 for entry in authority["sessionExecutionAuthorityByPhaseKey"].values():
@@ -914,6 +918,7 @@ class PendingReceiptPaymentPrecedenceTests(_SebFixtures, unittest.TestCase):
                 authority["sessionExecutionAuthorityByPhaseKey"],
                 authority["verifiedReceiptByCanonicalRef"],
                 authority.get("finalityVerificationByCanonicalRef"), factory.trusted,
+                agreement_selection_result=authority.get("agreementSelectionResult"),
                 legacy_agreement_authority_by_phase_key=authority.get(
                     "legacyAgreementAuthorityByPhaseKey"
                 ),
@@ -946,6 +951,9 @@ class LaaAgreementJoinPrecedenceTests(_SebFixtures, unittest.TestCase):
             },
             "contentHash": agreement_hash or joined,
         }
+        source["agreementSelectionResult"]["agreementRef"] = copy.deepcopy(
+            source["bundle"]["agreementRef"]
+        )
         resign_ebfab(source["bundle"], self.data["seeds"])
         mutate(source, joined)
         source["legacyAgreementAuthorityByPhaseKey"] = refreshed_laa_phase_carriers(source)
@@ -1203,6 +1211,8 @@ class FinalityBoundPendingPrecedenceTests(unittest.TestCase):
             authority["sessionExecutionAuthorityByPhaseKey"],
             authority["verifiedReceiptByCanonicalRef"],
             authority.get("finalityVerificationByCanonicalRef"), self.trust,
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=authority.get(
                 "legacyAgreementAuthorityByPhaseKey"
             ),

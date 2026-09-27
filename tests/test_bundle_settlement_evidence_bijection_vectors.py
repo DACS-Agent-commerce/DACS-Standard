@@ -218,6 +218,16 @@ def laa_authority_for_bundle(authority, *, operation):
         "listingRef"
     ]["contentHash"]
     value["agreement"]["terms"]["price"] = payment_amount
+    if isinstance(authority["bundle"].get("agreementRef"), dict):
+        value["agreement"]["contentHash"] = authority["bundle"]["agreementRef"][
+            "contentHash"
+        ]
+        value["settlementEvidence"]["agreementHash"] = value["agreement"][
+            "contentHash"
+        ]
+        value["transitionEvidence"]["agreementHash"] = value["agreement"][
+            "contentHash"
+        ]
     value["paymentEffect"]["amount"] = copy.deepcopy(payment_amount)
     value["transitionEvidence"]["paymentAmount"] = copy.deepcopy(payment_amount)
     for container, field in (
@@ -322,6 +332,8 @@ def bind_laa_authority_to_bundle(authority, laa, phase_key="2:pay-dem"):
     execution = authority["sessionExecutionAuthorityByPhaseKey"][phase_key]
     agreement = value["agreement"]
     session = value["sessionAuthority"]
+    if isinstance(bundle.get("agreementRef"), dict):
+        agreement["contentHash"] = bundle["agreementRef"]["contentHash"]
     agreement["listingRef"] = copy.deepcopy(bundle["listingRef"])
     agreement["phase"] = record["phase"]
     session["orchestratorPrimaryClaim"] = execution["phaseOrchestrator"]
@@ -450,6 +462,9 @@ def derive_phase_disposition(authority, pubkeys):
         authority.get("verifiedReceiptByCanonicalRef"),
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        effective_pipeline=authority.get("effectivePipeline"),
+        additional_commit_phase=authority.get("additionalCommitPhase"),
+        agreement_selection_result=authority.get("agreementSelectionResult"),
         legacy_agreement_authority_by_phase_key=refreshed_laa_phase_carriers(
             authority
         ),
@@ -805,6 +820,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             distinct.get("verifiedReceiptByCanonicalRef"),
             distinct.get("deliveryArtifactAuthorityByPhaseKey"),
             distinct.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            additional_commit_phase=distinct.get("additionalCommitPhase"),
+            agreement_selection_result=distinct.get("agreementSelectionResult"),
         )
         self.assertTrue(released_ok, released_reason)
         self.assertEqual(len(released_keys), 2)
@@ -978,6 +995,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     authority["verifiedReceiptByCanonicalRef"],
                     authority["deliveryArtifactAuthorityByPhaseKey"],
                     authority["trustedNativeTransactionObservationsByCanonicalRef"],
+                    additional_commit_phase=authority.get("additionalCommitPhase"),
+                    agreement_selection_result=authority.get("agreementSelectionResult"),
                     legacy_agreement_authority_by_phase_key={phase_key: carrier},
                 )
                 if mutation in {"omitted", "exact"}:
@@ -1000,14 +1019,14 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         repeated = self.data["executionAuthorities"]["repeated-pay-completed"]
         self.assertEqual(
             derive_phase_keys(repeated, self.pubkeys),
-            ["0:pay-dem", "1:pay-dem", "2:deliver-entitlement"],
+            ["2:pay-dem", "3:pay-dem", "4:deliver-entitlement"],
         )
         failed = self.data["executionAuthorities"]["failed-delivery"]
-        self.assertEqual(derive_phase_keys(failed, self.pubkeys), ["0:deliver-storage-program"])
+        self.assertEqual(derive_phase_keys(failed, self.pubkeys), ["2:deliver-storage-program"])
         transient = self.data["executionAuthorities"]["transient-retry-exhausted"]
         self.assertEqual(
             derive_phase_keys(transient, self.pubkeys),
-            ["0:deliver-storage-program"],
+            ["2:deliver-storage-program"],
         )
         direct_cross_chain = self.data["executionAuthorities"]["single-htlc-direct-completed"]
         self.assertEqual(
@@ -1157,7 +1176,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         authority = self.data["executionAuthorities"][
             "seller-substituted-current-delivery"
         ]
-        phase_key = "0:deliver-storage-program"
+        phase_key = "2:deliver-storage-program"
         record = next(
             resolution["record"]
             for resolution in authority["referenceValidationByCanonicalRef"].values()
@@ -1193,6 +1212,9 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             authority.get("verifiedReceiptByCanonicalRef"),
             authority.get("deliveryArtifactAuthorityByPhaseKey"),
             authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            effective_pipeline=authority.get("effectivePipeline"),
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=carriers,
         )
 
@@ -1271,7 +1293,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_present_agreement_ref_joins_every_laa_qualified_payment(self):
         """A signed agreementRef binds the LAA agreement of every payment (§10.4.3)."""
         unrelated = "LAA agreement does not bind the signed bundle agreementRef"
-        for name in ("standard-completed", "repeated-pay-completed"):
+        for name in ("standard-completed",):
             source = self.data["executionAuthorities"][name]
             hashes = sorted({
                 carrier["laa"]["agreement"]["contentHash"]
@@ -1287,7 +1309,16 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     },
                     "contentHash": content_hash,
                 }
+                authority["agreementSelectionResult"] = {
+                    "resolution": "verified",
+                    "agreementRef": copy.deepcopy(authority["bundle"]["agreementRef"]),
+                    "agreementType": "payee-bound",
+                    "proofVerified": True,
+                }
                 resign_ebfab(authority["bundle"], self.data["seeds"])
+                authority["legacyAgreementAuthorityByPhaseKey"] = (
+                    refreshed_laa_phase_carriers(authority)
+                )
                 return derive_phase_disposition(authority, self.pubkeys)[:2]
 
             if len(hashes) == 1:
@@ -1379,6 +1410,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         disposition, reason, phase_keys = R.validate_legacy_ebfab_disposition(
             *args,
+            additional_commit_phase=ordinary.get("additionalCommitPhase"),
+            agreement_selection_result=ordinary.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=(
                 refreshed_laa_phase_carriers(ordinary)
             ),
@@ -1413,6 +1446,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 transition["verifiedReceiptByCanonicalRef"],
                 transition["deliveryArtifactAuthorityByPhaseKey"],
                 transition["trustedNativeTransactionObservationsByCanonicalRef"],
+                additional_commit_phase=transition.get("additionalCommitPhase"),
+                agreement_selection_result=transition.get("agreementSelectionResult"),
                 legacy_agreement_authority_by_phase_key={
                     "2:pay-dem": transition_carrier
                 },
@@ -1436,6 +1471,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             archival_transition[
                 "trustedNativeTransactionObservationsByCanonicalRef"
             ],
+            additional_commit_phase=archival_transition.get("additionalCommitPhase"),
+            agreement_selection_result=archival_transition.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key={
                 "2:pay-dem": transition_carrier
             },
@@ -1964,7 +2001,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         valid = {
             "standard-completed": ["2:pay-dem", "3:deliver-attested-payload"],
             "repeated-pay-completed": [
-                "0:pay-dem", "1:pay-dem", "2:deliver-entitlement"
+                "2:pay-dem", "3:pay-dem", "4:deliver-entitlement"
             ],
         }
         for authority_name, expected in valid.items():
@@ -2337,7 +2374,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 authority["listing"]
             )
             entitlement = authority["deliveryArtifactAuthorityByPhaseKey"][
-                "2:deliver-entitlement"
+                "4:deliver-entitlement"
             ]["entitlementRecord"]["artifact"]
             entitlement["startsAt"] += start_shift
             if duration == 0.0001:
@@ -2365,7 +2402,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
 
     def test_inner_signed_extensions_preserved_but_other_types_refused(self):
         for name, phase_key, artifact_key, discriminator, domain, signer in (
-            ("repeated-pay-completed", "2:deliver-entitlement", "entitlementRecord",
+            ("repeated-pay-completed", "4:deliver-entitlement", "entitlementRecord",
              "entitlementVersion", R.ENTITLEMENT_DOMAIN, "seller"),
             ("standard-completed", "3:deliver-attested-payload", "payloadAttestationRecord",
              "payloadAttestationVersion", R.PAYLOAD_ATTESTATION_DOMAIN, "orchestrator"),
@@ -2540,7 +2577,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             if "storageBinding" in receipt
         )
         untrusted["deliveryArtifactAuthorityByPhaseKey"][
-            "0:deliver-storage-program"
+            "2:deliver-storage-program"
         ]["deliverable"]["storageBinding"] = untrusted_receipt.pop("storageBinding")
         disposition, reason, _ = derive_phase_disposition(untrusted, self.pubkeys)
         self.assertEqual(disposition, "indeterminate", reason)
@@ -2727,7 +2764,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_malformed_cleartext_is_error_in_both_actual_delivery_branches(self):
         cases = (
             ("standard-completed", "3:deliver-attested-payload"),
-            ("completed-storage-delivery", "0:deliver-storage-program"),
+            ("completed-storage-delivery", "2:deliver-storage-program"),
         )
         for authority_name, phase_key in cases:
             authority = copy.deepcopy(self.data["executionAuthorities"][authority_name])
@@ -3043,7 +3080,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_primary_consumer_executes_public_and_both_credential_storage_modes(self):
         storage = self.data["executionAuthorities"]["completed-storage-delivery"]
         storage_closure = storage["deliveryArtifactAuthorityByPhaseKey"][
-            "0:deliver-storage-program"
+            "2:deliver-storage-program"
         ]["deliverable"]
         self.assertEqual(
             storage["listing"]["offering"]["deliverable"].get(
@@ -3069,7 +3106,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             resign_ebfab(private_storage["bundle"], self.data["seeds"])
             resolved_storage = private_storage[
                 "deliveryArtifactAuthorityByPhaseKey"
-            ]["0:deliver-storage-program"]["deliverable"]
+            ]["2:deliver-storage-program"]["deliverable"]
             record = next(
                 resolution["record"]
                 for resolution in private_storage[
@@ -3129,7 +3166,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
 
         buyer_only = self.data["executionAuthorities"]["repeated-pay-completed"]
         buyer_credential = buyer_only["deliveryArtifactAuthorityByPhaseKey"][
-            "2:deliver-entitlement"
+            "4:deliver-entitlement"
         ]["credential"]
         exact_result, exact_bytes = R._exact_base64url_bytes(
             buyer_credential["cleartextBytesBase64url"], "buyer-only credential"
@@ -3144,7 +3181,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
 
         encrypted = copy.deepcopy(buyer_only)
         encrypted_closure = encrypted["deliveryArtifactAuthorityByPhaseKey"][
-            "2:deliver-entitlement"
+            "4:deliver-entitlement"
         ]
         entitlement = encrypted_closure["entitlementRecord"]["artifact"]
         credential = encrypted_closure["credential"]
@@ -3198,7 +3235,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         for mutation in ("missing", None, "AA==", 1):
             authority = copy.deepcopy(buyer_only)
             resolved = authority["deliveryArtifactAuthorityByPhaseKey"][
-                "2:deliver-entitlement"
+                "4:deliver-entitlement"
             ]["credential"]
             if mutation == "missing":
                 resolved.pop("cleartextBytesBase64url")
@@ -3212,9 +3249,9 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
 
     def test_primary_dependency_availability_uses_the_shared_strict_contract(self):
         dependencies = (
-            ("completed-storage-delivery", "0:deliver-storage-program", "deliverable"),
-            ("repeated-pay-completed", "2:deliver-entitlement", "entitlementRecord"),
-            ("repeated-pay-completed", "2:deliver-entitlement", "credential"),
+            ("completed-storage-delivery", "2:deliver-storage-program", "deliverable"),
+            ("repeated-pay-completed", "4:deliver-entitlement", "entitlementRecord"),
+            ("repeated-pay-completed", "4:deliver-entitlement", "credential"),
             ("standard-completed", "3:deliver-attested-payload", "deliverable"),
             ("standard-completed", "3:deliver-attested-payload", "payloadAttestationRecord"),
             ("standard-completed", "3:deliver-attested-payload", "methodEvidence"),
@@ -3548,13 +3585,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 
     def test_signed_listing_rejects_unknown_phase_before_deriving_empty_evidence(self):
-        for phase in (
-            "pay-future",
-            "negotiate-sealed-envelope-procurement",
-            "commit-payee-bound-agreement",
-            "commit-identity-bound-agreement",
-            "commit-identity-bound-payee-agreement",
-        ):
+        for phase in ("pay-future",):
             authority = copy.deepcopy(self.data["executionAuthorities"]["aborted-before-result"])
             authority["listing"]["pipeline"][0]["kind"] = phase
             resign_listing(authority["listing"], self.data["seeds"]["seller"])

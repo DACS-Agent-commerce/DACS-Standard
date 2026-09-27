@@ -13,6 +13,36 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — current-delivery admission corrective boundary
+
+- **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,
+  DACS-5 v0.7 §10.4.3) — historical delivery-shaped `SettlementEvidence` no
+  longer establishes current delivery admission, including through the existing
+  Boolean reference-validator entry point. Current delivery uses the distinct
+  `DeliveryEvidence` contract; historical bytes remain eligible only for an
+  explicitly selected, non-authorizing frozen archival/audit path. This changes
+  the meaning of existing admission behaviour, not the historical bytes or the
+  released bundle discriminators, and is not an ordinary additive-minor claim.
+- **Coordinated migration** — the complete candidate tuple is CORE v0.3 /
+  DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7.
+  [PROFILE](spec/PROFILE.md) requires the exact coordinated release tag or
+  immutable specification commit before live activation; mixed corrective and
+  pre-corrective live participants are unsupported. The
+  [reference-validator migration guide](docs/pr333-reference-validator-migration.md)
+  distinguishes current and archival helper names, result shapes, and limits.
+- **Released AB/FAB rejection-category policy** (DACS-5 §10.4.3) — use `fail`
+  when rejection is established and unavailable context leaves only the
+  `fail`/`error` category unresolved. Independently established malformed-input
+  and explicit normative `error` results retain precedence; unresolved
+  admissibility remains `indeterminate`. This does not change archival
+  semantics or impose EBFAB payment exact-set obligations on older bundle types.
+- **Agreement admission after authenticated commitment** (DACS-5 §10.4.3,
+  DACS-3 §8.5.3) — a completed commitment requires the bundle's exact
+  `agreementRef`, including failed or aborted terminals after that point; the
+  verifier-owned agreement type and signed selected commitment phase must
+  agree under the five-way dispatch. Precommit omission remains valid, and
+  released AB/FAB do not acquire EBFAB payment exact-set rules.
+
 ### Changed — legacy agreement activation boundary
 
 - **Current pay-bearing sessions require payout binding** (#377) — adds the

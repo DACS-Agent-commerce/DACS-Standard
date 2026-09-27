@@ -414,7 +414,11 @@ class CurrentUseFixtureFactory:
             "listingId": "listing-historical-nonpayment",
             "listingVersion": 1,
             "sellerPrimaryClaim": CLAIMS["seller"],
-            "pipeline": [{"kind": "deliver-storage-program"}],
+            "pipeline": [
+                {"kind": "negotiate-fixed-price"},
+                {"kind": "commit-agreement"},
+                {"kind": "deliver-storage-program"},
+            ],
             "signature": {},
         }
         listing["signature"] = {
@@ -473,6 +477,9 @@ class CurrentUseFixtureFactory:
             digest = bundle_hash(bundle)
             self.dependencies["bundleAuthorityByContentHash"][digest] = {
                 "listing": copy.deepcopy(listing),
+                "referenceValidationByCanonicalRef": {},
+                "sessionExecutionAuthorityByPhaseKey": {},
+                "verifiedReceiptByCanonicalRef": {},
             }
             historical_logical = legacy_logical_address(job_id, role)
             if pure:
@@ -638,7 +645,7 @@ class CurrentUseFixtureFactory:
             listing = authority["listing"]
             selected_rail = copy.deepcopy(agreement["terms"]["rail"])
             alternate_rail = {"railId": "fixture:unselected-apr-rail", "railVersion": 1}
-            listing["pipeline"] = [{
+            listing["pipeline"] = listing["pipeline"][:2] + [{
                 "kind": "pay-alternative",
                 "parameters": {"alternatives": [selected_rail, alternate_rail]},
             }]
@@ -665,7 +672,7 @@ class CurrentUseFixtureFactory:
                 }
                 for role in ("buyer", "seller")
             ]
-            authority["effectivePipeline"] = [{
+            authority["effectivePipeline"] = copy.deepcopy(listing["pipeline"][:2]) + [{
                 "kind": candidate["evidence"]["phase"],
                 "parameters": {"rail": selected_rail["railId"]},
             }]
@@ -697,13 +704,55 @@ class CurrentUseFixtureFactory:
                 }
                 for role in ("buyer", "seller")
             ]
-            bundle["phaseSummary"].append({"index": 1, "kind": "rate", "outcome": "ok"})
+            bundle["phaseSummary"].append({
+                "index": len(listing["pipeline"]) - 1,
+                "kind": "rate",
+                "outcome": "ok",
+            })
+
+        # These current-use fixtures carry a resolved legacy AgreementDocument.
+        # Prefix the original settlement pipeline with the matching negotiation
+        # and commitment stages, then shift all phase-indexed settlement authority
+        # before publishing agreementRef (D-1/NF-1).
+        listing = authority["listing"]
+        listing["signature"] = {
+            "signer": CLAIMS["seller"], "algorithm": "ed25519",
+            "value": self._sign(
+                self.finality.keys["seller"], LISTING_DOMAIN, listing_hash(listing),
+            ),
+        }
+        new_listing_ref = {
+            "listingId": listing["listingId"],
+            "version": listing["listingVersion"],
+            "contentHash": listing_hash(listing),
+        }
+        bundle["listingRef"] = copy.deepcopy(new_listing_ref)
+        agreement["listingRef"] = copy.deepcopy(new_listing_ref)
+        agreement_digest = artifact_hash(agreement, "signatures")
+        self.finality.trusted["sessionAuthorityByJob"][actual_job_id][
+            "agreementHash"
+        ] = agreement_digest
+        agreement["signatures"] = [
+            {
+                "party": CLAIMS[role], "algorithm": "ed25519",
+                "value": self._sign(
+                    self.finality.keys[role], AGREEMENT_DOMAIN, agreement_digest,
+                ),
+            }
+            for role in ("buyer", "seller")
+        ]
         agreement_digest = artifact_hash(agreement, "signatures")
         agreement_ref = reference(
             "agreement:" + model + (":apr" if projected_alternative else ""),
             agreement_digest,
         )
         bundle["agreementRef"] = agreement_ref
+        authority["agreementSelectionResult"] = {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(agreement_ref),
+            "agreementType": "legacy",
+            "proofVerified": True,
+        }
         if model == "block-depth":
             rating, rating_ref = self._rating(bundle["jobId"])
             bundle["ratingRefs"] = [rating_ref]
@@ -769,7 +818,14 @@ class CurrentUseFixtureFactory:
             }
         if model == "provider-receipt":
             ref_key = next(iter(authority["finalityVerificationByCanonicalRef"]))
-            self.settlement_binding_proof(candidate["evidence"], ref_key, 0)
+            payment_index = next(
+                entry["index"]
+                for entry in bundle["phaseSummary"]
+                if entry.get("kind") == candidate["evidence"]["phase"]
+            )
+            self.settlement_binding_proof(
+                candidate["evidence"], ref_key, payment_index
+            )
         expected_currency = candidate["agreement"]["terms"]["price"]["currency"]
         expected_class = (
             "provisional-provider-capture" if model == "provider-receipt" else "profile-final"

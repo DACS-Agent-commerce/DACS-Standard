@@ -605,12 +605,14 @@ class FinalityResolutionContextTests(unittest.TestCase):
             authority["verifiedReceiptByCanonicalRef"],
             authority["finalityVerificationByCanonicalRef"],
             self.trust(self.authority()),
+            additional_commit_phase=authority.get("additionalCommitPhase"),
+            agreement_selection_result=authority.get("agreementSelectionResult"),
             legacy_agreement_authority_by_phase_key=authority[
                 "legacyAgreementAuthorityByPhaseKey"
             ],
         )
         self.assertEqual("pass", decision, reason)
-        self.assertEqual(["0:pay-evm-erc20"], phase_keys)
+        self.assertEqual(["2:pay-evm-erc20"], phase_keys)
 
         key_authority = D5.trusted_verification_keys(pubkeys)
         trusted_context = D5.trusted_profile_context(
@@ -682,16 +684,16 @@ class FinalityResolutionContextTests(unittest.TestCase):
         )
         self.assertEqual(query["rail"]["consumerFinalityProfileHash"], profile_digest)
         self.assertEqual(
-            "754d4b0946e3622af4314a91f1e6a95fdb8f8434b83867dcd54789e6dce1a34d",
+            "7b3a284df3ca11f9aae6976c50188db53b320943259db445a5506e260da9af5b",
             query_digest,
         )
         self.assertEqual(response["queryHash"], query_digest)
         self.assertEqual(
-            "06b20e0268a00114ca283a8825d0be740fb244ba55d42f74c93ee5f52dbbe969",
+            "1af364dfb377f1057cca64ec4dba9e4aad78757cf67c91293a53cbad3a52a5ee",
             response_digest,
         )
         self.assertEqual(
-            "0ee0b3737645d58e83e426dd2e23943cb66b7ed8d7a1e156104a3dd7db688ffb",
+            "46498bcc6ce15f152614988a265b5cd5bfe14aa8dc95226931d1cb09aa97fa3c",
             hashlib.sha256(preimage).hexdigest(),
         )
 

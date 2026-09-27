@@ -294,7 +294,7 @@ def fixture_receipt_errors(
     ):
         errors.append(
             "anchorReceipt MUST bind the pinned logical/native address, content hash, "
-            "finalized lifecycle, and expected phase orchestrator writer"
+            "finalized lifecycle, and expected phase-orchestrator writer"
         )
     for field in ("transactionRef", "evidence"):
         item = receipt.get(field)
@@ -385,13 +385,24 @@ def load_case(
     if sig_err:
         errors.append(fail(path, sig_err))
     if require_fixture_receipt:
+        receipt_authority = expected_phase_orchestrator
+        if sig_err:
+            signature = evidence.get("signature")
+            if isinstance(signature, dict) and isinstance(
+                signature.get("signer"), str
+            ):
+                # The signature error already rejects a signer that differs from
+                # the trusted authority. Keep the receipt check independently
+                # useful by testing its continuity with the record signer rather
+                # than emitting the same authority mismatch a second time.
+                receipt_authority = signature["signer"]
         errors += [
             fail(path, error)
             for error in fixture_receipt_errors(
                 data.get("anchorReceipt"),
                 evidence,
                 resolved=resolved,
-                expected_phase_orchestrator=expected_phase_orchestrator,
+                expected_phase_orchestrator=receipt_authority,
             )
         ]
     return evidence, errors
@@ -605,12 +616,18 @@ def validate_pair(
     resolved_path: Path,
     expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
 ) -> list[str]:
-    try:
-        require_fixture_receipts = requires_fixture_receipts(interim_path, resolved_path)
-    except (OSError, RuntimeError):
-        # Path canonicalisation only selects the stricter committed-fixture
-        # receipt policy. It must not suppress ordinary file diagnostics.
+    if not interim_path.exists() or not resolved_path.exists():
+        # Preserve the primary file diagnostic for missing custom inputs; there
+        # is no admitted pair on which the stricter committed-fixture receipt
+        # policy could operate.
         require_fixture_receipts = False
+    else:
+        try:
+            require_fixture_receipts = requires_fixture_receipts(
+                interim_path, resolved_path
+            )
+        except (OSError, RuntimeError) as error:
+            return [fail(interim_path, f"pair paths could not be resolved: {error}")]
     interim, errors = validate_interim(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,

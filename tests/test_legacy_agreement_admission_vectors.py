@@ -98,7 +98,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertNotIn("reservationHash", case["input"]["settlementEvidence"])
         transition = case["input"]["transitionEvidence"]
         self.assertEqual(
-            transition["discriminator"], "legacyTransitionEvidenceVersion:1"
+            transition["legacyTransitionEvidenceVersion"], "1"
         )
         self.assertNotIn("evidenceVersion", transition)
         self.assertEqual(
@@ -449,6 +449,23 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             with self.subTest(value=repr(value)[:60]):
                 verdict = R.laa_admission(value)
                 self.assertIn(verdict, {"pass", "fail", "indeterminate", "error"})
+
+    def test_idempotency_keys_are_canonical_nonempty_before_equality(self):
+        for case_name in (
+            "laa-exact-precheckpoint-commitment-transition",
+            "laa-transition-completion-audit",
+        ):
+            base = self.cases[case_name]["input"]
+            self.assertEqual("pass", R.laa_admission(base))
+            for malformed in ("", " ", "\t", " padded-key ", "e\u0301"):
+                value = copy.deepcopy(base)
+                value["paymentAuthority"]["idempotencyKey"] = malformed
+                with self.subTest(case=case_name, malformed=repr(malformed)):
+                    self.assertEqual("error", R.laa_admission(value))
+            mismatch = copy.deepcopy(base)
+            mismatch["paymentAuthority"]["idempotencyKey"] = "0" * 64
+            with self.subTest(case=case_name, mismatch=True):
+                self.assertEqual("fail", R.laa_admission(mismatch))
 
     # --- Gap 2a: session/hash identity values must be non-empty canonical. ---
 

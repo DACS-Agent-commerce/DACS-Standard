@@ -483,7 +483,7 @@ Notes:
 
 Settlement runs as a `DemosWork` script with two sequential `WorkStep`s:
 1. an `xm` step that the Demos node auto-routes through the Liquidity Tank infrastructure (buyer pays USDC on Base; tank releases USDC on Solana to the seller),
-2. a follow-up step where the seller mints + anchors the EntitlementRecord and the orchestrator anchors `SettlementEvidence` for both phases.
+2. a follow-up step where the seller signs + anchors the EntitlementRecord and the phase orchestrator signs + anchors the current `DeliveryEvidence` for the delivery phase.
 
 This is the most important point of alignment: **there is no `tank.transfer()` SDK call**. Liquidity Tanks are an internal optimisation that the substrate applies to cross-chain `xm` steps that meet certain conditions (route exists, amount within tank capacity, source+dest assets both supported). The SDK surface is just `WorkStep` with `context: "xm"`.
 
@@ -581,50 +581,65 @@ async function settle(
   await sellerDemos.connectWallet(sellerKey);
 
   const entitlement = {
+    entitlementVersion: "1",
     jobId,
-    agreementHash,
-    grantedTo: agreement.parties.buyer.primaryClaim,
+    grantee: agreement.parties.buyer.primaryClaim,
+    grantor: agreement.parties.seller.primaryClaim,
     serviceEndpoint: "https://api.seller.example/moderate",
-    scope: ["content-moderation:v1"],
-    apiKeyHash: sha256Hex(generateApiKey()),     // raw key sent off-chain to buyer
     startsAt: Date.now(),
     endsAt:   Date.now() + 30 * 86400 * 1000,
+    scope: { service: "content-moderation:v1" },
+    renewable: false,
+    renewalSeq: 0,
   };
   const entHash = sha256Hex(jcs(omitField(entitlement, "signature")));
   entitlement.signature = await sellerDemos.sign(signedBytes("entitlement", entHash));
 
+  const entitlementLogicalAddress = `dacs4:entitlement:${jobId}:1:0`;
   const entAnchor = await sellerDemos.storage.write({                      // SR-2
-    address: `stor-${sha256Hex("dacs4:entitlement:" + jobId)}`,
+    address: `stor-${sha256Hex(entitlementLogicalAddress)}`,
     value: JSON.stringify(entitlement),
   });
+  await sellerDemos.disconnect();
 
-  const deliveryEvidence: SettlementEvidence = {
+  const deliveryEvidence: DeliveryEvidence = {
+    deliveryEvidenceVersion: "1",
     jobId,
-    agreementHash,
-    phaseType: "deliver-entitlement",
     phaseIndex: 1,
-    actor: agreement.parties.seller.primaryClaim,
-    completedAt: Date.now(),
+    phase: "deliver-entitlement",
+    outcome: "success",
     deliverableContentHash: entHash,
-    deliverableAnchor: entAnchor,
-    errorClass: null,
+    deliverableAnchor: { kind: "storage-program", locator: entitlementLogicalAddress },
+    observedAt: Date.now(),
   };
   const deHash = sha256Hex(jcs(omitField(deliveryEvidence, "signature")));
-  deliveryEvidence.signature = await sellerDemos.sign(signedBytes("evidence", deHash));
+  deliveryEvidence.signature = await orchestratorDemos.sign(
+    signedBytes("delivery-evidence", deHash)
+  );
 
-  await sellerDemos.storage.write({                                        // SR-2
-    address: `stor-${sha256Hex("dacs4:evidence:" + jobId + ":1")}`,
+  const deliveryEvidenceLogicalAddress = `dacs4:delivery:${jobId}:1`;
+  await orchestratorDemos.storage.write({                                  // SR-2
+    address: `stor-${sha256Hex(deliveryEvidenceLogicalAddress)}`,
     value: JSON.stringify(deliveryEvidence),
   });
 
-  await sellerDemos.disconnect();
   return { paymentEvidence, deliveryEvidence, entitlement };
 }
 ```
 
 Notes:
 - **Liquidity Tank access is implicit, not explicit.** The SDK has no `demos.tank.*` namespace. A cross-chain `xm` WorkStep with a supported source/dest pair routes through a tank. At the SDK level the same call *could* be served by HTLC if tank capacity were exhausted — but the **DACS-4 rail model forbids silent mechanism substitution** (§9.5.5): a pinned `pay-cross-chain-liquidity-tank` rail MUST NOT fall through to HTLC. The produced `txRef.kind` MUST match the pinned rail; a phase whose executed mechanism differs MUST fail (errorClass: permanent). An implementation wanting HTLC fallback expresses it as a distinct pinned rail / phase, not an implicit fallthrough.
-- **The entitlement key is off-chain.** Only the hash of the API key is on-chain. The raw key is delivered to the buyer via encrypted message to the buyer's primary key (typically as a payload in an L2PS message, or directly to the buyer's wallet inbox).
+- **Credential-bearing entitlements use the normative binding.** This compact
+  example uses the entitlement record itself as the grant. If it instead
+  carried `credentialRef`, the current `DeliveryEvidence` would also carry the
+  exact `credentialDelivery` ref/access model, cleartext digest, and
+  `renewalSeq` required by §9.7 PDE-5; an off-chain hash-only key handover is
+  not a conforming substitute.
+- **Delivery authority stays split.** The seller remains the grantor, signer,
+  and SR-2 writer of the `EntitlementRecord`. The authenticated phase
+  orchestrator is the signer and SR-2 writer of the enclosing current
+  `DeliveryEvidence`; a seller signature or seller write cannot substitute for
+  that phase authority, even though the seller produced the delivered record.
 - **One DemosWork per phase, or one per session?** The trace shows one `DemosWork` for the payment phase; the entitlement is anchored as a separate write. Production code can compose them into a single `DemosWork` if atomic execution is required, but the protocol allows independent anchoring (each phase produces its own evidence record).
 
 ---

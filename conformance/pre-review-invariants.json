@@ -255,6 +255,526 @@
       "id": "prior-blocker-round14-full-standing-equivocation",
       "file": "tests/test_round14_hub_reproduction_vectors.py",
       "test": "Round14VerificationCompletion.test_b_bb6_two_full_standing_forms_are_indeterminate"
+    },
+    {
+      "id": "pr333-ordinary-listing-publisher-role-join",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_authenticated_listing_publisher_must_match_ordinary_bundle_seller"
+    },
+    {
+      "id": "pr333-listing-publisher-join-preserves-shared-actor-roles",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_listing_seller_join_allows_one_actor_in_both_bundle_roles"
+    },
+    {
+      "id": "pr333-current-fab-listing-publisher-role-join",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_rejects_authenticated_listing_with_wrong_publisher_role"
+    },
+    {
+      "id": "pr333-encrypted-stored-byte-separation",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_encrypted_storage_rejects_exact_plaintext_bytes"
+    },
+    {
+      "id": "pr333-current-boolean-archival-delivery-separation",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_current_boolean_rejects_legacy_delivery_while_named_archival_passes"
+    },
+    {
+      "id": "pr333-repeated-legacy-vector-discrimination",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_legacy_repetition_fails_only_after_both_phase_authorities_exist"
+    },
+    {
+      "id": "pr333-current-fab-failed-payment-control",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_failed_payment_admission_and_omission"
+    },
+    {
+      "id": "pr333-current-fab-presented-payment-bindings",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_presented_payment_members_are_fully_bound"
+    },
+    {
+      "id": "pr333-method-evidence-receipt-tristate",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_method_evidence_missing_authority_does_not_become_a_contradiction"
+    },
+    {
+      "id": "pr333-cross-phase-inner-ownership-load-bearing",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_cross_phase_inner_dependency_ownership_is_load_bearing"
+    },
+    {
+      "id": "pr333-encrypted-storage-receipt-commitment",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_storage_delivery_hashes_exact_utf8_in_current_and_legacy_arms"
+    },
+    {
+      "id": "pr333-encrypted-attested-receipt-commitment",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_attested_payload_storage_closure_uses_authenticated_receipt"
+    },
+    {
+      "id": "pr333-credential-binding-omission-disposition",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_missing_credential_binding_is_fail_not_error"
+    },
+    {
+      "id": "pr333-receipt-key-and-listing-identity-totality",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_malformed_receipt_key_and_listing_identity_are_total"
+    },
+    {
+      "id": "pr333-fab-delivery-lifecycle-tristate",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_delivery_lifecycle_missing_vs_malformed"
+    },
+    {
+      "id": "pr333-indeterminate-inner-receipt-is-nonauthorizing",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_indeterminate_inner_receipt_cannot_authorize_delivery"
+    },
+    {
+      "id": "pr333-ordinary-current-agreement-reconciliation",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_ordinary_reconciliation_requires_current_agreement_carrier"
+    },
+    {
+      "id": "pr333-ordinary-current-delivery-reconciliation",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_ordinary_current_delivery_reconciliation_needs_closure_authority"
+    },
+    {
+      "id": "pr333-legacy-delivery-excluded-from-current-use",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "HistoricalEvidenceBindingTests.test_authenticated_historical_fab_delivery_is_not_current_authority"
+    },
+    {
+      "id": "pr333-credential-reuse-outage-order",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_authenticated_credential_ref_reuse_survives_unrelated_outage"
+    },
+    {
+      "id": "pr333-method-reuse-outage-order",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_authenticated_method_identity_reuse_survives_native_observation_outage"
+    },
+    {
+      "id": "pr333-signed-pointer-real-validator",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_signed_phase_pointers_are_checked_by_real_seb_validator"
+    },
+    {
+      "id": "pr333-phase-bound-oracle-totality",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_malformed_nested_attested_members_are_errors"
+    },
+    {
+      "id": "pr333-payload-oracle-totality",
+      "file": "tests/test_payload_attestation_vectors.py",
+      "test": "PayloadAttestationVectorTests.test_malformed_nested_projection_members_are_errors"
+    },
+    {
+      "id": "pr333-identity-only-agreement-not-current-payment",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_identity_only_agreement_cannot_authorize_current_payment"
+    },
+    {
+      "id": "pr333-payment-only-fab-agreement-gate",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "ExplicitReconciliationReceiptContractTests.test_payment_only_fab_requires_current_agreement_authority"
+    },
+    {
+      "id": "pr333-payment-only-fab-agreement-gate-controls",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "ExplicitReconciliationReceiptContractTests.test_current_payment_only_fab_agreement_gate_has_positive_and_negative_controls"
+    },
+    {
+      "id": "pr333-malformed-laa-binding-is-error",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_malformed_laa_binding_is_error_not_value_mismatch"
+    },
+    {
+      "id": "pr333-released-fab-late-failure-record-inert",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_later_failed_payment_record_cannot_flip_a_released_fab"
+    },
+    {
+      "id": "pr333-released-fab-omission-variants",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_current_fab_failed_payment_omission_variants_keep_released_semantics"
+    },
+    {
+      "id": "pr333-released-fab-omitted-success-residual",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_omitted_success_contradicting_released_fab_is_specified_residual"
+    },
+    {
+      "id": "pr333-released-fab-st8-presented-vs-omitted",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_presented_st8_interim_is_checked_while_omitted_interim_stays_released"
+    },
+    {
+      "id": "pr333-legacy-delivery-current-ineligible-tristate",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_authentic_legacy_delivery_is_current_ineligible_on_every_consumer"
+    },
+    {
+      "id": "pr333-contradictory-legacy-delivery-fails",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_contradictory_legacy_delivery_still_fails_before_ineligibility"
+    },
+    {
+      "id": "pr333-stored-receipt-conflict",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_two_stored_receipts_at_one_signed_address_conflict"
+    },
+    {
+      "id": "pr333-finality-bound-seb5-pointer",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_finality_bound_seb5_pointer_must_equal_its_top_level_member"
+    },
+    {
+      "id": "pr333-attested-reuse-outage-order",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_attested_reuse_is_not_masked_by_unrelated_outages"
+    },
+    {
+      "id": "pr333-oracle-reuse-outage-order",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_oracle_reuse_is_not_masked_by_unrelated_outages"
+    },
+    {
+      "id": "pr333-oracle-ownership-ledger-load-bearing",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_current_inner_ownership_negatives_are_load_bearing"
+    },
+    {
+      "id": "pr333-released-legacy-era-payment-current-ineligible",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_legacy_era_payments_on_released_copies_are_current_ineligible"
+    },
+    {
+      "id": "pr333-released-st8-successor-edge",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_copies_admit_only_authentic_st8_successors"
+    },
+    {
+      "id": "pr333-released-omitted-success-indeterminate",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_omitted_successful_payment_member_is_indeterminate_on_released_copies"
+    },
+    {
+      "id": "pr333-pde7-shared-contradictions",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_pde7_contradictions_fail_on_every_consumer_and_archival_lane"
+    },
+    {
+      "id": "pr333-attestation-bundle-presented-members",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_attestation_bundle_presented_payment_members_are_validated"
+    },
+    {
+      "id": "pr333-reconciliation-label-normalized",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "ExplicitReconciliationReceiptContractTests.test_current_payment_only_fab_agreement_gate_has_positive_and_negative_controls"
+    },
+    {
+      "id": "pr333-older-copy-phase-kind-totality",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_non_string_phase_kind_is_error_not_an_exception"
+    },
+    {
+      "id": "pr333-top-level-indeterminate-observation",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_top_level_indeterminate_observation_is_typed_indeterminate"
+    },
+    {
+      "id": "pr333-delivery-execution-authority-tristate",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_delivery_execution_authority_unavailable_versus_malformed"
+    },
+    {
+      "id": "pr333-pointer-canonicalization-totality",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_pointer_to_non_canonicalizable_bundle_is_error"
+    },
+    {
+      "id": "pr333-divergence-outranks-pending-older-copy",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_reconciliation_executes_conflict_absence_and_indeterminate_paths"
+    },
+    {
+      "id": "pr333-current-use-unlisted-records-inert",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_unlisted_payment_records_are_inert_for_current_use"
+    },
+    {
+      "id": "pr333-ab-without-current-delivery-indeterminate",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_attestation_bundle_without_current_delivery_evidence_is_indeterminate"
+    },
+    {
+      "id": "pr333-released-st8-interim-four-state",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_st8_interim_authority_is_four_state_typed"
+    },
+    {
+      "id": "pr333-ebfab-listing-totality",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_ebfab_malformed_listing_is_typed_error_not_an_exception"
+    },
+    {
+      "id": "pr333-released-gate-order-independence",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_gate_verdict_is_independent_of_member_order"
+    },
+    {
+      "id": "pr333-lifecycle-outage-keeps-reuse-detection",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_lifecycle_outage_does_not_mask_payment_invocation_reuse"
+    },
+    {
+      "id": "pr333-member-error-outranks-cross-member-conflict",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_member_error_outranks_a_cross_member_conflict_in_any_order"
+    },
+    {
+      "id": "pr333-conflict-reason-order-independence",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_conflicting_member_reason_is_independent_of_member_order"
+    },
+    {
+      "id": "pr333-st8-contradiction-bound-to-orchestrator-receipt",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_st8_contradiction_requires_the_orchestrators_bound_receipt"
+    },
+    {
+      "id": "pr333-incomplete-delivery-set-not-masked",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_unrelated_outage_does_not_mask_an_incomplete_delivery_set"
+    },
+    {
+      "id": "pr333-unfillable-member-does-not-mask-delivery-gap",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_member_that_cannot_fill_a_missing_invocation_does_not_mask_it"
+    },
+    {
+      "id": "pr333-authority-excluded-member-does-not-mask-delivery-gap",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_member_excluded_by_execution_authority_does_not_mask_a_gap"
+    },
+    {
+      "id": "pr333-legacy-address-excluded-member-does-not-mask-delivery-gap",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_legacy_member_excluded_by_execution_address_does_not_mask_a_gap"
+    },
+    {
+      "id": "pr333-delivery-reuse-without-optional-pointer",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_delivery_reuse_is_detected_without_the_optional_pointer"
+    },
+    {
+      "id": "pr333-finality-pointer-typed-disposition",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_finality_bound_joins_laa_and_fv_agreements"
+    },
+    {
+      "id": "pr333-finality-reconcile-listing-totality",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_malformed_strong_listing_is_typed_error_in_reconciliation"
+    },
+    {
+      "id": "pr333-seb6-receipt-observation-pending",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_receipt_observation_is_pending_until_independent_checks_run"
+    },
+    {
+      "id": "pr333-seb6-laa-unavailable-pending",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_unavailable_laa_authority_is_pending"
+    },
+    {
+      "id": "pr333-seb6-delivery-execution-unavailable-pending",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_unavailable_delivery_execution_authority_is_pending"
+    },
+    {
+      "id": "pr333-seb6-unplaced-member-fills-only-missing-invocation",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixPendingPrecedenceTests.test_unplaced_member_can_fill_only_a_missing_invocation"
+    },
+    {
+      "id": "pr333-finality-bound-pending-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "FinalityBoundPendingPrecedenceTests.test_pending_authority_never_masks_a_lifecycle_rejection"
+    },
+    {
+      "id": "pr333-released-trace-optional-fields",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_traces_admit_omitted_optional_fields"
+    },
+    {
+      "id": "pr333-released-trace-present-contradiction",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_traces_still_reject_present_contradictions"
+    },
+    {
+      "id": "pr333-released-trace-incomplete-pending",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_incomplete_released_trace_is_pending_not_a_verdict"
+    },
+    {
+      "id": "pr333-dependency-receipt-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "DependencyReceiptPrecedenceTests.test_public_entry_receipt_classes_survive_missing_resolvability"
+    },
+    {
+      "id": "pr333-self-signed-contradiction-fail",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SelfSignedMethodDispositionTests.test_public_entry_classifies_authenticated_contradictions_as_fail"
+    },
+    {
+      "id": "pr333-unselected-candidate-inert",
+      "file": "tests/test_unselected_candidate_inertness.py",
+      "test": "CurrentUseUnselectedCandidateTests.test_unselected_invalid_fault_party_is_inert"
+    },
+    {
+      "id": "pr333-job-bound-unselected-inert",
+      "file": "tests/test_unselected_candidate_inertness.py",
+      "test": "DeriveJobBoundUnselectedCandidateTests.test_unselected_candidates_are_inert"
+    },
+    {
+      "id": "pr333-ebfab-agreement-ref-join",
+      "file": "tests/test_bundle_settlement_evidence_bijection_vectors.py",
+      "test": "BundleSettlementEvidenceBijectionTests.test_present_agreement_ref_joins_every_laa_qualified_payment"
+    },
+    {
+      "id": "pr333-released-agreement-ref-join",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_copies_join_present_agreement_ref_to_laa_agreement"
+    },
+    {
+      "id": "pr333-ebfab-pointer-agreement-ref-join",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_ebfab_pointer_joins_present_agreement_ref_to_laa_agreement"
+    },
+    {
+      "id": "pr333-finality-bound-agreement-ref-join",
+      "file": "tests/test_settlement_finality_verification_vectors.py",
+      "test": "SettlementFinalityVerificationVectorTests.test_finality_bound_joins_present_agreement_ref_to_laa"
+    },
+    {
+      "id": "pr333-laa2-identity-only-payment-refused",
+      "file": "tests/test_identity_bundle_hash_binding_vectors.py",
+      "test": "IdentityBundleHashBindingVectorTests.test_retained_admission_is_exact_and_reused_without_readmission"
+    },
+    {
+      "id": "pr333-laa2-sealed-losing-bidder-payment-refused",
+      "file": "tests/test_identity_bundle_hash_binding_vectors.py",
+      "test": "IdentityBundleHashBindingVectorTests.test_sealed_envelope_losing_bidder_compatibility"
+    },
+    {
+      "id": "pr333-seb6-unplaced-payment-own-contradictions",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_unplaced_payment_keeps_its_own_contradictions"
+    },
+    {
+      "id": "pr333-seb6-unavailable-execution-binds-receipt",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_unavailable_execution_still_binds_the_present_receipt"
+    },
+    {
+      "id": "pr333-seb5-missing-invocation-pointers",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_pointers_for_missing_invocations_name_distinct_fitting_members"
+    },
+    {
+      "id": "pr333-seb4-receipt-named-invocation-injective",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_receipt_named_invocation_is_injective"
+    },
+    {
+      "id": "pr333-seb6-no-single-outage-downgrade-sweep",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "SebSixSameMemberPrecedenceTests.test_no_single_outage_downgrades_a_shipped_rejection"
+    },
+    {
+      "id": "pr333-agreement-join-error-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "LaaAgreementJoinPrecedenceTests.test_join_mismatch_never_outranks_malformed_authority"
+    },
+    {
+      "id": "pr333-finality-fv-error-outranks-join-fail",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "LaaAgreementJoinPrecedenceTests.test_finality_verification_error_outranks_a_join_fail"
+    },
+    {
+      "id": "pr333-st8-successor-scan-nonce-pin",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "AdmittingEntryBoundaryTests.test_successor_scan_respects_the_unavailable_nonce_pin"
+    },
+    {
+      "id": "pr333-st8-successor-scan-archival-integer-nonce",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "AdmittingEntryBoundaryTests.test_archival_successor_scan_pins_integer_nonces"
+    },
+    {
+      "id": "pr333-transition-payment-signed-invocation",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "AdmittingEntryBoundaryTests.test_receiptless_transition_payment_fills_only_its_signed_invocation"
+    },
+    {
+      "id": "pr333-finality-verification-skips-rejected-records",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "FinalityBoundPendingPrecedenceTests.test_verification_skips_records_the_core_rejected"
+    },
+    {
+      "id": "pr333-pending-receipt-laa-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_receipt_independent_laa_checks_outrank_a_pending_receipt"
+    },
+    {
+      "id": "pr333-pending-receipt-defers-only-receipt-fields",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_only_receipt_bound_carrier_fields_are_deferred"
+    },
+    {
+      "id": "pr333-receiptless-payment-sb1-exclusion",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_available_execution_authority_excludes_receiptless_candidates"
+    },
+    {
+      "id": "pr333-finality-bound-pending-receipt-precedence",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_finality_bound_core_keeps_the_same_precedence"
+    },
+    {
+      "id": "pr333-released-pending-payment-receipt",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_pending_payment_receipt_keeps_its_own_contradictions"
+    },
+    {
+      "id": "pr333-released-payment-receipt-state-independence",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_payment_verdict_is_independent_of_receipt_state"
+    },
+    {
+      "id": "pr333-receiptless-candidate-rail-and-nonce",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_receiptless_candidate_needs_the_bindable_rail_and_nonce"
+    },
+    {
+      "id": "pr333-laa-pending-mode-is-explicit",
+      "file": "tests/test_pr333_disposition_precedence_regressions.py",
+      "test": "PendingReceiptPaymentPrecedenceTests.test_laa_never_infers_pending_mode_from_a_missing_receipt"
+    },
+    {
+      "id": "pr333-released-payment-checks-outrank-other-outages",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_released_payment_checks_outrank_other_outages"
     }
   ],
   "coveredInvariantClasses": [

@@ -18,6 +18,8 @@ FLOW_TRACE = ROOT / "docs" / "flow-trace.md"
 GOLDEN = ROOT / "conformance" / "vectors" / "golden.json"
 
 import test_channel_message_vectors as channel_oracle  # noqa: E402
+import test_phase_bound_delivery_vectors as delivery_oracle  # noqa: E402
+import generate_phase_bound_delivery_vectors as delivery_vectors  # noqa: E402
 import jcs  # noqa: E402  (repository canonical-form implementation, CORE §B.2)
 
 
@@ -49,6 +51,56 @@ class FlowTraceSigningTests(unittest.TestCase):
         self.assertEqual(len(preimage), 48)
         with self.assertRaises(InvalidSignature):
             self.public_key.verify(self.signature, preimage)
+
+    def test_settle_walkthrough_keeps_seller_record_and_orchestrator_evidence_authority(self):
+        """The documented split is executable with distinct seller/orchestrator keys."""
+        text = FLOW_TRACE.read_text(encoding="utf-8")
+        settle = text.split("async function settle(", 1)[1].split(
+            "async function verify(", 1
+        )[0]
+        for needle in (
+            'entitlement.signature = await sellerDemos.sign(',
+            "const entAnchor = await sellerDemos.storage.write({",
+            "deliveryEvidence.signature = await orchestratorDemos.sign(",
+            "await orchestratorDemos.storage.write({",
+            "The seller remains the grantor, signer,",
+            "orchestrator is the signer and SR-2 writer",
+        ):
+            self.assertIn(needle, settle)
+        self.assertNotIn(
+            'deliveryEvidence.signature = await sellerDemos.sign(', settle
+        )
+
+        case = delivery_vectors.make(
+            "flow-trace-authority",
+            "pass",
+            "distinct documented authorities",
+            lambda: delivery_vectors.entitlement_case((0,)),
+        )
+        entitlement = case["artifactRecords"][0]["artifact"]
+        evidence_entry = case["evidenceRecords"][0]
+        evidence = evidence_entry["artifact"]
+        self.assertNotEqual(delivery_vectors.SELLER, delivery_vectors.ORCHESTRATOR)
+        self.assertEqual(entitlement["grantor"], delivery_vectors.SELLER)
+        self.assertEqual(
+            entitlement["signature"]["signer"], delivery_vectors.SELLER
+        )
+        self.assertEqual(
+            evidence["signature"]["signer"], delivery_vectors.ORCHESTRATOR
+        )
+        self.assertEqual(evidence_entry["receiptWriter"], delivery_vectors.ORCHESTRATOR)
+        self.assertEqual(delivery_oracle.evaluate(case), "pass")
+
+        evidence["signature"]["signer"] = delivery_vectors.SELLER
+        delivery_vectors.sign(
+            evidence, delivery_vectors.SELLER_SEED, delivery_vectors.DELIVERY_DOMAIN
+        )
+        evidence_entry["receiptWriter"] = delivery_vectors.SELLER
+        delivery_vectors.bundle(case)
+        case["executionAuthority"] = {
+            "phaseOrchestrator": delivery_vectors.ORCHESTRATOR
+        }
+        self.assertEqual(delivery_oracle.evaluate(case), "fail")
 
     def test_channel_example_passes_current_read(self):
         """PR #367 review row 3: the docs/flow-trace.md sendChannelMsg

@@ -1991,6 +1991,12 @@ def append_mutation(path: list[Any], value: Any) -> dict[str, Any]:
     return {"op": "append-value", "path": path, "value": value}
 
 
+IDENTITY_ONLY_PAY_REASONS = {
+    "payment": "laa-current-payment-requires-payee-binding",
+    "terminal": "terminal-seb-invalid:current payment agreement lacks payee binding",
+}
+
+
 def build_vectors() -> list[dict[str, Any]]:
     vectors: list[dict[str, Any]] = []
     for artifact in ARTIFACTS:
@@ -2061,9 +2067,18 @@ def build_vectors() -> list[dict[str, Any]]:
             ))
     for artifact in ("identityBoundAgreement", "identityBoundPayeeAgreement"):
         for stage in ("commit", "payment", "terminal"):
+            # DACS-4 LAA-2: a non-payee identity-bound agreement cannot authorize
+            # a current payment, so it is refused before the payment effect and
+            # again at terminal admission.
+            identity_only_pay = (
+                artifact == "identityBoundAgreement" and stage in IDENTITY_ONLY_PAY_REASONS
+            )
             vectors.append(vector(
-                f"{artifact}-{stage}-verified", "pass",
-                scenario_name=artifact, stage=stage, reason="verified",
+                f"{artifact}-{stage}-verified",
+                "fail" if identity_only_pay else "pass",
+                scenario_name=artifact, stage=stage,
+                reason=(IDENTITY_ONLY_PAY_REASONS[stage]
+                        if identity_only_pay else "verified"),
             ))
     vectors.extend([
         vector(
@@ -2749,7 +2764,7 @@ def build_vectors() -> list[dict[str, Any]]:
             reason="terminal-settlement-receipt-invalid",
         ),
         vector(
-            "terminal-alternate-payer-and-payee-endpoints-verified", "pass",
+            "terminal-alternate-payer-and-payee-endpoints-verified", "fail",
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[
                 set_mutation(
@@ -2770,7 +2785,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 ], "demos:runtime-payee-destination"),
             ],
             resign=["payment-authorization", "terminal-settlement-observation:0"],
-            reason="verified",
+            reason="terminal-seb-invalid:current payment agreement lacks payee binding",
         ),
         vector(
             "payee-bound-alternate-signed-destination-verified", "pass",
@@ -2865,7 +2880,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 "verifierContext", "terminalAuthority", "settlements", 0,
                 "record", "signature", "value",
             ], "AAAA")],
-            reason="terminal-seb-invalid:settlement evidence signature does not verify",
+            reason="terminal-seb-invalid:evidence record has an unsupported or ambiguous discriminator",
         ),
         vector(
             "historical-payment-explicitly-not-modeled", "indeterminate",
@@ -2920,10 +2935,10 @@ def build_vectors() -> list[dict[str, Any]]:
     for stage in ("payment", "terminal"):
         vectors.append(vector(
             f"identity-bound-sealed-envelope-losing-bidder-{stage}",
-            "pass",
+            "fail",
             scenario_name="identityBoundSealed",
             stage=stage,
-            reason="verified",
+            reason=IDENTITY_ONLY_PAY_REASONS[stage],
         ))
     for label, scenario_name in (
         ("demand", "selectionBoundDemand"),

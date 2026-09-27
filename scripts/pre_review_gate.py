@@ -567,11 +567,18 @@ PINNED_UNIT_REGRESSIONS = {
 }
 
 EXACT_UNITTEST_RUNNER = """\
+import importlib.util
 import json
 import sys
 import unittest
 
-suite = unittest.defaultTestLoader.loadTestsFromName(sys.argv[1])
+spec = importlib.util.spec_from_file_location("_dacs_exact_review_test", sys.argv[1])
+if spec is None or spec.loader is None:
+    raise SystemExit("cannot load code-pinned test file")
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+suite = unittest.defaultTestLoader.loadTestsFromName(sys.argv[2], module)
 result = unittest.TestResult()
 suite.run(result)
 summary = {
@@ -1124,19 +1131,17 @@ def run_unit_regressions(manifest: dict) -> int:
 
 
 def _run_python_evidence(entries: list[dict], label: str) -> int:
-    python_path = os.pathsep.join(
-        part for part in (str(ROOT), str(ROOT / "tests"), os.environ.get("PYTHONPATH", ""))
-        if part
-    )
+    python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
-        module = _unittest_module(entry["file"], entry["test"], entry["id"])
-        _within_test_root(entry["file"])
+        _unittest_module(entry["file"], entry["test"], entry["id"])
+        test_path = _within_test_root(entry["file"])
         completed = subprocess.run(
             [
                 sys.executable,
                 "-c",
                 EXACT_UNITTEST_RUNNER,
-                f"{module}.{entry['test']}",
+                str(test_path),
+                entry["test"],
             ],
             cwd=ROOT,
             text=True,

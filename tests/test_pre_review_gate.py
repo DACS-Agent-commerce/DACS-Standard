@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import tempfile
 import unittest
 from unittest import mock
 
@@ -154,7 +155,7 @@ class PreReviewGateTests(unittest.TestCase):
             self.skipTest("selected skips must not satisfy review evidence")
         self.assertNotEqual(os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE"), "1")
 
-    def test_runner_constructs_unittest_module_command(self):
+    def test_runner_loads_the_exact_unittest_file(self):
         entry = self.manifest["independentReviewEvidence"][0]
         completed = mock.Mock(returncode=0, stdout="", stderr="")
         with mock.patch.object(
@@ -174,10 +175,39 @@ class PreReviewGateTests(unittest.TestCase):
         )
         self.assertEqual(
             command[3],
-            "tests.test_pr333_fix_2."
-            "AuthenticatedEvidenceWireTypeAlgorithmTests."
-            "test_algorithm_array_rejected_without_exception_ebfab",
+            str((ROOT / entry["file"]).resolve()),
         )
+        self.assertEqual(command[4], entry["test"])
+        self.assertEqual(
+            run.call_args.kwargs["env"]["PYTHONPATH"],
+            os.pathsep.join((str(ROOT), str(ROOT / "tests"))),
+        )
+
+    def test_ambient_pythonpath_cannot_shadow_code_pinned_test(self):
+        entry = self.manifest["independentReviewEvidence"][0]
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "tests"
+            package.mkdir()
+            (package / "__init__.py").write_text("", encoding="utf-8")
+            (package / "test_pr333_fix_2.py").write_text(
+                "import os\n"
+                "from pathlib import Path\n"
+                "import unittest\n"
+                "Path(os.environ['DACS_SHADOW_MARKER']).write_text('shadowed')\n"
+                "class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):\n"
+                "    def test_algorithm_array_rejected_without_exception_ebfab(self):\n"
+                "        pass\n",
+                encoding="utf-8",
+            )
+            marker = Path(temporary) / "shadow-marker"
+            with mock.patch.dict(os.environ, {
+                "PYTHONPATH": temporary,
+                "DACS_SHADOW_MARKER": str(marker),
+            }):
+                self.assertEqual(
+                    self.gate._run_python_evidence([entry], "review evidence"), 1
+                )
+            self.assertFalse(marker.exists(), "an external tests package ran")
 
     def test_two_tests_cannot_claim_every_lens_and_surface(self):
         manifest = copy.deepcopy(self.manifest)

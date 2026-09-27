@@ -2768,6 +2768,59 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 self.assertEqual("fail", self._direct(cross_job, kind)[0])
                 self.assertEqual("fail", self._reconcile(cross_job)["decision"])
 
+    def test_authenticated_finality_members_require_closed_shape_before_phase_dispatch(self):
+        """A finality-domain signature cannot make a non-payment phase inert."""
+        exemplar = json.loads(FINALITY_VECTORS.read_text(encoding="utf-8"))[
+            "vectors"
+        ][0]["input"]["evidence"]
+        self.assertTrue(R._finality_bound_settlement_evidence_shape_valid(exemplar))
+
+        for base_name, factory in (
+            ("failed-delivery", lambda: self._failed_delivery_value("failed-delivery")),
+            ("completed-storage", self._fixture),
+        ):
+            for kind in ("legacy", "fault"):
+                for job in ("same", "cross"):
+                    value = factory()
+                    source = self._failed_payment_fixture()
+                    source_ref = source["bundle"]["settlementEvidence"][0]
+                    record = copy.deepcopy(exemplar)
+                    record["jobId"] = (
+                        value["bundle"]["jobId"]
+                        if job == "same" else "01ARZ3NDEKTSV4RRFFQ69G5FZZ"
+                    )
+                    record["phase"] = "commit-agreement"
+                    self.assertFalse(R._finality_bound_settlement_evidence_shape_valid(record))
+                    record["signature"]["value"] = self._sign(
+                        "orchestrator",
+                        R.FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN,
+                        R.settlement_evidence_hash(record),
+                    )
+                    self.assertEqual(
+                        "finality-bound",
+                        R._authenticated_evidence_wire_type(record, self.pubkeys),
+                    )
+                    ref = copy.deepcopy(source_ref)
+                    ref["contentHash"] = R.settlement_evidence_hash(record)
+                    value["authority"]["referenceValidationByCanonicalRef"][
+                        self._key(ref)
+                    ] = {
+                        "record": record,
+                        "lifecycle": {
+                            "state": "finalized",
+                            "independentlyResolvable": True,
+                        },
+                    }
+                    value["bundle"]["settlementEvidence"].append(ref)
+                    self._as_released_kind(value, kind)
+                    dispositions = self._released_trace_dispositions(value, kind)
+                    with self.subTest(base=base_name, kind=kind, job=job):
+                        self.assertEqual("error", dispositions["direct"], dispositions)
+                        self.assertEqual("error", dispositions["reconcile"], dispositions)
+                        if kind == "fault":
+                            self.assertEqual("error", dispositions["pointer"], dispositions)
+                        self.assertNotEqual("pass", dispositions["current-use"], dispositions)
+
     def test_malformed_payment_lifecycle_outranks_absent_authority_maps(self):
         """Present malformed lifecycle is an error even when a whole map is absent."""
         for kind in ("legacy", "fault"):

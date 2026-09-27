@@ -775,6 +775,16 @@
       "id": "pr333-released-payment-checks-outrank-other-outages",
       "file": "tests/test_current_evidence_boundary_regressions.py",
       "test": "CurrentFabDeliveryAdmissionTests.test_released_payment_checks_outrank_other_outages"
+    },
+    {
+      "id": "pr333-released-settlement-closed-shape-before-phase-dispatch",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_authenticated_settlement_members_require_closed_shape_before_phase_dispatch"
+    },
+    {
+      "id": "pr333-released-finality-closed-shape-before-phase-dispatch",
+      "file": "tests/test_current_evidence_boundary_regressions.py",
+      "test": "CurrentFabDeliveryAdmissionTests.test_authenticated_finality_members_require_closed_shape_before_phase_dispatch"
     }
   ],
   "coveredInvariantClasses": [

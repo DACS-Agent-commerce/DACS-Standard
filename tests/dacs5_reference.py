@@ -5207,6 +5207,14 @@ def _validate_current_fab_delivery_admission(
                 "FAB LegacyTransitionSettlementEvidence has a malformed closed shape",
             )
         if (
+            evidence_type == "finality-bound"
+            and not _finality_bound_settlement_evidence_shape_valid(record)
+        ):
+            return (
+                "error",
+                "FAB FinalityBoundSettlementEvidence has a malformed closed shape",
+            )
+        if (
             not delivery_only
             and evidence_type == "settlement"
             and isinstance(record, dict)

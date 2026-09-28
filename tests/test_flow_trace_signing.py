@@ -102,6 +102,44 @@ class FlowTraceSigningTests(unittest.TestCase):
         }
         self.assertEqual(delivery_oracle.evaluate(case), "fail")
 
+    def test_settle_indices_come_from_the_complete_authenticated_pipeline(self):
+        text = FLOW_TRACE.read_text(encoding="utf-8")
+        settle = text.split("async function settle(", 1)[1].split(
+            "async function verify(", 1
+        )[0]
+        for needle in (
+            "listing: Listing, // already authenticated and bound to this session",
+            "listing.pipeline.flatMap((phase, index)",
+            "phase.kind === kind ? [index] : []",
+            "assert(indices.length === 1",
+            'singlePhaseIndex("pay-cross-chain-liquidity-tank")',
+            'singlePhaseIndex("deliver-entitlement")',
+            "phaseIndex: paymentPhaseIndex",
+            "phaseIndex: deliveryPhaseIndex",
+            "dacs4:entitlement:${jobId}:${deliveryPhaseIndex}:${entitlement.renewalSeq}",
+            "dacs4:delivery:${jobId}:${deliveryPhaseIndex}",
+        ):
+            self.assertIn(needle, settle)
+        self.assertNotIn("phaseIndex: 0", settle)
+        self.assertNotIn("phaseIndex: 1", settle)
+        self.assertNotIn("dacs4:entitlement:${jobId}:1:0", settle)
+        self.assertNotIn("dacs4:delivery:${jobId}:1", settle)
+
+    def test_historical_scaffolds_do_not_claim_current_conformance(self):
+        text = FLOW_TRACE.read_text(encoding="utf-8")
+        for needle in (
+            "Historical adapter scaffold, not current-conforming payment wire",
+            "Historical finalization scaffold, not current-conforming bundle wire",
+            "including negotiation and commitment",
+            "`success` maps to `ok`",
+            "`failure` maps to `fail`",
+            "complete `AttestationRef` values, not bare storage anchors",
+            "Do not infer a",
+            "complete trace by mapping only evidence records",
+            "not a current bundle producer",
+        ):
+            self.assertIn(needle, text)
+
     def test_channel_example_passes_current_read(self):
         """PR #367 review row 3: the docs/flow-trace.md sendChannelMsg
         example emits the CH-7/CH-8 current wire — the exclusive

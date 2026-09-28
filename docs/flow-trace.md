@@ -1,6 +1,10 @@
 # DACS — Logical Flow Trace (SDK-mapped pseudocode)
 
-**Spec version.** Aligned to **DACS v0.1**. Trace updates with each minor version of the spec; see CHANGELOG for material changes since earlier drafts.
+**Scope.** Historical SDK-mapping pseudocode with selected current-wire examples,
+not a complete current-profile conformance implementation. In particular, the
+payment and finalization scaffolds below retain historical field names. Use the
+pinned minimum-conformant lifecycle linked below for executable current-profile
+examples; see CHANGELOG for material changes since earlier drafts.
 
 **Purpose.** Trace one end-to-end DACS happy path against the Demos SDK (`@kynesyslabs/demosdk`), so the logical flow can be sanity-checked against the technical flow that production code executes. Where the protocol needs something the SDK doesn't yet expose, that's called out inline and consolidated in the gap list at the end.
 
@@ -487,8 +491,21 @@ Settlement runs as a `DemosWork` script with two sequential `WorkStep`s:
 
 This is the most important point of alignment: **there is no `tank.transfer()` SDK call**. Liquidity Tanks are an internal optimisation that the substrate applies to cross-chain `xm` steps that meet certain conditions (route exists, amount within tank capacity, source+dest assets both supported). The SDK surface is just `WorkStep` with `context: "xm"`.
 
+**Historical adapter scaffold, not current-conforming payment wire.** The
+`paymentEvidence` object and its historical storage address below illustrate the
+old SDK mapping; they are not the current closed `SettlementEvidence` or PC-2
+address and MUST NOT be emitted as current payment evidence. The current delivery
+example uses the invocation index from the already-authenticated ordinary
+Listing's complete ordered `pipeline`, including negotiation and commitment,
+not a settlement-local counter. This single-invocation example refuses repeated
+matching kinds rather than guessing an invocation; an implementation supporting
+repetition must use its authenticated execution index. A `pay-alternative`
+session additionally needs the authenticated APR effective pipeline, which this
+fixed-rail example does not implement.
+
 ```typescript
 async function settle(
+  listing: Listing, // already authenticated and bound to this session
   agreement: Agreement,
   agreementHash: string,
   buyerKey: string,
@@ -496,6 +513,15 @@ async function settle(
   orchestratorDemos: Demos,
   jobId: string
 ) {
+  function singlePhaseIndex(kind: string): number {
+    const indices = listing.pipeline.flatMap((phase, index) =>
+      phase.kind === kind ? [index] : []);
+    assert(indices.length === 1, "walkthrough requires one matching invocation");
+    return indices[0];
+  }
+  const paymentPhaseIndex = singlePhaseIndex("pay-cross-chain-liquidity-tank");
+  const deliveryPhaseIndex = singlePhaseIndex("deliver-entitlement");
+
   // === Payment phase: pay-cross-chain-liquidity-tank ===
   //
   // The buyer constructs a cross-chain payment payload. The Demos node, when
@@ -551,7 +577,7 @@ async function settle(
       jobId,
       agreementHash,
       phaseType: "pay-cross-chain-liquidity-tank",
-      phaseIndex: 0,
+      phaseIndex: paymentPhaseIndex,
       actor: agreement.parties.buyer.primaryClaim,
       completedAt: Date.now(),
       txRef: {
@@ -566,7 +592,7 @@ async function settle(
     paymentEvidence.signature = await buyerDemos.sign(signedBytes("evidence", peHash));
 
     await buyerDemos.storage.write({                                       // SR-2
-      address: `stor-${sha256Hex("dacs4:evidence:" + jobId + ":0")}`,
+      address: `stor-${sha256Hex("dacs4:evidence:" + jobId + ":" + paymentPhaseIndex)}`,
       value: JSON.stringify(paymentEvidence),
     });
 
@@ -595,7 +621,7 @@ async function settle(
   const entHash = sha256Hex(jcs(omitField(entitlement, "signature")));
   entitlement.signature = await sellerDemos.sign(signedBytes("entitlement", entHash));
 
-  const entitlementLogicalAddress = `dacs4:entitlement:${jobId}:1:0`;
+  const entitlementLogicalAddress = `dacs4:entitlement:${jobId}:${deliveryPhaseIndex}:${entitlement.renewalSeq}`;
   const entAnchor = await sellerDemos.storage.write({                      // SR-2
     address: `stor-${sha256Hex(entitlementLogicalAddress)}`,
     value: JSON.stringify(entitlement),
@@ -605,7 +631,7 @@ async function settle(
   const deliveryEvidence: DeliveryEvidence = {
     deliveryEvidenceVersion: "1",
     jobId,
-    phaseIndex: 1,
+    phaseIndex: deliveryPhaseIndex,
     phase: "deliver-entitlement",
     outcome: "success",
     deliverableContentHash: entHash,
@@ -617,7 +643,7 @@ async function settle(
     signedBytes("delivery-evidence", deHash)
   );
 
-  const deliveryEvidenceLogicalAddress = `dacs4:delivery:${jobId}:1`;
+  const deliveryEvidenceLogicalAddress = `dacs4:delivery:${jobId}:${deliveryPhaseIndex}`;
   await orchestratorDemos.storage.write({                                  // SR-2
     address: `stor-${sha256Hex(deliveryEvidenceLogicalAddress)}`,
     value: JSON.stringify(deliveryEvidence),
@@ -647,6 +673,20 @@ Notes:
 ## 7. Stage 5 — Verify
 
 The session ends. The orchestrator assembles the AttestationBundle; buyer and seller co-sign; each role anchors their copy at a role-specific address.
+
+**Historical finalization scaffold, not current-conforming bundle wire.** The
+object below retains the old `phaseType` / `phaseIndex` / `evidenceRef` /
+`errorClass` / `completedAt` projection. In particular, it cannot consume the
+current `DeliveryEvidence` above through that projection. Current
+`BundlePhaseEntry` values use `index`, `kind`, and `outcome` from the authenticated
+execution trace, including negotiation and commitment results: delivery
+`success` maps to `ok`, and delivery `failure` maps to `fail`. Do not infer a
+complete trace by mapping only evidence records. Current `settlementEvidence[]`
+contains complete `AttestationRef` values, not bare storage anchors; an optional
+per-phase `attestationRef` must equal its corresponding top-level reference.
+The remaining historical bundle fields and role anchoring also need migration
+before this scaffold can be used for current admission. This section is an SDK
+capability illustration, not a current bundle producer.
 
 ```typescript
 async function verify(session: SessionState, jobId: string) {

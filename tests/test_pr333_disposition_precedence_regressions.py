@@ -62,6 +62,94 @@ def _key(ref):
     return R.canonical(ref).decode("utf-8")
 
 
+_RECEIPT_MEMBER_MISSING = object()
+_WRONG_JSON_SCALARS = (
+    ("null", None),
+    ("boolean", False),
+    ("number", 0),
+    ("empty-string", ""),
+    ("array", []),
+    ("object", {}),
+)
+_CURRENT_RECEIPT_PUBLIC_MALFORMATIONS = (
+    ("missing-logical-address", ("logicalAddress",), _RECEIPT_MEMBER_MISSING),
+    ("missing-native-address", ("nativeAddress",), _RECEIPT_MEMBER_MISSING),
+    ("missing-content-hash", ("contentHash",), _RECEIPT_MEMBER_MISSING),
+    ("missing-writer", ("writer",), _RECEIPT_MEMBER_MISSING),
+    ("logical-address-array", ("logicalAddress",), []),
+    ("native-address-array", ("nativeAddress",), []),
+    ("content-hash-array", ("contentHash",), []),
+    ("writer-array", ("writer",), []),
+    ("block-ref-array", ("blockRef",), []),
+    ("block-ref-id-missing", ("blockRef", "id"), _RECEIPT_MEMBER_MISSING),
+    ("block-ref-height-leading-zero", ("blockRef", "height"), "01"),
+    ("block-ref-timestamp-boolean", ("blockRef", "timestamp"), True),
+)
+_CURRENT_RECEIPT_PUBLIC_MALFORMATION_BY_NAME = {
+    label: (path, value)
+    for label, path, value in _CURRENT_RECEIPT_PUBLIC_MALFORMATIONS
+}
+_CURRENT_RECEIPT_PUBLIC_ERROR_EXPECTATIONS = tuple(
+    (label, "error") for label, _, _ in _CURRENT_RECEIPT_PUBLIC_MALFORMATIONS
+)
+
+
+def _mutate_receipt_path(receipt, path, value):
+    target = receipt
+    for member in path[:-1]:
+        target = target[member]
+    if value is _RECEIPT_MEMBER_MISSING:
+        target.pop(path[-1])
+    else:
+        target[path[-1]] = copy.deepcopy(value)
+
+
+def _current_receipt_shape_malformations():
+    cases = []
+    for field in ("logicalAddress", "nativeAddress", "contentHash", "writer"):
+        cases.append((field + "-missing", (field,), _RECEIPT_MEMBER_MISSING))
+        cases.extend(
+            (field + "-" + label, (field,), value)
+            for label, value in _WRONG_JSON_SCALARS
+        )
+    cases.extend(
+        ("block-ref-" + label, ("blockRef",), value)
+        for label, value in _WRONG_JSON_SCALARS
+    )
+    cases.append((
+        "block-ref-id-missing", ("blockRef", "id"), _RECEIPT_MEMBER_MISSING
+    ))
+    cases.extend(
+        ("block-ref-id-" + label, ("blockRef", "id"), value)
+        for label, value in _WRONG_JSON_SCALARS
+    )
+    for label, value in (
+        *_WRONG_JSON_SCALARS,
+        ("leading-zero", "01"),
+        ("plus-sign", "+1"),
+        ("minus-sign", "-1"),
+        ("leading-space", " 1"),
+        ("trailing-space", "1 "),
+        ("decimal-point", "1.0"),
+        ("exponent", "1e0"),
+        ("unicode-digit", "\u0661"),
+    ):
+        cases.append(("block-ref-height-" + label, ("blockRef", "height"), value))
+    for label, value in (
+        ("null", None),
+        ("boolean", False),
+        ("string", "1"),
+        ("array", []),
+        ("object", {}),
+    ):
+        cases.append((
+            "block-ref-timestamp-" + label,
+            ("blockRef", "timestamp"),
+            value,
+        ))
+    return cases
+
+
 class _SebFixtures:
     """Signed EBFAB fixtures and the four public consumers."""
 
@@ -1028,8 +1116,8 @@ class LaaAgreementJoinPrecedenceTests(_SebFixtures, unittest.TestCase):
 class DependencyReceiptPrecedenceTests(_SebFixtures, unittest.TestCase):
     """PDE-6: missing entry authority cannot downgrade receipt error or fail."""
 
-    def _unit(self, entry, receipt, reference):
-        receipts = {_key(reference): receipt}
+    def _unit(self, entry, receipt, reference, *, receipt_present=True):
+        receipts = {_key(reference): receipt} if receipt_present else {}
         return R._resolved_delivery_dependency(
             entry, reference, receipts, True, "dependency",
             job_id=JOB, phase_index=PHASE_INDEX, phase_kind=PHASE_KIND,
@@ -1061,6 +1149,51 @@ class DependencyReceiptPrecedenceTests(_SebFixtures, unittest.TestCase):
         self.assertEqual("error", self._unit(present_malformed, contradictory, reference))
         self.assertEqual("fail", self._unit(dict(entry, independentlyResolvable=False), receipt, reference))
 
+    def test_missing_or_unavailable_entry_defers_only_availability(self):
+        reference, entry, receipt, _ = dependency_authority()
+        receipt_cases = {
+            "consistent": (receipt, True, "indeterminate"),
+            "bad-writer": (
+                dict(copy.deepcopy(receipt), writer=BUYER), True, "fail"
+            ),
+            "bad-address": (
+                dict(copy.deepcopy(receipt), logicalAddress="dacs4:wrong-address"),
+                True,
+                "fail",
+            ),
+            "malformed": (
+                dict(copy.deepcopy(receipt), state=[]), True, "error"
+            ),
+            "present-null": (None, True, "error"),
+            "missing": (None, False, "indeterminate"),
+        }
+        for entry_mode, unavailable_entry in (
+            ("missing", None),
+            ("unavailable", dict(copy.deepcopy(entry), available=False)),
+        ):
+            for receipt_mode, (candidate, present, expected) in receipt_cases.items():
+                with self.subTest(entry=entry_mode, receipt=receipt_mode):
+                    self.assertEqual(
+                        expected,
+                        self._unit(
+                            unavailable_entry,
+                            candidate,
+                            reference,
+                            receipt_present=present,
+                        ),
+                    )
+
+        for field, value in (
+            ("nativeAddress", []),
+            ("independentlyResolvable", "yes"),
+        ):
+            malformed_entry = dict(copy.deepcopy(entry), available=False)
+            malformed_entry[field] = value
+            with self.subTest(malformed_entry=field):
+                self.assertEqual(
+                    "error", self._unit(malformed_entry, receipt, reference)
+                )
+
     def test_public_entry_receipt_classes_survive_missing_resolvability(self):
         phase_key = "3:deliver-attested-payload"
         for dependency in ("deliverable", "payloadAttestationRecord", "methodEvidence"):
@@ -1084,6 +1217,411 @@ class DependencyReceiptPrecedenceTests(_SebFixtures, unittest.TestCase):
                     want = "indeterminate" if missing and mutation == "none" else expected
                     with self.subTest(dependency=dependency, receipt=mutation, missing=missing):
                         self._assert_paths(source, want)
+
+    def test_public_ebfab_defers_only_missing_dependency_entries(self):
+        cases = (
+            (
+                "completed-storage-delivery",
+                "2:deliver-storage-program",
+                "deliverable",
+            ),
+            (
+                "standard-completed",
+                "3:deliver-attested-payload",
+                "deliverable",
+            ),
+            (
+                "standard-completed",
+                "3:deliver-attested-payload",
+                "payloadAttestationRecord",
+            ),
+            (
+                "standard-completed",
+                "3:deliver-attested-payload",
+                "methodEvidence",
+            ),
+        )
+        expected_by_receipt = {
+            "consistent": "indeterminate",
+            "bad-writer": "fail",
+            "bad-address": "fail",
+            "malformed": "error",
+            "present-null": "error",
+            "missing": "indeterminate",
+        }
+        for source_name, phase_key, dependency in cases:
+            for entry_mode in ("missing", "unavailable"):
+                for receipt_mode, expected in expected_by_receipt.items():
+                    source = self._source(source_name)
+                    closure = source[
+                        "deliveryArtifactAuthorityByPhaseKey"
+                    ][phase_key]
+                    entry = closure[dependency]
+                    receipt_key, receipt_authority = next(
+                        (key, value)
+                        for key, value in source[
+                            "verifiedReceiptByCanonicalRef"
+                        ].items()
+                        if isinstance(value, dict)
+                        and isinstance(value.get("receipt"), dict)
+                        and value["receipt"].get("nativeAddress")
+                        == entry["nativeAddress"]
+                    )
+                    receipt = receipt_authority["receipt"]
+                    if receipt_mode == "bad-writer":
+                        receipt["writer"] = BUYER
+                    elif receipt_mode == "bad-address":
+                        receipt["logicalAddress"] += ":contradiction"
+                    elif receipt_mode == "malformed":
+                        receipt["state"] = "not-a-core-state"
+                    elif receipt_mode == "present-null":
+                        source["verifiedReceiptByCanonicalRef"][receipt_key] = None
+                    elif receipt_mode == "missing":
+                        source["verifiedReceiptByCanonicalRef"].pop(receipt_key)
+                    if entry_mode == "missing":
+                        closure.pop(dependency)
+                    else:
+                        entry["available"] = False
+                    with self.subTest(
+                        source=source_name,
+                        dependency=dependency,
+                        entry=entry_mode,
+                        receipt=receipt_mode,
+                    ):
+                        self._assert_paths(source, expected)
+
+
+class SebMemberAuthorityDispositionTests(_SebFixtures, unittest.TestCase):
+    """SEB-6 distinguishes unavailable member authority from malformed input."""
+
+    def _bound(self, source):
+        ok, reason, _ = R._validate_bound_fault_bundle(
+            *self._args(copy.deepcopy(source)),
+            expected_kind="evidence-bound",
+            **self._laa(source),
+        )
+        return ("pass" if ok else getattr(reason, "disposition", "fail"), reason)
+
+    def _derive(self, source):
+        source = copy.deepcopy(source)
+        result = R._tagged_copy_validation_for_derive({
+            "bundle": source["bundle"],
+            "ebfabAuthority": {**source, "publicKeys": self.pubkeys},
+        })
+        return result[0], result[1]
+
+    def _assert_authority_paths(self, source, expected):
+        for path, consumer in (
+            ("classified", self._direct),
+            ("boolean", self._boolean),
+            ("bound", self._bound),
+            ("reconciliation", self._reconcile),
+            ("derive", self._derive),
+        ):
+            with self.subTest(path=path):
+                disposition, reason = consumer(source)
+                self.assertEqual(expected, disposition, reason)
+
+    def _mutate_member(self, source, phase, mutation):
+        key = self._member_key(source, phase)
+        resolutions = source["referenceValidationByCanonicalRef"]
+        if mutation == "missing-lifecycle":
+            resolutions[key].pop("lifecycle")
+        elif mutation == "malformed-lifecycle":
+            resolutions[key]["lifecycle"] = []
+        elif mutation == "malformed-resolution":
+            resolutions[key] = []
+        elif mutation == "missing-record":
+            resolutions[key].pop("record")
+        elif mutation == "invalid-receipt-state":
+            source["verifiedReceiptByCanonicalRef"][key]["state"] = "not-a-core-state"
+        elif mutation == "missing-receipt-state":
+            source["verifiedReceiptByCanonicalRef"][key].pop("state")
+        elif mutation in _CURRENT_RECEIPT_PUBLIC_MALFORMATION_BY_NAME:
+            path, value = _CURRENT_RECEIPT_PUBLIC_MALFORMATION_BY_NAME[mutation]
+            _mutate_receipt_path(
+                source["verifiedReceiptByCanonicalRef"][key], path, value
+            )
+        else:
+            raise AssertionError("unknown mutation: " + mutation)
+        return source
+
+    def test_payment_and_delivery_authority_matrix_across_all_consumers(self):
+        expected_by_mutation = {
+            "missing-lifecycle": "indeterminate",
+            "malformed-lifecycle": "error",
+            "malformed-resolution": "error",
+            "missing-record": "error",
+            "invalid-receipt-state": "error",
+            "missing-receipt-state": "error",
+            **dict(_CURRENT_RECEIPT_PUBLIC_ERROR_EXPECTATIONS),
+        }
+        for phase in ("pay-dem", "deliver-attested-payload"):
+            with self.subTest(phase=phase, mutation="baseline"):
+                self._assert_authority_paths(self._source("standard-completed"), "pass")
+            for mutation, expected in expected_by_mutation.items():
+                source = self._mutate_member(
+                    self._source("standard-completed"), phase, mutation
+                )
+                with self.subTest(phase=phase, mutation=mutation):
+                    self._assert_authority_paths(source, expected)
+
+    def test_current_receipt_shape_table_is_typed_for_payment_and_delivery(self):
+        for phase in ("pay-dem", "deliver-attested-payload"):
+            for label, path, value in _current_receipt_shape_malformations():
+                source = self._source("standard-completed")
+                key = self._member_key(source, phase)
+                receipt = source["verifiedReceiptByCanonicalRef"][key]
+                _mutate_receipt_path(receipt, path, value)
+                with self.subTest(phase=phase, mutation=label):
+                    self.assertFalse(R._current_evidence_receipt_shape_valid(receipt))
+                    disposition, reason = self._direct(source)
+                    self.assertEqual("error", disposition, reason)
+
+        for phase in ("pay-dem", "deliver-attested-payload"):
+            source = self._source("standard-completed")
+            key = self._member_key(source, phase)
+            receipt = source["verifiedReceiptByCanonicalRef"][key]
+            self.assertTrue(R._current_evidence_receipt_shape_valid(receipt))
+            for height in ("0", "17"):
+                candidate = copy.deepcopy(receipt)
+                candidate["blockRef"]["height"] = height
+                candidate["blockRef"]["timestamp"] = 0
+                candidate["blockRef"]["extension"] = "allowed"
+                with self.subTest(phase=phase, valid_height=height):
+                    self.assertTrue(
+                        R._current_evidence_receipt_shape_valid(candidate)
+                    )
+
+    def test_well_typed_receipt_binding_mismatches_remain_fail(self):
+        wrong_values = {
+            "logicalAddress": "dacs4:wrong:logical-address",
+            "nativeAddress": "native:wrong-address",
+            "contentHash": "ab" * 32,
+            "writer": "did:demos:wrong-writer",
+        }
+        for phase in ("pay-dem", "deliver-attested-payload"):
+            for field, value in wrong_values.items():
+                source = self._source("standard-completed")
+                key = self._member_key(source, phase)
+                receipt = source["verifiedReceiptByCanonicalRef"][key]
+                receipt[field] = value
+                with self.subTest(phase=phase, field=field):
+                    self.assertTrue(R._current_evidence_receipt_shape_valid(receipt))
+                    self._assert_authority_paths(source, "fail")
+
+    def test_current_root_maps_distinguish_unavailable_from_malformed(self):
+        map_fields = (
+            "referenceValidationByCanonicalRef",
+            "verifiedReceiptByCanonicalRef",
+        )
+        for field in map_fields:
+            other = next(item for item in map_fields if item != field)
+            unavailable = self._source("standard-completed")
+            unavailable[field] = None
+            with self.subTest(field=field, value="unavailable"):
+                self._assert_authority_paths(unavailable, "indeterminate")
+            for malformed in (False, 0, "", [], "malformed"):
+                for other_missing in (False, True):
+                    source = self._source("standard-completed")
+                    source[field] = malformed
+                    if other_missing:
+                        source[other] = None
+                    with self.subTest(
+                        field=field,
+                        value=type(malformed).__name__,
+                        other_missing=other_missing,
+                    ):
+                        self._assert_authority_paths(source, "error")
+
+        historical = self._source("standard-completed")
+        historical["referenceValidationByCanonicalRef"] = []
+        self.assertEqual(
+            (
+                "indeterminate",
+                "missing listing, key, exact reference, or bundle-lifecycle authority",
+            ),
+            R.validate_legacy_ebfab_disposition(
+                *self._args(historical), **self._laa(historical)
+            )[:2],
+        )
+
+    def test_present_member_json_variants_are_all_malformed(self):
+        variants = (None, False, 0, "", [], {})
+        for carrier in ("resolution", "record", "lifecycle", "receipt"):
+            for variant in variants:
+                source = self._source("standard-completed")
+                key = self._member_key(source, "pay-dem")
+                resolution = source["referenceValidationByCanonicalRef"][key]
+                if carrier == "resolution":
+                    source["referenceValidationByCanonicalRef"][key] = variant
+                elif carrier == "record":
+                    resolution["record"] = variant
+                elif carrier == "lifecycle":
+                    resolution["lifecycle"] = variant
+                else:
+                    source["verifiedReceiptByCanonicalRef"][key] = variant
+                for path, consumer in (
+                    ("classified", self._direct),
+                    ("bound", self._bound),
+                ):
+                    with self.subTest(
+                        carrier=carrier,
+                        variant=repr(variant),
+                        path=path,
+                    ):
+                        disposition, reason = consumer(source)
+                        self.assertEqual("error", disposition, reason)
+
+    def test_extended_pointer_preserves_current_member_dispositions(self):
+        expected_by_mutation = {
+            "missing-lifecycle": "indeterminate",
+            "malformed-lifecycle": "error",
+            "malformed-resolution": "error",
+            "missing-record": "error",
+            "invalid-receipt-state": "error",
+            "missing-receipt-state": "error",
+            **dict(_CURRENT_RECEIPT_PUBLIC_ERROR_EXPECTATIONS),
+        }
+        for factory, phase in (
+            (self._ulid_payment_source, "pay-cross-chain-htlc"),
+            (self._ulid_delivery_source, "deliver-storage-program"),
+        ):
+            baseline = factory()
+            with self.subTest(phase=phase, mutation="baseline"):
+                self.assertEqual("pass", self._pointer(baseline)[0])
+            for mutation, expected in expected_by_mutation.items():
+                source = self._mutate_member(factory(), phase, mutation)
+                with self.subTest(phase=phase, mutation=mutation):
+                    disposition, reason = self._pointer(source)
+                    self.assertEqual(expected, disposition, reason)
+
+    def test_member_order_cannot_downgrade_error_or_hide_delivery_rejection(self):
+        for mutation, expected in (
+            ("missing-lifecycle", "fail"),
+            ("malformed-lifecycle", "error"),
+            ("missing-receipt-state", "error"),
+            *_CURRENT_RECEIPT_PUBLIC_ERROR_EXPECTATIONS,
+        ):
+            for reverse in (False, True):
+                source = self._mutate_member(
+                    self._source("invalid-deliverable-locator-closure"),
+                    "pay-dem",
+                    mutation,
+                )
+                if reverse:
+                    source["bundle"]["settlementEvidence"].reverse()
+                    resign_ebfab(source["bundle"], self.data["seeds"])
+                    source["legacyAgreementAuthorityByPhaseKey"] = (
+                        refreshed_laa_phase_carriers(source)
+                    )
+                with self.subTest(mutation=mutation, reverse=reverse):
+                    self._assert_authority_paths(source, expected)
+
+    def test_valid_nonqualifying_state_is_fail_and_archival_receipts_stay_frozen(self):
+        for state in ("included", "accepted", "submitted", "rejected"):
+            source = self._source("standard-completed")
+            key = self._member_key(source, "pay-dem")
+            source["referenceValidationByCanonicalRef"][key]["lifecycle"]["state"] = state
+            source["verifiedReceiptByCanonicalRef"][key]["state"] = state
+            if state not in {"included", "finalized"}:
+                source["verifiedReceiptByCanonicalRef"][key].pop("blockRef")
+            with self.subTest(profile="current", state=state):
+                self._assert_authority_paths(source, "fail")
+
+        missing_required_block = self._source("standard-completed")
+        payment_key = self._member_key(missing_required_block, "pay-dem")
+        missing_required_block["verifiedReceiptByCanonicalRef"][payment_key].pop(
+            "blockRef"
+        )
+        self._assert_authority_paths(missing_required_block, "error")
+
+        for phase in ("pay-dem", "deliver-attested-payload"):
+            for state, path, value in (
+                ("accepted", ("blockRef",), []),
+                ("included", ("blockRef", "height"), "01"),
+                ("included", ("blockRef", "timestamp"), True),
+            ):
+                source = self._source("standard-completed")
+                key = self._member_key(source, phase)
+                source["referenceValidationByCanonicalRef"][key]["lifecycle"][
+                    "state"
+                ] = state
+                receipt = source["verifiedReceiptByCanonicalRef"][key]
+                receipt["state"] = state
+                _mutate_receipt_path(receipt, path, value)
+                with self.subTest(phase=phase, state=state, member=path[-1]):
+                    self._assert_authority_paths(source, "error")
+
+        historical_contract = self._source("standard-completed")
+        payment_key = self._member_key(historical_contract, "pay-dem")
+        current_receipt = historical_contract[
+            "verifiedReceiptByCanonicalRef"
+        ][payment_key]
+        historical_contract["verifiedReceiptByCanonicalRef"][payment_key] = {
+            "transaction": "archival:" + current_receipt["transactionRef"]["value"],
+            "nonce": current_receipt["nonce"],
+        }
+        self._assert_authority_paths(historical_contract, "fail")
+
+        archival = self._source("standard-completed")
+        payment_key = self._member_key(archival, "pay-dem")
+        for ref in archival["bundle"]["settlementEvidence"]:
+            receipt = archival["verifiedReceiptByCanonicalRef"][_key(ref)]
+            receipt["transaction"] = "archival:" + receipt["transactionRef"]["value"]
+        archival["verifiedReceiptByCanonicalRef"][payment_key]["state"] = []
+        disposition, reason, _ = R.validate_legacy_ebfab_disposition(
+            *self._args(archival), **self._laa(archival)
+        )
+        self.assertEqual("pass", disposition, reason)
+
+    def test_frozen_historical_authority_outcomes_keep_their_exact_reasons(self):
+        expected_by_mutation = {
+            "baseline": ("pass", "ok"),
+            "missing-lifecycle": (
+                "fail", "evidence record lacks authenticated lifecycle"
+            ),
+            "malformed-lifecycle": (
+                "fail", "evidence record lacks authenticated lifecycle"
+            ),
+            "malformed-resolution": (
+                "fail",
+                "settlementEvidence member lacks exact authenticated resolution",
+            ),
+            "missing-record": (
+                "fail", "evidence reference lacks an authenticated record"
+            ),
+            "malformed-receipt": (
+                "fail", "evidence record lacks a verified SR-2 receipt"
+            ),
+            "missing-receipt": (
+                "indeterminate", "evidence receipt authority is unavailable"
+            ),
+        }
+        for mutation, expected in expected_by_mutation.items():
+            source = self._source("standard-completed")
+            for ref in source["bundle"]["settlementEvidence"]:
+                receipt = source["verifiedReceiptByCanonicalRef"][_key(ref)]
+                receipt["transaction"] = (
+                    "archival:" + receipt["transactionRef"]["value"]
+                )
+            key = self._member_key(source, "pay-dem")
+            if mutation in {
+                "missing-lifecycle", "malformed-lifecycle",
+                "malformed-resolution", "missing-record",
+            }:
+                self._mutate_member(source, "pay-dem", mutation)
+            elif mutation == "malformed-receipt":
+                source["verifiedReceiptByCanonicalRef"][key] = []
+            elif mutation == "missing-receipt":
+                source["verifiedReceiptByCanonicalRef"].pop(key)
+            with self.subTest(mutation=mutation):
+                self.assertEqual(
+                    expected,
+                    R.validate_legacy_ebfab_disposition(
+                        *self._args(source), **self._laa(source)
+                    )[:2],
+                )
 
 
 class SelfSignedMethodDispositionTests(_SebFixtures, unittest.TestCase):
@@ -1290,6 +1828,56 @@ class FinalityBoundPendingPrecedenceTests(unittest.TestCase):
                     with self.subTest(case=label, lifecycle_fail=lifecycle_fail, path=path):
                         disposition, reason = consumer(case)
                         self.assertEqual(expected, disposition, reason)
+
+    def test_finality_bound_member_authority_matrix_is_typed(self):
+        expected_by_mutation = {
+            "baseline": "pass",
+            "missing-lifecycle": "indeterminate",
+            "malformed-lifecycle": "error",
+            "malformed-resolution": "error",
+            "missing-record": "error",
+            "invalid-receipt-state": "error",
+            "missing-receipt-state": "error",
+            "valid-nonqualifying-state": "fail",
+            **dict(_CURRENT_RECEIPT_PUBLIC_ERROR_EXPECTATIONS),
+        }
+        for mutation, expected in expected_by_mutation.items():
+            case = copy.deepcopy(self.case)
+            authority = case["authority"]
+            key = _key(case["bundle"]["settlementEvidence"][0])
+            if mutation == "missing-lifecycle":
+                authority["referenceValidationByCanonicalRef"][key].pop("lifecycle")
+            elif mutation == "malformed-lifecycle":
+                authority["referenceValidationByCanonicalRef"][key]["lifecycle"] = []
+            elif mutation == "malformed-resolution":
+                authority["referenceValidationByCanonicalRef"][key] = []
+            elif mutation == "missing-record":
+                authority["referenceValidationByCanonicalRef"][key].pop("record")
+            elif mutation == "invalid-receipt-state":
+                authority["verifiedReceiptByCanonicalRef"][key]["state"] = (
+                    "not-a-core-state"
+                )
+            elif mutation == "missing-receipt-state":
+                authority["verifiedReceiptByCanonicalRef"][key].pop("state")
+            elif mutation in _CURRENT_RECEIPT_PUBLIC_MALFORMATION_BY_NAME:
+                path, value = _CURRENT_RECEIPT_PUBLIC_MALFORMATION_BY_NAME[
+                    mutation
+                ]
+                _mutate_receipt_path(
+                    authority["verifiedReceiptByCanonicalRef"][key], path, value
+                )
+            elif mutation == "valid-nonqualifying-state":
+                authority["referenceValidationByCanonicalRef"][key]["lifecycle"][
+                    "state"
+                ] = "included"
+                authority["verifiedReceiptByCanonicalRef"][key]["state"] = "included"
+            for path, consumer in (
+                ("classified", self._direct),
+                ("reconciliation", self._reconcile),
+            ):
+                with self.subTest(mutation=mutation, path=path):
+                    disposition, reason = consumer(case)
+                    self.assertEqual(expected, disposition, reason)
 
     def test_verification_skips_records_the_core_rejected(self):
         # A record without its selector is rejected by the SEB core; FV must

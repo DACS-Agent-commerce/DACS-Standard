@@ -1149,33 +1149,75 @@ def _bundle_signatures_valid(bundle, pubkeys):
     return _bundle_signatures_valid_for_family(bundle, pubkeys, family)
 
 
-def _validate_current_evidence_receipt(receipt, expected_nonce, *, expected_state=None):
-    """Validate the current CORE AnchorReceipt contract used by SEB admission."""
+def _current_evidence_receipt_shape_valid(receipt):
+    """Validate common CORE receipt shape with state-dependent block proof."""
+    if not isinstance(receipt, dict):
+        return False
     transaction_ref = receipt.get("transactionRef")
     evidence = receipt.get("evidence")
+    block_ref_present = "blockRef" in receipt
     block_ref = receipt.get("blockRef")
     nonce = receipt.get("nonce")
     observed_at = receipt.get("observedAt")
-    if not (
+    block_ref_shape = (
+        not block_ref_present
+        or (
+            isinstance(block_ref, dict)
+            and _nonempty_jcs_string(block_ref.get("id"))
+            and (
+                "height" not in block_ref
+                or (
+                    isinstance(block_ref.get("height"), str)
+                    and re.fullmatch(
+                        r"(?:0|[1-9][0-9]*)", block_ref["height"], re.ASCII
+                    ) is not None
+                )
+            )
+            and (
+                "timestamp" not in block_ref
+                or _non_boolean_number(block_ref.get("timestamp"))
+            )
+        )
+    )
+    common_shape = (
         receipt.get("receiptVersion") == "1"
         and _nonempty_jcs_string(receipt.get("substrate"))
         and _nonempty_jcs_string(receipt.get("finalityProfile"))
+        and _nonempty_jcs_string(receipt.get("logicalAddress"))
+        and _nonempty_jcs_string(receipt.get("nativeAddress"))
+        and _sha256_hex(receipt.get("contentHash"))
         and isinstance(transaction_ref, dict)
         and set(transaction_ref) == {"kind", "value"}
         and _nonempty_jcs_string(transaction_ref.get("kind"))
         and _nonempty_jcs_string(transaction_ref.get("value"))
+        and _nonempty_jcs_string(receipt.get("writer"))
         and (nonce is None or _nonempty_jcs_string(nonce))
-        and _string_member(receipt.get("state"), {"included", "finalized"})
+        and _string_member(receipt.get("state"), _CORE_LIFECYCLE_STATES)
         and receipt.get("observationDisposition") == "established"
         and _non_boolean_number(observed_at)
-        and isinstance(block_ref, dict)
-        and _nonempty_jcs_string(block_ref.get("id"))
+        and block_ref_shape
         and isinstance(evidence, dict)
         and set(evidence) == {"kind", "value"}
         and _nonempty_jcs_string(evidence.get("kind"))
         and _nonempty_jcs_string(evidence.get("value"))
+    )
+    return bool(
+        common_shape
+        and (
+            receipt.get("state") not in {"included", "finalized"}
+            or block_ref_present
+        )
+    )
+
+
+def _validate_current_evidence_receipt(receipt, expected_nonce, *, expected_state=None):
+    """Validate the current CORE AnchorReceipt contract used by SEB admission."""
+    if (
+        not _current_evidence_receipt_shape_valid(receipt)
+        or receipt.get("state") not in {"included", "finalized"}
     ):
         return (False, "anchor receipt is malformed or lacks authenticated lifecycle evidence")
+    nonce = receipt.get("nonce")
     if expected_nonce is not None and (
         not _nonempty_jcs_string(expected_nonce) or nonce != expected_nonce
     ):
@@ -2522,6 +2564,218 @@ def _seb_deferred_delivery_excluded(record, signer, bundle, phase_key,
     )
 
 
+def _current_seb_receipt_shape_valid(receipt):
+    """Apply the common current receipt shape guard before its state gate."""
+    return _current_evidence_receipt_shape_valid(receipt)
+
+
+def _seb_top_level_authority_preflight(
+    actual_refs,
+    exact_resolutions,
+    reference_validation_by_canonical_ref,
+    verified_receipt_by_canonical_ref,
+    receipt_validator,
+):
+    """Type unavailable versus malformed top-level SEB member authority.
+
+    The two current EBFAB kernels share this preflight so a malformed member
+    cannot be hidden by a different member's contradiction or by array order.
+    Binding mismatches and valid-but-insufficient lifecycle states remain for
+    the ordinary semantic checks; only unavailable carriers are deferred.
+    """
+    if receipt_validator is not _validate_current_evidence_receipt:
+        # The named pre-SR-2 archival reader is frozen.  Its historical
+        # Boolean/reason behavior remains in the original kernel branches.
+        return _closure_result("pass")
+    results = []
+    for ref, resolution in zip(actual_refs, exact_resolutions):
+        ref_key = canonical(ref).decode("utf-8")
+        if ref_key not in reference_validation_by_canonical_ref:
+            results.append(_closure_result(
+                "indeterminate",
+                "settlementEvidence member lacks exact authenticated resolution",
+            ))
+        elif not isinstance(resolution, dict):
+            results.append(_closure_result(
+                "error", "settlementEvidence member authority is malformed"
+            ))
+        else:
+            if (
+                "record" not in resolution
+                or not isinstance(resolution.get("record"), dict)
+                or not resolution.get("record")
+            ):
+                results.append(_closure_result(
+                    "error", "evidence reference record authority is malformed"
+                ))
+            if "lifecycle" not in resolution:
+                results.append(_closure_result(
+                    "indeterminate", "evidence lifecycle authority is unavailable"
+                ))
+            else:
+                lifecycle = resolution.get("lifecycle")
+                if (
+                    not isinstance(lifecycle, dict)
+                    or not _string_member(lifecycle.get("state"), _CORE_LIFECYCLE_STATES)
+                    or (
+                        "independentlyResolvable" in lifecycle
+                        and not isinstance(lifecycle.get("independentlyResolvable"), bool)
+                    )
+                ):
+                    results.append(_closure_result(
+                        "error", "evidence lifecycle authority is malformed"
+                    ))
+
+        if ref_key not in verified_receipt_by_canonical_ref:
+            results.append(_closure_result(
+                "indeterminate", "evidence receipt authority is unavailable"
+            ))
+            continue
+        receipt = verified_receipt_by_canonical_ref.get(ref_key)
+        if not isinstance(receipt, dict):
+            results.append(_closure_result(
+                "error", "evidence receipt authority is malformed"
+            ))
+            continue
+        if not receipt:
+            results.append(_closure_result(
+                "error", "evidence receipt authority is malformed"
+            ))
+            continue
+        if "state" not in receipt:
+            # Preserve a genuine pre-SR-2 envelope for the ordinary
+            # compatibility/contract gate. A current discriminator instead
+            # selects the current closed shape, where state is mandatory.
+            if (
+                "receiptVersion" not in receipt
+                and _validate_legacy_evidence_receipt(receipt, None)[0]
+            ):
+                continue
+            results.append(_closure_result(
+                "error", "evidence receipt authority is malformed"
+            ))
+            continue
+        if receipt_validator is _validate_current_evidence_receipt:
+            observation, established_twin = _indeterminate_observation(receipt)
+            if observation == "error":
+                results.append(_closure_result(
+                    "error", "evidence receipt observation is malformed"
+                ))
+                continue
+            if observation == "indeterminate":
+                results.append(_closure_result(
+                    "indeterminate",
+                    "evidence receipt preserves an unverified prior observation",
+                ))
+                receipt = established_twin
+            if not _current_seb_receipt_shape_valid(receipt):
+                results.append(_closure_result(
+                    "error", "evidence receipt authority is malformed"
+                ))
+    return _combine_closure_results(results)
+
+
+def _seb_root_member_map_preflight(
+    reference_validation_by_canonical_ref,
+    verified_receipt_by_canonical_ref,
+    receipt_validator,
+):
+    """Type current member-map absence separately from malformed carriers."""
+    if receipt_validator is not _validate_current_evidence_receipt:
+        return _closure_result("pass")
+    malformed = []
+    for value, subject in (
+        (reference_validation_by_canonical_ref, "evidence resolution authority"),
+        (verified_receipt_by_canonical_ref, "evidence receipt authority"),
+    ):
+        if value is not None and not isinstance(value, dict):
+            malformed.append(_closure_result("error", subject + " is malformed"))
+    return _combine_closure_results(malformed)
+
+
+def _seb_lifecycle_threshold_result(
+    actual_refs,
+    exact_resolutions,
+    verified_receipt_by_canonical_ref,
+    pending_receipt_refs,
+    receipt_validator,
+    *,
+    completed,
+):
+    """Apply the common post-binding lifecycle threshold for both SEB kernels."""
+    if receipt_validator is not _validate_current_evidence_receipt:
+        # Preserve the frozen reader's original first-return ordering and
+        # reasons exactly; only current admission uses four-state combining.
+        for ref, resolution in zip(actual_refs, exact_resolutions):
+            if resolution is None:
+                continue
+            lifecycle = resolution.get("lifecycle")
+            if not isinstance(lifecycle, dict):
+                return _closure_result(
+                    "fail", "evidence record lacks authenticated lifecycle"
+                )
+            state = lifecycle.get("state")
+            ref_key = canonical(ref).decode("utf-8")
+            receipt = verified_receipt_by_canonical_ref.get(ref_key)
+            receipt_matches, _ = (
+                (True, None) if ref_key in pending_receipt_refs
+                else receipt_validator(receipt, None, expected_state=state)
+                if isinstance(receipt, dict) else (False, "missing receipt")
+            )
+            if not receipt_matches:
+                return _closure_result(
+                    "fail", "evidence lifecycle contradicts its verified receipt"
+                )
+            if completed and (
+                state != "finalized"
+                or lifecycle.get("independentlyResolvable") is not True
+            ):
+                return _closure_result(
+                    "fail",
+                    "completed evidence is not finalized and independently resolvable",
+                )
+            if not completed and not _string_member(
+                state, {"included", "finalized"}
+            ):
+                return _closure_result(
+                    "fail", "failed or aborted evidence is not included or finalized"
+                )
+        return _closure_result("pass")
+
+    results = []
+    for ref, resolution in zip(actual_refs, exact_resolutions):
+        if resolution is None:
+            # Preflight already typed either unavailable carrier as pending.
+            continue
+        lifecycle = resolution.get("lifecycle")
+        if not isinstance(lifecycle, dict):
+            # Current malformed carriers returned from preflight already.
+            continue
+        state = lifecycle.get("state")
+        ref_key = canonical(ref).decode("utf-8")
+        receipt = verified_receipt_by_canonical_ref.get(ref_key)
+        receipt_matches, _ = (
+            (True, None) if ref_key in pending_receipt_refs
+            else receipt_validator(receipt, None, expected_state=state)
+            if isinstance(receipt, dict) else (False, "missing receipt")
+        )
+        if not receipt_matches:
+            results.append(_closure_result(
+                "fail", "evidence lifecycle contradicts its verified receipt"
+            ))
+        if completed and (
+            state != "finalized" or lifecycle.get("independentlyResolvable") is not True
+        ):
+            results.append(_closure_result(
+                "fail", "completed evidence is not finalized and independently resolvable"
+            ))
+        if not completed and not _string_member(state, {"included", "finalized"}):
+            results.append(_closure_result(
+                "fail", "failed or aborted evidence is not included or finalized"
+            ))
+    return _combine_closure_results(results)
+
+
 def _validate_bound_fault_bundle(
     bundle,
     listing,
@@ -2567,6 +2821,15 @@ def _validate_bound_fault_bundle(
             else "malformed evidence-bound bundle"
         )
         return (False, reason, None)
+    root_map_preflight = _seb_root_member_map_preflight(
+        reference_validation_by_canonical_ref,
+        verified_receipt_by_canonical_ref,
+        _receipt_validator,
+    )
+    if root_map_preflight[0] == "error":
+        return (False, _DispositionReason(
+            root_map_preflight[1], root_map_preflight[0]
+        ), None)
     if (
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
@@ -2805,12 +3068,31 @@ def _validate_bound_fault_bundle(
         reference_validation_by_canonical_ref.get(canonical(ref).decode("utf-8"))
         for ref in actual_refs
     ]
-    if any(
-        not isinstance(resolution, dict)
-        and canonical(ref).decode("utf-8") in reference_validation_by_canonical_ref
-        for ref, resolution in zip(actual_refs, exact_resolutions)
+    if (
+        _receipt_validator is not _validate_current_evidence_receipt
+        and any(
+            not isinstance(resolution, dict)
+            and canonical(ref).decode("utf-8")
+            in reference_validation_by_canonical_ref
+            for ref, resolution in zip(actual_refs, exact_resolutions)
+        )
     ):
-        return (False, "settlementEvidence member lacks exact authenticated resolution", None)
+        return (
+            False,
+            "settlementEvidence member lacks exact authenticated resolution",
+            None,
+        )
+    authority_preflight = _seb_top_level_authority_preflight(
+        actual_refs,
+        exact_resolutions,
+        reference_validation_by_canonical_ref,
+        verified_receipt_by_canonical_ref,
+        _receipt_validator,
+    )
+    if authority_preflight[0] == "error":
+        return (False, _DispositionReason(
+            authority_preflight[1], authority_preflight[0]
+        ), None)
     authenticated_records = []
     actual_keys = []
     placed_refs = []
@@ -2822,7 +3104,9 @@ def _validate_bound_fault_bundle(
     # member, set, pointer, ST-8 and lifecycle check still runs, and the first
     # pending result is returned only when none of them is a deterministic
     # fail or error.
-    pending_closure_result = None
+    pending_closure_result = (
+        authority_preflight if authority_preflight[0] == "indeterminate" else None
+    )
     legacy_agreement_eligibility = {}
     delivery_dependency_owners = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
@@ -2836,7 +3120,15 @@ def _validate_bound_fault_bundle(
             continue
         record = resolution.get("record")
         if not isinstance(record, dict):
-            return (False, "evidence reference lacks an authenticated record", None)
+            if _receipt_validator is not _validate_current_evidence_receipt:
+                return (
+                    False,
+                    "evidence reference lacks an authenticated record",
+                    None,
+                )
+            return (False, _DispositionReason(
+                "evidence reference record authority is malformed", "error"
+            ), None)
         evidence_type = _authenticated_evidence_wire_type(record, pubkeys)
         if evidence_type == "settlement":
             shape_valid = _settlement_evidence_shape_valid(record)
@@ -3263,30 +3555,18 @@ def _validate_bound_fault_bundle(
             return (False, edge_failure, None)
 
     completed = bundle.get("outcome") == "completed"
-    for ref, resolution in zip(actual_refs, exact_resolutions):
-        if resolution is None:
-            continue
-        lifecycle = resolution.get("lifecycle")
-        if not isinstance(lifecycle, dict):
-            return (False, "evidence record lacks authenticated lifecycle", None)
-        state = lifecycle.get("state")
-        ref_key = canonical(ref).decode("utf-8")
-        # A pending receipt (unavailable, or an observation that cannot
-        # establish a state) is not compared; its bindings were checked above.
-        receipt = verified_receipt_by_canonical_ref.get(ref_key)
-        receipt_matches, _ = (
-            (True, None) if ref_key in pending_receipt_refs
-            else _receipt_validator(receipt, None, expected_state=state)
-            if isinstance(receipt, dict) else (False, "missing receipt")
-        )
-        if not receipt_matches:
-            return (False, "evidence lifecycle contradicts its verified receipt", None)
-        if completed and (
-            state != "finalized" or lifecycle.get("independentlyResolvable") is not True
-        ):
-            return (False, "completed evidence is not finalized and independently resolvable", None)
-        if not completed and not _string_member(state, {"included", "finalized"}):
-            return (False, "failed or aborted evidence is not included or finalized", None)
+    lifecycle_result = _seb_lifecycle_threshold_result(
+        actual_refs,
+        exact_resolutions,
+        verified_receipt_by_canonical_ref,
+        pending_receipt_refs,
+        _receipt_validator,
+        completed=completed,
+    )
+    if lifecycle_result[0] != "pass":
+        return (False, _DispositionReason(
+            lifecycle_result[1], lifecycle_result[0]
+        ), None)
     if completed and (
         bundle_lifecycle.get("state") != "finalized"
         or bundle_lifecycle.get("independentlyResolvable") is not True
@@ -12333,9 +12613,9 @@ def _validated_dependency_receipt(
         reference_key = canonical(reference).decode("utf-8")
     except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
         return (_closure_result("error", subject + " reference is not canonicalizable"), None)
-    receipt_authority = receipt_by_canonical_ref.get(reference_key)
-    if receipt_authority is None:
+    if reference_key not in receipt_by_canonical_ref:
         return (_closure_result("indeterminate", subject + " verified receipt is unavailable"), None)
+    receipt_authority = receipt_by_canonical_ref[reference_key]
     if not isinstance(receipt_authority, dict):
         return (_closure_result("error", subject + " verified receipt is malformed"), None)
     if "receipt" in receipt_authority:
@@ -12359,10 +12639,15 @@ def _validated_dependency_receipt(
     # contradiction is ``fail`` whatever else is missing.  Only the *presence*
     # of entry authority is availability; present members are shape-checked
     # here, and absence is consulted after the receipt has been evaluated.
-    native_address = entry.get("nativeAddress")
+    # ``entry`` is the successfully resolved artifact entry, not merely an
+    # unavailable carrier.  Receipt shape and full-reference bindings remain
+    # independently decidable when no artifact entry resolved.
+    native_address = entry.get("nativeAddress") if isinstance(entry, dict) else None
     if native_address is not None and not _nonempty_jcs_string(native_address):
         return (_closure_result("error", subject + " native-address authority is malformed"), None)
-    independently_resolvable = entry.get("independentlyResolvable")
+    independently_resolvable = (
+        entry.get("independentlyResolvable") if isinstance(entry, dict) else None
+    )
     if independently_resolvable is not None and not isinstance(
         independently_resolvable, bool
     ):
@@ -12450,12 +12735,29 @@ def _resolved_delivery_dependency(
     expected_writer,
     reference_validator=None,
 ):
-    availability_result, entry = _resolved_availability(entry, subject)
-    if availability_result[0] != "pass":
+    availability_result, resolved_entry = _resolved_availability(entry, subject)
+    entry_shape_result = _closure_result("pass")
+    if isinstance(entry, dict):
+        native_address = entry.get("nativeAddress")
+        independently_resolvable = entry.get("independentlyResolvable")
+        if native_address is not None and not _nonempty_jcs_string(native_address):
+            entry_shape_result = _closure_result(
+                "error", subject + " native-address authority is malformed"
+            )
+        if independently_resolvable is not None and not isinstance(
+            independently_resolvable, bool
+        ):
+            entry_shape_result = _closure_result(
+                "error", subject + " resolvability authority is malformed"
+            )
+    availability_result = _combine_closure_results(
+        [availability_result, entry_shape_result]
+    )
+    if availability_result[0] == "error":
         return availability_result, None, None
     receipt_result, receipt = _validated_dependency_receipt(
         reference,
-        entry,
+        resolved_entry,
         receipt_by_canonical_ref,
         completed,
         subject,
@@ -12465,7 +12767,8 @@ def _resolved_delivery_dependency(
         expected_writer=expected_writer,
         reference_validator=reference_validator,
     )
-    return receipt_result, entry, receipt
+    combined = _combine_closure_results([availability_result, receipt_result])
+    return combined, resolved_entry, receipt
 
 
 def _authenticated_stored_delivery_ref(anchor, receipt_by_canonical_ref):
@@ -13873,6 +14176,15 @@ def _validate_ebfab_boolean(
         return (False, "not an EvidenceBoundFaultAttestationBundle", None)
     if not _absolute_fault_bundle_shape_valid(bundle, "evidence-bound"):
         return (False, "malformed EvidenceBoundFaultAttestationBundle", None)
+    root_map_preflight = _seb_root_member_map_preflight(
+        reference_validation_by_canonical_ref,
+        verified_receipt_by_canonical_ref,
+        _receipt_validator,
+    )
+    if root_map_preflight[0] == "error":
+        return (False, _DispositionReason(
+            root_map_preflight[1], root_map_preflight[0]
+        ), None)
     if (
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
@@ -14115,12 +14427,31 @@ def _validate_ebfab_boolean(
         reference_validation_by_canonical_ref.get(canonical(ref).decode("utf-8"))
         for ref in actual_refs
     ]
-    if any(
-        not isinstance(resolution, dict)
-        and canonical(ref).decode("utf-8") in reference_validation_by_canonical_ref
-        for ref, resolution in zip(actual_refs, exact_resolutions)
+    if (
+        _receipt_validator is not _validate_current_evidence_receipt
+        and any(
+            not isinstance(resolution, dict)
+            and canonical(ref).decode("utf-8")
+            in reference_validation_by_canonical_ref
+            for ref, resolution in zip(actual_refs, exact_resolutions)
+        )
     ):
-        return (False, "settlementEvidence member lacks exact authenticated resolution", None)
+        return (
+            False,
+            "settlementEvidence member lacks exact authenticated resolution",
+            None,
+        )
+    authority_preflight = _seb_top_level_authority_preflight(
+        actual_refs,
+        exact_resolutions,
+        reference_validation_by_canonical_ref,
+        verified_receipt_by_canonical_ref,
+        _receipt_validator,
+    )
+    if authority_preflight[0] == "error":
+        return (False, _DispositionReason(
+            authority_preflight[1], authority_preflight[0]
+        ), None)
     authenticated_records = []
     actual_keys = []
     placed_refs = []
@@ -14132,7 +14463,9 @@ def _validate_ebfab_boolean(
     # member, set, pointer, ST-8 and lifecycle check still runs, and the first
     # pending result is returned only when none of them is a deterministic
     # fail or error.
-    pending_closure_result = None
+    pending_closure_result = (
+        authority_preflight if authority_preflight[0] == "indeterminate" else None
+    )
     delivery_dependency_owners = {}
     legacy_agreement_eligibility = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
@@ -14146,7 +14479,15 @@ def _validate_ebfab_boolean(
             continue
         record = resolution.get("record")
         if not isinstance(record, dict):
-            return (False, "evidence reference lacks an authenticated record", None)
+            if _receipt_validator is not _validate_current_evidence_receipt:
+                return (
+                    False,
+                    "evidence reference lacks an authenticated record",
+                    None,
+                )
+            return (False, _DispositionReason(
+                "evidence reference record authority is malformed", "error"
+            ), None)
         evidence_type = _authenticated_evidence_wire_type(record, pubkeys)
         if evidence_type == "settlement":
             shape_valid = _settlement_evidence_shape_valid(record)
@@ -14547,30 +14888,18 @@ def _validate_ebfab_boolean(
             return (False, edge_failure, None)
 
     completed = bundle.get("outcome") == "completed"
-    for ref, resolution in zip(actual_refs, exact_resolutions):
-        if resolution is None:
-            continue
-        lifecycle = resolution.get("lifecycle")
-        if not isinstance(lifecycle, dict):
-            return (False, "evidence record lacks authenticated lifecycle", None)
-        state = lifecycle.get("state")
-        ref_key = canonical(ref).decode("utf-8")
-        # A pending receipt (unavailable, or an observation that cannot
-        # establish a state) is not compared; its bindings were checked above.
-        receipt = verified_receipt_by_canonical_ref.get(ref_key)
-        receipt_matches, _ = (
-            (True, None) if ref_key in pending_receipt_refs
-            else _receipt_validator(receipt, None, expected_state=state)
-            if isinstance(receipt, dict) else (False, "missing receipt")
-        )
-        if not receipt_matches:
-            return (False, "evidence lifecycle contradicts its verified receipt", None)
-        if completed and (
-            state != "finalized" or lifecycle.get("independentlyResolvable") is not True
-        ):
-            return (False, "completed evidence is not finalized and independently resolvable", None)
-        if not completed and not _string_member(state, {"included", "finalized"}):
-            return (False, "failed or aborted evidence is not included or finalized", None)
+    lifecycle_result = _seb_lifecycle_threshold_result(
+        actual_refs,
+        exact_resolutions,
+        verified_receipt_by_canonical_ref,
+        pending_receipt_refs,
+        _receipt_validator,
+        completed=completed,
+    )
+    if lifecycle_result[0] != "pass":
+        return (False, _DispositionReason(
+            lifecycle_result[1], lifecycle_result[0]
+        ), None)
     if completed and (
         bundle_lifecycle.get("state") != "finalized"
         or bundle_lifecycle.get("independentlyResolvable") is not True

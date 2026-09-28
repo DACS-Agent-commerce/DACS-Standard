@@ -276,6 +276,82 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self._resign_bundle_and_pointer(value)
         return value
 
+    def test_released_fab_and_ab_keep_dependency_receipt_precedence(self):
+        expected_by_receipt = {
+            "consistent": "indeterminate",
+            "bad-writer": "fail",
+            "bad-address": "fail",
+            "malformed": "error",
+            "present-null": "error",
+            "missing": "indeterminate",
+        }
+        for kind in ("fault", "legacy"):
+            for entry_mode in ("missing", "unavailable"):
+                for receipt_mode, expected in expected_by_receipt.items():
+                    value = self._fixture()
+                    authority = value["authority"]
+                    closure = authority[
+                        "deliveryArtifactAuthorityByPhaseKey"
+                    ]["2:deliver-storage-program"]
+                    entry = closure["deliverable"]
+                    receipt_key, receipt_authority = next(
+                        (key, item)
+                        for key, item in authority[
+                            "verifiedReceiptByCanonicalRef"
+                        ].items()
+                        if isinstance(item, dict)
+                        and isinstance(item.get("receipt"), dict)
+                        and item["receipt"].get("nativeAddress")
+                        == entry["nativeAddress"]
+                    )
+                    receipt = receipt_authority["receipt"]
+                    if receipt_mode == "bad-writer":
+                        receipt["writer"] = next(
+                            party["primaryClaim"]
+                            for party in value["bundle"]["parties"]
+                            if party["role"] == "buyer"
+                        )
+                    elif receipt_mode == "bad-address":
+                        receipt["logicalAddress"] += ":contradiction"
+                    elif receipt_mode == "malformed":
+                        receipt["state"] = "not-a-core-state"
+                    elif receipt_mode == "present-null":
+                        authority["verifiedReceiptByCanonicalRef"][receipt_key] = None
+                    elif receipt_mode == "missing":
+                        authority["verifiedReceiptByCanonicalRef"].pop(receipt_key)
+                    if entry_mode == "missing":
+                        closure.pop("deliverable")
+                    else:
+                        entry["available"] = False
+                    if kind == "legacy":
+                        bundle, _, _, _ = self._ordinary_current_delivery(value)
+                        value["bundle"] = bundle
+                    direct = R._validate_current_fab_delivery_admission(
+                        value["bundle"],
+                        authority,
+                        self.pubkeys,
+                        **({"ordinary_current": True} if kind == "legacy" else {}),
+                    )
+                    paths = {
+                        "direct": direct[0],
+                        "reconciliation": self._reconcile(value)["decision"],
+                        "current-use": self._current_use(value)[0],
+                    }
+                    if kind == "fault":
+                        resolved = self._resolve(value)
+                        paths["pointer"] = (
+                            "pass" if resolved["ok"]
+                            else resolved.get("disposition", "fail")
+                        )
+                    for path, disposition in paths.items():
+                        with self.subTest(
+                            family=kind,
+                            entry=entry_mode,
+                            receipt=receipt_mode,
+                            path=path,
+                        ):
+                            self.assertEqual(expected, disposition)
+
     def _failed_payment_fixture(self):
         source = copy.deepcopy(
             self.data["executionAuthorities"]["single-htlc-expired"]
@@ -2344,8 +2420,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     )[0])
                 with self.subTest(kind=kind, case=label):
                     self.assertEqual(expected, tuple(observed))
-        # No entry rail quotes to an address with a lone surrogate, so such a
-        # receipt fails whether or not the row's entry is available.
+        # A lone surrogate is not a well-formed JCS string.  It is malformed
+        # current receipt authority, not a well-typed address contradiction.
         for kind in ("fault", "legacy"):
             for without in (False, True):
                 value, ref_key = payment()(kind)
@@ -2355,7 +2431,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 if without:
                     without_entry(value, kind)
                 with self.subTest(kind=kind, case="lone surrogate rail", without_entry=without):
-                    self.assertEqual("fail", R._validate_current_fab_delivery_admission(
+                    self.assertEqual("error", R._validate_current_fab_delivery_admission(
                         value["bundle"], value["authority"], self.pubkeys,
                         **({"ordinary_current": True} if kind == "legacy" else {}),
                     )[0])

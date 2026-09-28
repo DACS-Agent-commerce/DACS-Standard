@@ -191,11 +191,15 @@ class PreReviewGateTests(unittest.TestCase):
             os.pathsep.join((str(ROOT), str(ROOT / "tests"))),
         )
 
-    def _run_temporary_evidence(self, body: str) -> int:
+    def _run_temporary_evidence(
+        self,
+        body: str,
+        test: str = "ExitProbeTests.test_probe",
+    ) -> int:
         entry = {
             "id": "exit-probe",
             "file": "tests/test_exit_probe.py",
-            "test": "ExitProbeTests.test_probe",
+            "test": test,
         }
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "test_exit_probe.py"
@@ -265,6 +269,48 @@ class PreReviewGateTests(unittest.TestCase):
             ),
             1,
         )
+
+    def test_multiple_test_selection_is_rejected(self):
+        with self.assertRaisesRegex(
+            self.gate.GateError,
+            "exit-probe: independent review evidence.*failing",
+        ):
+            self._run_temporary_evidence(
+                "import unittest\n"
+                "class EvidenceFactory:\n"
+                "    @staticmethod\n"
+                "    def test_many():\n"
+                "        return unittest.TestSuite([\n"
+                "            unittest.FunctionTestCase(lambda: None),\n"
+                "            unittest.FunctionTestCase(lambda: None),\n"
+                "        ])\n",
+                test="EvidenceFactory.test_many",
+            )
+
+    def test_expected_failure_and_unexpected_success_are_rejected(self):
+        bodies = {
+            "expected-failure": (
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    @unittest.expectedFailure\n"
+                "    def test_probe(self):\n"
+                "        self.fail('expected failures are not passing evidence')\n"
+            ),
+            "unexpected-success": (
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    @unittest.expectedFailure\n"
+                "    def test_probe(self):\n"
+                "        pass\n"
+            ),
+        }
+        for name, body in bodies.items():
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    self.gate.GateError,
+                    "exit-probe: independent review evidence.*failing",
+                ):
+                    self._run_temporary_evidence(body)
 
     def test_ambient_pythonpath_cannot_shadow_code_pinned_test(self):
         entry = self.manifest["independentReviewEvidence"][0]

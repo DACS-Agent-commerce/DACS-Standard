@@ -1145,6 +1145,65 @@ def make(name: str, expected: str, reason: str, factory: Callable[[], dict], mut
     return {"name": name, **case, **extra, "expected": expected, "reason": reason}
 
 
+def dependency_receipt_precedence_case(
+    dependency: str, entry_mode: str, receipt_mode: str,
+) -> dict:
+    """Keep independently bound receipt facts when artifact bytes disappear.
+
+    Start with genuinely signed current artifacts. Only verifier-owned receipt
+    or availability authority changes, so every negative reaches the receipt
+    precedence boundary rather than an unrelated signature failure.
+    """
+    factories = {
+        "storage": storage_case,
+        "entitlement": entitlement_case,
+        "credential": credential_case,
+        "payload": lambda: attested_case(((6, b"attested one"),)),
+        "attestation": lambda: attested_case(((6, b"attested one"),)),
+        "method": lambda: attested_case(((6, b"attested one"),)),
+    }
+    case = factories[dependency]()
+    if dependency == "credential":
+        entries = case["credentials"]
+        entry = entries[0]
+        locator = entry["credentialRef"]["ref"]["anchor"]["locator"]
+    else:
+        entries = case["artifactRecords"]
+        kind = {
+            "storage": "deliverable",
+            "entitlement": "EntitlementRecord",
+            "payload": "deliverable",
+            "attestation": "PayloadAttestationRecord",
+            "method": "methodEvidence",
+        }[dependency]
+        entry = next(item for item in entries if item["kind"] == kind)
+        locator = entry["logicalAddress"]
+    receipts = case["verifiedReceiptByCanonicalRef"]
+    receipt_keys = [
+        key for key, authority in receipts.items()
+        if authority["receipt"]["logicalAddress"] == locator
+    ]
+    assert len(receipt_keys) == 1, "dependency must have one exact receipt"
+    receipt_key = receipt_keys[0]
+    if receipt_mode == "bad-writer":
+        receipts[receipt_key]["receipt"]["writer"] = BUYER
+    elif receipt_mode == "malformed":
+        receipts[receipt_key]["receipt"]["state"] = "not-a-core-state"
+    elif receipt_mode == "missing":
+        receipts.pop(receipt_key)
+    elif receipt_mode == "present-null":
+        receipts[receipt_key] = None
+    elif receipt_mode != "consistent":
+        raise ValueError("unknown receipt mode: " + receipt_mode)
+    if entry_mode == "missing":
+        entries.remove(entry)
+    elif entry_mode == "unavailable":
+        entry["available"] = False
+    else:
+        raise ValueError("unknown artifact-entry mode: " + entry_mode)
+    return case
+
+
 def build_vectors() -> list[dict]:
     vectors: list[dict] = []
     vectors.append(make("repeated-storage-distinct-without-phase-pointers", "pass", "signed phase indexes and addresses establish the one-to-one mapping", storage_case))
@@ -1733,6 +1792,28 @@ def build_vectors() -> list[dict]:
         case["evidenceRecords"][0]["artifact"]["signature"]["value"] = ("A" if value[0] != "A" else "B") + value[1:]
         bundle(case)
     vectors.append(make("delivery-signature-mutation", "fail", "every signed binding is integrity protected", credential_case, signature_mutation))
+    for dependency in (
+        "storage", "entitlement", "credential", "payload", "attestation", "method",
+    ):
+        for entry_mode in ("missing", "unavailable"):
+            for receipt_mode, expected in (
+                ("consistent", "indeterminate"),
+                ("bad-writer", "fail"),
+                ("malformed", "error"),
+                ("missing", "indeterminate"),
+                ("present-null", "error"),
+            ):
+                vectors.append(make(
+                    f"dependency-receipt-precedence-{dependency}-{entry_mode}-{receipt_mode}",
+                    expected,
+                    "PDE-6: unavailable artifact content cannot mask independently "
+                    "bound receipt contradictions or malformed receipt authority",
+                    lambda dependency=dependency, entry_mode=entry_mode, receipt_mode=receipt_mode:
+                        dependency_receipt_precedence_case(dependency, entry_mode, receipt_mode),
+                    dependency=dependency,
+                    entryMode=entry_mode,
+                    receiptMode=receipt_mode,
+                ))
     return vectors
 
 

@@ -276,6 +276,82 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
         self._resign_bundle_and_pointer(value)
         return value
 
+    def test_released_fab_and_ab_keep_dependency_receipt_precedence(self):
+        expected_by_receipt = {
+            "consistent": "indeterminate",
+            "bad-writer": "fail",
+            "bad-address": "fail",
+            "malformed": "error",
+            "present-null": "error",
+            "missing": "indeterminate",
+        }
+        for kind in ("fault", "legacy"):
+            for entry_mode in ("missing", "unavailable"):
+                for receipt_mode, expected in expected_by_receipt.items():
+                    value = self._fixture()
+                    authority = value["authority"]
+                    closure = authority[
+                        "deliveryArtifactAuthorityByPhaseKey"
+                    ]["2:deliver-storage-program"]
+                    entry = closure["deliverable"]
+                    receipt_key, receipt_authority = next(
+                        (key, item)
+                        for key, item in authority[
+                            "verifiedReceiptByCanonicalRef"
+                        ].items()
+                        if isinstance(item, dict)
+                        and isinstance(item.get("receipt"), dict)
+                        and item["receipt"].get("nativeAddress")
+                        == entry["nativeAddress"]
+                    )
+                    receipt = receipt_authority["receipt"]
+                    if receipt_mode == "bad-writer":
+                        receipt["writer"] = next(
+                            party["primaryClaim"]
+                            for party in value["bundle"]["parties"]
+                            if party["role"] == "buyer"
+                        )
+                    elif receipt_mode == "bad-address":
+                        receipt["logicalAddress"] += ":contradiction"
+                    elif receipt_mode == "malformed":
+                        receipt["state"] = "not-a-core-state"
+                    elif receipt_mode == "present-null":
+                        authority["verifiedReceiptByCanonicalRef"][receipt_key] = None
+                    elif receipt_mode == "missing":
+                        authority["verifiedReceiptByCanonicalRef"].pop(receipt_key)
+                    if entry_mode == "missing":
+                        closure.pop("deliverable")
+                    else:
+                        entry["available"] = False
+                    if kind == "legacy":
+                        bundle, _, _, _ = self._ordinary_current_delivery(value)
+                        value["bundle"] = bundle
+                    direct = R._validate_current_fab_delivery_admission(
+                        value["bundle"],
+                        authority,
+                        self.pubkeys,
+                        **({"ordinary_current": True} if kind == "legacy" else {}),
+                    )
+                    paths = {
+                        "direct": direct[0],
+                        "reconciliation": self._reconcile(value)["decision"],
+                        "current-use": self._current_use(value)[0],
+                    }
+                    if kind == "fault":
+                        resolved = self._resolve(value)
+                        paths["pointer"] = (
+                            "pass" if resolved["ok"]
+                            else resolved.get("disposition", "fail")
+                        )
+                    for path, disposition in paths.items():
+                        with self.subTest(
+                            family=kind,
+                            entry=entry_mode,
+                            receipt=receipt_mode,
+                            path=path,
+                        ):
+                            self.assertEqual(expected, disposition)
+
     def _failed_payment_fixture(self):
         source = copy.deepcopy(
             self.data["executionAuthorities"]["single-htlc-expired"]
@@ -2344,8 +2420,8 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     )[0])
                 with self.subTest(kind=kind, case=label):
                     self.assertEqual(expected, tuple(observed))
-        # No entry rail quotes to an address with a lone surrogate, so such a
-        # receipt fails whether or not the row's entry is available.
+        # A lone surrogate is not a well-formed JCS string.  It is malformed
+        # current receipt authority, not a well-typed address contradiction.
         for kind in ("fault", "legacy"):
             for without in (False, True):
                 value, ref_key = payment()(kind)
@@ -2355,7 +2431,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                 if without:
                     without_entry(value, kind)
                 with self.subTest(kind=kind, case="lone surrogate rail", without_entry=without):
-                    self.assertEqual("fail", R._validate_current_fab_delivery_admission(
+                    self.assertEqual("error", R._validate_current_fab_delivery_admission(
                         value["bundle"], value["authority"], self.pubkeys,
                         **({"ordinary_current": True} if kind == "legacy" else {}),
                     )[0])
@@ -2693,6 +2769,178 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
                     verdicts.add((direct, reconciled["decision"]))
                 with self.subTest(kind=kind, case=name, invariant="same-verdict-and-reason"):
                     self.assertEqual(1, len(verdicts), verdicts)
+
+    def test_authenticated_settlement_members_require_closed_shape_before_phase_dispatch(self):
+        """A settlement-domain signature cannot make a non-evidence phase inert."""
+        def append_non_evidence_member(value, *, cross_job):
+            source = self._failed_payment_fixture()
+            source_ref = source["bundle"]["settlementEvidence"][0]
+            resolution = copy.deepcopy(
+                source["authority"]["referenceValidationByCanonicalRef"][
+                    self._key(source_ref)
+                ]
+            )
+            record = resolution["record"]
+            record["phase"] = "commit-agreement"
+            record["jobId"] = (
+                "01ARZ3NDEKTSV4RRFFQ69G5FZZ"
+                if cross_job else value["bundle"]["jobId"]
+            )
+            self._resign_payment_record(record)
+            ref = copy.deepcopy(source_ref)
+            ref["contentHash"] = R.settlement_evidence_hash(record)
+            value["authority"]["referenceValidationByCanonicalRef"][
+                self._key(ref)
+            ] = resolution
+            value["bundle"]["settlementEvidence"].append(ref)
+
+        bases = (
+            ("failed-delivery", lambda: self._failed_delivery_value("failed-delivery")),
+            ("completed-storage", self._fixture),
+        )
+        for base_name, factory in bases:
+            for kind in ("legacy", "fault"):
+                for job in ("same", "cross"):
+                    value = factory()
+                    append_non_evidence_member(value, cross_job=job == "cross")
+                    self._as_released_kind(value, kind)
+                    dispositions = self._released_trace_dispositions(value, kind)
+                    with self.subTest(base=base_name, kind=kind, job=job):
+                        self.assertTrue(dispositions)
+                        self.assertTrue(
+                            all(result != "pass" for result in dispositions.values()),
+                            dispositions,
+                        )
+                        # The member is authenticated but violates the closed
+                        # SettlementEvidence shape, so each lane reports the
+                        # independently established malformed-input error.
+                        self.assertEqual(
+                            {path: "error" for path in dispositions}, dispositions
+                        )
+
+        # A closed pay-dem member still reaches its ordinary binding checks:
+        # same-job remains valid, while cross-job is a contradiction, not a
+        # malformed-input error.
+        for kind in ("legacy", "fault"):
+            same_job = self._released_value("standard-completed", kind)
+            with self.subTest(kind=kind, phase="pay-dem", job="same"):
+                self.assertEqual("pass", self._direct(same_job, kind)[0])
+                self.assertEqual("pass", self._reconcile(same_job)["decision"])
+
+            cross_job = self._released_value("standard-completed", kind)
+            replace_top_record(
+                cross_job["authority"],
+                "pay-dem",
+                lambda record: record.__setitem__(
+                    "jobId", "01ARZ3NDEKTSV4RRFFQ69G5FZZ"
+                ),
+                self.data["seeds"],
+            )
+            self._resign_released(cross_job, kind)
+            cross_job["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                refreshed_laa_phase_carriers(cross_job["authority"])
+            )
+            with self.subTest(kind=kind, phase="pay-dem", job="cross"):
+                self.assertEqual("fail", self._direct(cross_job, kind)[0])
+                self.assertEqual("fail", self._reconcile(cross_job)["decision"])
+
+    def test_authenticated_finality_members_require_closed_shape_before_phase_dispatch(self):
+        """A finality-domain signature cannot make a non-payment phase inert."""
+        exemplar = json.loads(FINALITY_VECTORS.read_text(encoding="utf-8"))[
+            "vectors"
+        ][0]["input"]["evidence"]
+        self.assertTrue(R._finality_bound_settlement_evidence_shape_valid(exemplar))
+
+        for base_name, factory in (
+            ("failed-delivery", lambda: self._failed_delivery_value("failed-delivery")),
+            ("completed-storage", self._fixture),
+        ):
+            for kind in ("legacy", "fault"):
+                for job in ("same", "cross"):
+                    value = factory()
+                    source = self._failed_payment_fixture()
+                    source_ref = source["bundle"]["settlementEvidence"][0]
+                    record = copy.deepcopy(exemplar)
+                    record["jobId"] = (
+                        value["bundle"]["jobId"]
+                        if job == "same" else "01ARZ3NDEKTSV4RRFFQ69G5FZZ"
+                    )
+                    record["phase"] = "commit-agreement"
+                    self.assertFalse(R._finality_bound_settlement_evidence_shape_valid(record))
+                    record["signature"]["value"] = self._sign(
+                        "orchestrator",
+                        R.FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN,
+                        R.settlement_evidence_hash(record),
+                    )
+                    self.assertEqual(
+                        "finality-bound",
+                        R._authenticated_evidence_wire_type(record, self.pubkeys),
+                    )
+                    ref = copy.deepcopy(source_ref)
+                    ref["contentHash"] = R.settlement_evidence_hash(record)
+                    value["authority"]["referenceValidationByCanonicalRef"][
+                        self._key(ref)
+                    ] = {
+                        "record": record,
+                        "lifecycle": {
+                            "state": "finalized",
+                            "independentlyResolvable": True,
+                        },
+                    }
+                    value["bundle"]["settlementEvidence"].append(ref)
+                    self._as_released_kind(value, kind)
+                    dispositions = self._released_trace_dispositions(value, kind)
+                    with self.subTest(base=base_name, kind=kind, job=job):
+                        self.assertEqual("error", dispositions["direct"], dispositions)
+                        self.assertEqual("error", dispositions["reconcile"], dispositions)
+                        if kind == "fault":
+                            self.assertEqual("error", dispositions["pointer"], dispositions)
+                        self.assertNotEqual("pass", dispositions["current-use"], dispositions)
+
+    def test_malformed_payment_lifecycle_outranks_absent_authority_maps(self):
+        """Present malformed lifecycle is an error even when a whole map is absent."""
+        for kind in ("legacy", "fault"):
+            for missing_map in (
+                "sessionExecutionAuthorityByPhaseKey",
+                "verifiedReceiptByCanonicalRef",
+            ):
+                malformed = self._st8_resolved_value(kind)
+                ref_key = self._key(malformed["bundle"]["settlementEvidence"][0])
+                malformed["authority"]["referenceValidationByCanonicalRef"][
+                    ref_key
+                ]["lifecycle"] = []
+                malformed["authority"].pop(missing_map)
+                expected = {
+                    "direct": "error",
+                    "reconcile": "error",
+                    "current-use": "error",
+                }
+                if kind == "fault":
+                    expected["pointer"] = "error"
+                with self.subTest(
+                    kind=kind, missing_map=missing_map, lifecycle="malformed"
+                ):
+                    self.assertEqual(
+                        expected,
+                        self._released_trace_dispositions(malformed, kind),
+                    )
+
+                control = self._st8_resolved_value(kind)
+                control["authority"].pop(missing_map)
+                expected = {
+                    "direct": "indeterminate",
+                    "reconcile": "indeterminate",
+                    "current-use": "indeterminate",
+                }
+                if kind == "fault":
+                    expected["pointer"] = "indeterminate"
+                with self.subTest(
+                    kind=kind, missing_map=missing_map, lifecycle="well-formed"
+                ):
+                    self.assertEqual(
+                        expected,
+                        self._released_trace_dispositions(control, kind),
+                    )
 
     def test_lifecycle_outage_does_not_mask_payment_invocation_reuse(self):
         # F-E within one member: a lifecycle outage is deferred, so the same

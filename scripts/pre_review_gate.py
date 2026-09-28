@@ -565,6 +565,66 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_current_evidence_boundary_regressions.py",
         "test": "CurrentFabDeliveryAdmissionTests.test_released_payment_checks_outrank_other_outages",
     },
+    "pr333-released-settlement-closed-shape-before-phase-dispatch": {
+        "file": "tests/test_current_evidence_boundary_regressions.py",
+        "test": "CurrentFabDeliveryAdmissionTests.test_authenticated_settlement_members_require_closed_shape_before_phase_dispatch",
+    },
+    "pr333-released-finality-closed-shape-before-phase-dispatch": {
+        "file": "tests/test_current_evidence_boundary_regressions.py",
+        "test": "CurrentFabDeliveryAdmissionTests.test_authenticated_finality_members_require_closed_shape_before_phase_dispatch",
+    },
+    "pr333-f1-current-member-authority-dispositions": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_payment_and_delivery_authority_matrix_across_all_consumers",
+    },
+    "pr333-f1-current-receipt-shape-table": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_current_receipt_shape_table_is_typed_for_payment_and_delivery",
+    },
+    "pr333-f1-current-receipt-binding-mismatch": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_well_typed_receipt_binding_mismatches_remain_fail",
+    },
+    "pr333-f1-current-receipt-state-and-archival-controls": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_valid_nonqualifying_state_is_fail_and_archival_receipts_stay_frozen",
+    },
+    "pr333-f1-current-root-map-authority-dispositions": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_current_root_maps_distinguish_unavailable_from_malformed",
+    },
+    "pr333-f1-member-order-precedence": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_member_order_cannot_downgrade_error_or_hide_delivery_rejection",
+    },
+    "pr333-f1-frozen-historical-authority-semantics": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "SebMemberAuthorityDispositionTests.test_frozen_historical_authority_outcomes_keep_their_exact_reasons",
+    },
+    "pr333-f1-finality-bound-member-authority-dispositions": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "FinalityBoundPendingPrecedenceTests.test_finality_bound_member_authority_matrix_is_typed",
+    },
+    "pr333-f2-unit-dependency-receipt-precedence": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "DependencyReceiptPrecedenceTests.test_missing_or_unavailable_entry_defers_only_availability",
+    },
+    "pr333-f2-ebfab-dependency-receipt-precedence": {
+        "file": "tests/test_pr333_disposition_precedence_regressions.py",
+        "test": "DependencyReceiptPrecedenceTests.test_public_ebfab_defers_only_missing_dependency_entries",
+    },
+    "pr333-f2-six-dependency-signed-matrix": {
+        "file": "tests/test_phase_bound_delivery_vectors.py",
+        "test": "PhaseBoundDeliveryVectorTests.test_dependency_receipt_precedence_matrix_covers_all_six_dependencies",
+    },
+    "pr333-f2-six-dependency-primary-closure": {
+        "file": "tests/test_phase_bound_delivery_vectors.py",
+        "test": "PhaseBoundDeliveryVectorTests.test_primary_closure_keeps_receipt_precedence_for_all_six_dependencies",
+    },
+    "pr333-f2-released-fab-ab-receipt-precedence": {
+        "file": "tests/test_current_evidence_boundary_regressions.py",
+        "test": "CurrentFabDeliveryAdmissionTests.test_released_fab_and_ab_keep_dependency_receipt_precedence",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

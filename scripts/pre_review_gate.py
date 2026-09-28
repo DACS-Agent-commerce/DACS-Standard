@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from pathlib import PurePosixPath
 import secrets
+import signal
 import subprocess
 import sys
 
@@ -628,6 +629,11 @@ PINNED_UNIT_REGRESSIONS = {
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"
+# Registered tests normally finish in seconds. Two minutes leaves substantial
+# room for a slow CI worker while keeping one stalled target from hanging the
+# complete gate indefinitely.
+SELECTED_TEST_TIMEOUT_SECONDS = 120
+SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS = 5
 EXACT_UNITTEST_SUMMARY = {
     "errors": 0,
     "expectedFailures": 0,
@@ -1237,35 +1243,103 @@ def _exact_unittest_completed(stdout: str, nonce: str) -> bool:
     return records == [expected]
 
 
+def _terminate_selected_test_process(process: subprocess.Popen) -> str | None:
+    """Bound abnormal cleanup and return any platform cleanup limitation."""
+    cleanup_issue = None
+    if os.name == "posix":
+        try:
+            # Each selected test starts a new session, so its process id is also
+            # the process-group id inherited by ordinary descendants.
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except OSError as exc:
+            cleanup_issue = f"could not kill POSIX test process group: {exc}"
+            try:
+                process.kill()
+            except OSError:
+                pass
+        # POSIX communicate() uses selectors rather than background reader
+        # threads, so closing these local pipe ends cannot wait on a reader
+        # lock and prevents an escaped descendant from keeping them open here.
+        for stream_name in ("stdin", "stdout", "stderr"):
+            stream = getattr(process, stream_name, None)
+            if stream is not None:
+                try:
+                    stream.close()
+                except OSError:
+                    pass
+    else:
+        # Python has no portable descendant-process-tree termination API.
+        # On Windows, communicate() can leave background reader threads holding
+        # buffered-stream locks after a timeout, so synchronously closing those
+        # streams can itself hang. Kill and reap only the selected runner here.
+        try:
+            process.kill()
+        except OSError as exc:
+            cleanup_issue = f"could not kill selected test runner: {exc}"
+
+    try:
+        process.wait(timeout=SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        cleanup_issue = (
+            cleanup_issue + "; " if cleanup_issue else ""
+        ) + "selected test runner could not be reaped within cleanup deadline"
+    return cleanup_issue
+
+
 def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
         _unittest_module(entry["file"], entry["test"], entry["id"])
         test_path = _within_test_root(entry["file"])
         nonce = secrets.token_hex(32)
-        completed = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                EXACT_UNITTEST_RUNNER,
-                str(test_path),
-                entry["test"],
-                EXACT_UNITTEST_COMPLETION_MARKER,
-            ],
-            cwd=ROOT,
-            input=nonce + "\n",
-            text=True,
-            capture_output=True,
-            env={**os.environ, "PYTHONPATH": python_path},
+        command = [
+            sys.executable,
+            "-c",
+            EXACT_UNITTEST_RUNNER,
+            str(test_path),
+            entry["test"],
+            EXACT_UNITTEST_COMPLETION_MARKER,
+        ]
+        failure_kind = (
+            "regression" if label == "regression"
+            else "independent review evidence"
         )
-        if completed.returncode or not _exact_unittest_completed(
-            completed.stdout, nonce
-        ):
-            detail = (completed.stdout + completed.stderr).strip()
-            failure_kind = (
-                "regression" if label == "regression"
-                else "independent review evidence"
+        process = subprocess.Popen(
+            command,
+            cwd=ROOT,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env={**os.environ, "PYTHONPATH": python_path},
+            start_new_session=os.name == "posix",
+        )
+        try:
+            stdout, stderr = process.communicate(
+                input=nonce + "\n",
+                timeout=SELECTED_TEST_TIMEOUT_SECONDS,
             )
+        except subprocess.TimeoutExpired:
+            cleanup_issue = _terminate_selected_test_process(process)
+            message = (
+                f"{entry['id']}: {failure_kind} timed out after "
+                f"{SELECTED_TEST_TIMEOUT_SECONDS:g} seconds"
+            )
+            if cleanup_issue:
+                message += f"; {cleanup_issue}"
+            raise GateError(message) from None
+        except BaseException as exc:
+            # start_new_session isolates the selected runner from terminal
+            # signals sent to this gate. Preserve subprocess.run-style cleanup
+            # by terminating the isolated group before propagating interrupts.
+            cleanup_issue = _terminate_selected_test_process(process)
+            if cleanup_issue and hasattr(exc, "add_note"):
+                exc.add_note(f"selected test cleanup: {cleanup_issue}")
+            raise
+        if process.returncode or not _exact_unittest_completed(stdout, nonce):
+            detail = (stdout + stderr).strip()
             raise GateError(
                 f"{entry['id']}: {failure_kind} is missing or failing\n{detail}"
             )

@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -157,20 +158,26 @@ class PreReviewGateTests(unittest.TestCase):
 
     def test_runner_loads_the_exact_unittest_file(self):
         entry = self.manifest["independentReviewEvidence"][0]
+        process = mock.Mock(returncode=0)
 
-        def completed(command, **kwargs):
+        def completed(**kwargs):
             nonce = kwargs["input"].strip()
             summary = json.dumps(self.gate.EXACT_UNITTEST_SUMMARY, sort_keys=True)
-            record = f"{command[5]} {nonce} {summary}\n"
-            return mock.Mock(returncode=0, stdout=record, stderr="")
+            record = (
+                f"{self.gate.EXACT_UNITTEST_COMPLETION_MARKER} "
+                f"{nonce} {summary}\n"
+            )
+            return record, ""
+
+        process.communicate.side_effect = completed
 
         with mock.patch.object(
-            self.gate.subprocess, "run", side_effect=completed
-        ) as run:
+            self.gate.subprocess, "Popen", return_value=process
+        ) as popen:
             self.assertEqual(
                 self.gate._run_python_evidence([entry], "review evidence"), 1
             )
-        command = run.call_args.args[0]
+        command = popen.call_args.args[0]
         self.assertEqual(
             command[:3],
             [
@@ -185,10 +192,20 @@ class PreReviewGateTests(unittest.TestCase):
         )
         self.assertEqual(command[4], entry["test"])
         self.assertEqual(command[5], self.gate.EXACT_UNITTEST_COMPLETION_MARKER)
-        self.assertEqual(len(run.call_args.kwargs["input"].strip()), 64)
         self.assertEqual(
-            run.call_args.kwargs["env"]["PYTHONPATH"],
+            len(process.communicate.call_args.kwargs["input"].strip()), 64
+        )
+        self.assertEqual(
+            process.communicate.call_args.kwargs["timeout"],
+            self.gate.SELECTED_TEST_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(
+            popen.call_args.kwargs["env"]["PYTHONPATH"],
             os.pathsep.join((str(ROOT), str(ROOT / "tests"))),
+        )
+        self.assertEqual(
+            popen.call_args.kwargs["start_new_session"],
+            os.name == "posix",
         )
 
     def _run_temporary_evidence(
@@ -269,6 +286,134 @@ class PreReviewGateTests(unittest.TestCase):
             ),
             1,
         )
+
+    def test_hanging_selected_test_fails_within_its_deadline(self):
+        body = (
+            "import time\n"
+            "import unittest\n"
+            "class ExitProbeTests(unittest.TestCase):\n"
+            "    def test_probe(self):\n"
+            "        while True:\n"
+            "            time.sleep(1)\n"
+        )
+        started = time.monotonic()
+        with mock.patch.object(
+            self.gate, "SELECTED_TEST_TIMEOUT_SECONDS", 0.2
+        ), mock.patch.object(
+            self.gate, "SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS", 1
+        ):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "exit-probe: independent review evidence timed out after 0.2 seconds",
+            ):
+                self._run_temporary_evidence(body)
+        self.assertLess(time.monotonic() - started, 3)
+
+    def _assert_timeout_releases_descendant_lock(self, parent_tail: str):
+        import fcntl
+        import signal
+
+        with tempfile.TemporaryDirectory() as temporary:
+            lock_path = Path(temporary) / "descendant.lock"
+            ready_path = Path(temporary) / "descendant.ready"
+            lock_path.touch()
+            child = (
+                "import fcntl, os, pathlib, time\n"
+                f"lock = open({str(lock_path)!r}, 'r+')\n"
+                "fcntl.flock(lock, fcntl.LOCK_EX)\n"
+                f"pathlib.Path({str(ready_path)!r}).write_text(str(os.getpid()))\n"
+                "time.sleep(60)\n"
+            )
+            body = (
+                "import pathlib, subprocess, sys, time\n"
+                "import unittest\n"
+                f"CHILD = {child!r}\n"
+                f"READY = pathlib.Path({str(ready_path)!r})\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        subprocess.Popen([sys.executable, '-c', CHILD])\n"
+                "        deadline = time.monotonic() + 5\n"
+                "        while not READY.exists():\n"
+                "            if time.monotonic() >= deadline:\n"
+                "                self.fail('descendant did not acquire its lock')\n"
+                "            time.sleep(0.01)\n"
+                + parent_tail
+            )
+            started = time.monotonic()
+            with mock.patch.object(
+                self.gate, "SELECTED_TEST_TIMEOUT_SECONDS", 1
+            ), mock.patch.object(
+                self.gate, "SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS", 1
+            ):
+                with self.assertRaisesRegex(
+                    self.gate.GateError,
+                    "exit-probe: independent review evidence timed out after 1 seconds",
+                ):
+                    self._run_temporary_evidence(body)
+            self.assertLess(time.monotonic() - started, 4)
+            self.assertTrue(ready_path.is_file())
+            with lock_path.open("r+") as lock:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    child_pid = int(ready_path.read_text())
+                    try:
+                        os.kill(child_pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    self.fail("timed-out descendant still holds the output-pipe process group")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_timeout_kills_descendant_holding_output_pipes(self):
+        self._assert_timeout_releases_descendant_lock(
+            "        while True:\n"
+            "            time.sleep(1)\n"
+        )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_timeout_kills_pipe_holder_after_successful_runner_exit(self):
+        self._assert_timeout_releases_descendant_lock("")
+
+    def test_non_posix_timeout_cleanup_avoids_blocking_pipe_closes(self):
+        streams = [mock.Mock(), mock.Mock(), mock.Mock()]
+        process = mock.Mock(
+            stdin=streams[0],
+            stdout=streams[1],
+            stderr=streams[2],
+        )
+        with mock.patch.object(self.gate.os, "name", "nt"):
+            self.assertIsNone(
+                self.gate._terminate_selected_test_process(process)
+            )
+        process.kill.assert_called_once_with()
+        process.wait.assert_called_once_with(
+            timeout=self.gate.SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS
+        )
+        for stream in streams:
+            stream.close.assert_not_called()
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_keyboard_interrupt_kills_and_reaps_selected_test_group(self):
+        entry = self.manifest["independentReviewEvidence"][0]
+        streams = [mock.Mock(), mock.Mock(), mock.Mock()]
+        process = mock.Mock(
+            pid=424242,
+            stdin=streams[0],
+            stdout=streams[1],
+            stderr=streams[2],
+        )
+        process.communicate.side_effect = KeyboardInterrupt
+        with mock.patch.object(
+            self.gate.subprocess, "Popen", return_value=process
+        ), mock.patch.object(self.gate.os, "killpg") as killpg:
+            with self.assertRaises(KeyboardInterrupt):
+                self.gate._run_python_evidence([entry], "review evidence")
+        killpg.assert_called_once_with(process.pid, self.gate.signal.SIGKILL)
+        process.wait.assert_called_once_with(
+            timeout=self.gate.SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS
+        )
+        for stream in streams:
+            stream.close.assert_called_once_with()
 
     def test_multiple_test_selection_is_rejected(self):
         with self.assertRaisesRegex(
@@ -375,8 +520,11 @@ class PreReviewGateTests(unittest.TestCase):
             self.gate.validate_manifest(manifest)
 
     def test_failing_independent_review_evidence_fails_the_gate(self):
-        failed = mock.Mock(returncode=1, stdout="", stderr="deliberate failure")
-        with mock.patch.object(self.gate.subprocess, "run", return_value=failed):
+        failed = mock.Mock(returncode=1)
+        failed.communicate.return_value = ("", "deliberate failure")
+        with mock.patch.object(
+            self.gate.subprocess, "Popen", return_value=failed
+        ):
             with self.assertRaisesRegex(
                 self.gate.GateError,
                 "type-totality-array-ebfab-counterexample: independent review evidence.*failing",

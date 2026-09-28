@@ -29,7 +29,16 @@ Adding or replacing a trust-boundary assertion therefore requires a reviewed
 update to both the executable registry contract and the manifest; changing
 manifest labels alone cannot claim coverage. Each selected target must execute
 exactly one successful test: skips, expected failures, unexpected successes,
-loader errors, and zero-test selections fail the gate.
+loader errors, and zero-test selections fail the gate. Each selected test has a
+120-second deadline. On POSIX runtimes, a timed-out test runs in its own process
+session so the gate can kill its process group, including ordinary descendants
+that inherited the captured output pipes, and reap the selected runner. Other
+runtimes kill and reap only the selected runner within the cleanup deadline.
+Python does not provide a portable way to terminate its complete descendant
+process tree, and the gate does not synchronously close timed-out capture streams
+on Windows because its background readers may hold their locks. Process-group
+cleanup requires POSIX APIs supported by macOS and Linux. Other platforms may
+retain a descendant or capture reader until its inherited pipe ends close.
 
 The mandatory lenses cover hostile JSON/type totality at public APIs, independent
 binding-axis mutation for current FAB delivery, current-versus-archival downgrade

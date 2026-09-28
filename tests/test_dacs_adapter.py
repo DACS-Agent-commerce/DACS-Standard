@@ -166,6 +166,66 @@ class DacsAdapterTests(unittest.TestCase):
             [selected["expected"] for selected in family["cases"]],
         )
 
+    def test_signed_scope_refuses_known_foreign_discriminators_with_valid_controls(self):
+        family = next(item for item in self.descriptor["families"] if item["id"] == "signed-scope")
+        by_id = {item["id"]: item for item in self.sources[family["source"]]["artifacts"]}
+        # These are the known Standard body selectors, independently named here.
+        body_fields = (
+            "dacsVersion", "resultVersion", "recordVersion", "agreementVersion",
+            "payeeBoundAgreementVersion", "identityBoundAgreementVersion",
+            "identityBoundPayeeAgreementVersion", "evidenceVersion",
+            "deliveryEvidenceVersion", "bundleVersion",
+        )
+        for selected in family["cases"]:
+            with self.subTest(kind=selected["kind"]):
+                artifact = by_id[selected["caseId"]]["artifact"]
+                expected_field = (
+                    "evidenceVersion" if selected["kind"] == "SettlementEvidence" else "bundleVersion"
+                )
+                foreign = [field for field in body_fields if field != expected_field]
+                if selected["kind"] == "SettlementEvidence":
+                    foreign.extend(("finalityBoundEvidenceVersion", "legacyTransitionEvidenceVersion"))
+                requests = [request("valid-before", "execute", operation="signedScopeHash", params=[artifact])]
+                mutations = []
+                for field in foreign:
+                    for value in ("1", None):
+                        mixed = json.loads(json.dumps(artifact))
+                        mixed[field] = value
+                        mutations.append((field, value))
+                        requests.append(request(
+                            f"mixed-{len(mutations)}", "execute", operation="signedScopeHash", params=[mixed]
+                        ))
+                requests.append(request("valid-after", "execute", operation="signedScopeHash", params=[artifact]))
+                completed, responses = run_adapter(requests)
+                self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+                self.assertEqual(len(responses), len(requests))
+                for response in (responses[0], responses[-1]):
+                    self.assertTrue(response["ok"])
+                    self.assertEqual(response["result"], selected["expected"])
+                for response, mutation in zip(responses[1:-1], mutations):
+                    with self.subTest(mutation=mutation):
+                        self.assertFalse(response["ok"])
+                        self.assertEqual(response["error"]["code"], "UNSUPPORTED_ARTIFACT")
+                self.assertNotIn("Traceback", completed.stderr.decode())
+
+    def test_signed_scope_keeps_unknown_signed_members_hash_bound(self):
+        family = next(item for item in self.descriptor["families"] if item["id"] == "signed-scope")
+        by_id = {item["id"]: item for item in self.sources[family["source"]]["artifacts"]}
+        for selected in family["cases"]:
+            with self.subTest(kind=selected["kind"]):
+                artifact = by_id[selected["caseId"]]["artifact"]
+                extended = json.loads(json.dumps(artifact))
+                extended["futureSignedMember"] = {"note": "retained in the signed scope"}
+                completed, responses = run_adapter([
+                    request("control", "execute", operation="signedScopeHash", params=[artifact]),
+                    request("extended", "execute", operation="signedScopeHash", params=[extended]),
+                ])
+                self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+                self.assertTrue(responses[0]["ok"])
+                self.assertEqual(responses[0]["result"], selected["expected"])
+                self.assertTrue(responses[1]["ok"])
+                self.assertNotEqual(responses[1]["result"], selected["expected"])
+
     def test_selected_sig6_wire_cases_execute_without_algorithm_length_check(self):
         family = next(item for item in self.descriptor["families"] if item["id"] == "sig6-wire")
         vectors = self.sources[family["source"]]["vectors"]

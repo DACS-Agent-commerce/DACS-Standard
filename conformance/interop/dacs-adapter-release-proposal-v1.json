@@ -53,8 +53,8 @@
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "e5f5ed65a9e42306e96f1d314d25ba73e6b48794f8ad01647115b454ad092ecb",
-      "gitBlob": "31f6f1933a619c9267c722936109942378dfc82d"
+      "sha256": "a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6",
+      "gitBlob": "2e3a1787471586a88cb817e00d0d5108ae9ddc2e"
     },
     "wrappedStandard": {
       "revision": "ef69d46a81e3018b6eb9aa7cb25489657ed91def",

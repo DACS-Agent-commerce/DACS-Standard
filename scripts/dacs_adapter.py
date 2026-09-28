@@ -149,7 +149,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import jcs as _jcs  # noqa: E402
 from run_lifecycle_walkthrough import sign_ed25519 as _sign_ed25519  # noqa: E402,F401
 from run_lifecycle_walkthrough import verify_ed25519 as _verify_ed25519  # noqa: E402,F401
+from validate_conformance_vectors import BODY_DISCRIMINATORS as _BODY_DISCRIMINATORS  # noqa: E402
 from validate_conformance_vectors import artifact_hash_hex as _artifact_hash_hex  # noqa: E402
+from validate_conformance_vectors import lifecycle_evidence_kind_matches as _lifecycle_evidence_kind_matches  # noqa: E402
 from validate_conformance_vectors import decode_signature_value as _decode_signature_value  # noqa: E402
 
 
@@ -215,13 +217,25 @@ def _infer_hashable_kind(artifact: Any) -> str:
         and "signatures" in artifact
     )
     if is_evidence:
-        return "SettlementEvidence"
-    if is_bundle:
-        return "AttestationBundle"
-    raise AdapterError(
-        "UNSUPPORTED_ARTIFACT",
-        "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+        kind = "SettlementEvidence"
+    elif is_bundle:
+        kind = "AttestationBundle"
+    else:
+        raise AdapterError(
+            "UNSUPPORTED_ARTIFACT",
+            "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+        )
+    foreign_discriminator = any(
+        field in artifact
+        for other_kind, field in _BODY_DISCRIMINATORS.items()
+        if other_kind != kind
     )
+    if foreign_discriminator or not _lifecycle_evidence_kind_matches(kind, artifact):
+        raise AdapterError(
+            "UNSUPPORTED_ARTIFACT",
+            "signedScopeHash requires an exclusive supported artifact discriminator",
+        )
+    return kind
 
 
 def _metadata() -> dict[str, Any]:

@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from itertools import combinations
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -464,6 +465,41 @@ class B2ConformanceHashTests(unittest.TestCase):
         result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("does not match the Listing §B.7 separator", result.stderr)
+
+    def test_lifecycle_wrapper_requires_one_matching_supported_selector(self):
+        module = load_vector_validator()
+        expected_by_kind = {
+            "DeliveryEvidence": "deliveryEvidenceVersion",
+            "SettlementEvidence": "evidenceVersion",
+        }
+        selectors = sorted(module.DACS4_EVIDENCE_SELECTORS)
+        self.assertEqual(len(selectors), 4)
+        for kind, expected_selector in expected_by_kind.items():
+            with self.subTest(kind=kind, case="expected-singleton"):
+                self.assertTrue(module.lifecycle_evidence_kind_matches(
+                    kind, {expected_selector: "1"}
+                ))
+            for selector in selectors:
+                artifact = {selector: "1"}
+                with self.subTest(kind=kind, case="singleton", selector=selector):
+                    self.assertIs(
+                        module.lifecycle_evidence_kind_matches(kind, artifact),
+                        selector == expected_selector,
+                    )
+            with self.subTest(kind=kind, case="missing"):
+                self.assertFalse(module.lifecycle_evidence_kind_matches(kind, {}))
+            with self.subTest(kind=kind, case="wrong-value"):
+                self.assertFalse(module.lifecycle_evidence_kind_matches(
+                    kind, {expected_selector: "2"}
+                ))
+            for left, right in combinations(selectors, 2):
+                artifact = {left: "1", right: "1"}
+                with self.subTest(
+                    kind=kind, case="mixed-pair", left=left, right=right
+                ):
+                    self.assertFalse(
+                        module.lifecycle_evidence_kind_matches(kind, artifact)
+                    )
 
     def test_non_ed25519_algorithm_recorded_as_fail(self):
         # C2: a non-ed25519 suite is unverifiable here -> observed 'fail' -> the

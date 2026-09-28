@@ -86,6 +86,22 @@ This tuple does not claim ordinary cross-minor compatibility with a pre-v0.6
 channel-message profile, and mixed corrective/pre-corrective live operation
 remains unsupported for channel messages exactly as for `jobId`.
 
+This tuple also carries the **breaking pre-v1 current-delivery admission
+correction**, affecting CORE v0.3, DACS-4 v0.8, and DACS-5 v0.7 under CORE
+§11.1.2. The changed behaviour is current admission of historical
+delivery-shaped `SettlementEvidence`: it is not current delivery authority,
+including through the existing Boolean reference validator. Current delivery
+uses `DeliveryEvidence` and PDE-8. Historical bytes remain readable only
+through an explicitly selected, non-authorizing PDE-7 archival/audit operation;
+there is no fallback through an archival result to current authorization.
+This is not an ordinary additive-minor compatibility claim. All participants
+must authenticate the same complete tuple above and the same exact coordinated
+release tag or immutable specification commit before live use. The candidate
+remains unreleased until that identifier is recorded here; a development branch
+name or an older pin without this correction is insufficient. See the
+[reference-validator migration guide](../docs/pr333-reference-validator-migration.md)
+for the separate current and archival helper contracts and migration limits.
+
 CORE v0.3 also specifies registry-bootstrap v1 as an independently testable
 SR-2 registry-discovery and chain-validation capability. This candidate does
 **not** activate its descriptor hash in the existing `SessionContext`, Vet or

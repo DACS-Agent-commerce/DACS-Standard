@@ -67,6 +67,7 @@ HASH_EXCLUDED = {
     "IdentityBoundAgreementDocument": {"signatures"},
     "IdentityBoundPayeeAgreementDocument": {"signatures"},
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
+    "DeliveryEvidence": {"signature"},                     # §B.2 / §9.7
     "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
 }
 
@@ -82,6 +83,7 @@ KIND_SEPARATOR = {
     "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
     "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
+    "DeliveryEvidence": "dacs-delivery-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
 
@@ -99,12 +101,32 @@ BODY_DISCRIMINATORS = {
     "IdentityBoundAgreementDocument": "identityBoundAgreementVersion",
     "IdentityBoundPayeeAgreementDocument": "identityBoundPayeeAgreementVersion",
     "SettlementEvidence": "evidenceVersion",
+    "DeliveryEvidence": "deliveryEvidenceVersion",
     "AttestationBundle": "bundleVersion",
 }
+
+DACS4_EVIDENCE_SELECTORS = frozenset({
+    "deliveryEvidenceVersion",
+    "evidenceVersion",
+    "finalityBoundEvidenceVersion",
+    "legacyTransitionEvidenceVersion",
+})
 
 # LR-2 size cap: the canonical JSON form of a Listing MUST NOT exceed 16,384 bytes
 # (DACS-1 §6.3.4). Enforced over the §B.2 signature-omitted canonical form.
 LISTING_SIZE_CAP = 16_384
+
+def lifecycle_evidence_kind_matches(kind: str, artifact: Any) -> bool:
+    """Bind a lifecycle wrapper to one exclusive supported DACS-4 selector."""
+    if kind not in {"DeliveryEvidence", "SettlementEvidence"}:
+        return True
+    if not isinstance(artifact, dict):
+        return False
+    expected = (
+        "deliveryEvidenceVersion" if kind == "DeliveryEvidence" else "evidenceVersion"
+    )
+    present = DACS4_EVIDENCE_SELECTORS.intersection(artifact)
+    return artifact.get(expected) == "1" and present == {expected}
 
 # The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
 # This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64
@@ -432,6 +454,11 @@ def validate_vector(path: Path) -> list[str]:
                     f"{artifact_id}: {kind} body carries a foreign type discriminator: {foreign}",
                 )
             )
+        if not lifecycle_evidence_kind_matches(kind, body):
+            errors.append(
+                fail(path, f"{artifact_id}: {kind} requires its exclusive evidence selector")
+            )
+            continue
 
         # C12/C13: canonicalisation fails closed — an unsafe numeric magnitude or a
         # non-JSON value is a controlled rejection, never an uncaught traceback, and

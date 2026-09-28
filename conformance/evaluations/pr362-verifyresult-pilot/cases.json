@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "1",
+  "frozenBeforeRun": true,
+  "scope": "Bounded offline pilot of VerifyResult signature-omitted content identity, independent signature authentication, and the PR #362 reference consumer. This is not whole-PR or whole-Standard coverage.",
+  "requirements": [
+    "CORE §B.2: canonical form omits signature(s); content hash is SHA-256 of that canonical form",
+    "CORE §B.2 per-artifact template and SIG-2: reconstruct artifact hashes and signature payloads independently",
+    "DACS-2 §7.5: VerifyResult omits signature and signs ASCII dacs-verifyresult:v1: || verifyresult_hash",
+    "DACS-2 CRQ-1/§7.7.1: every committed VerifyResultRef is dereferenced and its hash, signature, recipe authority, and applicability are validated",
+    "CORE §B.2 IBH-4 retained challenge rule as exercised by the candidate PresenceEvaluationRuntime"
+  ],
+  "statusVocabulary": ["pass", "fail", "blocked", "skipped", "not_applicable"],
+  "cases": [
+    {
+      "id": "EVAL-001",
+      "name": "valid-coherent-artifact",
+      "purpose": "Known-good signed VerifyResult and complete downstream reference closure",
+      "expected": {"oracleHashMatchesReference": true, "oracleSignatureValid": true, "candidateConsumerDecision": "pass"},
+      "forbiddenEffects": ["network access", "filesystem mutation in candidate", "payment or delivery action"]
+    },
+    {
+      "id": "EVAL-002",
+      "name": "signature-only-replacement",
+      "purpose": "A signature-only mutation preserves content identity but loses authentication",
+      "expected": {"oracleHashUnchanged": true, "oracleHashMatchesReference": true, "oracleSignatureValid": false, "candidateConsumerDecision": "error"},
+      "forbiddenEffects": ["accept invalid signature", "change content hash because signature bytes changed"]
+    },
+    {
+      "id": "EVAL-003",
+      "name": "signed-content-mutation-stale-reference",
+      "purpose": "A coherently re-signed content mutation changes identity and a stale reference is rejected",
+      "expected": {"oracleHashChanged": true, "oracleHashMatchesReference": false, "oracleSignatureValid": true, "candidateConsumerDecision": "error"},
+      "forbiddenEffects": ["accept stale contentHash", "misclassify valid regenerated signature as the failing guard"]
+    },
+    {
+      "id": "EVAL-004",
+      "name": "regenerated-reference-closure",
+      "purpose": "The same signed-content mutation is accepted after all signed references are regenerated coherently",
+      "expected": {"oracleHashMatchesReference": true, "oracleSignatureValid": true, "candidateConsumerDecision": "pass"},
+      "forbiddenEffects": ["reuse stale downstream reference", "accept without composite and bundle re-signing"]
+    },
+    {
+      "id": "EVAL-005",
+      "name": "object-order-and-whitespace-invariance",
+      "purpose": "Safe-subset independent canonicalization is invariant to member order and insignificant JSON whitespace",
+      "expected": {"oracleHashUnchanged": true, "candidateConsumerDecision": "pass"},
+      "forbiddenEffects": ["change identity due to member insertion order", "claim raw-byte CF-5 coverage"]
+    },
+    {
+      "id": "EVAL-006",
+      "name": "wrong-recipe-authority",
+      "purpose": "A valid signature by an untrusted key is refused against authenticated recipe authority",
+      "expected": {"oracleSignatureValidForClaimedSigner": true, "trustedAuthorityMatches": false, "candidateConsumerDecision": "error"},
+      "forbiddenEffects": ["treat signer self-assertion as recipe authority"]
+    },
+    {
+      "id": "EVAL-007",
+      "name": "coherent-alternate-authority-twin",
+      "purpose": "The EVAL-006 artifact is accepted when independent trusted context names that signer",
+      "expected": {"oracleSignatureValid": true, "trustedAuthorityMatches": true, "candidateConsumerDecision": "pass"},
+      "forbiddenEffects": ["derive trusted authority from artifact signer"]
+    },
+    {
+      "id": "EVAL-008",
+      "name": "retained-nonce-single-use",
+      "purpose": "The actual retained runtime accepts one presentation attempt and rejects reuse",
+      "expected": {"firstCandidateConsumerDecision": "pass", "secondCandidateConsumerDecision": "error"},
+      "forbiddenEffects": ["accept the same retained challenge twice"]
+    },
+    {
+      "id": "EVAL-009",
+      "name": "wrong-domain-separator",
+      "purpose": "Correct artifact hash signed under another separator does not authenticate as VerifyResult",
+      "expected": {"oracleHashMatchesReference": true, "signatureValidUnderInjectedWrongDomain": true, "oracleSignatureValid": false, "candidateConsumerDecision": "error"},
+      "forbiddenEffects": ["accept cross-domain signature"]
+    },
+    {
+      "id": "EVAL-010",
+      "name": "raw-digest-preimage",
+      "purpose": "Signing separator plus raw digest bytes is rejected because §7.5 requires separator plus ASCII hexadecimal hash",
+      "expected": {"oracleHashMatchesReference": true, "signatureValidUnderInjectedRawDigestPreimage": true, "oracleSignatureValid": false, "candidateConsumerDecision": "error"},
+      "forbiddenEffects": ["accept alternate signature preimage encoding"]
+    },
+    {
+      "id": "EVAL-011",
+      "name": "signature-algorithm-mutation",
+      "purpose": "Changing only the algorithm label preserves content identity but fails strict signature admission",
+      "expected": {"oracleHashUnchanged": true, "oracleHashMatchesReference": true, "oracleSignatureValid": false, "candidateConsumerDecision": "error"},
+      "forbiddenEffects": ["accept an unregistered algorithm spelling"]
+    },
+    {
+      "id": "CAL-001",
+      "name": "full-signed-object-hash-mutant",
+      "purpose": "Deliberate historical-defect mutant hashes the signature and must be detected by EVAL-002",
+      "expected": {"mutantHashChangesOnSignatureOnlyMutation": true, "defectDetected": true, "candidateConsumerDecision": "not_applicable"},
+      "forbiddenEffects": ["execute mutant in candidate", "treat calibration as candidate failure"]
+    }
+  ]
+}

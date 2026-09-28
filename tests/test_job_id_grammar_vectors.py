@@ -401,19 +401,35 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             resolver_calls.append((job_id, role))
             return "attacker-selected-address"
 
+        fetched = {
+            "faultBundleVersion": "1",
+            "jobId": "not-a-current-job",
+            "outcome": "aborted-by-self",
+            "faultedParty": "seller",
+            "anchoredByRole": "seller",
+            "parties": [{
+                "role": "seller",
+                "primaryClaim": CURRENT_PEER_IDENTITY,
+            }],
+            "phaseSummary": [],
+            "finalisedAt": 1,
+            "signatures": [],
+        }
+        fetched_hash = DACS5_REFERENCE.bundle_hash(fetched)
+        fetched["signatures"] = [{
+            "party": CURRENT_PEER_IDENTITY,
+            "algorithm": "ed25519",
+            "value": base64.urlsafe_b64encode(CURRENT_PRIVATE_KEY.sign(
+                (
+                    DACS5_REFERENCE.FAULT_BUNDLE_DOMAIN + fetched_hash
+                ).encode("utf-8")
+            )).rstrip(b"=").decode("ascii"),
+        }]
         address_ok, address_reason = DACS5_REFERENCE._post_fetch_address_valid(
-            {
-                "jobId": "not-a-current-job",
-                "parties": [
-                    {
-                        "role": "seller",
-                        "primaryClaim": CURRENT_PEER_IDENTITY,
-                    }
-                ],
-            },
+            fetched,
             "attacker-selected-address",
             "seller",
-            "aa" * 32,
+            fetched_hash,
             CURRENT_KEY_AUTHORITY,
             expected_jobid="not-a-current-job",
             pure_mapping_resolver=permissive_resolver,

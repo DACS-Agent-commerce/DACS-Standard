@@ -311,6 +311,9 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
     def test_s2_jobid_not_string(self):
         b = self._good()
         b["jobId"] = 123   # non-string; refuses at the jobId-type arm before any address/hash use
+        b["signatures"] = []
+        for role in ("buyer", "seller"):
+            _add_bundle_signature(b, role, self.privs)
         ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), R.bundle_hash(b))
         self.assertFalse(ok)
         self.assertIn("fetched.jobId must be a string", reason)
@@ -325,7 +328,7 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
         b = self._good(omit_role_holder=True)   # parties omits the seller holder; anchoredByRole still seller
         ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), R.bundle_hash(b))
         self.assertFalse(ok)
-        self.assertIn("fetched roster has no holder for resolved role", reason)
+        self.assertIn("required signer role 'seller' absent", reason)
 
     def test_s7_fab_faulted_party_outside_permissible_set(self):
         b = {"jobId": "J", "faultBundleVersion": "1", "anchoredByRole": "seller",
@@ -404,7 +407,10 @@ class Round14VerificationCompletion(unittest.TestCase):
         self_c = self._legacy("JA", "aborted-by-self", "seller", ["seller"])   # abort => single-sign valid
         # cp shares the outcome (both blame self => genuine divergence); a HASHED distinguisher signed in
         # keeps its contentHash distinct from self (anchoredByRole alone is unhashed).
-        cp = self._legacy("JA", "aborted-by-self", "buyer", ["buyer"], extra={"noteTag": "cp"})
+        cp = self._legacy(
+            "JA", "aborted-by-self", "buyer", ["buyer", "seller"],
+            extra={"noteTag": "cp"},
+        )
         h_self, h_cp = R.bundle_hash(self_c), R.bundle_hash(cp)
         self.assertNotEqual(h_self, h_cp)
         self.assertTrue(R.divergence(self_c, cp), "honest pair must genuinely §10.4.3-diverge (control)")

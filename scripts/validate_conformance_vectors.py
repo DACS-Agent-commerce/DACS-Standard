@@ -35,6 +35,7 @@ EXPECTED_STAGES = ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
 MANIFEST_REQUIRED_CASE = {"id", "area", "spec", "summary", "status", "want"}
 MANIFEST_STATUSES = {"golden", "candidate"}
 REGISTRY_CASE_ID = "sig-registry-closed"
+HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
 REQUIRED_TOP_LEVEL = {
     "vectorId",
@@ -66,6 +67,7 @@ HASH_EXCLUDED = {
     "IdentityBoundAgreementDocument": {"signatures"},
     "IdentityBoundPayeeAgreementDocument": {"signatures"},
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
+    "DeliveryEvidence": {"signature"},                     # §B.2 / §9.7
     "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
 }
 
@@ -81,8 +83,50 @@ KIND_SEPARATOR = {
     "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
     "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
+    "DeliveryEvidence": "dacs-delivery-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
+
+# Kind -> the §B.2 body type discriminator that MUST be present with value "1" and
+# MUST NOT collide with another kind's discriminator. This binds the wrapper `kind`
+# to the artifact body before any hashing or signature work runs, so a wrapper
+# cannot smuggle a different artifact type past a reader that only dispatches on
+# the wrapper's `kind` label (CORE §11.2.5 version-signalling scope).
+BODY_DISCRIMINATORS = {
+    "Listing": "dacsVersion",
+    "VerifyResult": "resultVersion",
+    "CompositeVerificationRecord": "recordVersion",
+    "AgreementDocument": "agreementVersion",
+    "PayeeBoundAgreementDocument": "payeeBoundAgreementVersion",
+    "IdentityBoundAgreementDocument": "identityBoundAgreementVersion",
+    "IdentityBoundPayeeAgreementDocument": "identityBoundPayeeAgreementVersion",
+    "SettlementEvidence": "evidenceVersion",
+    "DeliveryEvidence": "deliveryEvidenceVersion",
+    "AttestationBundle": "bundleVersion",
+}
+
+DACS4_EVIDENCE_SELECTORS = frozenset({
+    "deliveryEvidenceVersion",
+    "evidenceVersion",
+    "finalityBoundEvidenceVersion",
+    "legacyTransitionEvidenceVersion",
+})
+
+# LR-2 size cap: the canonical JSON form of a Listing MUST NOT exceed 16,384 bytes
+# (DACS-1 §6.3.4). Enforced over the §B.2 signature-omitted canonical form.
+LISTING_SIZE_CAP = 16_384
+
+def lifecycle_evidence_kind_matches(kind: str, artifact: Any) -> bool:
+    """Bind a lifecycle wrapper to one exclusive supported DACS-4 selector."""
+    if kind not in {"DeliveryEvidence", "SettlementEvidence"}:
+        return True
+    if not isinstance(artifact, dict):
+        return False
+    expected = (
+        "deliveryEvidenceVersion" if kind == "DeliveryEvidence" else "evidenceVersion"
+    )
+    present = DACS4_EVIDENCE_SELECTORS.intersection(artifact)
+    return artifact.get(expected) == "1" and present == {expected}
 
 # The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
 # This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64
@@ -132,12 +176,28 @@ def legacy_spelling_allowed(path: Path, data: dict) -> bool:
 def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     spec_text = specsource.spec_text(root)
     start_marker = "The v0.x registry of domain separators at this revision is closed:"
-    end_marker = "**Payload shape — single-hash vs composite.**"
+    end_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
     start = spec_text.find(start_marker)
     end = spec_text.find(end_marker, start)
     if start == -1 or end == -1:
         return set()
     return set(DOMAIN_RE.findall(spec_text[start:end]))
+
+
+def load_historical_channel_domain(root: Path = ROOT) -> str | None:
+    """Parse the one frozen channel import domain outside the producer table."""
+
+    spec_text = specsource.spec_text(root)
+    start_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
+    end_marker = "**Payload shape — single-hash vs composite.**"
+    start = spec_text.find(start_marker)
+    end = spec_text.find(end_marker, start)
+    if start == -1 or end == -1:
+        return None
+    domains = set(DOMAIN_RE.findall(spec_text[start:end]))
+    if len(domains) != 1:
+        return None
+    return domains.pop()
 
 
 def canonical_json(value: Any) -> bytes:
@@ -372,8 +432,55 @@ def validate_vector(path: Path) -> list[str]:
                 )
             )
 
-        # §B.2 envelope content hash over the signature-omitted canonical form.
-        expected_hash = content_hash_uri(kind, artifact["artifact"])
+        # B8: bind the wrapper kind to the body type discriminator BEFORE any hash
+        # or signature work. A wrapper cannot relabel a different artifact type.
+        body = artifact["artifact"]
+        discriminator = BODY_DISCRIMINATORS[kind]
+        if not isinstance(body, dict) or body.get(discriminator) != "1":
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} body must carry {discriminator}: '1'",
+                )
+            )
+        foreign = sorted(
+            other for other, field in BODY_DISCRIMINATORS.items()
+            if other != kind and isinstance(body, dict) and field in body
+        )
+        if foreign:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} body carries a foreign type discriminator: {foreign}",
+                )
+            )
+        if not lifecycle_evidence_kind_matches(kind, body):
+            errors.append(
+                fail(path, f"{artifact_id}: {kind} requires its exclusive evidence selector")
+            )
+            continue
+
+        # C12/C13: canonicalisation fails closed — an unsafe numeric magnitude or a
+        # non-JSON value is a controlled rejection, never an uncaught traceback, and
+        # an oversized Listing is rejected before any signature is considered.
+        try:
+            scope = signing_scope(kind, body)
+            canonical = canonical_json(scope)
+        except (ValueError, TypeError) as exc:
+            errors.append(
+                fail(path, f"{artifact_id}: canonical form is not an admissible DACS value: {exc}")
+            )
+            continue
+        if kind == "Listing" and len(canonical) > LISTING_SIZE_CAP:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: Listing canonical form exceeds the LR-2 size cap "
+                    f"({len(canonical)} > {LISTING_SIZE_CAP} bytes)",
+                )
+            )
+            continue
+        expected_hash = "sha256:" + hashlib.sha256(canonical).hexdigest()
         if artifact["contentHash"] != expected_hash:
             errors.append(
                 fail(
@@ -528,6 +635,34 @@ def validate_manifest(path: Path) -> list[str]:
                             f"{prefix}.want.separators MUST equal the sorted closed §B.7 registry",
                         )
                     )
+                historical = want.get("historicalImport")
+                parsed_historical_domain = load_historical_channel_domain(ROOT)
+                expected_historical = {
+                    "operation": "legacy-import",
+                    "separator": HISTORICAL_CHANNEL_DOMAIN,
+                    "digestFraming": "raw-sha256-bytes",
+                }
+                if parsed_historical_domain != HISTORICAL_CHANNEL_DOMAIN:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}: could not parse the one frozen historical channel domain",
+                        )
+                    )
+                if historical != expected_historical:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.historicalImport MUST pin the separate frozen channel import domain",
+                        )
+                    )
+                if HISTORICAL_CHANNEL_DOMAIN in registry:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.separators MUST exclude the historical import-only domain",
+                        )
+                    )
 
     golden_path = path.parent / "vectors" / "golden.json"
     if golden_path.exists():
@@ -549,7 +684,7 @@ def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     manifest_dir = manifest_path.parent
     fixture_keys = {
         "bundle": ["fixture", "divergentSellerFixture", "htlc9Fixture"],
-        "settlement": ["fixture", "deliveryFixture"],
+        "settlement": ["fixture", "deliveryFixture", "ap2Fixture"],
     }
     for section, keys in fixture_keys.items():
         section_data = data.get(section)

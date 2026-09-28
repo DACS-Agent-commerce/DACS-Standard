@@ -1,6 +1,10 @@
 # DACS — Logical Flow Trace (SDK-mapped pseudocode)
 
-**Spec version.** Aligned to **DACS v0.1**. Trace updates with each minor version of the spec; see CHANGELOG for material changes since earlier drafts.
+**Scope.** Historical SDK-mapping pseudocode with selected current-wire examples,
+not a complete current-profile conformance implementation. In particular, the
+payment and finalization scaffolds below retain historical field names. Use the
+pinned minimum-conformant lifecycle linked below for executable current-profile
+examples; see CHANGELOG for material changes since earlier drafts.
 
 **Purpose.** Trace one end-to-end DACS happy path against the Demos SDK (`@kynesyslabs/demosdk`), so the logical flow can be sanity-checked against the technical flow that production code executes. Where the protocol needs something the SDK doesn't yet expose, that's called out inline and consolidated in the gap list at the end.
 
@@ -53,6 +57,10 @@ function signedBytes(kind: string, artifactHash: string): Uint8Array {
 }
 function jcs(obj: any): string { /* RFC 8785 canonical JSON */ }
 function sha256Hex(bytes: Uint8Array | string): string { /* sha256, hex-encoded */ }
+function base64urlNoPad(bytes: Uint8Array): string {
+  // CORE §B.7 SIG-6: unpadded Base64URL that re-encodes to itself.
+  return base64url(bytes).replace(/=+$/, "");
+}
 
 // SDK imports used throughout
 import { Demos } from "@kynesyslabs/demosdk/websdk";
@@ -303,7 +311,7 @@ Notes:
 
 ## 5. Stage 3 — Negotiate (RFQ on L2PS)
 
-The buyer and seller exchange offers and counters through an L2PS subnet. Each channel message is signed under the channel-msg domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
+The buyer and seller exchange offers and counters through an L2PS subnet. Each current DACS channel message is a discriminated `CanonicalChannelMessage` signed under the canonical-channel-message domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
 
 ```typescript
 async function negotiateRFQ(
@@ -327,23 +335,26 @@ async function negotiateRFQ(
 
   // Distribute RSA membership keys to buyer + seller out-of-band (e.g., via SIWD).
 
-  // 2. Multi-turn exchange. Each message signed under "dacs-channelmsg:v1:".
-  const transcript: SignedChannelMsg[] = [];
+  // 2. Multi-turn exchange. Each current message carries
+  // canonicalChannelMessageVersion: "1" and is signed under
+  // "dacs-canonical-channel-message:v1:" per DACS-3 CH-7/CH-8.
+  const transcript: CanonicalChannelMessage[] = [];
 
   // Turn 1: buyer offers 85 USDC
   transcript.push(await sendChannelMsg(subnet, buyerDemos, {
     channelId: subnetId,
     sequence: 1,
-    type: "counter",
+    type: "offer",
     body: { price: { amount: "85", currency: "USDC" }, deliverable: listing.offering.deliverable },
   }));
 
-  // Turn 2: seller counters 95 USDC
+  // Turn 2: seller counters 95 USDC (refs at the message level, per §8.3.3)
   transcript.push(await sendChannelMsg(subnet, sellerDemos, {
     channelId: subnetId,
     sequence: 2,
     type: "counter",
-    body: { price: { amount: "95", currency: "USDC" }, refs: { repliesTo: 1 } },
+    refs: { repliesTo: 1 },
+    body: { price: { amount: "95", currency: "USDC" } },
   }));
 
   // Turn 3: buyer counters 90 USDC
@@ -351,7 +362,8 @@ async function negotiateRFQ(
     channelId: subnetId,
     sequence: 3,
     type: "counter",
-    body: { price: { amount: "90", currency: "USDC" }, refs: { repliesTo: 2 } },
+    refs: { repliesTo: 2 },
+    body: { price: { amount: "90", currency: "USDC" } },
   }));
 
   // Turn 4: seller accepts
@@ -359,7 +371,8 @@ async function negotiateRFQ(
     channelId: subnetId,
     sequence: 4,
     type: "accept",
-    body: { acceptedTerms: transcript[2].body, refs: { repliesTo: 3 } },
+    refs: { repliesTo: 3 },
+    body: { acceptedTerms: transcript[2].body },
   });
   transcript.push(acceptMsg);
 
@@ -419,20 +432,39 @@ async function negotiateRFQ(
   return { agreement, agreementHash, commitment };
 }
 
-async function sendChannelMsg(subnet: any, sender: Demos, msg: Partial<ChannelMessage>) {
-  const envelope = {
+async function sendChannelMsg(subnet: any, sender: Demos, msg: Partial<CanonicalChannelMessage>) {
+  // DACS-3 §8.3.3 CH-7: the current message is a discriminated
+  // CanonicalChannelMessage. `sender` is the author's canonical primary
+  // ClaimReference (CF-2 byte form) under the registered DACS-1 scheme
+  // registry — e.g. `key:<64 lowercase hex>` for an Ed25519 primary key;
+  // the generic historical `cci:<hex>` spelling is unregistered and refused
+  // on current reads — and the authenticated CH-1 membership binding — not
+  // the message — supplies the member's key and key type.
+  const senderClaim = lookupPrimaryClaim(sender);
+  const unsignedMessage = {
+    canonicalChannelMessageVersion: "1",  // exclusive current-message discriminator (CH-7)
     channelId: msg.channelId,
-    sequence: msg.sequence,
-    sender: { primaryClaim: lookupPrimaryClaim(sender), address: sender.getAddress() },
+    sequence: msg.sequence,                // positive integer, monotonic per channel
+    sender: senderClaim,
     sentAt: Date.now(),
     type: msg.type,
     body: msg.body,
-    refs: msg.refs,
+    ...(msg.refs ? { refs: msg.refs } : {}),
   };
-  const envHash = sha256Hex(jcs(envelope));
+  // DACS-3 §8.3.3 CH-8: exact signed bytes —
+  //   message_hash := lowercase_hex(sha256(UTF8(JCS(unsigned_message))))
+  //   signed_bytes := UTF8("dacs-canonical-channel-message:v1:") || ASCII(message_hash)
+  const messageHash = sha256Hex(jcs(unsignedMessage));   // 64-char lowercase hex, ASCII-encoded
   const signed = {
-    ...envelope,
-    signature: await sender.sign(signedBytes("channelmsg", envHash)),
+    ...unsignedMessage,
+    signature: {
+      signatureVersion: "1",              // version-1 signature envelope (CH-7)
+      signer: senderClaim,                 // same party as `sender` under CORE §B.1/CF-3
+      algorithm: "ed25519",                // matches the authenticated primary key's type
+      value: base64urlNoPad(await sender.sign(
+        concat(utf8("dacs-canonical-channel-message:v1:"), ascii(messageHash)),
+      )),                                  // CORE §B.7 SIG-6 unpadded Base64URL
+    },
   };
 
   // ⚠ Today: subnet.sendMessage({ recipient, content }) is the SDK call.
@@ -455,12 +487,25 @@ Notes:
 
 Settlement runs as a `DemosWork` script with two sequential `WorkStep`s:
 1. an `xm` step that the Demos node auto-routes through the Liquidity Tank infrastructure (buyer pays USDC on Base; tank releases USDC on Solana to the seller),
-2. a follow-up step where the seller mints + anchors the EntitlementRecord and the orchestrator anchors `SettlementEvidence` for both phases.
+2. a follow-up step where the seller signs + anchors the EntitlementRecord and the phase orchestrator signs + anchors the current `DeliveryEvidence` for the delivery phase.
 
 This is the most important point of alignment: **there is no `tank.transfer()` SDK call**. Liquidity Tanks are an internal optimisation that the substrate applies to cross-chain `xm` steps that meet certain conditions (route exists, amount within tank capacity, source+dest assets both supported). The SDK surface is just `WorkStep` with `context: "xm"`.
 
+**Historical adapter scaffold, not current-conforming payment wire.** The
+`paymentEvidence` object and its historical storage address below illustrate the
+old SDK mapping; they are not the current closed `SettlementEvidence` or PC-2
+address and MUST NOT be emitted as current payment evidence. The current delivery
+example uses the invocation index from the already-authenticated ordinary
+Listing's complete ordered `pipeline`, including negotiation and commitment,
+not a settlement-local counter. This single-invocation example refuses repeated
+matching kinds rather than guessing an invocation; an implementation supporting
+repetition must use its authenticated execution index. A `pay-alternative`
+session additionally needs the authenticated APR effective pipeline, which this
+fixed-rail example does not implement.
+
 ```typescript
 async function settle(
+  listing: Listing, // already authenticated and bound to this session
   agreement: Agreement,
   agreementHash: string,
   buyerKey: string,
@@ -468,6 +513,15 @@ async function settle(
   orchestratorDemos: Demos,
   jobId: string
 ) {
+  function singlePhaseIndex(kind: string): number {
+    const indices = listing.pipeline.flatMap((phase, index) =>
+      phase.kind === kind ? [index] : []);
+    assert(indices.length === 1, "walkthrough requires one matching invocation");
+    return indices[0];
+  }
+  const paymentPhaseIndex = singlePhaseIndex("pay-cross-chain-liquidity-tank");
+  const deliveryPhaseIndex = singlePhaseIndex("deliver-entitlement");
+
   // === Payment phase: pay-cross-chain-liquidity-tank ===
   //
   // The buyer constructs a cross-chain payment payload. The Demos node, when
@@ -523,7 +577,7 @@ async function settle(
       jobId,
       agreementHash,
       phaseType: "pay-cross-chain-liquidity-tank",
-      phaseIndex: 0,
+      phaseIndex: paymentPhaseIndex,
       actor: agreement.parties.buyer.primaryClaim,
       completedAt: Date.now(),
       txRef: {
@@ -538,7 +592,7 @@ async function settle(
     paymentEvidence.signature = await buyerDemos.sign(signedBytes("evidence", peHash));
 
     await buyerDemos.storage.write({                                       // SR-2
-      address: `stor-${sha256Hex("dacs4:evidence:" + jobId + ":0")}`,
+      address: `stor-${sha256Hex("dacs4:evidence:" + jobId + ":" + paymentPhaseIndex)}`,
       value: JSON.stringify(paymentEvidence),
     });
 
@@ -553,50 +607,65 @@ async function settle(
   await sellerDemos.connectWallet(sellerKey);
 
   const entitlement = {
+    entitlementVersion: "1",
     jobId,
-    agreementHash,
-    grantedTo: agreement.parties.buyer.primaryClaim,
+    grantee: agreement.parties.buyer.primaryClaim,
+    grantor: agreement.parties.seller.primaryClaim,
     serviceEndpoint: "https://api.seller.example/moderate",
-    scope: ["content-moderation:v1"],
-    apiKeyHash: sha256Hex(generateApiKey()),     // raw key sent off-chain to buyer
     startsAt: Date.now(),
     endsAt:   Date.now() + 30 * 86400 * 1000,
+    scope: { service: "content-moderation:v1" },
+    renewable: false,
+    renewalSeq: 0,
   };
   const entHash = sha256Hex(jcs(omitField(entitlement, "signature")));
   entitlement.signature = await sellerDemos.sign(signedBytes("entitlement", entHash));
 
+  const entitlementLogicalAddress = `dacs4:entitlement:${jobId}:${deliveryPhaseIndex}:${entitlement.renewalSeq}`;
   const entAnchor = await sellerDemos.storage.write({                      // SR-2
-    address: `stor-${sha256Hex("dacs4:entitlement:" + jobId)}`,
+    address: `stor-${sha256Hex(entitlementLogicalAddress)}`,
     value: JSON.stringify(entitlement),
   });
+  await sellerDemos.disconnect();
 
-  const deliveryEvidence: SettlementEvidence = {
+  const deliveryEvidence: DeliveryEvidence = {
+    deliveryEvidenceVersion: "1",
     jobId,
-    agreementHash,
-    phaseType: "deliver-entitlement",
-    phaseIndex: 1,
-    actor: agreement.parties.seller.primaryClaim,
-    completedAt: Date.now(),
+    phaseIndex: deliveryPhaseIndex,
+    phase: "deliver-entitlement",
+    outcome: "success",
     deliverableContentHash: entHash,
-    deliverableAnchor: entAnchor,
-    errorClass: null,
+    deliverableAnchor: { kind: "storage-program", locator: entitlementLogicalAddress },
+    observedAt: Date.now(),
   };
   const deHash = sha256Hex(jcs(omitField(deliveryEvidence, "signature")));
-  deliveryEvidence.signature = await sellerDemos.sign(signedBytes("evidence", deHash));
+  deliveryEvidence.signature = await orchestratorDemos.sign(
+    signedBytes("delivery-evidence", deHash)
+  );
 
-  await sellerDemos.storage.write({                                        // SR-2
-    address: `stor-${sha256Hex("dacs4:evidence:" + jobId + ":1")}`,
+  const deliveryEvidenceLogicalAddress = `dacs4:delivery:${jobId}:${deliveryPhaseIndex}`;
+  await orchestratorDemos.storage.write({                                  // SR-2
+    address: `stor-${sha256Hex(deliveryEvidenceLogicalAddress)}`,
     value: JSON.stringify(deliveryEvidence),
   });
 
-  await sellerDemos.disconnect();
   return { paymentEvidence, deliveryEvidence, entitlement };
 }
 ```
 
 Notes:
 - **Liquidity Tank access is implicit, not explicit.** The SDK has no `demos.tank.*` namespace. A cross-chain `xm` WorkStep with a supported source/dest pair routes through a tank. At the SDK level the same call *could* be served by HTLC if tank capacity were exhausted — but the **DACS-4 rail model forbids silent mechanism substitution** (§9.5.5): a pinned `pay-cross-chain-liquidity-tank` rail MUST NOT fall through to HTLC. The produced `txRef.kind` MUST match the pinned rail; a phase whose executed mechanism differs MUST fail (errorClass: permanent). An implementation wanting HTLC fallback expresses it as a distinct pinned rail / phase, not an implicit fallthrough.
-- **The entitlement key is off-chain.** Only the hash of the API key is on-chain. The raw key is delivered to the buyer via encrypted message to the buyer's primary key (typically as a payload in an L2PS message, or directly to the buyer's wallet inbox).
+- **Credential-bearing entitlements use the normative binding.** This compact
+  example uses the entitlement record itself as the grant. If it instead
+  carried `credentialRef`, the current `DeliveryEvidence` would also carry the
+  exact `credentialDelivery` ref/access model, cleartext digest, and
+  `renewalSeq` required by §9.7 PDE-5; an off-chain hash-only key handover is
+  not a conforming substitute.
+- **Delivery authority stays split.** The seller remains the grantor, signer,
+  and SR-2 writer of the `EntitlementRecord`. The authenticated phase
+  orchestrator is the signer and SR-2 writer of the enclosing current
+  `DeliveryEvidence`; a seller signature or seller write cannot substitute for
+  that phase authority, even though the seller produced the delivered record.
 - **One DemosWork per phase, or one per session?** The trace shows one `DemosWork` for the payment phase; the entitlement is anchored as a separate write. Production code can compose them into a single `DemosWork` if atomic execution is required, but the protocol allows independent anchoring (each phase produces its own evidence record).
 
 ---
@@ -604,6 +673,20 @@ Notes:
 ## 7. Stage 5 — Verify
 
 The session ends. The orchestrator assembles the AttestationBundle; buyer and seller co-sign; each role anchors their copy at a role-specific address.
+
+**Historical finalization scaffold, not current-conforming bundle wire.** The
+object below retains the old `phaseType` / `phaseIndex` / `evidenceRef` /
+`errorClass` / `completedAt` projection. In particular, it cannot consume the
+current `DeliveryEvidence` above through that projection. Current
+`BundlePhaseEntry` values use `index`, `kind`, and `outcome` from the authenticated
+execution trace, including negotiation and commitment results: delivery
+`success` maps to `ok`, and delivery `failure` maps to `fail`. Do not infer a
+complete trace by mapping only evidence records. Current `settlementEvidence[]`
+contains complete `AttestationRef` values, not bare storage anchors; an optional
+per-phase `attestationRef` must equal its corresponding top-level reference.
+The remaining historical bundle fields and role anchoring also need migration
+before this scaffold can be used for current admission. This section is an SDK
+capability illustration, not a current bundle producer.
 
 ```typescript
 async function verify(session: SessionState, jobId: string) {
@@ -722,13 +805,13 @@ The trace is an honest forward projection of what production DACS-on-Demos code 
 
 ### 9.3 SR-4 (L2PS) — channel-message envelope API
 
-**Trace assumption.** `sendChannelMsg(...)` sends a fully-structured envelope (sequence, signature, refs) and the SDK preserves the structure on the receive side.
+**Trace assumption.** `sendChannelMsg(...)` sends a fully-structured `CanonicalChannelMessage` envelope (discriminator, sequence, signature envelope, refs) and the SDK preserves the structure on the receive side.
 
-**Reality today.** `subnet.sendMessage({ recipient, content })` accepts arbitrary `content`. The structure is whatever the caller puts in. There is no SDK-level type for `ChannelMessage`, no sequence enforcement, no transcript-export.
+**Reality today.** `@kynesyslabs/demosdk@4.0.16` exposes the historical Demos message container: no current DACS discriminator, a bare lowercase-hex Ed25519 value, and the frozen `dacs-channelmsg:v1:` raw-digest signed bytes. It is evidence for the explicit read/import arm, not the current DACS type.
 
-**Gap.** First-class `ChannelMessage` type in the SDK with sequence validation on receive, transcript export, and helper for the `dacs-channelmsg:v1:` signing. Also on DACS-3 Tier 1.
+**Gap.** Add a `CanonicalChannelMessage` producer/consumer that emits the CH-7/CH-8 discriminator, signature envelope, SIG-6 value, canonical domain and ASCII lowercase-hex digest framing; retain the old SDK object only behind an explicit historical import API. Execute the Standard's mixed-wire corpus and keep sequence validation/transcript export. Also on DACS-3 Tier 1.
 
-**Spec impact.** None — the envelope shape in this trace matches DACS-3 §8.3.3.
+**Spec impact.** DACS-3 §8.3.3 defines the current/historical split. This trace shows only the current arm; importing the SDK's historical message does not authorize re-emitting it.
 
 ### 9.4 SR-4 (L2PS) — encrypted-transcript anchoring
 

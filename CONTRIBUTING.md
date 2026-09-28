@@ -69,7 +69,17 @@ description so the change is reviewable inline.
 
 ## Validation
 
-For documentation-only changes and conformance-vector edits, run the dependency-free validators:
+Use Python 3 and an isolated environment with the same cryptographic dependency
+pins as [the validation workflow](./.github/workflows/validate.yml):
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
+python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
+```
+
+Run the documentation and conformance validators:
 
 ```sh
 python3 scripts/validate_conformance_vectors.py
@@ -78,8 +88,25 @@ python3 scripts/validate_domain_separators.py
 python3 scripts/validate_rule_ids.py
 python3 scripts/validate_spec_tables.py
 python3 scripts/validate-docs.py
-python3 -m unittest discover tests -v
 ```
+
+Run the complete unit suite with CI's zero-skip requirement. Ordinary unittest
+discovery alone can report success when a required cryptographic suite is skipped.
+
+```sh
+python3 - <<'PYTEST'
+import sys, unittest
+result = unittest.TextTestRunner(verbosity=2).run(
+    unittest.TestLoader().discover("tests"))
+for test, reason in result.skipped:
+    print("SKIPPED %s: %s" % (test, reason))
+sys.exit(0 if result.wasSuccessful() and not result.skipped else 1)
+PYTEST
+```
+
+The workflow also runs generator, lifecycle, manifest and other consistency checks;
+use its current commands for complete workflow verification. The commands above
+do not claim that the selected validators alone reproduce every CI step.
 
 If you add or edit a security-vector set under `conformance/vectors/security/`,
 also regenerate the README's set-index table (it is generated, not hand-edited):

@@ -5,6 +5,8 @@ import unittest
 from collections import Counter
 from pathlib import Path
 
+import dacs5_reference as R
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SECURITY = ROOT / "conformance" / "vectors" / "security"
@@ -52,21 +54,54 @@ def evaluate_reference(vector):
 def evaluate_semantic(vector):
     input_data = vector["input"]
     authority = input_data["authorityDisposition"]
-    if authority == "indeterminate":
+    legacy = input_data.get("legacyAgreement") is True
+
+    historical_only = False
+    if legacy:
+        # Run the actual LAA oracle over the embedded admission input; a legacy
+        # payment never trusts a precomputed disposition. Missing, unknown, or
+        # malformed LAA input is non-authorizing (rejected).
+        admission = R.laa_want(input_data.get("laa"))["dacs5Admission"]
+        if admission == "historical-only":
+            expected = "accept"
+            historical_only = True
+        elif admission == "indeterminate":
+            expected = "indeterminate"
+        else:
+            expected = "reject"
+    elif authority == "indeterminate":
         expected = "indeterminate"
     elif authority == "rejected" or input_data.get("mismatch") is not None:
         expected = "reject"
     else:
         expected = "accept"
 
-    included = expected == "accept"
+    included = expected == "accept" and not historical_only
     completed = included and input_data["outcome"] == "completed"
-    payment = (
-        input_data["presentedEvidenceCount"] > 0
-        and input_data.get("evidencePhase", "pay-dem") in PAYMENT_PHASE_TYPES
-        and input_data.get("evidenceOutcome", "success") == "success"
-    )
+    presented = input_data.get("presentedEvidence")
+    if presented is None:
+        # Released single-member corpus compatibility.
+        payment = (
+            input_data["presentedEvidenceCount"] > 0
+            and input_data.get("evidencePhase", "pay-dem") in PAYMENT_PHASE_TYPES
+            and input_data.get("evidenceOutcome", "success") == "success"
+        )
+    else:
+        payment = any(
+            item.get("phase") in PAYMENT_PHASE_TYPES
+            and item.get("outcome") == "success"
+            and item.get("family") in {"SettlementEvidence", "FinalityBoundSettlementEvidence"}
+            for item in presented
+        )
     volume = completed and payment
+    if historical_only:
+        disposition = "historical-only"
+    else:
+        disposition = (
+            "eligible"
+            if volume
+            else ("eligible-non-volume" if included else "excluded-without-fault")
+        )
     want = {
         "bundleIncluded": included,
         "completionNumerator": 1 if completed else 0,
@@ -74,7 +109,7 @@ def evaluate_semantic(vector):
         "counterpartyAdjustedDenominator": 1 if included else 0,
         "volumeByCurrency": ["5 DEM"] if volume else [],
         "transactionCountByCurrency": [{"currency": "DEM", "count": 1}] if volume else [],
-        "disposition": "eligible" if volume else ("eligible-non-volume" if included else "excluded-without-fault"),
+        "disposition": disposition,
     }
     return {"expected": expected, "want": want}
 
@@ -122,6 +157,40 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
                 self.assertEqual(result["expected"], vector["expected"])
                 self.assertEqual(result["want"], vector["want"])
 
+    def test_historical_legacy_pass_is_excluded_from_every_current_metric(self):
+        case = next(
+            c for c in self.semantic["vectors"]
+            if c["name"] == "reputation-settlement-semantic-legacy-historical-pass-excluded"
+        )
+        result = evaluate_semantic(case)
+        self.assertEqual(result["expected"], "accept")
+        want = result["want"]
+        self.assertFalse(want["bundleIncluded"])
+        self.assertEqual(want["completionNumerator"], 0)
+        self.assertEqual(want["partyFaultDenominator"], 0)
+        self.assertEqual(want["counterpartyAdjustedDenominator"], 0)
+        self.assertEqual(want["volumeByCurrency"], [])
+        self.assertEqual(want["transactionCountByCurrency"], [])
+        self.assertEqual(want["disposition"], "historical-only")
+
+    def test_legacy_omission_and_tamper_are_non_authorizing(self):
+        """A legacy payment is never default-accepted: an omitted, unknown, or
+        malformed LAA admission input rejects the bundle member."""
+        base = next(
+            c for c in self.semantic["vectors"]
+            if c["name"] == "reputation-settlement-semantic-legacy-historical-pass-excluded"
+        )
+        # Omitted LAA input -> rejected, not accepted.
+        omitted = {"input": {k: v for k, v in base["input"].items() if k != "laa"}}
+        self.assertEqual(evaluate_semantic(omitted)["expected"], "reject")
+        self.assertFalse(evaluate_semantic(omitted)["want"]["bundleIncluded"])
+        # Unknown/malformed LAA input -> rejected, never accepted.
+        for bad in (None, "historical-pass", [], {"operation": ["historical-audit"]}):
+            with self.subTest(bad=repr(bad)[:40]):
+                tampered = {"input": {**base["input"], "laa": bad}}
+                self.assertEqual(evaluate_semantic(tampered)["expected"], "reject")
+                self.assertFalse(evaluate_semantic(tampered)["want"]["bundleIncluded"])
+
     def test_volume_uses_closed_payment_phase_type_membership(self):
         expected_payment_phases = (
             "pay-evm-erc20",
@@ -157,9 +226,35 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
                 self.assertEqual(result["want"]["transactionCountByCurrency"], [])
                 self.assertEqual(result["want"]["disposition"], "eligible-non-volume")
 
+    def test_mixed_payment_and_delivery_counts_payment_only(self):
+        base = {
+            "outcome": "completed",
+            "authorityDisposition": "verified",
+            "presentedEvidence": [
+                {"family": "SettlementEvidence", "phase": "pay-dem", "outcome": "success"},
+                {"family": "DeliveryEvidence", "phase": "deliver-entitlement", "outcome": "success"},
+            ],
+        }
+        mixed = evaluate_semantic({"input": base})
+        self.assertEqual("accept", mixed["expected"])
+        self.assertEqual(["5 DEM"], mixed["want"]["volumeByCurrency"])
+        self.assertEqual([{"currency": "DEM", "count": 1}], mixed["want"]["transactionCountByCurrency"])
+
+        delivery_only = evaluate_semantic({"input": {
+            **base, "presentedEvidence": base["presentedEvidence"][1:],
+        }})
+        self.assertEqual("accept", delivery_only["expected"])
+        self.assertEqual([], delivery_only["want"]["volumeByCurrency"])
+        self.assertEqual([], delivery_only["want"]["transactionCountByCurrency"])
+
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("`DeliveryEvidence` for a current delivery", spec)
+        self.assertIn("A verified delivery member can establish delivery validity but never payment volume", spec)
+
     def test_new_discriminators_preserve_released_v1_meaning(self):
         text = SPEC.read_text(encoding="utf-8")
-        self.assertIn("**DACS-5 v0.5**", text)
+        self.assertRegex(text, r"\*\*DACS-5 v0\.(?:[5-9]|[1-9][0-9]+)\*\*")
+        self.assertIn("makes APR-7 effective-pipeline recomputation mandatory", text)
         self.assertIn('settlementVerifiedDerivationVersion: "1"', text)
         self.assertIn('replayableSettlementVerifiedDerivationVersion: "1"', text)
         self.assertIn("Existing discriminators retain their released meaning.", text)

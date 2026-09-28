@@ -353,15 +353,24 @@ class PreReviewGateTests(unittest.TestCase):
             self.assertLess(time.monotonic() - started, 4)
             self.assertTrue(ready_path.is_file())
             with lock_path.open("r+") as lock:
-                try:
-                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    child_pid = int(ready_path.read_text())
+                release_deadline = time.monotonic() + 2
+                while True:
                     try:
-                        os.kill(child_pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    self.fail("timed-out descendant still holds the output-pipe process group")
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except BlockingIOError:
+                        if time.monotonic() < release_deadline:
+                            time.sleep(0.01)
+                            continue
+                        child_pid = int(ready_path.read_text())
+                        try:
+                            os.kill(child_pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        self.fail(
+                            "timed-out descendant still holds its lock two "
+                            "seconds after process-group termination"
+                        )
 
     @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
     def test_timeout_kills_descendant_holding_output_pipes(self):

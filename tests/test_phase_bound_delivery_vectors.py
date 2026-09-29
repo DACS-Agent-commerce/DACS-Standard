@@ -323,12 +323,25 @@ def validate_delivery_artifact(
         record_entry = find_artifact(case, address, "EntitlementRecord")
         if record_entry is None:
             artifact_records = case.get("artifactRecords")
-            if artifact_records is None:
-                return "indeterminate"
-            phase_records = [entry for entry in artifact_records
-                             if entry.get("kind") == "EntitlementRecord"
-                             and str(entry.get("logicalAddress", "")).startswith(prefix)]
-            return "fail" if phase_records else "indeterminate"
+            phase_records = [
+                entry for entry in artifact_records or []
+                if entry.get("kind") == "EntitlementRecord"
+                and str(entry.get("logicalAddress", "")).startswith(prefix)
+            ]
+            receipt_status = R._resolved_delivery_dependency(
+                None,
+                {"anchor": anchor, "contentHash": content_hash},
+                receipts,
+                completed,
+                "entitlement record",
+                job_id=job,
+                phase_index=index,
+                phase_kind=phase,
+                expected_writer=parties["seller"],
+            )[0][0]
+            return worst_status(
+                receipt_status, "fail" if phase_records else "pass"
+            )
         dependency, record_entry, _ = R._resolved_delivery_dependency(
             record_entry,
             {"anchor": anchor, "contentHash": content_hash},
@@ -443,6 +456,18 @@ def validate_delivery_artifact(
             # A sole supplied candidate can be classified directly. Do not guess
             # among multiple unrelated records when the keyed lookup is unresolved.
             matches = credentials
+        if not matches:
+            return R._resolved_delivery_dependency(
+                None,
+                ref_value,
+                receipts,
+                completed,
+                "entitlement credential",
+                job_id=job,
+                phase_index=index,
+                phase_kind=phase,
+                expected_writer=ref_value.get("signer", parties["seller"]),
+            )[0][0]
         if len(matches) != 1:
             return "indeterminate"
         credential = matches[0]
@@ -534,15 +559,26 @@ def validate_delivery_artifact(
         record_entry = find_artifact(case, record_address, "PayloadAttestationRecord")
         if record_entry is None:
             artifact_records = case.get("artifactRecords")
-            if artifact_records is None:
-                return "indeterminate"
             same_record_elsewhere = any(
                 entry.get("kind") == "PayloadAttestationRecord"
                 and isinstance(entry.get("artifact"), dict)
                 and artifact_hash(entry["artifact"]) == supplied.get("contentHash")
-                for entry in artifact_records
+                for entry in artifact_records or []
             )
-            return "fail" if same_record_elsewhere else "indeterminate"
+            receipt_status = R._resolved_delivery_dependency(
+                None,
+                supplied,
+                receipts,
+                completed,
+                "payload attestation record",
+                job_id=job,
+                phase_index=index,
+                phase_kind=phase,
+                expected_writer=supplied.get("signer"),
+            )[0][0]
+            return worst_status(
+                receipt_status, "fail" if same_record_elsewhere else "pass"
+            )
         availability, record_entry, _ = R._resolved_delivery_dependency(
             record_entry,
             supplied,
@@ -646,15 +682,26 @@ def validate_delivery_artifact(
         )
         if method_entry is None:
             records = case.get("artifactRecords")
-            if records is None:
-                return "indeterminate"
             same_proof_elsewhere = any(
                 entry.get("kind") == "methodEvidence"
                 and isinstance(entry.get("artifact"), dict)
                 and hash_hex(entry["artifact"]) == method_ref.get("contentHash")
-                for entry in records
+                for entry in records or []
             )
-            return "fail" if same_proof_elsewhere else "indeterminate"
+            receipt_status = R._resolved_delivery_dependency(
+                None,
+                method_ref,
+                receipts,
+                completed,
+                "method evidence",
+                job_id=job,
+                phase_index=index,
+                phase_kind=phase,
+                expected_writer=method_ref.get("signer"),
+            )[0][0]
+            return worst_status(
+                receipt_status, "fail" if same_proof_elsewhere else "pass"
+            )
         availability, method_entry, _ = R._resolved_delivery_dependency(
             method_entry,
             method_ref,
@@ -1097,6 +1144,174 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector), vector["expected"])
+
+    def test_dependency_receipt_precedence_matrix_covers_all_six_dependencies(self):
+        dependencies = {
+            "storage", "entitlement", "credential",
+            "payload", "attestation", "method",
+        }
+        entry_modes = {"missing", "unavailable"}
+        expected_by_receipt = {
+            "consistent": "indeterminate",
+            "bad-writer": "fail",
+            "malformed": "error",
+            "missing": "indeterminate",
+            "present-null": "error",
+        }
+        vectors = [
+            vector for vector in self.data["vectors"]
+            if vector["name"].startswith("dependency-receipt-precedence-")
+        ]
+        self.assertEqual(60, len(vectors))
+        self.assertEqual(
+            {
+                (dependency, entry_mode, receipt_mode)
+                for dependency in dependencies
+                for entry_mode in entry_modes
+                for receipt_mode in expected_by_receipt
+            },
+            {
+                (vector["dependency"], vector["entryMode"], vector["receiptMode"])
+                for vector in vectors
+            },
+        )
+        for vector in vectors:
+            with self.subTest(vector=vector["name"]):
+                self.assertEqual(
+                    expected_by_receipt[vector["receiptMode"]],
+                    vector["expected"],
+                )
+                self.assertEqual(vector["expected"], evaluate(vector))
+
+    def test_primary_closure_keeps_receipt_precedence_for_all_six_dependencies(self):
+        expected_by_receipt = {
+            "consistent": "indeterminate",
+            "bad-writer": "fail",
+            "malformed": "error",
+            "missing": "indeterminate",
+            "present-null": "error",
+        }
+        phase_by_dependency = {
+            "storage": (1, "deliver-storage-program"),
+            "entitlement": (3, "deliver-entitlement"),
+            "credential": (5, "deliver-entitlement"),
+            "payload": (6, "deliver-attested-payload"),
+            "attestation": (6, "deliver-attested-payload"),
+            "method": (6, "deliver-attested-payload"),
+        }
+        pubkeys = {
+            G.claim(seed): Ed25519PrivateKey.from_private_bytes(seed)
+            .public_key().public_bytes_raw()
+            for seed in (
+                G.ORCHESTRATOR_SEED,
+                G.SELLER_SEED,
+                G.VERIFIER_SEED,
+                G.BUYER_SEED,
+            )
+        }
+
+        def entry_at(case, kind, address):
+            return next((
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == kind
+                and entry.get("logicalAddress") == address
+            ), None)
+
+        def primary(case, dependency):
+            phase_index, phase_kind = phase_by_dependency[dependency]
+            evidence = next(
+                entry["artifact"] for entry in case["evidenceRecords"]
+                if entry["artifact"].get("phaseIndex") == phase_index
+            )
+            authority = next(
+                item for item in case["deliveryAuthorities"]
+                if item.get("phaseIndex") == phase_index
+            )
+            if phase_kind == "deliver-storage-program":
+                closure = {}
+                delivered = entry_at(
+                    case, "deliverable", evidence["deliverableAnchor"]["locator"]
+                )
+                if delivered is not None:
+                    closure["deliverable"] = delivered
+            elif phase_kind == "deliver-entitlement":
+                closure = {}
+                entitlement = entry_at(
+                    case,
+                    "EntitlementRecord",
+                    evidence["deliverableAnchor"]["locator"],
+                )
+                if entitlement is not None:
+                    closure["entitlementRecord"] = entitlement
+                    credential_ref = entitlement.get("artifact", {}).get(
+                        "credentialRef", {}
+                    ).get("ref")
+                    credential = next((
+                        entry for entry in case["credentials"]
+                        if entry.get("credentialRef", {}).get("ref") == credential_ref
+                    ), None)
+                    if credential is not None:
+                        closure["credential"] = credential
+            else:
+                closure = {"agreementHash": G.AGREEMENT_HASH}
+                payload = entry_at(
+                    case, "deliverable", evidence["deliverableAnchor"]["locator"]
+                )
+                if payload is not None:
+                    closure["deliverable"] = payload
+                attestation_ref = evidence["attestationRef"]
+                attestation = entry_at(
+                    case,
+                    "PayloadAttestationRecord",
+                    attestation_ref["anchor"]["locator"],
+                )
+                if attestation is not None:
+                    closure["payloadAttestationRecord"] = attestation
+                    method_ref = attestation.get("artifact", {}).get(
+                        "methodEvidenceRef"
+                    )
+                    method = entry_at(
+                        case,
+                        "methodEvidence",
+                        method_ref.get("anchor", {}).get("locator")
+                        if isinstance(method_ref, dict) else None,
+                    )
+                    if method is not None:
+                        closure["methodEvidence"] = method
+            execution = {
+                "jobId": G.JOB,
+                "phaseIndex": phase_index,
+                "phaseKind": phase_kind,
+                **(
+                    {"agreementHash": G.AGREEMENT_HASH}
+                    if phase_kind == "deliver-attested-payload" else {}
+                ),
+            }
+            return R._validate_delivery_artifact_closure_disposition(
+                evidence,
+                f"{phase_index}:{phase_kind}",
+                {"offering": {"deliverable": authority["deliverable"]}},
+                case["bundle"],
+                pubkeys,
+                execution,
+                closure,
+                case["verifiedReceiptByCanonicalRef"],
+                case.get("trustedNativeTransactionObservationsByCanonicalRef"),
+                legacy=False,
+            )[0]
+
+        for dependency in phase_by_dependency:
+            for entry_mode in ("missing", "unavailable"):
+                for receipt_mode, expected in expected_by_receipt.items():
+                    case = G.dependency_receipt_precedence_case(
+                        dependency, entry_mode, receipt_mode
+                    )
+                    with self.subTest(
+                        dependency=dependency,
+                        entry=entry_mode,
+                        receipt=receipt_mode,
+                    ):
+                        self.assertEqual(expected, primary(case, dependency))
 
     def test_malformed_nested_attested_members_are_errors(self):
         def malformed_agreement_deliverable(case):

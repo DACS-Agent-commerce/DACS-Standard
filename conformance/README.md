@@ -64,6 +64,12 @@ non-normative, bounded evaluation proposals and reproducibility artifacts. They
 do not add conformance requirements or promote their case sets into golden
 vectors.
 
+The [`interop/`](./interop/) directory carries the non-normative issue-270
+`dacs-adapter/1` proposal. It pins the exact Standard sources selected for an
+offline cross-run handoff, exposes only bounded operations backed by existing
+Standard primitives, and records the runner abstention and independent-implementation
+gates.
+
 ## Coverage
 
 - `canonicalize`: 6 legacy golden vectors for JCS canonicalization and signed scope. Current CORE §B.2 fraction, magnitude, and Unicode boundaries are exercised by the self-contained `canonical-json-v0.1` security corpus.

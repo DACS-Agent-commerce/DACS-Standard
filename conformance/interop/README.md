@@ -14,10 +14,16 @@ pins the Standard revision, tree, implementation blobs, source corpora, selected
 case identifiers, and expected values. The adapter verifies those local
 committed blobs and the exact DACS-Standard Git origin before importing them.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
-wrapped primitive digests remain separate. Repository identity contains no
-revision, so two wrappers around DACS-Standard still count as one codebase.
-In particular, the contributor `standard-jcs-adapter` and this wrapper cannot be
-used as two independent implementations.
+wrapped primitive digests remain separate. `provenanceCodebase` identifies the
+wrapped DACS-Standard codebase without a revision. Wrappers that retain the same
+assertion can be compared as a one-codebase self-check, even when their wrapper
+repository URLs differ. The pinned contributor runner has not established
+equivalence between asserted provenance and repository-derived identity when an
+adapter omits the optional assertion. Until that boundary is repaired and
+regression-tested, an `INTEROP-AGREE` result involving this adapter must not be
+accepted or cited as independent interoperability evidence. In particular,
+the contributor `standard-jcs-adapter` and this wrapper are not two independent
+implementations.
 
 The executable operations are:
 
@@ -96,9 +102,10 @@ python3 -m unittest tests.test_dacs_adapter
 
 These commands are a Standard self-check. An `INTEROP-AGREE` result requires a
 separate adapter from a distinct implementation codebase and a shared runner;
-none is claimed by this proposal. The immutable neutral-source export supplied
-for this work contains the interface and adapter sources but no self-contained
-runner executable or config schema. The reproducible adapter handoff command is
-`python3 scripts/dacs_adapter.py`; the neutral runner owner can pass that command
-through its documented repeatable `--adapter` option once the runner is
-published.
+none is claimed by this proposal. The pinned acceptance run does not test mixed
+asserted and repository-derived identity metadata. The immutable neutral-source
+export supplied for this work contains the interface and adapter sources but no
+self-contained runner executable or config schema. The reproducible adapter
+handoff command is `python3 scripts/dacs_adapter.py`. The neutral runner owner
+can pass that command through its documented repeatable `--adapter` option once
+the runner is published.

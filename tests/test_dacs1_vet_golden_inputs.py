@@ -477,9 +477,11 @@ def verification_method_valid(method):
     but only the defined members below can affect method resolution or authority.
     """
 
-    if not isinstance(method, dict) or method.get("kind") not in KNOWN_METHODS:
+    if not isinstance(method, dict):
         return False
-    kind = method["kind"]
+    kind = method.get("kind")
+    if not isinstance(kind, str) or kind not in KNOWN_METHODS:
+        return False
     if kind == "verifiable-credential":
         issuers = method.get("issuerAllowList")
         return (
@@ -508,7 +510,8 @@ def verification_method_valid(method):
         endpoint = method.get("endpoint")
         if (
             not isinstance(endpoint, dict)
-            or endpoint.get("method") not in {"GET", "POST"}
+            or not isinstance(endpoint.get("method"), str)
+            or endpoint["method"] not in {"GET", "POST"}
             or not isinstance(endpoint.get("urlTemplate"), str)
             or (
                 "headers" in endpoint
@@ -543,7 +546,8 @@ def verification_method_valid(method):
             and ("args" not in method or isinstance(method["args"], list))
         )
     if kind == "domain-tls-control":
-        return method.get("challengeType") in {
+        challenge_type = method.get("challengeType")
+        return isinstance(challenge_type, str) and challenge_type in {
             "http-01", "dns-01", "tls-alpn-01"
         }
     # self-signed and demos-gcr-domain have no variant-specific fields.
@@ -3997,6 +4001,8 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
 
     def test_signed_default_and_alternative_method_shapes_are_validated(self):
         invalid_methods = [
+            ("kind list", {"kind": []}),
+            ("kind object", {"kind": {}}),
             ("vc issuer null", {
                 "kind": "verifiable-credential", "issuerAllowList": None,
             }),
@@ -4044,6 +4050,18 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 "kind": "consensus-backed-proxy",
                 "endpoint": {
                     "method": "PUT", "urlTemplate": "https://example.test",
+                },
+            }),
+            ("proxy method list", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": [], "urlTemplate": "https://example.test",
+                },
+            }),
+            ("proxy method object", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": {}, "urlTemplate": "https://example.test",
                 },
             }),
             ("proxy url missing", {
@@ -4129,6 +4147,12 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             ("domain challenge missing", {"kind": "domain-tls-control"}),
             ("domain challenge", {
                 "kind": "domain-tls-control", "challengeType": "smtp-01",
+            }),
+            ("domain challenge list", {
+                "kind": "domain-tls-control", "challengeType": [],
+            }),
+            ("domain challenge object", {
+                "kind": "domain-tls-control", "challengeType": {},
             }),
         ]
 

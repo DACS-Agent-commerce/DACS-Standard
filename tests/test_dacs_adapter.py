@@ -141,7 +141,11 @@ class DacsAdapterTests(unittest.TestCase):
                 )
             ]
         )
-        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(
+            completed.returncode,
+            0,
+            completed.stderr.decode() + completed.stdout.decode(),
+        )
         self.assertFalse(responses[0]["ok"])
         self.assertEqual(responses[0]["error"]["code"], "UNSUPPORTED_CASE")
         self.assertNotEqual(responses[0]["error"]["code"], "OPERATION_FAILED")

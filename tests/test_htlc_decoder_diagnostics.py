@@ -22,7 +22,7 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
     def test_decoder_recursion_uses_controlled_file_and_cli_diagnostics(self):
         ver = self.verifier
         with mock.patch.object(
-            ver, "loads_unique_json", side_effect=RecursionError("decoder recursion limit")
+            ver, "load_raw_json", side_effect=RecursionError("decoder recursion limit")
         ):
             for path in (ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED):
                 with self.subTest(path=path.name):

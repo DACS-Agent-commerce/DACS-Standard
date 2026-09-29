@@ -46,6 +46,7 @@ PHASE_INDEX = 0
 _INVOCATIONS: dict[str, dict] = {}
 _NONCE_ISSUANCES: list[dict] = []
 _RECORD_RECEIPTS: dict[str, dict] = {}
+_RESULT_PROVENANCE: dict[tuple[bytes, str], dict] = {}
 _INVOCATION_SEQUENCE = 0
 
 
@@ -98,6 +99,7 @@ def reset_generation_state() -> None:
     _INVOCATIONS.clear()
     _NONCE_ISSUANCES.clear()
     _RECORD_RECEIPTS.clear()
+    _RESULT_PROVENANCE.clear()
     _INVOCATION_SEQUENCE = 0
 
 
@@ -275,8 +277,10 @@ def signed_recipe(
     scheme: str,
     method: dict,
     recipe_version: int,
+    *,
+    alternatives: list[dict] | None = None,
 ) -> dict:
-    method_kind = method["kind"]
+    methods = [method, *(alternatives or [])]
     unsigned = {
         "recipeVersion": recipe_version,
         "scheme": scheme,
@@ -290,10 +294,12 @@ def signed_recipe(
             "anchoring": "single-signer",
         },
     }
-    if method_kind in {
+    if alternatives is not None:
+        unsigned["alternatives"] = copy.deepcopy(alternatives)
+    if any(item["kind"] in {
         "verifiable-credential", "tlsnotary", "zktls",
         "consensus-backed-proxy", "evm-rpc",
-    }:
+    } for item in methods):
         unsigned["parserRules"] = {"format": "raw", "matcher": ".+"}
     signature = b64url(
         RECIPE_STEWARD.sign(
@@ -346,6 +352,10 @@ def recipe_registry() -> dict:
                 },
             },
             1,
+            alternatives=[{
+                "kind": "tlsnotary",
+                "endpoint": "https://api.gleif.org/api/v1/lei-records/{identifier}",
+            }],
         ),
         # RA-3 versions are monotonic per scheme, including across families.
         signed_recipe("lei", vc, 2),
@@ -464,7 +474,48 @@ def evaluation(
     }
     if req is not None:
         input_value["requirement"] = copy.deepcopy(req)
+        register_current_result_provenance(
+            resolved or [], invocation_id, req
+        )
     return {"operation": operation, "input": input_value}
+
+
+def register_current_result_provenance(
+    resolved: list[dict], invocation_id: str, req: dict
+) -> None:
+    """Bind result bytes to the exact admitted invocation and member bytes.
+
+    This is verifier-owned fixture context. It is intentionally outside every
+    candidate-controlled evaluation and signed Standard wire artifact.
+    """
+
+    members = [
+        *req.get("required", []),
+        *(member for group in req.get("oneOf", []) for member in group),
+    ]
+    requirement_hash = hash_hex(req)
+    for item in resolved:
+        artifact = item["artifact"]
+        for requirement_member in members:
+            if requirement_member.get("scheme") != artifact.get("scheme"):
+                continue
+            key = (
+                canonical_bytes(item["ref"]),
+                item["serializedArtifactHash"],
+            )
+            entry = _RESULT_PROVENANCE.setdefault(key, {
+                "ref": copy.deepcopy(item["ref"]),
+                "serializedArtifactHash": item["serializedArtifactHash"],
+                "currentProductions": [],
+                "cachedOrigins": [],
+            })
+            production = {
+                "invocation": invocation_id,
+                "requirementHash": requirement_hash,
+                "memberHash": hash_hex(requirement_member),
+            }
+            if production not in entry["currentProductions"]:
+                entry["currentProductions"].append(production)
 
 
 def signed_composite(
@@ -579,6 +630,7 @@ def aggregate_evaluation(
         record_receipt_id=receipt_id,
         record_anchor_binding=anchor_binding,
     )
+    register_current_result_provenance(resolved, invocation_id, req)
     return {
         "operation": "aggregate",
         "input": {
@@ -1383,12 +1435,15 @@ def build_document() -> dict:
             "resultAuthorities": [
                 {
                     "scheme": recipe["scheme"],
-                    "method": recipe["defaultMethod"]["kind"],
+                    "method": method["kind"],
                     "recipeVersion": recipe["recipeVersion"],
                     "algorithm": "ed25519",
                     "signer": AUTHORITY_REF,
                 }
                 for recipe in registry["recipes"]
+                for method in [
+                    recipe["defaultMethod"], *recipe.get("alternatives", [])
+                ]
             ],
             "authenticatedSourceAttestations": [
                 authenticated_attestations[key]
@@ -1397,6 +1452,10 @@ def build_document() -> dict:
             "authenticatedResultArtifacts": [
                 authenticated_results[key]
                 for key in sorted(authenticated_results)
+            ],
+            "authenticatedResultProvenance": [
+                _RESULT_PROVENANCE[key]
+                for key in sorted(_RESULT_PROVENANCE)
             ],
             # These are harness-initialisation inputs, not fields accepted from
             # an evaluation candidate and not part of any signed artifact.

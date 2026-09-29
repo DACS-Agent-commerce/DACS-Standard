@@ -175,6 +175,12 @@
             "acceptedAt": 1899913600000,
             "anchoring": "single-signer"
           },
+          "alternatives": [
+            {
+              "kind": "tlsnotary",
+              "endpoint": "https://api.gleif.org/api/v1/lei-records/{identifier}"
+            }
+          ],
           "parserRules": {
             "format": "raw",
             "matcher": ".+"
@@ -182,7 +188,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
-            "value": "VDsaZ4Z8P5rlCwtCceNyAnZk7ScjCoBwgztCsjqqQlOjrMEd_Zp-s9I4FB9nkGJTNUs2ge9s5_6S0L_vmmF3BA"
+            "value": "5mKm4I3Wt-4XK9eovHMCjYq-CPmkmVn7oa6_h-uBI4KNknMPPHULsDISON383XUFZREoSHC37DEEHV08sLNIBw"
           }
         },
         {
@@ -259,6 +265,13 @@
       {
         "scheme": "lei",
         "method": "consensus-backed-proxy",
+        "recipeVersion": 1,
+        "algorithm": "ed25519",
+        "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+      },
+      {
+        "scheme": "lei",
+        "method": "tlsnotary",
         "recipeVersion": 1,
         "algorithm": "ed25519",
         "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
@@ -898,6 +911,564 @@
           "recipeVersion": 2
         },
         "serializedArtifactHash": "09daadba3f96f2b8f89b2522db02325b92a3c24b8282ec463677488ed13185ea"
+      }
+    ],
+    "authenticatedResultProvenance": [
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:cci-lei-pass"
+          },
+          "contentHash": "7720667051369d258f18cb4fb844a9b7421cd0091a39252871d120478cba5d60",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "fa2e5e1ab62dfbd415907649f5410a2e921e6be5a48ea9cb1fb2f67ebb5cbe21",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-002",
+            "requirementHash": "275da6bc148a434ece10f9a5e7ac9021a4124e0d79ed1a2b974b0bb90a286a0e",
+            "memberHash": "6aa421f1043adfb61844eda2ca1fc44785bf004e1320f87eb551a32f03811a99"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:crq2-result-parameters"
+          },
+          "contentHash": "dabc518e460a81b54f9ee810780ae59b2a51992f1c1c5aaaf1fe484f19abe015",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "46b959adf3ea5d38b72974ec1137fe99d95a7a3847f0770e7da5b80bed779a17",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-006",
+            "requirementHash": "8d04542c2efb6452b451cc4932ae6f191f9bb6b28f8da64e9a5567badd0890be",
+            "memberHash": "39656802a0b81e9c15cd54bf4baa726eae827a29738b1263d4961774f9b1e3d4"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:dacs1-freshness-expired"
+          },
+          "contentHash": "6ee003989aeb15dabdd225f9f442930795d4f328d616eca4386f4247a6e545d4",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "7d99a372cc71f6cd8367a736b924b89374eb85126e2c227a73d7a12c4c0e7eca",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-024",
+            "requirementHash": "f30bee0766b513df025a1a9cdfbf48b32d6e439c6939bd6d5dbc4d814637f030",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:dacs1-freshness-expires-only"
+          },
+          "contentHash": "ed13b27e3fbcfc754ee644673078575eae779b8001fadaba195bfc8873f73f23",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "2a10f973228e34ed781e7f668e136608c070c40fc6177984b9dc64284d8e0af9",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-025",
+            "requirementHash": "f30bee0766b513df025a1a9cdfbf48b32d6e439c6939bd6d5dbc4d814637f030",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:dacs1-freshness-max-age"
+          },
+          "contentHash": "31f5f8f9c445ffe011182fa1d019c457ecac89c0021a1a279da716b0d1f4e83b",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "0a23d33e6fc3251d1630bb97c2c5dfde7c4802a0e3b0302120a8dab08e4bc0ee",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-026",
+            "requirementHash": "401f0f9cbdf791c20059fc08658c28c52cb49ecc2bd455e423f136ea9f67707e",
+            "memberHash": "96fa7a4938c7764071d09ea42c05b3dd3385636e1d52103254b4360e41b13f7a"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:dacs1-freshness-other-fresh"
+          },
+          "contentHash": "b0843cd40e1f786e6ef40f77eb779e65af13d83d2e98638fb4b6b1070d1bdebc",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "da9ee2255d1938797df90085c28c281b3b54ff6371a0d1064b30ee47c631dac2",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-027",
+            "requirementHash": "47401220b8288983f5647b2c830c69a732670f6043c04cf3dfcf83bfde0c19b7",
+            "memberHash": "b18d0eb6152706d1f4f2b046a40fda53bc95469ad082c66961645b69b81dc4a7"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:dacs1-freshness-selected-stale"
+          },
+          "contentHash": "f947153bebf30c423f6abd2897bb8515a06c6962f42f97efffeca53d2b480111",
+          "recipeVersion": 2
+        },
+        "serializedArtifactHash": "cda0449e072119c39e3b2e5d8278b9acc0cdd33bb4a71672992f3d7e8d4fb9a2",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-027",
+            "requirementHash": "47401220b8288983f5647b2c830c69a732670f6043c04cf3dfcf83bfde0c19b7",
+            "memberHash": "b18d0eb6152706d1f4f2b046a40fda53bc95469ad082c66961645b69b81dc4a7"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:findclaim-indeterminate"
+          },
+          "contentHash": "0920a391acefa6fae4649efefeb137cc78ff4c5f8f48445c0e9d9351e107bf5e",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "d092b339c8f0d2e7fefaf4c696416051c003c3eefc979da02aa3815c4a78f454",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-036",
+            "requirementHash": "f30bee0766b513df025a1a9cdfbf48b32d6e439c6939bd6d5dbc4d814637f030",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:laundering-other"
+          },
+          "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "941653c986c49b302eaa1c7de298c37a72c29e2839890e617779c68e366a7c45",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-003",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-032",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-033",
+            "requirementHash": "8618e969e47843094ea0ee67b7ee3c09fd357aaa0856d77a843f36e28c218fdc",
+            "memberHash": "f8a5115886bd573ef7f8048843d1308e01a067744a967b1e3d7679b6f4b567ed"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-034",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:laundering-selected"
+          },
+          "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "cfa502b63f4883fdd5f22b1791360ffa1ffaf7cdbb11c9f1763ebf9f0b7abf87",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-003",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-032",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-033",
+            "requirementHash": "8618e969e47843094ea0ee67b7ee3c09fd357aaa0856d77a843f36e28c218fdc",
+            "memberHash": "f8a5115886bd573ef7f8048843d1308e01a067744a967b1e3d7679b6f4b567ed"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-034",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:oneof-domain-error"
+          },
+          "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "ed5974d6033320c3e36adcb206bb1b0644378c8ed52bc7cafb6f5b9b38ed2885",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-042",
+            "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
+            "memberHash": "cba2d61c2461061ab5ded00e740ab70149d0aebb5572aad0119c50fbb2f86c01"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-044",
+            "requirementHash": "647b7eb216c46142f051b8f2857e696fcfd7cf142543a0b6f4f4b9aca930cadf",
+            "memberHash": "cba2d61c2461061ab5ded00e740ab70149d0aebb5572aad0119c50fbb2f86c01"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:oneof-domain-indeterminate"
+          },
+          "contentHash": "cf6b5d3b1a8906716174566b74f86a294080c130ce889e6ee2a96a531477cbb9",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "ecc272206b4e1e764b76e4014f608085fab2f5f3ad04e1b5c7eb1aa8640ee683",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-043",
+            "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
+            "memberHash": "cba2d61c2461061ab5ded00e740ab70149d0aebb5572aad0119c50fbb2f86c01"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:oneof-finra"
+          },
+          "contentHash": "eea6344f8ab28b122826fafe4483e242c5ac427fb0f9dd31a59c4d2071fd5809",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "fbf39947c1e014a5305f0374a515528b3c43da136fc6c3274152138353a94b96",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-029",
+            "requirementHash": "e3118fa09d5bb2707b162407460f453c632673a0844cd0875e26b897ba5045da",
+            "memberHash": "d944f4f6ba913ab0990bc76eec706f26a0cbb2fc325aac20b8b50c5dde9808dc"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:oneof-lei-fail"
+          },
+          "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "a27be28e199c2620bff3c6cbb42674492663189e6e5d72d5d4c9b969389f4699",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-042",
+            "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-043",
+            "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-044",
+            "requirementHash": "647b7eb216c46142f051b8f2857e696fcfd7cf142543a0b6f4f4b9aca930cadf",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:other-key-pass"
+          },
+          "contentHash": "44ad51c53e340c8697f55cd6ba7989f38fee3ca2d272bf016bd9248619a768c4",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "3883af3b33f4ff956a7178073c8f2d13f68d77f9612c2c2abcba30e4afd69b20",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-022",
+            "requirementHash": "d125bba5315c9c4ef347619a448f299b82e9f4599af586f976067ee05c1de332",
+            "memberHash": "5b995fd477dab970d2243b376470c86993a5c14d3abbe5944d777e737adb12a5"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:registry-forged-holder-binding"
+          },
+          "contentHash": "6ae5b536fefd067877994e2a4281231d36ba0f5ef8d342b64c915b36bbee8420",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "b5a74bdc3e7b74e0ac8d511fe7630ddbe816d6ce245a15683ed1b3366ef2cc18",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-017",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:registry-lei"
+          },
+          "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-004",
+            "requirementHash": "f30bee0766b513df025a1a9cdfbf48b32d6e439c6939bd6d5dbc4d814637f030",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-005",
+            "requirementHash": "4541b0991143b76835081f54948f95f92062889f68995e4441a1d98d78d9ba4e",
+            "memberHash": "6e0ca15105aad6b01b8e691c420349ef1d3aa543222977d73ed43217bcb4034e"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-007",
+            "requirementHash": "f02a6d4bd49bbe35a5c3f2af01f133159888b36db761d90ab64c78c60150ffbd",
+            "memberHash": "bcbf70de47e167cca9c5a6f68d1fb8f75d48eadafc50bc439e9dea34c23f6a1c"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-008",
+            "requirementHash": "a48f3a85907612c24977a57991d18ccc6de3ae1fd3eb3f579b016ef98aac0511",
+            "memberHash": "e5f99dd99cfad491001ddb7b50e003c3ee0c8bf45551abab648aec64273adb8d"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-009",
+            "requirementHash": "6289557c6faee4df5e38e81106057a627ec1d0dee46976ae18fb2fbeca03045d",
+            "memberHash": "59505fb22722b2921d29344010fe6874d56119b596ed2b8c0e939521637bfe96"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-010",
+            "requirementHash": "a3ab57a9f403f8ea6dcbfea57f84e294e288cef6a3ff5c10e628ac0e1ce4a7b7",
+            "memberHash": "19723024ca333adc79526b930a277dbe6276016a99928596f4696be1d4bb8dd5"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-011",
+            "requirementHash": "98b59757acca21982b77bcb239b3a270464dccd2ad4f03d9b66cb5fff463c33e",
+            "memberHash": "adb2c14daa3c942698d511cc77a6d4a4a512bd22c54a965d9d61e356d7ddb0b4"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-012",
+            "requirementHash": "1849697f9884d52cbae153fa0fb847b7393c5266390f6bbe41426e5363a01a5b",
+            "memberHash": "13a44f01adfc134a6701b624fbea5d7efe641231fd6d4ca13e5a1eeacbb7d512"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-013",
+            "requirementHash": "58b1d91b3ad7a4b14acf190a6169b060816e658a2614cc08954caed8a32a5ed2",
+            "memberHash": "499b40012c5dd4cdae8ca67029f80acd4327b8020f5e9c2b022909bce9c9e041"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-014",
+            "requirementHash": "77b5eadd6498e8434df776d02da3d8eaa7c237cd6d426fdc4bd3675d0bfb6622",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-014",
+            "requirementHash": "77b5eadd6498e8434df776d02da3d8eaa7c237cd6d426fdc4bd3675d0bfb6622",
+            "memberHash": "499b40012c5dd4cdae8ca67029f80acd4327b8020f5e9c2b022909bce9c9e041"
+          },
+          {
+            "invocation": "dacs-366-vet-invocation-015",
+            "requirementHash": "e45ad43a9431d9fdc5beea1d9bd5fcabb9e0f0d50c4429ed06bcb2e7cf0264bb",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:scheme-mismatch-lei"
+          },
+          "contentHash": "d9b464942b9e434f0a5845defaf753c83dab7a11310c44c74bed318d6a33e6b8",
+          "recipeVersion": 2
+        },
+        "serializedArtifactHash": "9160ea477ae516924a53f1a2f394d4347801c4cee3f89c67b778a57934e68c45",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-031",
+            "requirementHash": "22b7fbb8147373bc096ec1dcd2a21575ebb7e589e104e7e0c86035eeeb6608bd",
+            "memberHash": "3f395b70566786fd9e3a070ba1639d467a795913a9366d5a5f89c97daa671481"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:selected-vlei-pass"
+          },
+          "contentHash": "191db07e93cd5e957a5a0d24b8fc063b3eea9eed1abc67a370a77ea8f77106ff",
+          "recipeVersion": 2
+        },
+        "serializedArtifactHash": "eb512f8f5dd381863db2a7b7a15a05384437cd4b16664267f6285016b3bc47ec",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-035",
+            "requirementHash": "22b7fbb8147373bc096ec1dcd2a21575ebb7e589e104e7e0c86035eeeb6608bd",
+            "memberHash": "3f395b70566786fd9e3a070ba1639d467a795913a9366d5a5f89c97daa671481"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:vet-freshness-expired"
+          },
+          "contentHash": "a294b00ae4753996f9c36ee8fc344fa555141930664f0a87f1c25e38ea7b04ca",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "86ac418ed3a0d6c52c0c3384188ea1175c699dc0eabd80b5ef1b23ec4e2bbd07",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-038",
+            "requirementHash": "f30bee0766b513df025a1a9cdfbf48b32d6e439c6939bd6d5dbc4d814637f030",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:vet-freshness-expires-only"
+          },
+          "contentHash": "81b932a961949a75b35414841780ceddc1864646f09102aca668a3aacca4f461",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "013657f84942fee55ff096fb94ac93c1e0f480d7c89ff24172fbe51ae75d3873",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-039",
+            "requirementHash": "f30bee0766b513df025a1a9cdfbf48b32d6e439c6939bd6d5dbc4d814637f030",
+            "memberHash": "ab2eec121b3dce1ba0607131b730b7ee5dfe01e70bef763a88c42c27645230c8"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:vet-freshness-max-age"
+          },
+          "contentHash": "cce86e0611ac4e6db5c9739c613de13a79ffd13a374e6194ad7ad9f48c8adfd1",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "54f64f14ec56e1cf6ee0fb4598326148501172939f07bdefb98f968ab4f93931",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-040",
+            "requirementHash": "401f0f9cbdf791c20059fc08658c28c52cb49ecc2bd455e423f136ea9f67707e",
+            "memberHash": "96fa7a4938c7764071d09ea42c05b3dd3385636e1d52103254b4360e41b13f7a"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:vet-freshness-other-fresh"
+          },
+          "contentHash": "da01dab23643e18ba1a62156b5819ca322e71ce755935d4f722dc564d372e32f",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "7b9d6491ab70ac680558dbb838c39aa08ab9cb6552958388734495c5531391dd",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-041",
+            "requirementHash": "47401220b8288983f5647b2c830c69a732670f6043c04cf3dfcf83bfde0c19b7",
+            "memberHash": "b18d0eb6152706d1f4f2b046a40fda53bc95469ad082c66961645b69b81dc4a7"
+          }
+        ],
+        "cachedOrigins": []
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "demos:dacs-363:result:vet-freshness-selected-stale"
+          },
+          "contentHash": "5bb944dbcce2cda5b53a794a0de19378ffe80e3e5eecc05e87af00bfde136311",
+          "recipeVersion": 2
+        },
+        "serializedArtifactHash": "09daadba3f96f2b8f89b2522db02325b92a3c24b8282ec463677488ed13185ea",
+        "currentProductions": [
+          {
+            "invocation": "dacs-366-vet-invocation-041",
+            "requirementHash": "47401220b8288983f5647b2c830c69a732670f6043c04cf3dfcf83bfde0c19b7",
+            "memberHash": "b18d0eb6152706d1f4f2b046a40fda53bc95469ad082c66961645b69b81dc4a7"
+          }
+        ],
+        "cachedOrigins": []
       }
     ],
     "vetInvocations": {

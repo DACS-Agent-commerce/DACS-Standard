@@ -314,6 +314,39 @@ def rebuild_direct_result(evaluation, document, mutate_artifact, *, index=0):
             "ref": copy.deepcopy(replacement["ref"]),
             "serializedArtifactHash": replacement["serializedArtifactHash"],
         })
+    provenance = document["trustedContext"]["authenticatedResultProvenance"]
+    invocation = changed["input"]["authority"]["invocation"]
+    requirement = changed["input"]["requirement"]
+    artifact = replacement["artifact"]
+    member = next(
+        item
+        for item in [
+            *requirement.get("required", []),
+            *(m for group in requirement.get("oneOf", []) for m in group),
+        ]
+        if item.get("scheme") == artifact.get("scheme")
+    )
+    provenance_entry = {
+        "ref": copy.deepcopy(replacement["ref"]),
+        "serializedArtifactHash": replacement["serializedArtifactHash"],
+        "currentProductions": [{
+            "invocation": invocation,
+            "requirementHash": hash_hex(requirement),
+            "memberHash": hash_hex(member),
+        }],
+        "cachedOrigins": [],
+    }
+    existing = next((
+        item for item in provenance
+        if canonical_bytes(item["ref"]) == canonical_bytes(replacement["ref"])
+        and item["serializedArtifactHash"] == replacement["serializedArtifactHash"]
+    ), None)
+    if existing is None:
+        provenance.append(provenance_entry)
+    else:
+        production = provenance_entry["currentProductions"][0]
+        if production not in existing["currentProductions"]:
+            existing["currentProductions"].append(production)
     bundle = changed["input"]["bundle"]
     for claim in bundle["claims"]:
         if claim.get("verifiedBy") == old_ref:
@@ -323,6 +356,160 @@ def rebuild_direct_result(evaluation, document, mutate_artifact, *, index=0):
         bundle, presenter, public_ref(presenter)
     )
     return changed
+
+
+def result_provenance_entry(document, resolved):
+    key = canonical_bytes(resolved["ref"])
+    artifact_hash = resolved["serializedArtifactHash"]
+    return next(
+        item
+        for item in document["trustedContext"]["authenticatedResultProvenance"]
+        if canonical_bytes(item["ref"]) == key
+        and item["serializedArtifactHash"] == artifact_hash
+    )
+
+
+def set_result_provenance(document, resolved, *, current=(), cached=()):
+    entry = result_provenance_entry(document, resolved)
+    entry["currentProductions"] = copy.deepcopy(list(current))
+    entry["cachedOrigins"] = copy.deepcopy(list(cached))
+
+
+def rebuild_aggregate_result(
+    evaluation, document, mutate_artifact, *, index, overall_decision
+):
+    """Re-sign and commit one verifier-produced aggregate result replacement."""
+
+    changed = copy.deepcopy(evaluation)
+    value = changed["input"]
+    old = value["resolvedResults"][index]
+    replacement_source = copy.deepcopy(old)
+    mutate_artifact(replacement_source["artifact"])
+    replacement = resign_result(
+        replacement_source, fixture_private_key("authority"), AUTHORITY_REF
+    )
+    value["resolvedResults"][index] = replacement
+    document["trustedContext"]["authenticatedResultArtifacts"].append({
+        "ref": copy.deepcopy(replacement["ref"]),
+        "serializedArtifactHash": replacement["serializedArtifactHash"],
+    })
+    requirement = value["authority"]["vetInput"]["requirement"]
+    member = next(
+        item
+        for item in [
+            *requirement.get("required", []),
+            *(member for group in requirement.get("oneOf", []) for member in group),
+        ]
+        if item.get("scheme") == replacement["artifact"].get("scheme")
+    )
+    document["trustedContext"]["authenticatedResultProvenance"].append({
+        "ref": copy.deepcopy(replacement["ref"]),
+        "serializedArtifactHash": replacement["serializedArtifactHash"],
+        "currentProductions": [{
+            "invocation": value["authority"]["invocation"],
+            "requirementHash": hash_hex(requirement),
+            "memberHash": hash_hex(member),
+        }],
+        "cachedOrigins": [],
+    })
+    value["record"]["dealSpecific"] = [
+        copy.deepcopy(replacement["ref"])
+        if canonical_bytes(ref) == canonical_bytes(old["ref"])
+        else ref
+        for ref in value["record"]["dealSpecific"]
+    ]
+    value["record"]["requirementHash"] = hash_hex(requirement)
+    value["record"]["overallDecision"] = overall_decision
+    changed["input"] = reanchor_composite_input(value, document)
+    return changed
+
+
+def set_result_attestation_family(document, resolved):
+    artifact = resolved["artifact"]
+    entry = next(
+        item
+        for item in document["trustedContext"]["authenticatedSourceAttestations"]
+        if canonical_bytes(item["attestation"])
+        == canonical_bytes(artifact["attestation"])
+    )
+    entry.update(
+        scheme=artifact["scheme"],
+        method=artifact["method"],
+        recipeVersion=artifact["recipeVersion"],
+    )
+
+
+def resign_recipe(recipe):
+    unsigned = {key: value for key, value in recipe.items() if key != "signature"}
+    recipe["signature"] = {
+        "algorithm": "ed25519",
+        "signer": RECIPE_STEWARD_REF,
+        "value": b64url_encode(
+            fixture_private_key("recipe-steward").sign(
+                (RECIPE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+            )
+        ),
+    }
+
+
+def recipe_methods(recipe):
+    default = recipe.get("defaultMethod")
+    alternatives = recipe.get("alternatives", [])
+    if (
+        not isinstance(default, dict)
+        or not isinstance(alternatives, list)
+        or any(not isinstance(item, dict) for item in alternatives)
+    ):
+        return None
+    methods = [default, *alternatives]
+    kinds = [item.get("kind") for item in methods]
+    if (
+        any(kind not in KNOWN_METHODS for kind in kinds)
+        or len(kinds) != len(set(kinds))
+    ):
+        return None
+    return methods
+
+
+def append_recipe_authorities(context, recipe):
+    """Register every signed execution tuple supported by one recipe."""
+
+    for method in recipe_methods(recipe):
+        context["resultAuthorities"].append({
+            "scheme": recipe["scheme"],
+            "method": method["kind"],
+            "recipeVersion": recipe["recipeVersion"],
+            "algorithm": "ed25519",
+            "signer": AUTHORITY_REF,
+        })
+
+
+def owning_recipe_family(recipes, scheme, selected_method):
+    """Return the unique signed default-method owner before eligibility."""
+
+    if not isinstance(recipes, dict) or selected_method not in KNOWN_METHODS:
+        return None
+    owners = {
+        owner
+        for (candidate_scheme, owner, _), recipe in recipes.items()
+        if candidate_scheme == scheme
+        and any(
+            method.get("kind") == selected_method
+            for method in (recipe_methods(recipe) or [])
+        )
+    }
+    return next(iter(owners)) if len(owners) == 1 else None
+
+
+def recipe_for_method_version(recipes, scheme, selected_method, version):
+    owner = owning_recipe_family(recipes, scheme, selected_method)
+    recipe = recipes.get((scheme, owner, version)) if owner is not None else None
+    if recipe is None or not any(
+        method.get("kind") == selected_method
+        for method in (recipe_methods(recipe) or [])
+    ):
+        return None
+    return recipe
 
 
 def authenticated_recipe_registry(document):
@@ -342,13 +529,14 @@ def authenticated_recipe_registry(document):
         if not isinstance(recipe, dict):
             return None
         signature = recipe.get("signature")
+        methods = recipe_methods(recipe)
         method = recipe.get("defaultMethod")
         if (
             not isinstance(signature, dict)
             or set(signature) != {"algorithm", "signer", "value"}
             or signature.get("algorithm") != "ed25519"
             or signature.get("signer") != RECIPE_STEWARD_REF
-            or not isinstance(method, dict)
+            or methods is None
         ):
             return None
         unsigned = {key: value for key, value in recipe.items() if key != "signature"}
@@ -363,7 +551,6 @@ def authenticated_recipe_registry(document):
         version = recipe.get("recipeVersion")
         if (
             scheme not in KNOWN_SCHEMES
-            or kind not in KNOWN_METHODS
             or type(version) is not int
             or version < 1
             or not exact_safe_integer(recipe.get("defaultMaxAgeSec"), minimum=0)
@@ -373,7 +560,7 @@ def authenticated_recipe_registry(document):
         ):
             return None
         has_parser = isinstance(recipe.get("parserRules"), dict)
-        if (kind in PARSER_METHODS) != has_parser:
+        if any(item["kind"] in PARSER_METHODS for item in methods) != has_parser:
             return None
         if has_parser and recipe["parserRules"] != {
             "format": "raw", "matcher": ".+"
@@ -385,6 +572,13 @@ def authenticated_recipe_registry(document):
             return None
         resolved[family_key] = recipe
         scheme_versions.add(scheme_version)
+    ownership = {}
+    for (scheme, owner, _), recipe in resolved.items():
+        for method in recipe_methods(recipe):
+            key = (scheme, method["kind"])
+            prior = ownership.setdefault(key, owner)
+            if prior != owner:
+                return None
     return resolved
 
 
@@ -438,10 +632,14 @@ def authenticated_result_context(document, recipes):
     authorities = context.get("resultAuthorities")
     attestations = context.get("authenticatedSourceAttestations")
     result_artifacts = context.get("authenticatedResultArtifacts")
+    result_provenance = context.get("authenticatedResultProvenance")
+    invocations = context.get("vetInvocations")
     if not all(
         isinstance(items, list)
-        for items in (authorities, attestations, result_artifacts)
-    ):
+        for items in (
+            authorities, attestations, result_artifacts, result_provenance
+        )
+    ) or not isinstance(invocations, dict):
         return None
 
     authority_by_family = {}
@@ -450,20 +648,25 @@ def authenticated_result_context(document, recipes):
             "scheme", "method", "recipeVersion", "algorithm", "signer"
         }:
             return None
-        family = (
+        execution = (
             authority.get("scheme"),
             authority.get("method"),
             authority.get("recipeVersion"),
         )
         if (
-            family not in recipes
+            recipe_for_method_version(recipes, *execution) is None
             or authority.get("algorithm") != "ed25519"
             or authority.get("signer") != AUTHORITY_REF
-            or family in authority_by_family
+            or execution in authority_by_family
         ):
             return None
-        authority_by_family[family] = authority
-    if set(authority_by_family) != set(recipes):
+        authority_by_family[execution] = authority
+    expected_executions = {
+        (scheme, method["kind"], version)
+        for (scheme, _, version), recipe in recipes.items()
+        for method in recipe_methods(recipe)
+    }
+    if set(authority_by_family) != expected_executions:
         return None
 
     attestation_by_key = {}
@@ -505,10 +708,91 @@ def authenticated_result_context(document, recipes):
         ):
             return None
         result_hash_by_ref[key] = artifact_hash
+
+    provenance_by_result = {}
+    for entry in result_provenance:
+        if not isinstance(entry, dict) or set(entry) != {
+            "ref", "serializedArtifactHash", "currentProductions",
+            "cachedOrigins",
+        }:
+            return None
+        reference = entry.get("ref")
+        reference_key = canonical_bytes(reference)
+        artifact_hash = entry.get("serializedArtifactHash")
+        productions = entry.get("currentProductions")
+        cached = entry.get("cachedOrigins")
+        key = (reference_key, artifact_hash)
+        if (
+            not well_formed_result_ref(reference)
+            or result_hash_by_ref.get(reference_key) != artifact_hash
+            or not isinstance(productions, list)
+            or not isinstance(cached, list)
+            or not productions and not cached
+            or key in provenance_by_result
+        ):
+            return None
+        seen_productions = set()
+        for production in productions:
+            if not isinstance(production, dict) or set(production) != {
+                "invocation", "requirementHash", "memberHash"
+            }:
+                return None
+            values = (
+                production.get("invocation"),
+                production.get("requirementHash"),
+                production.get("memberHash"),
+            )
+            if (
+                not isinstance(values[0], str)
+                or values[0] not in invocations
+                or any(
+                    not isinstance(value, str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", value)
+                    for value in values[1:]
+                )
+                or values in seen_productions
+            ):
+                return None
+            seen_productions.add(values)
+        seen_cached = set()
+        for origin in cached:
+            if not isinstance(origin, dict):
+                return None
+            presence = origin.get("parametersPresence")
+            if presence == "absent":
+                if set(origin) != {"parametersPresence"}:
+                    return None
+                canonical = b"absent"
+            elif presence == "present":
+                if set(origin) != {"parametersPresence", "parameters"} or not isinstance(
+                    origin.get("parameters"), dict
+                ):
+                    return None
+                try:
+                    canonical = b"present:" + canonical_bytes(origin["parameters"])
+                except (TypeError, ValueError, UnicodeError, RecursionError):
+                    return None
+            else:
+                return None
+            if canonical in seen_cached:
+                return None
+            seen_cached.add(canonical)
+        provenance_by_result[key] = entry
+    # Provenance is required at the point a non-pass result is reused.  The
+    # authenticated artifact registry can also contain results for schemes
+    # that are deliberately absent from a malformed requirement, so reject
+    # unknown provenance here without requiring unrelated artifacts to carry
+    # an invented requirement/member binding.
+    if not set(provenance_by_result).issubset({
+        (reference_key, artifact_hash)
+        for reference_key, artifact_hash in result_hash_by_ref.items()
+    }):
+        return None
     return {
         "authorityByFamily": authority_by_family,
         "attestationByKey": attestation_by_key,
         "resultHashByRef": result_hash_by_ref,
+        "provenanceByResult": provenance_by_result,
     }
 
 
@@ -899,10 +1183,13 @@ def verify_result(resolved, recipes, result_context):
     )
     if method not in KNOWN_METHODS or not isinstance(recipes, dict):
         return False
-    recipe = recipes.get(family)
+    recipe = recipe_for_method_version(recipes, *family)
     if recipe is None:
         return False
-    issuer_allow_list = recipe["defaultMethod"].get("issuerAllowList")
+    selected_method = next(
+        item for item in recipe_methods(recipe) if item["kind"] == method
+    )
+    issuer_allow_list = selected_method.get("issuerAllowList")
     if (
         method == "verifiable-credential"
         and issuer_allow_list is not None
@@ -1021,26 +1308,36 @@ def matching_claims(value, req, decision_time, exact_ref=None):
 def effective_recipe_version(req, method, recipes):
     if not isinstance(method, str) or not method or not isinstance(recipes, dict):
         return None
+    owner = owning_recipe_family(recipes, req.get("scheme"), method)
+    if owner is None:
+        return None
     family = sorted(
         version
         for scheme, family_method, version in recipes
-        if scheme == req.get("scheme") and family_method == method
+        if scheme == req.get("scheme") and family_method == owner
     )
     if not family:
         return None
     if "recipeVersion" in req:
         expected = req["recipeVersion"]
-        recipe = recipes.get((req.get("scheme"), method, expected))
+        recipe = recipes.get((req.get("scheme"), owner, expected))
         if (
             recipe is None
+            or not any(
+                item["kind"] == method for item in recipe_methods(recipe)
+            )
             or recipe.get("availability")
             in NON_OPERATIONAL_EXPLICIT_AVAILABILITIES
         ):
             return None
         return expected
     expected = family[-1]
-    recipe = recipes.get((req.get("scheme"), method, expected))
-    if recipe is None or recipe.get("availability") != "live":
+    recipe = recipes.get((req.get("scheme"), owner, expected))
+    if (
+        recipe is None
+        or recipe.get("availability") != "live"
+        or not any(item["kind"] == method for item in recipe_methods(recipe))
+    ):
         return None
     return expected
 
@@ -1080,7 +1377,7 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
     if resolved is None:
         return "indeterminate"
     return qualify_result(
-        resolved, claim, req, recipes, result_context, decision_time
+        resolved, claim, req, recipes, result_context, decision_time, value
     )
 
 
@@ -1099,8 +1396,11 @@ def freshness_window(result, claim, recipes, decision_time):
         valid_until = result["validUntil"]
     else:
         # The exact recipe the result was validated under, never "latest".
-        recipe = recipes.get(
-            (result.get("scheme"), result.get("method"), result.get("recipeVersion"))
+        recipe = recipe_for_method_version(
+            recipes,
+            result.get("scheme"),
+            result.get("method"),
+            result.get("recipeVersion"),
         )
         valid_until = (
             verified_at + recipe["defaultMaxAgeSec"] * 1_000
@@ -1119,7 +1419,46 @@ def freshness_window(result, claim, recipes, decision_time):
     return "current"
 
 
-def qualify_result(resolved, claim, req, recipes, result_context, decision_time):
+ACTIVE_INVOCATION = object()
+ACTIVE_REQUIREMENT_HASH = object()
+
+
+def non_pass_origin_is_eligible(resolved, req, result_context, value):
+    """Apply VP-C1 using verifier-owned provenance, never candidate labels."""
+
+    try:
+        key = (
+            canonical_bytes(resolved["ref"]),
+            resolved["serializedArtifactHash"],
+        )
+        provenance = result_context["provenanceByResult"][key]
+        invocation = value.get(ACTIVE_INVOCATION)
+        requirement_hash = value.get(ACTIVE_REQUIREMENT_HASH)
+        member_hash = hash_hex(req)
+    except (KeyError, TypeError, ValueError, UnicodeError, RecursionError):
+        return False
+    if isinstance(invocation, str) and isinstance(requirement_hash, str) and any(
+        item["invocation"] == invocation
+        and item["requirementHash"] == requirement_hash
+        and item["memberHash"] == member_hash
+        for item in provenance["currentProductions"]
+    ):
+        return True
+    present = "parameters" in req
+    parameters = req.get("parameters")
+    for origin in provenance["cachedOrigins"]:
+        if present != (origin["parametersPresence"] == "present"):
+            continue
+        if not present or canonical_bytes(origin["parameters"]) == canonical_bytes(
+            parameters
+        ):
+            return True
+    return False
+
+
+def qualify_result(
+    resolved, claim, req, recipes, result_context, decision_time, value
+):
     """Authenticate one resolved result and qualify it for ``claim``/``req``."""
 
     if not verify_result(resolved, recipes, result_context):
@@ -1154,6 +1493,10 @@ def qualify_result(resolved, claim, req, recipes, result_context, decision_time)
         "pass", "fail", "indeterminate", "error"
     }:
         return "error"
+    if decision != "pass" and not non_pass_origin_is_eligible(
+        resolved, req, result_context, value
+    ):
+        return "qualification-error"
     now = decision_time
     verified_at = result["verifiedAt"]
     if verified_at > now:
@@ -1214,7 +1557,8 @@ def member_outcomes(
             continue
         outcomes.extend(
             qualify_result(
-                resolved, claim, req, recipes, result_context, decision_time
+                resolved, claim, req, recipes, result_context, decision_time,
+                value,
             )
             for claim in owners
         )
@@ -1515,6 +1859,8 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
     req = value.get("requirement")
     if not valid_requirement(req):
         return "error", ["invalid bundle requirement"]
+    value[ACTIVE_INVOCATION] = admission.invocation_id
+    value[ACTIVE_REQUIREMENT_HASH] = hash_hex(req)
     for item in value["bundle"]["claims"]:
         if "verifiedBy" in item and not well_formed_result_ref(item["verifiedBy"]):
             return "error", ["malformed verification reference"]
@@ -3205,6 +3551,392 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         case = next(item for item in self.cases if item["name"] == name)
         return case, case["evaluations"][label]
 
+    def test_current_non_pass_results_replay_with_exact_production_provenance(self):
+        observed = set()
+        for case in self.cases:
+            evaluation = case["evaluations"].get("result")
+            if evaluation is None or evaluation["operation"] != "aggregate":
+                continue
+            observed.update(
+                result["artifact"]["decision"]
+                for result in evaluation["input"]["resolvedResults"]
+                if result["artifact"]["decision"] != "pass"
+            )
+            self.assertEqual(
+                case["expectedOutput"], execute_once(evaluation, self.document)
+            )
+        self.assertEqual({"fail", "error", "indeterminate"}, observed)
+
+    def test_cached_non_pass_requires_equal_complete_origin_parameters(self):
+        _, evaluation = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+
+        # A verifier-authenticated cache origin with the same absent parameter
+        # representation is eligible for each non-pass result.
+        control_document = copy.deepcopy(self.document)
+        control = copy.deepcopy(evaluation)
+        for resolved in control["input"]["resolvedResults"]:
+            set_result_provenance(
+                control_document, resolved,
+                cached=[{"parametersPresence": "absent"}],
+            )
+        self.assertEqual(
+            {"decision": "indeterminate", "reasons": [
+                "oneOf group: at least one claim indeterminate"
+            ]},
+            execute_once(control, control_document),
+        )
+
+        # Explicitly present empty parameters are not the same origin as
+        # absent parameters, in either direction.
+        for current_parameters, cached_origin in (
+            ({}, {"parametersPresence": "absent"}),
+            (None, {"parametersPresence": "present", "parameters": {}}),
+        ):
+            with self.subTest(
+                current_parameters=current_parameters,
+                cached_origin=cached_origin,
+            ):
+                document = copy.deepcopy(self.document)
+                candidate = copy.deepcopy(evaluation)
+                requirement = candidate["input"]["authority"]["vetInput"][
+                    "requirement"
+                ]
+                domain = next(
+                    item for item in requirement["oneOf"][0]
+                    if item["scheme"] == "domain"
+                )
+                if current_parameters is not None:
+                    domain["parameters"] = current_parameters
+                for resolved in candidate["input"]["resolvedResults"]:
+                    origin = (
+                        cached_origin
+                        if resolved["artifact"]["scheme"] == "domain"
+                        else {"parametersPresence": "absent"}
+                    )
+                    set_result_provenance(document, resolved, cached=[origin])
+                candidate["input"]["record"]["requirementHash"] = hash_hex(
+                    requirement
+                )
+                candidate["input"]["record"]["overallDecision"] = "error"
+                candidate["input"] = reanchor_composite_input(
+                    candidate["input"], document
+                )
+                self.assertEqual("error", execute_once(candidate, document)["decision"])
+
+        # The same signed non-pass cannot be relabelled for a new predicate.
+        changed_document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        requirement = changed["input"]["authority"]["vetInput"]["requirement"]
+        domain = next(
+            item for item in requirement["oneOf"][0]
+            if item["scheme"] == "domain"
+        )
+        domain["parameters"] = {"jurisdiction": "GB"}
+        for resolved in changed["input"]["resolvedResults"]:
+            set_result_provenance(
+                changed_document, resolved,
+                cached=[{"parametersPresence": "absent"}],
+            )
+        changed["input"]["record"]["requirementHash"] = hash_hex(requirement)
+        changed["input"]["record"]["overallDecision"] = "error"
+        # Candidate labels are deliberately ignored as provenance.
+        changed["input"]["originatingParametersAuthenticated"] = True
+        changed["input"]["currentResult"] = True
+        changed["input"] = reanchor_composite_input(
+            changed["input"], changed_document
+        )
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "oneOf group: at least one claim errored"
+            ]},
+            execute_once(changed, changed_document),
+        )
+
+    def test_current_non_pass_cannot_cross_requirement_predicates(self):
+        _, evaluation = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+        document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        requirement = changed["input"]["authority"]["vetInput"]["requirement"]
+        domain = next(
+            item for item in requirement["oneOf"][0]
+            if item["scheme"] == "domain"
+        )
+        domain["parameters"] = {"jurisdiction": "GB"}
+        # Leave the original verifier-owned current-production entries intact:
+        # they bind the old whole requirement/member hashes and cannot be
+        # relabelled as output of this admitted invocation under the new bytes.
+        changed["input"]["record"]["requirementHash"] = hash_hex(requirement)
+        changed["input"]["record"]["overallDecision"] = "error"
+        changed["input"] = reanchor_composite_input(changed["input"], document)
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "oneOf group: at least one claim errored"
+            ]},
+            execute_once(changed, document),
+        )
+
+    def test_missing_duplicate_or_mismatched_result_provenance_is_rejected(self):
+        _, evaluation = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+        domain_result = evaluation["input"]["resolvedResults"][1]
+        for label, mutate in (
+            (
+                "missing",
+                lambda provenance, entry: provenance.remove(entry),
+            ),
+            (
+                "duplicate",
+                lambda provenance, entry: provenance.append(copy.deepcopy(entry)),
+            ),
+            (
+                "artifact hash mismatch",
+                lambda provenance, entry: entry.update(
+                    serializedArtifactHash="0" * 64
+                ),
+            ),
+            (
+                "reference mismatch",
+                lambda provenance, entry: entry["ref"].update(
+                    contentHash="0" * 64
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                document = copy.deepcopy(self.document)
+                changed = copy.deepcopy(evaluation)
+                provenance = document["trustedContext"][
+                    "authenticatedResultProvenance"
+                ]
+                entry = result_provenance_entry(document, domain_result)
+                mutate(provenance, entry)
+                changed["input"]["record"]["overallDecision"] = "error"
+                changed["input"] = reanchor_composite_input(
+                    changed["input"], document
+                )
+                observed = execute_once(changed, document)
+                self.assertEqual("error", observed["decision"])
+
+    def test_current_rerun_replaces_the_committed_non_pass_reference(self):
+        _, evaluation = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+        document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        requirement = changed["input"]["authority"]["vetInput"]["requirement"]
+        domain = next(
+            item for item in requirement["oneOf"][0]
+            if item["scheme"] == "domain"
+        )
+        domain["parameters"] = {"jurisdiction": "GB"}
+        # The unchanged LEI failure is an eligible equal-predicate cache hit.
+        set_result_provenance(
+            document, changed["input"]["resolvedResults"][0],
+            cached=[{"parametersPresence": "absent"}],
+        )
+        old_domain_ref = copy.deepcopy(
+            changed["input"]["resolvedResults"][1]["ref"]
+        )
+        changed = rebuild_aggregate_result(
+            changed,
+            document,
+            lambda artifact: artifact.update(
+                reason="current rerun for jurisdiction GB"
+            ),
+            index=1,
+            overall_decision="indeterminate",
+        )
+        new_domain = changed["input"]["resolvedResults"][1]
+        self.assertNotEqual(old_domain_ref, new_domain["ref"])
+        self.assertNotIn(old_domain_ref, changed["input"]["record"]["dealSpecific"])
+        self.assertIn(new_domain["ref"], changed["input"]["record"]["dealSpecific"])
+        self.assertEqual(
+            {"decision": "indeterminate", "reasons": [
+                "oneOf group: at least one claim indeterminate"
+            ]},
+            execute_once(changed, document),
+        )
+
+    def test_cached_pass_still_requires_current_parameter_data(self):
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        parameters = {
+            "verificationMethod": "consensus-backed-proxy",
+            "jurisdiction": "GB",
+        }
+        for jurisdiction, expected in (("GB", "pass"), ("US", "fail")):
+            with self.subTest(jurisdiction=jurisdiction):
+                document = copy.deepcopy(self.document)
+                source = copy.deepcopy(evaluation)
+                source["input"]["requirement"]["required"][0][
+                    "parameters"
+                ] = copy.deepcopy(parameters)
+                changed = rebuild_direct_result(
+                    source,
+                    document,
+                    lambda artifact, jurisdiction=jurisdiction: artifact.update(
+                        data={"jurisdiction": jurisdiction}
+                    ),
+                )
+                set_result_provenance(
+                    document,
+                    changed["input"]["resolvedResults"][0],
+                    cached=[{
+                        "parametersPresence": "present",
+                        "parameters": copy.deepcopy(parameters),
+                    }],
+                )
+                self.assertEqual(expected, execute_once(changed, document))
+
+    def test_signed_alternative_method_resolves_explicitly_and_implicitly(self):
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        self.assertEqual("pass", execute_once(evaluation, self.document))
+        for explicit in (True, False):
+            with self.subTest(explicit=explicit):
+                document = copy.deepcopy(self.document)
+                source = copy.deepcopy(evaluation)
+                member = source["input"]["requirement"]["required"][0]
+                member["parameters"] = {"verificationMethod": "tlsnotary"}
+                if not explicit:
+                    member.pop("recipeVersion")
+                changed = rebuild_direct_result(
+                    source,
+                    document,
+                    lambda artifact: artifact.update(method="tlsnotary"),
+                )
+                set_result_attestation_family(
+                    document, changed["input"]["resolvedResults"][0]
+                )
+                self.assertEqual("pass", execute_once(changed, document))
+
+    def test_alternative_method_uses_owner_authority_and_max_age(self):
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        now = self.document["trustedContext"]["vetInvocations"][
+            evaluation["input"]["authority"]["invocation"]
+        ]["trustedNow"]
+        owner = self.recipes[("lei", "consensus-backed-proxy", 1)]
+        for age, expected in (
+            (owner["defaultMaxAgeSec"] * 1_000, "pass"),
+            (owner["defaultMaxAgeSec"] * 1_000 + 1, "fail"),
+        ):
+            with self.subTest(age=age):
+                document = copy.deepcopy(self.document)
+                source = copy.deepcopy(evaluation)
+                source["input"]["requirement"]["required"][0][
+                    "parameters"
+                ] = {"verificationMethod": "tlsnotary"}
+                changed = rebuild_direct_result(
+                    source,
+                    document,
+                    lambda artifact, age=age: (
+                        artifact.update(
+                            method="tlsnotary",
+                            fetchedAt=now - age,
+                            verifiedAt=now - age,
+                        ),
+                        artifact.pop("validUntil"),
+                    ),
+                )
+                set_result_attestation_family(
+                    document, changed["input"]["resolvedResults"][0]
+                )
+                self.assertEqual(expected, execute_once(changed, document))
+
+    def test_alternative_recipe_ownership_is_closed_signed_and_unambiguous(self):
+        base_document = copy.deepcopy(self.document)
+        recipes = base_document["trustedContext"]["recipeRegistry"]["recipes"]
+        mutations = []
+
+        unsigned = copy.deepcopy(base_document)
+        next(
+            recipe for recipe in unsigned["trustedContext"]["recipeRegistry"]["recipes"]
+            if recipe["scheme"] == "lei" and recipe["recipeVersion"] == 1
+        )["alternatives"][0]["endpoint"] += "?unsigned=true"
+        mutations.append(("unsigned", unsigned))
+
+        unregistered = copy.deepcopy(base_document)
+        recipe = next(
+            item for item in unregistered["trustedContext"]["recipeRegistry"]["recipes"]
+            if item["scheme"] == "lei" and item["recipeVersion"] == 1
+        )
+        recipe["alternatives"].append({"kind": "vc-presentation"})
+        resign_recipe(recipe)
+        mutations.append(("unregistered", unregistered))
+
+        ambiguous = copy.deepcopy(base_document)
+        recipe = next(
+            item for item in ambiguous["trustedContext"]["recipeRegistry"]["recipes"]
+            if item["scheme"] == "lei" and item["recipeVersion"] == 2
+        )
+        recipe["alternatives"] = [{
+            "kind": "tlsnotary",
+            "endpoint": "https://vc.example/lei/{identifier}",
+        }]
+        recipe["availability"] = "disabled"
+        resign_recipe(recipe)
+        mutations.append(("ambiguous even when non-live", ambiguous))
+
+        for label, document in mutations:
+            with self.subTest(label=label):
+                self.assertIsNone(authenticated_recipe_registry(document))
+
+        # The untouched control remains a single authenticated owner family.
+        self.assertEqual(
+            "consensus-backed-proxy",
+            owning_recipe_family(
+                authenticated_recipe_registry(base_document), "lei", "tlsnotary"
+            ),
+        )
+
+    def test_alternative_selection_has_no_unsupported_or_older_fallback(self):
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+
+        unsupported_document = copy.deepcopy(self.document)
+        unsupported = copy.deepcopy(evaluation)
+        member = unsupported["input"]["requirement"]["required"][0]
+        member["parameters"] = {"verificationMethod": "tlsnotary"}
+        member["recipeVersion"] = 2
+        self.assertEqual("error", execute_once(unsupported, unsupported_document))
+
+        no_fallback_document = copy.deepcopy(self.document)
+        context = no_fallback_document["trustedContext"]
+        owner = next(
+            recipe for recipe in context["recipeRegistry"]["recipes"]
+            if recipe["scheme"] == "lei" and recipe["recipeVersion"] == 1
+        )
+        later = copy.deepcopy(owner)
+        later["recipeVersion"] = 3
+        later.pop("alternatives")
+        resign_recipe(later)
+        context["recipeRegistry"]["recipes"].append(later)
+        append_recipe_authorities(context, later)
+        no_fallback = copy.deepcopy(evaluation)
+        member = no_fallback["input"]["requirement"]["required"][0]
+        member.pop("recipeVersion")
+        member["parameters"] = {"verificationMethod": "tlsnotary"}
+        self.assertEqual("error", execute_once(no_fallback, no_fallback_document))
+
+    def test_selected_alternative_refuses_a_result_from_the_default_method(self):
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        changed = copy.deepcopy(evaluation)
+        changed["input"]["requirement"]["required"][0]["parameters"] = {
+            "verificationMethod": "tlsnotary"
+        }
+        self.assertEqual("fail", execute_once(changed, self.document))
+
     def test_selector_cannot_be_laundered_through_a_oneof_verified_member(self):
         # The presented key is presence-only; a DIFFERENT same-scheme key has
         # the passing verified result.  §7.7.1 exact_selector_authorized: a
@@ -3329,6 +4061,26 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             changed = copy.deepcopy(evaluation)
             value = changed["input"]
             value["authority"]["vetInput"]["requirement"] = requirement
+            invocation = value["authority"]["invocation"]
+            members = [
+                *requirement.get("required", []),
+                *(member for group in requirement.get("oneOf", []) for member in group),
+            ]
+            for resolved in value["resolvedResults"]:
+                member = next(
+                    item for item in members
+                    if item.get("scheme") == resolved["artifact"].get("scheme")
+                )
+                entry = next(
+                    item for item in document["trustedContext"]["authenticatedResultProvenance"]
+                    if canonical_bytes(item["ref"]) == canonical_bytes(resolved["ref"])
+                    and item["serializedArtifactHash"] == resolved["serializedArtifactHash"]
+                )
+                entry["currentProductions"].append({
+                    "invocation": invocation,
+                    "requirementHash": hash_hex(requirement),
+                    "memberHash": hash_hex(member),
+                })
             value["record"]["requirementHash"] = hash_hex(requirement)
             value["record"]["overallDecision"] = decision
             changed["input"] = reanchor_composite_input(value, document)
@@ -4307,10 +5059,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             )
         )
         context["recipeRegistry"]["recipes"].append(later)
-        context["resultAuthorities"].append({
-            "scheme": family[0], "method": family[1], "recipeVersion": 3,
-            "algorithm": "ed25519", "signer": AUTHORITY_REF,
-        })
+        append_recipe_authorities(context, later)
         self.assertIsNotNone(authenticated_result_context(
             document, authenticated_recipe_registry(document)
         ))
@@ -4346,10 +5095,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             )
         )
         context["recipeRegistry"]["recipes"].append(later)
-        context["resultAuthorities"].append({
-            "scheme": family[0], "method": family[1], "recipeVersion": 3,
-            "algorithm": "ed25519", "signer": AUTHORITY_REF,
-        })
+        append_recipe_authorities(context, later)
         self.assertIsNotNone(authenticated_result_context(
             document, authenticated_recipe_registry(document)
         ))

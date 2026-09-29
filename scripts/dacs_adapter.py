@@ -9,6 +9,7 @@ network or substrate operations.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import os
@@ -30,6 +31,11 @@ MAX_PARAMS = 5
 MAX_DIAGNOSTIC_CHARS = 320
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
 DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
+ADVERTISED_PRIMITIVE_ROOTS = {
+    "scripts/jcs.py",
+    "scripts/run_lifecycle_walkthrough.py",
+    "scripts/validate_conformance_vectors.py",
+}
 
 
 class AdapterError(Exception):
@@ -85,6 +91,58 @@ def _verify_committed_path(relative: str, *, expected_sha256: str, expected_blob
         raise RuntimeError(f"file is not the expected committed HEAD blob: {relative}")
 
 
+def _repository_local_import_closure() -> set[str]:
+    """Derive the repository-local Python closure imported by operations."""
+
+    scripts = ROOT / "scripts"
+    modules = {path.stem: f"scripts/{path.name}" for path in scripts.glob("*.py")}
+    closure: set[str] = set()
+    pending = list(ADVERTISED_PRIMITIVE_ROOTS)
+    while pending:
+        relative = pending.pop()
+        if relative in closure:
+            continue
+        path = ROOT / relative
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
+        except (OSError, UnicodeError, SyntaxError) as exc:
+            raise RuntimeError(
+                f"cannot derive wrapped primitive import closure at {relative}: "
+                f"{_clean_message(exc)}"
+            ) from exc
+        closure.add(relative)
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name.split(".", 1)[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".", 1)[0])
+            elif (
+                isinstance(node, ast.Call)
+                and (
+                    (
+                        isinstance(node.func, ast.Name)
+                        and node.func.id in {"__import__", "import_module"}
+                    )
+                    or (
+                        isinstance(node.func, ast.Attribute)
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "importlib"
+                        and node.func.attr == "import_module"
+                    )
+                )
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                imported.add(node.args[0].value.split(".", 1)[0])
+        for module in imported:
+            local = modules.get(module)
+            if local is not None and local not in closure:
+                pending.append(local)
+    return closure
+
+
 def _verify_provenance() -> tuple[dict[str, Any], str]:
     try:
         descriptor = json.loads(DESCRIPTOR.read_text(encoding="utf-8"))
@@ -111,6 +169,20 @@ def _verify_provenance() -> tuple[dict[str, Any], str]:
     primitives = wrapped.get("primitives")
     if not isinstance(primitives, list) or not primitives:
         raise RuntimeError("adapter descriptor has no wrapped primitives")
+    primitive_paths = [
+        primitive.get("path") if isinstance(primitive, dict) else None
+        for primitive in primitives
+    ]
+    if any(not isinstance(path, str) for path in primitive_paths) or len(
+        set(primitive_paths)
+    ) != len(primitive_paths):
+        raise RuntimeError("adapter descriptor wrapped primitive paths are malformed")
+    closure = _repository_local_import_closure()
+    if set(primitive_paths) != closure:
+        raise RuntimeError(
+            "adapter descriptor primitive set does not equal the repository-local "
+            "import closure"
+        )
     for primitive in primitives:
         relative = primitive.get("path")
         if not isinstance(relative, str):

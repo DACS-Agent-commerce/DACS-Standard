@@ -49,16 +49,16 @@
   },
   "adapter": {
     "name": "dacs-standard-primitives",
-    "version": "issue-270-proposal.2",
+    "version": "issue-270-proposal.3",
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6",
-      "gitBlob": "2e3a1787471586a88cb817e00d0d5108ae9ddc2e"
+      "sha256": "a3fb67ce0aa3d61f231a4a72853ea9de69b8036641fa9ad161ce5fa4fbc05803",
+      "gitBlob": "94a8aaf40a4528790c3a6912f9c3d231a08f1eaa"
     },
     "wrappedStandard": {
-      "revision": "d63f2ac92a91024ccdd45ab442c30bd94c0a30fb",
-      "tree": "c49aa81ce271b9434d6b9952978ba3d8351b7078",
+      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
+      "tree": "46adde3bf442a9bd014b53f8c99fda32c4f9b120",
       "primitives": [
         {
           "path": "scripts/jcs.py",
@@ -79,6 +79,11 @@
           "path": "scripts/specsource.py",
           "sha256": "96a74cea62ddd311a0ba3aaec5279beca68cc0c152d50d6439d3016a7d0c86d9",
           "gitBlob": "7054c6b790c35f3e5a02c82235f96b79c6659da3"
+        },
+        {
+          "path": "scripts/dacs_reference.py",
+          "sha256": "8ed9baf83879e910ac4da4e28e00b2befe9e34b4e613f79dc432880f9144a33c",
+          "gitBlob": "7a6a37e88183712a343a1c810c447e6601733e0f"
         }
       ]
     },
@@ -94,25 +99,25 @@
   "sources": {
     "canonicalization": {
       "path": "conformance/vectors/security/canonical-json-v0.1.json",
-      "revision": "d63f2ac92a91024ccdd45ab442c30bd94c0a30fb",
+      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
       "sha256": "1e355678b6feddc5dc54611eb0f61e12b9707a1506a3da9e4f679ab9f796c941",
       "gitBlob": "c64834d5df9aaed5f7b626486f3cc79decfeba32"
     },
     "signedScope": {
       "path": "conformance/vectors/dacs-v0.1-happy-path.json",
-      "revision": "d63f2ac92a91024ccdd45ab442c30bd94c0a30fb",
+      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
       "sha256": "ebb618d5d19d632c3a872205a24a9345fbf89eff58d14305d4b7a3c25cab0912",
       "gitBlob": "bf1b8c4704a41111acd1bb26e49d682c3fd82624"
     },
     "sig6": {
       "path": "conformance/vectors/security/signature-value-encoding-v0.1.json",
-      "revision": "d63f2ac92a91024ccdd45ab442c30bd94c0a30fb",
+      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
       "sha256": "b98234f14d6931d85c6ed1fc83e80a4ad00ea4feb69abb6d5ee23db95ea2a0bf",
       "gitBlob": "27c837ccbb75ed3b1d9d34474e272d47326969f1"
     },
     "domainSeparatedSigning": {
       "path": "conformance/vectors/golden.json",
-      "revision": "d63f2ac92a91024ccdd45ab442c30bd94c0a30fb",
+      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
       "sha256": "bce5128a79a7ecc0683bb1ed560f626a63cf5f4bd2cd5c4e1f8971840b95bd2b",
       "gitBlob": "7713f3d2ac65e3f9a47ca347233a8daecb73bfd5"
     }

@@ -452,6 +452,104 @@ def resign_recipe(recipe):
     }
 
 
+def safe_number(value):
+    """Return whether one field is a CORE numeric safe-magnitude value."""
+
+    return (
+        type(value) in (int, float)
+        and -SAFE_INT <= value <= SAFE_INT
+        and (type(value) is int or math.isfinite(value))
+    )
+
+
+def canonical_claim_reference(value):
+    try:
+        parsed = parse_claim_reference(value)
+    except (TypeError, ValueError):
+        return False
+    return parsed.canonical == value
+
+
+def verification_method_valid(method):
+    """Validate one signed DACS-2 VerificationMethod union member.
+
+    Unknown members remain in the signed object and its signature hash (SIG-5),
+    but only the defined members below can affect method resolution or authority.
+    """
+
+    if not isinstance(method, dict) or method.get("kind") not in KNOWN_METHODS:
+        return False
+    kind = method["kind"]
+    if kind == "verifiable-credential":
+        issuers = method.get("issuerAllowList")
+        return (
+            (
+                "issuerAllowList" not in method
+                or (
+                    isinstance(issuers, list)
+                    and all(canonical_claim_reference(item) for item in issuers)
+                )
+            )
+            and (
+                "schemaUrl" not in method
+                or isinstance(method["schemaUrl"], str)
+            )
+        )
+    if kind == "tlsnotary":
+        return isinstance(method.get("endpoint"), str) and (
+            "sessionTemplate" not in method
+            or isinstance(method["sessionTemplate"], str)
+        )
+    if kind == "zktls":
+        return isinstance(method.get("provider"), str) and isinstance(
+            method.get("programId"), str
+        )
+    if kind == "consensus-backed-proxy":
+        endpoint = method.get("endpoint")
+        if (
+            not isinstance(endpoint, dict)
+            or endpoint.get("method") not in {"GET", "POST"}
+            or not isinstance(endpoint.get("urlTemplate"), str)
+            or (
+                "headers" in endpoint
+                and (
+                    not isinstance(endpoint["headers"], dict)
+                    or any(
+                        not isinstance(name, str) or not isinstance(value, str)
+                        for name, value in endpoint["headers"].items()
+                    )
+                )
+            )
+            or (
+                "body" in endpoint
+                and not isinstance(endpoint["body"], str)
+            )
+        ):
+            return False
+        return True
+    if kind == "oauth-attested":
+        scopes = method.get("scopes")
+        return (
+            isinstance(method.get("provider"), str)
+            and isinstance(scopes, list)
+            and all(isinstance(scope, str) for scope in scopes)
+            and safe_number(method.get("maxTokenAgeSec"))
+        )
+    if kind == "evm-rpc":
+        return (
+            safe_number(method.get("chainId"))
+            and isinstance(method.get("contract"), str)
+            and isinstance(method.get("method"), str)
+            and ("args" not in method or isinstance(method["args"], list))
+        )
+    if kind == "domain-tls-control":
+        return method.get("challengeType") in {
+            "http-01", "dns-01", "tls-alpn-01"
+        }
+    # self-signed and demos-gcr-domain have no variant-specific fields.
+    return True
+
+
 def recipe_methods(recipe):
     default = recipe.get("defaultMethod")
     alternatives = recipe.get("alternatives", [])
@@ -464,7 +562,7 @@ def recipe_methods(recipe):
     methods = [default, *alternatives]
     kinds = [item.get("kind") for item in methods]
     if (
-        any(kind not in KNOWN_METHODS for kind in kinds)
+        any(not verification_method_valid(item) for item in methods)
         or len(kinds) != len(set(kinds))
     ):
         return None
@@ -3896,6 +3994,279 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 authenticated_recipe_registry(base_document), "lei", "tlsnotary"
             ),
         )
+
+    def test_signed_default_and_alternative_method_shapes_are_validated(self):
+        invalid_methods = [
+            ("vc issuer null", {
+                "kind": "verifiable-credential", "issuerAllowList": None,
+            }),
+            ("vc issuer scalar", {
+                "kind": "verifiable-credential",
+                "issuerAllowList": AUTHORITY_REF,
+            }),
+            ("vc issuer member", {
+                "kind": "verifiable-credential", "issuerAllowList": [1],
+            }),
+            ("vc issuer noncanonical", {
+                "kind": "verifiable-credential",
+                "issuerAllowList": ["KEY:" + AUTHORITY_REF.split(":", 1)[1]],
+            }),
+            ("vc schema url", {
+                "kind": "verifiable-credential", "schemaUrl": 1,
+            }),
+            ("tls endpoint missing", {"kind": "tlsnotary"}),
+            ("tls endpoint", {"kind": "tlsnotary", "endpoint": 1}),
+            ("tls session template", {
+                "kind": "tlsnotary", "endpoint": "https://example.test",
+                "sessionTemplate": 1,
+            }),
+            ("zktls provider missing", {
+                "kind": "zktls", "programId": "program",
+            }),
+            ("zktls provider", {
+                "kind": "zktls", "provider": 1, "programId": "program",
+            }),
+            ("zktls program missing", {
+                "kind": "zktls", "provider": "reclaim",
+            }),
+            ("zktls program", {
+                "kind": "zktls", "provider": "reclaim", "programId": 1,
+            }),
+            ("proxy endpoint missing", {"kind": "consensus-backed-proxy"}),
+            ("proxy endpoint", {
+                "kind": "consensus-backed-proxy", "endpoint": "invalid",
+            }),
+            ("proxy method missing", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {"urlTemplate": "https://example.test"},
+            }),
+            ("proxy method", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "PUT", "urlTemplate": "https://example.test",
+                },
+            }),
+            ("proxy url missing", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {"method": "GET"},
+            }),
+            ("proxy url", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {"method": "GET", "urlTemplate": 1},
+            }),
+            ("proxy headers", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "GET", "urlTemplate": "https://example.test",
+                    "headers": [],
+                },
+            }),
+            ("proxy header value", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "GET", "urlTemplate": "https://example.test",
+                    "headers": {"Accept": 1},
+                },
+            }),
+            ("proxy body", {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "POST", "urlTemplate": "https://example.test",
+                    "body": 1,
+                },
+            }),
+            ("oauth provider missing", {
+                "kind": "oauth-attested", "scopes": [], "maxTokenAgeSec": 1,
+            }),
+            ("oauth provider", {
+                "kind": "oauth-attested", "provider": 1,
+                "scopes": [], "maxTokenAgeSec": 1,
+            }),
+            ("oauth scopes missing", {
+                "kind": "oauth-attested", "provider": "provider",
+                "maxTokenAgeSec": 1,
+            }),
+            ("oauth scopes", {
+                "kind": "oauth-attested", "provider": "provider",
+                "scopes": "read", "maxTokenAgeSec": 1,
+            }),
+            ("oauth scope member", {
+                "kind": "oauth-attested", "provider": "provider",
+                "scopes": [1], "maxTokenAgeSec": 1,
+            }),
+            ("oauth age missing", {
+                "kind": "oauth-attested", "provider": "provider", "scopes": [],
+            }),
+            ("oauth age boolean", {
+                "kind": "oauth-attested", "provider": "provider", "scopes": [],
+                "maxTokenAgeSec": True,
+            }),
+            ("evm chain missing", {
+                "kind": "evm-rpc", "contract": "0x1", "method": "owner",
+            }),
+            ("evm chain boolean", {
+                "kind": "evm-rpc", "chainId": True,
+                "contract": "0x1", "method": "owner",
+            }),
+            ("evm contract missing", {
+                "kind": "evm-rpc", "chainId": 1, "method": "owner",
+            }),
+            ("evm contract", {
+                "kind": "evm-rpc", "chainId": 1,
+                "contract": 1, "method": "owner",
+            }),
+            ("evm method missing", {
+                "kind": "evm-rpc", "chainId": 1, "contract": "0x1",
+            }),
+            ("evm method", {
+                "kind": "evm-rpc", "chainId": 1,
+                "contract": "0x1", "method": 1,
+            }),
+            ("evm args", {
+                "kind": "evm-rpc", "chainId": 1,
+                "contract": "0x1", "method": "owner", "args": {},
+            }),
+            ("domain challenge missing", {"kind": "domain-tls-control"}),
+            ("domain challenge", {
+                "kind": "domain-tls-control", "challengeType": "smtp-01",
+            }),
+        ]
+
+        self.assertFalse(verification_method_valid({
+            "kind": "oauth-attested", "provider": "provider", "scopes": [],
+            "maxTokenAgeSec": float("inf"),
+        }))
+        self.assertFalse(verification_method_valid({
+            "kind": "evm-rpc", "chainId": float("nan"),
+            "contract": "0x1", "method": "owner",
+        }))
+        # Out-of-profile integers cannot be signed because repository JCS
+        # rejects them before signature creation; the field gate rejects them
+        # independently as well.
+        self.assertFalse(verification_method_valid({
+            "kind": "oauth-attested", "provider": "provider", "scopes": [],
+            "maxTokenAgeSec": SAFE_INT + 1,
+        }))
+        self.assertFalse(verification_method_valid({
+            "kind": "evm-rpc", "chainId": SAFE_INT + 1,
+            "contract": "0x1", "method": "owner",
+        }))
+
+        for label, invalid in invalid_methods:
+            self.assertFalse(verification_method_valid(invalid), label)
+            for position in ("default", "alternative"):
+                with self.subTest(label=label, position=position):
+                    document = copy.deepcopy(self.document)
+                    recipes = document["trustedContext"]["recipeRegistry"]["recipes"]
+                    if position == "default":
+                        recipe = next(
+                            item for item in recipes
+                            if item["scheme"] == "key"
+                        )
+                        recipe["defaultMethod"] = copy.deepcopy(invalid)
+                    else:
+                        recipe = next(
+                            item for item in recipes
+                            if item["scheme"] == "lei"
+                            and item["recipeVersion"] == 1
+                        )
+                        recipe["alternatives"] = [copy.deepcopy(invalid)]
+                    resign_recipe(recipe)
+                    self.assertIsNone(authenticated_recipe_registry(document))
+
+    def test_valid_signed_method_shapes_preserve_unknown_metadata(self):
+        valid_methods = [
+            {"kind": "verifiable-credential"},
+            {
+                "kind": "verifiable-credential",
+                "issuerAllowList": [AUTHORITY_REF],
+                "schemaUrl": "https://example.test/schema.json",
+            },
+            {
+                "kind": "tlsnotary", "endpoint": "https://example.test",
+                "sessionTemplate": "audit",
+            },
+            {"kind": "zktls", "provider": "reclaim", "programId": "program"},
+            {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "POST", "urlTemplate": "https://example.test",
+                    "headers": {"Accept": "application/json"}, "body": "{}",
+                },
+            },
+            {
+                "kind": "oauth-attested", "provider": "provider",
+                "scopes": ["read"], "maxTokenAgeSec": 0.5,
+            },
+            {
+                "kind": "evm-rpc", "chainId": 1.5,
+                "contract": "0x1", "method": "owner", "args": [],
+            },
+            {"kind": "domain-tls-control", "challengeType": "http-01"},
+            {"kind": "domain-tls-control", "challengeType": "dns-01"},
+            {"kind": "domain-tls-control", "challengeType": "tls-alpn-01"},
+            {"kind": "self-signed", "futureSignedPolicy": {"version": 2}},
+            {"kind": "demos-gcr-domain"},
+        ]
+        for method in valid_methods:
+            with self.subTest(method=method["kind"]):
+                self.assertTrue(verification_method_valid(method))
+
+        vc_document = copy.deepcopy(self.document)
+        for recipe in vc_document["trustedContext"]["recipeRegistry"]["recipes"]:
+            method = recipe["defaultMethod"]
+            if method["kind"] == "verifiable-credential":
+                method["schemaUrl"] = "https://example.test/schema.json"
+                method["futureSignedPolicy"] = {"version": 2}
+                resign_recipe(recipe)
+        recipes = authenticated_recipe_registry(vc_document)
+        self.assertIsNotNone(recipes)
+        self.assertEqual(
+            {"version": 2},
+            recipes[("cci-lei", "verifiable-credential", 1)][
+                "defaultMethod"
+            ]["futureSignedPolicy"],
+        )
+        _, vc_evaluation = self._case_evaluation("vet-ma3-verified-accept")
+        self.assertTrue(execute_once(vc_evaluation, vc_document))
+
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        for explicit in (True, False):
+            with self.subTest(explicit=explicit):
+                document = copy.deepcopy(self.document)
+                recipe = next(
+                    item for item in document["trustedContext"][
+                        "recipeRegistry"
+                    ]["recipes"]
+                    if item["scheme"] == "lei" and item["recipeVersion"] == 1
+                )
+                alternative = recipe["alternatives"][0]
+                alternative["sessionTemplate"] = "audit"
+                alternative["futureSignedPolicy"] = {"version": 2}
+                resign_recipe(recipe)
+                source = copy.deepcopy(evaluation)
+                member = source["input"]["requirement"]["required"][0]
+                member["parameters"] = {"verificationMethod": "tlsnotary"}
+                if not explicit:
+                    member.pop("recipeVersion")
+                changed = rebuild_direct_result(
+                    source,
+                    document,
+                    lambda artifact: artifact.update(method="tlsnotary"),
+                )
+                set_result_attestation_family(
+                    document, changed["input"]["resolvedResults"][0]
+                )
+                recipes = authenticated_recipe_registry(document)
+                self.assertEqual(
+                    {"version": 2},
+                    recipes[("lei", "consensus-backed-proxy", 1)][
+                        "alternatives"
+                    ][0]["futureSignedPolicy"],
+                )
+                self.assertEqual("pass", execute_once(changed, document))
 
     def test_alternative_selection_has_no_unsupported_or_older_fallback(self):
         _, evaluation = self._case_evaluation(

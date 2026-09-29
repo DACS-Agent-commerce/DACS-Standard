@@ -63,9 +63,11 @@ def descriptor_expectations():
             "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca",
             "local frozen descriptor digest changed")
     descriptor = json.loads(raw)
-    return {case["caseId"]: (f"ERROR-CODE:{case['expectedErrorCode']}"
-            if "expectedErrorCode" in case else json.dumps(case["expected"], separators=(",", ":")))
-            for family in descriptor["families"] for case in family["cases"]}
+    return {case["caseId"]: {
+        "operation": case.get("operation", family.get("operation")),
+        "outcome": (f"ERROR-CODE:{case['expectedErrorCode']}" if "expectedErrorCode" in case
+                    else json.dumps(case["expected"], separators=(",", ":"))),
+    } for family in descriptor["families"] for case in family["cases"]}
 
 
 def validate(packet):
@@ -82,6 +84,9 @@ def validate(packet):
     require(runner.get("repository") == "https://github.com/cX3po/pathos-dacs-ref", "wrong runner repository")
     require(runner.get("baseHead") == "1297dd5f79d2e1305bfd4e8e4b2fa6830bc72eda", "wrong runner base")
     require(runner.get("patchSha256") == "178d58f2682a145810e6ec7611d3b348c502c2cd94917231e97360973bb6639d", "wrong runner patch")
+    require(runner.get("issueComment") ==
+            "https://github.com/DACS-Agent-commerce/DACS-Standard/issues/270#issuecomment-5696719263",
+            "wrong runner issue comment")
     require(runner.get("sourceSha256") == RUNNER_SOURCES, "runner source pins differ from reviewed bytes")
     require(packet.get("expected") == {"cases": 20, "summary": {
         "SELF-CHECK": 18, "ABSTAIN": 2, "INTEROP-AGREE": 0, "ERROR": 0}}, "wrong independent expectations")
@@ -92,14 +97,22 @@ def validate(packet):
     expected_outcomes = descriptor_expectations()
     for row in matrix:
         case_id = row["id"]
+        expected = expected_outcomes.get(case_id, {
+            "bigint-native-type": {"operation": "canonicalize"},
+            "signing::valid-raw-digest-profile-boundary": {"operation": "domainSepVerify"},
+        }.get(case_id))
+        require(row.get("operation") == expected["operation"], f"{case_id}: wrong operation mapping")
         if case_id in ABSTAIN_IDS:
             require(row.get("status") == "ABSTAIN" and row.get("participatingAdapters") == 0
                     and row.get("independentImplementations") == 0, f"{case_id}: must fully ABSTAIN")
             require(len(row.get("adapters", [])) == 2 and all(item.get("status") == "ABSTAIN"
-                    and item.get("errorCode") == "UNSUPPORTED_CASE" for item in row["adapters"]),
+                    and item.get("errorCode") == "UNSUPPORTED_CASE" and item.get("outcome") is None
+                    for item in row["adapters"]),
                     f"{case_id}: missing explicit unsupported evidence")
+            require({item.get("runId") for item in row["adapters"]} == {"run-0", "run-1"},
+                    f"{case_id}: runner identities are incomplete")
         else:
-            require(row.get("expected") == expected_outcomes.get(case_id),
+            require(row.get("expected") == expected["outcome"],
                     f"{case_id}: expected value differs from frozen descriptor")
             require(row.get("status") == "SELF-CHECK" and row.get("participatingAdapters") == 2
                     and row.get("independentImplementations") == 1, f"{case_id}: false independence or result")
@@ -118,6 +131,9 @@ def validate(packet):
             "in-profile cryptographic mismatch must return false")
     controls = packet.get("controls", {})
     require(controls.get("rawDigestSignatureValidatedBeforeAdapter") is True, "missing raw-digest control")
+    require(controls.get("inProfileCryptoMismatch") == {
+        "id": mismatch["id"], "expected": False, "observed": [False, False]},
+        "in-profile mismatch control contradicts matrix evidence")
     require(controls.get("exportedLaunchFailureProbe") == "ERROR"
             and controls.get("exportedMalformedProtocolProbe") == "ERROR",
             "launch and protocol failures must be ERROR")

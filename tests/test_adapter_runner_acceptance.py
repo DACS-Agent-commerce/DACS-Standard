@@ -33,6 +33,13 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
             row.update(status="SELF-CHECK", participatingAdapters=2, independentImplementations=1)
         self.assert_rejected(mutate, "must fully ABSTAIN")
 
+    def test_unsupported_evidence_binds_two_runs_with_null_outcomes(self):
+        def mutate(value):
+            row = next(item for item in value["observed"]["matrix"] if item["id"] == "bigint-native-type")
+            row["adapters"][1]["runId"] = "run-0"
+            row["adapters"][1]["outcome"] = "THROWN"
+        self.assert_rejected(mutate, "unsupported evidence|runner identities")
+
     def test_in_profile_mismatch_must_be_false(self):
         def mutate(value):
             row = next(item for item in value["observed"]["matrix"]
@@ -45,6 +52,12 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
             row = next(item for item in value["observed"]["matrix"] if item["id"] == "fraction-one-half")
             row["adapters"][0]["outcome"] = '{"hex":"00"}'
         self.assert_rejected(mutate, "observed outcome differs from expected")
+
+    def test_operation_label_is_bound_to_frozen_descriptor(self):
+        self.assert_rejected(
+            lambda value: value["observed"]["matrix"][0].__setitem__("operation", "signedScopeHash"),
+            "wrong operation mapping",
+        )
 
     def test_expected_value_is_bound_to_frozen_descriptor(self):
         def mutate(value):
@@ -71,6 +84,18 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
         self.assert_rejected(
             lambda value: value["controls"].__setitem__("exportedMalformedProtocolProbe", "ABSTAIN"),
             "must be ERROR",
+        )
+
+    def test_mismatch_control_must_equal_matrix_evidence(self):
+        self.assert_rejected(
+            lambda value: value["controls"]["inProfileCryptoMismatch"].__setitem__("observed", [True, True]),
+            "mismatch control contradicts",
+        )
+
+    def test_runner_issue_comment_is_exact(self):
+        self.assert_rejected(
+            lambda value: value["coordinates"]["runner"].__setitem__("issueComment", "https://example.invalid/comment"),
+            "wrong runner issue comment",
         )
 
     def test_metadata_mapping_is_bound_to_descriptor(self):

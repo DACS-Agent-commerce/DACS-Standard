@@ -115,7 +115,11 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
   aggregate evaluations bind an independently authenticated
   logical/native record receipt. These fixture-only contexts are not signed
   fields and do not add job/nonce/session requirements to reusable
-  `VerifyResult` v1 artifacts. This pack retains its per-claim presentation
+  `VerifyResult` v1 artifacts. Active checks cover only the offline candidate
+  semantics encoded here; signed-`generatedAt` reconstruction is expressly
+  non-authorizing. The pack does not establish terminal authorizing replay,
+  current release-profile admission, real VC/provider resolution, or native
+  receipt finality. This pack retains its per-claim presentation
   scope; SIWD, session-key, and SR-1-root signature verification are not
   exercised here. Every case
   also resolves each result through an independent expected-authority,

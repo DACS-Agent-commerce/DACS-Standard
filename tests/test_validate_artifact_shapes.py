@@ -75,17 +75,69 @@ class ArtifactShapeTests(unittest.TestCase):
             "presentation": {"kind": "per-claim", "signatures": []},
         }
         truncated = {"bundleVersion": "1", "jobId": "01J00000000000000000000001"}
-        pairs = v._embedded_reference_artifacts({"a": identity, "b": truncated})
+        pairs = v._embedded_reference_artifacts({"bundles": [identity, truncated]})
         self.assertEqual(
             [("IdentityBundle", identity), ("AttestationBundle", truncated)], pairs
         )
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "fixture.json"
-            path.write_text(json.dumps({"wrapper": truncated}), encoding="utf-8")
+            path.write_text(json.dumps({"bundles": [truncated]}), encoding="utf-8")
             with mock.patch.object(v, "ROOT", Path(tmp)):
                 errors, count = v.check_reference_fixture(path, types)
         self.assertEqual(1, count)
         self.assertTrue(any("phaseSummary" in error for error in errors), errors)
+
+    def test_embedded_discriminators_in_artifact_data_are_not_rediscovered(self):
+        v = load_validator()
+        result = {
+            "resultVersion": "1",
+            "requirement": {"domain": "example"},
+            "result": "pass",
+            "method": {"kind": "self-signed"},
+            "timestamp": 1,
+            "data": {
+                "futureMetadata": {
+                    "resultVersion": "1",
+                    "unrelated": True,
+                }
+            },
+        }
+        self.assertEqual(
+            [("VerifyResult", result)],
+            v._embedded_reference_artifacts({"artifact": result}),
+        )
+        self.assertEqual(
+            [],
+            v._embedded_reference_artifacts({"metadata": result}),
+        )
+
+        # Additive signed members on a root artifact are opaque even when a
+        # member name is also used by an outer fixture wrapper.
+        root = dict(result)
+        root["artifact"] = {"resultVersion": "1", "note": "metadata"}
+        self.assertEqual(
+            [("VerifyResult", root)],
+            v._embedded_reference_artifacts(root),
+        )
+
+    def test_declared_golden_result_artifact_is_discovered(self):
+        v = load_validator()
+        result = {"resultVersion": "1"}
+        wrapper = {
+            "cases": [{
+                "evaluations": {
+                    "result": {
+                        "input": {
+                            "resolvedResults": [{"artifact": result}],
+                        }
+                    }
+                }
+            }]
+        }
+        self.assertEqual(
+            [("VerifyResult", result)],
+            v._embedded_reference_artifacts(wrapper),
+        )
 
     def test_conformant_artifact_passes(self):
         v = load_validator()

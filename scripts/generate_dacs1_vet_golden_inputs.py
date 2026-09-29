@@ -81,6 +81,8 @@ ANCHOR_WRITER = private_key("anchor-writer")
 PRESENTER_REF = f"key:{public_hex(PRESENTER)}"
 SECOND_REF = f"key:{public_hex(SECOND_PRESENTER)}"
 AUTHORITY_REF = f"key:{public_hex(AUTHORITY)}"
+VC_ISSUER_REF = "did:example:dacs-vc-issuer"
+VALIDATOR_SET_REF = "substrate-validator-set:fixture:validators"
 RECIPE_STEWARD_REF = f"key:{public_hex(RECIPE_STEWARD)}"
 VERIFIER_REF = f"key:{public_hex(VERIFIER)}"
 PHASE_ORCHESTRATOR_REF = f"key:{public_hex(PHASE_ORCHESTRATOR)}"
@@ -319,10 +321,9 @@ def signed_recipe(
 def recipe_registry() -> dict:
     vc = {
         "kind": "verifiable-credential",
-        "issuerAllowList": [AUTHORITY_REF],
+        "issuerAllowList": [VC_ISSUER_REF],
     }
     recipes = [
-        signed_recipe("cci-lei", vc, 1),
         signed_recipe("did", vc, 1),
         signed_recipe("domain", {"kind": "demos-gcr-domain"}, 1),
         signed_recipe(
@@ -388,6 +389,22 @@ def signed_result(
     data: dict | None = None,
 ) -> tuple[dict, dict]:
     scheme, identifier = ref.split(":", 1)
+    source_signer = None
+    if method == "verifiable-credential":
+        source_signer = VC_ISSUER_REF
+    elif method in {"consensus-backed-proxy", "evm-rpc"}:
+        source_signer = VALIDATOR_SET_REF
+    attestation = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": f"demos:dacs-363:attestation:{label}",
+        },
+        "contentHash": hashlib.sha256(
+            f"dacs-363:{label}:{decision}".encode("utf-8")
+        ).hexdigest(),
+    }
+    if source_signer is not None:
+        attestation["signer"] = source_signer
     unsigned = {
         "resultVersion": "1",
         "scheme": scheme,
@@ -396,16 +413,7 @@ def signed_result(
         "method": method,
         "decision": decision,
         "reason": f"deterministic {label} {decision}",
-        "attestation": {
-            "anchor": {
-                "kind": "storage-program",
-                "locator": f"demos:dacs-363:attestation:{label}",
-            },
-            "contentHash": hashlib.sha256(
-                f"dacs-363:{label}:{decision}".encode("utf-8")
-            ).hexdigest(),
-            "signer": AUTHORITY_REF,
-        },
+        "attestation": attestation,
         "fetchedAt": verified_at - 1_000,
         "verifiedAt": verified_at,
         "validUntil": valid_until,
@@ -761,15 +769,12 @@ def build_cases() -> list[dict]:
     reset_generation_state()
     cases: list[dict] = []
 
-    cci_claim, cci_result = verified_claim(
-        "cci-lei:984500ABCDEF12345678",
-        "pass",
-        "cci-lei-pass",
-        method="verifiable-credential",
-    )
-    cci_bundle = signed_bundle(
-        [cci_claim], presented_by="cci-lei:984500ABCDEF12345678"
-    )
+    cci_claim = claim("cci-lei:984500ABCDEF12345678")
+    # The deferred cci-lei reference is evidence under test, not an admitted
+    # evaluation-party identity.  Keep the invocation and signature on the
+    # registered fixture presenter so the shared registry rejects the claim
+    # itself rather than making the trusted nonce ledger malformed.
+    cci_bundle = signed_bundle([cci_claim], presented_by=PRESENTER_REF)
     add_case(
         cases,
         "dacs1-cci-lei-defect",
@@ -777,22 +782,20 @@ def build_cases() -> list[dict]:
         "A cci-lei claim cannot satisfy a distinct bare lei requirement.",
         {"result": evaluation(
             "match", cci_bundle, requirement([member("lei", verified=True)]),
-            resolved=[cci_result],
         )},
         False,
     )
     add_case(
         cases,
-        "dacs1-cci-lei-named-matches",
+        "dacs1-cci-lei-current-registry-reject",
         "§6.3.1",
-        "The same signed cci-lei claim satisfies its own registered scheme.",
+        "The deferred cci-lei scheme is rejected by the current shared registry.",
         {"result": evaluation(
             "match",
             cci_bundle,
             requirement([member("cci-lei", verified=True)]),
-            resolved=[cci_result],
         )},
-        True,
+        False,
     )
 
     selected_fail, selected_fail_result = verified_claim(
@@ -1379,11 +1382,27 @@ def build_document() -> dict:
                 attestation = artifact["attestation"]
                 authenticated_attestations[canonical_bytes(attestation)] = {
                     "attestation": copy.deepcopy(attestation),
+                    "resolvedSourceHash": attestation["contentHash"],
                     "scheme": artifact["scheme"],
                     "method": artifact["method"],
                     "recipeVersion": artifact["recipeVersion"],
                     "resultSigner": AUTHORITY_REF,
                 }
+                if "signer" in attestation:
+                    authenticated_attestations[canonical_bytes(attestation)][
+                        "sourceAuthority"
+                    ] = {
+                        "kind": (
+                            "issuer"
+                            if artifact["method"] == "verifiable-credential"
+                            else "validator-set"
+                            if artifact["method"] in {
+                                "consensus-backed-proxy", "evm-rpc"
+                            }
+                            else "signer"
+                        ),
+                        "claim": attestation["signer"],
+                    }
                 authenticated_results[canonical_bytes(resolved["ref"])] = {
                     "ref": copy.deepcopy(resolved["ref"]),
                     "serializedArtifactHash": resolved["serializedArtifactHash"],
@@ -1400,9 +1419,54 @@ def build_document() -> dict:
             "commit": SOURCE_COMMIT,
             "path": "conformance/run.ts",
         },
+        "historicalCompatibilityEvidence": [
+            {
+                "id": case_id,
+                "classification": "historical-non-authorizing",
+                "observedOutput": output,
+                "repository": "github.com/DACS-Agent-commerce/DACS-Standard",
+                "revision": "42a9a950f2bcd4a4d8ace4d27a6f420212c3ec47",
+                "path": (
+                    "conformance/fixtures/identity/"
+                    "dacs1-vet-golden-inputs-v0.1.json"
+                ),
+                "fileSha256": (
+                    "251f2c27f807e0408ce5a7ae0998efef3288e8f5b971d31156e8866219993f3b"
+                ),
+                "inputHash": input_hash,
+            }
+            for case_id, input_hash, output in (
+                (
+                    "dacs1-cci-lei-named-matches",
+                    "4fc0aaf5515386d71916a3a53fd1d1fdae6e00fe5c180b865b5be620d973ccae",
+                    True,
+                ),
+                (
+                    "vet-oneof-error-over-fail",
+                    "fbea863cb31aeee7f1189aea4320a45347c88dff0f4ca1224595595f05203f12",
+                    {"decision": "error", "reasons": [
+                        "oneOf group: at least one claim errored"
+                    ]},
+                ),
+                (
+                    "vet-oneof-indeterminate-over-fail",
+                    "64ea16fa994f4b270f0539c70243e2ab99246142cca65825fbce02e1e4e47722",
+                    {"decision": "indeterminate", "reasons": [
+                        "oneOf group: at least one claim indeterminate"
+                    ]},
+                ),
+                (
+                    "vet-cross-accumulator-fail-over-error",
+                    "f459398917ee7bdee50046a54937b8570a555e315f74d19bab6d09caab9a4aa6",
+                    {"decision": "fail", "reasons": [
+                        "required failing or absent: lei"
+                    ]},
+                ),
+            )
+        ],
         "provenance": (
-            "Standard-owned deterministic reconstruction of the external runner's "
-            "previously hidden inputs, normalized to current ClaimReference, "
+            "Standard-owned deterministic current reconstruction informed by the "
+            "external runner's previously hidden inputs and normalized to current ClaimReference, "
             "IdentityBundle, VerifyResultRef, signed-recipe, production-authority, "
             "signature, freshness, and presence-only rules"
         ),

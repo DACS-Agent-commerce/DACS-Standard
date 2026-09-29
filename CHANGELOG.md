@@ -33,6 +33,23 @@ The format used per release:
   current effects. A structurally unchanged `VerifyResult` v1 remains reusable
   under VP-C1..VP-C3 after authenticated current-profile admission and current
   qualification; the result itself does not establish a producing profile.
+
+- **Current Vet reconstruction corrections** (DACS-1 §§6.3.1–6.3.3;
+  DACS-2 §§7.4–7.8) — external Vet input now crosses the exact raw CF-5
+  boundary under verifier-owned admission; current scheme admission uses the
+  shared registry; source issuer/validator-set authority remains distinct from
+  result-producer authority; production aggregation binds both challenge issue
+  times and requalifies exact-owned evidence at trusted current time, while
+  signed-`generatedAt` replay is non-authorizing; every exact-owned current
+  non-pass is provenance-qualified before precedence and authenticated foreign
+  identities remain inert; optional selectors and presentation preferences are
+  type checked; wire fields declared as `number` retain finite fractional
+  values; and Vet reason text is advisory outside decision conformance.
+- **Presentation challenge alignment** (CORE §B.8; DACS-1 §6.3.2; DACS-2
+  §7.7.3) — per-claim, session-key, and sr1-root presentations use the existing
+  signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the
+  receiving phase orchestrator issues the verifier-identity challenge.
+
 ### Changed — current-delivery admission corrective boundary
 
 - **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,

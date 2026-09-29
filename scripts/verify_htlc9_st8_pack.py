@@ -48,6 +48,10 @@ from dacs_reference import (  # noqa: E402
     DuplicateJSONMember,
     price_term_unit_is_valid,
 )
+from raw_json_profile import (  # noqa: E402
+    RawJsonProfileError,
+    loads as load_raw_json,
+)
 
 try:
     from cryptography.exceptions import InvalidSignature
@@ -84,7 +88,6 @@ SIGNATURE_KEYS = {"algorithm", "signer", "value"}
 FINALITY_KEYS = {"model", "finalityObservedAt"}
 PRICE_TERM_REQUIRED_KEYS = {"amount", "currency"}
 PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
-
 
 def fail(path: Path, message: str) -> str:
     try:
@@ -334,27 +337,28 @@ def load_case(
     resolved: bool = False,
 ) -> tuple[dict | None, list[str]]:
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
     except FileNotFoundError:
         return None, [fail(path, "fixture file not found")]
-    except UnicodeError:
-        return None, [fail(path, "fixture is not valid UTF-8")]
     except (OSError, RecursionError) as exc:
         detail = getattr(exc, "strerror", None) or type(exc).__name__
         if isinstance(exc, RecursionError):
             detail = str(exc)
         return None, [fail(path, f"fixture file could not be read: {detail}")]
     try:
-        data = loads_unique_json(raw)
-    except DuplicateJSONMember as exc:
-        return None, [fail(path, f"invalid JSON: {exc}")]
-    except json.JSONDecodeError as exc:
-        return None, [fail(path, f"invalid JSON: {exc}")]
-    except UnicodeError as exc:
-        return None, [
-            fail(path, f"fixture is not valid UTF-8: invalid UTF-8 bytes: {exc}")
-        ]
-    except (ValueError, RecursionError) as exc:
+        data = load_raw_json(raw)
+    except RawJsonProfileError as exc:
+        message = str(exc)
+        if exc.code == "DUPLICATE-MEMBER":
+            match = re.search(r"member name (.+)$", message)
+            detail = match.group(1) if match else "<unknown>"
+            message = f"duplicate JSON member {detail}"
+        elif exc.code == "INVALID-UTF8":
+            message = f"fixture is not valid UTF-8: {message}"
+        elif exc.code == "NON-JSON-CONSTANT":
+            message = f"non-JSON numeric constant: {message}"
+        return None, [fail(path, f"invalid JSON: {message}")]
+    except (TypeError, ValueError, RecursionError) as exc:
         # The shared parser prefixes its own admission failures; host decoder
         # limits (e.g. the integer digit limit) are classified the same way.
         message = str(exc)
@@ -417,6 +421,42 @@ def txref_kinds(evidence: dict) -> list[str]:
     return [r.get("kind") for r in refs if isinstance(r, dict)]
 
 
+def htlc_topology_errors(
+    lock: dict | None,
+    reveal: dict | None,
+    claim: dict | None,
+) -> list[str]:
+    """Validate the topology expressible by the signed transaction refs.
+
+    This does not query a chain or establish native destination finality.
+    """
+
+    errors: list[str] = []
+    if lock is not None and reveal is not None:
+        if lock.get("lockTxHash") == reveal.get("revealTxHash"):
+            errors.append(
+                "HTLC transaction identity: reveal.revealTxHash MUST differ "
+                "from lock.lockTxHash"
+            )
+        if reveal.get("chainId") == lock.get("chainId"):
+            errors.append(
+                "HTLC topology: htlc-reveal MUST be on the destination chain "
+                "(reveal.chainId != lock.chainId) for pay-cross-chain-htlc"
+            )
+    if claim is not None and lock is not None:
+        if claim.get("chainId") != lock.get("chainId"):
+            errors.append(
+                "HTLC topology: htlc-claim MUST be on the source chain "
+                "(claim.chainId == lock.chainId)"
+            )
+        if claim.get("contractAddress") != lock.get("contractAddress"):
+            errors.append(
+                "HTLC topology: htlc-claim MUST target the source lock contract "
+                "(claim.contractAddress == lock.contractAddress)"
+            )
+    return errors
+
+
 def validate_interim(
     path: Path,
     expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
@@ -431,8 +471,8 @@ def validate_interim(
     )
     if evidence is None:
         return None, errors
-    if set(evidence) != INTERIM_EVIDENCE_KEYS:
-        errors.append(fail(path, "interim SettlementEvidence fields MUST be exactly evidenceVersion, jobId, observedAt, outcome, phase, paymentTxRefs, reason, signature"))
+    if not INTERIM_EVIDENCE_KEYS <= set(evidence):
+        errors.append(fail(path, "interim SettlementEvidence is missing required fields from evidenceVersion, jobId, observedAt, outcome, phase, paymentTxRefs, reason, signature"))
     delivery = DELIVERY_ONLY_KEYS & set(evidence)
     if delivery:
         errors.append(fail(path, "pay-phase SettlementEvidence MUST NOT carry delivery-only field(s): " + ", ".join(sorted(delivery))))
@@ -455,8 +495,9 @@ def validate_interim(
     refs = [r for r in raw_refs if isinstance(r, dict)] if isinstance(raw_refs, list) else []
     lock = next((r for r in refs if r.get("kind") == "htlc-lock"), None)
     reveal = next((r for r in refs if r.get("kind") == "htlc-reveal"), None)
-    if lock and reveal and lock.get("lockTxHash") == reveal.get("revealTxHash"):
-        errors.append(fail(path, "HTLC transaction identity: reveal.revealTxHash MUST differ from lock.lockTxHash"))
+    errors += [fail(path, error) for error in htlc_topology_errors(
+        lock, reveal, None,
+    )]
     if "settlementFinality" in evidence:
         errors.append(fail(path, "interim failure evidence MUST NOT carry settlementFinality"))
     return evidence, errors
@@ -480,8 +521,8 @@ def validate_resolved(
     if interim is not None and not isinstance(interim, dict):
         errors.append(fail(path, "interim SettlementEvidence MUST be an object for pair validation"))
         interim = None
-    if set(evidence) != RESOLVED_EVIDENCE_KEYS:
-        errors.append(fail(path, "resolved SettlementEvidence fields MUST be exactly evidenceVersion, jobId, observedAt, outcome, phase, paymentAmount, paymentTxRefs, settlementFinality, signature, supersedesEvidenceRef"))
+    if not RESOLVED_EVIDENCE_KEYS <= set(evidence):
+        errors.append(fail(path, "resolved SettlementEvidence is missing required fields from evidenceVersion, jobId, observedAt, outcome, phase, paymentAmount, paymentTxRefs, settlementFinality, signature, supersedesEvidenceRef"))
     if "reason" in evidence:
         errors.append(fail(path, "success resolved SettlementEvidence MUST NOT carry reason"))
     delivery = DELIVERY_ONLY_KEYS & set(evidence)
@@ -507,19 +548,9 @@ def validate_resolved(
         errors.append(fail(path, "HTLC transaction identity: claim.claimTxHash MUST differ from lock.lockTxHash"))
     if reveal and claim and reveal.get("revealTxHash") == claim.get("claimTxHash"):
         errors.append(fail(path, "HTLC transaction identity: claim.claimTxHash MUST differ from reveal.revealTxHash"))
-    if lock and reveal and claim and all(
-        exact_safe_integer(r.get("chainId"), minimum=1)
-        for r in (lock, reveal, claim)
-    ):
-        # HTLC-9 topology (DACS-4 §9.5.4): the lock and the payee's claim are on the SOURCE chain
-        # and contract; the payer's reveal is on the DESTINATION chain. A claim on the destination
-        # chain is the payer's reveal mislabelled, which is the mix-up ST-8 exists to forbid.
-        if claim["chainId"] != lock["chainId"]:
-            errors.append(fail(path, "HTLC topology: htlc-claim MUST be on the source chain (claim.chainId == lock.chainId)"))
-        if claim.get("contractAddress") != lock.get("contractAddress"):
-            errors.append(fail(path, "HTLC topology: htlc-claim MUST target the source lock contract (claim.contractAddress == lock.contractAddress)"))
-        if reveal["chainId"] == lock["chainId"]:
-            errors.append(fail(path, "HTLC topology: htlc-reveal MUST be on the destination chain (reveal.chainId != lock.chainId) for pay-cross-chain-htlc"))
+    errors += [fail(path, error) for error in htlc_topology_errors(
+        lock, reveal, claim,
+    )]
     if interim is not None:
         def by_kind(ev, kind):
             pair_refs = ev.get("paymentTxRefs")

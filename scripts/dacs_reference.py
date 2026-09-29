@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 import re
 import threading
 import unicodedata
@@ -111,7 +112,31 @@ def canonical_equal(left: Any, right: Any) -> bool:
 
 
 def exact_safe_integer(value: Any, *, minimum: int | None = None) -> bool:
-    if type(value) is not int or not -SAFE_INTEGER <= value <= SAFE_INTEGER:
+    if type(value) is int:
+        integral = value
+    elif (
+        type(value) is float
+        and math.isfinite(value)
+        and value.is_integer()
+    ):
+        integral = int(value)
+    else:
+        return False
+    if not -SAFE_INTEGER <= integral <= SAFE_INTEGER:
+        return False
+    return minimum is None or integral >= minimum
+
+
+def finite_safe_number(value: Any, *, minimum: float | None = None) -> bool:
+    """Return whether ``value`` is a finite JSON number in the JCS safe range."""
+
+    if type(value) is int:
+        if not -SAFE_INTEGER <= value <= SAFE_INTEGER:
+            return False
+    elif type(value) is float:
+        if not math.isfinite(value) or not -SAFE_INTEGER <= value <= SAFE_INTEGER:
+            return False
+    else:
         return False
     return minimum is None or value >= minimum
 

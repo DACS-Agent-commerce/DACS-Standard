@@ -110,7 +110,11 @@ v0.1 conformance requirements:
   under the registered `key:` ClaimReference. Their fixture wrappers carry
   finalized receipt context. `scripts/verify_htlc9_st8_pack.py` independently
   pins the expected phase orchestrator and verifies both signatures, receipt
-  logical/native/content/writer bindings, and supersession.
+  logical/native/content/writer bindings, supersession, and the signed
+  source-lock / destination-reveal / source-claim topology. The wrapper receipt
+  context is a fixture precondition only: this pack does not query either
+  native chain, establish reveal transaction finality, or authenticate a
+  production rail/finality provider.
 
 ## Validate locally
 

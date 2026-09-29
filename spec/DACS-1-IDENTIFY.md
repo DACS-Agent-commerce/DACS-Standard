@@ -205,7 +205,7 @@ type IdentityBundle = {
 
   presentedAt: number                  // unix milliseconds (always present); informational/diagnostic only — session freshness/replay is bound by sessionNonce (§6.3.2), not by presentedAt; verifiers MUST NOT gate acceptance on presentedAt
 
-  sessionNonce?: string                // session-binding nonce for per-claim / session-key presentations; top-level so it enters bundle_hash (§6.3.2). SIWD conveys the nonce in the SIWD message Nonce field instead.
+  sessionNonce?: string                // session-binding nonce for per-claim / session-key / sr1-root presentations; top-level so it enters bundle_hash (§6.3.2). SIWD conveys the nonce in the SIWD message Nonce field instead.
 
   claims: BundleClaim[]                // non-empty; order is meaningful
 
@@ -265,11 +265,11 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 
 **Session nonce binding.** `presentedAt` is always present (a required schema field). A bundle presented in the context of a specific session SHOULD additionally carry a session-binding nonce:
 
-- The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim and session-key presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
+- The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim, session-key, and sr1-root presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
 - A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the distinct challenge it issued for this exact `jobId` and presenter, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, distinct per presentation, bounded-lifetime, and consumed on the first attempt including failure — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it.
 - The verifier extracts the nonce from the conveyance defined by the declared
-  presentation kind: the existing top-level `sessionNonce` for the native
-  bundle-presentation kinds that use it, or the parsed EIP-4361 `Nonce` field
+  presentation kind: the existing top-level `sessionNonce` for per-claim,
+  session-key, and sr1-root, or the parsed EIP-4361 `Nonce` field
   from the exact SIWD message whose signature is being authenticated.  It MUST
   NOT search arbitrary wrapper metadata or accept a caller-projected nonce.
   Once the exact issued value is found, CORE SN-4 consumes the issuer-owned
@@ -1286,7 +1286,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Forged listings.** *Threat:* an attacker publishes a listing impersonating a known seller. *Mitigation:* listings are signed; the signer MUST be a key referenced in seller.identity.claims, and the bundle itself MUST verify. A reader following the validation order detects the impersonation at the signature step or the bundle-conformance step.
 
-**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
+**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim, session-key, and sr1-root kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings, omits real ones, or withholds a revocation tombstone while replaying an older active row. *Mitigation:* ListingSummary includes the anchor and contentHash, so clients dereference and verify the Listing. Current new-session readers additionally ignore catalog omission as revocation evidence and require the Listing-bound RSC current-head proof. A poisoned catalog can still cause UX confusion or denial of service, but cannot turn a partial active view into current non-revocation.
 

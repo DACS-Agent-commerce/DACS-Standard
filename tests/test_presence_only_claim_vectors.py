@@ -1,4 +1,5 @@
 import base64
+import copy
 import hashlib
 import json
 import re
@@ -23,6 +24,7 @@ from dacs_reference import (  # noqa: E402
     NonceLedger,
     NonceRejected,
     exact_safe_integer,
+    finite_safe_number,
     parse_claim_reference,
     presentation_nonce,
 )
@@ -338,7 +340,7 @@ def verify_bundle(bundle, admission=None):
         return False
     if (
         bundle.get("bundleVersion") != "1"
-        or not exact_safe_integer(bundle.get("presentedAt"), minimum=0)
+        or not finite_safe_number(bundle.get("presentedAt"))
         or not isinstance(bundle.get("claims"), list)
         or not bundle["claims"]
         or (admission is not None and presentation_nonce(bundle) != admission.nonce)
@@ -438,10 +440,8 @@ def canonical_claims(bundle):
             claim.get("ref"), registered_schemes=KNOWN_SCHEMES
         )
         for field in ("issuedAt", "expiresAt"):
-            if field in claim and not exact_safe_integer(
-                claim.get(field), minimum=0
-            ):
-                raise ValueError(f"claim {field} must be an exact safe integer")
+            if field in claim and not finite_safe_number(claim.get(field)):
+                raise ValueError(f"claim {field} must be a finite safe number")
         claims.append((claim, parsed))
     return claims
 
@@ -587,11 +587,11 @@ def authenticate_result(result, reference, trusted_context, generated_at):
         or not well_formed_attestation_ref(
             result.get("attestation")
         )
-        or not exact_safe_integer(result.get("fetchedAt"), minimum=0)
-        or not exact_safe_integer(result.get("verifiedAt"), minimum=0)
+        or not finite_safe_number(result.get("fetchedAt"))
+        or not finite_safe_number(result.get("verifiedAt"))
         or (
             "validUntil" in result
-            and not exact_safe_integer(valid_until, minimum=0)
+            and not finite_safe_number(valid_until)
         )
         or result["fetchedAt"] > result["verifiedAt"]
         or result["verifiedAt"] > generated_at
@@ -904,7 +904,7 @@ def valid_requirement(requirement):
             )
             or (
                 "maxAge" in member
-                and not exact_safe_integer(member.get("maxAge"), minimum=0)
+                and not finite_safe_number(member.get("maxAge"), minimum=0)
             )
             or (
                 member.get("verificationRequired") is False
@@ -1120,6 +1120,82 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         names = [vector["name"] for vector in vectors]
         self.assertEqual(len(names), len(set(names)))
 
+    def test_fractional_max_age_is_a_valid_verified_duration(self):
+        self.assertTrue(valid_requirement({
+            "requirementVersion": "1",
+            "required": [{
+                "scheme": "key",
+                "verificationRequired": True,
+                "maxAge": 0.5,
+            }],
+        }))
+        for value in (
+            True, -0.5, float("nan"), float("inf"), 10**1000, -(10**1000)
+        ):
+            with self.subTest(value=repr(value)):
+                self.assertFalse(valid_requirement({
+                    "requirementVersion": "1",
+                    "required": [{
+                        "scheme": "key",
+                        "verificationRequired": True,
+                        "maxAge": value,
+                    }],
+                }))
+
+    def test_sr1_root_uses_top_level_nonce_and_siwd_uses_message_nonce(self):
+        issuance = copy.deepcopy(
+            self.document["trustedContext"]["nonceIssuances"][0]
+        )
+        sr1 = {
+            "sessionNonce": issuance["nonce"],
+            "presentation": {
+                "kind": "sr1-root",
+                "rootClaim": issuance["evaluatedParty"],
+                "aggregateSignature": "fixture",
+            },
+        }
+        self.assertEqual(issuance["nonce"], presentation_nonce(sr1))
+        ledger = NonceLedger([issuance])
+        ledger.consume(
+            issuance["challengeId"], presentation_nonce(sr1), issuance["issuedAt"]
+        )
+        with self.assertRaises(NonceRejected):
+            ledger.consume(
+                issuance["challengeId"], presentation_nonce(sr1),
+                issuance["issuedAt"],
+            )
+
+        for mutation in ("missing", "wrong"):
+            with self.subTest(sr1=mutation):
+                candidate = copy.deepcopy(sr1)
+                if mutation == "missing":
+                    candidate.pop("sessionNonce")
+                else:
+                    candidate["sessionNonce"] = "00" * 16
+                fresh = NonceLedger([issuance])
+                with self.assertRaises(NonceRejected):
+                    fresh.consume(
+                        issuance["challengeId"], presentation_nonce(candidate),
+                        issuance["issuedAt"],
+                    )
+                self.assertFalse(fresh.consumed(issuance["challengeId"]))
+
+        siwd = {
+            "sessionNonce": issuance["nonce"],
+            "presentation": {
+                "kind": "siwd",
+                "message": "Nonce: " + "00" * 16,
+            },
+        }
+        self.assertEqual("00" * 16, presentation_nonce(siwd))
+        fresh = NonceLedger([issuance])
+        with self.assertRaises(NonceRejected):
+            fresh.consume(
+                issuance["challengeId"], presentation_nonce(siwd),
+                issuance["issuedAt"],
+            )
+        self.assertFalse(fresh.consumed(issuance["challengeId"]))
+
     def test_all_vectors_execute(self):
         runtime = PresenceEvaluationRuntime(self.document["trustedContext"])
         for vector in self.document["vectors"]:
@@ -1168,25 +1244,35 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
     def test_identity_bundle_accepts_signed_additive_top_level_members(self):
         private = Ed25519PrivateKey.from_private_bytes(bytes.fromhex("24" * 32))
         claim = "key:" + private.public_key().public_bytes_raw().hex()
-        unsigned = {
-            "bundleVersion": "1",
-            "presentedBy": claim,
-            "presentedAt": 0,
-            "claims": [{"ref": claim}],
-            "futureMinorContext": {"advisory": ["retained", "inert"]},
-        }
-        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
-        signature = base64.urlsafe_b64encode(private.sign(payload)).rstrip(b"=")
-        bundle = {
-            **unsigned,
-            "presentation": {
-                "kind": "per-claim",
-                "signatures": [
-                    {"ref": claim, "signature": signature.decode("ascii")}
-                ],
-            },
-        }
-        self.assertTrue(verify_bundle(bundle))
+        def signed(presented_at):
+            unsigned = {
+                "bundleVersion": "1",
+                "presentedBy": claim,
+                "presentedAt": presented_at,
+                "claims": [{"ref": claim}],
+                "futureMinorContext": {"advisory": ["retained", "inert"]},
+            }
+            payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+            signature = base64.urlsafe_b64encode(private.sign(payload)).rstrip(b"=")
+            return {
+                **unsigned,
+                "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                        {"ref": claim, "signature": signature.decode("ascii")}
+                    ],
+                },
+            }
+
+        for value in (0, 0.5, -0.5):
+            with self.subTest(valid_presented_at=value):
+                self.assertTrue(verify_bundle(signed(value)))
+        for value in (True, "0"):
+            with self.subTest(invalid_presented_at=value):
+                self.assertFalse(verify_bundle(signed(value)))
+        unsigned_mutation = signed(0)
+        unsigned_mutation["presentedAt"] = 0.5
+        self.assertFalse(verify_bundle(unsigned_mutation))
 
     def test_every_result_reference_uses_the_core_b2_signed_scope(self):
         resolved = [

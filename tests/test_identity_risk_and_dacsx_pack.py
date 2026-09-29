@@ -229,7 +229,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             (OSError("unreadable fixture"), "fixture file could not be read"),
         ):
             with self.subTest(error=type(error).__name__):
-                with mock.patch.object(Path, "read_text", side_effect=error):
+                with mock.patch.object(Path, "read_bytes", side_effect=error):
                     evidence, errors = ver.load_case(path)
                 self.assertIsNone(evidence)
                 self.assertTrue(any(expected in item for item in errors), errors)
@@ -485,7 +485,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         uncanonicalizable = json.loads(INTERIM.read_text(encoding="utf-8"))
         uncanonicalizable["settlementEvidence"]["observedAt"] = 2 ** 53
         _, errors = ver.validate_interim(self._write(uncanonicalizable))
-        self.assertTrue(any("cannot be canonicalized as DACS JCS" in e for e in errors), errors)
+        self.assertTrue(any("NUMBER-OUTSIDE-DACS-MAGNITUDE" in e for e in errors), errors)
 
     def test_valid_custom_pack_accepts_its_independently_selected_authority(self):
         gen, ver = self._load_pack_modules()
@@ -538,7 +538,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertTrue(any("fixture root MUST be an object" in error for error in errors))
 
         with mock.patch.object(
-            Path, "read_text", side_effect=PermissionError("permission denied")
+            Path, "read_bytes", side_effect=PermissionError("permission denied")
         ):
             evidence, errors = ver.load_case(Path(self._tempdir.name) / "unreadable")
         self.assertIsNone(evidence)
@@ -728,8 +728,6 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             ("claim reuses reveal transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal")["revealTxHash"])}, "claim.claimTxHash MUST differ from reveal.revealTxHash"),
             ("interim reveal reuses lock transaction hash", {"mutate_interim": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("revealTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "reveal.revealTxHash MUST differ from lock.lockTxHash"),
             ("resolved carries reason", {"mutate_resolved": lambda e: e.__setitem__("reason", "dest-revealed-source-unclaimed")}, "MUST NOT carry reason"),
-            ("interim SettlementEvidence has an unknown field", {"mutate_interim": lambda e: e.__setitem__("unexpected", True)}, "interim SettlementEvidence fields MUST be exactly"),
-            ("resolved SettlementEvidence has an unknown field", {"mutate_resolved": lambda e: e.__setitem__("unexpected", True)}, "resolved SettlementEvidence fields MUST be exactly"),
             ("ComponentSignature has an unknown field", {"mutate_resolved_signed": lambda e: e["signature"].__setitem__("keyId", "test")}, "ComponentSignature fields MUST be exactly"),
             ("htlc-reveal finality carries finalityBlocks", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityBlocks", 1)}, "SettlementFinalityRecord"),
             ("htlc-reveal finality carries finalityCommitmentLevel", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityCommitmentLevel", "final")}, "SettlementFinalityRecord"),
@@ -751,6 +749,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 self.assertTrue(errors, f"{name}: accepted")
                 self.assertFalse(any("signature does not verify" in e or "SIG-6" in e or "content hash" in e for e in errors), f"{name}: rejected by a backstop, not {needle}: {errors}")
                 self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
+
         # Both-sides topology case: mutate the interim; the resolved record inherits the
         # mutated lock/reveal, so cross-pair identity holds and ONLY the topology guard can
         # reject. (A pair CONSISTENTLY mirrored onto the other chain is not a case here: with
@@ -778,6 +777,24 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 if which == I and "content hash" not in needle:
                     self.assertFalse(any("content hash" in e for e in errors), f"{name}: rejected by the supersession hash backstop, not the guard: {errors}")
                 self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
+
+    def test_htlc9_signed_additive_evidence_members_are_forward_readable(self):
+        gen, ver = self._load_pack_modules()
+        interim, resolved = self._pair(
+            gen,
+            mutate_interim=lambda evidence: evidence.__setitem__(
+                "futureOptional", {"version": 2}
+            ),
+            mutate_resolved=lambda evidence: evidence.__setitem__(
+                "futureOptional", {"version": 2}
+            ),
+        )
+        self.assertEqual([], ver.validate_pair(interim, resolved))
+
+        unsigned = json.loads(interim.read_text(encoding="utf-8"))
+        unsigned["settlementEvidence"]["anotherFutureMember"] = True
+        errors = ver.validate_pair(self._write(unsigned), resolved)
+        self.assertTrue(any("signature does not verify" in error for error in errors))
 
     def test_nfd_and_nfc_values_hash_and_verify_identically(self):
         gen, ver = self._load_pack_modules()

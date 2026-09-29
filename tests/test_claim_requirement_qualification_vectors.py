@@ -14,7 +14,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from dacs_reference import canonical_bytes, exact_safe_integer  # noqa: E402
+from dacs_reference import (  # noqa: E402
+    canonical_bytes,
+    exact_safe_integer,
+    finite_safe_number,
+)
 from sr2_resolution_reference import _recipe_for_selected_method, _recipe_method_kinds
 
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "claim-requirement-qualification-v0.3.json"
@@ -408,9 +412,9 @@ def applicable_results(input_data, claim_requirement, registry):
             continue
         if "maxAge" in claim_requirement:
             if (
-                not exact_safe_integer(result.get("verifiedAt"), minimum=0)
+                not finite_safe_number(result.get("verifiedAt"))
                 or not exact_safe_integer(input_data.get("generatedAt"), minimum=0)
-                or not exact_safe_integer(claim_requirement.get("maxAge"), minimum=0)
+                or not finite_safe_number(claim_requirement.get("maxAge"), minimum=0)
             ):
                 raise QualificationError("age predicate timestamps are invalid")
             expires_at = result["verifiedAt"] + claim_requirement["maxAge"] * 1000
@@ -646,6 +650,25 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         claim_requirement["parameters"]["verificationMethod"] = "unregistered-method"
         with self.assertRaisesRegex(QualificationError, "family cannot be resolved"):
             applicable_results(input_data, claim_requirement, registry)
+
+    def test_fractional_max_age_is_a_finite_duration(self):
+        registry = {
+            "recipeRegistryVersion": 1,
+            "latestByScheme": {"key": 1},
+            "latestByFamily": {"key": {"self-signed": 1}},
+            "versionsByFamily": {"key": {"self-signed": {"1": "live"}}},
+        }
+        requirement = {
+            "scheme": "key", "verificationRequired": True, "maxAge": 0.5,
+        }
+        result = {
+            "scheme": "key", "method": "self-signed", "decision": "pass",
+            "recipeVersion": 1, "verifiedAt": 1_000, "data": {},
+        }
+        current = {"generatedAt": 1_500, "resolvedResults": [result]}
+        stale = {"generatedAt": 1_501, "resolvedResults": [result]}
+        self.assertEqual([result], applicable_results(current, requirement, registry))
+        self.assertEqual([], applicable_results(stale, requirement, registry))
 
     def test_registry_without_exact_family_metadata_fails_closed(self):
         vector = next(

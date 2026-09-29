@@ -3124,20 +3124,31 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         vet_labels = f"CORE v{core}, DACS-1 v{d1}, and DACS-2 v{d2}"
         core_text = text("spec/CORE.md")
         self.assertIn(f"**DACS Core v{core}**", core_text)
-        self.assertIn(
+        tuple_text = (
             f"CORE v{core} together with DACS-1 v{d1}, DACS-2 v{d2}, "
             f"DACS-3 v{table['DACS-3']}, DACS-4 v{table['DACS-4']}, and "
-            f"DACS-5 v{table['DACS-5']} declares the same boundary for Vet. "
-            f"{vet_labels} change existing execution behaviour",
+            f"DACS-5 v{table['DACS-5']}"
+        )
+        self.assertIn(
+            f"The unreleased coordinated corrective candidate is {tuple_text}.",
             core_text,
         )
         self.assertIn(
-            f"**breaking pre-v1 Vet correction** in {vet_labels}.",
+            f"for Vet, {vet_labels} change existing execution behaviour",
+            core_text,
+        )
+        self.assertIn(
+            "This candidate is a **breaking pre-v1 correction** under CORE "
+            "§11.1.2",
             " ".join(section.split()),
         )
         for name, version, affected in (
             ("CORE", core, "shared Vet admission behaviour affected"),
-            ("DACS-1", d1, "session presentation behaviour affected"),
+            (
+                "DACS-1",
+                d1,
+                "session presentation, and current composed module behaviour affected",
+            ),
             ("DACS-2", d2, "Vet aggregation and authority behaviour affected"),
         ):
             with self.subTest(row=name):
@@ -3151,15 +3162,15 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             f"**DACS-1 v{d1}** on the common DACS v0.1 baseline", text("spec/DACS-1-IDENTIFY.md")
         )
         self.assertIn(
-            f"v{d1} is also an affected document in the declared CORE §11.1.2 "
-            "**breaking pre-v1 Vet correction**",
+            "v0.7 participates in the declared CORE §11.1.2 breaking pre-v1 "
+            "corrective boundary",
             text("spec/DACS-1-IDENTIFY.md"),
         )
         dacs2 = text("spec/DACS-2-VET.md")
         self.assertIn(f"**DACS-2 v{d2}**", dacs2)
         self.assertIn(
-            f"The same v{d2} profile is an affected document in the declared "
-            "CORE §11.1.2 **breaking pre-v1 Vet correction**",
+            f"v{d2} is an affected document in the declared CORE §11.1.2 "
+            "**breaking pre-v1 corrective candidate**",
             dacs2,
         )
         heading = next(
@@ -3170,20 +3181,17 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             heading.endswith(f"(CORE v{core} / DACS-1 v{d1} / DACS-2 v{d2})"), heading
         )
         # Every other label-bearing restatement of the same declaration.
-        tail = (
-            f"DACS-3 v{table['DACS-3']} / DACS-4 v{table['DACS-4']} / "
-            f"DACS-5 v{table['DACS-5']}"
-        )
         for path, phrase in (
             ("CHANGELOG.md",
-             f"retaining the current CORE v{core} / DACS-1 v{d1} / DACS-2 v{d2} "
-             f"labels and complete module tuple (with {tail})."),
+             f"The current complete tuple is CORE v{core} / DACS-1 v{d1} / "
+             f"DACS-2 v{d2} / DACS-3 v{table['DACS-3']} / "
+             f"DACS-4 v{table['DACS-4']} / DACS-5 v{table['DACS-5']}."),
             ("spec/CORE.md",
              f"a pre-correction implementation carrying the same v{core} label "
              "is not presumed interoperable"),
             ("spec/DACS-1-IDENTIFY.md",
-             f"the v{d1} label alone does not establish interoperability with "
-             "pre-correction session-presentation behaviour"),
+             "the version label alone does not establish interoperability with "
+             "pre-correction behavior"),
             ("spec/DACS-2-VET.md",
              f"the v{d2} label alone does not establish interoperability with "
              f"pre-correction v{d2} execution behavior"),

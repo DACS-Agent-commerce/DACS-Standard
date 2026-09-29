@@ -618,32 +618,30 @@ def validate_pair(
     resolved_path: Path,
     expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
 ) -> list[str]:
-    if not interim_path.exists() or not resolved_path.exists():
-        # Preserve the primary file diagnostic for missing custom inputs; there
-        # is no admitted pair on which the stricter committed-fixture receipt
-        # policy could operate.
-        require_fixture_receipts = False
-    else:
-        try:
+    try:
+        if not interim_path.exists() or not resolved_path.exists():
+            # Preserve the primary file diagnostic for missing custom inputs;
+            # there is no admitted pair on which the stricter committed-fixture
+            # receipt policy could operate.
+            require_fixture_receipts = False
+        else:
             require_fixture_receipts = requires_fixture_receipts(
                 interim_path, resolved_path
             )
-        except (OSError, RuntimeError) as error:
-            # Fail closed: no record is evaluated and no receipt policy is
-            # chosen. Preserve ordinary per-file diagnostics without reading
-            # either input after resolution failed.
-            errors = [fail(interim_path, f"pair paths could not be resolved: {error}")]
-            for path in dict.fromkeys((interim_path, resolved_path)):
-                try:
-                    path.stat()
-                except FileNotFoundError:
-                    errors.append(fail(path, "fixture file not found"))
-                except OSError as exc:
-                    detail = exc.strerror or type(exc).__name__
-                    errors.append(
-                        fail(path, f"fixture file could not be read: {detail}")
-                    )
-            return errors
+    except (OSError, RuntimeError) as error:
+        # Fail closed: no record is evaluated and no receipt policy is chosen.
+        # Preserve ordinary per-file diagnostics without reading either input
+        # after resolution failed.
+        errors = [fail(interim_path, f"pair paths could not be resolved: {error}")]
+        for path in dict.fromkeys((interim_path, resolved_path)):
+            try:
+                path.stat()
+            except FileNotFoundError:
+                errors.append(fail(path, "fixture file not found"))
+            except OSError as exc:
+                detail = exc.strerror or type(exc).__name__
+                errors.append(fail(path, f"fixture file could not be read: {detail}"))
+        return errors
     interim, errors = validate_interim(
         interim_path,
         expected_phase_orchestrator=expected_phase_orchestrator,

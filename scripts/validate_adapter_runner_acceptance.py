@@ -31,6 +31,7 @@ RUNNER_SOURCES = {
     "conformance/shared-suite/unsupported-case.test.mjs": "a0416d52c4206564fa00bff2f7998c6de9e66f377ecb8a8d34ed6b8219cbb6ea",
     "conformance/shared-suite/cross-run.mjs": "56dd845387ec90a8e400613517e57a16b3e2f585eee2c1bb24b1c44b458b0ee2",
 }
+DESCRIPTOR_SHA256 = "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca"
 
 
 class PacketError(ValueError):
@@ -56,29 +57,113 @@ def require(condition, message):
         raise PacketError(message)
 
 
+def require_object(value, label):
+    require(isinstance(value, dict), f"{label} must be an object")
+    return value
+
+
+def require_array(value, label):
+    require(isinstance(value, list), f"{label} must be an array")
+    return value
+
+
+def require_member_object(parent, key, label):
+    return require_object(parent.get(key), label)
+
+
+def require_member_array(parent, key, label):
+    return require_array(parent.get(key), label)
+
+
+def require_integer(value, label, *, minimum=0):
+    require(type(value) is int and value >= minimum,
+            f"{label} must be an integer >= {minimum}")
+    return value
+
+
 def descriptor_expectations():
     path = ROOT / "conformance/interop/frozen/dacs-adapter-release-proposal-c799-v1.json"
     raw = path.read_bytes()
     require(hashlib.sha256(raw).hexdigest() ==
-            "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca",
+            DESCRIPTOR_SHA256,
             "local frozen descriptor digest changed")
-    descriptor = json.loads(raw)
-    return {case["caseId"]: {
-        "operation": case.get("operation", family.get("operation")),
-        "outcome": (f"ERROR-CODE:{case['expectedErrorCode']}" if "expectedErrorCode" in case
-                    else json.dumps(case["expected"], separators=(",", ":"))),
-    } for family in descriptor["families"] for case in family["cases"]}
+    descriptor = require_object(json.loads(raw), "frozen descriptor")
+    descriptor_adapter = require_member_object(
+        descriptor, "adapter", "frozen descriptor adapter"
+    )
+    wrapped = require_member_object(
+        descriptor_adapter, "wrappedStandard",
+        "frozen descriptor wrappedStandard",
+    )
+    require(set(wrapped) == {"revision", "tree", "primitives"},
+            "frozen descriptor wrappedStandard members changed")
+    primitives = require_member_array(
+        wrapped, "primitives", "frozen descriptor wrappedStandard primitives"
+    )
+    primitive_sha256 = {}
+    for index, primitive_value in enumerate(primitives):
+        primitive = require_object(
+            primitive_value,
+            f"frozen descriptor wrappedStandard primitives[{index}]",
+        )
+        path_value = primitive.get("path")
+        digest = primitive.get("sha256")
+        require(isinstance(path_value, str) and path_value,
+                f"frozen descriptor primitive {index} path must be a string")
+        require(isinstance(digest, str) and len(digest) == 64,
+                f"frozen descriptor primitive {path_value} digest is malformed")
+        require(path_value not in primitive_sha256,
+                f"frozen descriptor primitive {path_value} is duplicated")
+        primitive_sha256[path_value] = digest
+    expected_wrapped = {
+        "revision": wrapped.get("revision"),
+        "tree": wrapped.get("tree"),
+        "primitiveSha256": primitive_sha256,
+    }
+    families = require_member_array(
+        descriptor, "families", "frozen descriptor families"
+    )
+    cases = {}
+    for family_index, family_value in enumerate(families):
+        family = require_object(
+            family_value, f"frozen descriptor families[{family_index}]"
+        )
+        for case_index, case_value in enumerate(require_member_array(
+            family, "cases", f"frozen descriptor families[{family_index}].cases"
+        )):
+            case = require_object(
+                case_value,
+                f"frozen descriptor families[{family_index}].cases[{case_index}]",
+            )
+            case_id = case.get("caseId")
+            require(isinstance(case_id, str) and case_id not in cases,
+                    "frozen descriptor case IDs must be unique strings")
+            cases[case_id] = {
+                "operation": case.get("operation", family.get("operation")),
+                "outcome": (
+                    f"ERROR-CODE:{case['expectedErrorCode']}"
+                    if "expectedErrorCode" in case
+                    else json.dumps(case["expected"], separators=(",", ":"))
+                ),
+            }
+    return cases, expected_wrapped
 
 
 def validate(packet):
     require(isinstance(packet, dict) and packet.get("schema") == SCHEMA, "wrong packet schema")
     require(packet.get("accepted") is True, "packet is not accepted")
-    coordinates = packet.get("coordinates", {})
-    standard, runner = coordinates.get("standard", {}), coordinates.get("runner", {})
+    coordinates = require_member_object(packet, "coordinates", "coordinates")
+    standard = require_member_object(coordinates, "standard", "coordinates.standard")
+    runner = require_member_object(coordinates, "runner", "coordinates.runner")
+    adapter = require_member_object(packet, "adapter", "adapter")
+    runtime = require_member_object(packet, "runtime", "runtime")
+    require_member_array(packet, "limitations", "limitations")
+    require(isinstance(adapter.get("name"), str) and adapter.get("name"),
+            "adapter.name must be a non-empty string")
     require(standard.get("repository") == "https://github.com/DACS-Agent-commerce/DACS-Standard", "wrong Standard repository")
     require(standard.get("head") == "c799a163e80bff867ba01bc9e08f15ab7916e139", "wrong Standard head")
     require(standard.get("tree") == "2fadbac38d9013268b41dec47c1090d5ac9c5600", "wrong Standard tree")
-    require(standard.get("descriptorSha256") == "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca", "wrong descriptor digest")
+    require(standard.get("descriptorSha256") == DESCRIPTOR_SHA256, "wrong descriptor digest")
     require(standard.get("wrappedStandard") == "ef69d46a81e3018b6eb9aa7cb25489657ed91def", "wrong wrapped Standard")
     require(standard.get("adapterSourceSha256") == "a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6", "wrong adapter source")
     require(runner.get("repository") == "https://github.com/cX3po/pathos-dacs-ref", "wrong runner repository")
@@ -87,77 +172,152 @@ def validate(packet):
     require(runner.get("issueComment") ==
             "https://github.com/DACS-Agent-commerce/DACS-Standard/issues/270#issuecomment-5696719263",
             "wrong runner issue comment")
-    require(runner.get("sourceSha256") == RUNNER_SOURCES, "runner source pins differ from reviewed bytes")
-    require(packet.get("expected") == {"cases": 20, "summary": {
+    runner_sources = require_member_object(
+        runner, "sourceSha256", "coordinates.runner.sourceSha256"
+    )
+    require(runner_sources == RUNNER_SOURCES, "runner source pins differ from reviewed bytes")
+    expected_section = require_member_object(packet, "expected", "expected")
+    expected_summary = require_member_object(
+        expected_section, "summary", "expected.summary"
+    )
+    require_integer(expected_section.get("cases"), "expected.cases", minimum=1)
+    for key in ("SELF-CHECK", "ABSTAIN", "INTEROP-AGREE", "ERROR"):
+        require_integer(expected_summary.get(key), f"expected.summary.{key}")
+    require(expected_section == {"cases": 20, "summary": {
         "SELF-CHECK": 18, "ABSTAIN": 2, "INTEROP-AGREE": 0, "ERROR": 0}}, "wrong independent expectations")
-    observed = packet.get("observed", {})
-    matrix = observed.get("matrix")
-    require(isinstance(matrix, list) and len(matrix) == 20, "matrix must contain 20 cases")
-    require({row.get("id") for row in matrix if isinstance(row, dict)} == EXPECTED_IDS, "case set is incomplete or duplicated")
-    expected_outcomes = descriptor_expectations()
-    for row in matrix:
+    observed = require_member_object(packet, "observed", "observed")
+    matrix = require_member_array(observed, "matrix", "observed.matrix")
+    require(len(matrix) == 20, "matrix must contain 20 cases")
+    rows = []
+    ids = []
+    for index, row_value in enumerate(matrix):
+        row = require_object(row_value, f"observed.matrix[{index}]")
+        case_id = row.get("id")
+        require(isinstance(case_id, str), f"observed.matrix[{index}].id must be a string")
+        rows.append(row)
+        ids.append(case_id)
+    require(set(ids) == EXPECTED_IDS and len(set(ids)) == len(ids),
+            "case set is incomplete or duplicated")
+    expected_outcomes, expected_wrapped = descriptor_expectations()
+    for row in rows:
         case_id = row["id"]
         expected = expected_outcomes.get(case_id, {
             "bigint-native-type": {"operation": "canonicalize"},
             "signing::valid-raw-digest-profile-boundary": {"operation": "domainSepVerify"},
         }.get(case_id))
+        require(isinstance(expected, dict), f"{case_id}: no frozen expectation")
         require(row.get("operation") == expected["operation"], f"{case_id}: wrong operation mapping")
+        require_integer(row.get("participatingAdapters"),
+                        f"{case_id}: participatingAdapters")
+        require_integer(row.get("independentImplementations"),
+                        f"{case_id}: independentImplementations")
+        adapters = require_member_array(row, "adapters", f"{case_id}: adapters")
+        require(len(adapters) == 2, f"{case_id}: adapters must contain two runs")
+        adapter_rows = []
+        run_ids = []
+        for index, item_value in enumerate(adapters):
+            item = require_object(item_value, f"{case_id}: adapters[{index}]")
+            run_id = item.get("runId")
+            require(isinstance(run_id, str),
+                    f"{case_id}: adapters[{index}].runId must be a string")
+            require(item.get("name") == adapter.get("name"),
+                    f"{case_id}: adapter identity differs from packet metadata")
+            adapter_rows.append(item)
+            run_ids.append(run_id)
         if case_id in ABSTAIN_IDS:
             require(row.get("status") == "ABSTAIN" and row.get("participatingAdapters") == 0
                     and row.get("independentImplementations") == 0, f"{case_id}: must fully ABSTAIN")
-            require(len(row.get("adapters", [])) == 2 and all(item.get("status") == "ABSTAIN"
+            require(all(item.get("status") == "ABSTAIN"
                     and item.get("errorCode") == "UNSUPPORTED_CASE" and item.get("outcome") is None
-                    for item in row["adapters"]),
+                    for item in adapter_rows),
                     f"{case_id}: missing explicit unsupported evidence")
-            require({item.get("runId") for item in row["adapters"]} == {"run-0", "run-1"},
+            require(set(run_ids) == {"run-0", "run-1"},
                     f"{case_id}: runner identities are incomplete")
         else:
             require(row.get("expected") == expected["outcome"],
                     f"{case_id}: expected value differs from frozen descriptor")
             require(row.get("status") == "SELF-CHECK" and row.get("participatingAdapters") == 2
                     and row.get("independentImplementations") == 1, f"{case_id}: false independence or result")
-            require(len(row.get("adapters", [])) == 2 and all(item.get("status") == "matches-expected"
-                    for item in row["adapters"]), f"{case_id}: adapter result mismatch")
-            require(all(item.get("outcome") == row.get("expected") for item in row["adapters"]),
+            require(all(item.get("status") == "matches-expected"
+                    for item in adapter_rows), f"{case_id}: adapter result mismatch")
+            require(all(item.get("outcome") == row.get("expected") for item in adapter_rows),
                     f"{case_id}: observed outcome differs from expected")
-            require({item.get("runId") for item in row["adapters"]} == {"run-0", "run-1"},
+            require(set(run_ids) == {"run-0", "run-1"},
                     f"{case_id}: runner identities are incomplete")
-    summary = observed.get("summary", {})
+    summary = require_member_object(observed, "summary", "observed.summary")
+    for key in (
+        "SELF-CHECK", "ABSTAIN", "INTEROP-AGREE", "ERROR",
+        "VECTOR-MISMATCH", "IMPLEMENTATION-DIVERGENCE",
+    ):
+        require_integer(summary.get(key), f"observed.summary.{key}")
     require(summary.get("SELF-CHECK") == 18 and summary.get("ABSTAIN") == 2
             and all(summary.get(key) == 0 for key in ("INTEROP-AGREE", "ERROR", "VECTOR-MISMATCH", "IMPLEMENTATION-DIVERGENCE")),
             "observed summary is not 18 SELF-CHECK plus 2 ABSTAIN")
-    mismatch = next(row for row in matrix if row["id"] == "signing::reject-mismatched-ascii-hex-hash")
+    mismatch = next(row for row in rows if row["id"] == "signing::reject-mismatched-ascii-hex-hash")
     require(mismatch.get("expected") == "false" and all(item.get("outcome") == "false" for item in mismatch["adapters"]),
             "in-profile cryptographic mismatch must return false")
-    controls = packet.get("controls", {})
+    controls = require_member_object(packet, "controls", "controls")
     require(controls.get("rawDigestSignatureValidatedBeforeAdapter") is True, "missing raw-digest control")
-    require(controls.get("inProfileCryptoMismatch") == {
+    mismatch_control = require_member_object(
+        controls, "inProfileCryptoMismatch", "controls.inProfileCryptoMismatch"
+    )
+    require_member_array(
+        mismatch_control, "observed", "controls.inProfileCryptoMismatch.observed"
+    )
+    require(mismatch_control == {
         "id": mismatch["id"], "expected": False, "observed": [False, False]},
         "in-profile mismatch control contradicts matrix evidence")
     require(controls.get("exportedLaunchFailureProbe") == "ERROR"
             and controls.get("exportedMalformedProtocolProbe") == "ERROR",
             "launch and protocol failures must be ERROR")
-    execution = packet.get("execution", {})
-    require(execution.get("adapterCommand") == ["python3", "scripts/dacs_adapter.py"], "non-portable adapter command")
+    execution = require_member_object(packet, "execution", "execution")
+    adapter_command = require_member_array(
+        execution, "adapterCommand", "execution.adapterCommand"
+    )
+    require(adapter_command == ["python3", "scripts/dacs_adapter.py"], "non-portable adapter command")
     require(execution.get("adapterRuns") == 2, "packet must record two wrapper runs")
-    require(execution.get("contributorFocusedSuite", {}).get("passed") == 16
-            and execution["contributorFocusedSuite"].get("failed") == 0
-            and execution["contributorFocusedSuite"].get("skipped") == 0,
+    require_integer(execution.get("adapterRuns"), "execution.adapterRuns", minimum=1)
+    focused = require_member_object(
+        execution, "contributorFocusedSuite", "execution.contributorFocusedSuite"
+    )
+    for key in ("passed", "failed", "skipped"):
+        require_integer(focused.get(key), f"execution.contributorFocusedSuite.{key}")
+    require(focused.get("passed") == 16
+            and focused.get("failed") == 0
+            and focused.get("skipped") == 0,
             "contributor focused suite result must be 16/16 with zero skips")
-    require(execution["contributorFocusedSuite"].get("command") ==
+    focused_command = require_member_array(
+        focused, "command", "execution.contributorFocusedSuite.command"
+    )
+    require(focused_command ==
             ["node", "--test", "conformance/shared-suite/unsupported-case.test.mjs"]
-            and execution["contributorFocusedSuite"].get("canonicalTmpdirResolved") is True,
+            and focused.get("canonicalTmpdirResolved") is True,
             "focused suite command or canonical temporary-path control is missing")
-    adapter = packet.get("adapter", {})
-    require(packet.get("runtime") == {"node": "v24.19.0", "openssl": "3.5.7", "python": {
+    python_runtime = require_member_object(runtime, "python", "runtime.python")
+    require(runtime == {"node": "v24.19.0", "openssl": "3.5.7", "python": {
         "version": "3.12.6", "cryptography": "46.0.5", "idna": "3.10"}},
         "runtime versions differ from the executed packet")
+    require(python_runtime == {
+        "version": "3.12.6", "cryptography": "46.0.5", "idna": "3.10"
+    }, "Python runtime versions differ from the executed packet")
     require(adapter.get("repository") == standard.get("repository")
             and adapter.get("provenanceCodebase") == "github.com/DACS-Agent-commerce/DACS-Standard",
             "adapter and implementation identity mapping changed")
     require(adapter.get("revision") == "sha256:a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6",
             "adapter metadata revision differs from source pin")
-    require(adapter.get("wrappedStandard", {}).get("revision") == standard.get("wrappedStandard"),
+    packet_wrapped = require_member_object(
+        adapter, "wrappedStandard", "adapter.wrappedStandard"
+    )
+    require(set(packet_wrapped) == {"revision", "tree", "primitiveSha256"},
+            "adapter wrapped Standard metadata has missing or extra members")
+    require_member_object(
+        packet_wrapped, "primitiveSha256", "adapter.wrappedStandard.primitiveSha256"
+    )
+    require(packet_wrapped.get("revision") == expected_wrapped["revision"],
+            "adapter metadata wrapped revision differs from descriptor pin")
+    require(packet_wrapped == expected_wrapped,
+            "adapter wrapped Standard metadata differs from frozen descriptor")
+    require(packet_wrapped["revision"] == standard.get("wrappedStandard"),
             "adapter metadata wrapped revision differs from descriptor pin")
     return packet
 

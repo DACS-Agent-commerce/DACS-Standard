@@ -1,7 +1,11 @@
 import copy
 import hashlib
-import unittest
+import json
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
 
 from scripts.validate_adapter_runner_acceptance import PACKET, PacketError, load, validate
 
@@ -11,6 +15,7 @@ FROZEN_DESCRIPTOR = (
     ROOT / "conformance/interop/frozen/dacs-adapter-release-proposal-c799-v1.json"
 )
 CURRENT_DESCRIPTOR = ROOT / "conformance/interop/dacs-adapter-release-proposal-v1.json"
+VALIDATOR = PACKET.parents[2] / "scripts" / "validate_adapter_runner_acceptance.py"
 
 
 class AdapterRunnerAcceptanceTests(unittest.TestCase):
@@ -23,6 +28,24 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
         mutator(changed)
         with self.assertRaisesRegex(PacketError, message):
             validate(changed)
+
+    def run_cli(self, packet=None):
+        if packet is None:
+            return subprocess.run(
+                [sys.executable, str(VALIDATOR)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "packet.json"
+            path.write_text(json.dumps(packet), encoding="utf-8")
+            return subprocess.run(
+                [sys.executable, str(VALIDATOR), str(path)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
 
     def test_committed_positive_report(self):
         validate(self.packet)
@@ -121,6 +144,139 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
             lambda value: value["adapter"]["wrappedStandard"].__setitem__("revision", "0" * 40),
             "wrapped revision differs",
         )
+
+    def test_complete_wrapped_standard_metadata_is_bound_to_descriptor(self):
+        mutations = (
+            (
+                "tree",
+                lambda value: value["adapter"]["wrappedStandard"].__setitem__(
+                    "tree", "0" * 40
+                ),
+            ),
+            (
+                "primitive digest",
+                lambda value: value["adapter"]["wrappedStandard"][
+                    "primitiveSha256"
+                ].__setitem__("scripts/jcs.py", "0" * 64),
+            ),
+            (
+                "missing primitive",
+                lambda value: value["adapter"]["wrappedStandard"][
+                    "primitiveSha256"
+                ].pop("scripts/jcs.py"),
+            ),
+            (
+                "extra primitive",
+                lambda value: value["adapter"]["wrappedStandard"][
+                    "primitiveSha256"
+                ].__setitem__("scripts/extra.py", "0" * 64),
+            ),
+            (
+                "extra wrapped member",
+                lambda value: value["adapter"]["wrappedStandard"].__setitem__(
+                    "unreviewed", True
+                ),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                self.assert_rejected(mutate, "wrapped Standard metadata")
+
+    def test_malformed_packet_sections_are_controlled_packet_errors(self):
+        mutations = (
+            ("coordinates", lambda value: value.__setitem__("coordinates", None)),
+            (
+                "standard",
+                lambda value: value["coordinates"].__setitem__("standard", []),
+            ),
+            (
+                "runner sources",
+                lambda value: value["coordinates"]["runner"].__setitem__(
+                    "sourceSha256", None
+                ),
+            ),
+            ("expected", lambda value: value.__setitem__("expected", [])),
+            ("observed", lambda value: value.__setitem__("observed", [])),
+            (
+                "matrix",
+                lambda value: value["observed"].__setitem__("matrix", {}),
+            ),
+            (
+                "matrix row",
+                lambda value: value["observed"]["matrix"].__setitem__(0, []),
+            ),
+            (
+                "non-hashable case id",
+                lambda value: value["observed"]["matrix"][0].__setitem__("id", []),
+            ),
+            (
+                "row adapters",
+                lambda value: value["observed"]["matrix"][0].__setitem__(
+                    "adapters", None
+                ),
+            ),
+            (
+                "adapter row",
+                lambda value: value["observed"]["matrix"][0]["adapters"].__setitem__(
+                    0, []
+                ),
+            ),
+            ("controls", lambda value: value.__setitem__("controls", [])),
+            ("execution", lambda value: value.__setitem__("execution", [])),
+            (
+                "focused suite",
+                lambda value: value["execution"].__setitem__(
+                    "contributorFocusedSuite", None
+                ),
+            ),
+            ("runtime", lambda value: value.__setitem__("runtime", [])),
+            (
+                "python runtime",
+                lambda value: value["runtime"].__setitem__("python", []),
+            ),
+            ("adapter", lambda value: value.__setitem__("adapter", [])),
+            (
+                "wrapped metadata",
+                lambda value: value["adapter"].__setitem__("wrappedStandard", []),
+            ),
+            (
+                "primitive metadata",
+                lambda value: value["adapter"]["wrappedStandard"].__setitem__(
+                    "primitiveSha256", []
+                ),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                changed = copy.deepcopy(self.packet)
+                mutate(changed)
+                with self.assertRaises(PacketError):
+                    validate(changed)
+
+    def test_cli_reports_controlled_failures_without_tracebacks(self):
+        positive = self.run_cli()
+        self.assertEqual(0, positive.returncode)
+        self.assertIn("adapter runner acceptance: PASS", positive.stdout)
+        self.assertNotIn("Traceback", positive.stderr)
+
+        mutations = (
+            lambda value: value.__setitem__("coordinates", None),
+            lambda value: value["observed"]["matrix"][0].__setitem__("id", []),
+            lambda value: value["execution"].__setitem__(
+                "contributorFocusedSuite", None
+            ),
+            lambda value: value["adapter"]["wrappedStandard"].__setitem__(
+                "primitiveSha256", None
+            ),
+        )
+        for mutate in mutations:
+            changed = copy.deepcopy(self.packet)
+            mutate(changed)
+            completed = self.run_cli(changed)
+            self.assertEqual(1, completed.returncode)
+            self.assertIn("adapter runner acceptance: FAIL:", completed.stderr)
+            self.assertNotIn("Traceback", completed.stderr)
+            self.assertNotIn("adapter runner acceptance: PASS", completed.stdout)
 
 
 if __name__ == "__main__":

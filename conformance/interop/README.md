@@ -102,3 +102,60 @@ runner executable or config schema. The reproducible adapter handoff command is
 `python3 scripts/dacs_adapter.py`; the neutral runner owner can pass that command
 through its documented repeatable `--adapter` option once the runner is
 published.
+
+## Pinned runner acceptance packet
+
+[`runner-acceptance-v1.json`](runner-acceptance-v1.json) records a separate,
+non-normative execution of the contributor's replacement runner patch against
+the frozen Standard commit `c799a163e80bff867ba01bc9e08f15ab7916e139`.
+It is not a `dacs-cross-run-evidence/1` envelope: that proposal deliberately
+does not execute adapters or establish implementation independence.
+
+Reproduce the packet without installing dependencies or writing to the
+contributor checkout:
+
+```sh
+git clone https://github.com/cX3po/pathos-dacs-ref.git /tmp/pathos-dacs-ref
+git -C /tmp/pathos-dacs-ref checkout 1297dd5f79d2e1305bfd4e8e4b2fa6830bc72eda
+curl -fsSL -H 'Accept: application/vnd.github+json' \
+  https://api.github.com/repos/DACS-Agent-commerce/DACS-Standard/issues/comments/5696719263 \
+  | python3 -c 'import json,re,sys; body=json.load(sys.stdin)["body"]; match=re.search(r"```diff\n(.*?)\n```",body,re.S); assert match; sys.stdout.write(match.group(1)+"\n")' \
+  > /tmp/dacs-issue270-runner-replacement.patch
+printf '%s  %s\n' \
+  178d58f2682a145810e6ec7611d3b348c502c2cd94917231e97360973bb6639d \
+  /tmp/dacs-issue270-runner-replacement.patch | sha256sum -c -
+git -C /tmp/pathos-dacs-ref apply /tmp/dacs-issue270-runner-replacement.patch
+node scripts/run_adapter_runner_acceptance.mjs \
+  --runner /tmp/pathos-dacs-ref \
+  --runner-patch /tmp/dacs-issue270-runner-replacement.patch \
+  --standard /absolute/path/to/frozen-c799-standard \
+  --python /usr/local/bin/python3 > /tmp/runner-acceptance-v1.json
+python3 scripts/validate_adapter_runner_acceptance.py /tmp/runner-acceptance-v1.json
+python3 scripts/validate_adapter_runner_acceptance.py
+python3 -m unittest tests.test_adapter_runner_acceptance
+```
+
+The producer verifies the runner origin, base commit, replacement patch and
+every imported source byte before importing contributor code. It separately
+pins the Standard origin, head, tree, descriptor, adapter, primitives and
+corpora, then rechecks runner and Standard pins after execution. Missing or
+mismatched inputs stop the run. Every expected row value is built from the
+frozen descriptor and its pinned corpora. The expected bounded result
+is 18 `SELF-CHECK` rows and two `ABSTAIN` rows, with no `INTEROP-AGREE`: two
+runner processes wrap the same Standard implementation. The packet also checks
+that `UNSUPPORTED_CASE` abstains before scoring, launch and protocol failures
+are `ERROR`, and the in-profile cryptographic mismatch returns `false`.
+It also reruns the contributor's 16 focused tests with zero skips. On macOS the
+focused suite needs `TMPDIR` resolved to its physical path because its temporary
+CLI copy compares a file URL with `argv[1]`; the producer sets and records that
+canonical path. The packet labels its additional launch and malformed-protocol
+checks as exported-function probes, distinct from the focused suite's actual CLI
+exit-2 regression.
+
+The offline Python validator checks the recorded coordinates, complete case
+set, outcomes and internal consistency. It does not prove that the producer ran
+or certify execution on a hostile host; the separately executed producer run is
+the evidence source for the committed packet.
+
+This recipe makes no claim about an independent implementation, the full
+legacy/default corpus, a live system, or a generic domain-separation profile.

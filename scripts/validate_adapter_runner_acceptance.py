@@ -35,6 +35,12 @@ RUNNER_SOURCES = {
 STANDARD_HEAD = "c799a163e80bff867ba01bc9e08f15ab7916e139"
 DESCRIPTOR_PATH = "conformance/interop/dacs-adapter-release-proposal-v1.json"
 DESCRIPTOR_SHA256 = "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca"
+PACKET_LIMITATIONS = [
+    "Two runs wrap one DACS-Standard implementation; every scored result is SELF-CHECK.",
+    "No independent cross-implementation, full legacy/default corpus, live system, or generic domain-separation claim.",
+    "This packet is separate from dacs-cross-run-evidence/1, which does not execute or assess adapters.",
+    "The offline validator checks recorded pins, coverage and internal consistency; the producer execution supplies the run evidence and does not certify a hostile host.",
+]
 
 
 class PacketError(ValueError):
@@ -82,6 +88,10 @@ def require_integer(value, label, *, minimum=0):
     require(type(value) is int and value >= minimum,
             f"{label} must be an integer >= {minimum}")
     return value
+
+
+def require_keys(value, expected, label):
+    require(set(value) == set(expected), f"{label} has missing or unrecognized members")
 
 
 def descriptor_expectations():
@@ -191,7 +201,7 @@ def validate(packet):
     runner = require_member_object(coordinates, "runner", "coordinates.runner")
     adapter = require_member_object(packet, "adapter", "adapter")
     runtime = require_member_object(packet, "runtime", "runtime")
-    require_member_array(packet, "limitations", "limitations")
+    limitations = require_member_array(packet, "limitations", "limitations")
     require(isinstance(adapter.get("name"), str) and adapter.get("name"),
             "adapter.name must be a non-empty string")
     require(standard.get("repository") == "https://github.com/DACS-Agent-commerce/DACS-Standard", "wrong Standard repository")
@@ -355,6 +365,45 @@ def validate(packet):
             "adapter metadata wrapped revision differs from descriptor pin")
     require(adapter == expected_adapter,
             "adapter metadata differs from frozen descriptor and contract")
+    require(limitations == PACKET_LIMITATIONS,
+            "packet limitations differ from the recorded producer contract")
+    # Schema /1 has no extension namespace: extra claim-bearing fields must not
+    # be silently accepted as if the validator had checked them.
+    for label, section, keys in (
+        ("packet", packet, ("schema", "accepted", "coordinates", "runtime",
+                            "execution", "adapter", "expected", "observed",
+                            "controls", "limitations")),
+        ("coordinates", coordinates, ("standard", "runner")),
+        ("coordinates.standard", standard, ("repository", "head", "tree",
+                                           "descriptorSha256", "adapterSourceSha256",
+                                           "wrappedStandard")),
+        ("coordinates.runner", runner, ("repository", "baseHead", "patchSha256",
+                                       "issueComment", "sourceSha256")),
+        ("observed", observed, ("summary", "matrix")),
+        ("observed.summary", summary, ("SELF-CHECK", "ABSTAIN", "INTEROP-AGREE",
+                                        "ERROR", "VECTOR-MISMATCH",
+                                        "IMPLEMENTATION-DIVERGENCE")),
+        ("controls", controls, ("rawDigestSignatureValidatedBeforeAdapter",
+                                "inProfileCryptoMismatch", "exportedLaunchFailureProbe",
+                                "exportedMalformedProtocolProbe")),
+        ("execution", execution, ("adapterCommand", "adapterRuns",
+                                  "contributorFocusedSuite")),
+        ("execution.contributorFocusedSuite", focused,
+         ("command", "canonicalTmpdirResolved", "passed", "failed", "skipped")),
+    ):
+        require_keys(section, keys, label)
+    for row in rows:
+        case_id = row["id"]
+        row_keys = {"id", "operation", "status", "participatingAdapters",
+                    "independentImplementations", "adapters"}
+        if case_id not in ABSTAIN_IDS:
+            row_keys.add("expected")
+        require_keys(row, row_keys, f"{case_id}: observed row")
+        for item in row["adapters"]:
+            adapter_keys = {"runId", "name", "status", "outcome"}
+            if case_id in ABSTAIN_IDS:
+                adapter_keys.add("errorCode")
+            require_keys(item, adapter_keys, f"{case_id}: adapter row")
     return packet
 
 

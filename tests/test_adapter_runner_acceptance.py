@@ -241,6 +241,46 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
                     else "adapter metadata differs from frozen descriptor and contract",
                 )
 
+    def test_packet_limitations_and_claim_fields_are_exact(self):
+        mutations = (
+            ("missing limitations", lambda value: value.__setitem__("limitations", []),
+             "packet limitations differ"),
+            ("false limitation", lambda value: value.__setitem__(
+                "limitations", ["Independent interoperability established."]),
+             "packet limitations differ"),
+            ("top-level certification", lambda value: value.__setitem__(
+                "certifiedIndependentInterop", True), "packet has missing or unrecognized members"),
+            ("summary certification", lambda value: value["observed"]["summary"].__setitem__(
+                "CERTIFIED", 20), "observed.summary has missing or unrecognized members"),
+            ("row certification", lambda value: value["observed"]["matrix"][0].__setitem__(
+                "certified", True), "observed row has missing or unrecognized members"),
+            ("run certification", lambda value: value["observed"]["matrix"][0][
+                "adapters"][0].__setitem__("certified", True),
+             "adapter row has missing or unrecognized members"),
+            ("coordinates certification", lambda value: value["coordinates"].__setitem__(
+                "certified", True), "coordinates has missing or unrecognized members"),
+            ("standard certification", lambda value: value["coordinates"]["standard"].__setitem__(
+                "certified", True), "coordinates.standard has missing or unrecognized members"),
+            ("runner certification", lambda value: value["coordinates"]["runner"].__setitem__(
+                "certified", True), "coordinates.runner has missing or unrecognized members"),
+            ("observed certification", lambda value: value["observed"].__setitem__(
+                "certified", True), "observed has missing or unrecognized members"),
+            ("control certification", lambda value: value["controls"].__setitem__(
+                "certified", True), "controls has missing or unrecognized members"),
+            ("execution certification", lambda value: value["execution"].__setitem__(
+                "certified", True), "execution has missing or unrecognized members"),
+            ("focused certification", lambda value: value["execution"][
+                "contributorFocusedSuite"].__setitem__("certified", True),
+             "execution.contributorFocusedSuite has missing or unrecognized members"),
+            ("abstain-row certification", lambda value: next(
+                row for row in value["observed"]["matrix"]
+                if row["id"] == "bigint-native-type").__setitem__("certified", True),
+             "observed row has missing or unrecognized members"),
+        )
+        for label, mutate, message in mutations:
+            with self.subTest(label=label):
+                self.assert_rejected(mutate, message)
+
     def test_malformed_packet_sections_are_controlled_packet_errors(self):
         mutations = (
             ("coordinates", lambda value: value.__setitem__("coordinates", None)),

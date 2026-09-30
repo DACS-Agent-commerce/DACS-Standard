@@ -30,6 +30,12 @@ MAX_PARAMS = 5
 MAX_DIAGNOSTIC_CHARS = 320
 BOUNDED_F5_SEPARATOR = "dacs-listing:v1:"
 DACS_SEPARATOR_SHAPE = re.compile(r"dacs[-a-z0-9]*:v[0-9]+:")
+RECOGNIZED_BUNDLE_SELECTORS = frozenset({
+    "bundleVersion",
+    "faultBundleVersion",
+    "evidenceBoundFaultBundleVersion",
+    "finalityBoundEvidenceFaultBundleVersion",
+})
 
 
 class AdapterError(Exception):
@@ -224,6 +230,14 @@ def _infer_hashable_kind(artifact: Any) -> str:
         raise AdapterError(
             "UNSUPPORTED_ARTIFACT",
             "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+        )
+    if kind == "AttestationBundle" and (
+        RECOGNIZED_BUNDLE_SELECTORS.intersection(artifact) != {"bundleVersion"}
+        or "pointerKind" in artifact
+    ):
+        raise AdapterError(
+            "UNSUPPORTED_ARTIFACT",
+            "signedScopeHash requires an exclusive supported full-bundle selector, not a pointer",
         )
     foreign_discriminator = any(
         field in artifact

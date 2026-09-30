@@ -53,8 +53,8 @@
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
-      "sha256": "a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6",
-      "gitBlob": "2e3a1787471586a88cb817e00d0d5108ae9ddc2e"
+      "sha256": "657c28b1b38f3c4a966f71d56d88dafe63506da0d645aedfe57e8ef4f7a2eb97",
+      "gitBlob": "60b2fb0718ae542a563688f410272b313623e075"
     },
     "wrappedStandard": {
       "revision": "ef69d46a81e3018b6eb9aa7cb25489657ed91def",
@@ -85,6 +85,7 @@
     "limitations": [
       "verifyBundle and legacySignatureValueImport are not exposed by this release",
       "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+      "signedScopeHash is a hash primitive, not signature verification, bundle admission, or authorization",
       "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
       "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
       "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",

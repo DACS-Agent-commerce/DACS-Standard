@@ -45,6 +45,13 @@ unrecognised artifact shapes return controlled errors. The input loop caps each
 request at 1 MiB and five parameters, emits one response line per input line,
 and writes bounded plain-text diagnostics only to stderr.
 
+`signedScopeHash` is a hash primitive, not bundle admission: a successful hash
+does not establish signature validity, authenticated family, full schema
+validity, or authorization. Its bounded legacy `AttestationBundle` branch
+refuses another recognized bundle-family selector or `pointerKind` before
+hashing. Unknown inert signed members remain hash-bound; this bundle-family
+rule is not a global discriminator-name registry for `SettlementEvidence`.
+
 The protocol's BigInt tag cannot be converted to Python `int`: that would erase
 the distinction between an ordinary JSON integer and a host-language BigInt.
 The decoder returns `UNSUPPORTED_CASE` before JCS and the release descriptor

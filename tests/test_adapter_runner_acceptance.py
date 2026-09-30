@@ -1,11 +1,14 @@
 import copy
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from scripts import validate_adapter_runner_acceptance as acceptance
 from scripts.validate_adapter_runner_acceptance import PACKET, PacketError, load, validate
 
 
@@ -43,6 +46,52 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
 
     def test_committed_positive_report(self):
         validate(self.packet)
+
+    def test_historical_descriptor_ignores_current_checkout_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "checkout"
+            subprocess.run(
+                ["git", "clone", "--shared", "--no-checkout",
+                 str(acceptance.ROOT), str(root)],
+                check=True, capture_output=True,
+            )
+            descriptor = root / acceptance.DESCRIPTOR_PATH
+            descriptor.parent.mkdir(parents=True)
+            descriptor.write_bytes(b'{"unrelatedCurrentDescriptor":true}\n')
+            with patch.object(acceptance, "ROOT", root):
+                validate(self.packet)
+
+    def test_unavailable_historical_descriptor_is_a_controlled_cli_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(
+                ["git", "init", str(root)], check=True, capture_output=True,
+            )
+            validator = root / "scripts" / VALIDATOR.name
+            validator.parent.mkdir()
+            shutil.copyfile(VALIDATOR, validator)
+            packet = root / "packet.json"
+            packet.write_text(json.dumps(self.packet), encoding="utf-8")
+            completed = subprocess.run(
+                [sys.executable, str(validator), str(packet)],
+                text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(1, completed.returncode)
+            self.assertIn("frozen descriptor is unavailable", completed.stderr)
+            self.assertNotIn("Traceback", completed.stderr)
+            self.assertNotIn("adapter runner acceptance: PASS", completed.stdout)
+
+    def test_historical_descriptor_read_checks_digest_and_tool_failures(self):
+        with patch.object(acceptance.subprocess, "run", return_value=
+                          subprocess.CompletedProcess([], 0, b"{}", b"")):
+            with self.assertRaisesRegex(PacketError, "descriptor digest changed"):
+                validate(self.packet)
+        for error in (FileNotFoundError("git"),
+                      subprocess.TimeoutExpired("git", 10)):
+            with self.subTest(error=type(error).__name__):
+                with patch.object(acceptance.subprocess, "run", side_effect=error):
+                    with self.assertRaisesRegex(PacketError, "cannot read frozen descriptor"):
+                        validate(self.packet)
 
     def test_case_completeness_is_fail_closed(self):
         self.assert_rejected(lambda value: value["observed"]["matrix"].pop(), "20 cases")

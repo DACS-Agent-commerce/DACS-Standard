@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +32,8 @@ RUNNER_SOURCES = {
     "conformance/shared-suite/unsupported-case.test.mjs": "a0416d52c4206564fa00bff2f7998c6de9e66f377ecb8a8d34ed6b8219cbb6ea",
     "conformance/shared-suite/cross-run.mjs": "56dd845387ec90a8e400613517e57a16b3e2f585eee2c1bb24b1c44b458b0ee2",
 }
+STANDARD_HEAD = "c799a163e80bff867ba01bc9e08f15ab7916e139"
+DESCRIPTOR_PATH = "conformance/interop/dacs-adapter-release-proposal-v1.json"
 DESCRIPTOR_SHA256 = "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca"
 
 
@@ -82,11 +85,20 @@ def require_integer(value, label, *, minimum=0):
 
 
 def descriptor_expectations():
-    path = ROOT / "conformance/interop/dacs-adapter-release-proposal-v1.json"
-    raw = path.read_bytes()
+    try:
+        completed = subprocess.run(
+            ["git", "--no-replace-objects", "-C", str(ROOT), "show",
+             f"{STANDARD_HEAD}:{DESCRIPTOR_PATH}"],
+            capture_output=True, check=False, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise PacketError("cannot read frozen descriptor from Git") from exc
+    require(completed.returncode == 0,
+            "frozen descriptor is unavailable in Git history")
+    raw = completed.stdout
     require(hashlib.sha256(raw).hexdigest() ==
             DESCRIPTOR_SHA256,
-            "local frozen descriptor digest changed")
+            "frozen descriptor digest changed")
     descriptor = require_object(json.loads(raw), "frozen descriptor")
     descriptor_adapter = require_member_object(
         descriptor, "adapter", "frozen descriptor adapter"
@@ -161,7 +173,7 @@ def validate(packet):
     require(isinstance(adapter.get("name"), str) and adapter.get("name"),
             "adapter.name must be a non-empty string")
     require(standard.get("repository") == "https://github.com/DACS-Agent-commerce/DACS-Standard", "wrong Standard repository")
-    require(standard.get("head") == "c799a163e80bff867ba01bc9e08f15ab7916e139", "wrong Standard head")
+    require(standard.get("head") == STANDARD_HEAD, "wrong Standard head")
     require(standard.get("tree") == "2fadbac38d9013268b41dec47c1090d5ac9c5600", "wrong Standard tree")
     require(standard.get("descriptorSha256") == DESCRIPTOR_SHA256, "wrong descriptor digest")
     require(standard.get("wrappedStandard") == "ef69d46a81e3018b6eb9aa7cb25489657ed91def", "wrong wrapped Standard")

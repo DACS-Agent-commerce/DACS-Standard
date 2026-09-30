@@ -14,10 +14,16 @@ pins the Standard revision, tree, implementation blobs, source corpora, selected
 case identifiers, and expected values. The adapter verifies those local
 committed blobs and the exact DACS-Standard Git origin before importing them.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
-wrapped primitive digests remain separate. Repository identity contains no
-revision, so two wrappers around DACS-Standard still count as one codebase.
-In particular, the contributor `standard-jcs-adapter` and this wrapper cannot be
-used as two independent implementations.
+wrapped primitive digests remain separate. `provenanceCodebase` identifies the
+wrapped DACS-Standard codebase without a revision. Wrappers that retain the same
+assertion can be compared as a one-codebase self-check, even when their wrapper
+repository URLs differ. The pinned contributor runner has not established
+equivalence between asserted provenance and repository-derived identity when an
+adapter omits the optional assertion. Until that boundary is repaired and
+regression-tested, an `INTEROP-AGREE` result involving this adapter must not be
+accepted or cited as independent interoperability evidence. In particular,
+the contributor `standard-jcs-adapter` and this wrapper are not two independent
+implementations.
 
 The executable operations are:
 
@@ -38,6 +44,13 @@ The executable operations are:
 unrecognised artifact shapes return controlled errors. The input loop caps each
 request at 1 MiB and five parameters, emits one response line per input line,
 and writes bounded plain-text diagnostics only to stderr.
+
+`signedScopeHash` is a hash primitive, not bundle admission: a successful hash
+does not establish signature validity, authenticated family, full schema
+validity, or authorization. Its bounded legacy `AttestationBundle` branch
+refuses another recognized bundle-family selector or `pointerKind` before
+hashing. Unknown inert signed members remain hash-bound; this bundle-family
+rule is not a global discriminator-name registry for `SettlementEvidence`.
 
 The protocol's BigInt tag cannot be converted to Python `int`: that would erase
 the distinction between an ordinary JSON integer and a host-language BigInt.
@@ -96,12 +109,13 @@ python3 -m unittest tests.test_dacs_adapter
 
 These commands are a Standard self-check. An `INTEROP-AGREE` result requires a
 separate adapter from a distinct implementation codebase and a shared runner;
-none is claimed by this proposal. The immutable neutral-source export supplied
-for this work contains the interface and adapter sources but no self-contained
-runner executable or config schema. The reproducible adapter handoff command is
-`python3 scripts/dacs_adapter.py`; the neutral runner owner can pass that command
-through its documented repeatable `--adapter` option once the runner is
-published.
+none is claimed by this proposal. The pinned acceptance run does not test mixed
+asserted and repository-derived identity metadata. The immutable neutral-source
+export supplied for this work contains the interface and adapter sources but no
+self-contained runner executable or config schema. The reproducible adapter
+handoff command is `python3 scripts/dacs_adapter.py`. The neutral runner owner
+can pass that command through its documented repeatable `--adapter` option once
+the runner is published.
 
 ## Pinned runner acceptance packet
 
@@ -181,9 +195,15 @@ malformed-protocol checks as exported-function probes, distinct from the focused
 suite's actual CLI exit-2 regression.
 
 The offline Python validator checks the recorded coordinates, complete case
-set, outcomes and internal consistency. It does not prove that the producer ran
-or certify execution on a hostile host; the separately executed producer run is
-the evidence source for the committed packet.
+set, outcomes and internal consistency. It reads the hash-verified descriptor
+from the recorded Standard commit using Git with replacement objects disabled,
+so later adapter or descriptor changes do not rewrite this historical evidence.
+The checkout must contain that commit's Git history; unavailable or mismatched
+descriptor bytes produce a controlled failure. The packet still describes the
+frozen `c799a163` adapter, rather than the adapter at the current checkout head.
+The validator does not prove that the producer ran or certify execution on a
+hostile host; the separately executed producer run is the evidence source for
+the committed packet.
 
 This recipe makes no claim about an independent implementation, the full
 legacy/default corpus, a live system, or a generic domain-separation profile.

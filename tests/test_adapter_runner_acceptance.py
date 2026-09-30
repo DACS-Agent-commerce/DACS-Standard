@@ -216,6 +216,31 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assert_rejected(mutate, "wrapped Standard metadata")
 
+    def test_complete_adapter_metadata_is_bound_to_frozen_contract(self):
+        mutations = (
+            ("name", lambda value: value["adapter"].__setitem__("name", "other-adapter")),
+            ("version", lambda value: value["adapter"].__setitem__("version", "2.0")),
+            ("observed origin", lambda value: value["adapter"].__setitem__(
+                "observedOrigin", "https://example.invalid/repo.git")),
+            ("supported families", lambda value: value["adapter"][
+                "supportedFamilies"].append("unsupported-family")),
+            ("operations", lambda value: value["adapter"]["operations"].append(
+                "verifyBundle")),
+            ("bounded profile", lambda value: value["adapter"][
+                "boundedOperationProfiles"].__setitem__("domainSepVerify", "generic")),
+            ("limitations", lambda value: value["adapter"]["limitations"].pop()),
+            ("extra member", lambda value: value["adapter"].__setitem__(
+                "unreviewed", True)),
+            ("missing member", lambda value: value["adapter"].pop("version")),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                self.assert_rejected(
+                    mutate,
+                    "adapter identity differs from packet metadata" if label == "name"
+                    else "adapter metadata differs from frozen descriptor and contract",
+                )
+
     def test_malformed_packet_sections_are_controlled_packet_errors(self):
         mutations = (
             ("coordinates", lambda value: value.__setitem__("coordinates", None)),

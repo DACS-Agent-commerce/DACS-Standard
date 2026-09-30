@@ -132,6 +132,28 @@ def descriptor_expectations():
         "tree": wrapped.get("tree"),
         "primitiveSha256": primitive_sha256,
     }
+    expected_adapter = {
+        "name": descriptor_adapter.get("name"),
+        "version": descriptor_adapter.get("version"),
+        "repository": descriptor_adapter.get("repository"),
+        "observedOrigin": "https://github.com/DACS-Agent-commerce/DACS-Standard.git",
+        "revision": "sha256:" + descriptor_adapter["source"]["sha256"],
+        "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
+        "supportedFamilies": [
+            "canonical-accept", "canonical-reject", "drift-signed-scope",
+            "sig-value-encoding",
+        ],
+        "operations": [
+            "canonicalize", "signedScopeHash", "signatureValueVerdict",
+            "domainSepSign", "domainSepVerify",
+        ],
+        "boundedOperationProfiles": {
+            "domainSepSign": "listing-single-hash-golden-v1",
+            "domainSepVerify": "listing-single-hash-golden-v1",
+        },
+        "wrappedStandard": expected_wrapped,
+        "limitations": descriptor_adapter.get("limitations"),
+    }
     families = require_member_array(
         descriptor, "families", "frozen descriptor families"
     )
@@ -158,7 +180,7 @@ def descriptor_expectations():
                     else json.dumps(case["expected"], separators=(",", ":"))
                 ),
             }
-    return cases, expected_wrapped
+    return cases, expected_wrapped, expected_adapter
 
 
 def validate(packet):
@@ -210,7 +232,7 @@ def validate(packet):
         ids.append(case_id)
     require(set(ids) == EXPECTED_IDS and len(set(ids)) == len(ids),
             "case set is incomplete or duplicated")
-    expected_outcomes, expected_wrapped = descriptor_expectations()
+    expected_outcomes, expected_wrapped, expected_adapter = descriptor_expectations()
     for row in rows:
         case_id = row["id"]
         expected = expected_outcomes.get(case_id, {
@@ -331,6 +353,8 @@ def validate(packet):
             "adapter wrapped Standard metadata differs from frozen descriptor")
     require(packet_wrapped["revision"] == standard.get("wrappedStandard"),
             "adapter metadata wrapped revision differs from descriptor pin")
+    require(adapter == expected_adapter,
+            "adapter metadata differs from frozen descriptor and contract")
     return packet
 
 

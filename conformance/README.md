@@ -53,6 +53,12 @@ non-normative, bounded evaluation proposals and reproducibility artifacts. They
 do not add conformance requirements or promote their case sets into golden
 vectors.
 
+The [`interop/`](./interop/) directory carries the non-normative issue-270
+`dacs-adapter/1` proposal. It pins the exact Standard sources selected for an
+offline cross-run handoff, exposes only bounded operations backed by existing
+Standard primitives, and records the runner abstention and independent-implementation
+gates.
+
 Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 
 ## Coverage

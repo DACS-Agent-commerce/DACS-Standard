@@ -116,3 +116,94 @@ self-contained runner executable or config schema. The reproducible adapter
 handoff command is `python3 scripts/dacs_adapter.py`. The neutral runner owner
 can pass that command through its documented repeatable `--adapter` option once
 the runner is published.
+
+## Pinned runner acceptance packet
+
+[`runner-acceptance-v1.json`](runner-acceptance-v1.json) records a separate,
+non-normative execution of the contributor's replacement runner patch against
+the frozen Standard commit `c799a163e80bff867ba01bc9e08f15ab7916e139`.
+It is not a `dacs-cross-run-evidence/1` envelope: that proposal deliberately
+does not execute adapters or establish implementation independence.
+
+Reproduce the packet from two disposable fixture checkouts. Setup applies the
+contributor's exact public patch to the newly cloned runner fixture; after that,
+the producer leaves pinned and tracked source bytes unchanged and verifies their
+pins again after execution. It does not write to an existing contributor
+checkout. Python imports may still create ignored interpreter cache files.
+
+The committed packet and validator intentionally pin the executed runtimes:
+Node v24.19.0 with OpenSSL 3.5.7, and Python 3.12.6 with
+`cryptography==46.0.5` and `idna==3.10`. Set `DACS_NODE` and `DACS_PYTHON` to
+absolute executables providing those versions. A different runtime produces a
+packet that the offline validator rejects.
+
+```sh
+(
+set -eu
+: "${DACS_NODE:=$(realpath "$(command -v node)")}"
+: "${DACS_PYTHON:=$(realpath "$(command -v python3)")}"
+case "$DACS_NODE" in /*) ;; *) echo 'DACS_NODE must be absolute' >&2; exit 1;; esac
+case "$DACS_PYTHON" in /*) ;; *) echo 'DACS_PYTHON must be absolute' >&2; exit 1;; esac
+DACS_ACCEPTANCE_TMP="$(mktemp -d)"
+DACS_RUNNER_DIR="$DACS_ACCEPTANCE_TMP/pathos-dacs-ref"
+DACS_STANDARD_DIR="$DACS_ACCEPTANCE_TMP/dacs-standard-c799"
+DACS_RUNNER_PATCH="$DACS_ACCEPTANCE_TMP/runner-replacement.patch"
+
+"$DACS_NODE" -e 'if (process.version !== "v24.19.0" || process.versions.openssl !== "3.5.7") process.exit(1)'
+"$DACS_PYTHON" -c 'import platform,cryptography,idna; assert (platform.python_version(),cryptography.__version__,idna.__version__)==("3.12.6","46.0.5","3.10")'
+
+git clone --no-checkout https://github.com/cX3po/pathos-dacs-ref.git "$DACS_RUNNER_DIR"
+git -C "$DACS_RUNNER_DIR" checkout --detach 1297dd5f79d2e1305bfd4e8e4b2fa6830bc72eda
+curl -fsSL -H 'Accept: application/vnd.github+json' \
+  https://api.github.com/repos/DACS-Agent-commerce/DACS-Standard/issues/comments/5696719263 \
+  | "$DACS_PYTHON" -c 'import json,re,sys; body=json.load(sys.stdin)["body"]; match=re.search(r"```diff\n(.*?)\n```",body,re.S); assert match; sys.stdout.write(match.group(1)+"\n")' \
+  > "$DACS_RUNNER_PATCH"
+"$DACS_PYTHON" -c 'import hashlib,pathlib,sys; actual=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest(); assert actual=="178d58f2682a145810e6ec7611d3b348c502c2cd94917231e97360973bb6639d", actual' "$DACS_RUNNER_PATCH"
+git -C "$DACS_RUNNER_DIR" apply "$DACS_RUNNER_PATCH"
+
+git clone --no-checkout https://github.com/DACS-Agent-commerce/DACS-Standard.git "$DACS_STANDARD_DIR"
+git -C "$DACS_STANDARD_DIR" checkout --detach c799a163e80bff867ba01bc9e08f15ab7916e139
+
+"$DACS_NODE" scripts/run_adapter_runner_acceptance.mjs \
+  --runner "$DACS_RUNNER_DIR" \
+  --runner-patch "$DACS_RUNNER_PATCH" \
+  --standard "$DACS_STANDARD_DIR" \
+  --python "$DACS_PYTHON" > "$DACS_ACCEPTANCE_TMP/runner-acceptance-v1.json"
+"$DACS_PYTHON" scripts/validate_adapter_runner_acceptance.py \
+  "$DACS_ACCEPTANCE_TMP/runner-acceptance-v1.json"
+"$DACS_PYTHON" scripts/validate_adapter_runner_acceptance.py
+"$DACS_PYTHON" -m unittest tests.test_adapter_runner_acceptance
+)
+```
+
+The producer verifies the runner origin, base commit, replacement patch and
+every imported source byte before importing contributor code. It separately
+pins the Standard origin, head, tree, descriptor, adapter, primitives and
+corpora, then rechecks runner and Standard pins after execution. Missing or
+mismatched inputs stop the run. Every expected row value is built from the
+frozen descriptor and its pinned corpora. The expected bounded result
+is 18 `SELF-CHECK` rows and two `ABSTAIN` rows, with no `INTEROP-AGREE`: two
+runner processes wrap the same Standard implementation. The packet also checks
+that `UNSUPPORTED_CASE` abstains before scoring, launch and protocol failures
+are `ERROR`, and the in-profile cryptographic mismatch returns `false`.
+It also reruns the contributor's 16 focused tests with zero skips. On macOS the
+focused suite needs `TMPDIR` resolved to its physical path because its temporary
+CLI copy compares a file URL with `argv[1]`; the producer sets that canonical
+path and the packet records the fact that canonicalization occurred, without
+recording the machine-local path. The packet labels its additional launch and
+malformed-protocol checks as exported-function probes, distinct from the focused
+suite's actual CLI exit-2 regression.
+
+The offline Python validator checks the recorded coordinates, complete case
+set, outcomes and internal consistency. It reads the hash-verified descriptor
+from the recorded Standard commit using Git with replacement objects disabled,
+so later adapter or descriptor changes do not rewrite this historical evidence.
+The checkout must contain that commit's Git history; unavailable or mismatched
+descriptor bytes produce a controlled failure. The packet still describes the
+frozen `c799a163` adapter, rather than the adapter at the current checkout head.
+The validator does not prove that the producer ran or certify execution on a
+hostile host; the separately executed producer run is the evidence source for
+the committed packet.
+
+This recipe makes no claim about an independent implementation, the full
+legacy/default corpus, a live system, or a generic domain-separation profile.

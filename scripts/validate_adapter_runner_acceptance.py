@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,7 +32,15 @@ RUNNER_SOURCES = {
     "conformance/shared-suite/unsupported-case.test.mjs": "a0416d52c4206564fa00bff2f7998c6de9e66f377ecb8a8d34ed6b8219cbb6ea",
     "conformance/shared-suite/cross-run.mjs": "56dd845387ec90a8e400613517e57a16b3e2f585eee2c1bb24b1c44b458b0ee2",
 }
+STANDARD_HEAD = "c799a163e80bff867ba01bc9e08f15ab7916e139"
+DESCRIPTOR_PATH = "conformance/interop/dacs-adapter-release-proposal-v1.json"
 DESCRIPTOR_SHA256 = "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca"
+PACKET_LIMITATIONS = [
+    "Two runs wrap one DACS-Standard implementation; every scored result is SELF-CHECK.",
+    "No independent cross-implementation, full legacy/default corpus, live system, or generic domain-separation claim.",
+    "This packet is separate from dacs-cross-run-evidence/1, which does not execute or assess adapters.",
+    "The offline validator checks recorded pins, coverage and internal consistency; the producer execution supplies the run evidence and does not certify a hostile host.",
+]
 
 
 class PacketError(ValueError):
@@ -81,12 +90,25 @@ def require_integer(value, label, *, minimum=0):
     return value
 
 
+def require_keys(value, expected, label):
+    require(set(value) == set(expected), f"{label} has missing or unrecognized members")
+
+
 def descriptor_expectations():
-    path = ROOT / "conformance/interop/frozen/dacs-adapter-release-proposal-c799-v1.json"
-    raw = path.read_bytes()
+    try:
+        completed = subprocess.run(
+            ["git", "--no-replace-objects", "-C", str(ROOT), "show",
+             f"{STANDARD_HEAD}:{DESCRIPTOR_PATH}"],
+            capture_output=True, check=False, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise PacketError("cannot read frozen descriptor from Git") from exc
+    require(completed.returncode == 0,
+            "frozen descriptor is unavailable in Git history")
+    raw = completed.stdout
     require(hashlib.sha256(raw).hexdigest() ==
             DESCRIPTOR_SHA256,
-            "local frozen descriptor digest changed")
+            "frozen descriptor digest changed")
     descriptor = require_object(json.loads(raw), "frozen descriptor")
     descriptor_adapter = require_member_object(
         descriptor, "adapter", "frozen descriptor adapter"
@@ -120,6 +142,28 @@ def descriptor_expectations():
         "tree": wrapped.get("tree"),
         "primitiveSha256": primitive_sha256,
     }
+    expected_adapter = {
+        "name": descriptor_adapter.get("name"),
+        "version": descriptor_adapter.get("version"),
+        "repository": descriptor_adapter.get("repository"),
+        "observedOrigin": "https://github.com/DACS-Agent-commerce/DACS-Standard.git",
+        "revision": "sha256:" + descriptor_adapter["source"]["sha256"],
+        "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
+        "supportedFamilies": [
+            "canonical-accept", "canonical-reject", "drift-signed-scope",
+            "sig-value-encoding",
+        ],
+        "operations": [
+            "canonicalize", "signedScopeHash", "signatureValueVerdict",
+            "domainSepSign", "domainSepVerify",
+        ],
+        "boundedOperationProfiles": {
+            "domainSepSign": "listing-single-hash-golden-v1",
+            "domainSepVerify": "listing-single-hash-golden-v1",
+        },
+        "wrappedStandard": expected_wrapped,
+        "limitations": descriptor_adapter.get("limitations"),
+    }
     families = require_member_array(
         descriptor, "families", "frozen descriptor families"
     )
@@ -146,7 +190,7 @@ def descriptor_expectations():
                     else json.dumps(case["expected"], separators=(",", ":"))
                 ),
             }
-    return cases, expected_wrapped
+    return cases, expected_wrapped, expected_adapter
 
 
 def validate(packet):
@@ -157,11 +201,11 @@ def validate(packet):
     runner = require_member_object(coordinates, "runner", "coordinates.runner")
     adapter = require_member_object(packet, "adapter", "adapter")
     runtime = require_member_object(packet, "runtime", "runtime")
-    require_member_array(packet, "limitations", "limitations")
+    limitations = require_member_array(packet, "limitations", "limitations")
     require(isinstance(adapter.get("name"), str) and adapter.get("name"),
             "adapter.name must be a non-empty string")
     require(standard.get("repository") == "https://github.com/DACS-Agent-commerce/DACS-Standard", "wrong Standard repository")
-    require(standard.get("head") == "c799a163e80bff867ba01bc9e08f15ab7916e139", "wrong Standard head")
+    require(standard.get("head") == STANDARD_HEAD, "wrong Standard head")
     require(standard.get("tree") == "2fadbac38d9013268b41dec47c1090d5ac9c5600", "wrong Standard tree")
     require(standard.get("descriptorSha256") == DESCRIPTOR_SHA256, "wrong descriptor digest")
     require(standard.get("wrappedStandard") == "ef69d46a81e3018b6eb9aa7cb25489657ed91def", "wrong wrapped Standard")
@@ -198,7 +242,7 @@ def validate(packet):
         ids.append(case_id)
     require(set(ids) == EXPECTED_IDS and len(set(ids)) == len(ids),
             "case set is incomplete or duplicated")
-    expected_outcomes, expected_wrapped = descriptor_expectations()
+    expected_outcomes, expected_wrapped, expected_adapter = descriptor_expectations()
     for row in rows:
         case_id = row["id"]
         expected = expected_outcomes.get(case_id, {
@@ -319,6 +363,47 @@ def validate(packet):
             "adapter wrapped Standard metadata differs from frozen descriptor")
     require(packet_wrapped["revision"] == standard.get("wrappedStandard"),
             "adapter metadata wrapped revision differs from descriptor pin")
+    require(adapter == expected_adapter,
+            "adapter metadata differs from frozen descriptor and contract")
+    require(limitations == PACKET_LIMITATIONS,
+            "packet limitations differ from the recorded producer contract")
+    # Schema /1 has no extension namespace: extra claim-bearing fields must not
+    # be silently accepted as if the validator had checked them.
+    for label, section, keys in (
+        ("packet", packet, ("schema", "accepted", "coordinates", "runtime",
+                            "execution", "adapter", "expected", "observed",
+                            "controls", "limitations")),
+        ("coordinates", coordinates, ("standard", "runner")),
+        ("coordinates.standard", standard, ("repository", "head", "tree",
+                                           "descriptorSha256", "adapterSourceSha256",
+                                           "wrappedStandard")),
+        ("coordinates.runner", runner, ("repository", "baseHead", "patchSha256",
+                                       "issueComment", "sourceSha256")),
+        ("observed", observed, ("summary", "matrix")),
+        ("observed.summary", summary, ("SELF-CHECK", "ABSTAIN", "INTEROP-AGREE",
+                                        "ERROR", "VECTOR-MISMATCH",
+                                        "IMPLEMENTATION-DIVERGENCE")),
+        ("controls", controls, ("rawDigestSignatureValidatedBeforeAdapter",
+                                "inProfileCryptoMismatch", "exportedLaunchFailureProbe",
+                                "exportedMalformedProtocolProbe")),
+        ("execution", execution, ("adapterCommand", "adapterRuns",
+                                  "contributorFocusedSuite")),
+        ("execution.contributorFocusedSuite", focused,
+         ("command", "canonicalTmpdirResolved", "passed", "failed", "skipped")),
+    ):
+        require_keys(section, keys, label)
+    for row in rows:
+        case_id = row["id"]
+        row_keys = {"id", "operation", "status", "participatingAdapters",
+                    "independentImplementations", "adapters"}
+        if case_id not in ABSTAIN_IDS:
+            row_keys.add("expected")
+        require_keys(row, row_keys, f"{case_id}: observed row")
+        for item in row["adapters"]:
+            adapter_keys = {"runId", "name", "status", "outcome"}
+            if case_id in ABSTAIN_IDS:
+                adapter_keys.add("errorCode")
+            require_keys(item, adapter_keys, f"{case_id}: adapter row")
     return packet
 
 

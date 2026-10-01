@@ -2,11 +2,14 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from scripts import validate_adapter_runner_acceptance as acceptance
 from scripts.validate_adapter_runner_acceptance import PACKET, PacketError, load, validate
 
 
@@ -58,6 +61,52 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
         self.assertNotEqual(
             CURRENT_DESCRIPTOR.read_bytes(), FROZEN_DESCRIPTOR.read_bytes()
         )
+
+    def test_historical_descriptor_ignores_current_checkout_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "checkout"
+            subprocess.run(
+                ["git", "clone", "--shared", "--no-checkout",
+                 str(acceptance.ROOT), str(root)],
+                check=True, capture_output=True,
+            )
+            descriptor = root / acceptance.DESCRIPTOR_PATH
+            descriptor.parent.mkdir(parents=True)
+            descriptor.write_bytes(b'{"unrelatedCurrentDescriptor":true}\n')
+            with patch.object(acceptance, "ROOT", root):
+                validate(self.packet)
+
+    def test_unavailable_historical_descriptor_is_a_controlled_cli_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(
+                ["git", "init", str(root)], check=True, capture_output=True,
+            )
+            validator = root / "scripts" / VALIDATOR.name
+            validator.parent.mkdir()
+            shutil.copyfile(VALIDATOR, validator)
+            packet = root / "packet.json"
+            packet.write_text(json.dumps(self.packet), encoding="utf-8")
+            completed = subprocess.run(
+                [sys.executable, str(validator), str(packet)],
+                text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(1, completed.returncode)
+            self.assertIn("frozen descriptor is unavailable", completed.stderr)
+            self.assertNotIn("Traceback", completed.stderr)
+            self.assertNotIn("adapter runner acceptance: PASS", completed.stdout)
+
+    def test_historical_descriptor_read_checks_digest_and_tool_failures(self):
+        with patch.object(acceptance.subprocess, "run", return_value=
+                          subprocess.CompletedProcess([], 0, b"{}", b"")):
+            with self.assertRaisesRegex(PacketError, "descriptor digest changed"):
+                validate(self.packet)
+        for error in (FileNotFoundError("git"),
+                      subprocess.TimeoutExpired("git", 10)):
+            with self.subTest(error=type(error).__name__):
+                with patch.object(acceptance.subprocess, "run", side_effect=error):
+                    with self.assertRaisesRegex(PacketError, "cannot read frozen descriptor"):
+                        validate(self.packet)
 
     def test_case_completeness_is_fail_closed(self):
         self.assert_rejected(lambda value: value["observed"]["matrix"].pop(), "20 cases")
@@ -181,6 +230,71 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
         for label, mutate in mutations:
             with self.subTest(label=label):
                 self.assert_rejected(mutate, "wrapped Standard metadata")
+
+    def test_complete_adapter_metadata_is_bound_to_frozen_contract(self):
+        mutations = (
+            ("name", lambda value: value["adapter"].__setitem__("name", "other-adapter")),
+            ("version", lambda value: value["adapter"].__setitem__("version", "2.0")),
+            ("observed origin", lambda value: value["adapter"].__setitem__(
+                "observedOrigin", "https://example.invalid/repo.git")),
+            ("supported families", lambda value: value["adapter"][
+                "supportedFamilies"].append("unsupported-family")),
+            ("operations", lambda value: value["adapter"]["operations"].append(
+                "verifyBundle")),
+            ("bounded profile", lambda value: value["adapter"][
+                "boundedOperationProfiles"].__setitem__("domainSepVerify", "generic")),
+            ("limitations", lambda value: value["adapter"]["limitations"].pop()),
+            ("extra member", lambda value: value["adapter"].__setitem__(
+                "unreviewed", True)),
+            ("missing member", lambda value: value["adapter"].pop("version")),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                self.assert_rejected(
+                    mutate,
+                    "adapter identity differs from packet metadata" if label == "name"
+                    else "adapter metadata differs from frozen descriptor and contract",
+                )
+
+    def test_packet_limitations_and_claim_fields_are_exact(self):
+        mutations = (
+            ("missing limitations", lambda value: value.__setitem__("limitations", []),
+             "packet limitations differ"),
+            ("false limitation", lambda value: value.__setitem__(
+                "limitations", ["Independent interoperability established."]),
+             "packet limitations differ"),
+            ("top-level certification", lambda value: value.__setitem__(
+                "certifiedIndependentInterop", True), "packet has missing or unrecognized members"),
+            ("summary certification", lambda value: value["observed"]["summary"].__setitem__(
+                "CERTIFIED", 20), "observed.summary has missing or unrecognized members"),
+            ("row certification", lambda value: value["observed"]["matrix"][0].__setitem__(
+                "certified", True), "observed row has missing or unrecognized members"),
+            ("run certification", lambda value: value["observed"]["matrix"][0][
+                "adapters"][0].__setitem__("certified", True),
+             "adapter row has missing or unrecognized members"),
+            ("coordinates certification", lambda value: value["coordinates"].__setitem__(
+                "certified", True), "coordinates has missing or unrecognized members"),
+            ("standard certification", lambda value: value["coordinates"]["standard"].__setitem__(
+                "certified", True), "coordinates.standard has missing or unrecognized members"),
+            ("runner certification", lambda value: value["coordinates"]["runner"].__setitem__(
+                "certified", True), "coordinates.runner has missing or unrecognized members"),
+            ("observed certification", lambda value: value["observed"].__setitem__(
+                "certified", True), "observed has missing or unrecognized members"),
+            ("control certification", lambda value: value["controls"].__setitem__(
+                "certified", True), "controls has missing or unrecognized members"),
+            ("execution certification", lambda value: value["execution"].__setitem__(
+                "certified", True), "execution has missing or unrecognized members"),
+            ("focused certification", lambda value: value["execution"][
+                "contributorFocusedSuite"].__setitem__("certified", True),
+             "execution.contributorFocusedSuite has missing or unrecognized members"),
+            ("abstain-row certification", lambda value: next(
+                row for row in value["observed"]["matrix"]
+                if row["id"] == "bigint-native-type").__setitem__("certified", True),
+             "observed row has missing or unrecognized members"),
+        )
+        for label, mutate, message in mutations:
+            with self.subTest(label=label):
+                self.assert_rejected(mutate, message)
 
     def test_malformed_packet_sections_are_controlled_packet_errors(self):
         mutations = (

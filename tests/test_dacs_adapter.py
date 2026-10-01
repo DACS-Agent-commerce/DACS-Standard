@@ -309,6 +309,52 @@ class DacsAdapterTests(unittest.TestCase):
                         self.assertEqual(response["error"]["code"], "UNSUPPORTED_ARTIFACT")
                 self.assertNotIn("Traceback", completed.stderr.decode())
 
+    def test_signed_scope_refuses_mixed_bundle_family_and_pointer_shapes(self):
+        family = next(item for item in self.descriptor["families"] if item["id"] == "signed-scope")
+        by_id = {item["id"]: item for item in self.sources[family["source"]]["artifacts"]}
+        selected_bundle = next(item for item in family["cases"] if item["kind"] == "AttestationBundle")
+        selected_evidence = next(item for item in family["cases"] if item["kind"] == "SettlementEvidence")
+        bundle = by_id[selected_bundle["caseId"]]["artifact"]
+        evidence = by_id[selected_evidence["caseId"]]["artifact"]
+        competing_selectors = (
+            "faultBundleVersion",
+            "evidenceBoundFaultBundleVersion",
+            "finalityBoundEvidenceFaultBundleVersion",
+        )
+        mutations = [
+            (field, value)
+            for field in competing_selectors
+            for value in ("1", "2", None)
+        ] + [("pointerKind", "extended"), ("pointerKind", None)]
+        requests = [request("valid-before", "execute", operation="signedScopeHash", params=[bundle])]
+        for index, (field, value) in enumerate(mutations):
+            requests.append(request(
+                f"mixed-{index}", "execute", operation="signedScopeHash",
+                params=[{**bundle, field: value}],
+            ))
+        requests.extend((
+            request("valid-after", "execute", operation="signedScopeHash", params=[bundle]),
+            request("unknown-inert", "execute", operation="signedScopeHash",
+                    params=[{**bundle, "futureUnknownBundleVersion": "1"}]),
+            request("evidence-not-global", "execute", operation="signedScopeHash",
+                    params=[{**evidence, "faultBundleVersion": "1"}]),
+        ))
+        completed, responses = run_adapter(requests)
+        self.assertEqual(completed.returncode, 0, completed.stderr.decode())
+        self.assertEqual(len(responses), len(requests))
+        for response in (responses[0], responses[-3]):
+            self.assertTrue(response["ok"], response)
+            self.assertEqual(response["result"], selected_bundle["expected"])
+        for response, mutation in zip(responses[1:-3], mutations):
+            with self.subTest(mutation=mutation):
+                self.assertFalse(response["ok"], response)
+                self.assertEqual(response["error"]["code"], "UNSUPPORTED_ARTIFACT")
+        self.assertTrue(responses[-2]["ok"], responses[-2])
+        self.assertNotEqual(responses[-2]["result"], selected_bundle["expected"])
+        self.assertTrue(responses[-1]["ok"], responses[-1])
+        self.assertNotEqual(responses[-1]["result"], selected_evidence["expected"])
+        self.assertNotIn("Traceback", completed.stderr.decode())
+
     def test_signed_scope_keeps_unknown_signed_members_hash_bound(self):
         family = next(item for item in self.descriptor["families"] if item["id"] == "signed-scope")
         by_id = {item["id"]: item for item in self.sources[family["source"]]["artifacts"]}

@@ -183,10 +183,17 @@ corpora, then rechecks runner and Standard pins after execution. Missing or
 mismatched inputs stop the run. Every expected row value is built from the
 frozen descriptor and its pinned corpora. The expected bounded result
 is 18 `SELF-CHECK` rows and two `ABSTAIN` rows, with no `INTEROP-AGREE`: two
-runner processes wrap the same Standard implementation. The packet also checks
+adapter clients wrap the same Standard implementation. `execution.adapterRuns`
+counts those adapter clients/registrations, not all subprocess launches. The
+focused suite, runtime inspection, and failure-control probes can launch
+additional subprocesses. The packet also checks
 that `UNSUPPORTED_CASE` abstains before scoring, launch and protocol failures
 are `ERROR`, and the in-profile cryptographic mismatch returns `false`.
-It also reruns the contributor's 16 focused tests with zero skips. On macOS the
+It also reruns the contributor's focused suite with an explicit TAP reporter,
+requiring exactly 16 tests, 16 passes, and zero failures, skips, cancellations,
+or todos. Missing, duplicate, or malformed summary counts stop the run; packet
+counts come from the verified summary. The frozen packet's command field
+continues to identify the suite without recording reporter options. On macOS the
 focused suite needs `TMPDIR` resolved to its physical path because its temporary
 CLI copy compares a file URL with `argv[1]`; the producer sets that canonical
 path and the packet records the fact that canonicalization occurred, without

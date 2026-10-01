@@ -34,9 +34,10 @@ implementations.
 The current descriptor advances the wrapped Standard and selected source pins
 without rewriting the recorded runner execution. The exact descriptor bytes
 used by the accepted `c799a163` run remain under
-[`frozen/`](frozen/dacs-adapter-release-proposal-c799-v1.json); the historical
-packet validator checks that fixture's original SHA-256 digest before deriving
-its expected operations and outcomes.
+[`frozen/`](frozen/dacs-adapter-release-proposal-c799-v1.json) as an archival
+fixture, with its original SHA-256 checked by a regression test. The historical
+packet validator instead derives expectations from the hash-verified Git object
+at `c799a163`, as described below.
 
 The executable operations are:
 

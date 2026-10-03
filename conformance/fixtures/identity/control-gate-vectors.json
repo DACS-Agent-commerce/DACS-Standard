@@ -1,5 +1,6 @@
 {
-  "status": "golden — reference-verifier-accepted + byte-stable",
+  "status": "superseded legacy sketch — not a current-wire executable fixture",
+  "supersededBy": "conformance/fixtures/identity/dacs1-vet-golden-inputs-v0.1.json",
   "source": "github.com/mj-deving/dacs-verify conformance/run.ts #170 vet-control vectors",
   "now": 1780000000000,
   "decisions": [

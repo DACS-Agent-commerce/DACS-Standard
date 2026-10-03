@@ -1,8 +1,11 @@
+import importlib.util
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +64,100 @@ class DacsAdapterTests(unittest.TestCase):
             "14 advertised-family cases, 4 bounded F5 cases, 2 unsupported mappings",
             completed.stdout,
         )
+
+    def test_wrapped_primitive_set_is_the_exact_local_import_closure(self):
+        spec = importlib.util.spec_from_file_location(
+            "adapter_release_validator_for_closure", VALIDATOR
+        )
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        closure = validator._repository_local_import_closure()
+        self.assertEqual({
+            "scripts/dacs_reference.py",
+            "scripts/jcs.py",
+            "scripts/run_lifecycle_walkthrough.py",
+            "scripts/specsource.py",
+            "scripts/validate_conformance_vectors.py",
+        }, closure)
+        self.assertEqual(
+            closure,
+            {
+                item["path"]
+                for item in self.descriptor["adapter"]["wrappedStandard"][
+                    "primitives"
+                ]
+            },
+        )
+
+    def test_new_repository_local_import_cannot_remain_unlisted(self):
+        spec = importlib.util.spec_from_file_location(
+            "adapter_release_validator_for_unlisted_import", VALIDATOR
+        )
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        with tempfile.TemporaryDirectory(prefix="dacs-adapter-closure-") as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            (scripts / "jcs.py").write_text(
+                'import importlib\nimportlib.import_module("added_local")\n',
+                encoding="utf-8",
+            )
+            (scripts / "added_local.py").write_text("VALUE = 1\n", encoding="utf-8")
+            with (
+                mock.patch.object(validator, "ROOT", root),
+                mock.patch.object(
+                    validator,
+                    "ADVERTISED_PRIMITIVE_ROOTS",
+                    {"scripts/jcs.py"},
+                ),
+            ):
+                closure = validator._repository_local_import_closure()
+        self.assertEqual(
+            {"scripts/jcs.py", "scripts/added_local.py"},
+            closure,
+        )
+        self.assertNotEqual({"scripts/jcs.py"}, closure)
+
+    def test_dacs_reference_tamper_is_refused_before_adapter_import(self):
+        with tempfile.TemporaryDirectory(prefix="dacs-adapter-tamper-") as tmp:
+            checkout = Path(tmp) / "repo"
+            subprocess.run(
+                ["git", "clone", "--quiet", "--no-hardlinks", str(ROOT), str(checkout)],
+                check=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            subprocess.run(
+                [
+                    "git", "config", "remote.origin.url",
+                    "https://github.com/DACS-Agent-commerce/DACS-Standard.git",
+                ],
+                cwd=checkout,
+                check=True,
+            )
+            path = checkout / "scripts" / "dacs_reference.py"
+            source = path.read_text(encoding="utf-8")
+            marker = "def cf4_decode(value: str) -> str:"
+            self.assertIn(marker, source)
+            path.write_text(source.replace(marker, marker + "\n    # tampered", 1), encoding="utf-8")
+            completed = subprocess.run(
+                [sys.executable, str(checkout / "scripts" / "dacs_adapter.py")],
+                cwd=checkout,
+                input=b'{"protocol":"dacs-adapter/1","id":"x","type":"metadata"}\n',
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=60,
+            )
+        self.assertEqual(1, completed.returncode)
+        self.assertEqual(b"", completed.stdout)
+        self.assertIn(
+            b"sha256 mismatch for provenance-pinned file: scripts/dacs_reference.py",
+            completed.stderr,
+        )
+        self.assertNotIn(b"Traceback", completed.stderr)
 
     def test_metadata_separates_adapter_and_wrapped_standard_identity(self):
         completed, responses = run_adapter([request("metadata", "metadata")])
@@ -141,7 +238,11 @@ class DacsAdapterTests(unittest.TestCase):
                 )
             ]
         )
-        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(
+            completed.returncode,
+            0,
+            completed.stderr.decode() + completed.stdout.decode(),
+        )
         self.assertFalse(responses[0]["ok"])
         self.assertEqual(responses[0]["error"]["code"], "UNSUPPORTED_CASE")
         self.assertNotEqual(responses[0]["error"]["code"], "OPERATION_FAILED")

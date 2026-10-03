@@ -4,11 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 makes recipe-family ownership, exact numeric version selection, authenticated definition matching, and no-older-live fallback executable while leaving CORE registry-bootstrap activation to a future profile; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
-
-The same v0.6 profile evaluates presence-only `ClaimRequirement` members
-against the exact signed `IdentityBundle` under PCR-1..PCR-6 and excludes them
-from `VerifyResult` evidence.
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** on the common DACS v0.1 baseline. v0.6 is an affected document in the declared CORE §11.1.2 **breaking pre-v1 corrective candidate**: existing Vet execution now requires authenticated current-profile invocation, aggregation, time, signer, result-set, registry, and receipt authority and rejects unsigned or caller-projected substitutes. The correction preserves the signed `VerifyResult` and `CompositeVerificationRecord` shapes and their domains, but the v0.6 label alone does not establish interoperability with pre-correction v0.6 execution behavior or conformance evidence. A reusable `VerifyResult` v1 remains eligible for VP-C1..VP-C3 qualification after current-profile admission; it does not itself assert a producing profile. v0.6 also makes recipe-family ownership, exact numeric version selection, authenticated definition matching, and no-older-live fallback executable while leaving CORE registry-bootstrap activation to a future profile, and evaluates presence-only `ClaimRequirement` members against the exact signed `IdentityBundle` under PCR-1..PCR-6 while excluding them from `VerifyResult` evidence. v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1. **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -767,6 +763,17 @@ type WarningCode =
 
 The wire shape of `CompositeVerificationRecord` is unchanged. Its existing `bundleHash` is the binding: a strict consumer replays aggregation with the original signed `IdentityBundle` as companion input, recomputes its DACS-1 bundle hash, and requires exact equality with `record.bundleHash`. The consumer likewise recomputes the RFC 8785 hash of the exact `BundleRequirement` and requires equality with `record.requirementHash`. If the exact bundle is unavailable, the record MUST NOT be accepted as proof that a presence-only member passed; the reliance decision is `indeterminate` until the bundle is available. An invalid bundle presentation, hash mismatch, malformed claim/reference, invalid composite signature, or aggregation mismatch MUST cause rejection.
 
+The current session challenge binds that `IdentityBundle` presentation and the
+outer Vet invocation admission; it does not add current `jobId`, nonce, session,
+attempt or verifier fields to an individual `VerifyResult`.  In particular, a
+cache-eligible VP-C1 result remains reusable across sessions and is qualified by
+its authenticated family/version, signed predicates and times under VP-C3 and
+CRQ-1..CRQ-4.  Verifier role, VerifyResult evidence authority, composite signer,
+phase orchestrator and anchor writer are separate authority concepts; a
+consumer MUST validate each from its applicable trusted context and MUST NOT
+collapse one into another. These roles may be held by the same actor; independent
+authorization does not require different identities.
+
 **Identity-bound agreement companion use.** The stronger DACS-3 agreement
 phases reuse the authenticated companion-input convention above; they do not
 change this record's wire shape or general validity. For those phases only, the
@@ -1203,7 +1210,37 @@ parameters_match(r, cr):
   return r.data contains every other own key in cr.parameters and each corresponding value is equal under CORE canonical JSON (§7.6 step 7); additional r.data keys do not disqualify the result
 ```
 
-(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the composite record and registry pin to authenticated authority for the same `jobId`. During production the authority is the orchestrator-owned active `SessionContext` supplied at the CORE §B.5 phase-handler boundary, not a caller-deserialised assertion. The required `VetCredentialsInput.sessionContext` MUST be that context; `VetCredentialsInput.jobId` and `sessionContext.jobId` MUST equal `record.jobId`; and its separate `recipeRegistryVersion` MUST exactly equal `sessionContext.recipeRegistryVersion` before registry resolution. Production aggregation MUST use the exact `VetCredentialsInput.requirement` carried at that phase boundary; a separately supplied aggregation projection is not an input and cannot substitute for it. This execution binding fixes the bytes evaluated and later covered by `requirementHash`; it does not by itself authenticate who authored or accepted a complementary non-Listing requirement. A producer or ST-11 auditor MUST NOT treat the phase input, Composite signature, or `requirementHash` as proof of that requirement's cross-party provenance. During replay or later consumption the authority is a cryptographically verified, signed `AttestationBundle` or `FaultAttestationBundle`: its `jobId` MUST equal `record.jobId`, its `vetRecords` MUST contain the exact `AttestationRef` being aggregated, and that reference MUST dereference to the same hash- and signature-verified §7.7.2 record. The CORE-canonical hash of the `BundleRequirement` being aggregated MUST equal that signed record's `requirementHash`. Every projected result participating in aggregation MUST be obtained by dereferencing a `VerifyResultRef` committed by that record and validating its content hash and signature. The resolved set MUST correspond one-to-one with the complete ordered union of the record's `freshness` and `dealSpecific` references: no committed reference may be omitted, duplicated, or replaced, and no uncommitted result may be introduced. (`supplementary` contains `SupplementarySignal` values, not `VerifyResultRef` values, and remains outside this result-resolution set.) Caller-supplied requirements or result projections cannot substitute for authenticated bytes. Replay derives the existing numeric registry pin only from the verified bundle's `recipeRegistryVersion`; this is bundle-authenticated version selection, not CORE descriptor-authenticated historical replay. An unsigned `SessionRecord` MUST NOT supply replay authority. A standalone record, a missing or mismatched production input, a production pin mismatch, a missing/invalid/substituted replay bundle, record reference, requirement, or result projection, or a missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version from the record, an unsigned session record, or current registry state. It also MUST NOT infer or attach a registry-bootstrap descriptor hash to this existing replay contract. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
+Aggregation time comes from authenticated history, not an unsigned evaluation
+wrapper.  `record.generatedAt` MUST be an exact CORE-safe integer, MUST NOT be
+later than the verifier-owned execution time or the authenticated record-receipt
+time, and MUST NOT precede any participating result's signed `verifiedAt`.
+Non-authorizing reconstruction evaluates CRQ freshness and `maxAge` at that
+signed `generatedAt` and preserves the historical decision for audit.
+Production authorization additionally requires `generatedAt` to be no earlier
+than the verifier-owned issue time of either consumed presentation challenge,
+and requalifies every exact-owned participating result's governing freshness
+window and `maxAge` at verifier-owned `trustedNow`.  A result that is historical
+but no longer current requires a new verification and re-signed/re-anchored
+record; the historical reconstruction alone MUST NOT authorize progression.
+An unsigned `evaluatedAt`, `presentedAt`, or similarly named wrapper field is
+diagnostic metadata only and MUST NOT become either time authority.
+
+(CRQ-1) Every committed `VerifyResult` first passes canonical-reference,
+full-artifact-hash, signature, result-producer, source-attestation, order, and
+uniqueness checks. Each committed result MUST be attributable to a verified
+requirement member of its scheme. Semantic contribution is narrower: only a
+result with an exact unexpired bundle owner `(scheme, identifier)` and a current
+governing §6.3.2 / §7.6.1 window contributes. A fully authenticated same-scheme
+result for another identity is inert before family/version, cache, precedence,
+selector, and fault logic; it cannot satisfy or steer the member. A malformed
+or unauthenticated foreign result still rejects the record, and a result
+attributable only to presence-only or unverified members rejects the record.
+Before either precedence ladder, every exact-owned current non-pass that a
+verified member can consume MUST pass VP-C1 current-production or authenticated
+equal-predicate cache provenance. `find_all_results` and
+`find_applicable_results` operate only on `VerifyResult` objects whose
+references, hashes, signatures, recipe authority, attestations, and governing
+freshness windows have passed those checks. Before classification, the verifier MUST bind the composite record and registry pin to authenticated authority for the same `jobId`. During production the authority is the orchestrator-owned active `SessionContext` supplied at the CORE §B.5 phase-handler boundary, not a caller-deserialised assertion. The required `VetCredentialsInput.sessionContext` MUST be that context; `VetCredentialsInput.jobId` and `sessionContext.jobId` MUST equal `record.jobId`; and its separate `recipeRegistryVersion` MUST exactly equal `sessionContext.recipeRegistryVersion` before registry resolution. Production aggregation MUST use the exact `VetCredentialsInput.requirement` carried at that phase boundary; a separately supplied aggregation projection is not an input and cannot substitute for it. This execution binding fixes the bytes evaluated and later covered by `requirementHash`; it does not by itself authenticate who authored or accepted a complementary non-Listing requirement. A producer or ST-11 auditor MUST NOT treat the phase input, Composite signature, or `requirementHash` as proof of that requirement's cross-party provenance. During replay or later consumption the authority is a cryptographically verified, signed `AttestationBundle` or `FaultAttestationBundle`: its `jobId` MUST equal `record.jobId`, its `vetRecords` MUST contain the exact `AttestationRef` being aggregated, and that reference MUST dereference to the same hash- and signature-verified §7.7.2 record. The CORE-canonical hash of the `BundleRequirement` being aggregated MUST equal that signed record's `requirementHash`. Every projected result participating in aggregation MUST be obtained by dereferencing a `VerifyResultRef` committed by that record and validating its content hash and signature. The resolved set MUST correspond one-to-one with the complete ordered union of the record's `freshness` and `dealSpecific` references: no committed reference may be omitted, duplicated, or replaced, and no uncommitted result may be introduced. (`supplementary` contains `SupplementarySignal` values, not `VerifyResultRef` values, and remains outside this result-resolution set.) Caller-supplied requirements or result projections cannot substitute for authenticated bytes. Replay derives the existing numeric registry pin only from the verified bundle's `recipeRegistryVersion`; this is bundle-authenticated version selection, not CORE descriptor-authenticated historical replay. An unsigned `SessionRecord` MUST NOT supply replay authority. A standalone record, a missing or mismatched production input, a production pin mismatch, a missing/invalid/substituted replay bundle, record reference, requirement, or result projection, or a missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version from the record, an unsigned session record, or current registry state. It also MUST NOT infer or attach a registry-bootstrap descriptor hash to this existing replay contract. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
 
 (CRQ-2) A verifier MUST derive one effective recipe family and expected version for every candidate result under a `ClaimRequirement`. The selected method is `cr.parameters.verificationMethod` when the listing selects one, otherwise `r.method` from the authenticated evidence. Under RA-6 it MUST resolve to exactly one owning family `(cr.scheme, Recipe.defaultMethod.kind)`; an alternative method retains that owning family rather than creating a separate family. If the listing selects a method, `r.method` MUST equal it. The expected version is the explicit numeric `cr.recipeVersion` when present, otherwise the unique greatest numeric version for that exact family in the authenticated registry snapshot selected by CRQ-1's production or replay authority. Entry lookup and scheme equality use derived NFC keys without changing authenticated bytes, and versions are never coerced. Every selected family and explicit or implicit version MUST resolve before any requirement is classified. Missing family metadata, an absent explicit version, an unavailable or unclassifiable possibly-latest family candidate, or an absent implicit latest version returns `error`; it MUST NOT become an empty applicable set or a counterparty `fail`. Eligibility is applied only after unique version selection. If the implicit latest entry is not `live`, aggregation returns `error` and MUST NOT fall back to an older live version. An explicit version is checked under RAV-1 through RAV-4. Once this preflight succeeds, the verifier applies method and exact-version equality plus age qualification before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable family-aware version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; `verificationMethod` is matched against `r.method`, while every other required parameter is matched against authenticated `r.data`. A missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable current-session `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced; VP-C1 separately prevents an unbound cross-session non-pass from carrying a predicate-sensitive decision into this set. A result outside the selected method family, resolved effective recipe version, or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
 
@@ -1213,7 +1250,7 @@ For CRQ-2, a selected alternative method is not a new family. The verifier MUST 
 
 (CRQ-4) Required-claim and `oneOf` aggregation MUST use applicable results and qualified passes as defined above. Qualification does not change the decision of an applicable result. If only non-applicable results exist after successful family/version preflight, aggregation reports the requirement or group as unsatisfied; this is not a reclassification of those excluded results. An unresolved family/version or non-live implicit latest fails that preflight as `error` before either precedence ladder runs. Within the applicable set, the existing four-value semantics and both precedence orders are unchanged.
 
-Supplementary signals MUST NOT change overallDecision from pass to fail automatically; they are informational. A listing MAY declare in terms that specific signals are gating (e.g. minimum reputation score); when so declared, the gating check is treated as a deal-specific claim and runs through the same aggregation. Five required-claim diagnostic reasons carry distinct value: "required not present" (no same-scheme VerifyResult exists), "required constraints not satisfied" (same-scheme results exist but none meets the pinned version and age constraints, or a current `pass` fails parameter matching), "required failing" (an applicable authority result said no), "required indeterminate" (an applicable authority result answered ambiguously), and "required errored" (an applicable verifier result could not reach authority). Consumers debugging or auditing a failed session can read the failure reasons to determine which class the failure belongs to.
+Supplementary signals MUST NOT change overallDecision from pass to fail automatically; they are informational. A listing MAY declare in terms that specific signals are gating (e.g. minimum reputation score); when so declared, the gating check is treated as a deal-specific claim and runs through the same aggregation. Required-claim reasons are advisory diagnostics. Producers SHOULD distinguish absence, constraint mismatch, authoritative failure, indeterminate authority, and verifier error for operators, but exact reason strings are not part of conformance equality and consumers MUST NOT derive phase progression or fault attribution from them. Conformance compares the semantic decision; the phase wrapper applies VPC-4 independently.
 
 A producer MUST set `record.overallDecision` to the algorithm's result. A strict consumer MUST independently run the same algorithm, dereference and content-hash-check every `VerifyResultRef` used by a verified member, and reject the record if the recomputed result differs from the signed `overallDecision`. An optional failing, stale, or unavailable `verifiedBy` on a presence-matched claim is not dereferenced for that member and cannot turn its presence pass into another decision. Conversely, a presence pass cannot satisfy a `verificationRequired = true` member, establish control, or elevate DACS-1 `identityTier`.
 
@@ -1225,6 +1262,42 @@ A producer MUST set `record.overallDecision` to the algorithm's result. A strict
 
 signed_bytes := "dacs-composite:v1:" || composite_hash
 In v0.1, the composite record carries a single verifier signature. Multi-party composition (e.g., two-sided independent Vet records cross-referenced into one) is deferred to v2.
+
+The §7.8 VPC-3 return is authorized by an independently verified CORE §5.1
+receipt, not by `recordRef` fields alone.  The consumer reconstructs the
+canonical logical address above from `record.jobId` and the CF-2/CF-4
+`record.evaluatedParty`, then validates the receipt's logical address, declared
+logical-to-native mapping, native locator matching `recordRef.anchor`, content
+hash, transaction, writer, evidence and lifecycle.  The receipt writer is the
+expected anchor writer from execution context and need not be the composite
+verifier.  Native and logical addresses MUST NOT be equated unless a binding
+explicitly declares that mapping.  Production progression requires the VPC-3
+`accepted`-or-later state; terminal replay/publication requires the independently
+resolved `finalized` receipt specified by CORE §5.1 and DACS-5.  Receipt times
+obey the `generatedAt` chronology above and do not alter the signed record.
+
+#### 7.7.3 Production presentation admission
+
+`bundleToVet` and `verifierIdentity` are separate identity presentations at
+separate admission points.  Each MUST carry its own globally distinct CORE
+§B.8 challenge, issuer-owned SN-4 ledger record, and admission capability.  The
+expected verifier issues and checks the `bundleToVet` challenge. The
+independently authenticated receiver of the verifier's presentation — the
+receiving phase orchestrator required by CORE §B.8 — issues and checks
+the `verifierIdentity` challenge.  Neither presenter chooses its challenge,
+and a challenge issued for either presentation MUST NOT authorize the other,
+even when both presentations share a `jobId`, attempt, phase, or co-resident
+role.
+
+Each matching challenge MUST be consumed independently, before later
+presentation, requirement, result, composite-signature, or receipt processing
+can fail.  A successful admission MAY yield an internal capability for nested
+checks of that same exact accepted presentation.  Such a capability is bound
+to the admitted presenter and presentation bytes: it MAY be reused to recheck
+those bytes without consuming the ledger again, but MUST NOT authorize a
+changed, re-signed, or different party's presentation.  The challenges,
+ledger records, and capabilities remain verifier/orchestrator-owned execution
+state and are not fields of either signed `IdentityBundle`.
 
 ### 7.8 The vet-credentials phase
 
@@ -1248,6 +1321,22 @@ type VetCredentialsOutput = PhaseHandlerResult & {
   }
 }
 ```
+
+The handler boundary also carries a verifier-owned `VetInvocationContext` as
+execution state, outside both types above and every signed artifact.  It
+authenticates the active `vet-pending` session and phase index, attempt,
+`actor`/evaluated party and selected primary claim, recipe-registry pin,
+the two distinct §7.7.3 CORE §B.8 challenges and mutable issuer ledgers,
+`trustedNow`, expected verifier role and identity, phase orchestrator, anchor
+writer, and the resolved record receipt/binding when produced.  The expected
+verifier is selected explicitly from that context: it is the counterparty, or
+the orchestrator acting on its behalf as CORE §B.8 permits.  It is never
+selected from `verifierIdentity.presentedBy`.  The independently authenticated
+expected identity MUST equal `verifierIdentity.presentedBy`, the composite signature
+signer and `recordRef.signer`; the presentation, composite signature and receipt
+are then verified normally.  VerifyResult signer/evidence authority remains the
+recipe/result authority and is resolved independently.  A caller-deserialised
+context or nonce-ledger snapshot is not this boundary.
 
 #### 7.8.1 Phase contract
 

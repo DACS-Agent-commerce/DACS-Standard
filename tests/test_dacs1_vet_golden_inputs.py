@@ -2559,21 +2559,28 @@ def authenticate_production_aggregate(
                     != effective_recipe_version(member, selected_method, recipes)
                 ):
                     continue
+                max_age = member.get("maxAge")
                 participating_owner = False
                 for owner in owners:
                     # Results that were already outside their governing
-                    # window at the signed decision time never participated;
-                    # they remain inert during current authorization.
-                    if freshness_window(
-                        artifact, owner, recipes, generated_at
-                    ) != "current":
+                    # window or member maxAge at the signed decision time never
+                    # participated; they remain inert during authorization.
+                    if (
+                        freshness_window(
+                            artifact, owner, recipes, generated_at
+                        ) != "current"
+                        or (
+                            max_age is not None
+                            and generated_at
+                            > artifact["verifiedAt"] + max_age * 1_000
+                        )
+                    ):
                         continue
                     participating_owner = True
                     if freshness_window(
                         artifact, owner, recipes, admission.trusted_now
                     ) != "current":
                         return None
-                max_age = member.get("maxAge")
                 if (
                     participating_owner
                     and
@@ -2814,7 +2821,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         raw = json.dumps(
             evaluation, sort_keys=True, separators=(",", ":")
         ).encode("utf-8")
-        self.assertTrue(execute_external_once(raw, self.document))
+        self.assertIs(True, execute_external_once(raw, self.document))
 
         invalid = (
             raw[:-1] + b',"probe":9007199254740991.1}',
@@ -2836,7 +2843,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             nested = [nested]
         admitted["padding"] = nested
         depth_128 = json.dumps(admitted, separators=(",", ":")).encode("utf-8")
-        self.assertTrue(execute_external_once(depth_128, self.document))
+        self.assertIs(True, execute_external_once(depth_128, self.document))
         nested = [nested]
         admitted["padding"] = nested
         depth_129 = json.dumps(admitted, separators=(",", ":")).encode("utf-8")
@@ -3721,10 +3728,13 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             item for item in self.cases
             if item["name"] == "vet-control-existence-only-lei-supporting-context"
         )["evaluations"]["result"]
-        aggregate = next(
-            item for item in self.cases
-            if item["name"] == "vet-oneof-error-over-fail"
-        )["evaluations"]["result"]
+        aggregate_case, aggregate = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+        self.assertEqual(
+            aggregate_case["expectedOutput"],
+            execute_once(aggregate, self.document),
+        )
         for malformed in (None, [], {}):
             with self.subTest(path="direct", malformed=malformed):
                 changed = copy.deepcopy(direct)
@@ -3732,12 +3742,24 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 self.assertFalse(valid_requirement(changed["input"]["requirement"]))
                 self.assertEqual("error", execute_once(changed, self.document))
             with self.subTest(path="aggregate", malformed=malformed):
+                document = copy.deepcopy(self.document)
                 changed = copy.deepcopy(aggregate)
-                changed["input"]["authority"]["vetInput"]["requirement"][
-                    "primaryClaimSelector"
-                ] = malformed
+                requirement = changed["input"]["authority"]["vetInput"][
+                    "requirement"
+                ]
+                requirement["primaryClaimSelector"] = malformed
+                changed["input"]["record"]["requirementHash"] = hash_hex(
+                    requirement
+                )
+                changed["input"]["record"]["overallDecision"] = "error"
+                changed["input"] = reanchor_composite_input(
+                    changed["input"], document
+                )
                 self.assertEqual(
-                    "error", execute_once(changed, self.document)["decision"]
+                    {"decision": "error", "reasons": [
+                        "invalid bundle requirement"
+                    ]},
+                    execute_once(changed, document),
                 )
 
     def test_preferred_presentation_uses_its_closed_enum(self):
@@ -3745,7 +3767,11 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             "vet-control-existence-only-lei-supporting-context"
         )
         aggregate_case, aggregate = self._case_evaluation(
-            "vet-oneof-error-over-fail"
+            "vet-oneof-indeterminate-over-fail"
+        )
+        self.assertEqual(
+            aggregate_case["expectedOutput"],
+            execute_once(aggregate, self.document),
         )
         for value in ("siwd", "sr1-root", "per-claim", "session-key", "any"):
             with self.subTest(value=value):
@@ -3773,7 +3799,10 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     changed["input"], document
                 )
                 self.assertEqual(
-                    "error", execute_once(changed, document)["decision"]
+                    {"decision": "error", "reasons": [
+                        "invalid bundle requirement"
+                    ]},
+                    execute_once(changed, document),
                 )
 
     def test_aggregate_session_names_reject_before_registry_lookup(self):
@@ -4265,11 +4294,16 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 candidate["input"]["record"]["requirementHash"] = hash_hex(
                     requirement
                 )
-                candidate["input"]["record"]["overallDecision"] = "error"
+                candidate["input"]["record"]["overallDecision"] = "indeterminate"
                 candidate["input"] = reanchor_composite_input(
                     candidate["input"], document
                 )
-                self.assertEqual("error", execute_once(candidate, document)["decision"])
+                self.assertEqual(
+                    {"decision": "error", "reasons": [
+                        "signed overallDecision does not match replay"
+                    ]},
+                    execute_once(candidate, document),
+                )
 
         # The same signed non-pass cannot be relabelled for a new predicate.
         changed_document = copy.deepcopy(self.document)
@@ -4286,14 +4320,19 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 cached=[{"parametersPresence": "absent"}],
             )
         changed["input"]["record"]["requirementHash"] = hash_hex(requirement)
-        changed["input"]["record"]["overallDecision"] = "error"
+        changed["input"]["record"]["overallDecision"] = "indeterminate"
         # Candidate labels are deliberately ignored as provenance.
         changed["input"]["originatingParametersAuthenticated"] = True
         changed["input"]["currentResult"] = True
         changed["input"] = reanchor_composite_input(
             changed["input"], changed_document
         )
-        self.assertEqual("error", execute_once(changed, changed_document)["decision"])
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "signed overallDecision does not match replay"
+            ]},
+            execute_once(changed, changed_document),
+        )
 
     def test_current_non_pass_cannot_cross_requirement_predicates(self):
         _, evaluation = self._case_evaluation(
@@ -4311,9 +4350,14 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         # they bind the old whole requirement/member hashes and cannot be
         # relabelled as output of this admitted invocation under the new bytes.
         changed["input"]["record"]["requirementHash"] = hash_hex(requirement)
-        changed["input"]["record"]["overallDecision"] = "error"
+        changed["input"]["record"]["overallDecision"] = "indeterminate"
         changed["input"] = reanchor_composite_input(changed["input"], document)
-        self.assertEqual("error", execute_once(changed, document)["decision"])
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "signed overallDecision does not match replay"
+            ]},
+            execute_once(changed, document),
+        )
 
     def test_exact_owned_non_pass_preflight_cannot_be_masked(self):
         _, one_of = self._case_evaluation("vet-oneof-indeterminate-over-fail")
@@ -4321,11 +4365,19 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         changed = rebuild_aggregate_result(
             one_of, document,
             lambda artifact: artifact.update(decision="pass"),
-            index=0, overall_decision="error",
+            index=0, overall_decision="pass",
         )
         domain = changed["input"]["resolvedResults"][1]
-        set_result_provenance(document, domain)
-        self.assertEqual("error", execute_once(changed, document)["decision"])
+        set_result_provenance(
+            document, domain,
+            cached=[{"parametersPresence": "present", "parameters": {}}],
+        )
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "signed overallDecision does not match replay"
+            ]},
+            execute_once(changed, document),
+        )
 
         _, required = self._case_evaluation(
             "vet-cross-accumulator-fail-over-error"
@@ -4336,36 +4388,48 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             item for item in changed["input"]["resolvedResults"]
             if item["artifact"]["scheme"] == "lei"
         )
-        set_result_provenance(document, lei)
-        changed["input"]["record"]["overallDecision"] = "error"
+        set_result_provenance(
+            document, lei,
+            cached=[{"parametersPresence": "present", "parameters": {}}],
+        )
+        changed["input"]["record"]["overallDecision"] = "fail"
         changed["input"] = reanchor_composite_input(changed["input"], document)
-        self.assertEqual("error", execute_once(changed, document)["decision"])
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "signed overallDecision does not match replay"
+            ]},
+            execute_once(changed, document),
+        )
 
     def test_missing_duplicate_or_mismatched_result_provenance_is_rejected(self):
         _, evaluation = self._case_evaluation(
             "vet-oneof-indeterminate-over-fail"
         )
         domain_result = evaluation["input"]["resolvedResults"][1]
-        for label, mutate in (
+        for label, mutate, expected_reason in (
             (
                 "missing",
                 lambda provenance, entry: provenance.remove(entry),
+                "unresolved recipe family or version",
             ),
             (
                 "duplicate",
                 lambda provenance, entry: provenance.append(copy.deepcopy(entry)),
+                "aggregation authority invalid",
             ),
             (
                 "artifact hash mismatch",
                 lambda provenance, entry: entry.update(
                     serializedArtifactHash="0" * 64
                 ),
+                "aggregation authority invalid",
             ),
             (
                 "reference mismatch",
                 lambda provenance, entry: entry["ref"].update(
                     contentHash="0" * 64
                 ),
+                "aggregation authority invalid",
             ),
         ):
             with self.subTest(label=label):
@@ -4381,7 +4445,10 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     changed["input"], document
                 )
                 observed = execute_once(changed, document)
-                self.assertEqual("error", observed["decision"])
+                self.assertEqual(
+                    {"decision": "error", "reasons": [expected_reason]},
+                    observed,
+                )
 
     def test_current_rerun_replaces_the_committed_non_pass_reference(self):
         _, evaluation = self._case_evaluation(
@@ -5931,6 +5998,88 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 case["expectedOutput"]["decision"],
             ),
         )
+
+    def test_max_age_stale_result_is_inert_beside_current_pass(self):
+        # DACS-2 §7.7.1 requalifies only results that participated at the
+        # signed generatedAt.  R1 remains inside its claim/recipe window but is
+        # already outside this member's maxAge; R2 is the participating pass.
+        _, evaluation = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+        document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        value = changed["input"]
+        generated_at = value["record"]["generatedAt"]
+        invocation_id = value["authority"]["invocation"]
+        requirement = value["authority"]["vetInput"]["requirement"]
+        lei_member = next(
+            item for item in requirement["oneOf"][0]
+            if item["scheme"] == "lei"
+        )
+        lei_member["maxAge"] = 0.5
+        requirement_hash = hash_hex(requirement)
+        value["record"]["requirementHash"] = requirement_hash
+
+        # Keep every existing non-pass prerequisite valid under the changed
+        # requirement so maxAge participation is the only authorization limb.
+        for resolved in value["resolvedResults"]:
+            member = next(
+                item for item in requirement["oneOf"][0]
+                if item["scheme"] == resolved["artifact"]["scheme"]
+            )
+            set_result_provenance(
+                document,
+                resolved,
+                current=[{
+                    "invocation": invocation_id,
+                    "requirementHash": requirement_hash,
+                    "memberHash": hash_hex(member),
+                }],
+            )
+
+        self._commit_extra(
+            value,
+            document,
+            "lei",
+            lambda artifact: artifact.update(
+                decision="pass",
+                reason="fresh pass beside maxAge-stale result",
+                fetchedAt=generated_at,
+                verifiedAt=generated_at,
+            ),
+        )
+        value["record"]["overallDecision"] = "pass"
+        changed["input"] = reanchor_composite_input(value, document)
+
+        invocation = document["trustedContext"]["vetInvocations"][invocation_id]
+        receipt = document["trustedContext"]["authenticatedRecordReceipts"][
+            invocation["recordReceiptId"]
+        ]
+        receipt["observedAt"] = generated_at
+        receipt["blockRef"]["timestamp"] = generated_at
+        invocation["trustedNow"] = generated_at
+
+        expected = {"decision": "pass", "reasons": []}
+        self.assertEqual(expected, reconstruct_historical_once(changed, document))
+        self.assertEqual(expected, execute_once(changed, document))
+
+        at_boundary = copy.deepcopy(document)
+        at_boundary["trustedContext"]["vetInvocations"][invocation_id][
+            "trustedNow"
+        ] = generated_at + 500
+        self.assertEqual(expected, execute_once(changed, at_boundary))
+
+        expired = copy.deepcopy(document)
+        expired["trustedContext"]["vetInvocations"][invocation_id][
+            "trustedNow"
+        ] = generated_at + 501
+        self.assertEqual(
+            {"decision": "error", "reasons": [
+                "aggregation authority invalid"
+            ]},
+            execute_once(changed, expired),
+        )
+        self.assertEqual(expected, reconstruct_historical_once(changed, expired))
 
     def test_number_normalisation_is_exact_copying_and_cycle_safe(self):
         # Fractional numbers keep their value (signed bytes unchanged), the

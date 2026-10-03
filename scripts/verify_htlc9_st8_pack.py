@@ -644,13 +644,22 @@ def requires_fixture_receipts(interim_path: Path, resolved_path: Path) -> bool:
     )
 
 
+def path_is_present(path: Path) -> bool:
+    """Return false only for a genuinely missing path; propagate other faults."""
+    try:
+        path.stat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
 def validate_pair(
     interim_path: Path,
     resolved_path: Path,
     expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
 ) -> list[str]:
     try:
-        if not interim_path.exists() or not resolved_path.exists():
+        if not path_is_present(interim_path) or not path_is_present(resolved_path):
             # Preserve the primary file diagnostic for missing custom inputs;
             # there is no admitted pair on which the stricter committed-fixture
             # receipt policy could operate.
@@ -672,6 +681,8 @@ def validate_pair(
             except OSError as exc:
                 detail = exc.strerror or type(exc).__name__
                 errors.append(fail(path, f"fixture file could not be read: {detail}"))
+            except RuntimeError as exc:
+                errors.append(fail(path, f"fixture file could not be inspected: {exc}"))
         return errors
     interim, errors = validate_interim(
         interim_path,

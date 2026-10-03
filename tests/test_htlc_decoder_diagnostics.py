@@ -1,5 +1,6 @@
 """Controlled decoder diagnostics using injected errors, not deep input."""
 import contextlib
+import errno
 import importlib.util
 import io
 from pathlib import Path
@@ -64,23 +65,62 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
         # The fail-closed branch probes files for diagnostics only; an
         # unreadable path is reported, never raised to a library caller.
         ver = self.verifier
-        for error in (PermissionError(13, "Permission denied"), OSError(40, "Too many levels")):
+        for error in (
+            PermissionError(errno.EACCES, "Permission denied"),
+            OSError(errno.ELOOP, "Too many levels"),
+        ):
             with self.subTest(error=type(error).__name__):
                 with mock.patch.object(Path, "resolve", side_effect=RuntimeError("loop")), \
-                        mock.patch.object(Path, "stat", side_effect=error):
-                    errors = ver.validate_pair(ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED)
+                        mock.patch.object(Path, "stat", side_effect=error), \
+                        mock.patch.object(ver, "validate_interim") as validate_interim, \
+                        mock.patch.object(ver, "validate_resolved") as validate_resolved:
+                    errors = ver.validate_pair(
+                        ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED
+                    )
                 self.assertIn("pair paths could not be resolved", errors[0])
                 self.assertTrue(
                     any("fixture file could not be read: " + error.strerror in e for e in errors),
                     errors,
                 )
+                validate_interim.assert_not_called()
+                validate_resolved.assert_not_called()
+
+    def test_path_inspection_runtime_error_rejects_before_artifact_evaluation(self):
+        ver = self.verifier
+        with mock.patch.object(Path, "stat", side_effect=RuntimeError("loop")), \
+                mock.patch.object(ver, "validate_interim") as validate_interim, \
+                mock.patch.object(ver, "validate_resolved") as validate_resolved:
+            errors = ver.validate_pair(ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED)
+        self.assertIn("pair paths could not be resolved: loop", errors[0])
+        self.assertTrue(
+            any("fixture file could not be inspected: loop" in error for error in errors),
+            errors,
+        )
+        validate_interim.assert_not_called()
+        validate_resolved.assert_not_called()
+
+    def test_missing_custom_file_retains_primary_diagnostic(self):
+        import tempfile
+
+        ver = self.verifier
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing.json"
+            errors = ver.validate_pair(missing, ver.DEFAULT_RESOLVED)
+        self.assertTrue(
+            any(
+                str(missing) in error and "fixture file not found" in error
+                for error in errors
+            ),
+            errors,
+        )
 
     def test_path_resolution_errors_reject_pair_and_cli_without_receipt_downgrade(self):
         ver = self.verifier
         for error_type in (OSError, RuntimeError):
             with self.subTest(error=error_type.__name__):
                 with mock.patch.object(Path, "resolve", side_effect=error_type("resolution unavailable")):
-                    with mock.patch.object(ver, "validate_interim") as validate_interim:
+                    with mock.patch.object(ver, "validate_interim") as validate_interim, \
+                            mock.patch.object(ver, "validate_resolved") as validate_resolved:
                         errors = ver.validate_pair(ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED)
                         self.assertTrue(errors)
                         self.assertIn("pair paths could not be resolved", errors[0])
@@ -91,6 +131,7 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
                         self.assertIn("pair paths could not be resolved", stderr.getvalue())
                         self.assertNotIn("Traceback", stderr.getvalue())
                         validate_interim.assert_not_called()
+                        validate_resolved.assert_not_called()
 
     def test_committed_pair_retains_success(self):
         ver = self.verifier

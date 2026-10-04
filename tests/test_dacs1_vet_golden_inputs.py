@@ -107,8 +107,13 @@ def b64url_encode(value):
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
-def parse_ref(value):
-    parsed = parse_claim_reference(value, registered_schemes=KNOWN_SCHEMES)
+def parse_ref(value, registered_schemes=None):
+    parsed = parse_claim_reference(
+        value,
+        registered_schemes=(
+            KNOWN_SCHEMES if registered_schemes is None else registered_schemes
+        ),
+    )
     return parsed.identity
 
 
@@ -970,6 +975,8 @@ class VetAdmissionCapability:
     session_start: str
     record_receipt_id: str | None
     record_anchor_binding: dict | None
+    registered_schemes: frozenset[str]
+    compatibility_requirement_hash: str | None
 
 
 @dataclass(frozen=True)
@@ -1003,7 +1010,7 @@ class VetInputAdmissionCapability:
 class VetReferenceRuntime:
     """Mutable offline runtime; caller payloads cannot reset its nonce ledger."""
 
-    _INVOCATION_FIELDS = {
+    _INVOCATION_REQUIRED_FIELDS = {
         "jobId", "sessionStart", "sessionState", "phaseKind", "phaseIndex",
         "attempt", "actor", "evaluatedParty", "primaryClaim",
         "expectedVerifierRole",
@@ -1011,6 +1018,9 @@ class VetReferenceRuntime:
         "recipeRegistryVersion", "challengeId", "verifierIdentityChallengeId",
         "trustedNow",
         "recordReceiptId", "recordAnchorBinding",
+    }
+    _INVOCATION_OPTIONAL_FIELDS = {
+        "compatibilityProfile", "compatibilityRequirementHash",
     }
 
     def __init__(self, trusted_context):
@@ -1029,10 +1039,59 @@ class VetReferenceRuntime:
         self.invocations = invocations
         self.receipts = receipts
         self.sessions = sessions
+        self.compatibility_profiles = trusted_context.get(
+            "deferredSchemeCompatibilityProfiles", {}
+        )
         self.nonce_ledger = NonceLedger(
             trusted_context.get("nonceIssuances"), registered_schemes=KNOWN_SCHEMES
         )
         self._input_admission_owner = object()
+
+    def _registered_schemes(self, context):
+        """Resolve a verifier-owned fixture profile; candidates cannot select it."""
+
+        profile_id = context.get("compatibilityProfile")
+        if profile_id is None:
+            return frozenset(KNOWN_SCHEMES)
+        if (
+            not isinstance(profile_id, str)
+            or not profile_id
+            or not isinstance(self.compatibility_profiles, dict)
+        ):
+            return None
+        profile = self.compatibility_profiles.get(profile_id)
+        if (
+            not isinstance(profile, dict)
+            or set(profile) != {"registeredSchemes", "scope"}
+            or profile.get("scope") != "fixture-only exact-scheme comparison"
+            or not isinstance(profile.get("registeredSchemes"), list)
+            or not profile["registeredSchemes"]
+            or any(
+                not isinstance(scheme, str)
+                or not scheme
+                or scheme in KNOWN_SCHEMES
+                for scheme in profile["registeredSchemes"]
+            )
+            or len(set(profile["registeredSchemes"]))
+            != len(profile["registeredSchemes"])
+        ):
+            return None
+        return frozenset(KNOWN_SCHEMES | set(profile["registeredSchemes"]))
+
+    @staticmethod
+    def _compatibility_binding_valid(context):
+        """A profile is admitted only with its exact verifier-bound requirement.
+
+        Current-only invocations carry neither optional member.
+        """
+
+        bound = context.get("compatibilityRequirementHash")
+        if (context.get("compatibilityProfile") is None) != (bound is None):
+            return False
+        return bound is None or (
+            isinstance(bound, str)
+            and re.fullmatch(r"[0-9a-f]{64}", bound) is not None
+        )
 
     def admit_external_input(self, raw):
         value = integral_numbers(load_raw_json(raw))
@@ -1078,7 +1137,16 @@ class VetReferenceRuntime:
 
     def _trusted_invocation(self, invocation_id):
         context = self.invocations.get(invocation_id)
-        if not isinstance(context, dict) or set(context) != self._INVOCATION_FIELDS:
+        if (
+            not isinstance(context, dict)
+            or not self._INVOCATION_REQUIRED_FIELDS <= set(context)
+            or set(context) - self._INVOCATION_REQUIRED_FIELDS
+            - self._INVOCATION_OPTIONAL_FIELDS
+        ):
+            return None
+        if self._registered_schemes(context) is None:
+            return None
+        if not self._compatibility_binding_valid(context):
             return None
         if (
             context.get("sessionState") != "vet-pending"
@@ -1155,6 +1223,9 @@ class VetReferenceRuntime:
         context = self._trusted_invocation(invocation_id)
         if context is None:
             return None
+        registered_schemes = self._registered_schemes(context)
+        if registered_schemes is None:
+            return None
         try:
             # SN-4 consumption deliberately precedes all candidate-controlled
             # bundle, actor, record, signature, and requirement checks.
@@ -1203,6 +1274,8 @@ class VetReferenceRuntime:
             context["sessionStart"],
             context["recordReceiptId"],
             copy.deepcopy(context["recordAnchorBinding"]),
+            registered_schemes,
+            context.get("compatibilityRequirementHash"),
         )
 
     def admit_verifier_identity(self, authority, bundle):
@@ -1257,7 +1330,7 @@ class VetReferenceRuntime:
         )
 
 
-def verify_bundle(bundle, admission=None):
+def verify_bundle(bundle, admission=None, *, registered_schemes=None):
     if not isinstance(bundle, dict) or not all_safe_integers(bundle):
         return False
     if not {
@@ -1306,8 +1379,13 @@ def verify_bundle(bundle, admission=None):
     ):
         return False
     try:
-        canonical_presented = parse_ref(bundle.get("presentedBy"))
-        parsed_claims = [parse_ref(item.get("ref")) for item in claims]
+        schemes = (
+            admission.registered_schemes
+            if isinstance(admission, VetAdmissionCapability)
+            else KNOWN_SCHEMES if registered_schemes is None else registered_schemes
+        )
+        canonical_presented = parse_ref(bundle.get("presentedBy"), schemes)
+        parsed_claims = [parse_ref(item.get("ref"), schemes) for item in claims]
     except (AttributeError, ValueError):
         return False
     if canonical_presented not in parsed_claims:
@@ -1470,34 +1548,42 @@ def resolved_by_ref(value):
     return resolved
 
 
-def same_identity(left, right):
+def same_identity(left, right, registered_schemes=None):
     """CORE CF-3: parameters never contribute to a ClaimReference identity."""
 
     try:
-        return parse_ref(left) == parse_ref(right)
+        return parse_ref(left, registered_schemes) == parse_ref(
+            right, registered_schemes
+        )
     except ValueError:
         return False
 
 
-def presented_claim(bundle):
+def presented_claim(bundle, registered_schemes=None):
     """DACS-1 §6.3.2: the unique claim ``presentedBy`` resolves to by CF-3
     identity (canonical scheme and identifier).  Ambiguity resolves nothing."""
 
     matches = {
         canonical_bytes(item): item for item in bundle["claims"]
-        if same_identity(item.get("ref"), bundle.get("presentedBy"))
+        if same_identity(
+            item.get("ref"), bundle.get("presentedBy"), registered_schemes
+        )
     }
     return next(iter(matches.values())) if len(matches) == 1 else None
 
 
-def matching_claims(value, req, decision_time, exact_ref=None):
+def matching_claims(
+    value, req, decision_time, exact_ref=None, *, registered_schemes=None
+):
     now = decision_time
     matches = []
     for item in value["bundle"]["claims"]:
-        scheme, _ = parse_ref(item.get("ref"))
+        scheme, _ = parse_ref(item.get("ref"), registered_schemes)
         if scheme != req.get("scheme"):
             continue
-        if exact_ref is not None and not same_identity(item.get("ref"), exact_ref):
+        if exact_ref is not None and not same_identity(
+            item.get("ref"), exact_ref, registered_schemes
+        ):
             continue
         expires_at = item.get("expiresAt")
         if expires_at is not None and (
@@ -1576,7 +1662,10 @@ def parameters_match(result, req):
     )
 
 
-def result_outcome(value, claim, req, recipes, result_context, decision_time):
+def result_outcome(
+    value, claim, req, recipes, result_context, decision_time,
+    *, registered_schemes=None,
+):
     """DACS-1 §6.3.2: resolve the claim's own ``verifiedBy`` and qualify it."""
 
     reference = claim.get("verifiedBy")
@@ -1589,7 +1678,14 @@ def result_outcome(value, claim, req, recipes, result_context, decision_time):
     if resolved is None:
         return "indeterminate"
     return qualify_result(
-        resolved, claim, req, recipes, result_context, decision_time, value
+        resolved,
+        claim,
+        req,
+        recipes,
+        result_context,
+        decision_time,
+        value,
+        registered_schemes=registered_schemes,
     )
 
 
@@ -1669,7 +1765,8 @@ def non_pass_origin_is_eligible(resolved, req, result_context, value):
 
 
 def qualify_result(
-    resolved, claim, req, recipes, result_context, decision_time, value
+    resolved, claim, req, recipes, result_context, decision_time, value,
+    *, registered_schemes=None,
 ):
     """Authenticate one resolved result and qualify it for ``claim``/``req``."""
 
@@ -1677,7 +1774,7 @@ def qualify_result(
         return "error"
     reference = resolved["ref"]
     result = resolved["artifact"]
-    scheme, identifier = parse_ref(claim["ref"])
+    scheme, identifier = parse_ref(claim["ref"], registered_schemes)
     if (
         result.get("scheme") != scheme
         or result.get("identifier") != identifier
@@ -1736,7 +1833,8 @@ def committed_results(value, req):
 
 
 def member_outcomes(
-    value, req, recipes, result_context, decision_time, exact_ref=None
+    value, req, recipes, result_context, decision_time, exact_ref=None,
+    *, registered_schemes=None,
 ):
     """Per-evidence outcomes for one verified member.
 
@@ -1751,11 +1849,23 @@ def member_outcomes(
     its decision or VPC-4 fault class.
     """
 
-    claims = matching_claims(value, req, decision_time, exact_ref)
+    claims = matching_claims(
+        value,
+        req,
+        decision_time,
+        exact_ref,
+        registered_schemes=registered_schemes,
+    )
     if not value.get(COMMITTED_RESULTS_ONLY):
         return [
             result_outcome(
-                value, claim, req, recipes, result_context, decision_time
+                value,
+                claim,
+                req,
+                recipes,
+                result_context,
+                decision_time,
+                registered_schemes=registered_schemes,
             )
             for claim in claims
         ]
@@ -1763,14 +1873,17 @@ def member_outcomes(
     for resolved in committed_results(value, req):
         artifact = resolved["artifact"]
         identity = (artifact.get("scheme"), artifact.get("identifier"))
-        owners = [claim for claim in claims if parse_ref(claim["ref"]) == identity]
+        owners = [
+            claim for claim in claims
+            if parse_ref(claim["ref"], registered_schemes) == identity
+        ]
         if not owners:
             outcomes.append("not-applicable")
             continue
         outcomes.extend(
             qualify_result(
                 resolved, claim, req, recipes, result_context, decision_time,
-                value,
+                value, registered_schemes=registered_schemes,
             )
             for claim in owners
         )
@@ -1778,10 +1891,17 @@ def member_outcomes(
 
 
 def classify_member(
-    value, req, recipes, result_context, decision_time, exact_ref=None
+    value, req, recipes, result_context, decision_time, exact_ref=None,
+    *, registered_schemes=None,
 ):
     if req.get("verificationRequired") is False:
-        matches = matching_claims(value, req, decision_time, exact_ref)
+        matches = matching_claims(
+            value,
+            req,
+            decision_time,
+            exact_ref,
+            registered_schemes=registered_schemes,
+        )
         return "pass" if matches else "fail"
     parameters = req.get("parameters") or {}
     selected_method = parameters.get("verificationMethod")
@@ -1791,7 +1911,13 @@ def classify_member(
     ):
         return "error"
     outcomes = member_outcomes(
-        value, req, recipes, result_context, decision_time, exact_ref
+        value,
+        req,
+        recipes,
+        result_context,
+        decision_time,
+        exact_ref,
+        registered_schemes=registered_schemes,
     )
     if "qualification-error" in outcomes:
         return "error"
@@ -1802,7 +1928,7 @@ def classify_member(
 
 
 def qualification_preflight(
-    value, req, recipes, result_context, decision_time
+    value, req, recipes, result_context, decision_time, *, registered_schemes=None
 ):
     if req.get("verificationRequired") is False:
         return True
@@ -1818,11 +1944,13 @@ def qualification_preflight(
         # this scheme must resolve, whether or not a bundle claim cites it --
         # but only for results that are current evidence (CRQ-1): owned by an
         # unexpired claim with its identity and inside their governing window.
-        claims = matching_claims(value, req, decision_time)
+        claims = matching_claims(
+            value, req, decision_time, registered_schemes=registered_schemes
+        )
         current = [
             item for item in committed_results(value, req)
             if any(
-                parse_ref(claim["ref"])
+                parse_ref(claim["ref"], registered_schemes)
                 == (item["artifact"].get("scheme"), item["artifact"].get("identifier"))
                 and freshness_window(item["artifact"], claim, recipes, decision_time)
                 == "current"
@@ -1843,24 +1971,34 @@ def qualification_preflight(
         )
     return all(
         result_outcome(
-            value, claim, req, recipes, result_context, decision_time
+            value,
+            claim,
+            req,
+            recipes,
+            result_context,
+            decision_time,
+            registered_schemes=registered_schemes,
         )
         != "qualification-error"
-        for claim in matching_claims(value, req, decision_time)
+        for claim in matching_claims(
+            value, req, decision_time, registered_schemes=registered_schemes
+        )
     )
 
 
-def presented_control(value, recipes, result_context, decision_time):
-    """DACS-1 §6.3.2 step (6) control of the exact presented claim."""
+def claim_establishes_control(
+    value, claim, recipes, result_context, decision_time, *, registered_schemes=None
+):
+    """Return whether this exact claim proves holder control (BR-5/PCR-5)."""
 
     bundle = value["bundle"]
-    claim = presented_claim(bundle)
-    if claim is None:
-        return False
-    scheme, _ = parse_ref(claim["ref"])
+    scheme, _ = parse_ref(claim["ref"], registered_schemes)
     signer_refs = [item["ref"] for item in bundle["presentation"]["signatures"]]
     if scheme == "key":
-        return any(same_identity(ref, claim["ref"]) for ref in signer_refs)
+        return any(
+            same_identity(ref, claim["ref"], registered_schemes)
+            for ref in signer_refs
+        )
     reference = claim.get("verifiedBy")
     if not well_formed_result_ref(reference):
         return False
@@ -1882,27 +2020,55 @@ def presented_control(value, recipes, result_context, decision_time):
             recipes,
             result_context,
             decision_time,
+            registered_schemes=registered_schemes,
         ) == "pass"
         and result.get("method") == "verifiable-credential"
         and isinstance(binding, dict)
-        and any(same_identity(binding.get("controller"), ref) for ref in signer_refs)
+        and any(
+            same_identity(
+                binding.get("controller"), ref, registered_schemes
+            )
+            for ref in signer_refs
+        )
     )
 
 
-def selector_authorized(value, req, recipes, result_context, decision_time):
+def presented_control(
+    value, recipes, result_context, decision_time, *, registered_schemes=None
+):
+    """DACS-1 §6.3.2 step (6) control of the exact presented claim."""
+
+    claim = presented_claim(value["bundle"], registered_schemes)
+    return claim is not None and claim_establishes_control(
+        value,
+        claim,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
+    )
+
+
+def selector_authorized(
+    value, req, recipes, result_context, decision_time, *, registered_schemes=None
+):
     """DACS-2 §7.7.1 exact_selector_authorized over the exact presented claim."""
 
     selector = req.get("primaryClaimSelector")
     if selector is None:
         return True
     bundle = value["bundle"]
-    scheme, _ = parse_ref(bundle["presentedBy"])
+    scheme, _ = parse_ref(bundle["presentedBy"], registered_schemes)
     if scheme != selector or not presented_control(
-        value, recipes, result_context, decision_time
+        value,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
     ):
         return False
     # presented_control above already required a unique presented claim.
-    presented = presented_claim(bundle)
+    presented = presented_claim(bundle, registered_schemes)
     required = req.get("required", [])
     one_of = req.get("oneOf", [])
 
@@ -1916,6 +2082,7 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
         return classify_member(
             value, member, recipes, result_context, decision_time,
             exact_ref=presented["ref"],
+            registered_schemes=registered_schemes,
         ) == "pass"
 
     # verifiedSelector: passing, fresh exact-claim evidence under the DACS-1
@@ -1930,6 +2097,7 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
         recipes,
         result_context,
         decision_time,
+        registered_schemes=registered_schemes,
     ) == "pass"
 
     presence_selector = any(
@@ -1950,7 +2118,12 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
         passing_other_scheme = any(
             item.get("scheme") != selector
             and classify_member(
-                value, item, recipes, result_context, decision_time
+                value,
+                item,
+                recipes,
+                result_context,
+                decision_time,
+                registered_schemes=registered_schemes,
             ) == "pass"
             for item in group
         )
@@ -1959,7 +2132,7 @@ def selector_authorized(value, req, recipes, result_context, decision_time):
     return verified_selector or presence_selector
 
 
-def valid_requirement(req):
+def valid_requirement(req, registered_schemes=None):
     try:
         canonical_bytes(req)
     except (TypeError, ValueError, UnicodeError):
@@ -1996,7 +2169,11 @@ def valid_requirement(req):
         if (
             not isinstance(item, dict)
             or not isinstance(item.get("scheme"), str)
-            or item.get("scheme") not in KNOWN_SCHEMES
+            or item.get("scheme") not in (
+                KNOWN_SCHEMES
+                if registered_schemes is None
+                else registered_schemes
+            )
             or type(item.get("verificationRequired")) is not bool
             or (
                 "recipeVersion" in item
@@ -2079,6 +2256,24 @@ def valid_supplementary_signals(signals):
     return True
 
 
+def compatibility_requirement_bound(req, admission):
+    """Whether a deferred-scheme profile admits this exact requirement.
+
+    The verifier-owned invocation binds the canonical requirement its fixture
+    profile was issued for, so a candidate cannot carry the extra registered
+    schemes to another requirement or to a requirement-free question.
+    Current-only admissions carry no binding and are unaffected.
+    """
+
+    bound = admission.compatibility_requirement_hash
+    if bound is None:
+        return True
+    try:
+        return req is not None and hash_hex(req) == bound
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        return False
+
+
 def evaluate(value, recipes, result_context, *, decision_time, admission):
     if (
         not isinstance(value, dict)
@@ -2086,10 +2281,15 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
         or not isinstance(admission, VetAdmissionCapability)
     ):
         return "error", ["invalid evaluation time"]
+    req = value.get("requirement")
+    # Runs after SN-4 consumption; a direct evaluation reaches it before the
+    # bundle is interpreted under any profile-extended registry.
+    if not compatibility_requirement_bound(req, admission):
+        return "error", ["requirement is not bound to the compatibility profile"]
     if not verify_bundle(value.get("bundle"), admission):
         return "error", ["invalid identity bundle"]
-    req = value.get("requirement")
-    if not valid_requirement(req):
+    registered_schemes = admission.registered_schemes
+    if not valid_requirement(req, registered_schemes):
         return "error", ["invalid bundle requirement"]
     value[ACTIVE_INVOCATION] = admission.invocation_id
     value[ACTIVE_REQUIREMENT_HASH] = hash_hex(req)
@@ -2104,7 +2304,12 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
     ]
     if any(
         not qualification_preflight(
-            value, member, recipes, result_context, decision_time
+            value,
+            member,
+            recipes,
+            result_context,
+            decision_time,
+            registered_schemes=registered_schemes,
         )
         for member in members
     ):
@@ -2114,7 +2319,12 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
     indeterminates = []
     for item in req.get("required", []):
         outcome = classify_member(
-            value, item, recipes, result_context, decision_time
+            value,
+            item,
+            recipes,
+            result_context,
+            decision_time,
+            registered_schemes=registered_schemes,
         )
         if outcome == "fail":
             failures.append("required failing or absent: " + item["scheme"])
@@ -2125,7 +2335,12 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
     for group in req.get("oneOf", []):
         outcomes = [
             classify_member(
-                value, item, recipes, result_context, decision_time
+                value,
+                item,
+                recipes,
+                result_context,
+                decision_time,
+                registered_schemes=registered_schemes,
             )
             for item in group
         ]
@@ -2140,7 +2355,12 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
         else:
             failures.append("oneOf group: no claim satisfied")
     if not selector_authorized(
-        value, req, recipes, result_context, decision_time
+        value,
+        req,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
     ):
         failures.append(
             "primaryClaimSelector is mismatched, uncontrolled, or unauthorized"
@@ -2704,13 +2924,21 @@ def execute(evaluation, document, runtime, input_admission):
         if admission is None:
             decision = "error"
         elif operation == "control-decision":
-            if not verify_bundle(value.get("bundle"), admission):
+            # A control decision has no requirement, so a requirement-bound
+            # compatibility profile can never authorize one.
+            if not compatibility_requirement_bound(
+                None, admission
+            ) or not verify_bundle(value.get("bundle"), admission):
                 decision = "error"
             else:
                 decision = (
                     "pass"
                     if presented_control(
-                        value, recipes, result_context, admission.trusted_now
+                        value,
+                        recipes,
+                        result_context,
+                        admission.trusted_now,
+                        registered_schemes=admission.registered_schemes,
                     )
                     else "fail"
                 )
@@ -3040,12 +3268,15 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                         if evaluation["operation"] == "aggregate"
                         else value["bundle"]
                     )
-                    bundle_ok = verify_bundle(bundle)
+                    runtime = VetReferenceRuntime(self.document["trustedContext"])
+                    admission = runtime.admit(
+                        value["authority"], bundle
+                    )
+                    bundle_ok = verify_bundle(bundle, admission)
                     if case["name"] in {
                         "vet-control-key-malformed-scope-reject-no-throw",
-                        "dacs1-cci-lei-defect",
                         "dacs1-cci-lei-current-registry-reject",
-                    }:
+                    } and label == "result":
                         self.assertFalse(bundle_ok)
                     else:
                         self.assertTrue(bundle_ok)
@@ -3055,6 +3286,382 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                                 resolved, self.recipes, self.result_context
                             )
                         )
+
+    def test_cci_lei_compatibility_scope_is_explicit_closed_and_discriminating(self):
+        case, distinct = self._case_evaluation("dacs1-cci-lei-defect")
+        _, current = self._case_evaluation(
+            "dacs1-cci-lei-current-registry-reject"
+        )
+        control = case["evaluations"]["registeredBareLeiControl"]
+        context = self.document["trustedContext"]
+        profiles = context["deferredSchemeCompatibilityProfiles"]
+
+        distinct_invocation = distinct["input"]["authority"]["invocation"]
+        current_invocation = current["input"]["authority"]["invocation"]
+        profile_id = context["vetInvocations"][distinct_invocation][
+            "compatibilityProfile"
+        ]
+        self.assertEqual(
+            {
+                "registeredSchemes": ["cci-lei"],
+                "scope": "fixture-only exact-scheme comparison",
+            },
+            profiles[profile_id],
+        )
+        self.assertIsNone(
+            context["vetInvocations"][current_invocation]["compatibilityProfile"]
+        )
+        self.assertNotIn(
+            "cci-lei",
+            {recipe["scheme"] for recipe in context["recipeRegistry"]["recipes"]},
+        )
+
+        cci_claim = next(
+            item for item in distinct["input"]["bundle"]["claims"]
+            if item["ref"].startswith("cci-lei:")
+        )
+        member = distinct["input"]["requirement"]["required"][0]
+        self.assertEqual({"ref"}, set(cci_claim))
+        self.assertEqual(
+            {"scheme": "lei", "verificationRequired": False}, member
+        )
+        self.assertNotIn("issuedAt", cci_claim)
+        self.assertNotIn("recipeVersion", member)
+        self.assertNotIn("maxAge", member)
+
+        runtime = VetReferenceRuntime(context)
+        admitted, capability = runtime.admit_synthetic_test_input(distinct)
+        admission = runtime.admit(
+            admitted["input"]["authority"], admitted["input"]["bundle"]
+        )
+        self.assertIsNotNone(admission)
+        self.assertIn("cci-lei", admission.registered_schemes)
+        self.assertEqual(
+            ("fail", ["required failing or absent: lei"]),
+            evaluate(
+                admitted["input"],
+                self.recipes,
+                self.result_context,
+                decision_time=admission.trusted_now,
+                admission=admission,
+            ),
+        )
+        self.assertFalse(execute(
+            admitted, self.document, runtime, capability
+        ))
+        self.assertFalse(execute_external_once(
+            json.dumps(distinct, separators=(",", ":")).encode("utf-8"),
+            self.document,
+        ))
+
+        current_runtime = VetReferenceRuntime(context)
+        current_admitted, current_capability = (
+            current_runtime.admit_synthetic_test_input(current)
+        )
+        current_admission = current_runtime.admit(
+            current_admitted["input"]["authority"],
+            current_admitted["input"]["bundle"],
+        )
+        self.assertIsNotNone(current_admission)
+        self.assertEqual(
+            ("error", ["invalid identity bundle"]),
+            evaluate(
+                current_admitted["input"],
+                self.recipes,
+                self.result_context,
+                decision_time=current_admission.trusted_now,
+                admission=current_admission,
+            ),
+        )
+        self.assertNotIn("cci-lei", current_admission.registered_schemes)
+        self.assertFalse(execute(
+            current_admitted, self.document, current_runtime, current_capability
+        ))
+
+        # A candidate-carried lookalike cannot select the verifier-owned
+        # compatibility profile for the current closed-registry invocation.
+        candidate_selected = copy.deepcopy(current)
+        candidate_selected["input"]["compatibilityProfile"] = profile_id
+        self.assertFalse(execute_once(candidate_selected, self.document))
+        candidate_runtime = VetReferenceRuntime(context)
+        candidate_admitted, _ = candidate_runtime.admit_synthetic_test_input(
+            candidate_selected
+        )
+        candidate_admission = candidate_runtime.admit(
+            candidate_admitted["input"]["authority"],
+            candidate_admitted["input"]["bundle"],
+        )
+        self.assertNotIn("cci-lei", candidate_admission.registered_schemes)
+
+        # Unknown or malformed verifier-owned profile bindings reject before
+        # bundle/signature interpretation.
+        for label, mutate in (
+            (
+                "unknown binding",
+                lambda document: document["trustedContext"]["vetInvocations"][
+                    distinct_invocation
+                ].update(compatibilityProfile="unknown-profile"),
+            ),
+            (
+                "malformed profile",
+                lambda document: document["trustedContext"][
+                    "deferredSchemeCompatibilityProfiles"
+                ][profile_id].update(scope="candidate-selectable"),
+            ),
+            (
+                "unhashable binding",
+                lambda document: document["trustedContext"]["vetInvocations"][
+                    distinct_invocation
+                ].update(compatibilityProfile=[]),
+            ),
+            (
+                "missing profile map",
+                lambda document: document["trustedContext"].pop(
+                    "deferredSchemeCompatibilityProfiles"
+                ),
+            ),
+        ):
+            with self.subTest(profile=label):
+                document = copy.deepcopy(self.document)
+                mutate(document)
+                runtime = VetReferenceRuntime(document["trustedContext"])
+                with mock.patch(
+                    __name__ + ".verify_bundle", wraps=verify_bundle
+                ) as bundle_check:
+                    self.assertFalse(execute_once(distinct, document))
+                bundle_check.assert_not_called()
+
+        # Current-only callers remain compatible with the pre-profile trusted
+        # context shape: both the top-level map and per-invocation optional
+        # members may be absent when no deferred scheme is requested.
+        current_only_document = copy.deepcopy(self.document)
+        current_only_context = current_only_document["trustedContext"]
+        current_only_context.pop("deferredSchemeCompatibilityProfiles")
+        for invocation in current_only_context["vetInvocations"].values():
+            invocation.pop("compatibilityProfile", None)
+            invocation.pop("compatibilityRequirementHash", None)
+        self.assertTrue(execute_once(control, current_only_document))
+        self.assertTrue(execute_once(control, self.document))
+        self.assertTrue(execute_external_once(
+            json.dumps(control, separators=(",", ":")).encode("utf-8"),
+            self.document,
+        ))
+
+    def test_cci_lei_profile_is_bound_to_its_exact_verifier_requirement(self):
+        case, distinct = self._case_evaluation("dacs1-cci-lei-defect")
+        control = case["evaluations"]["registeredBareLeiControl"]
+        _, current = self._case_evaluation(
+            "dacs1-cci-lei-current-registry-reject"
+        )
+        context = self.document["trustedContext"]
+        invocation_id = distinct["input"]["authority"]["invocation"]
+        invocation = context["vetInvocations"][invocation_id]
+        self.assertEqual(
+            hash_hex(distinct["input"]["requirement"]),
+            invocation["compatibilityRequirementHash"],
+        )
+        for other in (control, current):
+            other_invocation = context["vetInvocations"][
+                other["input"]["authority"]["invocation"]
+            ]
+            self.assertIsNone(other_invocation["compatibilityProfile"])
+            self.assertNotIn("compatibilityRequirementHash", other_invocation)
+
+        # The published comparison, its registered bare-LEI accepting control,
+        # and the current-registry refusal keep their outcomes.
+        self.assertIs(False, execute_once(distinct, self.document))
+        self.assertIs(True, execute_once(control, self.document))
+        self.assertIs(False, execute_once(current, self.document))
+
+        # Otherwise-valid one-field negative: nonce, presenter, signed bundle,
+        # session, and trusted context are unchanged; only the requirement
+        # scheme moves from the bound bare lei to the profile-only cci-lei.
+        retargeted = copy.deepcopy(distinct)
+        retargeted["input"]["requirement"]["required"][0]["scheme"] = "cci-lei"
+        restored = copy.deepcopy(retargeted)
+        restored["input"]["requirement"]["required"][0]["scheme"] = "lei"
+        self.assertEqual(distinct, restored)
+        raw = json.dumps(retargeted, separators=(",", ":")).encode("utf-8")
+        self.assertIs(False, execute_external_once(raw, self.document))
+
+        # It reaches the binding guard after SN-4 consumption, with a
+        # genuinely bound bundle and a requirement that is well formed under
+        # the profile registry.
+        runtime = VetReferenceRuntime(context)
+        admitted, _ = runtime.admit_synthetic_test_input(retargeted)
+        value = admitted["input"]
+        admission = runtime.admit(value["authority"], value["bundle"])
+        self.assertIsNotNone(admission)
+        self.assertTrue(runtime.nonce_ledger.consumed(invocation["challengeId"]))
+        self.assertIn("cci-lei", admission.registered_schemes)
+        self.assertTrue(verify_bundle(value["bundle"], admission))
+        self.assertTrue(
+            valid_requirement(value["requirement"], admission.registered_schemes)
+        )
+        self.assertEqual(
+            ("error", ["requirement is not bound to the compatibility profile"]),
+            evaluate(
+                value,
+                self.recipes,
+                self.result_context,
+                decision_time=admission.trusted_now,
+                admission=admission,
+            ),
+        )
+        # The invalid first attempt consumed the issued nonce.
+        self.assertIsNone(runtime.admit(
+            distinct["input"]["authority"], distinct["input"]["bundle"]
+        ))
+
+        # A requirement-free control question cannot reuse the profile, even
+        # when the input still carries the bound requirement.
+        control_question = copy.deepcopy(distinct)
+        control_question["operation"] = "control-decision"
+        self.assertEqual("error", execute_once(control_question, self.document))
+        current_control_question = copy.deepcopy(control)
+        current_control_question["operation"] = "control-decision"
+        self.assertEqual(
+            "pass", execute_once(current_control_question, self.document)
+        )
+
+        # Accepting control: the identical candidate bytes pass only when the
+        # verifier-owned invocation itself binds the retargeted requirement.
+        rebound = copy.deepcopy(self.document)
+        rebound["trustedContext"]["vetInvocations"][invocation_id][
+            "compatibilityRequirementHash"
+        ] = hash_hex(retargeted["input"]["requirement"])
+        self.assertIs(True, execute_external_once(raw, rebound))
+
+        # Missing, malformed, or unpaired verifier-owned bindings reject before
+        # bundle interpretation.  The last arm adds a binding to the otherwise
+        # accepting current-only control invocation.
+        for label, candidate, mutate in (
+            (
+                "profile without requirement binding",
+                retargeted,
+                lambda item: item.pop("compatibilityRequirementHash"),
+            ),
+            (
+                "uppercase requirement binding",
+                retargeted,
+                lambda item: item.update(
+                    compatibilityRequirementHash=item[
+                        "compatibilityRequirementHash"
+                    ].upper()
+                ),
+            ),
+            (
+                "non-string requirement binding",
+                retargeted,
+                lambda item: item.update(compatibilityRequirementHash=[]),
+            ),
+            (
+                "requirement binding without profile",
+                control,
+                lambda item: item.update(
+                    compatibilityRequirementHash=hash_hex(
+                        control["input"]["requirement"]
+                    )
+                ),
+            ),
+        ):
+            with self.subTest(binding=label):
+                document = copy.deepcopy(self.document)
+                mutate(document["trustedContext"]["vetInvocations"][
+                    candidate["input"]["authority"]["invocation"]
+                ])
+                with mock.patch(
+                    __name__ + ".verify_bundle", wraps=verify_bundle
+                ) as bundle_check:
+                    self.assertIs(False, execute_once(candidate, document))
+                bundle_check.assert_not_called()
+
+    def test_stale_primary_selector_reaches_freshness_guard_with_valid_control(self):
+        for case_name in (
+            "dacs1-freshness-fail-closed",
+            "vet-freshness-fail-closed",
+        ):
+            case = next(item for item in self.cases if item["name"] == case_name)
+            stale = case["evaluations"]["stalePresentedByPrimary"]
+            control = case["evaluations"]["freshPresentedByPrimaryControl"]
+            with self.subTest(case=case_name):
+                artifacts = [
+                    item["artifact"] for item in stale["input"]["resolvedResults"]
+                ]
+                self.assertEqual(
+                    {("lei", "verifiable-credential", 2)},
+                    {
+                        (item["scheme"], item["method"], item["recipeVersion"])
+                        for item in artifacts
+                    },
+                )
+                self.assertTrue(all(
+                    item["data"]["holderBinding"]["controller"]
+                    == self.document["publicKeys"]["presenter"]
+                    for item in artifacts
+                ))
+                with mock.patch(
+                    __name__ + ".selector_authorized",
+                    wraps=selector_authorized,
+                ) as selector:
+                    self.assertFalse(execute_once(stale, self.document))
+                selector.assert_called_once()
+                self.assertTrue(execute_once(control, self.document))
+
+    def test_non_key_controlled_donor_cannot_authorize_selected_claim(self):
+        _, negative = self._case_evaluation("vet-ma3-unverified-reject")
+        donor_case, _ = self._case_evaluation("dacs1-tier-laundering-guard")
+        control = donor_case["evaluations"]["selectedPassControl"]
+        artifacts = [
+            item["artifact"] for item in negative["input"]["resolvedResults"]
+        ]
+        self.assertEqual(
+            {("lei", "verifiable-credential", 2)},
+            {
+                (item["scheme"], item["method"], item["recipeVersion"])
+                for item in artifacts
+            },
+        )
+        self.assertEqual({"fail", "pass"}, {item["decision"] for item in artifacts})
+        self.assertTrue(all(
+            item["data"]["holderBinding"]["controller"]
+            == self.document["publicKeys"]["presenter"]
+            for item in artifacts
+        ))
+        self.assertFalse(execute_once(negative, self.document))
+        self.assertTrue(execute_once(control, self.document))
+
+    def test_malformed_scope_fixture_is_authenticated_and_isolates_number_guard(self):
+        case, evaluation = self._case_evaluation(
+            "vet-control-key-malformed-scope-reject-no-throw"
+        )
+        bundle = evaluation["input"]["bundle"]
+        self.assertIs(True, bundle["presentedAt"])
+        unsigned = {key: value for key, value in bundle.items() if key != "presentation"}
+        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+        for envelope in bundle["presentation"]["signatures"]:
+            Ed25519PublicKey.from_public_bytes(
+                bytes.fromhex(envelope["ref"].removeprefix("key:"))
+            ).verify(b64url_decode(envelope["signature"]), payload)
+
+        control = copy.deepcopy(evaluation)
+        control["input"]["bundle"]["presentedAt"] = 0.5
+        presenter = fixture_private_key("presenter")
+        control["input"]["bundle"] = resign_bundle(
+            control["input"]["bundle"], presenter, public_ref(presenter)
+        )
+        self.assertEqual({"decision": "pass", "throws": False}, execute_once(control, self.document))
+        self.assertEqual({"decision": "error", "throws": False}, case["expectedOutput"])
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
+        real_safe_number = safe_number
+        with mock.patch(
+            __name__ + ".safe_number",
+            side_effect=lambda value: True if value is True else real_safe_number(value),
+        ):
+            self.assertEqual(
+                {"decision": "pass", "throws": False},
+                execute_once(evaluation, self.document),
+            )
 
     def test_recipe_registry_is_signed_closed_and_family_qualified(self):
         self.assertIsNotNone(self.recipes)
@@ -3084,43 +3691,57 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         }, names)
 
     def test_signed_unknown_or_unregistered_family_method_is_rejected(self):
-        resolved = next(
-            result
-            for case in self.cases
-            for evaluation in case["evaluations"].values()
-            for result in evaluation["input"]["resolvedResults"]
+        # A genuinely signed result authenticates only for a (scheme, method,
+        # recipeVersion) execution that the signed recipe registry supports.
+        # Every other prerequisite is granted for the substituted family -- the
+        # trusted full-artifact hash, a result authority for that exact family
+        # and a family-matched source attestation -- so only the registry's
+        # method/version support can reject.  The registered tlsnotary
+        # alternative, built the same way, is the accepted control.
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
         )
-        authority = fixture_private_key("authority")
-        for method in ("vc-presentation", "tlsnotary"):
-            with self.subTest(method=method):
-                changed = json.loads(json.dumps(resolved))
-                unsigned = {
-                    key: value
-                    for key, value in changed["artifact"].items()
-                    if key != "signature"
-                }
-                unsigned["method"] = method
-                content_hash = hash_hex(unsigned)
-                changed["artifact"] = {
-                    **unsigned,
-                    "signature": {
-                        **changed["artifact"]["signature"],
-                        "value": base64.urlsafe_b64encode(
-                            authority.sign(
-                                (RESULT_DOMAIN + content_hash).encode("ascii")
-                            )
-                        ).rstrip(b"=").decode("ascii"),
-                    },
-                }
-                changed["ref"]["contentHash"] = content_hash
-                changed["serializedArtifactHash"] = hash_hex(
-                    changed["artifact"]
-                )
-                self.assertFalse(
-                    verify_result(
-                        changed, self.recipes, self.result_context
-                    )
-                )
+        resolved = evaluation["input"]["resolvedResults"][0]
+        artifact = resolved["artifact"]
+        self.assertEqual(
+            ("lei", "consensus-backed-proxy", 1),
+            (artifact["scheme"], artifact["method"], artifact["recipeVersion"]),
+        )
+        self.assertIs(True, verify_result(resolved, self.recipes, self.result_context))
+        attestation_key = canonical_bytes(artifact["attestation"])
+
+        def substituted(method, version):
+            source = copy.deepcopy(resolved)
+            source["artifact"].update(method=method, recipeVersion=version)
+            changed = resign_result(
+                source, fixture_private_key("authority"), AUTHORITY_REF
+            )
+            trust = copy.deepcopy(self.result_context)
+            trust["resultHashByRef"][canonical_bytes(changed["ref"])] = changed[
+                "serializedArtifactHash"
+            ]
+            trust["authorityByFamily"].setdefault(("lei", method, version), {
+                "scheme": "lei", "method": method, "recipeVersion": version,
+                "algorithm": "ed25519", "signer": AUTHORITY_REF,
+            })
+            trust["attestationByKey"][attestation_key] = {
+                **trust["attestationByKey"][attestation_key],
+                "method": method,
+                "recipeVersion": version,
+            }
+            return changed, trust
+
+        changed, trust = substituted("tlsnotary", 1)
+        self.assertIs(True, verify_result(changed, self.recipes, trust))
+        for method, version in (
+            ("vc-presentation", 1),        # unknown method kind
+            ("zktls", 1),                  # known kind that no lei recipe supports
+            ("verifiable-credential", 1),  # owner family exists only at version 2
+            ("tlsnotary", 2),              # alternative registered only at version 1
+        ):
+            with self.subTest(method=method, recipeVersion=version):
+                changed, trust = substituted(method, version)
+                self.assertIs(False, verify_result(changed, self.recipes, trust))
 
     def test_aggregate_authority_and_committed_result_set_fail_closed(self):
         case = next(
@@ -3687,6 +4308,9 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 bundle = copy.deepcopy(value["bundle"])
                 bundle["presentation"]["signatures"][0]["ref"] = malformed
                 self.assertFalse(verify_bundle(bundle, admission))
+                # Without an admission the changed presentation bytes cannot
+                # reject first, so the signature-reference type check decides.
+                self.assertIs(False, verify_bundle(bundle))
 
                 requirement = copy.deepcopy(value["requirement"])
                 requirement["required"][0]["scheme"] = malformed
@@ -4034,36 +4658,68 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         self.assertFalse(execute_once(evaluation, self.document))
 
     def test_resigned_method_and_data_substitution_cannot_flip_control(self):
-        case = next(
-            item for item in self.cases
-            if item["name"]
-            == "vet-control-existence-method-forged-holderbinding-reject"
+        # DACS-1 §6.3.2 step (6): only a verifiable-credential holder binding to
+        # a presentation signer proves control of a non-key presentedBy claim.
+        # Each variant is re-signed by the genuine result authority with its
+        # full-artifact hash, provenance and source family registered, and the
+        # bundle is re-pointed and re-signed, so the result authenticates and
+        # only the substituted method or data can decide control.
+        _, evaluation = self._case_evaluation("vet-ma3-verified-accept")
+        uncontrolled = (
+            "fail",
+            ["primaryClaimSelector is mismatched, uncontrolled, or unauthorized"],
         )
-        changed = copy.deepcopy(case["evaluations"]["result"])
-        old_result = changed["input"]["resolvedResults"][0]
-        old_ref = old_result["ref"]
-        old_result["artifact"]["method"] = "verifiable-credential"
-        old_result["artifact"]["data"] = {
-            "holderBinding": {
-                "controller": public_ref(fixture_private_key("presenter")),
-            },
-        }
-        new_result = resign_result(
-            old_result,
-            fixture_private_key("authority"),
-            AUTHORITY_REF,
+
+        def resigned(**fields):
+            return lambda artifact: artifact.update(
+                reason="re-signed substitution", **fields
+            )
+
+        def outcomes(source, mutate_artifact, *, authenticates=True):
+            document = copy.deepcopy(self.document)
+            changed = rebuild_direct_result(source, document, mutate_artifact)
+            resolved = changed["input"]["resolvedResults"][0]
+            if authenticates:
+                set_result_attestation_family(document, resolved)
+            recipes = authenticated_recipe_registry(document)
+            self.assertIs(authenticates, verify_result(
+                resolved, recipes, authenticated_result_context(document, recipes)
+            ))
+            control = copy.deepcopy(changed)
+            control["operation"] = "control-decision"
+            return (
+                self._direct_outcome(changed, document),
+                execute_once(control, document),
+            )
+
+        # Control: the unchanged credential re-signed through the same path.
+        self.assertEqual((("pass", []), "pass"), outcomes(evaluation, resigned()))
+        method_source = copy.deepcopy(evaluation)
+        method_source["input"]["requirement"]["required"][0]["recipeVersion"] = 1
+        for label, source, mutate in (
+            ("holder binding names a non-signer", evaluation, resigned(data={
+                "holderBinding": {
+                    "controller": public_ref(fixture_private_key("replacement-signer")),
+                },
+            })),
+            ("holder binding removed", evaluation, resigned(data={})),
+            ("registered non-credential method keeps the binding", method_source,
+             resigned(method="tlsnotary", recipeVersion=1)),
+        ):
+            with self.subTest(label=label):
+                self.assertEqual((uncontrolled, "fail"), outcomes(source, mutate))
+
+        # An existence-only result re-signed as a credential at a version whose
+        # recipe has no credential method is refused at authentication (that
+        # family guard is isolated by the unregistered-family test above).
+        _, forged = self._case_evaluation(
+            "vet-control-existence-method-forged-holderbinding-reject"
         )
-        changed["input"]["resolvedResults"][0] = new_result
-        bundle = changed["input"]["bundle"]
-        for claim in bundle["claims"]:
-            if claim.get("verifiedBy") == old_ref:
-                claim["verifiedBy"] = copy.deepcopy(new_result["ref"])
-        changed["input"]["bundle"] = resign_bundle(
-            bundle,
-            fixture_private_key("presenter"),
-            public_ref(fixture_private_key("presenter")),
+        self.assertEqual(
+            (uncontrolled, "fail"),
+            outcomes(forged, resigned(method="verifiable-credential"),
+                     authenticates=False),
         )
-        self.assertNotEqual("pass", execute_once(changed, self.document))
 
     def test_vpc4_terminal_fault_attribution_is_derived(self):
         self.assertEqual("counterparty", vpc4_error_class("fail"))
@@ -6006,79 +6662,85 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         _, evaluation = self._case_evaluation(
             "vet-oneof-indeterminate-over-fail"
         )
-        document = copy.deepcopy(self.document)
-        changed = copy.deepcopy(evaluation)
-        value = changed["input"]
-        generated_at = value["record"]["generatedAt"]
-        invocation_id = value["authority"]["invocation"]
-        requirement = value["authority"]["vetInput"]["requirement"]
-        lei_member = next(
-            item for item in requirement["oneOf"][0]
-            if item["scheme"] == "lei"
-        )
-        lei_member["maxAge"] = 0.5
-        requirement_hash = hash_hex(requirement)
-        value["record"]["requirementHash"] = requirement_hash
+        generated_at = evaluation["input"]["record"]["generatedAt"]
+        invocation_id = evaluation["input"]["authority"]["invocation"]
 
-        # Keep every existing non-pass prerequisite valid under the changed
-        # requirement so maxAge participation is the only authorization limb.
-        for resolved in value["resolvedResults"]:
-            member = next(
+        def build(r2_verified_at):
+            document = copy.deepcopy(self.document)
+            changed = copy.deepcopy(evaluation)
+            value = changed["input"]
+            requirement = value["authority"]["vetInput"]["requirement"]
+            lei_member = next(
                 item for item in requirement["oneOf"][0]
-                if item["scheme"] == resolved["artifact"]["scheme"]
+                if item["scheme"] == "lei"
             )
-            set_result_provenance(
+            lei_member["maxAge"] = 0.5
+            requirement_hash = hash_hex(requirement)
+            value["record"]["requirementHash"] = requirement_hash
+
+            # Keep every existing non-pass prerequisite valid under the changed
+            # requirement so maxAge participation is the only authorization limb.
+            for resolved in value["resolvedResults"]:
+                member = next(
+                    item for item in requirement["oneOf"][0]
+                    if item["scheme"] == resolved["artifact"]["scheme"]
+                )
+                set_result_provenance(
+                    document,
+                    resolved,
+                    current=[{
+                        "invocation": invocation_id,
+                        "requirementHash": requirement_hash,
+                        "memberHash": hash_hex(member),
+                    }],
+                )
+
+            self._commit_extra(
+                value,
                 document,
-                resolved,
-                current=[{
-                    "invocation": invocation_id,
-                    "requirementHash": requirement_hash,
-                    "memberHash": hash_hex(member),
-                }],
+                "lei",
+                lambda artifact: artifact.update(
+                    decision="pass",
+                    reason="fresh pass beside maxAge-stale result",
+                    fetchedAt=r2_verified_at,
+                    verifiedAt=r2_verified_at,
+                ),
             )
+            value["record"]["overallDecision"] = "pass"
+            changed["input"] = reanchor_composite_input(value, document)
 
-        self._commit_extra(
-            value,
-            document,
-            "lei",
-            lambda artifact: artifact.update(
-                decision="pass",
-                reason="fresh pass beside maxAge-stale result",
-                fetchedAt=generated_at,
-                verifiedAt=generated_at,
-            ),
-        )
-        value["record"]["overallDecision"] = "pass"
-        changed["input"] = reanchor_composite_input(value, document)
+            invocation = document["trustedContext"]["vetInvocations"][invocation_id]
+            receipt = document["trustedContext"]["authenticatedRecordReceipts"][
+                invocation["recordReceiptId"]
+            ]
+            receipt["observedAt"] = generated_at
+            receipt["blockRef"]["timestamp"] = generated_at
+            invocation["trustedNow"] = generated_at
+            return changed, document
 
-        invocation = document["trustedContext"]["vetInvocations"][invocation_id]
-        receipt = document["trustedContext"]["authenticatedRecordReceipts"][
-            invocation["recordReceiptId"]
-        ]
-        receipt["observedAt"] = generated_at
-        receipt["blockRef"]["timestamp"] = generated_at
-        invocation["trustedNow"] = generated_at
+        def at(document, trusted_now):
+            moved = copy.deepcopy(document)
+            moved["trustedContext"]["vetInvocations"][invocation_id][
+                "trustedNow"
+            ] = trusted_now
+            return moved
 
         expected = {"decision": "pass", "reasons": []}
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+        changed, document = build(generated_at)
         self.assertEqual(expected, reconstruct_historical_once(changed, document))
         self.assertEqual(expected, execute_once(changed, document))
+        self.assertEqual(expected, execute_once(changed, at(document, generated_at + 500)))
+        expired = at(document, generated_at + 501)
+        self.assertEqual(invalid, execute_once(changed, expired))
+        self.assertEqual(expected, reconstruct_historical_once(changed, expired))
 
-        at_boundary = copy.deepcopy(document)
-        at_boundary["trustedContext"]["vetInvocations"][invocation_id][
-            "trustedNow"
-        ] = generated_at + 500
-        self.assertEqual(expected, execute_once(changed, at_boundary))
-
-        expired = copy.deepcopy(document)
-        expired["trustedContext"]["vetInvocations"][invocation_id][
-            "trustedNow"
-        ] = generated_at + 501
-        self.assertEqual(
-            {"decision": "error", "reasons": [
-                "aggregation authority invalid"
-            ]},
-            execute_once(changed, expired),
-        )
+        # Participation at generatedAt is inclusive too: R2 exactly maxAge old
+        # at generatedAt participates, so it is requalified at trustedNow.
+        changed, document = build(generated_at - 500)
+        self.assertEqual(expected, execute_once(changed, document))
+        expired = at(document, generated_at + 1)
+        self.assertEqual(invalid, execute_once(changed, expired))
         self.assertEqual(expected, reconstruct_historical_once(changed, expired))
 
     def test_number_normalisation_is_exact_copying_and_cycle_safe(self):
@@ -6415,6 +7077,295 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 document = copy.deepcopy(self.document)
                 mutate(*issuance_of(document))
                 self.assertFalse(execute_once(evaluation, document))
+
+    # -- Test-audit regressions: each guard is isolated from earlier rejections. --
+
+    def _direct_outcome(self, evaluation, document):
+        """Complete direct (decision, reasons) through verifier-owned admission."""
+
+        runtime = VetReferenceRuntime(document["trustedContext"])
+        admitted, _ = runtime.admit_synthetic_test_input(evaluation)
+        value = admitted["input"]
+        admission = runtime.admit(value["authority"], value["bundle"])
+        self.assertIsNotNone(admission)
+        recipes = authenticated_recipe_registry(document)
+        result_context = authenticated_result_context(document, recipes)
+        self.assertIsNotNone(recipes)
+        self.assertIsNotNone(result_context)
+        return evaluate(
+            value, recipes, result_context,
+            decision_time=admission.trusted_now, admission=admission,
+        )
+
+    def _with_later_family_version(self, availability):
+        document = copy.deepcopy(self.document)
+        context = document["trustedContext"]
+        base = next(
+            recipe for recipe in context["recipeRegistry"]["recipes"]
+            if (recipe["scheme"], recipe["defaultMethod"]["kind"], recipe["recipeVersion"])
+            == ("lei", "consensus-backed-proxy", 1)
+        )
+        later = copy.deepcopy(base)
+        later["recipeVersion"] = 3
+        later["availability"] = availability
+        resign_recipe(later)
+        context["recipeRegistry"]["recipes"].append(later)
+        append_recipe_authorities(context, later)
+        return document
+
+    def test_implicit_latest_must_be_live_without_older_fallback(self):
+        # DACS-2 CRQ-2: "If the implicit latest entry is not live, aggregation
+        # returns error and MUST NOT fall back to an older live version."  An
+        # explicit pin to the older live version is unaffected.
+        case, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        self.assertEqual("pass", case["expectedOutput"])
+        self.assertEqual(1, evaluation["input"]["requirement"]["required"][0]["recipeVersion"])
+        implicit = copy.deepcopy(evaluation)
+        implicit["input"]["requirement"]["required"][0].pop("recipeVersion")
+        # Control: the implicit latest is the live v1 that produced the result.
+        self.assertEqual(("pass", []), self._direct_outcome(implicit, self.document))
+        # Control: a later live version is selected; the v1 result does not
+        # participate, so the member is unsatisfied rather than errored.
+        live = self._with_later_family_version("live")
+        self.assertEqual(
+            ("fail", ["required failing or absent: lei"]),
+            self._direct_outcome(implicit, live),
+        )
+        for availability in (
+            "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed",
+        ):
+            with self.subTest(availability=availability):
+                document = self._with_later_family_version(availability)
+                self.assertEqual(
+                    ("error", ["unresolved recipe family or version"]),
+                    self._direct_outcome(implicit, document),
+                )
+                self.assertEqual(
+                    ("pass", []), self._direct_outcome(evaluation, document)
+                )
+
+    def test_explicit_non_operational_recipe_version_errors(self):
+        # DACS-2 RAV-3: results from disabled, failed or mocked recipes are
+        # error; operator-gated, closed-data and bilateral are not forced to
+        # error.  Only the signed recipe availability changes.
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        for availability, expected in (
+            ("live", ("pass", [])),
+            ("operator_gated", ("pass", [])),
+            ("closed_data", ("pass", [])),
+            ("bilateral", ("pass", [])),
+            ("mocked", ("error", ["unresolved recipe family or version"])),
+            ("disabled", ("error", ["unresolved recipe family or version"])),
+            ("failed", ("error", ["unresolved recipe family or version"])),
+        ):
+            with self.subTest(availability=availability):
+                document = copy.deepcopy(self.document)
+                recipe = next(
+                    item for item in document["trustedContext"]["recipeRegistry"]["recipes"]
+                    if item["scheme"] == "lei" and item["recipeVersion"] == 1
+                )
+                recipe["availability"] = availability
+                resign_recipe(recipe)
+                self.assertEqual(expected, self._direct_outcome(evaluation, document))
+
+    def test_issuance_party_and_boolean_pins_are_isolated_guards(self):
+        _, evaluation = self._case_evaluation("vet-ma3-verified-accept")
+        self.assertIs(True, execute_once(evaluation, self.document))
+        value = evaluation["input"]
+        invocation_id = value["authority"]["invocation"]
+
+        def issuance_of(document):
+            context = document["trustedContext"]["vetInvocations"][invocation_id]
+            return context, next(
+                item for item in document["trustedContext"]["nonceIssuances"]
+                if item["challengeId"] == context["challengeId"]
+            )
+
+        # Only the issuer-owned ledger record names another evaluated party;
+        # the invocation context and presentation are unchanged.  The exact
+        # nonce is still consumed by the attempt.
+        document = copy.deepcopy(self.document)
+        context, issuance = issuance_of(document)
+        issuance["evaluatedParty"] = public_ref(fixture_private_key("replacement-signer"))
+        runtime = VetReferenceRuntime(document["trustedContext"])
+        self.assertIsNone(runtime.admit(value["authority"], value["bundle"]))
+        self.assertTrue(runtime.nonce_ledger.consumed(context["challengeId"]))
+        self.assertIs(False, execute_once(evaluation, document))
+
+        # A JSON boolean that equals the pinned integer under host equality
+        # (False == 0, True == 1) is still not an integer, so no later
+        # issuance comparison can be the rejecting check.
+        for field, boolean in (("phaseIndex", False), ("attempt", True)):
+            with self.subTest(invocation_field=field):
+                document = copy.deepcopy(self.document)
+                context, issuance = issuance_of(document)
+                self.assertEqual(issuance[field], boolean)
+                context[field] = boolean
+                self.assertIs(False, execute_once(evaluation, document))
+            with self.subTest(issuance_field=field):
+                _, issuance = issuance_of(copy.deepcopy(self.document))
+                issuance[field] = boolean
+                with self.assertRaisesRegex(ValueError, "not an exact safe integer"):
+                    NonceLedger([issuance], registered_schemes=KNOWN_SCHEMES)
+
+    def test_verifier_identity_issuance_authority_and_party_are_bound(self):
+        case, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
+        invocation = self.document["trustedContext"]["vetInvocations"][
+            evaluation["input"]["authority"]["invocation"]
+        ]
+        other = public_ref(fixture_private_key("replacement-signer"))
+        for label, mutate in (
+            ("issuer is not the phase orchestrator",
+             lambda item: item.update(issuedBy=other, expectedVerifier=other)),
+            ("issued to another party", lambda item: item.update(evaluatedParty=other)),
+        ):
+            with self.subTest(label=label):
+                document = copy.deepcopy(self.document)
+                issuance = next(
+                    item for item in document["trustedContext"]["nonceIssuances"]
+                    if item["challengeId"] == invocation["verifierIdentityChallengeId"]
+                )
+                mutate(issuance)
+                self.assertEqual(
+                    {"decision": "error", "reasons": ["aggregation authority invalid"]},
+                    execute_once(evaluation, document),
+                )
+
+    def test_session_context_must_canonically_equal_the_authenticated_session(self):
+        # DACS-2 CRQ-1: VetCredentialsInput.sessionContext MUST be the
+        # orchestrator-owned active context.  Equality is canonical JSON
+        # equality: an integral-float spelling is the same value, while a
+        # JSON boolean or an additional member is a different context.
+        case, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+        for label, mutate, expected in (
+            ("integral float pin",
+             lambda item: item.update(recipeRegistryVersion=1.0), case["expectedOutput"]),
+            ("boolean pin", lambda item: item.update(recipeRegistryVersion=True), invalid),
+            ("additional member", lambda item: item.update(sessionState="vet-pending"), invalid),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(evaluation)
+                mutate(changed["input"]["authority"]["vetInput"]["sessionContext"])
+                self.assertEqual(expected, execute_once(changed, self.document))
+
+    def test_authenticated_artifact_hash_and_source_family_are_load_bearing(self):
+        # The fixture resolver binds the complete serialized result hash in
+        # addition to the signature-excluded reference hash, and the source
+        # attestation to the result's exact signed family.
+        _, evaluation = self._case_evaluation(
+            "vet-control-existence-only-lei-supporting-context"
+        )
+        resolved = evaluation["input"]["resolvedResults"][0]
+        self.assertEqual("consensus-backed-proxy", resolved["artifact"]["method"])
+        self.assertTrue(verify_result(resolved, self.recipes, self.result_context))
+
+        trust = copy.deepcopy(self.result_context)
+        trust["resultHashByRef"][canonical_bytes(resolved["ref"])] = "00" * 32
+        self.assertFalse(verify_result(resolved, self.recipes, trust))
+
+        document = copy.deepcopy(self.document)
+        entry = next(
+            item for item in document["trustedContext"]["authenticatedSourceAttestations"]
+            if canonical_bytes(item["attestation"])
+            == canonical_bytes(resolved["artifact"]["attestation"])
+        )
+        # Another method of the same authenticated owner family.
+        entry["method"] = "tlsnotary"
+        context = authenticated_result_context(
+            document, authenticated_recipe_registry(document)
+        )
+        self.assertIsNotNone(context)
+        self.assertFalse(verify_result(resolved, self.recipes, context))
+
+    def test_exact_nonce_is_consumed_even_when_expired(self):
+        # CORE SN-4: an attempt carrying the issued nonce is consumed before
+        # validation, including when the bounded lifetime has elapsed.  The
+        # lifetime is inclusive at expiresAt.
+        _, evaluation = self._case_evaluation("vet-ma3-verified-accept")
+        value = evaluation["input"]
+        invocation_id = value["authority"]["invocation"]
+        for offset, admitted in ((0, True), (1, False)):
+            with self.subTest(after_expiry_ms=offset):
+                document = copy.deepcopy(self.document)
+                context = document["trustedContext"]["vetInvocations"][invocation_id]
+                issuance = next(
+                    item for item in document["trustedContext"]["nonceIssuances"]
+                    if item["challengeId"] == context["challengeId"]
+                )
+                context["trustedNow"] = issuance["expiresAt"] + offset
+                runtime = VetReferenceRuntime(document["trustedContext"])
+                admission = runtime.admit(value["authority"], value["bundle"])
+                self.assertEqual(admitted, admission is not None)
+                self.assertTrue(runtime.nonce_ledger.consumed(context["challengeId"]))
+
+    def test_presented_by_must_resolve_to_a_signed_bundle_claim(self):
+        # DACS-1 §6.3.2 presentedBy selection rule: presentedBy "MUST be one of
+        # the claim references appearing in claims (matching by canonical
+        # scheme and identifier)".  The invocation, nonce and presentedBy (the
+        # authenticated primary claim) are unchanged and another claim of the
+        # bundle signs the presentation, so only claim membership can decide.
+        case, evaluation = self._case_evaluation("vet-control-key-presentation-accept")
+        self.assertEqual("pass", case["expectedOutput"])
+        presented = evaluation["input"]["bundle"]["presentedBy"]
+        cosigner = fixture_private_key("bundle-cosigner")
+        cosigner_ref = public_ref(cosigner)
+        selector_requirement = evaluation["input"]["requirement"]
+        self.assertEqual("key", selector_requirement["primaryClaimSelector"])
+        presence_requirement = {
+            "requirementVersion": "1",
+            "required": [{"scheme": "key", "verificationRequired": False}],
+        }
+
+        def variant(claim_refs, requirement, operation="decision"):
+            changed = copy.deepcopy(evaluation)
+            changed["operation"] = operation
+            bundle = changed["input"]["bundle"]
+            bundle["claims"] = [
+                {"ref": ref, "issuedAt": 1_899_999_999_000} for ref in claim_refs
+            ]
+            changed["input"]["bundle"] = resign_bundle(bundle, cosigner, cosigner_ref)
+            changed["input"]["requirement"] = copy.deepcopy(requirement)
+            return changed
+
+        # Controls: presentedBy resolves exactly, or by CF-3 identity to a
+        # parameterised reference of the same key.
+        for label, refs in (
+            ("exact", [presented, cosigner_ref]),
+            ("CF-3 identity", [presented + "?role=holder", cosigner_ref]),
+        ):
+            with self.subTest(control=label):
+                accepted = variant(refs, presence_requirement)
+                self.assertIs(True, verify_bundle(accepted["input"]["bundle"]))
+                self.assertEqual(
+                    ("pass", []), self._direct_outcome(accepted, self.document)
+                )
+
+        missing = variant([cosigner_ref], presence_requirement)
+        bundle = missing["input"]["bundle"]
+        self.assertEqual(presented, bundle["presentedBy"])
+        self.assertEqual(
+            evaluation["input"]["bundle"]["sessionNonce"], bundle["sessionNonce"]
+        )
+        self.assertIs(False, verify_bundle(bundle))
+        invalid = ("error", ["invalid identity bundle"])
+        self.assertEqual(invalid, self._direct_outcome(missing, self.document))
+        self.assertEqual(invalid, self._direct_outcome(
+            variant([cosigner_ref], selector_requirement), self.document
+        ))
+        self.assertEqual("error", execute_once(
+            variant([cosigner_ref], selector_requirement, "control-decision"),
+            self.document,
+        ))
+        self.assertIs(False, execute_once(
+            variant([cosigner_ref], presence_requirement, "match"), self.document
+        ))
 
 
 if __name__ == "__main__":

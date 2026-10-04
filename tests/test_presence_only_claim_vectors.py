@@ -1196,6 +1196,43 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             )
         self.assertFalse(fresh.consumed(issuance["challengeId"]))
 
+    def test_siwd_nonce_requires_exactly_one_message_nonce_field(self):
+        # DACS-1 §6.3.2 reads the single EIP-4361 Nonce field of the exact
+        # SIWD message.  An ambiguous message supplies no nonce, so it neither
+        # authorizes the attempt nor consumes the issued challenge.
+        issuance = copy.deepcopy(
+            self.document["trustedContext"]["nonceIssuances"][0]
+        )
+        prefix = "example.test wants you to sign in with your account:\n"
+
+        def siwd(message):
+            return {"presentation": {"kind": "siwd", "message": message}}
+
+        single = siwd(prefix + "Nonce: " + issuance["nonce"])
+        self.assertEqual(issuance["nonce"], presentation_nonce(single))
+        ledger = NonceLedger([issuance])
+        ledger.consume(
+            issuance["challengeId"], presentation_nonce(single), issuance["issuedAt"]
+        )
+        self.assertTrue(ledger.consumed(issuance["challengeId"]))
+
+        for label, message in (
+            ("issued then other", "Nonce: " + issuance["nonce"] + "\nNonce: " + "00" * 16),
+            ("other then issued", "Nonce: " + "00" * 16 + "\nNonce: " + issuance["nonce"]),
+            ("issued twice", "Nonce: " + issuance["nonce"] + "\nNonce: " + issuance["nonce"]),
+            ("empty", "Nonce: "),
+        ):
+            with self.subTest(label=label):
+                candidate = siwd(prefix + message)
+                self.assertIsNone(presentation_nonce(candidate))
+                fresh = NonceLedger([issuance])
+                with self.assertRaises(NonceRejected):
+                    fresh.consume(
+                        issuance["challengeId"], presentation_nonce(candidate),
+                        issuance["issuedAt"],
+                    )
+                self.assertFalse(fresh.consumed(issuance["challengeId"]))
+
     def test_all_vectors_execute(self):
         runtime = PresenceEvaluationRuntime(self.document["trustedContext"])
         for vector in self.document["vectors"]:

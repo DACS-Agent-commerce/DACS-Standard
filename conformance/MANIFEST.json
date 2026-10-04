@@ -22,7 +22,7 @@
   "inputBindings": {
     "dacs1-vet-golden-inputs-v0.1": {
       "path": "conformance/fixtures/identity/dacs1-vet-golden-inputs-v0.1.json",
-      "sha256": "dfed4c04e036664092ec4ca8c509a52f5e232241606e6748b8586931170ff374",
+      "sha256": "625124320b0ea4f0faa98fef04d227bbff3ef64657216738f1a7ae8206cd8525",
       "caseCount": 30,
       "scope": "The 13 DACS-1 and 17 Vet manifest cases listed under the same IDs in the bound fixture."
     }
@@ -252,7 +252,10 @@
       "summary": "OBSERVATION DACS-VERIFY-0001 (adjacent issue #42): a cci-lei: claim does NOT satisfy a bare lei requirement",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
-      "want": false
+      "want": {
+        "result": false,
+        "registeredBareLeiControl": true
+      }
     },
     {
       "id": "dacs1-cci-lei-current-registry-reject",
@@ -270,7 +273,10 @@
       "summary": "step 3b: an unverified presentedBy claim is rejected even if another verified claim satisfies the requirement",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
-      "want": false
+      "want": {
+        "result": false,
+        "selectedPassControl": true
+      }
     },
     {
       "id": "vet-control-existence-only-lei-supporting-context",
@@ -368,7 +374,8 @@
         "expired": false,
         "expiresOnly": true,
         "expiresOnlyMaxAge": false,
-        "stalePresentedByPrimary": false
+        "stalePresentedByPrimary": false,
+        "freshPresentedByPrimaryControl": true
       }
     },
     {
@@ -710,7 +717,8 @@
         "expired": false,
         "expiresOnly": true,
         "expiresOnlyMaxAge": false,
-        "stalePresentedByPrimary": false
+        "stalePresentedByPrimary": false,
+        "freshPresentedByPrimaryControl": true
       }
     },
     {

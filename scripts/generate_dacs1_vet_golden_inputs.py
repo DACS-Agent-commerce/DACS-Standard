@@ -42,6 +42,7 @@ RECIPE_REGISTRY_VERSION = 1
 JOB_ID = "01J00000000000000000000363"
 SESSION_START = "dacs-363-session-start"
 PHASE_INDEX = 0
+CCI_LEI_COMPATIBILITY_PROFILE = "fixture-cci-lei-distinct-scheme-v0.1"
 
 _INVOCATIONS: dict[str, dict] = {}
 _NONCE_ISSUANCES: list[dict] = []
@@ -148,7 +149,11 @@ def register_invocation(
     verifier_identity: dict | None = None,
     record_receipt_id: str | None = None,
     record_anchor_binding: dict | None = None,
+    compatibility_profile: str | None = None,
+    compatibility_requirement: dict | None = None,
 ) -> None:
+    if (compatibility_profile is None) != (compatibility_requirement is None):
+        raise ValueError("compatibility profile and requirement must be paired")
     nonce = bundle["sessionNonce"]
     evaluated_party = bundle["presentedBy"]
     _NONCE_ISSUANCES.append({
@@ -200,7 +205,18 @@ def register_invocation(
         "trustedNow": NOW + (1_000 if record_receipt_id else 0),
         "recordReceiptId": record_receipt_id,
         "recordAnchorBinding": copy.deepcopy(record_anchor_binding),
+        # Verifier-owned fixture context.  This never adds a scheme to the
+        # signed production RecipeRegistry or to the default ClaimReference
+        # registry used by any other invocation.
+        "compatibilityProfile": compatibility_profile,
     }
+    if compatibility_profile is not None:
+        # The profile's extra schemes apply only to the exact canonical
+        # requirement this verifier issued, so candidate input cannot carry
+        # them to a different requirement.  Current-only invocations omit it.
+        _INVOCATIONS[invocation_id]["compatibilityRequirementHash"] = hash_hex(
+            compatibility_requirement
+        )
 
 
 def claim(ref: str, **fields: object) -> dict:
@@ -466,9 +482,18 @@ def evaluation(
     req: dict | None,
     *,
     resolved: list[dict] | None = None,
+    compatibility_profile: str | None = None,
 ) -> dict:
     invocation_id, challenge_id, bound_bundle = begin_invocation(bundle)
-    register_invocation(invocation_id, challenge_id, bound_bundle)
+    register_invocation(
+        invocation_id,
+        challenge_id,
+        bound_bundle,
+        compatibility_profile=compatibility_profile,
+        compatibility_requirement=(
+            req if compatibility_profile is not None else None
+        ),
+    )
     input_value = {
         # Compatibility-only wrapper metadata: the verifier uses trustedNow
         # from the verifier-owned invocation, never this unsigned value.
@@ -735,7 +760,12 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
     )
     stale_claim["expiresAt"] = NOW - 1
     fresh_claim, fresh_result = verified_claim(
-        LEI_B, "pass", f"{prefix}-other-fresh", method="consensus-backed-proxy"
+        LEI_B,
+        "pass",
+        f"{prefix}-other-fresh",
+        method="verifiable-credential",
+        recipe_version=2,
+        data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     stale_bundle = signed_bundle(
         [stale_claim, fresh_claim], presented_by=LEI_A
@@ -743,6 +773,11 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
     selected_req = requirement(
         [member("lei", verified=True, max_age=60, recipe_version=2)],
         selector="lei",
+    )
+    fresh_selected_claim = copy.deepcopy(stale_claim)
+    fresh_selected_claim["expiresAt"] = NOW + 60_000
+    fresh_selected_bundle = signed_bundle(
+        [fresh_selected_claim, fresh_claim], presented_by=LEI_A
     )
 
     return {
@@ -762,6 +797,12 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
             selected_req,
             resolved=[stale_result, fresh_result],
         ),
+        "freshPresentedByPrimaryControl": evaluation(
+            "match",
+            fresh_selected_bundle,
+            selected_req,
+            resolved=[stale_result, fresh_result],
+        ),
     }
 
 
@@ -775,15 +816,28 @@ def build_cases() -> list[dict]:
     # registered fixture presenter so the shared registry rejects the claim
     # itself rather than making the trusted nonce ledger malformed.
     cci_bundle = signed_bundle([cci_claim], presented_by=PRESENTER_REF)
+    bare_lei_bundle = signed_bundle(
+        [claim(LEI_A)], presented_by=PRESENTER_REF
+    )
     add_case(
         cases,
         "dacs1-cci-lei-defect",
         "§6.3.3",
         "A cci-lei claim cannot satisfy a distinct bare lei requirement.",
-        {"result": evaluation(
-            "match", cci_bundle, requirement([member("lei", verified=True)]),
-        )},
-        False,
+        {
+            "result": evaluation(
+                "match",
+                cci_bundle,
+                requirement([member("lei", verified=False)]),
+                compatibility_profile=CCI_LEI_COMPATIBILITY_PROFILE,
+            ),
+            "registeredBareLeiControl": evaluation(
+                "match",
+                bare_lei_bundle,
+                requirement([member("lei", verified=False)]),
+            ),
+        },
+        {"result": False, "registeredBareLeiControl": True},
     )
     add_case(
         cases,
@@ -793,32 +847,67 @@ def build_cases() -> list[dict]:
         {"result": evaluation(
             "match",
             cci_bundle,
-            requirement([member("cci-lei", verified=True)]),
+            requirement([member("cci-lei", verified=False)]),
         )},
         False,
     )
 
     selected_fail, selected_fail_result = verified_claim(
-        LEI_A, "fail", "laundering-selected", method="consensus-backed-proxy"
+        LEI_A,
+        "fail",
+        "laundering-selected",
+        method="verifiable-credential",
+        recipe_version=2,
+        data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     other_pass, other_pass_result = verified_claim(
-        LEI_B, "pass", "laundering-other", method="consensus-backed-proxy"
+        LEI_B,
+        "pass",
+        "laundering-other",
+        method="verifiable-credential",
+        recipe_version=2,
+        data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     laundering_bundle = signed_bundle(
         [selected_fail, other_pass], presented_by=LEI_A
+    )
+    selected_pass, selected_pass_result = verified_claim(
+        LEI_A,
+        "pass",
+        "laundering-selected-control",
+        method="verifiable-credential",
+        recipe_version=2,
+        data={"holderBinding": {"controller": PRESENTER_REF}},
+    )
+    laundering_control_bundle = signed_bundle(
+        [selected_pass, other_pass], presented_by=LEI_A
     )
     add_case(
         cases,
         "dacs1-tier-laundering-guard",
         "§6.3.3",
         "Another same-scheme pass cannot authorize the exact selected claim.",
-        {"result": evaluation(
-            "match",
-            laundering_bundle,
-            requirement([member("lei", verified=True)], selector="lei"),
-            resolved=[selected_fail_result, other_pass_result],
-        )},
-        False,
+        {
+            "result": evaluation(
+                "match",
+                laundering_bundle,
+                requirement(
+                    [member("lei", verified=True, recipe_version=2)],
+                    selector="lei",
+                ),
+                resolved=[selected_fail_result, other_pass_result],
+            ),
+            "selectedPassControl": evaluation(
+                "match",
+                laundering_control_bundle,
+                requirement(
+                    [member("lei", verified=True, recipe_version=2)],
+                    selector="lei",
+                ),
+                resolved=[selected_pass_result, other_pass_result],
+            ),
+        },
+        {"result": False, "selectedPassControl": True},
     )
 
     registry_claim, registry_result = verified_claim(
@@ -828,7 +917,7 @@ def build_cases() -> list[dict]:
     registry_primary_bundle = signed_bundle([registry_claim], presented_by=LEI_A)
     verified_lei = requirement([member("lei", verified=True)])
     selected_lei_registry = requirement(
-        [member("lei", verified=True)], selector="lei"
+        [member("lei", verified=True, recipe_version=1)], selector="lei"
     )
     selected_lei_vc = requirement(
         [member("lei", verified=True, recipe_version=2)], selector="lei"
@@ -1063,16 +1152,19 @@ def build_cases() -> list[dict]:
     malformed_evaluation = evaluation(
         "decision-no-throw", key_bundle, presence_key
     )
-    # Mutate only after the legitimate nonce-bound presentation is signed.  The
-    # ordinary verifier path must consume its issued nonce and reject a JSON
-    # boolean masquerading as the required exact integer.  Out-of-range values
-    # are exercised directly because no strict-JCS inputHash can cover them.
-    malformed_evaluation["input"]["bundle"]["presentedAt"] = True
+    # Keep the legitimate issued nonce and authenticate the malformed field.
+    # A stale signature would reject even if the diagnostic-number guard were
+    # missing, masking the rule this vector is meant to exercise.
+    malformed_bundle = malformed_evaluation["input"]["bundle"]
+    malformed_bundle["presentedAt"] = True
+    malformed_evaluation["input"]["bundle"] = bind_session_nonce(
+        malformed_bundle, malformed_bundle["sessionNonce"]
+    )
     add_case(
         cases,
         "vet-control-key-malformed-scope-reject-no-throw",
         "§6.3.2 step (6)/§7.5.1",
-        "A boolean in an exact-integer signed field is an error and never an exception.",
+        "A boolean in a signed diagnostic-number field is an error and never an exception.",
         {"result": malformed_evaluation},
         {"decision": "error", "throws": False},
     )
@@ -1140,6 +1232,7 @@ def build_cases() -> list[dict]:
         "expiresOnly": True,
         "expiresOnlyMaxAge": False,
         "stalePresentedByPrimary": False,
+        "freshPresentedByPrimaryControl": True,
     }
     add_case(
         cases,
@@ -1213,7 +1306,7 @@ def build_cases() -> list[dict]:
         "§6.3.3",
         "A failing selected claim is not laundered by another same-scheme pass.",
         {"result": evaluation(
-            "match", laundering_bundle, selected_lei_registry,
+            "match", laundering_bundle, selected_lei_vc,
             resolved=[selected_fail_result, other_pass_result],
         )},
         False,
@@ -1231,7 +1324,7 @@ def build_cases() -> list[dict]:
                 resolved=[selected_fail_result, other_pass_result],
             ),
             "vetResolved": evaluation(
-                "match", laundering_bundle, selected_lei_registry,
+                "match", laundering_bundle, selected_lei_vc,
                 resolved=[selected_fail_result, other_pass_result],
             ),
         },
@@ -1493,6 +1586,12 @@ def build_document() -> dict:
         },
         "trustedContext": {
             "recipeRegistry": registry,
+            "deferredSchemeCompatibilityProfiles": {
+                CCI_LEI_COMPATIBILITY_PROFILE: {
+                    "registeredSchemes": ["cci-lei"],
+                    "scope": "fixture-only exact-scheme comparison",
+                },
+            },
             "authenticatedSessionStarts": {
                 SESSION_START: authenticated_session_start(),
             },

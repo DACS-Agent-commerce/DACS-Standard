@@ -3,7 +3,9 @@ import contextlib
 import errno
 import importlib.util
 import io
+import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest import mock
 
@@ -96,6 +98,14 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
             any("fixture file could not be inspected: loop" in error for error in errors),
             errors,
         )
+        for path in (ver.DEFAULT_INTERIM, ver.DEFAULT_RESOLVED):
+            self.assertTrue(
+                any(
+                    path.name + ": fixture file could not be inspected: loop" in error
+                    for error in errors
+                ),
+                errors,
+            )
         validate_interim.assert_not_called()
         validate_resolved.assert_not_called()
 
@@ -113,6 +123,9 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
             ),
             errors,
         )
+        # Missing is an ordinary per-file rejection, not a path-resolution fault.
+        self.assertEqual(ver.fail(missing, "fixture file not found"), errors[0])
+        self.assertFalse(any("could not be resolved" in error for error in errors), errors)
 
     def test_path_resolution_errors_reject_pair_and_cli_without_receipt_downgrade(self):
         ver = self.verifier
@@ -140,3 +153,56 @@ class HTLCDecoderDiagnosticTests(unittest.TestCase):
         with contextlib.redirect_stdout(stdout):
             self.assertEqual(ver.main([]), 0)
         self.assertIn("both signatures verified", stdout.getvalue())
+
+    def test_exclusive_settlement_selector_keeps_unknown_members_inert(self):
+        ver = self.verifier
+        self.assertIsNone(ver.settlement_evidence_selector_error({
+            "evidenceVersion": "1",
+            "futureOptional": {"version": 2},
+        }))
+        invalid = (
+            {},
+            {"evidenceVersion": "2"},
+            {"deliveryEvidenceVersion": "1"},
+            {"legacyTransitionEvidenceVersion": "1"},
+            {"finalityBoundEvidenceVersion": "1"},
+            {"evidenceVersion": "1", "deliveryEvidenceVersion": "1"},
+            {"evidenceVersion": "1", "legacyTransitionEvidenceVersion": "1"},
+            {"evidenceVersion": "1", "finalityBoundEvidenceVersion": "1"},
+        )
+        for evidence in invalid:
+            with self.subTest(evidence=evidence):
+                error = ver.settlement_evidence_selector_error(evidence)
+                self.assertIsInstance(error, str)
+                self.assertIn("exclusively evidenceVersion '1'", error)
+
+    def test_selector_admission_precedes_signature_and_type_interpretation(self):
+        ver = self.verifier
+        shapes = (
+            {"deliveryEvidenceVersion": "1"},
+            {"evidenceVersion": "1", "deliveryEvidenceVersion": "1"},
+            {"evidenceVersion": "1", "legacyTransitionEvidenceVersion": "1"},
+            {"evidenceVersion": "1", "finalityBoundEvidenceVersion": "1"},
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            for index, evidence in enumerate(shapes):
+                with self.subTest(evidence=evidence):
+                    # Safe shape-only guard assertion: no signature is created
+                    # and no hybrid record is re-signed or executed.
+                    path = Path(tmp) / f"selector-{index}.json"
+                    path.write_text(json.dumps({
+                        "kind": "SettlementEvidenceCase",
+                        "settlementEvidence": evidence,
+                    }), encoding="utf-8")
+                    with mock.patch.object(
+                        ver,
+                        "verify_signature",
+                        side_effect=AssertionError("signature interpretation reached"),
+                    ) as signature:
+                        admitted, errors = ver.load_case(path)
+                    self.assertIsNone(admitted)
+                    self.assertTrue(any(
+                        "exclusively evidenceVersion '1'" in error
+                        for error in errors
+                    ), errors)
+                    signature.assert_not_called()

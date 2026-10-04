@@ -109,9 +109,21 @@ class DiffVectorRunsTests(unittest.TestCase):
 
     def test_replacement_expands_all_named_evaluations(self):
         expected = load_expected("dacs1-vet-golden-inputs-v0.1")
-        self.assertEqual(44, len(expected))
+        self.assertEqual(48, len(expected))
         self.assertIn("dacs1-cci-lei-defect::result", expected)
+        self.assertIs(
+            expected["dacs1-cci-lei-defect::registeredBareLeiControl"], True
+        )
         self.assertIn("dacs1-freshness-fail-closed::expiresOnly", expected)
+        self.assertIs(
+            expected[
+                "dacs1-freshness-fail-closed::freshPresentedByPrimaryControl"
+            ],
+            True,
+        )
+        self.assertIs(
+            expected["dacs1-tier-laundering-guard::selectedPassControl"], True
+        )
         self.assertEqual(
             "error", expected["vet-oneof-error-over-fail::result"]
         )
@@ -143,46 +155,114 @@ class DiffVectorRunsTests(unittest.TestCase):
         self.assertTrue(diff_runs._verdict_equal({"n": 1}, {"n": 1.0}))
 
     def test_expected_loader_fails_closed_on_malformed_or_incomplete_sets(self):
+        # Each malformed set is pinned to the diagnostic of the guard it
+        # targets, so an unknown-set or neighbouring guard cannot satisfy it.
+        root = "root must be an object"
+        one_list = "must contain exactly one of 'vectors' or 'cases'"
+        duplicate = "duplicate case identity 'case'"
+        no_verdict = "case 'case' has no expected verdict"
         invalid = {
-            "null root": None,
-            "list root": [],
-            "no supported list": {"status": "candidate"},
-            "both lists": {"vectors": [{}], "cases": [{}]},
-            "empty vectors": {"vectors": []},
-            "non-object case": {"vectors": [None]},
-            "missing name": {"vectors": [{"expected": "pass"}]},
-            "missing verdict": {"vectors": [{"name": "case"}]},
-            "missing evaluated output": {
-                "cases": [{"id": "case", "evaluations": {"result": {}}}],
-            },
-            "duplicate identity": {
-                "vectors": [
-                    {"name": "case", "expected": "pass"},
-                    {"name": "case", "expected": "fail"},
-                ],
-            },
-            "duplicate identity distinct labels": {
-                "cases": [
-                    {
-                        "id": "case",
-                        "evaluations": {"first": {}},
-                        "expectedOutput": {"first": "pass"},
-                    },
-                    {
-                        "id": "case",
-                        "evaluations": {"second": {}},
-                        "expectedOutput": {"second": "pass"},
-                    },
-                ],
-            },
-            "null verdict": {"vectors": [{"name": "case", "expected": None}]},
+            "null root": (None, root),
+            "list root": ([], root),
+            "no supported list": ({"status": "candidate"}, one_list),
+            "both lists": ({"vectors": [{}], "cases": [{}]}, one_list),
+            "empty vectors": ({"vectors": []}, "vectors must be a non-empty array"),
+            "non-object case": ({"vectors": [None]}, r"vectors\[0\] must be an object"),
+            "missing name": (
+                {"vectors": [{"expected": "pass"}]},
+                "needs a non-empty string name or id",
+            ),
+            "missing verdict": ({"vectors": [{"name": "case"}]}, no_verdict),
+            "missing evaluated output": (
+                {"cases": [{"id": "case", "evaluations": {"result": {}}}]},
+                "with evaluations must carry expectedOutput",
+            ),
+            "duplicate identity": (
+                {
+                    "vectors": [
+                        {"name": "case", "expected": "pass"},
+                        {"name": "case", "expected": "fail"},
+                    ],
+                },
+                duplicate,
+            ),
+            "duplicate identity distinct labels": (
+                {
+                    "cases": [
+                        {
+                            "id": "case",
+                            "evaluations": {"first": {}},
+                            "expectedOutput": {"first": "pass"},
+                        },
+                        {
+                            "id": "case",
+                            "evaluations": {"second": {}},
+                            "expectedOutput": {"second": "pass"},
+                        },
+                    ],
+                },
+                duplicate,
+            ),
+            "null verdict": ({"vectors": [{"name": "case", "expected": None}]}, no_verdict),
+            # Distinct case ids can still collide after <case>::<evaluation>
+            # expansion; either order must be refused.
+            "expanded then plain collision": (
+                {
+                    "cases": [
+                        {"id": "a", "evaluations": {"b": {}}, "expectedOutput": {"b": "pass"}},
+                        {"id": "a::b", "expected": "pass"},
+                    ],
+                },
+                "duplicate expected identity 'a::b'",
+            ),
+            "plain then expanded collision": (
+                {
+                    "cases": [
+                        {"id": "a::b", "expected": "pass"},
+                        {"id": "a", "evaluations": {"b": {}}, "expectedOutput": {"b": "pass"}},
+                    ],
+                },
+                "duplicate expanded identity 'a::b'",
+            ),
+        }
+        valid = {
+            "valid vectors": (
+                {
+                    "vectors": [
+                        {"name": "a", "expected": "pass"},
+                        {"name": "b", "expected": {"decision": "fail"}},
+                    ],
+                },
+                {"a": "pass", "b": "fail"},
+            ),
+            "valid cases": (
+                {
+                    "cases": [
+                        {
+                            "id": "case",
+                            "evaluations": {"first": {}, "second": {}},
+                            "expectedOutput": {
+                                "first": "pass",
+                                "second": {"decision": "error"},
+                            },
+                        },
+                    ],
+                },
+                {"case::first": "pass", "case::second": "error"},
+            ),
         }
         with mock.patch.object(diff_runs, "FIXTURE_DIRS", (self.tmp.name,)):
-            for label, value in invalid.items():
+            # Accepted controls prove the patched directory is the one consulted.
+            for label, (value, expected) in valid.items():
                 with self.subTest(label=label):
                     path = Path(self.tmp.name) / f"{label}.json"
                     path.write_text(json.dumps(value), encoding="utf-8")
-                    with self.assertRaises(SystemExit):
+                    self.assertEqual(expected, load_expected(label))
+            for label, (value, message) in invalid.items():
+                with self.subTest(label=label):
+                    path = Path(self.tmp.name) / f"{label}.json"
+                    path.write_text(json.dumps(value), encoding="utf-8")
+                    with self.assertRaisesRegex(SystemExit, message):
                         load_expected(label)
 
     def test_run_loader_fails_closed_on_malformed_roots_and_fields(self):
@@ -212,6 +292,9 @@ class DiffVectorRunsTests(unittest.TestCase):
         self.assertEqual(1, run.returncode)
         self.assertIn("no comparable evaluated case", run.stderr)
         self.assertNotIn("cross-run CONVERGED", run.stdout + run.stderr)
+        # Empty runs are also incomplete against the expected set; the
+        # zero-comparable diagnostic is a second, independent reason.
+        self.assertIn(f"no result for case '{CASE}'", run.stderr)
 
     def test_malformed_json_is_a_controlled_cli_failure(self):
         path = Path(self.tmp.name) / "malformed.json"
@@ -220,7 +303,33 @@ class DiffVectorRunsTests(unittest.TestCase):
         run = self.execute()
         self.assertNotEqual(0, run.returncode)
         self.assertIn("not valid readable JSON", run.stderr)
+        self.assertIn(str(path), run.stderr)
         self.assertNotIn("Traceback", run.stderr)
+
+    def test_raw_admission_failures_reject_an_otherwise_converging_pair(self):
+        result = {"name": CASE, "verdict": "reject"}
+        self.add_run("impl-a@1", result)
+        self.add_run("impl-b@1", result)
+        control = self.execute()
+        self.assertEqual(0, control.returncode, control.stderr)
+        self.assertIn("cross-run CONVERGED", control.stdout)
+
+        # Only run B's bytes change; each spelling would converge if a
+        # permissive parser accepted it (the repeated member has one value).
+        body = json.dumps({"set": SET, "impl": "impl-b@1", "results": [result]})
+        for label, prefix in (
+            ("duplicate member", '{"impl":"impl-b@1",'),
+            ("NaN", '{"n":NaN,'),
+            ("Infinity", '{"n":Infinity,'),
+            ("-Infinity", '{"n":-Infinity,'),
+        ):
+            with self.subTest(label=label):
+                self.paths[1].write_bytes((prefix + body[1:]).encode("utf-8"))
+                run = self.execute()
+                self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+                self.assertIn(f"run file {self.paths[1]} is not valid readable JSON", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertNotIn("cross-run CONVERGED", run.stdout + run.stderr)
 
     def test_duplicate_members_and_non_json_numbers_fail_closed(self):
         for index, raw in enumerate((

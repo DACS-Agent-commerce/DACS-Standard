@@ -87,6 +87,21 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertEqual(1, count)
         self.assertTrue(any("phaseSummary" in error for error in errors), errors)
 
+    def test_bundle_literal_with_claims_and_phase_summary_stays_an_attestation_bundle(self):
+        # Only an unambiguous IdentityBundle (claims without phaseSummary)
+        # leaves the stricter AttestationBundle check.
+        v = load_validator()
+        identity = {"bundleVersion": "1", "claims": [{"ref": "key:" + "11" * 32}]}
+        ambiguous = {**identity, "phaseSummary": []}
+        self.assertEqual(
+            [("IdentityBundle", identity), ("AttestationBundle", ambiguous)],
+            v._embedded_reference_artifacts({"bundles": [identity, ambiguous]}),
+        )
+        self.assertEqual(
+            [("AttestationBundle", ambiguous)],
+            v._embedded_reference_artifacts(ambiguous),
+        )
+
     def test_embedded_discriminators_in_artifact_data_are_not_rediscovered(self):
         v = load_validator()
         result = {

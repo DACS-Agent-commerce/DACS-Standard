@@ -254,6 +254,43 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual("RD-5", rejected["failedAt"])
                 self.assertFalse(rejected["maySubmitPayment"])
 
+    def test_safe_integer_boundary_holds_for_every_number_spelling(self):
+        # Equivalent admitted spellings of the largest safe chain ID keep the
+        # integer disposition; float spellings outside the safe range, and
+        # non-finite values, fail before tier selection exactly like 2**53.
+        maximum = 2**53 - 1
+        claim = f"cci-xm:evm:{maximum}:opaque-address"
+
+        def vector(chain_id):
+            return {
+                "claim": claim,
+                "railDefinition": {
+                    "network": {"kind": "evm", "chainId": chain_id},
+                    "asset": {"kind": "erc20", "chainId": chain_id},
+                },
+                "tier3AgreementAssertionPresent": True,
+                "linkageDecision": "pass",
+            }
+
+        accepted = evaluate(vector(maximum))
+        self.assertEqual(
+            {
+                "expected": "pass",
+                "railChain": f"eip155:{maximum}",
+                "claimChain": f"eip155:{maximum}",
+                "tier2Applicable": True,
+                "bindingTier": 2,
+                "maySubmitPayment": True,
+            },
+            accepted,
+        )
+        self.assertEqual(accepted, evaluate(vector(float(maximum))))
+        rejected = evaluate(vector(2**53))
+        self.assertEqual("RD-5", rejected["failedAt"])
+        for chain_id in (float(2**53), 1e16, float("inf"), float("nan")):
+            with self.subTest(chain_id=chain_id):
+                self.assertEqual(rejected, evaluate(vector(chain_id)))
+
     def test_address_is_nonempty_but_otherwise_opaque_for_chain_applicability(self):
         for name in [
             "nonempty-opaque-address-establishes-tier2",

@@ -88,6 +88,12 @@ SIGNATURE_KEYS = {"algorithm", "signer", "value"}
 FINALITY_KEYS = {"model", "finalityObservedAt"}
 PRICE_TERM_REQUIRED_KEYS = {"amount", "currency"}
 PRICE_TERM_ALLOWED_KEYS = PRICE_TERM_REQUIRED_KEYS | {"unit"}
+DACS4_EVIDENCE_SELECTORS = frozenset({
+    "deliveryEvidenceVersion",
+    "evidenceVersion",
+    "finalityBoundEvidenceVersion",
+    "legacyTransitionEvidenceVersion",
+})
 
 def fail(path: Path, message: str) -> str:
     try:
@@ -198,6 +204,40 @@ def price_term_errors(amount: Any) -> list[str]:
     if not price_term_unit_is_valid(amount):
         errors.append("paymentAmount.unit MUST be a string when present")
     return errors
+
+
+def is_evidence_selector_name(name: Any) -> bool:
+    """Recognise registered and future DACS-4 evidence-type selector names.
+
+    Besides the registered selectors, any ``*EvidenceVersion`` member is an
+    exclusive type discriminator (DACS-4 §9.7); a reader that does not
+    support it refuses the record (CORE §11.2.5) rather than ignoring it.
+    """
+    return isinstance(name, str) and (
+        name in DACS4_EVIDENCE_SELECTORS or name.endswith("EvidenceVersion")
+    )
+
+
+def settlement_evidence_selector_error(evidence: Any) -> str | None:
+    """DACS-4 §9.7/PDE-1: select ordinary evidence exclusively.
+
+    Registered and future selector-like members are refused unless the only
+    one present is ``evidenceVersion: "1"``; unrelated authenticated members
+    remain forward-readable.  This guard intentionally runs before
+    signature-domain or type-specific SettlementEvidence interpretation in
+    ``load_case``.
+    """
+
+    if not isinstance(evidence, dict):
+        return "SettlementEvidence MUST be an object"
+    present = {name for name in evidence if is_evidence_selector_name(name)}
+    if present != {"evidenceVersion"} or evidence.get("evidenceVersion") != "1":
+        observed = ", ".join(sorted(present)) if present else "none"
+        return (
+            "SettlementEvidence selector MUST be exclusively "
+            "evidenceVersion '1'; observed selector(s): " + observed
+        )
+    return None
 
 
 def verify_signature(
@@ -373,14 +413,15 @@ def load_case(
     evidence = data.get("settlementEvidence")
     if not isinstance(evidence, dict):
         return None, errors + [fail(path, "settlementEvidence MUST be an object")]
+    selector_error = settlement_evidence_selector_error(evidence)
+    if selector_error:
+        return None, errors + [fail(path, selector_error)]
     try:
         forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
     except RecursionError:
         return None, errors + [fail(path, "settlementEvidence nesting exceeds the supported limit")]
     if forbidden:
         errors.append(fail(path, "ST-8 supersession MUST NOT carry amendment fields: " + ", ".join(sorted(forbidden))))
-    if evidence.get("evidenceVersion") != "1":
-        errors.append(fail(path, "evidenceVersion MUST be '1'"))
     if evidence.get("phase") != "pay-cross-chain-htlc":
         errors.append(fail(path, "phase MUST be pay-cross-chain-htlc"))
     if not isinstance(evidence.get("jobId"), str) or not ULID.fullmatch(evidence["jobId"]):
@@ -457,6 +498,22 @@ def htlc_topology_errors(
     return errors
 
 
+def interim_supersession_errors(evidence: dict) -> list[str]:
+    """DACS-4 §9.5.4, §9.7, §9.7.1: only the resolved success supersedes.
+
+    ``supersedesEvidenceRef`` is a known resolved-only member: the ST-8
+    ``:resolved`` success carries it, pointing back to the interim failure.
+    Unknown authenticated members remain forward-readable.
+    """
+    if "supersedesEvidenceRef" in evidence:
+        return [
+            "interim failure evidence MUST NOT carry supersedesEvidenceRef "
+            "(only the ST-8 resolved success record supersedes the interim "
+            "failure; DACS-4 §9.5.4, §9.7, §9.7.1)"
+        ]
+    return []
+
+
 def validate_interim(
     path: Path,
     expected_phase_orchestrator: str = DEFAULT_PHASE_ORCHESTRATOR,
@@ -500,6 +557,7 @@ def validate_interim(
     )]
     if "settlementFinality" in evidence:
         errors.append(fail(path, "interim failure evidence MUST NOT carry settlementFinality"))
+    errors += [fail(path, error) for error in interim_supersession_errors(evidence)]
     return evidence, errors
 
 

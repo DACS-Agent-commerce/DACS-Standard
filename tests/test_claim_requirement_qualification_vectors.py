@@ -552,6 +552,11 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             for vector in self.data["vectors"]
             if vector["name"] == "vet-claim-requirement-exact-match-pass"
         )
+        # A valid value under the same unmatched key is an ordinary "fail", so
+        # the negatives below cannot pass from an already-error baseline.
+        control = copy.deepcopy(vector["input"])
+        control["requirement"]["required"][0]["parameters"] = {"strictJcs": "valid"}
+        self.assertEqual(evaluate(control, self.data), "fail")
         for invalid in (float("nan"), float("inf"), 9_007_199_254_740_992, "\ud800"):
             with self.subTest(invalid=repr(invalid)):
                 candidate = copy.deepcopy(vector["input"])
@@ -559,6 +564,32 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
                     "strictJcs": invalid
                 }
                 self.assertEqual(evaluate(candidate, self.data), "error")
+
+    def test_parameter_predicates_compare_repository_jcs_values(self):
+        # CORE §B.2: one admitted binary64 value has one JCS spelling, JSON
+        # booleans are not numbers, and CF-1 compares string values in NFC.
+        vector = next(
+            vector
+            for vector in self.data["vectors"]
+            if vector["name"] == "vet-claim-requirement-exact-match-pass"
+        )
+        self.assertEqual(evaluate(vector["input"], self.data), "pass")
+        cases = (
+            (1.0, 1, "pass"),
+            (1, 1.0, "pass"),
+            ("é", "é", "pass"),
+            (2, 1, "fail"),
+            (True, 1, "fail"),
+            (1, True, "fail"),
+            (False, 0, "fail"),
+            ("1", 1, "fail"),
+        )
+        for wanted, presented, expected in cases:
+            with self.subTest(wanted=repr(wanted), presented=repr(presented)):
+                candidate = copy.deepcopy(vector["input"])
+                candidate["requirement"]["required"][0]["parameters"]["level"] = wanted
+                candidate["resolvedResults"][0]["data"]["level"] = presented
+                self.assertEqual(evaluate(candidate, self.data), expected)
 
     def test_omitted_version_uses_session_start_registry(self):
         vector = next(
@@ -669,6 +700,53 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         stale = {"generatedAt": 1_501, "resolvedResults": [result]}
         self.assertEqual([result], applicable_results(current, requirement, registry))
         self.assertEqual([], applicable_results(stale, requirement, registry))
+
+    def test_age_predicate_operands_are_validated_before_comparison(self):
+        # maxAge is a non-negative finite duration in seconds and the age bound
+        # is inclusive; JSON booleans are never times or durations.
+        vector = next(
+            vector
+            for vector in self.data["vectors"]
+            if vector["name"] == "vet-claim-requirement-exact-match-pass"
+        )
+        # The vector's result is exactly 5,000 ms old under maxAge 10.
+        self.assertEqual(evaluate(vector["input"], self.data), "pass")
+        for max_age, expected in ((5, "pass"), (5.0, "pass"), (4.999, "fail"), (0.5, "fail"), (0, "fail")):
+            with self.subTest(max_age=max_age):
+                candidate = copy.deepcopy(vector["input"])
+                candidate["requirement"]["required"][0]["maxAge"] = max_age
+                self.assertEqual(evaluate(candidate, self.data), expected)
+        invalid_operands = (
+            ("maxAge True", lambda value: value["requirement"]["required"][0].__setitem__("maxAge", True)),
+            ("maxAge -1", lambda value: value["requirement"]["required"][0].__setitem__("maxAge", -1)),
+            ("maxAge -0.5", lambda value: value["requirement"]["required"][0].__setitem__("maxAge", -0.5)),
+            ("verifiedAt True", lambda value: value["resolvedResults"][0].__setitem__("verifiedAt", True)),
+            ("generatedAt True", lambda value: value.__setitem__("generatedAt", True)),
+        )
+        for label, mutate in invalid_operands:
+            with self.subTest(operand=label):
+                candidate = copy.deepcopy(vector["input"])
+                mutate(candidate)
+                self.assertEqual(evaluate(candidate, self.data), "error")
+
+        registry = {
+            "recipeRegistryVersion": 1,
+            "latestByScheme": {"key": 1},
+            "latestByFamily": {"key": {"self-signed": 1}},
+            "versionsByFamily": {"key": {"self-signed": {"1": "live"}}},
+        }
+        result = {
+            "scheme": "key", "method": "self-signed", "decision": "pass",
+            "recipeVersion": 1, "verifiedAt": 1_000, "data": {},
+        }
+        input_data = {"generatedAt": 1_500, "resolvedResults": [result]}
+        # Values that cannot be serialised as admitted JSON fail at the guard
+        # itself on the direct path (the ordinary entry rejects them earlier).
+        for max_age in (float("nan"), float("inf"), 9_007_199_254_740_992, "60", None):
+            with self.subTest(direct_max_age=repr(max_age)):
+                requirement = {"scheme": "key", "verificationRequired": True, "maxAge": max_age}
+                with self.assertRaisesRegex(QualificationError, "age predicate timestamps are invalid"):
+                    applicable_results(input_data, requirement, registry)
 
     def test_registry_without_exact_family_metadata_fails_closed(self):
         vector = next(

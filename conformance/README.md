@@ -130,7 +130,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
   content without being misclassified as `VerifyResultRef` resolution inputs.
   Every case
   pins its input hash, `MANIFEST.json` pins the whole file SHA-256, and
-  `scripts/diff_vector_runs.py` exposes all 44 evaluations under stable
+  `scripts/diff_vector_runs.py` exposes all 48 evaluations under stable
   `<case>::<evaluation>` identities. The legacy
   `control-gate-vectors.json` policy sketch is retained only as superseded
   history and is rejected by the cross-run tool; its abbreviated references
@@ -169,7 +169,7 @@ python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
 
 Vectors that double as executable evidence of implementation friction. Stated as observations for the group to confirm or correct, not as normative claims:
 
-- **DACS-VERIFY-0001** — a `cci-lei:` claim does **not** satisfy a bare `lei` requirement. The pack explicitly retains this deferred-scheme compatibility control; `cci-lei` is absent from the current v0.1 default registry. Bare `lei` remains live under §6.3.3/§7.4.2. Adjacent to issue **#42**'s broader `ClaimReference` canonical-equality discussion.
+- **DACS-VERIFY-0001** — a `cci-lei:` claim does **not** satisfy a bare `lei` requirement. The presence-only comparison runs only under an explicit verifier-owned fixture compatibility profile whose invocation also binds the exact requirement hash; evaluation inputs cannot select that profile or retarget it to another requirement or a requirement-free control decision. `cci-lei` remains absent from the current v0.1 default and Recipe registries, whose separate arm rejects it, while a registered bare `lei` accepting control remains live under §6.3.3/§7.4.2. Adjacent to issue **#42**'s broader `ClaimReference` canonical-equality discussion.
 - **DACS-VERIFY-0002** — separators used normatively in the spec body (e.g. `dacs-session-binding:v1:`, `dacs-sealed-bid:v1:`) are absent from the §7.7 closed registry and are not `x-`-prefixed (SIG-4).
 - **DACS-VERIFY-0004** — `conformance/fixtures/attestation-bundle-0004.json` is a full completed §10.4 `AttestationBundle`, signed by buyer + seller with deterministic issuer-kit keys. `conformance/fixtures/attestation-bundle-0004-seller.json` is a same-`jobId` divergent seller-side bundle with outcome `failed-counterparty`; it also verifies and has a distinct bundle hash. Divergent-bundle dispute/disclosure vectors pin both refs. The bundle verifier accepts valid bundles, rejects a completed bundle missing a required signer, and surfaces malformed resolved keys as `error`.
 

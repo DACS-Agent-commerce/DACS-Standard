@@ -159,6 +159,141 @@ class DacsAdapterTests(unittest.TestCase):
         )
         self.assertNotIn(b"Traceback", completed.stderr)
 
+    def test_release_validator_refuses_a_closure_that_differs_from_the_descriptor(self):
+        spec = importlib.util.spec_from_file_location(
+            "adapter_release_validator_for_refusal", VALIDATOR
+        )
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        # Control: the committed descriptor equals the derived closure.
+        self.assertEqual(
+            {
+                "families": 4,
+                "executableCases": 14,
+                "boundedCases": 4,
+                "unsupportedCases": 2,
+            },
+            validator.validate(),
+        )
+        closure = validator._repository_local_import_closure()
+        for label, derived in (
+            ("unlisted local import", closure | {"scripts/idna.py"}),
+            ("listed file no longer imported", closure - {"scripts/specsource.py"}),
+        ):
+            with self.subTest(label=label), mock.patch.object(
+                validator, "_repository_local_import_closure", return_value=derived
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "wrapped primitive set does not equal repository-local import closure",
+                ):
+                    validator.validate()
+
+    def test_adapter_and_validator_derive_the_same_dynamic_import_closure(self):
+        # Both copies of the derivation must follow every literal dynamic
+        # import form, so neither can certify a closure the other would miss.
+        spec = importlib.util.spec_from_file_location(
+            "adapter_release_validator_for_dynamic_closure", VALIDATOR
+        )
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        spec = importlib.util.spec_from_file_location(
+            "adapter_for_dynamic_closure", ADAPTER
+        )
+        adapter = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(adapter)
+        self.assertEqual(
+            validator._repository_local_import_closure(),
+            adapter._repository_local_import_closure(),
+        )
+        with tempfile.TemporaryDirectory(prefix="dacs-adapter-dynamic-") as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            (scripts / "jcs.py").write_text(
+                "import importlib\n"
+                "from importlib import import_module\n"
+                'importlib.import_module("added_attribute")\n'
+                'import_module("added_name")\n'
+                '__import__("added_dunder")\n',
+                encoding="utf-8",
+            )
+            for name in ("added_attribute", "added_name", "added_dunder", "unreached"):
+                (scripts / f"{name}.py").write_text("VALUE = 1\n", encoding="utf-8")
+            expected = {
+                "scripts/jcs.py",
+                "scripts/added_attribute.py",
+                "scripts/added_name.py",
+                "scripts/added_dunder.py",
+            }
+            for label, module in (("validator", validator), ("adapter", adapter)):
+                with self.subTest(copy=label), mock.patch.object(module, "ROOT", root), \
+                        mock.patch.object(module, "ADVERTISED_PRIMITIVE_ROOTS", {"scripts/jcs.py"}):
+                    self.assertEqual(expected, module._repository_local_import_closure())
+
+    def test_planted_local_module_is_refused_before_adapter_import(self):
+        # dacs_reference.py (a wrapped primitive) imports idna, and scripts/ is
+        # first on sys.path.  An untracked same-named file would shadow the
+        # dependency without changing any pinned blob, so both the adapter and
+        # the release validator must refuse the changed closure.
+        metadata = b'{"protocol":"dacs-adapter/1","id":"x","type":"metadata"}\n'
+        with tempfile.TemporaryDirectory(prefix="dacs-adapter-planted-") as tmp:
+            checkout = Path(tmp) / "repo"
+            subprocess.run(
+                ["git", "clone", "--quiet", "--no-hardlinks", str(ROOT), str(checkout)],
+                check=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            subprocess.run(
+                [
+                    "git", "config", "remote.origin.url",
+                    "https://github.com/DACS-Agent-commerce/DACS-Standard.git",
+                ],
+                cwd=checkout,
+                check=True,
+            )
+
+            def run(script, payload=b""):
+                return subprocess.run(
+                    [sys.executable, str(checkout / "scripts" / script)],
+                    cwd=checkout,
+                    input=payload,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                    timeout=60,
+                )
+
+            # Controls: the unmodified clone starts and validates.
+            control = run("dacs_adapter.py", metadata)
+            self.assertEqual(0, control.returncode, control.stderr)
+            self.assertTrue(json.loads(control.stdout.splitlines()[0])["ok"])
+            control = run("validate_dacs_adapter_release.py")
+            self.assertEqual(0, control.returncode, control.stderr)
+
+            (checkout / "scripts" / "idna.py").write_text(
+                'raise RuntimeError("planted module executed")\n', encoding="utf-8"
+            )
+            adapter = run("dacs_adapter.py", metadata)
+            validator = run("validate_dacs_adapter_release.py")
+        self.assertEqual(1, adapter.returncode)
+        self.assertEqual(b"", adapter.stdout)
+        self.assertIn(
+            b"adapter descriptor primitive set does not equal the repository-local "
+            b"import closure",
+            adapter.stderr,
+        )
+        self.assertNotIn(b"planted module executed", adapter.stderr)
+        self.assertNotIn(b"Traceback", adapter.stderr)
+        self.assertEqual(1, validator.returncode)
+        self.assertIn(
+            b"wrapped primitive set does not equal repository-local import closure",
+            validator.stderr,
+        )
+        self.assertNotIn(b"Traceback", validator.stderr)
+
     def test_metadata_separates_adapter_and_wrapped_standard_identity(self):
         completed, responses = run_adapter([request("metadata", "metadata")])
         self.assertEqual(completed.returncode, 0, completed.stderr.decode())

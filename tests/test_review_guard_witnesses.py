@@ -25,6 +25,7 @@ import test_current_evidence_boundary_regressions as released  # noqa: E402
 import test_dacs1_vet_golden_inputs as vet  # noqa: E402
 import test_identity_risk_and_dacsx_pack as htlc_pack  # noqa: E402
 import test_pr366_feature_interactions as interactions  # noqa: E402
+import test_presence_only_claim_vectors as presence  # noqa: E402
 
 
 class ReviewGuardWitnessTests(unittest.TestCase):
@@ -478,6 +479,66 @@ class ReviewGuardWitnessTests(unittest.TestCase):
             mutated = self._run_test(test_class, selected)
         self._assert_mutation_caught(mutated, "aggregation authority invalid")
 
+    def test_presence_pack_universal_presenter_control_is_load_bearing(self):
+        selected = "test_presenter_control_vectors_are_distinguishing"
+        test_class = presence.PresenceOnlyClaimVectorTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        # Wrong implementation: any included key signature controls the exact
+        # declared presenter, recreating the selector-absent aggregation gap.
+        with mock.patch.object(
+            presence, "exact_presenter_key_controlled", return_value=True
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated)
+
+    def test_presence_pack_presenter_uniqueness_is_load_bearing(self):
+        selected = "test_presented_claim_uniqueness_is_order_independent"
+        test_class = presence.PresenceOnlyClaimVectorTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        def first_cf3_match(bundle, claims):
+            presented = presence.parse_claim_reference(
+                bundle.get("presentedBy"),
+                registered_schemes=presence.KNOWN_SCHEMES,
+            )
+            return next(
+                (
+                    (claim, parsed)
+                    for claim, parsed in claims
+                    if parsed.identity == presented.identity
+                ),
+                None,
+            )
+
+        # Wrong implementation: array order selects the first of multiple
+        # canonical-distinct claims that share the presented CF-3 identity.
+        with mock.patch.object(
+            presence, "exact_presented_claim", side_effect=first_cf3_match
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated)
+
+    def test_principal_bundle_cf3_signature_membership_is_load_bearing(self):
+        selected = "test_presented_by_must_resolve_to_a_signed_bundle_claim"
+        self._assert_clean_control(self._run_vet_test(selected))
+
+        def raw_reference_membership(signature_ref, claims, **_):
+            return any(
+                isinstance(item, dict) and item.get("ref") == signature_ref
+                for item in claims
+            )
+
+        # Wrong implementation: a signer is considered a bundle member only
+        # when its complete CF-2-qualified reference is byte-equal to a claim.
+        with mock.patch.object(
+            vet,
+            "signature_ref_matches_claim",
+            side_effect=raw_reference_membership,
+        ):
+            mutated = self._run_vet_test(selected)
+        self._assert_mutation_caught(mutated)
+
     def test_verifier_identity_exact_key_signature_is_load_bearing(self):
         test_class = interactions.Pr366VetInteractionTests
         selected = (
@@ -491,6 +552,31 @@ class ReviewGuardWitnessTests(unittest.TestCase):
             vet, "verifier_identity_has_exact_key_control", return_value=True
         ):
             mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "aggregation authority invalid")
+
+    def test_verifier_identity_canonical_claim_dedup_is_load_bearing(self):
+        selected = "test_verifier_identity_identical_claim_repetition_collapses"
+        self._assert_clean_control(self._run_vet_test(selected))
+
+        def raw_match_collection(claims, identity, *, registered_schemes=None):
+            schemes = (
+                vet.KNOWN_SCHEMES
+                if registered_schemes is None
+                else registered_schemes
+            )
+            return [
+                vet.canonical_bytes(item) for item in claims
+                if vet.parse_ref(item.get("ref"), schemes) == identity
+            ]
+
+        # Wrong implementation: count raw CF-3 matches without collapsing
+        # byte-identical complete BundleClaim values.
+        with mock.patch.object(
+            vet,
+            "canonical_distinct_identity_claims",
+            side_effect=raw_match_collection,
+        ):
+            mutated = self._run_vet_test(selected)
         self._assert_mutation_caught(mutated, "aggregation authority invalid")
 
     def test_profile_aggregate_bundle_registry_is_load_bearing(self):

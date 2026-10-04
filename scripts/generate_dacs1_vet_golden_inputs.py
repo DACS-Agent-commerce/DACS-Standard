@@ -23,9 +23,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dacs_reference import (  # noqa: E402
+    REGISTERED_SCHEMES,
     canonical_bytes,
     canonical_hash,
     composite_logical_address,
+    parse_claim_reference,
 )
 
 OUTPUT = (
@@ -97,6 +99,32 @@ SIGNER_KEYS = {
 }
 
 
+def claim_identity(ref: str) -> tuple[str, str]:
+    return parse_claim_reference(
+        ref, registered_schemes=REGISTERED_SCHEMES
+    ).identity
+
+
+def signer_key(ref: str) -> Ed25519PrivateKey | None:
+    identity = claim_identity(ref)
+    return next(
+        (
+            key for known_ref, key in SIGNER_KEYS.items()
+            if claim_identity(known_ref) == identity
+        ),
+        None,
+    )
+
+
+def same_claim_identity(left: object, right: str) -> bool:
+    try:
+        return isinstance(left, str) and claim_identity(left) == claim_identity(right)
+    except ValueError:
+        # Deferred/negative fixture claims remain nonmembers; this helper does
+        # not add their schemes to the current registered generator profile.
+        return False
+
+
 def reset_generation_state() -> None:
     global _INVOCATION_SEQUENCE
     _INVOCATIONS.clear()
@@ -120,7 +148,7 @@ def bind_session_nonce(bundle: dict, nonce: str) -> dict:
     rebound = []
     for envelope in signatures:
         signer_ref = envelope.get("ref") if isinstance(envelope, dict) else None
-        signer = SIGNER_KEYS.get(signer_ref)
+        signer = signer_key(signer_ref)
         if signer is None:
             raise ValueError("golden fixture presentation signer is not a public test key")
         rebound.append({"ref": signer_ref, "signature": b64url(signer.sign(payload))})
@@ -265,7 +293,10 @@ def signed_bundle(
     signer_ref: str = PRESENTER_REF,
 ) -> dict:
     body_claims = copy.deepcopy(claims)
-    if not any(item.get("ref") == signer_ref for item in body_claims):
+    if not any(
+        same_claim_identity(item.get("ref"), signer_ref)
+        for item in body_claims
+    ):
         body_claims.append(claim(signer_ref, issuedAt=NOW - 1_000))
     unsigned = {
         "bundleVersion": "1",

@@ -1065,10 +1065,26 @@ classify_member(record, exactBundle, cr):
 
   return classify_verified_member(record, cr)
 
+exact_presented_claim(exactBundle):
+
+  matches := every claim in exactBundle.claims whose canonical scheme and
+             identifier (CF-3 identity) equal those of exactBundle.presentedBy
+
+  distinctMatches := deduplicate matches by the CORE canonical bytes of the
+                     complete BundleClaim value
+
+  if count(distinctMatches) != 1: return absent
+
+  return the sole value in distinctMatches
+
+  # Canonically identical repetitions collapse. Canonical-distinct same-identity
+  # claims are ambiguous regardless of order. After structural bundle/ref
+  # validation, absence or ambiguity is a semantic fail in the accumulator;
+  # malformed wire input retains its earlier error disposition.
+
 exact_presented_controlled(record, exactBundle):
 
-  presented := the unique claim in exactBundle.claims whose canonical scheme
-               and identifier (CF-3 identity) equal those of exactBundle.presentedBy
+  presented := exact_presented_claim(exactBundle)
 
   if presented is absent: return false
 
@@ -1100,8 +1116,7 @@ exact_presented_controlled(record, exactBundle):
 
 exact_presented_verified(record, exactBundle):
 
-  presented := the unique claim in exactBundle.claims whose canonical scheme
-               and identifier (CF-3 identity) equal those of exactBundle.presentedBy
+  presented := exact_presented_claim(exactBundle)
 
   return presented is present AND presented.verifiedBy resolves through record's
          commitments to independently authenticated passing-and-fresh evidence
@@ -1109,11 +1124,11 @@ exact_presented_verified(record, exactBundle):
 
 exact_presented_key_signature_controlled(exactBundle):
 
-  presented := the unique claim in exactBundle.claims whose canonical scheme
-               and identifier (CF-3 identity) equal those of exactBundle.presentedBy
+  presented := exact_presented_claim(exactBundle)
 
   return presented is present AND canonical_scheme(presented.ref) == "key"
-         AND exactBundle has a valid presentation signature by presented.ref
+         AND exactBundle has a valid presentation signature whose signer is
+             CF-3-equal to presented.ref
 
 exact_selector_authorized(record, exactBundle, requirement):
 
@@ -1125,8 +1140,7 @@ exact_selector_authorized(record, exactBundle, requirement):
 
   if canonical_scheme(exactBundle.presentedBy) != selector: return false
 
-  presented := the claim in exactBundle.claims whose canonical scheme and
-               identifier (CF-3 identity) equal those of exactBundle.presentedBy
+  presented := exact_presented_claim(exactBundle)
 
   if presented is absent: return false
 
@@ -1502,7 +1516,7 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
 | Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PCR-1 through PCR-6; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4; independently expected `verifierIdentity` exact-control admission under §7.7.3 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
-| Composite record reader | §7.7.1 mixed-mode aggregation; universal exact `presentedBy` control; no-selector exact verified-presenter or exact-key status; conditional selector authorization; current requalification of exact result-backed control/status dependencies; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary |
+| Composite record reader | §7.7.1 mixed-mode aggregation; uniquely resolved exact `presentedBy` and universal control; no-selector exact verified-presenter or exact-key status; conditional selector authorization; current requalification of exact result-backed control/status dependencies; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary |
 
 ### 7.10 Rationale
 

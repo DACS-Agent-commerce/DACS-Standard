@@ -378,13 +378,16 @@ def verify_bundle(bundle, admission=None):
         payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
     except (TypeError, ValueError, UnicodeError):
         return False
-    claim_refs = {item.get("ref") for item in bundle["claims"]}
+    claim_identities = {parsed.identity for parsed in parsed_claims}
     for signature in signatures:
         if not isinstance(signature, dict) or set(signature) != {"ref", "signature"}:
             return False
         try:
-            scheme, public_hex = parse_ref(signature["ref"])
-            if scheme != "key" or signature["ref"] not in claim_refs:
+            parsed_signer = parse_claim_reference(
+                signature["ref"], registered_schemes=KNOWN_SCHEMES
+            )
+            scheme, public_hex = parsed_signer.identity
+            if scheme != "key" or parsed_signer.identity not in claim_identities:
                 return False
             Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_hex)).verify(
                 b64url_decode(signature["signature"]), payload
@@ -444,6 +447,59 @@ def canonical_claims(bundle):
                 raise ValueError(f"claim {field} must be a finite safe number")
         claims.append((claim, parsed))
     return claims
+
+
+def exact_presented_claim(bundle, claims):
+    """Resolve one canonical-distinct BundleClaim by CF-3 identity.
+
+    Repeated byte-identical claim values collapse to one candidate. Distinct
+    signed claim values with the same CF-3 identity are ambiguous and resolve
+    no presenter, independent of their array order.
+    """
+
+    try:
+        presented = parse_claim_reference(
+            bundle.get("presentedBy"), registered_schemes=KNOWN_SCHEMES
+        )
+        distinct = {
+            canonical_bytes(claim): (claim, parsed)
+            for claim, parsed in claims
+            if parsed.identity == presented.identity
+        }
+    except (AttributeError, TypeError, ValueError, UnicodeError):
+        return None
+    return next(iter(distinct.values())) if len(distinct) == 1 else None
+
+
+def exact_presenter_key_controlled(vector, claims):
+    """Verify this pack's exact per-claim key presenter control proof."""
+
+    bundle = vector["bundle"]
+    resolved = exact_presented_claim(bundle, claims)
+    if resolved is None:
+        return False
+    _, presented = resolved
+    if presented.scheme != "key":
+        return False
+    unsigned = {key: value for key, value in bundle.items() if key != "presentation"}
+    try:
+        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    for signature in bundle["presentation"].get("signatures", []):
+        try:
+            signer = parse_claim_reference(
+                signature.get("ref"), registered_schemes=KNOWN_SCHEMES
+            )
+            if signer.identity != presented.identity or signer.scheme != "key":
+                continue
+            Ed25519PublicKey.from_public_bytes(
+                bytes.fromhex(signer.identifier)
+            ).verify(b64url_decode(signature.get("signature")), payload)
+            return True
+        except (AttributeError, InvalidSignature, TypeError, ValueError):
+            continue
+    return False
 
 
 def matching_claims(
@@ -777,36 +833,41 @@ def classify_member(
     return "error"
 
 
-def selected_claim_is_authorized(
+def selector_authorization_facts(
     vector, claims, decision_time, committed_keys, resolved_by_ref,
-    trusted_context,
+    trusted_context, *, current_reuse=False,
 ):
     requirement = vector["requirement"]
     selector = requirement.get("primaryClaimSelector")
     if selector is None:
-        return True
+        return {
+            "selector_present": False,
+            "controlled": True,
+            "verified_selector": False,
+            "presence_selector": False,
+        }
     bundle = vector["bundle"]
     try:
         presented = parse_claim_reference(
             bundle.get("presentedBy"), registered_schemes=KNOWN_SCHEMES
         )
     except ValueError:
-        return False
-    if presented.scheme != selector:
-        return False
-    selected_claim = next(
-        (claim for claim, parsed in claims if parsed.identity == presented.identity),
-        None,
-    )
-    if selected_claim is None:
-        return False
-    presentation_refs = {
-        item.get("ref") for item in bundle["presentation"].get("signatures", [])
-        if isinstance(item, dict)
-    }
-    if presented.scheme != "key" or selected_claim.get("ref") not in presentation_refs:
-        return False
-    if classify_verified(
+        return {
+            "selector_present": True,
+            "controlled": False,
+            "verified_selector": False,
+            "presence_selector": False,
+        }
+    resolved = exact_presented_claim(bundle, claims)
+    controlled = exact_presenter_key_controlled(vector, claims)
+    if presented.scheme != selector or resolved is None or not controlled:
+        return {
+            "selector_present": True,
+            "controlled": False,
+            "verified_selector": False,
+            "presence_selector": False,
+        }
+    verified_selector = classify_verified(
         claims,
         {"scheme": selector, "verificationRequired": True},
         decision_time,
@@ -814,8 +875,8 @@ def selected_claim_is_authorized(
         resolved_by_ref,
         trusted_context,
         exact_ref=presented.canonical,
-    ) == "pass":
-        return True
+        current_reuse=current_reuse,
+    ) == "pass"
     presence_members = [
         member for member in all_members(requirement)
         if member.get("scheme") == selector
@@ -824,14 +885,13 @@ def selected_claim_is_authorized(
             claims, member, decision_time, presented.canonical
         ) == "pass"
     ]
-    if not presence_members:
-        return False
+    presence_selector = bool(presence_members)
     if any(
         member.get("scheme") == selector
         and member.get("verificationRequired") is True
         for member in requirement.get("required", [])
     ):
-        return False
+        presence_selector = False
     for group in requirement.get("oneOf", []):
         if not any(
             member.get("scheme") == selector
@@ -856,8 +916,62 @@ def selected_claim_is_authorized(
             for member in group
         )
         if not (exact_presence or other_pass):
-            return False
-    return True
+            presence_selector = False
+    return {
+        "selector_present": True,
+        "controlled": controlled,
+        "verified_selector": verified_selector,
+        "presence_selector": presence_selector,
+    }
+
+
+def selected_claim_is_authorized(
+    vector, claims, decision_time, committed_keys, resolved_by_ref,
+    trusted_context, *, current_reuse=False,
+):
+    facts = selector_authorization_facts(
+        vector, claims, decision_time, committed_keys, resolved_by_ref,
+        trusted_context, current_reuse=current_reuse,
+    )
+    return (
+        not facts["selector_present"]
+        or (
+            facts["controlled"]
+            and (facts["verified_selector"] or facts["presence_selector"])
+        )
+    )
+
+
+def current_selected_claim_is_authorized(
+    vector, claims, trusted_now, committed_keys, resolved_by_ref,
+    trusted_context, historical_facts,
+):
+    if not historical_facts["selector_present"]:
+        return True
+    if not (
+        historical_facts["controlled"]
+        and (
+            historical_facts["verified_selector"]
+            or historical_facts["presence_selector"]
+        )
+        and exact_presenter_key_controlled(vector, claims)
+    ):
+        return False
+    if historical_facts["presence_selector"]:
+        return True
+    return classify_verified(
+        claims,
+        {
+            "scheme": vector["requirement"]["primaryClaimSelector"],
+            "verificationRequired": True,
+        },
+        trusted_now,
+        committed_keys,
+        resolved_by_ref,
+        trusted_context,
+        exact_ref=vector["bundle"]["presentedBy"],
+        current_reuse=True,
+    ) == "pass"
 
 
 def valid_requirement(requirement):
@@ -1005,7 +1119,10 @@ def _reconstruct_admitted(vector, trusted_context, admission):
     return decision if decision == record.get("overallDecision") else "error"
 
 
-def aggregate_requirement(vector, claims, decision_time, committed_keys, resolved_by_ref, trusted_context, *, current_reuse=False):
+def aggregate_requirement(
+    vector, claims, decision_time, committed_keys, resolved_by_ref,
+    trusted_context, *, current_reuse=False, historical_selector_facts=None,
+):
     requirement = vector["requirement"]
     failures = []
     errors = []
@@ -1037,11 +1154,21 @@ def aggregate_requirement(vector, claims, decision_time, committed_keys, resolve
             indeterminates.append("oneOf")
         else:
             failures.append("oneOf")
-    if not selected_claim_is_authorized(
-        vector, claims, decision_time, committed_keys, resolved_by_ref,
-        trusted_context,
-    ):
-        failures.append("selector")
+    if not exact_presenter_key_controlled(vector, claims):
+        failures.append("presenter")
+    if requirement.get("primaryClaimSelector") is not None:
+        if historical_selector_facts is None:
+            selector_authorized = selected_claim_is_authorized(
+                vector, claims, decision_time, committed_keys, resolved_by_ref,
+                trusted_context, current_reuse=current_reuse,
+            )
+        else:
+            selector_authorized = current_selected_claim_is_authorized(
+                vector, claims, decision_time, committed_keys, resolved_by_ref,
+                trusted_context, historical_selector_facts,
+            )
+        if not selector_authorized:
+            failures.append("selector")
     if failures:
         decision = "fail"
     elif errors:
@@ -1082,9 +1209,18 @@ def evaluate(vector, trusted_context, runtime):
     claims = canonical_claims(vector["bundle"])
     resolved = bind_resolved_results(vector, vector["compositeRecord"])
     refs = {canonical_bytes(ref) for ref in record_refs(vector["compositeRecord"])}
+    historical_selector_facts = selector_authorization_facts(
+        vector,
+        claims,
+        vector["compositeRecord"]["generatedAt"],
+        refs,
+        resolved,
+        trusted_context,
+    )
     return aggregate_requirement(
         vector, claims, admission.trusted_now, refs, resolved, trusted_context,
         current_reuse=True,
+        historical_selector_facts=historical_selector_facts,
     )
 
 
@@ -1391,6 +1527,97 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                     by_name[name], self.document["trustedContext"]
                 ),
             )
+
+    def test_presenter_control_vectors_are_distinguishing(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        expected = {
+            "required-presence-key-with-issued-at": "pass",
+            "no-selector-unrelated-cosigner-is-uncontrolled": "fail",
+            "no-selector-uncontrolled-signed-pass-mismatch-is-error": "error",
+            "selector-unrelated-cosigner-is-uncontrolled": "fail",
+            "no-selector-parameterized-cf3-presenter-controls": "pass",
+            "selector-parameterized-cf3-presenter-controls": "pass",
+            "optional-failing-verification-does-not-defeat-presence": "pass",
+            "optional-stale-verification-does-not-defeat-presence": "pass",
+            "stale-optional-key-result-does-not-remove-key-control": "pass",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name):
+                vector = by_name[name]
+                self.assertTrue(verify_bundle(vector["bundle"]))
+                runtime = PresenceEvaluationRuntime(self.document["trustedContext"])
+                self.assertEqual(
+                    verdict,
+                    evaluate(vector, self.document["trustedContext"], runtime),
+                )
+                challenge_id = self.document["trustedContext"]["vetInvocations"][
+                    vector["authority"]["invocation"]
+                ]["challengeId"]
+                self.assertTrue(runtime.nonce_ledger.consumed(challenge_id))
+
+    def test_presented_claim_uniqueness_is_order_independent(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        repeated = by_name["byte-identical-presenter-claim-repetition-collapses"]
+        repeated_claims = canonical_claims(repeated["bundle"])
+        self.assertIsNotNone(exact_presented_claim(repeated["bundle"], repeated_claims))
+        self.assertEqual(
+            "pass",
+            reconstruct_fixture_once(repeated, self.document["trustedContext"]),
+        )
+
+        for name in (
+            "distinct-same-identity-presenter-claims-are-ambiguous",
+            "distinct-same-identity-presenter-claims-reversed-are-ambiguous",
+        ):
+            with self.subTest(vector=name):
+                vector = by_name[name]
+                self.assertTrue(verify_bundle(vector["bundle"]))
+                claims = canonical_claims(vector["bundle"])
+                self.assertIsNone(exact_presented_claim(vector["bundle"], claims))
+                self.assertEqual(
+                    "fail",
+                    reconstruct_fixture_once(
+                        vector, self.document["trustedContext"]
+                    ),
+                )
+                self.assertEqual(
+                    "fail",
+                    evaluate(
+                        vector,
+                        self.document["trustedContext"],
+                        PresenceEvaluationRuntime(self.document["trustedContext"]),
+                    ),
+                )
+
+    def test_selector_current_time_preserves_only_the_historical_presence_arm(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        verified = by_name[
+            "selector-verified-status-expires-after-historical-decision"
+        ]
+        presence = by_name[
+            "historical-selector-presence-arm-is-not-rerun-at-trusted-now"
+        ]
+        for vector in (verified, presence):
+            self.assertEqual(
+                "pass",
+                reconstruct_fixture_once(vector, self.document["trustedContext"]),
+            )
+        self.assertEqual(
+            "fail",
+            evaluate(
+                verified,
+                self.document["trustedContext"],
+                PresenceEvaluationRuntime(self.document["trustedContext"]),
+            ),
+        )
+        self.assertEqual(
+            "pass",
+            evaluate(
+                presence,
+                self.document["trustedContext"],
+                PresenceEvaluationRuntime(self.document["trustedContext"]),
+            ),
+        )
 
     def test_requirement_shape_vectors_are_distinguishing(self):
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}

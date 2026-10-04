@@ -303,9 +303,11 @@ The bundle follows the §B.2 canonical-form template, omitting the `presentation
 This ranking governs the `presentedBy` selection below — which primary claim to present, by scheme strength. The §6.3.2.1 `identityTier` derivation uses it only for the top level (a verified **tier-1** claim → `institutional`) and otherwise keys on *verification status*, not scheme tier: any other **verified** claim → `verified`, and **no** verified claim → `self-declared`. So a verified `key:` is `verified`, despite being the lowest presentedBy tier. The two rankings answer different questions — scheme strength vs verification status.
 
 **presentedBy selection rule**
-- presentedBy MUST be one of the claim references appearing in `claims` (matching by canonical scheme and identifier).
+- presentedBy MUST resolve uniquely to a claim reference appearing in `claims` (matching by canonical scheme and identifier).
 - If the listing's `BundleRequirement.primaryClaimSelector` is set, the presenter SHOULD select the highest-tier claim of the matching scheme. If no selector is set, the presenter SHOULD select the highest-tier claim available, per the **Claim tiers** table above.
 - For an accepting bundle match or Vet decision, readers MUST accept any `presentedBy` value that resolves to a claim in `claims` **and passes the mandatory exact-claim control and applicable status/authorization gates below**. A reader MAY prefer a higher-tier alternative for display or reputation lookup but MUST NOT reject solely because `presentedBy` is not the highest-tier claim. Resolution alone does not establish control.
+
+**Exact presented-claim resolution.** A reader collects every `BundleClaim` whose reference has the same CF-3 canonical `(Scheme, Identifier)` identity as `presentedBy`, then deduplicates those matches by the CORE canonical bytes of the complete `BundleClaim` value. Exactly one canonical-distinct value MUST remain. Repeated canonically identical claim values therefore collapse to one candidate, while two canonical-distinct values with the same identity are ambiguous and resolve no presented claim; array order MUST NOT select either one. In an otherwise authenticated bundle match or Vet decision, zero or multiple canonical-distinct matches produce the existing semantic non-match/`fail`. A malformed claim container or reference remains an earlier structural `error`; this resolution rule does not reclassify malformed input as an identity-control failure.
 
 **Mandatory exact `presentedBy` control.** Every accepting bundle match and Vet decision MUST require the exact claim resolved from `presentedBy` to be controlled under step (6), regardless of whether `primaryClaimSelector` is set. Reputation likewise MUST NOT be keyed against an uncontrolled `presentedBy`. This semantic decision gate does not make auxiliary wire/hash validation, `identityTier` derivation, or non-authorizing inspection reject solely for lack of control. Control and verification status are separate predicates: a result-backed control mechanism requires the exact passing **and fresh** `verifiedBy` on which it depends, while an already-supported independent mechanism permitted by the selected profile, such as an authenticated SR-1 address-key linkage, retains its own obligations without manufacturing a `VerifyResult`. When no selector is set, an accepting decision additionally requires the exact presenter to have a passing-and-fresh `verifiedBy`, except for the narrow exact-`key:` signature case below. When a selector is set, MA-3 instead applies its exact verified-or-explicit-presence authorization arm; explicit presence can combine with an already-supported independent control mechanism but cannot establish control itself. The narrow key exception is an exact `key:` claim whose own valid bundle-presentation signature proves control: it MAY be `presentedBy` and key reputation at the lowest (plain signing-key) tier without a `VerifyResult`. A different included claim's signature cannot lend control to that key. A well-shaped optional `verifiedBy` on the exact key does not defeat its signature control merely because the referenced result is failing, unavailable, or stale; the reference remains subject to the ordinary wire-shape rules and cannot satisfy a verification-required use unless it independently passes. This exception proves control of that signing key only; it does not make the key verified, elevate `identityTier`, or transfer control to another presence-only claim. A presence-only authority identifier such as `lei:` remains existence-only and MUST NOT become `presentedBy` or a reputation key without an independent control proof. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
 
@@ -334,7 +336,7 @@ A `verifiedBy` reference is **stale** when `now >` the effective expiry from the
 A conforming bundle **producer** MUST:
 - (BP-1) produce JCS-canonical serialisation for hashing and signing;
 - (BP-2) include at least one claim;
-- (BP-3) provide `presentedBy` that resolves to a claim;
+- (BP-3) provide `presentedBy` that resolves to exactly one canonical-distinct claim under the CF-3 rule above;
 - (BP-4) provide a presentation signature that verifies against the domain-separated payload `signed_bytes` (`"dacs-bundle-presentation:v1:" || bundle_hash`, §6.3.2) — not the raw bundle hash.
 A conforming bundle **reader** MUST:
 - (BR-1) recompute the bundle hash from canonical form before the signature check;
@@ -469,9 +471,15 @@ match(bundle, requirement):
 
        // Otherwise a presenter could launder reputation by pairing an unverified (or third-party) presentedBy identifier with a *different*, already-verified claim of the same scheme.
 
-       presented := the claim c in bundle.claims whose c.ref matches bundle.presentedBy by canonical scheme AND identifier (the §6.3.2 presentedBy resolution rule)
+       presented := exact_presented_claim(bundle)
 
-       if presented is null: return REJECT   // presentedBy does not resolve to a claim in the bundle
+       // exact_presented_claim applies CF-3 identity, deduplicates complete
+
+       // BundleClaim values by CORE canonical bytes, and returns the sole
+
+       // canonical-distinct match. Array order never selects an ambiguous claim.
+
+       if presented is null: return REJECT   // zero or multiple distinct matches
 
        controlled := presenter proves control of the exact presented claim under §6.3.2 step (6)
 
@@ -1264,8 +1272,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 | Listing reader | LR-1 pin tuple; LR-2 reject `rejected`; LR-3 refuse new sessions for revocation- or rail-resolution `indeterminate`; RSC-1..RSC-10 prove current non-revocation; LRR-1..LRR-6 resolve every advertised rail |
 | Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone; RSC-2..RSC-5 append it to the stable current-state line |
 | Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 discovery-only disposition; RSC-1..RSC-10 authenticate the current append-only head and exact tuple proof |
-| Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
-| Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 require exact `presentedBy` control for every accepting match/Vet decision, require exact verified/fresh presenter status or the exact-key exception when no selector is set, and require exact verified-or-explicit-presence selector authorization when `primaryClaimSelector` is set |
+| Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 `presentedBy` resolves to exactly one canonical-distinct claim by CF-3 identity; BP-4 valid presentation signature |
+| Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 require the uniquely resolved exact `presentedBy` claim's control for every accepting match/Vet decision, require exact verified/fresh presenter status or the exact-key exception when no selector is set, and require exact verified-or-explicit-presence selector authorization when `primaryClaimSelector` is set |
 | Well-known publisher | Publish dacs block; keep indexHash current; optional bundleBindings index per §10.4.2 BB-2 |
 | Catalog operator | Open read endpoints; honour caching constraint; decline write endpoints by spec discretion; if carrying bundle bindings, serve every §10.4.2 BB-4-valid record regardless of authoring party |
 | Catalog client | Dereference anchors before binding |

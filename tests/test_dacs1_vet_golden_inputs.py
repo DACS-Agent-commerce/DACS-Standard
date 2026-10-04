@@ -1,6 +1,7 @@
 import base64
 import copy
 import hashlib
+import importlib.util
 import json
 import math
 import re
@@ -1330,6 +1331,16 @@ class VetReferenceRuntime:
         )
 
 
+def canonical_distinct_identity_claims(
+    claims, identity, *, registered_schemes=None
+):
+    schemes = KNOWN_SCHEMES if registered_schemes is None else registered_schemes
+    return {
+        canonical_bytes(item) for item in claims
+        if parse_ref(item.get("ref"), schemes) == identity
+    }
+
+
 def verifier_identity_has_exact_key_control(
     bundle, expected_verifier, *, registered_schemes=None
 ):
@@ -1339,15 +1350,16 @@ def verifier_identity_has_exact_key_control(
     try:
         expected = parse_ref(expected_verifier, schemes)
         presented = parse_ref(bundle.get("presentedBy"), schemes)
-        claim_matches = [
-            item for item in bundle.get("claims", [])
-            if parse_ref(item.get("ref"), schemes) == expected
-        ]
+        claim_matches = canonical_distinct_identity_claims(
+            bundle.get("claims", []),
+            expected,
+            registered_schemes=schemes,
+        )
         signer_identities = [
             parse_ref(item.get("ref"), schemes)
             for item in bundle.get("presentation", {}).get("signatures", [])
         ]
-    except (AttributeError, TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError, UnicodeError):
         return False
     return (
         expected[0] == "key"
@@ -1355,6 +1367,22 @@ def verifier_identity_has_exact_key_control(
         and len(claim_matches) == 1
         and expected in signer_identities
     )
+
+
+def signature_ref_matches_claim(
+    signature_ref, claims, *, registered_schemes=None
+):
+    """CORE CF-3 signer membership in this bundle's claim identities."""
+
+    schemes = KNOWN_SCHEMES if registered_schemes is None else registered_schemes
+    try:
+        signer_identity = parse_ref(signature_ref, schemes)
+        return any(
+            parse_ref(item.get("ref"), schemes) == signer_identity
+            for item in claims
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
 
 
 def verify_bundle(bundle, admission=None, *, registered_schemes=None):
@@ -1430,12 +1458,13 @@ def verify_bundle(bundle, admission=None, *, registered_schemes=None):
         payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
     except (TypeError, ValueError, UnicodeError, RecursionError):
         return False
-    claim_refs = {item["ref"] for item in claims}
     signatures_valid = all(
         isinstance(item, dict)
         and set(item) == {"ref", "signature"}
         and isinstance(item.get("ref"), str)
-        and item.get("ref") in claim_refs
+        and signature_ref_matches_claim(
+            item.get("ref"), claims, registered_schemes=schemes
+        )
         and verify_signature(item["ref"], item.get("signature"), payload)
         for item in signatures
     )
@@ -6456,6 +6485,47 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             execute_once(changed, self.document),
         )
 
+    def test_verifier_identity_identical_claim_repetition_collapses(self):
+        case, evaluation = self._case_evaluation("vet-oneof-indeterminate-over-fail")
+        expected = case["expectedOutput"]
+        verifier = fixture_private_key("verifier")
+        verifier_ref = public_ref(verifier)
+
+        def with_claims(claims):
+            changed = copy.deepcopy(evaluation)
+            vet_input = changed["input"]["authority"]["vetInput"]
+            identity = vet_input["verifierIdentity"]
+            self.assertEqual(verifier_ref, identity["presentedBy"])
+            identity["claims"] = copy.deepcopy(claims)
+            vet_input["verifierIdentity"] = resign_bundle(
+                identity, verifier, verifier_ref
+            )
+            return changed
+
+        original = evaluation["input"]["authority"]["vetInput"][
+            "verifierIdentity"
+        ]["claims"][0]
+        repeated = with_claims([original, original])
+        self.assertEqual(expected, execute_once(repeated, self.document))
+        self.assertEqual(
+            expected,
+            reconstruct_historical_once(repeated, self.document),
+        )
+
+        qualified = dict(original, ref=verifier_ref + "?purpose=audit")
+        invalid = {
+            "decision": "error",
+            "reasons": ["aggregation authority invalid"],
+        }
+        for claims in ([original, qualified], [qualified, original]):
+            with self.subTest(order=[item["ref"] for item in claims]):
+                ambiguous = with_claims(claims)
+                self.assertEqual(invalid, execute_once(ambiguous, self.document))
+                self.assertEqual(
+                    invalid,
+                    reconstruct_historical_once(ambiguous, self.document),
+                )
+
     def _commit_extra(self, value, document, scheme, mutate_artifact):
         """Commit one more authenticated result derived from a committed one."""
 
@@ -7681,6 +7751,32 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     ("pass", []), self._direct_outcome(accepted, self.document)
                 )
 
+        # The sole claim, signature ref, and presentedBy may use three distinct
+        # CF-2 parameter spellings while sharing one CF-3 key identity. This
+        # exercises both verifier-owned admission and the external JSON entry.
+        distinct_qualifiers = variant(
+            [presented + "?purpose=session"],
+            presence_requirement,
+            signer_ref=presented + "?role=holder",
+        )
+        distinct_bundle = distinct_qualifiers["input"]["bundle"]
+        self.assertEqual(1, len(distinct_bundle["claims"]))
+        self.assertNotEqual(
+            distinct_bundle["claims"][0]["ref"],
+            distinct_bundle["presentation"]["signatures"][0]["ref"],
+        )
+        self.assertIs(True, verify_bundle(distinct_bundle))
+        self.assertEqual(
+            ("pass", []),
+            self._direct_outcome(distinct_qualifiers, self.document),
+        )
+        raw = json.dumps(
+            distinct_qualifiers, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        self.assertEqual(
+            "pass", execute_external_once(raw, self.document)
+        )
+
         cosigned_only = variant(
             [presented, cosigner_ref],
             presence_requirement,
@@ -7727,6 +7823,34 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         self.assertIs(False, execute_once(
             variant([cosigner_ref], presence_requirement, "match"), self.document
         ))
+
+    def test_golden_generator_uses_cf3_signer_membership(self):
+        spec = importlib.util.spec_from_file_location(
+            "generate_dacs1_vet_golden_inputs_under_test", GENERATOR
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+
+        claim_ref = generator.PRESENTER_REF + "?purpose=session"
+        signer_ref = generator.PRESENTER_REF + "?role=holder"
+        bundle = generator.signed_bundle(
+            [generator.claim(claim_ref, issuedAt=generator.NOW - 1_000)],
+            presented_by=generator.PRESENTER_REF,
+            signer_ref=signer_ref,
+        )
+        self.assertEqual([claim_ref], [item["ref"] for item in bundle["claims"]])
+        self.assertEqual(
+            [signer_ref],
+            [item["ref"] for item in bundle["presentation"]["signatures"]],
+        )
+        _, _, rebound = generator.begin_invocation(bundle)
+        self.assertEqual([claim_ref], [item["ref"] for item in rebound["claims"]])
+        self.assertEqual(
+            [signer_ref],
+            [item["ref"] for item in rebound["presentation"]["signatures"]],
+        )
 
 
 if __name__ == "__main__":

@@ -185,6 +185,67 @@ class ReviewGuardWitnessTests(unittest.TestCase):
             mutated = self._run_test(test_class, selected)
         self._assert_mutation_caught(mutated, "2 != 0")
 
+    def _aggregate_with_default_registry_at(self, check_index):
+        """Restore one reviewed default-registry call in an isolated function."""
+
+        tree = ast.parse(Path(vet.__file__).read_text(encoding="utf-8"))
+        function = copy.deepcopy(next(
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "authenticate_production_aggregate"
+        ))
+        checks = sorted(
+            (
+                node for node in ast.walk(function)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "valid_requirement"
+            ),
+            key=lambda node: node.lineno,
+        )
+        self.assertEqual(2, len(checks))
+        selected = checks[check_index]
+        self.assertEqual(2, len(selected.args))
+        self.assertEqual(
+            "admission.registered_schemes", ast.unparse(selected.args[1])
+        )
+        selected.args.pop()
+        module = ast.fix_missing_locations(ast.Module(
+            body=[function], type_ignores=[]
+        ))
+        namespace = dict(vars(vet))
+        exec(compile(module, str(vet.__file__), "exec"), namespace)
+        return namespace["authenticate_production_aggregate"]
+
+    def test_profile_aggregate_attribution_registry_guard_is_load_bearing(self):
+        selected = "test_profile_aggregate_rejects_unattributable_committed_result"
+        self._assert_clean_control(self._run_vet_test(selected))
+        # Wrong implementation: the attribution guard validates the bound
+        # requirement against the current registry instead of its admitted one.
+        with mock.patch.object(
+            vet, "authenticate_production_aggregate",
+            self._aggregate_with_default_registry_at(0),
+        ):
+            mutated = self._run_vet_test(selected)
+        self._assert_mutation_caught(mutated, "aggregation authority invalid")
+
+    def test_profile_aggregate_current_freshness_registry_guard_is_load_bearing(self):
+        selected_tests = (
+            "test_profile_aggregate_requalifies_max_age_with_accepting_boundary",
+            "test_profile_aggregate_requalifies_governing_claim_freshness",
+        )
+        for selected in selected_tests:
+            with self.subTest(test=selected):
+                self._assert_clean_control(self._run_vet_test(selected))
+                # Wrong implementation: current requalification uses the
+                # default registry while the later evaluation uses the profile.
+                with mock.patch.object(
+                    vet, "authenticate_production_aggregate",
+                    self._aggregate_with_default_registry_at(1),
+                ):
+                    mutated = self._run_vet_test(selected)
+                self._assert_mutation_caught(mutated, "aggregation authority invalid")
+
     def test_htlc_future_evidence_selector_guard_is_load_bearing(self):
         selected = "test_htlc9_rejects_signed_future_evidence_selector"
         test_class = htlc_pack.IdentityRiskAndDacsXPackTests

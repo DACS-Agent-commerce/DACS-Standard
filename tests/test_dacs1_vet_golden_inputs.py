@@ -2739,9 +2739,11 @@ def authenticate_production_aggregate(
         return None
     # A malformed requirement keeps its own "invalid bundle requirement" error
     # in evaluate(); a well-formed one cannot carry presence-only results.
-    if valid_requirement(req) and results_without_verified_member(req, resolved):
+    if valid_requirement(req, admission.registered_schemes) and (
+        results_without_verified_member(req, resolved)
+    ):
         return None
-    if authorize_current and valid_requirement(req):
+    if authorize_current and valid_requirement(req, admission.registered_schemes):
         verified_members = [
             *(
                 member for member in req.get("required", [])
@@ -2764,6 +2766,7 @@ def authenticate_production_aggregate(
                 and same_identity(
                     claim.get("ref"),
                     f"{identity[0]}:{identity[1]}",
+                    admission.registered_schemes,
                 )
             ]
             for member in verified_members:
@@ -6655,93 +6658,185 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             ),
         )
 
-    def test_max_age_stale_result_is_inert_beside_current_pass(self):
-        # DACS-2 §7.7.1 requalifies only results that participated at the
-        # signed generatedAt.  R1 remains inside its claim/recipe window but is
-        # already outside this member's maxAge; R2 is the participating pass.
+    def _aggregate_current_pass_control(
+        self, *, r2_age=0, max_age=0.5, compatibility_profile=False,
+        presence_only_domain=False, claim_expiry_offset=None,
+    ):
+        """Keep signatures, receipt, provenance, and profile binding current."""
+
         _, evaluation = self._case_evaluation(
             "vet-oneof-indeterminate-over-fail"
         )
         generated_at = evaluation["input"]["record"]["generatedAt"]
         invocation_id = evaluation["input"]["authority"]["invocation"]
-
-        def build(r2_verified_at):
-            document = copy.deepcopy(self.document)
-            changed = copy.deepcopy(evaluation)
-            value = changed["input"]
-            requirement = value["authority"]["vetInput"]["requirement"]
-            lei_member = next(
-                item for item in requirement["oneOf"][0]
-                if item["scheme"] == "lei"
+        document = copy.deepcopy(self.document)
+        changed = copy.deepcopy(evaluation)
+        value = changed["input"]
+        requirement = value["authority"]["vetInput"]["requirement"]
+        members = requirement["oneOf"][0]
+        lei_member = next(item for item in members if item["scheme"] == "lei")
+        if max_age is None:
+            lei_member.pop("maxAge", None)
+        else:
+            lei_member["maxAge"] = max_age
+        if compatibility_profile:
+            members.append({"scheme": "cci-lei", "verificationRequired": False})
+        if presence_only_domain:
+            domain_member = next(
+                item for item in members if item["scheme"] == "domain"
             )
-            lei_member["maxAge"] = 0.5
-            requirement_hash = hash_hex(requirement)
-            value["record"]["requirementHash"] = requirement_hash
+            domain_member.clear()
+            domain_member.update(scheme="domain", verificationRequired=False)
+        requirement_hash = hash_hex(requirement)
+        value["record"]["requirementHash"] = requirement_hash
 
-            # Keep every existing non-pass prerequisite valid under the changed
-            # requirement so maxAge participation is the only authorization limb.
-            for resolved in value["resolvedResults"]:
-                member = next(
-                    item for item in requirement["oneOf"][0]
-                    if item["scheme"] == resolved["artifact"]["scheme"]
-                )
-                set_result_provenance(
-                    document,
-                    resolved,
-                    current=[{
-                        "invocation": invocation_id,
-                        "requirementHash": requirement_hash,
-                        "memberHash": hash_hex(member),
-                    }],
-                )
-
-            self._commit_extra(
-                value,
+        # The only invalid premise in an attribution negative is that a
+        # committed domain result has no verified requirement member.
+        for resolved in value["resolvedResults"]:
+            member = next(
+                item for item in members
+                if item["scheme"] == resolved["artifact"]["scheme"]
+            )
+            set_result_provenance(
                 document,
-                "lei",
-                lambda artifact: artifact.update(
-                    decision="pass",
-                    reason="fresh pass beside maxAge-stale result",
-                    fetchedAt=r2_verified_at,
-                    verifiedAt=r2_verified_at,
-                ),
+                resolved,
+                current=[{
+                    "invocation": invocation_id,
+                    "requirementHash": requirement_hash,
+                    "memberHash": hash_hex(member),
+                }],
             )
-            value["record"]["overallDecision"] = "pass"
-            changed["input"] = reanchor_composite_input(value, document)
+        r2_verified_at = generated_at - r2_age
+        self._commit_extra(
+            value,
+            document,
+            "lei",
+            lambda artifact: artifact.update(
+                decision="pass",
+                reason="fresh pass beside maxAge-stale result",
+                fetchedAt=r2_verified_at,
+                verifiedAt=r2_verified_at,
+            ),
+        )
+        if claim_expiry_offset is not None:
+            claim = next(
+                item
+                for item in value["authority"]["vetInput"]["bundleToVet"]["claims"]
+                if item["ref"].startswith("lei:")
+            )
+            claim["expiresAt"] = generated_at + claim_expiry_offset
+            self._resign_aggregate_bundle(value)
+        value["record"]["overallDecision"] = "pass"
+        changed["input"] = reanchor_composite_input(value, document)
 
-            invocation = document["trustedContext"]["vetInvocations"][invocation_id]
-            receipt = document["trustedContext"]["authenticatedRecordReceipts"][
-                invocation["recordReceiptId"]
+        invocation = document["trustedContext"]["vetInvocations"][invocation_id]
+        receipt = document["trustedContext"]["authenticatedRecordReceipts"][
+            invocation["recordReceiptId"]
+        ]
+        receipt["observedAt"] = generated_at
+        receipt["blockRef"]["timestamp"] = generated_at
+        invocation["trustedNow"] = generated_at
+        if compatibility_profile:
+            _, distinct = self._case_evaluation("dacs1-cci-lei-defect")
+            profile_invocation = self.document["trustedContext"]["vetInvocations"][
+                distinct["input"]["authority"]["invocation"]
             ]
-            receipt["observedAt"] = generated_at
-            receipt["blockRef"]["timestamp"] = generated_at
-            invocation["trustedNow"] = generated_at
-            return changed, document
+            invocation["compatibilityProfile"] = profile_invocation[
+                "compatibilityProfile"
+            ]
+            invocation["compatibilityRequirementHash"] = requirement_hash
+        return changed, document
 
-        def at(document, trusted_now):
-            moved = copy.deepcopy(document)
-            moved["trustedContext"]["vetInvocations"][invocation_id][
-                "trustedNow"
-            ] = trusted_now
-            return moved
+    @staticmethod
+    def _aggregate_at(evaluation, document, trusted_now):
+        moved = copy.deepcopy(document)
+        invocation_id = evaluation["input"]["authority"]["invocation"]
+        moved["trustedContext"]["vetInvocations"][invocation_id][
+            "trustedNow"
+        ] = trusted_now
+        return moved
+
+    def test_max_age_stale_result_is_inert_beside_current_pass(self):
+        # DACS-2 §7.7.1 requalifies only results that participated at the
+        # signed generatedAt. R1 is already outside maxAge; R2 participates.
+        changed, document = self._aggregate_current_pass_control()
+        generated_at = changed["input"]["record"]["generatedAt"]
 
         expected = {"decision": "pass", "reasons": []}
         invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
-        changed, document = build(generated_at)
         self.assertEqual(expected, reconstruct_historical_once(changed, document))
         self.assertEqual(expected, execute_once(changed, document))
-        self.assertEqual(expected, execute_once(changed, at(document, generated_at + 500)))
-        expired = at(document, generated_at + 501)
+        self.assertEqual(expected, execute_once(
+            changed, self._aggregate_at(changed, document, generated_at + 500)
+        ))
+        expired = self._aggregate_at(changed, document, generated_at + 501)
         self.assertEqual(invalid, execute_once(changed, expired))
         self.assertEqual(expected, reconstruct_historical_once(changed, expired))
 
         # Participation at generatedAt is inclusive too: R2 exactly maxAge old
         # at generatedAt participates, so it is requalified at trustedNow.
-        changed, document = build(generated_at - 500)
+        changed, document = self._aggregate_current_pass_control(r2_age=500)
         self.assertEqual(expected, execute_once(changed, document))
-        expired = at(document, generated_at + 1)
+        expired = self._aggregate_at(changed, document, generated_at + 1)
         self.assertEqual(invalid, execute_once(changed, expired))
         self.assertEqual(expected, reconstruct_historical_once(changed, expired))
+
+    def test_profile_aggregate_requalifies_max_age_with_accepting_boundary(self):
+        expected = {"decision": "pass", "reasons": []}
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+        for profile in (False, True):
+            for r2_age in (0, 500):
+                with self.subTest(profile=profile, r2_age=r2_age):
+                    changed, document = self._aggregate_current_pass_control(
+                        r2_age=r2_age, compatibility_profile=profile
+                    )
+                    generated_at = changed["input"]["record"]["generatedAt"]
+                    boundary = generated_at + 500 - r2_age
+                    at_boundary = self._aggregate_at(changed, document, boundary)
+                    expired = self._aggregate_at(changed, document, boundary + 1)
+                    self.assertEqual(expected, execute_once(changed, at_boundary))
+                    self.assertEqual(invalid, execute_once(changed, expired))
+                    self.assertEqual(
+                        expected, reconstruct_historical_once(changed, expired)
+                    )
+                    # The real external JSON entry point must enforce the same
+                    # current-authorization refusal, not only the fixture helper.
+                    raw = json.dumps(changed, separators=(",", ":")).encode("utf-8")
+                    self.assertEqual(expected, execute_external_once(raw, at_boundary))
+                    self.assertEqual(invalid, execute_external_once(raw, expired))
+
+    def test_profile_aggregate_requalifies_governing_claim_freshness(self):
+        expected = {"decision": "pass", "reasons": []}
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+        for profile in (False, True):
+            with self.subTest(profile=profile):
+                changed, document = self._aggregate_current_pass_control(
+                    max_age=None, compatibility_profile=profile,
+                    claim_expiry_offset=500,
+                )
+                generated_at = changed["input"]["record"]["generatedAt"]
+                at_boundary = self._aggregate_at(changed, document, generated_at + 500)
+                expired = self._aggregate_at(changed, document, generated_at + 501)
+                self.assertEqual(expected, execute_once(changed, at_boundary))
+                self.assertEqual(invalid, execute_once(changed, expired))
+                self.assertEqual(expected, reconstruct_historical_once(changed, expired))
+
+    def test_profile_aggregate_rejects_unattributable_committed_result(self):
+        expected = {"decision": "pass", "reasons": []}
+        invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
+        for profile in (False, True):
+            with self.subTest(profile=profile):
+                control, control_document = self._aggregate_current_pass_control(
+                    compatibility_profile=profile
+                )
+                self.assertEqual(expected, execute_once(control, control_document))
+                changed, document = self._aggregate_current_pass_control(
+                    compatibility_profile=profile, presence_only_domain=True,
+                )
+                self.assertEqual(invalid, execute_once(changed, document))
+                self.assertEqual(invalid, reconstruct_historical_once(changed, document))
+                raw = json.dumps(changed, separators=(",", ":")).encode("utf-8")
+                self.assertEqual(invalid, execute_external_once(raw, document))
 
     def test_number_normalisation_is_exact_copying_and_cycle_safe(self):
         # Fractional numbers keep their value (signed bytes unchanged), the

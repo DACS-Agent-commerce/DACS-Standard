@@ -723,20 +723,20 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
     }
     absent_bundle = signed_bundle([
         claim(LEI_A, verifiedBy=unavailable_ref),
-    ], presented_by=LEI_A)
+    ], presented_by=PRESENTER_REF)
 
     expired_claim, expired_result = verified_claim(
         LEI_A, "pass", f"{prefix}-expired", method="consensus-backed-proxy"
     )
     expired_claim["expiresAt"] = NOW - 1
-    expired_bundle = signed_bundle([expired_claim], presented_by=LEI_A)
+    expired_bundle = signed_bundle([expired_claim], presented_by=PRESENTER_REF)
 
     expires_claim, expires_result = verified_claim(
         LEI_A, "pass", f"{prefix}-expires-only", method="consensus-backed-proxy"
     )
     expires_claim.pop("issuedAt")
     expires_claim["expiresAt"] = NOW + 60_000
-    expires_bundle = signed_bundle([expires_claim], presented_by=LEI_A)
+    expires_bundle = signed_bundle([expires_claim], presented_by=PRESENTER_REF)
 
     aged_claim, aged_result = verified_claim(
         LEI_A,
@@ -748,7 +748,7 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
     )
     aged_claim.pop("issuedAt")
     aged_claim["expiresAt"] = NOW + 60_000
-    aged_bundle = signed_bundle([aged_claim], presented_by=LEI_A)
+    aged_bundle = signed_bundle([aged_claim], presented_by=PRESENTER_REF)
 
     stale_claim, stale_result = verified_claim(
         LEI_A,
@@ -1319,7 +1319,9 @@ def build_cases() -> list[dict]:
         {
             "dacs1Presence": evaluation(
                 "match",
-                laundering_bundle,
+                signed_bundle(
+                    [selected_fail, other_pass], presented_by=PRESENTER_REF
+                ),
                 requirement([member("lei", verified=False)]),
                 resolved=[selected_fail_result, other_pass_result],
             ),

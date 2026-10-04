@@ -24,6 +24,7 @@ import test_bundle_settlement_evidence_bijection_vectors as seb  # noqa: E402
 import test_current_evidence_boundary_regressions as released  # noqa: E402
 import test_dacs1_vet_golden_inputs as vet  # noqa: E402
 import test_identity_risk_and_dacsx_pack as htlc_pack  # noqa: E402
+import test_pr366_feature_interactions as interactions  # noqa: E402
 
 
 class ReviewGuardWitnessTests(unittest.TestCase):
@@ -390,12 +391,202 @@ class ReviewGuardWitnessTests(unittest.TestCase):
 
         # Wrong implementation: a genuine holder-bound non-key donor may
         # supply control for a different same-scheme selected claim. Scheme and
-        # key guards stay intact, isolating BR-5/PCR-5 exact-claim control.
+        # key guards stay intact, isolating BR-5/PCR-5 exact-claim control in
+        # both the universal presenter gate and selector authorization.
         with mock.patch.object(
             vet, "selector_authorized", side_effect=borrow_same_scheme_control
+        ), mock.patch.object(
+            vet, "presented_control", return_value=True
         ):
             mutated = self._run_vet_test(selected)
         self._assert_mutation_caught(mutated, "True is not false")
+
+    def test_one_use_admission_across_aggregate_modes_is_load_bearing(self):
+        test_class = interactions.Pr366VetInteractionTests
+        selected = "test_one_use_admission_spans_current_and_historical_aggregate_use"
+        self._assert_clean_control(self._run_test(test_class, selected))
+        real_aggregate_output = vet.aggregate_output
+
+        def scratch_ledger_history(
+            value, trusted_context, recipes, result_context, runtime, *,
+            input_admission, authorize_current=True,
+        ):
+            if authorize_current:
+                return real_aggregate_output(
+                    value, trusted_context, recipes, result_context, runtime,
+                    input_admission=input_admission,
+                )
+            live = runtime.nonce_ledger
+            runtime.nonce_ledger = vet.NonceLedger(
+                trusted_context["nonceIssuances"],
+                registered_schemes=vet.KNOWN_SCHEMES,
+            )
+            try:
+                return real_aggregate_output(
+                    value, trusted_context, recipes, result_context, runtime,
+                    input_admission=input_admission, authorize_current=False,
+                )
+            finally:
+                runtime.nonce_ledger = live
+
+        # Wrong implementation: non-authorizing reconstruction admits through
+        # a scratch ledger, so it neither consumes nor respects the issuer's
+        # one-use SN-4 record.
+        with mock.patch.object(vet, "aggregate_output", scratch_ledger_history):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(
+            mutated, "aggregation authority invalid", "False is not true"
+        )
+
+    def test_current_selector_requalification_is_load_bearing(self):
+        test_class = interactions.Pr366VetInteractionTests
+        selected = "test_production_selector_evidence_is_requalified_at_trusted_now"
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        # Wrong implementation: production authorization trusts the signed
+        # historical selector result without requalifying its exact control
+        # and governing freshness window at trustedNow.
+        with mock.patch.object(
+            vet, "current_selector_authorized", return_value=True
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(
+            mutated, "current authorization accepted expired selector evidence"
+        )
+
+    def test_no_selector_presenter_control_is_load_bearing(self):
+        test_class = interactions.Pr366VetInteractionTests
+        selected = "test_no_selector_still_requires_exact_presenter_control"
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        # Wrong implementation: membership and another valid claim signature
+        # are treated as control of the exact declared presenter.
+        with mock.patch.object(vet, "presented_control", return_value=True):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "False is not True")
+
+    def test_no_selector_current_control_is_load_bearing(self):
+        test_class = interactions.Pr366VetInteractionTests
+        selected = "test_no_selector_result_control_is_current_outside_member_predicates"
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        # Wrong implementation: an exact non-key control proof is trusted at
+        # generatedAt even after its governing DACS-1 window expires.
+        with mock.patch.object(
+            vet, "current_presenter_controlled", return_value=True
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "aggregation authority invalid")
+
+    def test_verifier_identity_exact_key_signature_is_load_bearing(self):
+        test_class = interactions.Pr366VetInteractionTests
+        selected = (
+            "test_production_verifier_identity_requires_exact_expected_key_signature"
+        )
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        # Wrong implementation: a valid signature by any included cosigner is
+        # accepted as the verifier's own presentation proof.
+        with mock.patch.object(
+            vet, "verifier_identity_has_exact_key_control", return_value=True
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "aggregation authority invalid")
+
+    def test_profile_aggregate_bundle_registry_is_load_bearing(self):
+        test_class = interactions.Pr366VetInteractionTests
+        selected = (
+            "test_bound_profile_admits_profile_only_presence_claims_in_production_aggregation"
+        )
+        self._assert_clean_control(self._run_test(test_class, selected))
+        real_matching_claims = vet.matching_claims
+
+        def default_registry_matching(
+            value, req, decision_time, exact_ref=None, *, registered_schemes=None
+        ):
+            return real_matching_claims(value, req, decision_time, exact_ref)
+
+        # Wrong implementation: member matching drops the admitted profile
+        # registry and parses the bound bundle's claims under default rules.
+        with mock.patch.object(
+            vet, "matching_claims", side_effect=default_registry_matching
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "invalid aggregation input")
+
+        # Wrong implementation: the verifier-owned profile falls back to the
+        # current closed registry for every invocation.
+        with mock.patch.object(
+            vet.VetReferenceRuntime,
+            "_registered_schemes",
+            lambda runtime, context: frozenset(vet.KNOWN_SCHEMES),
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "aggregation authority invalid")
+
+    def test_htlc_receipt_mode_supersession_anchor_context_is_load_bearing(self):
+        selected = "test_htlc9_receipt_mode_binds_supersession_anchor_through_pair_entry_point"
+        test_class = htlc_pack.IdentityRiskAndDacsXPackTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+        _, verifier = test_class._load_pack_modules()
+        real_binding = verifier.supersession_binding_errors
+
+        def dropped_receipt_mode(
+            reference, interim, *, expected_phase_orchestrator, require_fixture_receipt
+        ):
+            return real_binding(
+                reference, interim,
+                expected_phase_orchestrator=expected_phase_orchestrator,
+                require_fixture_receipt=False,
+            )
+
+        # Wrong implementation: validate_resolved drops the pair's receipt
+        # policy when binding the supersession reference.
+        with mock.patch.object(
+            verifier, "supersession_binding_errors", side_effect=dropped_receipt_mode
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "Lists differ", "anchor MUST match")
+
+        # Wrong implementation: an equivalent committed path no longer selects
+        # the committed-fixture policy.
+        with mock.patch.object(
+            verifier, "requires_fixture_receipts", return_value=False
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "False is not true")
+
+    def test_htlc_numeric_identity_guards_are_load_bearing(self):
+        selected = "test_htlc9_number_spelling_is_verdict_neutral_while_type_guards_hold"
+        test_class = htlc_pack.IdentityRiskAndDacsXPackTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+        _, verifier = test_class._load_pack_modules()
+        safe_integer = 2**53 - 1
+
+        def integer_type_only(value, *, minimum=None):
+            return (
+                type(value) is int
+                and -safe_integer <= value <= safe_integer
+                and (minimum is None or value >= minimum)
+            )
+
+        # Wrong implementation: the pre-correction host-type rule, under which
+        # a JSON-equivalent number spelling changes the verdict.
+        with mock.patch.object(
+            verifier, "exact_safe_integer", side_effect=integer_type_only
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "observedAt MUST be an integer unix-ms")
+
+        def any_number(value, *, minimum=None):
+            return isinstance(value, (int, float)) and (
+                minimum is None or value >= minimum
+            )
+
+        # Wrong implementation: booleans and fractions pass as integers.
+        with mock.patch.object(verifier, "exact_safe_integer", side_effect=any_number):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "guard did not reject")
 
     def test_no_duplicate_class_local_test_definitions(self):
         duplicates = []

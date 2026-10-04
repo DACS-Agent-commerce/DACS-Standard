@@ -432,6 +432,112 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             custom.append(self._write(case))
         self.assertEqual([], ver.validate_pair(*custom))
 
+    def test_htlc9_receipt_mode_binds_supersession_anchor_through_pair_entry_point(self):
+        # validate_pair selects the committed-fixture policy from either path;
+        # that policy must also reach the resolved record's supersession
+        # binding, not only the receipt wrappers.  Each resolved record is
+        # re-signed with its own fixture receipt, so its anchor is the only defect.
+        gen, ver = self._load_pack_modules()
+        anchor_error = (
+            "supersedesEvidenceRef.anchor MUST match the authenticated interim "
+            "fixture native anchor"
+        )
+
+        def resolved_case(anchor=None):
+            record = gen.resolved_record(gen.interim_record())
+            if anchor is not None:
+                record["supersedesEvidenceRef"]["anchor"] = anchor
+            gen.sign(record, gen.ORCHESTRATOR_SEED)
+            return self._write({
+                "kind": "SettlementEvidenceCase",
+                "settlementEvidence": record,
+                "anchorReceipt": gen.fixture_receipt(record, resolved=True),
+                "specRefs": ["§9.5.4", "§9.7", "§10.3.1"],
+            })
+
+        control = resolved_case()
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, control))
+        self.assertEqual([], ver.validate_pair(INTERIM, control))
+
+        candidate = resolved_case(
+            {"kind": "https", "locator": "https://example.invalid/interim"}
+        )
+        signed = json.loads(candidate.read_text(encoding="utf-8"))["settlementEvidence"]
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        self.assertIsNone(ver.verify_signature(signed))
+        self.assertEqual([], ver.attestation_ref_errors(signed["supersedesEvidenceRef"]))
+        self.assertEqual(
+            ver.content_hash_hex(interim), signed["supersedesEvidenceRef"]["contentHash"]
+        )
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, candidate))
+        expected = [ver.fail(candidate, anchor_error)]
+        self.assertEqual(expected, ver.validate_pair(INTERIM, candidate))
+        rejected = subprocess.run(
+            [sys.executable, str(VERIFY_HTLC9), str(INTERIM), str(candidate)],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        self.assertEqual(1, rejected.returncode, rejected.stdout + rejected.stderr)
+        self.assertEqual(expected, rejected.stderr.splitlines())
+
+        # The same signed resolved record beside a custom copy of the interim
+        # keeps the documented hash/signature-only custom-pair contract.
+        custom_interim = self._write(json.loads(INTERIM.read_text(encoding="utf-8")))
+        self.assertFalse(ver.requires_fixture_receipts(custom_interim, candidate))
+        self.assertEqual([], ver.validate_pair(custom_interim, candidate))
+
+    def test_htlc9_number_spelling_is_verdict_neutral_while_type_guards_hold(self):
+        # CORE CF-5(4): one admitted binary64 value has one JCS spelling, so a
+        # byte-level respelling leaves the signed hash, receipt and verdict
+        # unchanged.  The shared exact_safe_integer now admits such spellings;
+        # booleans, fractions and a zero chain ID must still be refused by the
+        # HTLC guards, so each negative is re-signed and rebound by _pair.
+        gen, ver = self._load_pack_modules()
+        text = INTERIM.read_text(encoding="utf-8")
+        for old, new in (
+            ('"chainId": 84532,', '"chainId": 84532.0,'),
+            ('"chainId": 80002,', '"chainId": 8.0002e4,'),
+            ('"observedAt": 1760000100000,', '"observedAt": 1.7600001e12,'),
+        ):
+            self.assertEqual(1, text.count(old), old)
+            text = text.replace(old, new)
+        respelled = self._write_text(text)
+        original = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        admitted = ver.load_raw_json(respelled.read_bytes())["settlementEvidence"]
+        self.assertIs(float, type(admitted["paymentTxRefs"][0]["chainId"]))
+        self.assertIs(float, type(admitted["paymentTxRefs"][1]["chainId"]))
+        self.assertIs(float, type(admitted["observedAt"]))
+        self.assertEqual(ver.content_hash_hex(original), ver.content_hash_hex(admitted))
+        # The committed resolved path keeps the receipt policy for the pair.
+        self.assertTrue(ver.requires_fixture_receipts(respelled, RESOLVED))
+        self.assertEqual([], ver.validate_pair(respelled, RESOLVED))
+        accepted = subprocess.run(
+            [sys.executable, str(VERIFY_HTLC9), str(respelled), str(RESOLVED)],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        self.assertEqual(0, accepted.returncode, accepted.stdout + accepted.stderr)
+        self.assertIn("both signatures verified", accepted.stdout)
+
+        chain = "htlc-lock chainId MUST be a positive integer"
+        observed = "observedAt MUST be an integer unix-ms"
+        backstops = ("signature does not verify", "SIG-6", "content hash")
+        for label, mutate, needle in (
+            ("boolean chainId", lambda e: e["paymentTxRefs"][0].__setitem__("chainId", True), chain),
+            ("fractional chainId", lambda e: e["paymentTxRefs"][0].__setitem__("chainId", 84532.5), chain),
+            ("zero chainId", lambda e: e["paymentTxRefs"][0].__setitem__("chainId", 0), chain),
+            ("boolean observedAt", lambda e: e.__setitem__("observedAt", True), observed),
+            ("fractional observedAt", lambda e: e.__setitem__("observedAt", 1760000100000.5), observed),
+        ):
+            with self.subTest(mutation=label):
+                errors = ver.validate_pair(*self._pair(gen, mutate_interim=mutate))
+                self.assertTrue(
+                    any(needle in error for error in errors),
+                    f"{label}: guard did not reject: {errors}",
+                )
+                self.assertFalse(
+                    any(backstop in error for error in errors for backstop in backstops),
+                    f"{label}: rejected by a backstop: {errors}",
+                )
+
     def test_htlc9_signatures_are_bound_to_independently_trusted_phase_authority(self):
         gen, ver = self._load_pack_modules()
         interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]

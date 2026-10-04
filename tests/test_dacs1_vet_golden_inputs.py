@@ -255,14 +255,14 @@ def resign_bundle(bundle, key, signer):
     return changed
 
 
-def resign_composite_input(value):
+def resign_composite_input(value, *, signer_name="verifier"):
     changed = copy.deepcopy(value)
     record = changed["record"]
     unsigned = {
         name: item for name, item in record.items() if name != "signature"
     }
     record_hash = hash_hex(unsigned)
-    verifier = fixture_private_key("verifier")
+    verifier = fixture_private_key(signer_name)
     record["signature"] = {
         "algorithm": "ed25519",
         "signer": public_ref(verifier),
@@ -275,14 +275,14 @@ def resign_composite_input(value):
     return changed
 
 
-def reanchor_composite_input(value, document):
+def reanchor_composite_input(value, document, *, signer_name="verifier"):
     """Re-sign ``value["record"]`` and move the trusted receipt to its bytes.
 
     Mutations that change signed record bytes must not be rejected merely by
     the old receipt content hash, or the targeted guard would go untested.
     """
 
-    changed = resign_composite_input(value)
+    changed = resign_composite_input(value, signer_name=signer_name)
     content_hash = changed["recordRef"]["contentHash"]
     native = "stor-" + content_hash
     changed["recordRef"]["anchor"]["locator"] = native
@@ -1330,6 +1330,33 @@ class VetReferenceRuntime:
         )
 
 
+def verifier_identity_has_exact_key_control(
+    bundle, expected_verifier, *, registered_schemes=None
+):
+    """Require the verifier's exact expected key to sign its presentation."""
+
+    schemes = KNOWN_SCHEMES if registered_schemes is None else registered_schemes
+    try:
+        expected = parse_ref(expected_verifier, schemes)
+        presented = parse_ref(bundle.get("presentedBy"), schemes)
+        claim_matches = [
+            item for item in bundle.get("claims", [])
+            if parse_ref(item.get("ref"), schemes) == expected
+        ]
+        signer_identities = [
+            parse_ref(item.get("ref"), schemes)
+            for item in bundle.get("presentation", {}).get("signatures", [])
+        ]
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return (
+        expected[0] == "key"
+        and presented == expected
+        and len(claim_matches) == 1
+        and expected in signer_identities
+    )
+
+
 def verify_bundle(bundle, admission=None, *, registered_schemes=None):
     if not isinstance(bundle, dict) or not all_safe_integers(bundle):
         return False
@@ -1404,13 +1431,21 @@ def verify_bundle(bundle, admission=None, *, registered_schemes=None):
     except (TypeError, ValueError, UnicodeError, RecursionError):
         return False
     claim_refs = {item["ref"] for item in claims}
-    return all(
+    signatures_valid = all(
         isinstance(item, dict)
         and set(item) == {"ref", "signature"}
         and isinstance(item.get("ref"), str)
         and item.get("ref") in claim_refs
         and verify_signature(item["ref"], item.get("signature"), payload)
         for item in signatures
+    )
+    return signatures_valid and (
+        not isinstance(admission, VerifierIdentityAdmissionCapability)
+        or verifier_identity_has_exact_key_control(
+            bundle,
+            admission.presented_party,
+            registered_schemes=registered_schemes,
+        )
     )
 
 
@@ -2049,26 +2084,72 @@ def presented_control(
     )
 
 
-def selector_authorized(
-    value, req, recipes, result_context, decision_time, *, registered_schemes=None
+def exact_verified_selector(
+    value, presented, selector, recipes, result_context, decision_time,
+    *, registered_schemes=None,
 ):
-    """DACS-2 §7.7.1 exact_selector_authorized over the exact presented claim."""
+    """Return whether the selected claim has exact passing, fresh evidence."""
 
-    selector = req.get("primaryClaimSelector")
-    if selector is None:
-        return True
-    bundle = value["bundle"]
-    scheme, _ = parse_ref(bundle["presentedBy"], registered_schemes)
-    if scheme != selector or not presented_control(
+    reference = presented.get("verifiedBy")
+    return well_formed_result_ref(reference) and result_outcome(
         value,
+        presented,
+        {"scheme": selector, "verificationRequired": True,
+         "recipeVersion": reference["recipeVersion"]},
         recipes,
         result_context,
         decision_time,
         registered_schemes=registered_schemes,
-    ):
-        return False
-    # presented_control above already required a unique presented claim.
+    ) == "pass"
+
+
+def selector_authorization_facts(
+    value, req, recipes, result_context, decision_time, *, registered_schemes=None
+):
+    """Expose the historical facts used by exact_selector_authorized.
+
+    Production authorization needs to preserve the selector's signed-decision
+    presence branch while requalifying exact result-backed control and verified
+    evidence at trustedNow.  Keeping the three facts separate prevents that
+    current-time check from rerunning presence matching under a later time.
+    """
+
+    selector = req.get("primaryClaimSelector")
+    if selector is None:
+        return {
+            "selector_present": False,
+            "presented": None,
+            "controlled": True,
+            "verified_selector": False,
+            "presence_selector": False,
+        }
+    bundle = value["bundle"]
+    scheme, _ = parse_ref(bundle["presentedBy"], registered_schemes)
     presented = presented_claim(bundle, registered_schemes)
+    if scheme != selector or presented is None:
+        return {
+            "selector_present": True,
+            "presented": presented,
+            "controlled": False,
+            "verified_selector": False,
+            "presence_selector": False,
+        }
+    controlled = claim_establishes_control(
+        value,
+        presented,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
+    )
+    if not controlled:
+        return {
+            "selector_present": True,
+            "presented": presented,
+            "controlled": False,
+            "verified_selector": False,
+            "presence_selector": False,
+        }
     required = req.get("required", [])
     one_of = req.get("oneOf", [])
 
@@ -2088,17 +2169,15 @@ def selector_authorized(
     # verifiedSelector: passing, fresh exact-claim evidence under the DACS-1
     # §6.3.2 verified-claim gate.  It is member-independent, and another
     # same-scheme claim cannot supply it (PCR-5).
-    reference = presented.get("verifiedBy")
-    verified_selector = well_formed_result_ref(reference) and result_outcome(
+    verified_selector = exact_verified_selector(
         value,
         presented,
-        {"scheme": selector, "verificationRequired": True,
-         "recipeVersion": reference["recipeVersion"]},
+        selector,
         recipes,
         result_context,
         decision_time,
         registered_schemes=registered_schemes,
-    ) == "pass"
+    )
 
     presence_selector = any(
         is_selector(item, False) and exact_presence(item)
@@ -2129,7 +2208,94 @@ def selector_authorized(
         )
         if not (exact_presence_in_group or passing_other_scheme):
             presence_selector = False
-    return verified_selector or presence_selector
+    return {
+        "selector_present": True,
+        "presented": presented,
+        "controlled": controlled,
+        "verified_selector": verified_selector,
+        "presence_selector": presence_selector,
+    }
+
+
+def selector_authorized(
+    value, req, recipes, result_context, decision_time, *, registered_schemes=None
+):
+    """DACS-2 §7.7.1 exact_selector_authorized over the exact presented claim."""
+
+    facts = selector_authorization_facts(
+        value,
+        req,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
+    )
+    return (
+        not facts["selector_present"]
+        or facts["controlled"]
+        and (facts["verified_selector"] or facts["presence_selector"])
+    )
+
+
+def current_presenter_controlled(
+    value, presented, historically_controlled, recipes, result_context,
+    decision_time, *, registered_schemes=None,
+):
+    """Requalify one historically controlled exact presenter at trustedNow."""
+
+    return not historically_controlled or claim_establishes_control(
+        value,
+        presented,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
+    )
+
+
+def current_selector_authorized(
+    value, req, historical_facts, recipes, result_context, decision_time,
+    *, registered_schemes=None,
+):
+    """Requalify only a historically authorized selector for progression.
+
+    The signed-decision presence arm remains historical.  Exact result-backed
+    control and verified-selector evidence are requalified at trustedNow, but
+    a selector that was historically absent or unauthorized remains an
+    evaluation outcome rather than becoming an aggregation-authority error.
+    """
+
+    historically_authorized = (
+        historical_facts["selector_present"]
+        and historical_facts["controlled"]
+        and (
+            historical_facts["verified_selector"]
+            or historical_facts["presence_selector"]
+        )
+    )
+    if not historically_authorized:
+        return True
+    presented = historical_facts["presented"]
+    return current_presenter_controlled(
+        value,
+        presented,
+        True,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
+    ) and (
+        historical_facts["presence_selector"]
+        or exact_verified_selector(
+            value,
+            presented,
+            req["primaryClaimSelector"],
+            recipes,
+            result_context,
+            decision_time,
+            registered_schemes=registered_schemes,
+        )
+    )
 
 
 def valid_requirement(req, registered_schemes=None):
@@ -2317,6 +2483,15 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
     failures = []
     errors = []
     indeterminates = []
+    exact_presenter_controlled = presented_control(
+        value,
+        recipes,
+        result_context,
+        decision_time,
+        registered_schemes=registered_schemes,
+    )
+    if req.get("primaryClaimSelector") is None and not exact_presenter_controlled:
+        failures.append("presentedBy is uncontrolled")
     for item in req.get("required", []):
         outcome = classify_member(
             value,
@@ -2354,13 +2529,20 @@ def evaluate(value, recipes, result_context, *, decision_time, admission):
             )
         else:
             failures.append("oneOf group: no claim satisfied")
-    if not selector_authorized(
-        value,
-        req,
-        recipes,
-        result_context,
-        decision_time,
-        registered_schemes=registered_schemes,
+    selector_is_authorized = (
+        selector_authorized(
+            value,
+            req,
+            recipes,
+            result_context,
+            decision_time,
+            registered_schemes=registered_schemes,
+        )
+        if req.get("primaryClaimSelector") is not None
+        else True
+    )
+    if req.get("primaryClaimSelector") is not None and (
+        not exact_presenter_controlled or not selector_is_authorized
     ):
         failures.append(
             "primaryClaimSelector is mismatched, uncontrolled, or unauthorized"
@@ -2743,7 +2925,62 @@ def authenticate_production_aggregate(
         results_without_verified_member(req, resolved)
     ):
         return None
+    projection = {
+        "bundle": bundle,
+        "requirement": req,
+        "resolvedResults": resolved,
+        "decisionTime": generated_at,
+        "authorizationTime": admission.trusted_now,
+        # §7.7.1 classifies the record's committed results, not the bundle's
+        # verifiedBy pointers.
+        COMMITTED_RESULTS_ONLY: True,
+    }
     if authorize_current and valid_requirement(req, admission.registered_schemes):
+        historical_selector = selector_authorization_facts(
+            projection,
+            req,
+            recipes,
+            result_context,
+            generated_at,
+            registered_schemes=admission.registered_schemes,
+        )
+        historical_presented = presented_claim(
+            bundle, admission.registered_schemes
+        )
+        historical_presenter_controlled = (
+            historical_presented is not None
+            and claim_establishes_control(
+                projection,
+                historical_presented,
+                recipes,
+                result_context,
+                generated_at,
+                registered_schemes=admission.registered_schemes,
+            )
+        )
+        if (
+            req.get("primaryClaimSelector") is None
+            and not current_presenter_controlled(
+                projection,
+                historical_presented,
+                historical_presenter_controlled,
+                recipes,
+                result_context,
+                admission.trusted_now,
+                registered_schemes=admission.registered_schemes,
+            )
+        ):
+            return None
+        if not current_selector_authorized(
+            projection,
+            req,
+            historical_selector,
+            recipes,
+            result_context,
+            admission.trusted_now,
+            registered_schemes=admission.registered_schemes,
+        ):
+            return None
         verified_members = [
             *(
                 member for member in req.get("required", [])
@@ -2812,16 +3049,7 @@ def authenticate_production_aggregate(
                     > artifact["verifiedAt"] + max_age * 1_000
                 ):
                     return None
-    return {
-        "bundle": bundle,
-        "requirement": req,
-        "resolvedResults": resolved,
-        "decisionTime": generated_at,
-        "authorizationTime": admission.trusted_now,
-        # §7.7.1 classifies the record's committed results, not the bundle's
-        # verifiedBy pointers.
-        COMMITTED_RESULTS_ONLY: True,
-    }
+    return projection
 
 
 def aggregate_output(
@@ -6395,12 +6623,14 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             "dacs1-freshness-fail-closed", "expiresOnly"
         )
         self.assertTrue(case["expectedOutput"]["expiresOnly"])
+        expected = execute_once(evaluation, self.document)
+        self.assertTrue(expected)
         changed = copy.deepcopy(evaluation)
         for claim in changed["input"]["bundle"]["claims"]:
             if "expiresAt" in claim:
                 claim["expiresAt"] = float(claim["expiresAt"])
         self.assertTrue(verify_bundle(integral_numbers(changed["input"]["bundle"])))
-        self.assertTrue(execute_once(changed, self.document))
+        self.assertEqual(expected, execute_once(changed, self.document))
 
         aggregate_case, aggregate = self._case_evaluation(
             "vet-oneof-indeterminate-over-fail"
@@ -7402,13 +7632,14 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
 
     def test_presented_by_must_resolve_to_a_signed_bundle_claim(self):
         # DACS-1 §6.3.2 presentedBy selection rule: presentedBy "MUST be one of
-        # the claim references appearing in claims (matching by canonical
-        # scheme and identifier)".  The invocation, nonce and presentedBy (the
-        # authenticated primary claim) are unchanged and another claim of the
-        # bundle signs the presentation, so only claim membership can decide.
+        # the claim references appearing in claims" and its exact control must
+        # be proven.  Claim membership and a cosigner therefore establish only
+        # a structurally valid bundle, not control of the declared presenter.
         case, evaluation = self._case_evaluation("vet-control-key-presentation-accept")
         self.assertEqual("pass", case["expectedOutput"])
         presented = evaluation["input"]["bundle"]["presentedBy"]
+        presenter = fixture_private_key("presenter")
+        self.assertEqual(presented, public_ref(presenter))
         cosigner = fixture_private_key("bundle-cosigner")
         cosigner_ref = public_ref(cosigner)
         selector_requirement = evaluation["input"]["requirement"]
@@ -7418,14 +7649,19 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             "required": [{"scheme": "key", "verificationRequired": False}],
         }
 
-        def variant(claim_refs, requirement, operation="decision"):
+        def variant(
+            claim_refs, requirement, operation="decision", *,
+            signer=presenter, signer_ref=presented,
+        ):
             changed = copy.deepcopy(evaluation)
             changed["operation"] = operation
             bundle = changed["input"]["bundle"]
             bundle["claims"] = [
                 {"ref": ref, "issuedAt": 1_899_999_999_000} for ref in claim_refs
             ]
-            changed["input"]["bundle"] = resign_bundle(bundle, cosigner, cosigner_ref)
+            changed["input"]["bundle"] = resign_bundle(
+                bundle, signer, signer_ref
+            )
             changed["input"]["requirement"] = copy.deepcopy(requirement)
             return changed
 
@@ -7436,11 +7672,41 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             ("CF-3 identity", [presented + "?role=holder", cosigner_ref]),
         ):
             with self.subTest(control=label):
-                accepted = variant(refs, presence_requirement)
+                signer_ref = refs[0]
+                accepted = variant(
+                    refs, presence_requirement, signer_ref=signer_ref
+                )
                 self.assertIs(True, verify_bundle(accepted["input"]["bundle"]))
                 self.assertEqual(
                     ("pass", []), self._direct_outcome(accepted, self.document)
                 )
+
+        cosigned_only = variant(
+            [presented, cosigner_ref],
+            presence_requirement,
+            signer=cosigner,
+            signer_ref=cosigner_ref,
+        )
+        self.assertIs(True, verify_bundle(cosigned_only["input"]["bundle"]))
+        self.assertEqual(
+            ("fail", ["presentedBy is uncontrolled"]),
+            self._direct_outcome(cosigned_only, self.document),
+        )
+        selector_cosigned_only = variant(
+            [presented, cosigner_ref],
+            selector_requirement,
+            signer=cosigner,
+            signer_ref=cosigner_ref,
+        )
+        self.assertEqual(
+            (
+                "fail",
+                [
+                    "primaryClaimSelector is mismatched, uncontrolled, or unauthorized"
+                ],
+            ),
+            self._direct_outcome(selector_cosigned_only, self.document),
+        )
 
         missing = variant([cosigner_ref], presence_requirement)
         bundle = missing["input"]["bundle"]

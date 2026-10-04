@@ -2175,8 +2175,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2197,8 +2197,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2219,8 +2219,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2241,8 +2241,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2417,8 +2417,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2505,8 +2505,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2527,8 +2527,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2549,8 +2549,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -2571,8 +2571,8 @@
         "phaseIndex": 0,
         "attempt": 1,
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
-        "primaryClaim": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "expectedVerifierRole": "counterparty",
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
         "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
@@ -3029,7 +3029,7 @@
         "nonce": "917b9a70df16caeb261f9e034de982e15865f82b202abee1fd294fa4340aecd7",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3042,7 +3042,7 @@
         "nonce": "a40f3f1af8a9badb8c088b997857733587f410421f1263fa9713b681c64847d3",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3055,7 +3055,7 @@
         "nonce": "d0f58416c0144a81630a94b60ab03e6c456794cef63188a84925f98d66b3b3fe",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3068,7 +3068,7 @@
         "nonce": "3c6d4a9c459be225310cb625b8bd6d4234fbc8c3162549090c3cb7c027e0e920",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3172,7 +3172,7 @@
         "nonce": "67b52b3e23873ac1f0591f1c21f763a169f9621ca9f557d478933a0954ddbac0",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3224,7 +3224,7 @@
         "nonce": "4fec79b46fe3aa49e440b6ca491c8d97f696105ccb66d6d776c5d88257d7ffd4",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3237,7 +3237,7 @@
         "nonce": "f7e98ed14d9d749e79d39ea4c3ff935f8bc52f5d9f36df8d35348260cd64c39f",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3250,7 +3250,7 @@
         "nonce": "914de4c9abb6859ea9f0627df7a1f0881548ce01aa8cff5df85f4d9574594aaa",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3263,7 +3263,7 @@
         "nonce": "478330181f550b9fa25ab2a60216ff2c28780b275ecbd6733910d74c23e086a2",
         "jobId": "01J00000000000000000000363",
         "actor": "buyer",
-        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
         "phaseIndex": 0,
         "attempt": 1,
         "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
@@ -3455,7 +3455,7 @@
     }
   },
   "count": 30,
-  "hash": "f3262d069fd7126f8316b1eb11860f5f44e5ac1ab25bb4911965b52600c2a24c",
+  "hash": "e31dd8b83a26552ff48ccc3e4ff174bd84fdced4291f2626fbafd573080c5a23",
   "cases": [
     {
       "name": "dacs1-cci-lei-defect",
@@ -5658,7 +5658,7 @@
       "name": "dacs1-freshness-fail-closed",
       "spec": "§6.3.2/§6.3.3",
       "summary": "Verified claims use resolved authority time, clamp expiresAt, and fail closed on unavailable time evidence.",
-      "inputHash": "fafbb7c9416dc982459233506dccad5f0677ee22c5d26faa88c38a8d10b8fe9c",
+      "inputHash": "bee7da7d64cb61b1d566e350ee7f22d6201595098af0b9a17e1f79a87197cd37",
       "evaluations": {
         "absentBoth": {
           "operation": "match",
@@ -5666,7 +5666,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -5690,7 +5690,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "kURjaZSo6KKrIZ8OY1lBFdMPClCCdd-2N6kjFrcXi_VIoLhhwh7ruxpnoJv69sR3yUpiUZXjwUqry65WhLfpBA"
+                    "signature": "uN5nbrrvZ6HYebz-S-0qYG3d3Ssf_mf0NDFFVG52fUvaySlZ-rjHt7Iig-Ra2cSE9N8La1lHobtdNXSOZJ4UDg"
                   }
                 ]
               },
@@ -5719,7 +5719,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -5745,7 +5745,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "LX3b7-QqDOykbkCO3zNevHySeJJTj9ptfsIqpSogKMysi1vjfuhoOpJF5QwKx4-wnefQIJhdqeBF37FBiSpiBw"
+                    "signature": "UIJwJPv_77oTIgJHn25fMV8SCrmb0ry7R3JZDhODcZ5AFY40rU5BPxukElZi4CwZ7jzsLfyxkHqcQ0dgXECUDg"
                   }
                 ]
               },
@@ -5811,7 +5811,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -5836,7 +5836,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "rh444EETSvG7ZbWcVdb3C1aIxuKI_pg8nlCNhJY7GDEimi45oowzJEASZ9pXdc4jZTFSjeUW1WW7vTb2FFgcCQ"
+                    "signature": "L__eZ1ibQZ2mteHzv3mS26pi7xW4Ve3P3HSX6iuWbq4HCGXpvOFtwwuha9mHpjMBCIslNI6s51w4r8hvfEuxCA"
                   }
                 ]
               },
@@ -5902,7 +5902,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -5927,7 +5927,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "OkVlrwpzDf-zTdyEGaZnzmw9djes5qHQviqEpPIEcQFparLyxGJmwObA1b4vHj6vUGiFciPGvYwEGDZJwTvnAQ"
+                    "signature": "pm32MIPlBrDrBPNO13O3RcWpflpRsL4SuFLTg2kJLnmdUtfCn3pobGz3VBJ5m2KNyhg57FrHEUPIhnuFcmb4Dg"
                   }
                 ]
               },
@@ -6881,7 +6881,7 @@
       "name": "vet-ma3-resolution-vs-presence",
       "spec": "§6.3.3",
       "summary": "Presence can match without resolving an optional failure; verified use cannot.",
-      "inputHash": "2ef432093c39f2ae3c8411a9b0352399c38215122ef9011cb4680f01c2052f5a",
+      "inputHash": "aafe95c518b52268161165183e44ea257f70b21ab49d7d133c158ec142d55c64",
       "evaluations": {
         "dacs1Presence": {
           "operation": "match",
@@ -6889,7 +6889,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -6926,7 +6926,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "SGDw0Q7bc0E6VNqsObNzQ2puf-QgsfOm_A5cMzFwa6HpLfEUyEnJ_tViMVvjIh6qH27KLvkSHE7757DtB7trAA"
+                    "signature": "PMFMtxWnSwa5ArC4bvGP7F_XYjEAsS6sAoO64ojaCnOdqqnhHICdfOHLQSiwPtAd27RDXbywPYhKr_neO7DKAw"
                   }
                 ]
               },
@@ -7397,7 +7397,7 @@
       "name": "vet-freshness-fail-closed",
       "spec": "§6.3.2/§6.3.3",
       "summary": "Vet applies the same resolved authority window and presenter clamp.",
-      "inputHash": "afd88d9d3586663eecbd25d7b77fd8210afc979d6b29e4b0de68e39392779027",
+      "inputHash": "23ebaab7550673bfc561a25060959815a60fe88f6b0c9de17a96310546b4d403",
       "evaluations": {
         "absentBoth": {
           "operation": "match",
@@ -7405,7 +7405,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -7429,7 +7429,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "utOFAWQCwsHXJhR8ES_vWxobRc3KwyulcJhc34nC4hiNFY5GpFoyj2n7ELWB64yu6prm6b8fy35aHTrHww53BA"
+                    "signature": "hIo4v9-g6917dYDkKR-a0168DBf4g_AYrV8ZkxfXu2Kb86H5seCCnrxS7_dMY-JzDhKkrto1mo966Hd7-in7Aw"
                   }
                 ]
               },
@@ -7458,7 +7458,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -7484,7 +7484,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "qo16N8U4ct4E5qNxOgT3_i0km9V0OEsaa5y4M5vmRzQtIMzHJiumPLzxpVPEp9bEtuT7IbdLzI6bBIANhLJhAQ"
+                    "signature": "-F7cADeYc4ahag5nMqqxBhjDyfyIyi9WC-rnBAIyxOufRTyUueBG9aKHRplk8zscxn4onI_-lWJadTT2Q36gBg"
                   }
                 ]
               },
@@ -7550,7 +7550,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -7575,7 +7575,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "leMbZUrBGN6kDGehyvA-tl1oT4XSWKn-N6j2PVYlNVA5ZR-7ckStToQ5WHZquylqWXBhE8uOu1pVFpionywyDQ"
+                    "signature": "ClT0XqDOMd10Og0_60djn2vbXjomqMc5gYZ83FVVJk2SeRaxqc8pr26gEeBMuPA9pwkbwxmkMHojqyEqQsCLDQ"
                   }
                 ]
               },
@@ -7641,7 +7641,7 @@
             "evaluatedAt": 1900000000000,
             "bundle": {
               "bundleVersion": "1",
-              "presentedBy": "lei:984500ABCDEF12345678",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
               "presentedAt": 1900000000000,
               "claims": [
                 {
@@ -7666,7 +7666,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "87ubzyMJgE5_k1wsz7pOtPsOXkmK5LQdfNsldZwxlerRliMwV6HrahQydqrN90OYC2ueHJqxnk-V2H7YHgQEDg"
+                    "signature": "IetxmdnZT66ZyShfSYp5Z4A46RDUBwzDPMxsn1tgDZ_h-STIEuW6sRvnqV8CxQhui17R_oiwmozSdfHCCbAoBg"
                   }
                 ]
               },

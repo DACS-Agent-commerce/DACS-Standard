@@ -42,8 +42,16 @@ normalization-tolerant job-specific derivation. It also changes existing Vet
 behaviour so session presentation admission uses verifier-issued, issuer-owned
 nonce state and aggregation uses authenticated invocation, time, signer,
 result-set, registry, and receipt authority rather than unsigned or
-caller-projected substitutes. No signed artifact shape or signature domain is
-changed.
+caller-projected substitutes. Every accepting IdentityBundle match and Vet
+decision also requires control of the exact `presentedBy` claim whether or not
+a selector is set. Without a selector, the exact presenter must additionally be
+verified-and-fresh or satisfy the exact-key signature exception; selector
+presence can combine only with an already-supported control proof, including an
+independent mechanism where the selected profile permits it.
+Production requalifies every load-bearing result-backed presenter proof at
+trusted current time. `verifierIdentity` admission requires proof of control of
+the exact independently expected identity. No signed artifact shape or signature domain
+is changed.
 
 On top of that boundary, the governed legacy-agreement activation boundary is
 added as DACS-4 v0.8 (LAA-1..LAA-7), and DACS-3 v0.6 / DACS-5 v0.6 apply that
@@ -58,11 +66,19 @@ The complete coordinated tuple is:
 | Document | Version | Status |
 | --- | --- | --- |
 | [CORE](CORE.md) | 0.3 | Draft corrective candidate; JID-1 and shared Vet admission behaviour affected |
-| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate; JID-1, session presentation, and current composed module behaviour affected |
-| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft corrective candidate; Vet aggregation and authority behaviour affected |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate; JID-1, session presentation, and current composed module behaviour affected; exact presenter control aligned |
+| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft corrective candidate; Vet aggregation and authority behaviour affected; current presenter-proof requalification and verifier-identity control aligned |
 | [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft; current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft corrective candidate; current composed module |
 | [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.7 | Draft corrective candidate |
+
+The exact-presenter and verifier-identity alignment above corrects the existing
+unreleased DACS-1 v0.8 / DACS-2 v0.6 candidate; it does not create another
+module-version bump. In particular, `primaryClaimSelector` adds exact-claim
+authorization constraints but does not gate the mandatory control predicate.
+Matching version labels from an implementation that accepts an uncontrolled
+no-selector presenter or a verifier identity controlled only by another
+included signer do not establish compatibility with this candidate.
 
 The candidate is not an admissible live profile until a coordinated release
 records an annotated tag or immutable merge commit here. At that point every
@@ -73,9 +89,10 @@ JID-1 artifact or performing current Vet admission or aggregation. The existing
 module labels do not assert same-version interoperability with implementations
 of the pre-correction behaviour. A pre-JID-1 artifact, or a Vet decision,
 composite, invocation record, or conformance result produced or interpreted
-only under pre-correction execution semantics, is historical input: it remains
-readable under explicitly selected frozen semantics and cannot be silently
-promoted into this profile or authorize a current protocol action. This does
+only under pre-correction execution semantics—including selector-conditional
+presenter control or borrowed verifier-identity control—is historical input: it
+remains readable under explicitly selected frozen semantics and cannot be
+silently promoted into this profile or authorize a current protocol action. This does
 not revoke VP-C1..VP-C3 reuse of a structurally unchanged `VerifyResult` v1.
 After current-profile admission, the current verifier may qualify such a result
 from authenticated recipe family/version, signed predicates, times, and trusted

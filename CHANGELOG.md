@@ -45,6 +45,29 @@ The format used per release:
   identities remain inert; optional selectors and presentation preferences are
   type checked; wire fields declared as `number` retain finite fractional
   values; and Vet reason text is advisory outside decision conformance.
+- **Exact presenter and verifier-identity control alignment** (DACS-1
+  §6.3.2 BR-5 and §6.3.3 MA-3/PCR-5; DACS-2 §§7.7.1, 7.7.3, 7.8) — every
+  accepting bundle match and Vet decision now requires control of the exact
+  `presentedBy` claim even
+  when `primaryClaimSelector` is absent. A selector adds its exact
+  verified-or-explicit-presence authorization arm; presence alone still never
+  establishes control, and another included claim, result, or signer cannot
+  lend it. Exact `key:` control remains satisfied by that key's own valid
+  presentation signature without a `VerifyResult`. With no selector, a non-key
+  presenter requires its exact passing-and-fresh result plus the applicable
+  supported DACS-1 control proof; an explicit selector-presence arm may instead
+  combine with an already-supported independent control proof such as SR-1,
+  without manufacturing a result. Production requalifies every exact
+  result-backed control or presenter-status dependency at `trustedNow` under
+  its own governing window even when verified-member method/version/`maxAge`
+  predicates exclude it; independent control mechanisms retain their own
+  current proof obligations without an invented result window; historical
+  presence-selector authorization remains evaluated at signed `generatedAt`. The independently
+  expected `verifierIdentity` must prove its own exact control; when it is
+  `key:`, that exact key must sign, including for a delegated orchestrator.
+  This corrects the existing unreleased DACS-1 v0.8 / DACS-2 v0.6 candidate
+  within the unchanged complete tuple and changes no signed artifact shape or
+  signature domain.
 - **Presentation challenge alignment** (CORE §B.8; DACS-1 §6.3.2; DACS-2
   §7.7.3) — per-claim, session-key, and sr1-root presentations use the existing
   signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the

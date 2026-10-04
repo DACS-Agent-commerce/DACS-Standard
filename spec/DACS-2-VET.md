@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** on the common DACS v0.1 baseline. v0.6 is an affected document in the declared CORE §11.1.2 **breaking pre-v1 corrective candidate**: existing Vet execution now requires authenticated current-profile invocation, aggregation, time, signer, result-set, registry, and receipt authority and rejects unsigned or caller-projected substitutes. The correction preserves the signed `VerifyResult` and `CompositeVerificationRecord` shapes and their domains, but the v0.6 label alone does not establish interoperability with pre-correction v0.6 execution behavior or conformance evidence. A reusable `VerifyResult` v1 remains eligible for VP-C1..VP-C3 qualification after current-profile admission; it does not itself assert a producing profile. v0.6 also makes recipe-family ownership, exact numeric version selection, authenticated definition matching, and no-older-live fallback executable while leaving CORE registry-bootstrap activation to a future profile, and evaluates presence-only `ClaimRequirement` members against the exact signed `IdentityBundle` under PCR-1..PCR-6 while excluding them from `VerifyResult` evidence. v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1. **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** on the common DACS v0.1 baseline. v0.6 is an affected document in the declared CORE §11.1.2 **breaking pre-v1 corrective candidate**: existing Vet execution now requires authenticated current-profile invocation, aggregation, time, signer, result-set, registry, and receipt authority and rejects unsigned or caller-projected substitutes. The correction preserves the signed `VerifyResult` and `CompositeVerificationRecord` shapes and their domains, but the v0.6 label alone does not establish interoperability with pre-correction v0.6 execution behavior or conformance evidence. The existing unreleased v0.6 candidate also enforces exact `presentedBy` control independently of selector/member qualification, requalifies load-bearing result-backed presenter control or status at trusted current time, and requires a production `verifierIdentity` to prove control of the exact independently expected identity. A reusable `VerifyResult` v1 remains eligible for VP-C1..VP-C3 qualification after current-profile admission; it does not itself assert a producing profile. v0.6 also makes recipe-family ownership, exact numeric version selection, authenticated definition matching, and no-older-live fallback executable while leaving CORE registry-bootstrap activation to a future profile, and evaluates presence-only `ClaimRequirement` members against the exact signed `IdentityBundle` under PCR-1..PCR-6 while excluding them from `VerifyResult` evidence. v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1. **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -806,7 +806,7 @@ CCI-native reputation signals (cci-nomis, cci-ethos, cci-humanpassport) are firs
 
 #### 7.7.1 Aggregation algorithm
 
-A verifier MUST compute `overallDecision` per the following algorithm. A member's classifier is selected by `verificationRequired`: presence-only members are evaluated against the signed bundle under PCR-1..PCR-3, while verified members use the existing `VerifyResult` path under PCR-4. Mixed `required` and `oneOf` collections therefore compose the two modes without synthesising evidence. The algorithm distinguishes four cases for each member: passing, indeterminate (authority or required replay input unavailable), errored (malformed input or verifier failure), and failing/absent. Precedence among non-pass outcomes is failures > errors > indeterminates so that the strongest evidence dominates aggregation.
+A verifier MUST compute `overallDecision` per the following algorithm. A member's classifier is selected by `verificationRequired`: presence-only members are evaluated against the signed bundle under PCR-1..PCR-3, while verified members use the existing `VerifyResult` path under PCR-4. Mixed `required` and `oneOf` collections therefore compose the two modes without synthesising evidence. Independently of those member classifiers, the exact claim resolved from `presentedBy` MUST pass the DACS-1 step (6) control gate. Without `primaryClaimSelector`, the exact presenter additionally MUST be verified-and-fresh or use the exact-key signature exception; with a selector, exact verified-or-explicit-presence authorization applies instead. The selector does not switch the independent control gate on or off. The algorithm distinguishes four cases for each member: passing, indeterminate (authority or required replay input unavailable), errored (malformed input or verifier failure), and failing/absent. Precedence among non-pass outcomes is failures > errors > indeterminates so that the strongest evidence dominates aggregation.
 
 ```
 aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
@@ -1006,13 +1006,30 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   # The composite decision covers the complete BundleRequirement, not only its
 
-  # member sets. Apply DACS-1 MA-2/MA-3 and PCR-5 to the exact presentedBy claim,
+  # member sets. Apply DACS-1 MA-3/PCR-5 control to the exact presentedBy claim
 
-  # using exact-claim verified evidence in this record where verification is required.
+  # for every Vet decision, independently of selector and member qualification.
+
+  presentedControlled := exact_presented_controlled(record, exactBundle)
+
+  presentedVerified := exact_presented_verified(record, exactBundle)
+
+  exactKeyException := exact_presented_key_signature_controlled(exactBundle)
+
+  if requirement.primaryClaimSelector is absent AND
+     (NOT presentedControlled OR
+      NOT (presentedVerified OR exactKeyException)):
+
+    failures.append("presentedBy is uncontrolled")
+
+  # A selector additionally applies MA-2 and the verified-or-explicit-presence
+
+  # authorization arm. Keep its combined failure reason for selector-bearing inputs.
 
   if requirement.primaryClaimSelector is set AND
 
-     NOT exact_selector_authorized(record, exactBundle, requirement):
+     (NOT presentedControlled OR
+      NOT exact_selector_authorized(record, exactBundle, requirement)):
 
     failures.append("primaryClaimSelector is mismatched, uncontrolled, or unauthorized")
 
@@ -1048,6 +1065,56 @@ classify_member(record, exactBundle, cr):
 
   return classify_verified_member(record, cr)
 
+exact_presented_controlled(record, exactBundle):
+
+  presented := the unique claim in exactBundle.claims whose canonical scheme
+               and identifier (CF-3 identity) equal those of exactBundle.presentedBy
+
+  if presented is absent: return false
+
+  if canonical_scheme(presented.ref) == "key":
+
+    # The exact CF-3-equal key itself must have a valid presentation signature.
+    # Another included signer cannot lend it control. A well-shaped optional
+    # verifiedBy does not defeat this signature proof.
+
+    return exact_presented_key_signature_controlled(exactBundle)
+
+  # Use only the applicable closed DACS-1 §6.3.2 step (6) mechanism for this
+  # exact claim. A result-backed mechanism also requires exact_presented_verified;
+  # an independent mechanism such as authenticated SR-1 address-key linkage,
+  # where the selected profile permits it, retains its own proof obligations
+  # without manufacturing a VerifyResult. A
+  # bare existence/validity result is not control.
+
+  controlMechanism := the applicable supported DACS-1 control mechanism for
+                      presented under the selected profile
+
+  if controlMechanism is absent OR its exact proof does not verify: return false
+
+  if controlMechanism is result-backed:
+
+    return exact_presented_verified(record, exactBundle)
+
+  return true
+
+exact_presented_verified(record, exactBundle):
+
+  presented := the unique claim in exactBundle.claims whose canonical scheme
+               and identifier (CF-3 identity) equal those of exactBundle.presentedBy
+
+  return presented is present AND presented.verifiedBy resolves through record's
+         commitments to independently authenticated passing-and-fresh evidence
+         under its own exact governing recipe window
+
+exact_presented_key_signature_controlled(exactBundle):
+
+  presented := the unique claim in exactBundle.claims whose canonical scheme
+               and identifier (CF-3 identity) equal those of exactBundle.presentedBy
+
+  return presented is present AND canonical_scheme(presented.ref) == "key"
+         AND exactBundle has a valid presentation signature by presented.ref
+
 exact_selector_authorized(record, exactBundle, requirement):
 
   selector := requirement.primaryClaimSelector
@@ -1058,20 +1125,19 @@ exact_selector_authorized(record, exactBundle, requirement):
 
   if canonical_scheme(exactBundle.presentedBy) != selector: return false
 
-  presented := the claim in exactBundle.claims whose canonical ClaimReference
-               equals exactBundle.presentedBy
+  presented := the claim in exactBundle.claims whose canonical scheme and
+               identifier (CF-3 identity) equal those of exactBundle.presentedBy
 
   if presented is absent: return false
 
-  controlled := the exact presented claim passes DACS-1 §6.3.2 step (6)
+  if NOT exact_presented_controlled(record, exactBundle): return false
 
   # `verifiedSelector` is exact-claim evidence only. It passes only when the
   # record commits presented.verifiedBy and the independently resolved result
   # passes hash, signature, identifier, recipe/version, decision, and freshness
   # checks for `presented`; another same-scheme claim cannot supply it.
 
-  verifiedSelector := presented has a record-committed passing-and-fresh
-                      verifiedBy under the DACS-1 §6.3.2 verified-claim gate
+  verifiedSelector := exact_presented_verified(record, exactBundle)
 
   exactPresenceMembers := [cr for cr in requirement.required ++ flatten(oneOfGroups)
                            if cr.scheme == selector
@@ -1100,7 +1166,7 @@ exact_selector_authorized(record, exactBundle, requirement):
 
       presenceSelector := false
 
-  return controlled AND (verifiedSelector OR presenceSelector)
+  return verifiedSelector OR presenceSelector
 
 preflight_qualification(record, cr, registry):
 
@@ -1214,14 +1280,45 @@ Aggregation time comes from authenticated history, not an unsigned evaluation
 wrapper.  `record.generatedAt` MUST be an exact CORE-safe integer, MUST NOT be
 later than the verifier-owned execution time or the authenticated record-receipt
 time, and MUST NOT precede any participating result's signed `verifiedAt`.
-Non-authorizing reconstruction evaluates CRQ freshness and `maxAge` at that
-signed `generatedAt` and preserves the historical decision for audit.
+Non-authorizing reconstruction evaluates CRQ freshness and `maxAge`, exact
+`presentedBy` control, the no-selector verified-presenter-or-exact-key gate, and
+any selector authorization at that signed `generatedAt`, preserving the
+historical decision for audit. A historically uncontrolled or unverified
+no-selector presenter, or an unauthorized selector, remains a semantic `fail`
+in the final accumulator; current-time admission MUST NOT mask it as an earlier
+authority error.
+
 Production authorization additionally requires `generatedAt` to be no earlier
 than the verifier-owned issue time of either consumed presentation challenge,
 and requalifies every exact-owned participating result's governing freshness
-window and `maxAge` at verifier-owned `trustedNow`.  A result that is historical
-but no longer current requires a new verification and re-signed/re-anchored
-record; the historical reconstruction alone MUST NOT authorize progression.
+window and `maxAge` at verifier-owned `trustedNow`. It also re-evaluates exact
+`presentedBy` control under its applicable supported mechanism and requalifies
+every exact result-backed dependency of that control. For a no-selector
+non-key presenter, it separately requalifies the exact result that established
+verified-presenter status. Each such result remains load-bearing even when it
+is excluded from every verified member by method, recipe-version, or
+member-`maxAge` predicates. Those member predicates do not become control or
+presenter-status predicates: result use follows the exact claim's own §6.3.2
+governing window, including the referenced recipe version's `defaultMaxAgeSec`
+only when `validUntil` is omitted, and is current through the inclusive expiry
+instant. If the same result also participates for a verified member, it MUST
+satisfy both its independent presenter use and that member's qualification
+predicates. An independent control mechanism such as authenticated SR-1
+address-key linkage remains subject to its existing current proof obligations;
+no `VerifyResult` or freshness window is invented for it. Exact `key:` signature
+control has no result-freshness dependency, and a well-shaped optional stale or
+failing `verifiedBy` does not defeat it.
+
+For a selector that was authorized at `generatedAt`, production MUST re-evaluate
+exact `presentedBy` control, requalify any result-backed dependency of that
+control, and, when the historical authorization depended on the
+verified-selector arm, requalify that exact verified-selector evidence at
+`trustedNow`. An already-established historical presence-selector arm remains
+historical and is not rerun at `trustedNow`; it still supplies no control, so a
+non-key presenter continues to require its independent current control proof.
+A result that is historical but no longer current requires a new verification
+and re-signed/re-anchored record; the historical reconstruction alone MUST NOT
+authorize progression.
 An unsigned `evaluatedAt`, `presentedAt`, or similarly named wrapper field is
 diagnostic metadata only and MUST NOT become either time authority.
 
@@ -1299,6 +1396,20 @@ changed, re-signed, or different party's presentation.  The challenges,
 ledger records, and capabilities remain verifier/orchestrator-owned execution
 state and are not fields of either signed `IdentityBundle`.
 
+The `verifierIdentity` presentation MUST prove control of the exact identity
+independently selected by the authenticated invocation context, using an
+already-supported DACS-1 presentation/control mechanism; its own `presentedBy`
+and exact resolved claim MUST be CF-3-equal to that expected identity. When the
+expected identity is `key:`, that exact key itself MUST contribute a valid
+bundle-presentation signature over the admitted bytes. A signature by another
+included claim is only a co-signature and MUST NOT lend control to the expected
+key. When an orchestrator is the delegated expected verifier, the same rule
+applies to the orchestrator's exact independently selected identity: delegation
+does not let a different cosigner substitute. Non-key verifier identities, if
+supported by the selected profile, remain limited to the existing DACS-1
+control and presentation mechanisms for their schemes; this rule does not
+register a new scheme, proof method, or presentation kind.
+
 ### 7.8 The vet-credentials phase
 
 ```
@@ -1333,8 +1444,9 @@ verifier is selected explicitly from that context: it is the counterparty, or
 the orchestrator acting on its behalf as CORE §B.8 permits.  It is never
 selected from `verifierIdentity.presentedBy`.  The independently authenticated
 expected identity MUST equal `verifierIdentity.presentedBy`, the composite signature
-signer and `recordRef.signer`; the presentation, composite signature and receipt
-are then verified normally.  VerifyResult signer/evidence authority remains the
+signer and `recordRef.signer`; the presentation MUST additionally prove exact
+control as §7.7.3 requires, and the composite signature and receipt are then
+verified normally. VerifyResult signer/evidence authority remains the
 recipe/result authority and is resolved independently.  A caller-deserialised
 context or nonce-ledger snapshot is not this boundary.
 
@@ -1388,9 +1500,9 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Recipe author | RA-1 through RA-6; PRA-1 through PRA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
-| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PCR-1 through PCR-6; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
+| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PCR-1 through PCR-6; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4; independently expected `verifierIdentity` exact-control admission under §7.7.3 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
-| Composite record reader | §7.7.1 mixed-mode aggregation; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary |
+| Composite record reader | §7.7.1 mixed-mode aggregation; universal exact `presentedBy` control; no-selector exact verified-presenter or exact-key status; conditional selector authorization; current requalification of exact result-backed control/status dependencies; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary |
 
 ### 7.10 Rationale
 

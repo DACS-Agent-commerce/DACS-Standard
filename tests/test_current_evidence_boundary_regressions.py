@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from test_bundle_settlement_evidence_bijection_vectors import (
     bind_laa_authority_to_bundle,
     laa_authority_for_bundle,
+    rebind_st8_interim,
     refreshed_laa_phase_carriers,
     replace_payment_with_transition_evidence,
     replace_top_record,
@@ -1511,6 +1512,42 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             with self.subTest(kind=kind, successor="interim-also-top-level"):
                 self.assertEqual("fail", self._direct(interim_top_level, kind)[0])
                 self.assertEqual("fail", self._reconcile(interim_top_level)["decision"])
+
+    def test_released_copies_reject_an_st8_interim_carrying_a_supersession_edge(self):
+        # Released copies apply the EBFAB SEB-3 edge rules. The original interim
+        # is dropped so its receipt cannot first contradict the replacement at
+        # the exact ordinary address; only the interim's own edge then differs.
+        def earlier_observation(interim, _original_ref):
+            interim["observedAt"] -= 1
+
+        def earlier_observation_with_edge(interim, original_ref):
+            earlier_observation(interim, original_ref)
+            interim["supersedesEvidenceRef"] = original_ref
+
+        for kind in ("legacy", "fault"):
+            for name, mutate in (
+                ("control", earlier_observation),
+                ("interim-edge", earlier_observation_with_edge),
+            ):
+                value = self._released_value("single-htlc-completed", kind)
+                rebind_st8_interim(
+                    value["authority"], mutate, self.data["seeds"], retain_original=False
+                )
+                self._resign_released(value, kind)
+                value["authority"]["legacyAgreementAuthorityByPhaseKey"] = (
+                    refreshed_laa_phase_carriers(value["authority"])
+                )
+                with self.subTest(kind=kind, interim=name):
+                    direct = self._direct(value, kind)
+                    if name == "control":
+                        self.assertEqual("pass", direct[0], direct)
+                        self.assertEqual("pass", self._reconcile(value)["decision"])
+                    else:
+                        self.assertEqual(
+                            ("fail", "ST-8 interim failure carries a supersession edge"),
+                            direct,
+                        )
+                        self.assertEqual("fail", self._reconcile(value)["decision"])
 
     def test_omitted_successful_payment_member_is_indeterminate_on_released_copies(self):
         for kind in ("legacy", "fault"):

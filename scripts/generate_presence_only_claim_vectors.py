@@ -228,12 +228,14 @@ def case(
     resolved: list[tuple[dict, dict]] | None = None,
     overall: str | None = None,
     generated_at: int = NOW,
+    bundle_signer: Ed25519PrivateKey = PRESENTER,
+    bundle_signer_ref: str = PRESENTER_REF,
     note: str,
 ) -> dict:
     bundle = copy.deepcopy(bundle)
     nonce = hashlib.sha256(f"dacs-362:{name}:nonce".encode("utf-8")).hexdigest()[:32]
     bundle["sessionNonce"] = nonce
-    resign_bundle(bundle)
+    resign_bundle(bundle, bundle_signer, bundle_signer_ref)
     freshness = freshness or []
     refs = refs or []
     job_id = deterministic_ulid(name)
@@ -321,6 +323,27 @@ def build_vectors() -> list[dict]:
         requirement([presence("key")]),
         note="PCR-2 does not require issuedAt in presence mode",
     ))
+    outsider_signature = case(
+        "authentic-bundle-signature-without-claim-membership",
+        "error",
+        signed_bundle([base_key]),
+        requirement([presence("key")]),
+        overall="pass",
+        note="BR-2 rejects an authentic extra signature by a key absent from claims; the included presenter's own signature and all semantic predicates still pass",
+    )
+    # Keep the presenter's own proof intact so removing only the membership
+    # guard admits a complete pass, rather than hitting a later control gate.
+    unsigned_bundle = {
+        field: value for field, value in outsider_signature["bundle"].items()
+        if field != "presentation"
+    }
+    outsider_signature["bundle"]["presentation"]["signatures"].append({
+        "ref": SECOND_REF,
+        "signature": b64url(SECOND_PRESENTER.sign(
+            (BUNDLE_DOMAIN + hash_hex(unsigned_bundle)).encode("ascii")
+        )),
+    })
+    vectors.append(outsider_signature)
     vectors.append(case(
         "required-presence-missing",
         "fail",
@@ -804,6 +827,169 @@ def build_vectors() -> list[dict]:
     unavailable_bad_record["bundleAvailable"] = False
     unavailable_bad_record["bundle"] = None
     vectors.append(unavailable_bad_record)
+
+    cosigner_claims = [base_key, claim(SECOND_REF, issuedAt=NOW - 500_000)]
+    cosigner_bundle = signed_bundle(
+        cosigner_claims, signer=SECOND_PRESENTER, signer_ref=SECOND_REF
+    )
+    vectors.append(case(
+        "no-selector-unrelated-cosigner-is-uncontrolled",
+        "fail",
+        cosigner_bundle,
+        requirement([presence("key")]),
+        overall="fail",
+        bundle_signer=SECOND_PRESENTER,
+        bundle_signer_ref=SECOND_REF,
+        note="A valid signature by another included key cannot control the exact declared presenter",
+    ))
+    vectors.append(case(
+        "no-selector-uncontrolled-signed-pass-mismatch-is-error",
+        "error",
+        cosigner_bundle,
+        requirement([presence("key")]),
+        overall="pass",
+        bundle_signer=SECOND_PRESENTER,
+        bundle_signer_ref=SECOND_REF,
+        note="Reconstruction recomputes exact presenter control and rejects an incorrect signed pass",
+    ))
+    vectors.append(case(
+        "selector-unrelated-cosigner-is-uncontrolled",
+        "fail",
+        cosigner_bundle,
+        requirement([presence("key")], selector="key"),
+        overall="fail",
+        bundle_signer=SECOND_PRESENTER,
+        bundle_signer_ref=SECOND_REF,
+        note="A selector does not permit another included key to lend presenter control",
+    ))
+
+    # The included cosigner supplies a valid presentation, while presentedBy
+    # resolves to zero claims. This distinguishes semantic non-match from an
+    # invalid signature whose signer is missing from the bundle.
+    absent_presenter_bundle = signed_bundle(
+        [claim(SECOND_REF, issuedAt=NOW - 500_000)],
+        signer=SECOND_PRESENTER,
+        signer_ref=SECOND_REF,
+    )
+    for label, req in (
+        ("no-selector", requirement([presence("key")])),
+        ("selector", requirement([presence("key")], selector="key")),
+    ):
+        vectors.append(case(
+            f"{label}-absent-presenter-is-semantic-fail",
+            "fail",
+            absent_presenter_bundle,
+            req,
+            overall="fail",
+            bundle_signer=SECOND_PRESENTER,
+            bundle_signer_ref=SECOND_REF,
+            note="An authenticated bundle with zero exact presenter claims fails semantic matching",
+        ))
+
+    parameterized_presenter = PRESENTER_REF + "?role=holder"
+    parameterized_bundle = signed_bundle(
+        [claim(parameterized_presenter, issuedAt=NOW - 500_000)],
+        presented_by=PRESENTER_REF,
+        signer_ref=parameterized_presenter,
+    )
+    vectors.append(case(
+        "no-selector-parameterized-cf3-presenter-controls",
+        "pass",
+        parameterized_bundle,
+        requirement([presence("key")]),
+        bundle_signer_ref=parameterized_presenter,
+        note="CF-3 scheme-and-identifier equality binds a parameterized claim and signer to presentedBy",
+    ))
+    vectors.append(case(
+        "selector-parameterized-cf3-presenter-controls",
+        "pass",
+        parameterized_bundle,
+        requirement([presence("key")], selector="key"),
+        bundle_signer_ref=parameterized_presenter,
+        note="Selector control uses the same CF-3 identity rule as universal presenter control",
+    ))
+
+    vectors.append(case(
+        "byte-identical-presenter-claim-repetition-collapses",
+        "pass",
+        signed_bundle([base_key, copy.deepcopy(base_key)]),
+        requirement([presence("key")]),
+        note="Byte-identical repeated BundleClaim values form one canonical-distinct presenter candidate",
+    ))
+    duplicate_session = claim(
+        PRESENTER_REF + "?purpose=session", issuedAt=NOW - 500_000
+    )
+    duplicate_audit = claim(
+        PRESENTER_REF + "?purpose=audit", issuedAt=NOW - 500_000
+    )
+    for name, duplicate_claims in (
+        (
+            "distinct-same-identity-presenter-claims-are-ambiguous",
+            [duplicate_session, duplicate_audit],
+        ),
+        (
+            "distinct-same-identity-presenter-claims-reversed-are-ambiguous",
+            [duplicate_audit, duplicate_session],
+        ),
+    ):
+        signer_ref = duplicate_claims[0]["ref"]
+        vectors.append(case(
+            name,
+            "fail",
+            signed_bundle(
+                duplicate_claims,
+                presented_by=PRESENTER_REF,
+                signer_ref=signer_ref,
+            ),
+            requirement([presence("key")]),
+            overall="fail",
+            bundle_signer_ref=signer_ref,
+            note="Canonical-distinct claims with one CF-3 identity are an order-independent semantic ambiguity",
+        ))
+
+    selector_expiring_vr = verify_result(
+        PRESENTER_REF,
+        "pass",
+        verified_at=NOW - 120_000,
+        valid_until=NOW - 30_000,
+    )
+    selector_expiring_ref = result_ref(
+        selector_expiring_vr, "selector-current-expiry"
+    )
+    vectors.append(case(
+        "selector-verified-status-expires-after-historical-decision",
+        "pass",
+        signed_bundle([
+            claim(
+                PRESENTER_REF,
+                issuedAt=NOW - 500_000,
+                verifiedBy=selector_expiring_ref,
+            ),
+            claim(DID_REF, issuedAt=NOW - 500_000),
+        ]),
+        requirement(
+            [], one_of=[[verified("key"), presence("did")]], selector="key"
+        ),
+        refs=[selector_expiring_ref],
+        resolved=[(selector_expiring_ref, selector_expiring_vr)],
+        generated_at=NOW - 60_000,
+        note="Historical verified-selector authorization passes at generatedAt but expires before trustedNow; a distinct DID presence arm keeps the oneOf member group satisfied, isolating current selector requalification",
+    ))
+    vectors.append(case(
+        "historical-selector-presence-arm-is-not-rerun-at-trusted-now",
+        "pass",
+        signed_bundle([
+            claim(PRESENTER_REF, issuedAt=NOW - 500_000, expiresAt=NOW - 30_000),
+            claim(DID_REF, issuedAt=NOW - 500_000),
+        ]),
+        requirement(
+            [],
+            one_of=[[presence("key"), presence("did")]],
+            selector="key",
+        ),
+        generated_at=NOW - 60_000,
+        note="Current member qualification may use another arm while signed generatedAt preserves explicit selector presence",
+    ))
 
     vectors.append(case(
         "presence-key-selector-has-independent-control",

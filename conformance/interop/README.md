@@ -10,9 +10,15 @@ SHA-256
 The interface remains non-normative and is not copied into the Standard.
 
 [`dacs-adapter-release-proposal-v1.json`](dacs-adapter-release-proposal-v1.json)
-pins the Standard revision, tree, implementation blobs, source corpora, selected
-case identifiers, and expected values. The adapter verifies those local
-committed blobs and the exact DACS-Standard Git origin before importing them.
+pins the Standard revision, tree, complete repository-local Python import
+closure for its advertised operations, source corpora, selected case identifiers,
+and expected values. The adapter derives that five-file closure before imports
+and requires its path set and every committed blob to match the descriptor. The
+closure is `scripts/jcs.py`, `scripts/run_lifecycle_walkthrough.py`,
+`scripts/dacs_reference.py`, `scripts/validate_conformance_vectors.py`, and
+`scripts/specsource.py`; adding or removing a reachable local import therefore
+requires a descriptor update. The adapter also verifies the exact DACS-Standard
+Git origin before importing those files.
 Adapter source identity (`sha256` plus Git blob), wrapped Standard revision, and
 wrapped primitive digests remain separate. `provenanceCodebase` identifies the
 wrapped DACS-Standard codebase without a revision. Wrappers that retain the same
@@ -24,6 +30,14 @@ regression-tested, an `INTEROP-AGREE` result involving this adapter must not be
 accepted or cited as independent interoperability evidence. In particular,
 the contributor `standard-jcs-adapter` and this wrapper are not two independent
 implementations.
+
+The current descriptor advances the wrapped Standard and selected source pins
+without rewriting the recorded runner execution. The exact descriptor bytes
+used by the accepted `c799a163` run remain under
+[`frozen/`](frozen/dacs-adapter-release-proposal-c799-v1.json) as an archival
+fixture, with its original SHA-256 checked by a regression test. The historical
+packet validator instead derives expectations from the hash-verified Git object
+at `c799a163`, as described below.
 
 The executable operations are:
 

@@ -2069,6 +2069,19 @@ def _st8_interim_authority_unavailable(
     return None
 
 
+def _st8_interim_supersession_failure(interim_record):
+    """Return the SEB-3 rejection for an interim that itself supersedes, or None.
+
+    Only the ST-8 ``:resolved`` success carries ``supersedesEvidenceRef``
+    (DACS-4 §9.5.4, §9.7, §9.7.1). The closed SettlementEvidence shape admits
+    that member for the success, so on an authenticated interim failure it is
+    a signed contradiction, not a malformed shape.
+    """
+    if "supersedesEvidenceRef" in interim_record:
+        return "ST-8 interim failure carries a supersession edge"
+    return None
+
+
 def _st8_supersession_edge_failure(
     record,
     st8_resolved_anchor,
@@ -2095,8 +2108,8 @@ def _st8_supersession_edge_failure(
     classifies an ST-8 resolution. A :resolved record must therefore carry
     the signed edge; an edge at the ordinary phase address is not a valid way
     to self-classify as ST-8. The superseded interim must authenticate as the
-    same job/phase failure at the exact ordinary address and must not itself
-    be top-level.
+    same job/phase failure at the exact ordinary address, must not itself
+    carry a supersession edge, and must not itself be top-level.
     """
     supersedes = record.get("supersedesEvidenceRef")
     expected_st8_reason = _ST8_INTERIM_REASON_BY_PHASE.get(record.get("phase"))
@@ -2157,6 +2170,11 @@ def _st8_supersession_edge_failure(
         interim_signature["value"],
     ):
         return "ST-8 interim evidence signature does not verify"
+    # Decided by signed content alone, so an unestablished interim receipt
+    # cannot soften it to indeterminate.
+    interim_edge_failure = _st8_interim_supersession_failure(interim_record)
+    if interim_edge_failure is not None:
+        return interim_edge_failure
     interim_binding_ok, interim_binding_result, _ = _resolve_authenticated_evidence_binding(
         supersedes,
         interim_record,

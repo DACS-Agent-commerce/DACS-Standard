@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import importlib.util
@@ -19,6 +20,11 @@ DEFAULT_DESCRIPTOR = (
     ROOT / "conformance" / "interop" / "dacs-adapter-release-proposal-v1.json"
 )
 EXPECTED_ORIGIN = "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
+ADVERTISED_PRIMITIVE_ROOTS = {
+    "scripts/jcs.py",
+    "scripts/run_lifecycle_walkthrough.py",
+    "scripts/validate_conformance_vectors.py",
+}
 
 
 def _git(*args: str) -> str:
@@ -35,6 +41,52 @@ def _git(*args: str) -> str:
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _repository_local_import_closure() -> set[str]:
+    scripts = ROOT / "scripts"
+    modules = {path.stem: f"scripts/{path.name}" for path in scripts.glob("*.py")}
+    closure: set[str] = set()
+    pending = list(ADVERTISED_PRIMITIVE_ROOTS)
+    while pending:
+        relative = pending.pop()
+        if relative in closure:
+            continue
+        tree = ast.parse(
+            (ROOT / relative).read_text(encoding="utf-8"), filename=relative
+        )
+        closure.add(relative)
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name.split(".", 1)[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".", 1)[0])
+            elif (
+                isinstance(node, ast.Call)
+                and (
+                    (
+                        isinstance(node.func, ast.Name)
+                        and node.func.id in {"__import__", "import_module"}
+                    )
+                    or (
+                        isinstance(node.func, ast.Attribute)
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "importlib"
+                        and node.func.attr == "import_module"
+                    )
+                )
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                imported.add(node.args[0].value.split(".", 1)[0])
+        pending.extend(
+            modules[module]
+            for module in imported
+            if module in modules and modules[module] not in closure
+        )
+    return closure
 
 
 def _load_bytes_at_revision(source: dict[str, Any]) -> bytes:
@@ -118,6 +170,17 @@ def validate(descriptor_path: Path = DEFAULT_DESCRIPTOR) -> dict[str, int]:
     wrapped = adapter["wrappedStandard"]
     if _git("rev-parse", f"{wrapped['revision']}^{{tree}}") != wrapped["tree"]:
         raise ValueError("wrapped Standard tree mismatch")
+    primitive_paths = [item.get("path") for item in wrapped.get("primitives", [])]
+    if (
+        not primitive_paths
+        or any(not isinstance(path, str) for path in primitive_paths)
+        or len(set(primitive_paths)) != len(primitive_paths)
+    ):
+        raise ValueError("wrapped primitive path set is malformed")
+    if set(primitive_paths) != _repository_local_import_closure():
+        raise ValueError(
+            "wrapped primitive set does not equal repository-local import closure"
+        )
     for primitive in wrapped["primitives"]:
         path = primitive["path"]
         current = (ROOT / path).read_bytes()

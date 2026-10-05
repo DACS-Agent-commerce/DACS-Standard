@@ -20,12 +20,13 @@ import sys
 import unicodedata
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote_to_bytes
+from urllib.parse import quote
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import jcs  # noqa: E402
+from dacs_reference import cf4_decode  # noqa: E402
 
 PROFILE = ROOT / "spec" / "PROFILE.md"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
@@ -129,16 +130,7 @@ def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
     job_id, encoded_rail, phase_text = parts[2:5]
     if JOB_ID_RE.fullmatch(job_id) is None:
         raise ValueError("payment evidence logical address carries a non-ULID jobId")
-    if re.search(r"%(?![0-9A-Fa-f]{2})", encoded_rail):
-        raise ValueError("payment evidence railId has malformed percent encoding")
-    try:
-        rail_id = unquote_to_bytes(encoded_rail).decode("utf-8", errors="strict")
-    except UnicodeDecodeError as exc:
-        raise ValueError("payment evidence railId is not valid UTF-8") from exc
-    if quote(rail_id, safe="") != encoded_rail:
-        raise ValueError("payment evidence railId is not canonically CF-4 encoded")
-    if unicodedata.normalize("NFC", rail_id) != rail_id:
-        raise ValueError("payment evidence railId is not NFC-normalized")
+    rail_id = cf4_decode(encoded_rail)
     if PHASE_INDEX_RE.fullmatch(phase_text) is None:
         raise ValueError("payment evidence phaseIndex is not a bare integer")
     phase_index = require_phase_index(
@@ -1185,7 +1177,9 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     )
     if not agreement_validation["accepted"]:
         raise ValueError(agreement_validation["reason"])
-    expected_vet = {canonical_json(ref) for ref in context["vetRefs"].values()}
+    expected_vet = {
+        canonical_json(ref) for ref in context["vetRefs"].values()
+    }
     actual_party_vet = {
         canonical_json(party["vetRecordRef"])
         for party in agreement["parties"]

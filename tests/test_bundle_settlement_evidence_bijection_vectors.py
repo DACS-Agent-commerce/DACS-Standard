@@ -170,6 +170,59 @@ def replace_top_record(authority, phase, mutate, seeds):
     raise AssertionError("top-level record for phase %s not found" % phase)
 
 
+def rebind_st8_interim(authority, mutate, seeds, *, retain_original=True):
+    """Re-sign the interim behind the one top-level ST-8 success and rebind its chain.
+
+    ``mutate(interim, original_interim_ref)`` edits the interim record. The
+    interim's reference and receipt, the success's signed edge, its top-level
+    reference, receipt and row pointer, and the EBFAB signatures are refreshed,
+    so only the interim's signed content changes. ``retain_original`` keeps the
+    original interim and its receipt resolvable beside the replacement.
+    Returns the replacement interim record.
+    """
+    bundle = authority["bundle"]
+    resolutions = authority["referenceValidationByCanonicalRef"]
+    receipts = authority["verifiedReceiptByCanonicalRef"]
+    old_top_ref = bundle["settlementEvidence"][0]
+    old_top_key = R.canonical(old_top_ref).decode("utf-8")
+    top_resolution = resolutions.pop(old_top_key)
+    top_receipt = receipts.pop(old_top_key)
+    successor = top_resolution["record"]
+
+    old_interim_ref = copy.deepcopy(successor["supersedesEvidenceRef"])
+    old_interim_key = R.canonical(old_interim_ref).decode("utf-8")
+    if retain_original:
+        interim_resolution = copy.deepcopy(resolutions[old_interim_key])
+        interim_receipt = copy.deepcopy(receipts[old_interim_key])
+    else:
+        interim_resolution = resolutions.pop(old_interim_key)
+        interim_receipt = receipts.pop(old_interim_key)
+    interim = interim_resolution["record"]
+    mutate(interim, copy.deepcopy(old_interim_ref))
+    resign_evidence(interim, seeds["seller"])
+    new_interim_ref = copy.deepcopy(old_interim_ref)
+    new_interim_ref["contentHash"] = R.settlement_evidence_hash(interim)
+    new_interim_key = R.canonical(new_interim_ref).decode("utf-8")
+    interim_receipt["contentHash"] = new_interim_ref["contentHash"]
+    resolutions[new_interim_key] = interim_resolution
+    receipts[new_interim_key] = interim_receipt
+
+    successor["supersedesEvidenceRef"] = new_interim_ref
+    resign_evidence(successor, seeds["seller"])
+    new_top_ref = copy.deepcopy(old_top_ref)
+    new_top_ref["contentHash"] = R.settlement_evidence_hash(successor)
+    new_top_key = R.canonical(new_top_ref).decode("utf-8")
+    top_receipt["contentHash"] = new_top_ref["contentHash"]
+    resolutions[new_top_key] = top_resolution
+    receipts[new_top_key] = top_receipt
+    bundle["settlementEvidence"][0] = new_top_ref
+    for entry in bundle["phaseSummary"]:
+        if entry.get("attestationRef") == old_top_ref:
+            entry["attestationRef"] = copy.deepcopy(new_top_ref)
+    resign_ebfab(bundle, seeds)
+    return interim
+
+
 def relink_payload_attestation(authority, seeds):
     """Re-sign one closure's payload record and refresh its current evidence link."""
     closure = authority["deliveryArtifactAuthorityByPhaseKey"][
@@ -3757,6 +3810,62 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         resign_ebfab(bundle, self.data["seeds"])
 
         self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+    def test_transitive_st8_interim_cannot_itself_carry_a_supersession_edge(self):
+        # DACS-4 §9.5.4, §9.7 and §9.7.1 give supersedesEvidenceRef only to the
+        # ST-8 :resolved success; SEB-3 binds it to an interim failure. Every
+        # chain is re-signed and rebound, so the interim edge is the only defect.
+        def earlier_observation(interim, _original_ref):
+            interim["observedAt"] -= 1
+
+        def edge_to_original(interim, original_ref):
+            interim["supersedesEvidenceRef"] = original_ref
+
+        def earlier_observation_with_edge(interim, original_ref):
+            earlier_observation(interim, original_ref)
+            edge_to_original(interim, original_ref)
+
+        control = copy.deepcopy(self.data["executionAuthorities"]["single-htlc-completed"])
+        rebind_st8_interim(
+            control, earlier_observation, self.data["seeds"], retain_original=False
+        )
+        self.assertEqual(
+            ("pass", "ok", ["2:pay-cross-chain-htlc"]),
+            derive_phase_disposition(control, self.pubkeys),
+        )
+
+        rejected = ("fail", "ST-8 interim failure carries a supersession edge", None)
+        for name, mutate, retain_original in (
+            # The edge names the authentic original interim, which still resolves.
+            ("edge-to-retained-original", edge_to_original, True),
+            ("edge-to-dropped-original", edge_to_original, False),
+            # Differs from the accepting control only by the interim edge.
+            ("control-with-edge", earlier_observation_with_edge, False),
+        ):
+            authority = copy.deepcopy(self.data["executionAuthorities"]["single-htlc-completed"])
+            interim = rebind_st8_interim(
+                authority, mutate, self.data["seeds"], retain_original=retain_original
+            )
+            resolutions = authority["referenceValidationByCanonicalRef"]
+            successor = resolutions[
+                R.canonical(authority["bundle"]["settlementEvidence"][0]).decode("utf-8")
+            ]["record"]
+            with self.subTest(interim=name):
+                # The guard is reached only by an authentic, closed-shape
+                # interim behind an authentic success.
+                self.assertTrue(R._settlement_evidence_shape_valid(interim))
+                self.assertEqual(
+                    "settlement", R._authenticated_evidence_wire_type(interim, self.pubkeys)
+                )
+                self.assertEqual(
+                    "settlement", R._authenticated_evidence_wire_type(successor, self.pubkeys)
+                )
+                self.assertEqual(
+                    retain_original,
+                    R.canonical(interim["supersedesEvidenceRef"]).decode("utf-8")
+                    in resolutions,
+                )
+                self.assertEqual(rejected, derive_phase_disposition(authority, self.pubkeys))
 
     def test_non_finite_timestamps_and_non_ascii_or_malformed_amounts_fail_closed(self):
         cases = (

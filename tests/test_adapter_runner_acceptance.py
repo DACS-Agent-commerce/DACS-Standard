@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -12,6 +13,11 @@ from scripts import validate_adapter_runner_acceptance as acceptance
 from scripts.validate_adapter_runner_acceptance import PACKET, PacketError, load, validate
 
 
+ROOT = Path(__file__).resolve().parents[1]
+FROZEN_DESCRIPTOR = (
+    ROOT / "conformance/interop/frozen/dacs-adapter-release-proposal-c799-v1.json"
+)
+CURRENT_DESCRIPTOR = ROOT / "conformance/interop/dacs-adapter-release-proposal-v1.json"
 VALIDATOR = PACKET.parents[2] / "scripts" / "validate_adapter_runner_acceptance.py"
 
 
@@ -46,6 +52,15 @@ class AdapterRunnerAcceptanceTests(unittest.TestCase):
 
     def test_committed_positive_report(self):
         validate(self.packet)
+
+    def test_historical_descriptor_is_frozen_separately_from_current_release(self):
+        self.assertEqual(
+            hashlib.sha256(FROZEN_DESCRIPTOR.read_bytes()).hexdigest(),
+            "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca",
+        )
+        self.assertNotEqual(
+            CURRENT_DESCRIPTOR.read_bytes(), FROZEN_DESCRIPTOR.read_bytes()
+        )
 
     def test_historical_descriptor_ignores_current_checkout_bytes(self):
         with tempfile.TemporaryDirectory() as directory:

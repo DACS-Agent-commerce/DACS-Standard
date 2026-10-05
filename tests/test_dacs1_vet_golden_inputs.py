@@ -6529,6 +6529,117 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     reconstruct_historical_once(ambiguous, self.document),
                 )
 
+    def test_verifier_identity_context_bytes_are_exact_but_claims_use_cf3(self):
+        case, evaluation = self._case_evaluation(
+            "vet-oneof-indeterminate-over-fail"
+        )
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
+        verifier = fixture_private_key("verifier")
+        expected = public_ref(verifier)
+        qualified = expected + "?purpose=vet"
+        self.assertEqual(parse_ref(expected), parse_ref(qualified))
+        self.assertNotEqual(expected, qualified)
+
+        changed = copy.deepcopy(evaluation)
+        value = changed["input"]
+        authority = value["authority"]
+        identity = authority["vetInput"]["verifierIdentity"]
+        self.assertEqual(expected, identity["presentedBy"])
+        self.assertEqual(expected, identity["claims"][0]["ref"])
+        identity["presentedBy"] = qualified
+        authority["vetInput"]["verifierIdentity"] = resign_bundle(
+            identity, verifier, expected
+        )
+        self.assertTrue(verify_bundle(authority["vetInput"]["verifierIdentity"]))
+
+        # The same key and valid signature do not substitute for the exact
+        # verifier identity selected by the original authenticated context.
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        invocation = self.document["trustedContext"]["vetInvocations"][
+            authority["invocation"]
+        ]
+        self.assertIsNone(runtime.admit_verifier_identity(
+            authority, authority["vetInput"]["verifierIdentity"]
+        ))
+        self.assertTrue(runtime.nonce_ledger.consumed(
+            invocation["verifierIdentityChallengeId"]
+        ))
+        rejected = {
+            "decision": "error",
+            "reasons": ["aggregation authority invalid"],
+        }
+        self.assertEqual(rejected, execute_once(changed, self.document))
+
+        # The composite signer and record-ref signer must also retain the
+        # exact context-selected bytes. Qualifying both keeps them mutually
+        # consistent, signed by the same key, and receipt/hash-bound, so a
+        # CF-3-only comparison at this production boundary would wrongly pass.
+        substituted_signers = copy.deepcopy(evaluation)
+        substituted_value = substituted_signers["input"]
+        record = substituted_value["record"]
+        record_ref = substituted_value["recordRef"]
+        self.assertEqual(expected, record["signature"]["signer"])
+        self.assertEqual(expected, record_ref["signer"])
+        record["signature"]["signer"] = qualified
+        record_ref["signer"] = qualified
+        unsigned_record = {
+            name: item for name, item in record.items() if name != "signature"
+        }
+        self.assertTrue(valid_composite_record_shape(record))
+        self.assertTrue(well_formed_record_ref(record_ref))
+        self.assertEqual(hash_hex(unsigned_record), record_ref["contentHash"])
+        self.assertTrue(verify_signature(
+            qualified,
+            record["signature"]["value"],
+            (COMPOSITE_DOMAIN + record_ref["contentHash"]).encode("ascii"),
+        ))
+        self.assertEqual(rejected, execute_once(substituted_signers, self.document))
+        self.assertEqual(
+            rejected,
+            execute_external_once(
+                json.dumps(
+                    substituted_signers, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                self.document,
+            ),
+        )
+
+        # A fully consistent parameterised verifier remains valid. The exact
+        # presentedBy/context/composite signers agree, while the resolved
+        # claim and per-claim signature ref retain different CF-2 bytes.
+        document = copy.deepcopy(self.document)
+        trusted = document["trustedContext"]
+        qualified_invocation = trusted["vetInvocations"][authority["invocation"]]
+        qualified_invocation["expectedVerifier"] = qualified
+        for issuance in trusted["nonceIssuances"]:
+            if issuance["challengeId"] == qualified_invocation["challengeId"]:
+                issuance["expectedVerifier"] = qualified
+                issuance["issuedBy"] = qualified
+            elif issuance["challengeId"] == qualified_invocation[
+                "verifierIdentityChallengeId"
+            ]:
+                issuance["evaluatedParty"] = qualified
+        value["record"]["signature"]["signer"] = qualified
+        value["recordRef"]["signer"] = qualified
+        runtime = VetReferenceRuntime(trusted)
+        admitted = runtime.admit_verifier_identity(
+            authority, authority["vetInput"]["verifierIdentity"]
+        )
+        self.assertIsNotNone(admitted)
+        self.assertTrue(verify_bundle(
+            authority["vetInput"]["verifierIdentity"], admitted
+        ))
+        self.assertEqual(case["expectedOutput"], execute_once(changed, document))
+        self.assertEqual(
+            case["expectedOutput"],
+            execute_external_once(
+                json.dumps(changed, sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8"
+                ),
+                document,
+            ),
+        )
+
     def _commit_extra(self, value, document, scheme, mutate_artifact):
         """Commit one more authenticated result derived from a committed one."""
 
@@ -7889,6 +8000,42 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         self.assertEqual(
             ("error", ["invalid identity bundle"]),
             self._direct_outcome(missing_signer_membership, self.document),
+        )
+
+    def test_authentic_member_and_outsider_signatures_reject_direct_and_external(self):
+        _, control = self._case_evaluation("vet-control-key-presentation-accept")
+        self.assertIs(True, verify_bundle(control["input"]["bundle"]))
+        self.assertEqual(("pass", []), self._direct_outcome(control, self.document))
+        self.assertEqual(
+            "pass", execute_external_once(json.dumps(control).encode(), self.document)
+        )
+
+        candidate = copy.deepcopy(control)
+        bundle = candidate["input"]["bundle"]
+        outsider = fixture_private_key("bundle-absent-signer-mixed")
+        outsider_ref = public_ref(outsider)
+        unsigned = {key: value for key, value in bundle.items() if key != "presentation"}
+        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+        bundle["presentation"]["signatures"].append({
+            "ref": outsider_ref,
+            "signature": b64url_encode(outsider.sign(payload)),
+        })
+        claims = {parse_ref(item["ref"]) for item in bundle["claims"]}
+        signatures = bundle["presentation"]["signatures"]
+        self.assertEqual(2, len(signatures))
+        self.assertIn(parse_ref(signatures[0]["ref"]), claims)
+        self.assertNotIn(parse_ref(outsider_ref), claims)
+        for signature in signatures:
+            self.assertTrue(verify_signature(
+                signature["ref"], signature["signature"], payload
+            ))
+        self.assertIs(False, verify_bundle(bundle))
+        self.assertEqual(
+            ("error", ["invalid identity bundle"]),
+            self._direct_outcome(candidate, self.document),
+        )
+        self.assertEqual(
+            "error", execute_external_once(json.dumps(candidate).encode(), self.document)
         )
 
     def test_authenticated_absent_presenter_is_fail_in_current_and_historical_aggregate(self):

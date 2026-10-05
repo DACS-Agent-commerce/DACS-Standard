@@ -193,11 +193,26 @@ class VetAdmission:
     expected_verifier: str
     phase_orchestrator: str
     trusted_now: int
+    challenge_issued_at: int
     registry_available: bool
     registry_authenticated: bool
     bundle_available: bool
     requirement_hash: str
     bundle_input_hash: str
+
+
+@dataclass(frozen=True)
+class UnavailableBundleDiagnostic:
+    """Non-authorizing CVR context; it never consumes or projects a nonce."""
+
+    expected_verifier: str
+    job_id: str
+    evaluated_party: str
+    trusted_now: int
+    requirement_hash: str
+    registry_available: bool
+    registry_authenticated: bool
+    bundle_available: bool = False
 
 
 class PresenceEvaluationRuntime:
@@ -271,7 +286,7 @@ class PresenceEvaluationRuntime:
             return None
         return context
 
-    def admit(self, authority):
+    def admit(self, authority, bundle):
         if (
             not isinstance(authority, dict)
             or set(authority) != {"kind", "invocation", "nonce"}
@@ -285,14 +300,17 @@ class PresenceEvaluationRuntime:
         if context is None:
             return None
         try:
+            # SN-4 consumes the nonce conveyed by the candidate presentation,
+            # not a caller-projected copy in its invocation wrapper.
             issuance = self.nonce_ledger.consume(
-                context["challengeId"], authority.get("nonce"),
+                context["challengeId"], presentation_nonce(bundle),
                 context["trustedNow"],
             )
         except NonceRejected:
             return None
         if (
-            issuance.job_id != context["jobId"]
+            authority.get("nonce") != issuance.nonce
+            or issuance.job_id != context["jobId"]
             or issuance.actor != context["actor"]
             or issuance.evaluated_party != context["evaluatedParty"]
             or issuance.phase_index != context["phaseIndex"]
@@ -314,6 +332,7 @@ class PresenceEvaluationRuntime:
             context["expectedVerifier"],
             context["phaseOrchestrator"],
             context["trustedNow"],
+            issuance.issued_at,
             context["registryAvailable"],
             context["registryAuthenticated"],
             context["bundleAvailable"],
@@ -1187,7 +1206,8 @@ def admit_fixture_input(vector, trusted_context, runtime):
     ):
         return None
     admission = runtime.admit(
-        vector.get("authority") if isinstance(vector, dict) else None
+        vector.get("authority") if isinstance(vector, dict) else None,
+        vector.get("bundle") if isinstance(vector, dict) else None,
     )
     if admission is None:
         return None
@@ -1204,6 +1224,10 @@ def evaluate(vector, trusted_context, runtime):
     decision = _reconstruct_admitted(vector, trusted_context, admission)
     if decision != "pass":
         return decision
+    # Historical reconstruction is diagnostic. A record signed before the
+    # verifier issued this consumed challenge cannot authorize current use.
+    if vector["compositeRecord"]["generatedAt"] < admission.challenge_issued_at:
+        return "error"
     # All artifacts have passed signature/reference/phase-input checks above.
     # A historical pass alone cannot authorize current reuse or progression.
     claims = canonical_claims(vector["bundle"])
@@ -1231,6 +1255,31 @@ def reconstruct_fixture_once(vector, trusted_context, runtime=None):
             runtime = PresenceEvaluationRuntime(trusted_context)
     except (TypeError, ValueError):
         return "error"
+    if (
+        not isinstance(runtime, PresenceEvaluationRuntime)
+        or runtime.trusted_context is not trusted_context
+    ):
+        return "error"
+    if isinstance(vector, dict) and vector.get("bundle") is None:
+        authority = vector.get("authority")
+        if (
+            isinstance(authority, dict)
+            and set(authority) == {"kind", "invocation", "nonce"}
+            and authority.get("kind") == "vet-invocation"
+            and isinstance(authority.get("invocation"), str)
+        ):
+            context = runtime._trusted_invocation(authority["invocation"])
+            if context is not None and context["bundleAvailable"] is False:
+                # Standalone CVR reliance can diagnose exact-bundle
+                # unavailability, but cannot admit a new session attempt:
+                # there are no presentation bytes from which to extract SN-4.
+                diagnostic = UnavailableBundleDiagnostic(
+                    context["expectedVerifier"], context["jobId"],
+                    context["evaluatedParty"], context["trustedNow"],
+                    context["requirementHash"], context["registryAvailable"],
+                    context["registryAuthenticated"],
+                )
+                return _reconstruct_admitted(vector, trusted_context, diagnostic)
     admission = admit_fixture_input(vector, trusted_context, runtime)
     if admission is None:
         return "error"
@@ -1383,7 +1432,10 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             name = vector["name"]
             if vector["bundle"] is not None:
                 self.assertEqual(
-                    name != "invalid-bundle-presentation-rejected",
+                    name not in {
+                        "invalid-bundle-presentation-rejected",
+                        "authentic-bundle-signature-without-claim-membership",
+                    },
                     verify_bundle(vector["bundle"]),
                     name,
                 )
@@ -1446,6 +1498,46 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         unsigned_mutation = signed(0)
         unsigned_mutation["presentedAt"] = 0.5
         self.assertFalse(verify_bundle(unsigned_mutation))
+
+    def test_authentic_outsider_signature_is_a_structural_error(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        control = by_name["required-presence-key-with-issued-at"]
+        vector = by_name["authentic-bundle-signature-without-claim-membership"]
+        context = self.document["trustedContext"]
+        self.assertTrue(verify_bundle(control["bundle"]))
+        self.assertEqual("pass", reconstruct_fixture_once(control, context))
+        self.assertEqual(
+            "pass", evaluate(control, context, PresenceEvaluationRuntime(context))
+        )
+
+        # The negative has an authentic included-presenter signature AND an
+        # authentic outsider signature over the same complete signed bytes.
+        # Nothing about signature validity or presenter control masks BR-2.
+        bundle = vector["bundle"]
+        unsigned = {key: value for key, value in bundle.items() if key != "presentation"}
+        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+        claims = canonical_claims(bundle)
+        identities = {parsed.identity for _, parsed in claims}
+        self.assertEqual(2, len(bundle["presentation"]["signatures"]))
+        signer_identities = []
+        for signature in bundle["presentation"]["signatures"]:
+            signer = parse_claim_reference(
+                signature["ref"], registered_schemes=KNOWN_SCHEMES
+            )
+            self.assertEqual("key", signer.scheme)
+            Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.identifier)).verify(
+                b64url_decode(signature["signature"]), payload
+            )
+            signer_identities.append(signer.identity)
+        self.assertIn(signer_identities[0], identities)
+        self.assertNotIn(signer_identities[1], identities)
+        self.assertTrue(exact_presenter_key_controlled(vector, claims))
+        self.assertEqual("pass", vector["compositeRecord"]["overallDecision"])
+        self.assertFalse(verify_bundle(bundle))
+        self.assertEqual("error", reconstruct_fixture_once(vector, context))
+        self.assertEqual(
+            "error", evaluate(vector, context, PresenceEvaluationRuntime(context))
+        )
 
     def test_every_result_reference_uses_the_core_b2_signed_scope(self):
         resolved = [
@@ -1615,6 +1707,43 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         presence = by_name[
             "historical-selector-presence-arm-is-not-rerun-at-trusted-now"
         ]
+        context = self.document["trustedContext"]
+        claims = canonical_claims(verified["bundle"])
+        refs = {canonical_bytes(ref) for ref in record_refs(verified["compositeRecord"])}
+        resolved = bind_resolved_results(verified, verified["compositeRecord"])
+        historical = selector_authorization_facts(
+            verified, claims, verified["compositeRecord"]["generatedAt"],
+            refs, resolved, context,
+        )
+        self.assertTrue(historical["controlled"])
+        self.assertTrue(historical["verified_selector"])
+        self.assertFalse(historical["presence_selector"])
+        self.assertEqual([], verified["requirement"]["required"])
+        group = verified["requirement"]["oneOf"][0]
+        self.assertEqual(
+            ["fail", "pass"],
+            [classify_member(
+                claims, member, verified["evaluatedAt"], refs, resolved,
+                context, current_reuse=True,
+            ) for member in group],
+        )
+        self.assertTrue(exact_presenter_key_controlled(verified, claims))
+
+        # Inclusive expiry is an accepting control, followed by the first
+        # invalid millisecond. The DID arm still satisfies the members at
+        # both times; only exact verified-selector requalification changes.
+        expiry = verified["resolvedResults"][0]["artifact"]["validUntil"]
+        for trusted_now, expected in ((expiry, "pass"), (expiry + 1, "fail")):
+            with self.subTest(trusted_now=trusted_now):
+                boundary = copy.deepcopy(context)
+                boundary["vetInvocations"][verified["authority"]["invocation"]][
+                    "trustedNow"
+                ] = trusted_now
+                self.assertEqual("pass", reconstruct_fixture_once(verified, boundary))
+                self.assertEqual(
+                    expected,
+                    evaluate(verified, boundary, PresenceEvaluationRuntime(boundary)),
+                )
         for vector in (verified, presence):
             self.assertEqual(
                 "pass",
@@ -1689,6 +1818,40 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                 self.document["trustedContext"],
             )
         )
+
+    def test_missing_bundle_diagnostic_never_admits_active_use(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        unavailable = by_name["exact-bundle-unavailable-is-indeterminate"]
+        context = self.document["trustedContext"]
+        challenge = context["vetInvocations"][unavailable["authority"]["invocation"]]["challengeId"]
+        runtime = PresenceEvaluationRuntime(context)
+        self.assertEqual("indeterminate", reconstruct_fixture_once(unavailable, context, runtime))
+        self.assertFalse(runtime.nonce_ledger.consumed(challenge))
+        self.assertEqual("error", evaluate(unavailable, context, runtime))
+        self.assertFalse(runtime.nonce_ledger.consumed(challenge))
+
+        # Signed record, exact requirement and authenticated registry precede
+        # the non-authorizing unavailable-bundle disposition.
+        self.assertEqual("error", reconstruct_fixture_once(
+            by_name["invalid-composite-still-rejects-without-bundle"], context
+        ))
+        self.assertEqual("error", reconstruct_fixture_once(
+            by_name["invalid-registry-precedes-unavailable-bundle"], context
+        ))
+        wrong_requirement = copy.deepcopy(unavailable)
+        wrong_requirement["requirement"] = {
+            "requirementVersion": "1", "required": []
+        }
+        self.assertEqual("error", reconstruct_fixture_once(wrong_requirement, context))
+        mismatched_context = copy.deepcopy(context)
+        self.assertEqual("error", reconstruct_fixture_once(
+            unavailable, context, PresenceEvaluationRuntime(mismatched_context)
+        ))
+        available_context = copy.deepcopy(context)
+        available_context["vetInvocations"][unavailable["authority"]["invocation"]][
+            "bundleAvailable"
+        ] = True
+        self.assertEqual("error", reconstruct_fixture_once(unavailable, available_context))
 
     def test_verified_predicates_use_authenticated_result_data(self):
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}
@@ -1855,6 +2018,49 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                 self.assertEqual("pass", evaluate(vector, context, PresenceEvaluationRuntime(context)))
             if vector["bundleAvailable"] is False:
                 self.assertEqual("error", evaluate(vector, context, PresenceEvaluationRuntime(context)))
+
+    def test_active_acceptance_requires_record_after_verifier_challenge_issue(self):
+        vector = next(
+            value for value in self.document["vectors"]
+            if value["name"] == "historical-selector-presence-arm-is-not-rerun-at-trusted-now"
+        )
+        generated_at = vector["compositeRecord"]["generatedAt"]
+        invocation = vector["authority"]["invocation"]
+        challenge = self.document["trustedContext"]["vetInvocations"][invocation]["challengeId"]
+        for issued_at, expected in ((generated_at, "pass"), (generated_at + 1, "error")):
+            with self.subTest(challenge_issued_at=issued_at):
+                context = copy.deepcopy(self.document["trustedContext"])
+                issuance = next(
+                    item for item in context["nonceIssuances"]
+                    if item["challengeId"] == challenge
+                )
+                issuance["issuedAt"] = issued_at
+                runtime = PresenceEvaluationRuntime(context)
+                self.assertEqual("pass", reconstruct_fixture_once(vector, context))
+                self.assertEqual(expected, evaluate(vector, context, runtime))
+                self.assertTrue(runtime.nonce_ledger.consumed(challenge))
+
+    def test_presentation_nonce_consumption_ignores_caller_projection(self):
+        vector = next(
+            value for value in self.document["vectors"]
+            if value["name"] == "required-presence-key-with-issued-at"
+        )
+        context = self.document["trustedContext"]
+        challenge = context["vetInvocations"][vector["authority"]["invocation"]]["challengeId"]
+        self.assertTrue(verify_bundle(vector["bundle"]))
+        self.assertEqual(vector["authority"]["nonce"], presentation_nonce(vector["bundle"]))
+        projected = copy.deepcopy(vector)
+        projected["authority"]["nonce"] = "00" * 16
+        self.assertNotEqual(projected["authority"]["nonce"], presentation_nonce(projected["bundle"]))
+        for entrypoint in (evaluate, reconstruct_fixture_once):
+            with self.subTest(entrypoint=entrypoint.__name__):
+                self.assertEqual(
+                    "pass", entrypoint(vector, context, PresenceEvaluationRuntime(context))
+                )
+                runtime = PresenceEvaluationRuntime(context)
+                self.assertEqual("error", entrypoint(projected, context, runtime))
+                self.assertTrue(runtime.nonce_ledger.consumed(challenge))
+                self.assertEqual("error", entrypoint(vector, context, runtime))
 
     def test_required_composite_collections_cannot_default_to_empty(self):
         record = self.document["vectors"][0]["compositeRecord"]

@@ -323,6 +323,27 @@ def build_vectors() -> list[dict]:
         requirement([presence("key")]),
         note="PCR-2 does not require issuedAt in presence mode",
     ))
+    outsider_signature = case(
+        "authentic-bundle-signature-without-claim-membership",
+        "error",
+        signed_bundle([base_key]),
+        requirement([presence("key")]),
+        overall="pass",
+        note="BR-2 rejects an authentic extra signature by a key absent from claims; the included presenter's own signature and all semantic predicates still pass",
+    )
+    # Keep the presenter's own proof intact so removing only the membership
+    # guard admits a complete pass, rather than hitting a later control gate.
+    unsigned_bundle = {
+        field: value for field, value in outsider_signature["bundle"].items()
+        if field != "presentation"
+    }
+    outsider_signature["bundle"]["presentation"]["signatures"].append({
+        "ref": SECOND_REF,
+        "signature": b64url(SECOND_PRESENTER.sign(
+            (BUNDLE_DOMAIN + hash_hex(unsigned_bundle)).encode("ascii")
+        )),
+    })
+    vectors.append(outsider_signature)
     vectors.append(case(
         "required-presence-missing",
         "fail",
@@ -943,13 +964,16 @@ def build_vectors() -> list[dict]:
                 PRESENTER_REF,
                 issuedAt=NOW - 500_000,
                 verifiedBy=selector_expiring_ref,
-            )
+            ),
+            claim(DID_REF, issuedAt=NOW - 500_000),
         ]),
-        requirement([verified("key")], selector="key"),
+        requirement(
+            [], one_of=[[verified("key"), presence("did")]], selector="key"
+        ),
         refs=[selector_expiring_ref],
         resolved=[(selector_expiring_ref, selector_expiring_vr)],
         generated_at=NOW - 60_000,
-        note="Historical selector verification passes at generatedAt but expires before trustedNow",
+        note="Historical verified-selector authorization passes at generatedAt but expires before trustedNow; a distinct DID presence arm keeps the oneOf member group satisfied, isolating current selector requalification",
     ))
     vectors.append(case(
         "historical-selector-presence-arm-is-not-rerun-at-trusted-now",

@@ -642,6 +642,54 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_review_guard_witnesses.py",
         "test": "ReviewGuardWitnessTests.test_absent_presenter_semantic_boundary_is_load_bearing",
     },
+    "pr366-presence-current-selector-expiry": {
+        "file": "tests/test_presence_only_claim_vectors.py",
+        "test": "PresenceOnlyClaimVectorTests.test_selector_current_time_preserves_only_the_historical_presence_arm",
+    },
+    "pr366-presence-current-selector-guard-witness": {
+        "file": "tests/test_review_guard_witnesses.py",
+        "test": "ReviewGuardWitnessTests.test_presence_pack_current_selector_requalification_is_load_bearing",
+    },
+    "pr366-presence-outsider-signature-membership": {
+        "file": "tests/test_presence_only_claim_vectors.py",
+        "test": "PresenceOnlyClaimVectorTests.test_authentic_outsider_signature_is_a_structural_error",
+    },
+    "pr366-presence-signer-membership-guard-witness": {
+        "file": "tests/test_review_guard_witnesses.py",
+        "test": "ReviewGuardWitnessTests.test_presence_pack_signer_membership_is_load_bearing",
+    },
+    "pr366-presence-challenge-issue-time": {
+        "file": "tests/test_presence_only_claim_vectors.py",
+        "test": "PresenceOnlyClaimVectorTests.test_active_acceptance_requires_record_after_verifier_challenge_issue",
+    },
+    "pr366-presence-challenge-issue-time-guard-witness": {
+        "file": "tests/test_review_guard_witnesses.py",
+        "test": "ReviewGuardWitnessTests.test_presence_pack_challenge_issue_time_is_load_bearing",
+    },
+    "pr366-main-vet-mixed-signer-membership": {
+        "file": "tests/test_dacs1_vet_golden_inputs.py",
+        "test": "Dacs1VetGoldenInputTests.test_authentic_member_and_outsider_signatures_reject_direct_and_external",
+    },
+    "pr366-main-vet-mixed-signer-guard-witness": {
+        "file": "tests/test_review_guard_witnesses.py",
+        "test": "ReviewGuardWitnessTests.test_main_vet_all_signers_claim_membership_is_load_bearing",
+    },
+    "pr366-presence-signed-nonce-consumption": {
+        "file": "tests/test_presence_only_claim_vectors.py",
+        "test": "PresenceOnlyClaimVectorTests.test_presentation_nonce_consumption_ignores_caller_projection",
+    },
+    "pr366-presence-signed-nonce-consumption-guard-witness": {
+        "file": "tests/test_review_guard_witnesses.py",
+        "test": "ReviewGuardWitnessTests.test_presence_pack_signed_nonce_consumption_is_load_bearing",
+    },
+    "pr366-missing-bundle-nonauthorizing-diagnostic": {
+        "file": "tests/test_presence_only_claim_vectors.py",
+        "test": "PresenceOnlyClaimVectorTests.test_missing_bundle_diagnostic_never_admits_active_use",
+    },
+    "pr366-missing-bundle-active-admission-guard-witness": {
+        "file": "tests/test_review_guard_witnesses.py",
+        "test": "ReviewGuardWitnessTests.test_missing_bundle_diagnostic_is_not_active_admission",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

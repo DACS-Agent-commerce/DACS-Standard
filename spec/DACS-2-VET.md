@@ -1412,9 +1412,14 @@ state and are not fields of either signed `IdentityBundle`.
 
 The `verifierIdentity` presentation MUST prove control of the exact identity
 independently selected by the authenticated invocation context, using an
-already-supported DACS-1 presentation/control mechanism; its own `presentedBy`
-and exact resolved claim MUST be CF-3-equal to that expected identity. When the
-expected identity is `key:`, that exact key itself MUST contribute a valid
+already-supported DACS-1 presentation/control mechanism. Its `presentedBy`
+MUST have the same CF-2 canonical bytes as that independently selected expected
+identity. The single exact claim resolved from `presentedBy` MUST be CF-3-equal
+to it under DACS-1 §6.3.2; that claim's advisory parameters, and those of a
+per-claim presentation signature's `ref`, need not be byte-identical to
+`presentedBy`. This per-invocation byte binding does not change CF-3 party
+identity for ordinary matching, reputation, or replay defence. When the
+expected identity is `key:`, that same CF-3 key itself MUST contribute a valid
 bundle-presentation signature over the admitted bytes. A signature by another
 included claim is only a co-signature and MUST NOT lend control to the expected
 key. When an orchestrator is the delegated expected verifier, the same rule
@@ -1457,8 +1462,10 @@ writer, and the resolved record receipt/binding when produced.  The expected
 verifier is selected explicitly from that context: it is the counterparty, or
 the orchestrator acting on its behalf as CORE §B.8 permits.  It is never
 selected from `verifierIdentity.presentedBy`.  The independently authenticated
-expected identity MUST equal `verifierIdentity.presentedBy`, the composite signature
-signer and `recordRef.signer`; the presentation MUST additionally prove exact
+expected identity MUST have the same CF-2 canonical bytes as
+`verifierIdentity.presentedBy`, the composite signature signer and
+`recordRef.signer`; CF-3-equal references with different advisory parameters
+cannot substitute at these production bindings. The presentation MUST additionally prove exact
 control as §7.7.3 requires, and the composite signature and receipt are then
 verified normally. VerifyResult signer/evidence authority remains the
 recipe/result authority and is resolved independently.  A caller-deserialised

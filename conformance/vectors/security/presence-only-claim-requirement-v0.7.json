@@ -27,6 +27,10 @@
         "jobId": "2Q5GCESS17VXFGKXGTHS319S0M",
         "recipeRegistryVersion": 1
       },
+      "0TFDGA342ZYV9D2E1570X0ZJDD": {
+        "jobId": "0TFDGA342ZYV9D2E1570X0ZJDD",
+        "recipeRegistryVersion": 1
+      },
       "5QVF05DDD4MVBHSTJD5B4Y92C4": {
         "jobId": "5QVF05DDD4MVBHSTJD5B4Y92C4",
         "recipeRegistryVersion": 1
@@ -318,6 +322,30 @@
         "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
         "phaseOrchestrator": "key:940b48cfeb5c12a1e52ed6a014774fd6b55da62d786abb5827af505532c08538",
         "challengeId": "pcr-required-presence-key-without-issued-at",
+        "trustedNow": 1900000000000,
+        "registryAvailable": true,
+        "registryAuthenticated": true,
+        "bundleAvailable": true
+      },
+      "authentic-bundle-signature-without-claim-membership": {
+        "jobId": "0TFDGA342ZYV9D2E1570X0ZJDD",
+        "sessionContext": {
+          "jobId": "0TFDGA342ZYV9D2E1570X0ZJDD",
+          "recipeRegistryVersion": 1
+        },
+        "recipeRegistryVersion": 1,
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "bundleInputHash": "3d4fe8c9bc37f85ed917b03a43748a077e29b8a60744a52a19c4331fadcee8a4",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 1,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "phaseOrchestrator": "key:940b48cfeb5c12a1e52ed6a014774fd6b55da62d786abb5827af505532c08538",
+        "challengeId": "pcr-authentic-bundle-signature-without-claim-membership",
         "trustedNow": 1900000000000,
         "registryAvailable": true,
         "registryAuthenticated": true,
@@ -1506,8 +1534,8 @@
           "recipeRegistryVersion": 1
         },
         "recipeRegistryVersion": 1,
-        "requirementHash": "53ee6ccf4fcc52bda99bfd8f04da664ba944e67a37bfd2328572048c0ca2b982",
-        "bundleInputHash": "10f72f2a211715ee3d41243da7d4fd1617abfbd4e58827a23df2f6ae29f3a791",
+        "requirementHash": "4f4c4b6f6cf54a7072a97e12b50adb4fba458772f2e404f338f1f5d59624c916",
+        "bundleInputHash": "c5ba1461594649dfda7f51b9dd863b62672309de9437053891572f643f1570c5",
         "sessionState": "vet-pending",
         "phaseKind": "vet-credentials",
         "phaseIndex": 1,
@@ -1710,6 +1738,19 @@
         "challengeId": "pcr-required-presence-key-without-issued-at",
         "nonce": "88649fda978a88205017afa9a4f14bb1",
         "jobId": "2Q5GCESS17VXFGKXGTHS319S0M",
+        "actor": "buyer",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "phaseIndex": 1,
+        "attempt": 1,
+        "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "issuedBy": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "issuedAt": 1899999940000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "pcr-authentic-bundle-signature-without-claim-membership",
+        "nonce": "2b26d2c6c381014cee5bb38d27848cf3",
+        "jobId": "0TFDGA342ZYV9D2E1570X0ZJDD",
         "actor": "buyer",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
         "phaseIndex": 1,
@@ -2462,8 +2503,8 @@
       }
     ]
   },
-  "count": 59,
-  "hash": "371a83a5f776aaee4efdd2d5be2ac1c49ee9d20c9675addd3d6473c8ae5087f4",
+  "count": 60,
+  "hash": "ab546d0d39e09e4bd4b43b29a34e041e88b47a200c882446556108a15577ffec",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
@@ -2584,6 +2625,72 @@
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
           "value": "f8tCicvLh-P6gUrqRLf11TdPVWYnTyfH56MHxcxP-ipjQDcbMElDwSO8EC3oVMVMlYaSQqgTSJlkvCwpKfNHAw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "authentic-bundle-signature-without-claim-membership",
+      "expected": "error",
+      "note": "BR-2 rejects an authentic extra signature by a key absent from claims; the included presenter's own signature and all semantic predicates still pass",
+      "evaluatedAt": 1900000000000,
+      "authority": {
+        "kind": "vet-invocation",
+        "invocation": "authentic-bundle-signature-without-claim-membership",
+        "nonce": "2b26d2c6c381014cee5bb38d27848cf3"
+      },
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "f5ISoDPGvyfmr8IcdRLslsUg0VljiHjSHf6zYnL4hIF-57_riaVrfcB20FfDw-xYS5gtdt4jhP4oxh0YGZg3DA"
+            },
+            {
+              "ref": "key:5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+              "signature": "HrMmrl6HSUhfb9wRvdm9Zx77S4Ks7fOowB3VcdX6TwDsbQ9ZwKKdAQHltXcag_nu2pcD-9kAvQvqXeqsDaUJBw"
+            }
+          ]
+        },
+        "sessionNonce": "2b26d2c6c381014cee5bb38d27848cf3"
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "0TFDGA342ZYV9D2E1570X0ZJDD",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "a1c2c8ab507018774b5fabf95dbf460409e012c9179da6756d8c5a184685ce6d",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "cGRmCuKgq1-v5X-IaFVT-tlRub0m08_wMm9mIBSLfTV8N9pkhMT6k-HcMQY3oEyMcmKq6cxaLaTLAbXADhiwDw"
         }
       },
       "resolvedResults": []
@@ -6519,7 +6626,7 @@
     {
       "name": "selector-verified-status-expires-after-historical-decision",
       "expected": "pass",
-      "note": "Historical selector verification passes at generatedAt but expires before trustedNow",
+      "note": "Historical verified-selector authorization passes at generatedAt but expires before trustedNow; a distinct DID presence arm keeps the oneOf member group satisfied, isolating current selector requalification",
       "evaluatedAt": 1900000000000,
       "authority": {
         "kind": "vet-invocation",
@@ -6545,6 +6652,10 @@
               "contentHash": "1bf969251b8356c05de46025e8aaa5ef4aad0a1963852b6037ab310f48bd94a5",
               "recipeVersion": 1
             }
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "issuedAt": 1899999500000
           }
         ],
         "presentation": {
@@ -6552,7 +6663,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "407I27QHBsIK3654GYiPuVgUjCqqxj4q1pj6juqOYQUuoyfLZ5DNqiUdPlYu48A_mjdXkJf3s1z1to7qr0RACA"
+              "signature": "mD_4MOmEB9Acsni4zjumaG_iEZD004puyAurJqfY58yJXZHnj5oC23EW1awzoJUZ5oM9MD77fms91BMB1dzHDA"
             }
           ]
         },
@@ -6560,11 +6671,18 @@
       },
       "requirement": {
         "requirementVersion": "1",
-        "required": [
-          {
-            "scheme": "key",
-            "verificationRequired": true
-          }
+        "required": [],
+        "oneOf": [
+          [
+            {
+              "scheme": "key",
+              "verificationRequired": true
+            },
+            {
+              "scheme": "did",
+              "verificationRequired": false
+            }
+          ]
         ],
         "primaryClaimSelector": "key"
       },
@@ -6572,8 +6690,8 @@
         "recordVersion": "1",
         "jobId": "7DFGMYD3YJHBA32TEJ62VK7ZP3",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "83365b7a35213d6621f91372c287fb195828ca205779318d203ba9d592f265c8",
-        "requirementHash": "53ee6ccf4fcc52bda99bfd8f04da664ba944e67a37bfd2328572048c0ca2b982",
+        "bundleHash": "90c15136f13504a7a63c906af5a614c716906a71f37335a10835eb096df46181",
+        "requirementHash": "4f4c4b6f6cf54a7072a97e12b50adb4fba458772f2e404f338f1f5d59624c916",
         "freshness": [],
         "supplementary": [],
         "dealSpecific": [
@@ -6591,7 +6709,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "UkWnp617neTm9iA6Obfr3QYfkEs4UQJopeFi19ftzuI72GgFE38aznRebYLG2cXTyO_tkwDXlSkEhmG1hfjdDQ"
+          "value": "uBWLGL_ZmZ8ARBLt54wMidpea6Y8a88FLGsBXTmE5ONiaK6TryK2IhjyyWbd5voZDnqgSMYLsk3PKI8ijsaPAw"
         }
       },
       "resolvedResults": [

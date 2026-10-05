@@ -253,7 +253,7 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 
 `signed_bytes := "dacs-bundle-presentation:v1:" || bundle_hash`
 
-- **per-claim** — each per-claim signature signs `signed_bytes` (not the raw bundle hash).
+- **per-claim** — each per-claim signature signs `signed_bytes` (not the raw bundle hash). Every signature's `ref` MUST match the canonical `(Scheme, Identifier)` of a reference in this bundle's `claims` under CORE CF-3; a valid signature by an outsider does not verify the presentation, even when another listed claim's signature verifies. Reference parameters need not be byte-identical, and this rule does not require every claim to have its own signature.
 - **session-key** — the session key signs `signed_bytes`; if `rootBinding` is set, the root key additionally signs `"dacs-session-binding:v1:" || session_key || bundle_hash`.
 - **sr1-root** — the SR-1 aggregate signature signs `signed_bytes`; verifiers reconstruct the SR-1 aggregate from the `rootClaim`'s sub-identity set and verify against `signed_bytes`.
 - **siwd** — the wallet signs the SIWD message, which MUST carry `signed_bytes` as an EIP-4361 `Resources` entry in the exact form `dacs:<hex>`:

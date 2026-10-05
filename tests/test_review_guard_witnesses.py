@@ -519,6 +519,162 @@ class ReviewGuardWitnessTests(unittest.TestCase):
             mutated = self._run_test(test_class, selected)
         self._assert_mutation_caught(mutated)
 
+    def test_presence_pack_current_selector_requalification_is_load_bearing(self):
+        selected = "test_selector_current_time_preserves_only_the_historical_presence_arm"
+        test_class = presence.PresenceOnlyClaimVectorTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        # Wrong implementation: trust historical verified-selector evidence
+        # after its expiry. A different oneOf member still passes currently,
+        # so this test reaches the selector guard instead of a member failure.
+        with mock.patch.object(
+            presence, "current_selected_claim_is_authorized", return_value=True
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "'fail' != 'pass'")
+
+    def test_presence_pack_challenge_issue_time_is_load_bearing(self):
+        selected = "test_active_acceptance_requires_record_after_verifier_challenge_issue"
+        test_class = presence.PresenceOnlyClaimVectorTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        tree = ast.parse(Path(presence.__file__).read_text(encoding="utf-8"))
+        function = copy.deepcopy(next(
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "evaluate"
+        ))
+        guards = [
+            node for node in ast.walk(function)
+            if isinstance(node, ast.If)
+            and ast.unparse(node.test)
+            == "vector['compositeRecord']['generatedAt'] < admission.challenge_issued_at"
+        ]
+        self.assertEqual(1, len(guards), "issue-time guard changed; update this witness")
+        guards[0].test = ast.Constant(value=False)
+        module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+        namespace = dict(vars(presence))
+        exec(compile(module, str(presence.__file__), "exec"), namespace)
+        with mock.patch.object(presence, "evaluate", namespace["evaluate"]):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "'error' != 'pass'")
+
+    def test_presence_pack_signed_nonce_consumption_is_load_bearing(self):
+        selected = "test_presentation_nonce_consumption_ignores_caller_projection"
+        test_class = presence.PresenceOnlyClaimVectorTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        tree = ast.parse(Path(presence.__file__).read_text(encoding="utf-8"))
+        runtime_class = next(
+            node for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "PresenceEvaluationRuntime"
+        )
+        function = copy.deepcopy(next(
+            node for node in runtime_class.body
+            if isinstance(node, ast.FunctionDef) and node.name == "admit"
+        ))
+        nonce_calls = [
+            node for node in ast.walk(function)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "presentation_nonce"
+        ]
+        self.assertEqual(1, len(nonce_calls), "nonce source changed; update this witness")
+        nonce_calls[0].func = ast.Attribute(
+            value=ast.Name(id="authority", ctx=ast.Load()), attr="get", ctx=ast.Load()
+        )
+        nonce_calls[0].args = [ast.Constant(value="nonce")]
+        module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+        namespace = dict(vars(presence))
+        exec(compile(module, str(presence.__file__), "exec"), namespace)
+        with mock.patch.object(
+            presence.PresenceEvaluationRuntime, "admit", namespace["admit"]
+        ):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "False is not true")
+
+    def test_missing_bundle_diagnostic_is_not_active_admission(self):
+        selected = "test_missing_bundle_diagnostic_never_admits_active_use"
+        test_class = presence.PresenceOnlyClaimVectorTests
+        self._assert_clean_control(self._run_test(test_class, selected))
+
+        real_evaluate = presence.evaluate
+
+        def wrong_active_fallback(vector, trusted_context, runtime):
+            if isinstance(vector, dict) and vector.get("bundle") is None:
+                return presence.reconstruct_fixture_once(vector, trusted_context, runtime)
+            return real_evaluate(vector, trusted_context, runtime)
+
+        # Wrong implementation: reuse the record-only audit diagnostic as
+        # production admission when exact presentation bytes are unavailable.
+        with mock.patch.object(presence, "evaluate", side_effect=wrong_active_fallback):
+            mutated = self._run_test(test_class, selected)
+        self._assert_mutation_caught(mutated, "'error' != 'indeterminate'")
+
+    def _presence_bundle_without_signer_membership(self):
+        """Omit only CF-3 membership in an isolated in-memory verifier."""
+        tree = ast.parse(Path(presence.__file__).read_text(encoding="utf-8"))
+        function = copy.deepcopy(next(
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "verify_bundle"
+        ))
+        guards = [
+            node for node in ast.walk(function)
+            if isinstance(node, ast.If)
+            and ast.unparse(node.test)
+            == "scheme != 'key' or parsed_signer.identity not in claim_identities"
+        ]
+        self.assertEqual(1, len(guards), "membership guard changed; update this witness")
+        guards[0].test = copy.deepcopy(guards[0].test.values[0])
+        module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+        namespace = dict(vars(presence))
+        exec(compile(module, str(presence.__file__), "exec"), namespace)
+        return namespace["verify_bundle"]
+
+    def test_presence_pack_signer_membership_is_load_bearing(self):
+        test_class = presence.PresenceOnlyClaimVectorTests
+        selected_tests = (
+            ("test_authentic_outsider_signature_is_a_structural_error", "True is not false"),
+            ("test_all_vectors_execute", "'error' != 'pass'"),
+        )
+        for selected, expected_fragment in selected_tests:
+            with self.subTest(test=selected):
+                self._assert_clean_control(self._run_test(test_class, selected))
+                # Signature, key-scheme, presenter-control and nonce guards
+                # remain unchanged. The signed pack must catch membership
+                # omission with a wrong verdict, not a crypto/setup error.
+                with mock.patch.object(
+                    presence, "verify_bundle", self._presence_bundle_without_signer_membership()
+                ):
+                    mutated = self._run_test(test_class, selected)
+                self._assert_mutation_caught(mutated, expected_fragment)
+
+    def test_main_vet_all_signers_claim_membership_is_load_bearing(self):
+        selected = "test_authentic_member_and_outsider_signatures_reject_direct_and_external"
+        self._assert_clean_control(self._run_vet_test(selected))
+
+        tree = ast.parse(Path(vet.__file__).read_text(encoding="utf-8"))
+        function = copy.deepcopy(next(
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "verify_bundle"
+        ))
+        aggregators = [
+            node.value.func for node in ast.walk(function)
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "signatures_valid"
+                    for target in node.targets)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "all"
+        ]
+        self.assertEqual(1, len(aggregators), "signer aggregation changed; update this witness")
+        aggregators[0].id = "any"
+        module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+        namespace = dict(vars(vet))
+        exec(compile(module, str(vet.__file__), "exec"), namespace)
+        with mock.patch.object(vet, "verify_bundle", namespace["verify_bundle"]):
+            mutated = self._run_vet_test(selected)
+        self._assert_mutation_caught(mutated, "False is not True")
+
     def test_absent_presenter_semantic_boundary_is_load_bearing(self):
         vet_test = "test_presented_by_must_resolve_to_a_signed_bundle_claim"
         presence_test = "test_presented_claim_uniqueness_is_order_independent"

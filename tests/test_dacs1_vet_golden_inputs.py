@@ -1439,11 +1439,14 @@ def verify_bundle(bundle, admission=None, *, registered_schemes=None):
             if isinstance(admission, VetAdmissionCapability)
             else KNOWN_SCHEMES if registered_schemes is None else registered_schemes
         )
-        canonical_presented = parse_ref(bundle.get("presentedBy"), schemes)
-        parsed_claims = [parse_ref(item.get("ref"), schemes) for item in claims]
+        # A well-formed presentedBy is required structurally, but whether it
+        # resolves to exactly one signed BundleClaim is a semantic BR-5/MA-3
+        # predicate.  Keeping that distinction lets an otherwise authenticated
+        # bundle produce fail instead of being misclassified as malformed.
+        parse_ref(bundle.get("presentedBy"), schemes)
+        for item in claims:
+            parse_ref(item.get("ref"), schemes)
     except (AttributeError, ValueError):
-        return False
-    if canonical_presented not in parsed_claims:
         return False
     presentation = bundle.get("presentation")
     if not isinstance(presentation, dict) or set(presentation) != {
@@ -7804,25 +7807,128 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             self._direct_outcome(selector_cosigned_only, self.document),
         )
 
-        missing = variant([cosigner_ref], presence_requirement)
-        bundle = missing["input"]["bundle"]
-        self.assertEqual(presented, bundle["presentedBy"])
-        self.assertEqual(
-            evaluation["input"]["bundle"]["sessionNonce"], bundle["sessionNonce"]
+        # Zero presenter matches is a semantic non-match once another included
+        # claim supplies a valid bundle signature.  Exercise every public
+        # direct operation and the exact received-JSON boundary with and
+        # without a selector.
+        for label, requirement, direct_expected in (
+            (
+                "no selector",
+                presence_requirement,
+                ("fail", ["presentedBy is uncontrolled"]),
+            ),
+            (
+                "selector",
+                selector_requirement,
+                (
+                    "fail",
+                    [
+                        "primaryClaimSelector is mismatched, uncontrolled, or unauthorized"
+                    ],
+                ),
+            ),
+        ):
+            with self.subTest(absent_presenter=label):
+                missing = variant(
+                    [cosigner_ref], requirement,
+                    signer=cosigner, signer_ref=cosigner_ref,
+                )
+                bundle = missing["input"]["bundle"]
+                self.assertEqual(presented, bundle["presentedBy"])
+                self.assertEqual(
+                    evaluation["input"]["bundle"]["sessionNonce"],
+                    bundle["sessionNonce"],
+                )
+                self.assertIs(True, verify_bundle(bundle))
+                self.assertIsNone(presented_claim(bundle))
+                self.assertEqual(
+                    direct_expected, self._direct_outcome(missing, self.document)
+                )
+                for operation, expected in (
+                    ("decision", "fail"),
+                    ("control-decision", "fail"),
+                    ("match", False),
+                ):
+                    with self.subTest(operation=operation):
+                        candidate = variant(
+                            [cosigner_ref], requirement, operation,
+                            signer=cosigner, signer_ref=cosigner_ref,
+                        )
+                        self.assertEqual(
+                            expected, execute_once(candidate, self.document)
+                        )
+                        raw = json.dumps(
+                            candidate, sort_keys=True, separators=(",", ":")
+                        ).encode("utf-8")
+                        self.assertEqual(
+                            expected, execute_external_once(raw, self.document)
+                        )
+
+        # Admission still consumes the issued nonce for the authenticated
+        # semantic failure.
+        missing = variant(
+            [cosigner_ref], presence_requirement,
+            signer=cosigner, signer_ref=cosigner_ref,
         )
-        self.assertIs(False, verify_bundle(bundle))
-        invalid = ("error", ["invalid identity bundle"])
-        self.assertEqual(invalid, self._direct_outcome(missing, self.document))
-        self.assertEqual(invalid, self._direct_outcome(
-            variant([cosigner_ref], selector_requirement), self.document
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        admitted, capability = runtime.admit_synthetic_test_input(missing)
+        invocation_id = admitted["input"]["authority"]["invocation"]
+        challenge_id = runtime.invocations[invocation_id]["challengeId"]
+        self.assertEqual(
+            "fail",
+            execute(admitted, self.document, runtime, capability),
+        )
+        self.assertTrue(runtime.nonce_ledger.consumed(challenge_id))
+
+        # A signature by a key absent from claims remains a structural error;
+        # it is not the otherwise-valid semantic boundary above.
+        missing_signer_membership = variant([cosigner_ref], presence_requirement)
+        self.assertIs(False, verify_bundle(
+            missing_signer_membership["input"]["bundle"]
         ))
-        self.assertEqual("error", execute_once(
-            variant([cosigner_ref], selector_requirement, "control-decision"),
-            self.document,
-        ))
-        self.assertIs(False, execute_once(
-            variant([cosigner_ref], presence_requirement, "match"), self.document
-        ))
+        self.assertEqual(
+            ("error", ["invalid identity bundle"]),
+            self._direct_outcome(missing_signer_membership, self.document),
+        )
+
+    def test_authenticated_absent_presenter_is_fail_in_current_and_historical_aggregate(self):
+        # Keep the two committed verification results and receipt authentic.
+        # Only replace the key presenter claim with an included cosigner, then
+        # re-sign the bundle and its bound record/receipt.
+        _, source = self._case_evaluation("vet-cross-accumulator-fail-over-error")
+        document = copy.deepcopy(self.document)
+        candidate = copy.deepcopy(source)
+        value = candidate["input"]
+        vet_input = value["authority"]["vetInput"]
+        bundle = vet_input["bundleToVet"]
+        presented = bundle["presentedBy"]
+        cosigner = fixture_private_key("bundle-cosigner")
+        cosigner_ref = public_ref(cosigner)
+        bundle["claims"] = [
+            item for item in bundle["claims"] if item["ref"] != presented
+        ] + [{"ref": cosigner_ref, "issuedAt": 1_899_999_999_000}]
+        bundle = resign_bundle(bundle, cosigner, cosigner_ref)
+        vet_input["bundleToVet"] = bundle
+        value["record"]["bundleHash"] = hash_hex({
+            key: item for key, item in bundle.items() if key != "presentation"
+        })
+        candidate["input"] = reanchor_composite_input(value, document)
+
+        self.assertTrue(verify_bundle(bundle))
+        self.assertIsNone(presented_claim(bundle))
+        expected = {
+            "decision": "fail",
+            "reasons": [
+                "presentedBy is uncontrolled",
+                "required failing or absent: lei",
+            ],
+        }
+        self.assertEqual(expected, execute_once(candidate, document))
+        self.assertEqual(expected, reconstruct_historical_once(candidate, document))
+        raw = json.dumps(
+            candidate, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        self.assertEqual(expected, execute_external_once(raw, document))
 
     def test_golden_generator_uses_cf3_signer_membership(self):
         spec = importlib.util.spec_from_file_location(

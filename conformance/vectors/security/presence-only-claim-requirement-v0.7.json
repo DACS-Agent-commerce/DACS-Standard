@@ -195,6 +195,14 @@
         "jobId": "11A4RSE2J6Z5PWN29WPNHXWFXB",
         "recipeRegistryVersion": 1
       },
+      "0GJ2WVZHES6Y6ZJ0BD1M5RAHDE": {
+        "jobId": "0GJ2WVZHES6Y6ZJ0BD1M5RAHDE",
+        "recipeRegistryVersion": 1
+      },
+      "0ZB33NJNMY2DNGKV161903QA88": {
+        "jobId": "0ZB33NJNMY2DNGKV161903QA88",
+        "recipeRegistryVersion": 1
+      },
       "79CJCNCB8E6MRFCREZMRAB371S": {
         "jobId": "79CJCNCB8E6MRFCREZMRAB371S",
         "recipeRegistryVersion": 1
@@ -1323,6 +1331,54 @@
         "registryAuthenticated": true,
         "bundleAvailable": true
       },
+      "no-selector-absent-presenter-is-semantic-fail": {
+        "jobId": "0GJ2WVZHES6Y6ZJ0BD1M5RAHDE",
+        "sessionContext": {
+          "jobId": "0GJ2WVZHES6Y6ZJ0BD1M5RAHDE",
+          "recipeRegistryVersion": 1
+        },
+        "recipeRegistryVersion": 1,
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "bundleInputHash": "2efbc741fdae104ac7f235ad8ba4c91462b5c985f5c93f0b5b755c0ae77eb90d",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 1,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "phaseOrchestrator": "key:940b48cfeb5c12a1e52ed6a014774fd6b55da62d786abb5827af505532c08538",
+        "challengeId": "pcr-no-selector-absent-presenter-is-semantic-fail",
+        "trustedNow": 1900000000000,
+        "registryAvailable": true,
+        "registryAuthenticated": true,
+        "bundleAvailable": true
+      },
+      "selector-absent-presenter-is-semantic-fail": {
+        "jobId": "0ZB33NJNMY2DNGKV161903QA88",
+        "sessionContext": {
+          "jobId": "0ZB33NJNMY2DNGKV161903QA88",
+          "recipeRegistryVersion": 1
+        },
+        "recipeRegistryVersion": 1,
+        "requirementHash": "fbe0bf4f54ff40d6eb76d1972374ae8d6b064ac0d0a8b4dce01a907aa6c8a852",
+        "bundleInputHash": "ab68b4450aeff56dc0a3455f0365115dd6ea75d143d63991c6931398737b3317",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 1,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "phaseOrchestrator": "key:940b48cfeb5c12a1e52ed6a014774fd6b55da62d786abb5827af505532c08538",
+        "challengeId": "pcr-selector-absent-presenter-is-semantic-fail",
+        "trustedNow": 1900000000000,
+        "registryAvailable": true,
+        "registryAuthenticated": true,
+        "bundleAvailable": true
+      },
       "no-selector-parameterized-cf3-presenter-controls": {
         "jobId": "79CJCNCB8E6MRFCREZMRAB371S",
         "sessionContext": {
@@ -2210,6 +2266,32 @@
         "expiresAt": 1900000060000
       },
       {
+        "challengeId": "pcr-no-selector-absent-presenter-is-semantic-fail",
+        "nonce": "bfbb437813bdc20cc9f421bb7f28de3c",
+        "jobId": "0GJ2WVZHES6Y6ZJ0BD1M5RAHDE",
+        "actor": "buyer",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "phaseIndex": 1,
+        "attempt": 1,
+        "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "issuedBy": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "issuedAt": 1899999940000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "pcr-selector-absent-presenter-is-semantic-fail",
+        "nonce": "1442dfb9b8a8dbb428b5d22725b16ad2",
+        "jobId": "0ZB33NJNMY2DNGKV161903QA88",
+        "actor": "buyer",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "phaseIndex": 1,
+        "attempt": 1,
+        "expectedVerifier": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "issuedBy": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+        "issuedAt": 1899999940000,
+        "expiresAt": 1900000060000
+      },
+      {
         "challengeId": "pcr-no-selector-parameterized-cf3-presenter-controls",
         "nonce": "ffc2c0d72f7582ed64564877d5442411",
         "jobId": "79CJCNCB8E6MRFCREZMRAB371S",
@@ -2380,8 +2462,8 @@
       }
     ]
   },
-  "count": 57,
-  "hash": "35ec3e127da3c890dba21b471176d025f649a52261612ca87a65fe82588aa874",
+  "count": 59,
+  "hash": "371a83a5f776aaee4efdd2d5be2ac1c49ee9d20c9675addd3d6473c8ae5087f4",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
@@ -5982,6 +6064,131 @@
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
           "value": "lLaPweh8_s94Yw0GaTyIZsiRCiX4XfAKLG1n3DI_DQoKGql8M7Y5pZkRPVIsT0GOvvShfk8mNTYHXHFqpoM3Ag"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "no-selector-absent-presenter-is-semantic-fail",
+      "expected": "fail",
+      "note": "An authenticated bundle with zero exact presenter claims fails semantic matching",
+      "evaluatedAt": 1900000000000,
+      "authority": {
+        "kind": "vet-invocation",
+        "invocation": "no-selector-absent-presenter-is-semantic-fail",
+        "nonce": "bfbb437813bdc20cc9f421bb7f28de3c"
+      },
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+              "signature": "mDhTYtf5umhzk6xqoo5v3zgNLlQ7EkGP5B3vBmoxKhwK2LkyvVneOrz9YnvTtDjJZk8n-HnM_LercewdL7OqBw"
+            }
+          ]
+        },
+        "sessionNonce": "bfbb437813bdc20cc9f421bb7f28de3c"
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "0GJ2WVZHES6Y6ZJ0BD1M5RAHDE",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "befaec0e58bb083a3991d8228ef84759714f6dda902eb3171a7d48672fe12fd4",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "ew5de_8vF_vYQiWbRC6tncNubeuPhi_Oxiuj8CC9_zVjEv0PWmYQ1sTj0di6Tws2oyIRHy2x4tUGO4l0RaaZCA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "selector-absent-presenter-is-semantic-fail",
+      "expected": "fail",
+      "note": "An authenticated bundle with zero exact presenter claims fails semantic matching",
+      "evaluatedAt": 1900000000000,
+      "authority": {
+        "kind": "vet-invocation",
+        "invocation": "selector-absent-presenter-is-semantic-fail",
+        "nonce": "1442dfb9b8a8dbb428b5d22725b16ad2"
+      },
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+              "signature": "ZCURskMiAkGpPVr4tKMHUk5axwLLXgNohiJn1vNsUA4x9KoDCpE27EQG4ZQXG_7PpwqRP8D8MMzZncZtnk1CCw"
+            }
+          ]
+        },
+        "sessionNonce": "1442dfb9b8a8dbb428b5d22725b16ad2"
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ],
+        "primaryClaimSelector": "key"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "0ZB33NJNMY2DNGKV161903QA88",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "aa85eca3c509d1e928a5db66efbc3f0937d9748e1f94497dc90e4cfcc153bec1",
+        "requirementHash": "fbe0bf4f54ff40d6eb76d1972374ae8d6b064ac0d0a8b4dce01a907aa6c8a852",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "cGNewyHJ4QH6RQBV7TAubPmVF7eJ5-BIvBZe75-pbM6tT_vumu3iDZTykh0gO6-pVQnJCAwa_7JyTJ54KZijDg"
         }
       },
       "resolvedResults": []

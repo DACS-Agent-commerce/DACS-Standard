@@ -70,7 +70,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 143 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
-| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 57 | `error` / `fail` / `indeterminate` / `pass` |
+| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 59 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`raw-json-profile-v0.1.json`](raw-json-profile-v0.1.json) | CORE §B.2 CF-5 raw JSON admission | 59 | `accept` / `reject` |
@@ -1985,7 +1985,7 @@ python3 -m unittest tests.test_current_use_authenticated_window_vectors -v
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
 
-Fifty-seven candidate cases make `ClaimRequirement.verificationRequired: false`
+Fifty-nine candidate cases make `ClaimRequirement.verificationRequired: false`
 executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
 bundle and composite record carries a deterministic Ed25519 signature; vectors
 that use a real verification result sign it under the independent VerifyResult
@@ -2002,7 +2002,8 @@ and requirement hash replay, missing replay input, decision recomputation, and
 the authenticated VerifyResult-authority boundary, plus universal exact-presenter
 key control with no selector, unrelated-cosigner rejection, CF-3 parameter
 equivalence, canonical-identical repetition, canonical-distinct same-identity
-ambiguity in both array orders, and the controlled-key versus existence-only-LEI
+ambiguity in both array orders, authenticated zero-presenter-match failures in
+both selector states, and the controlled-key versus existence-only-LEI
 selector boundary. An incorrect signed `pass` over an uncontrolled presenter is
 an `error`, while an authenticated signed `fail` remains a semantic `fail`.
 Verified parameters use only

@@ -842,6 +842,29 @@ def build_vectors() -> list[dict]:
         note="A selector does not permit another included key to lend presenter control",
     ))
 
+    # The included cosigner supplies a valid presentation, while presentedBy
+    # resolves to zero claims. This distinguishes semantic non-match from an
+    # invalid signature whose signer is missing from the bundle.
+    absent_presenter_bundle = signed_bundle(
+        [claim(SECOND_REF, issuedAt=NOW - 500_000)],
+        signer=SECOND_PRESENTER,
+        signer_ref=SECOND_REF,
+    )
+    for label, req in (
+        ("no-selector", requirement([presence("key")])),
+        ("selector", requirement([presence("key")], selector="key")),
+    ):
+        vectors.append(case(
+            f"{label}-absent-presenter-is-semantic-fail",
+            "fail",
+            absent_presenter_bundle,
+            req,
+            overall="fail",
+            bundle_signer=SECOND_PRESENTER,
+            bundle_signer_ref=SECOND_REF,
+            note="An authenticated bundle with zero exact presenter claims fails semantic matching",
+        ))
+
     parameterized_presenter = PRESENTER_REF + "?role=holder"
     parameterized_bundle = signed_bundle(
         [claim(parameterized_presenter, issuedAt=NOW - 500_000)],

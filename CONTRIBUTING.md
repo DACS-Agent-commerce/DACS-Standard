@@ -93,6 +93,17 @@ python3 scripts/validate-docs.py
 Run the complete unit suite with CI's zero-skip requirement. Ordinary unittest
 discovery alone can report success when a required cryptographic suite is skipped.
 
+For a changed rule that distinguishes structural `error` from semantic `fail`,
+derive the expected outcome from the spec before building the test. Assert that
+the negative case passes every earlier gate it is meant to pass: valid shape,
+included signer, authentic signature, nonce, authority and bound inputs. Keep a
+separate malformed control. Cover the accepting case, zero/one/multiple-match
+boundaries where relevant, and the actual direct, received-JSON and conformance
+consumer paths. A negative that is already invalid at an earlier gate cannot
+prove the later classifier. Add a bounded wrong-implementation witness to normal
+CI for a material regression and pin the reviewer case in
+`conformance/pre-review-invariants.json` and `scripts/pre_review_gate.py`.
+
 ```sh
 python3 - <<'PYTEST'
 import sys, unittest

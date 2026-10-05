@@ -347,7 +347,10 @@ def verify_bundle(bundle, admission=None):
     ):
         return False
     try:
-        presented = parse_claim_reference(
+        # Exact presenter resolution is an aggregation predicate.  Structural
+        # bundle verification only requires a well-formed presentedBy plus
+        # valid signatures from included claims.
+        parse_claim_reference(
             bundle.get("presentedBy"), registered_schemes=KNOWN_SCHEMES
         )
         parsed_claims = [
@@ -358,10 +361,7 @@ def verify_bundle(bundle, admission=None):
         ]
     except (AttributeError, ValueError):
         return False
-    if (
-        len(parsed_claims) != len(bundle["claims"])
-        or presented.identity not in {parsed.identity for parsed in parsed_claims}
-    ):
+    if len(parsed_claims) != len(bundle["claims"]):
         return False
     presentation = bundle.get("presentation")
     if (
@@ -1535,6 +1535,8 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             "no-selector-unrelated-cosigner-is-uncontrolled": "fail",
             "no-selector-uncontrolled-signed-pass-mismatch-is-error": "error",
             "selector-unrelated-cosigner-is-uncontrolled": "fail",
+            "no-selector-absent-presenter-is-semantic-fail": "fail",
+            "selector-absent-presenter-is-semantic-fail": "fail",
             "no-selector-parameterized-cf3-presenter-controls": "pass",
             "selector-parameterized-cf3-presenter-controls": "pass",
             "optional-failing-verification-does-not-defeat-presence": "pass",
@@ -1557,6 +1559,22 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
 
     def test_presented_claim_uniqueness_is_order_independent(self):
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        for name in (
+            "no-selector-absent-presenter-is-semantic-fail",
+            "selector-absent-presenter-is-semantic-fail",
+        ):
+            with self.subTest(vector=name):
+                vector = by_name[name]
+                self.assertTrue(verify_bundle(vector["bundle"]))
+                claims = canonical_claims(vector["bundle"])
+                self.assertIsNone(exact_presented_claim(vector["bundle"], claims))
+                self.assertEqual(
+                    "fail",
+                    reconstruct_fixture_once(
+                        vector, self.document["trustedContext"]
+                    ),
+                )
+
         repeated = by_name["byte-identical-presenter-claim-repetition-collapses"]
         repeated_claims = canonical_claims(repeated["bundle"])
         self.assertIsNotNone(exact_presented_claim(repeated["bundle"], repeated_claims))

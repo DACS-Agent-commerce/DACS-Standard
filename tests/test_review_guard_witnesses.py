@@ -519,6 +519,53 @@ class ReviewGuardWitnessTests(unittest.TestCase):
             mutated = self._run_test(test_class, selected)
         self._assert_mutation_caught(mutated)
 
+    def test_absent_presenter_semantic_boundary_is_load_bearing(self):
+        vet_test = "test_presented_by_must_resolve_to_a_signed_bundle_claim"
+        presence_test = "test_presented_claim_uniqueness_is_order_independent"
+        self._assert_clean_control(self._run_vet_test(vet_test))
+        self._assert_clean_control(self._run_test(
+            presence.PresenceOnlyClaimVectorTests, presence_test
+        ))
+
+        original_vet_verify = vet.verify_bundle
+        def old_vet_structural_gate(bundle, admission=None, *, registered_schemes=None):
+            if not original_vet_verify(
+                bundle, admission, registered_schemes=registered_schemes
+            ):
+                return False
+            schemes = vet.KNOWN_SCHEMES if registered_schemes is None else registered_schemes
+            presented = vet.parse_ref(bundle["presentedBy"], schemes)
+            return any(
+                vet.parse_ref(item["ref"], schemes) == presented
+                for item in bundle["claims"]
+            )
+
+        # This is the previous wrong implementation: the valid zero-match
+        # bundle is rejected as malformed before semantic matching runs.
+        with mock.patch.object(vet, "verify_bundle", side_effect=old_vet_structural_gate):
+            self._assert_mutation_caught(self._run_vet_test(vet_test))
+
+        original_presence_verify = presence.verify_bundle
+        def old_presence_structural_gate(bundle, admission=None):
+            if not original_presence_verify(bundle, admission):
+                return False
+            presented = presence.parse_claim_reference(
+                bundle["presentedBy"], registered_schemes=presence.KNOWN_SCHEMES
+            )
+            return any(
+                presence.parse_claim_reference(
+                    item["ref"], registered_schemes=presence.KNOWN_SCHEMES
+                ).identity == presented.identity
+                for item in bundle["claims"]
+            )
+
+        with mock.patch.object(
+            presence, "verify_bundle", side_effect=old_presence_structural_gate
+        ):
+            self._assert_mutation_caught(self._run_test(
+                presence.PresenceOnlyClaimVectorTests, presence_test
+            ))
+
     def test_principal_bundle_cf3_signature_membership_is_load_bearing(self):
         selected = "test_presented_by_must_resolve_to_a_signed_bundle_claim"
         self._assert_clean_control(self._run_vet_test(selected))

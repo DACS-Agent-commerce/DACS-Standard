@@ -1792,6 +1792,33 @@ def build_vectors() -> list[dict]:
         case["evidenceRecords"][0]["artifact"]["signature"]["value"] = ("A" if value[0] != "A" else "B") + value[1:]
         bundle(case)
     vectors.append(make("delivery-signature-mutation", "fail", "every signed binding is integrity protected", credential_case, signature_mutation))
+
+    # Change one well-formed credential-delivery leaf at a time. Rebind the
+    # evidence content hash in the signed bundle, but retain the original
+    # DeliveryEvidence signature: only the inner canonical-scope signature
+    # guard can reject these otherwise coherent presented references.
+    def unsigned_credential_field_mutation(mutator: Callable[[dict], None]) -> Callable[[dict], None]:
+        def apply(case: dict) -> None:
+            mutator(case["evidenceRecords"][0]["artifact"]["credentialDelivery"])
+            bundle(case)
+        return apply
+
+    for name, mutate in (
+        ("ref-anchor-kind", lambda b: b["credentialRef"]["ref"]["anchor"].update({"kind": "ipfs"})),
+        ("ref-anchor-locator", lambda b: b["credentialRef"]["ref"]["anchor"].update({"locator": "dacs4:credential:other"})),
+        ("ref-content-hash", lambda b: b["credentialRef"]["ref"].update({"contentHash": "f0" * 32})),
+        ("ref-signer", lambda b: b["credentialRef"]["ref"].update({"signer": BUYER})),
+        ("access-model", lambda b: b["credentialRef"].update({"accessModel": "encrypt-to-buyer"})),
+        ("cleartext-hash", lambda b: b.update({"credentialCleartextHash": "e1" * 32})),
+        ("renewal-seq", lambda b: b.update({"renewalSeq": 1})),
+    ):
+        vectors.append(make(
+            f"credential-{name}-signature-mutation",
+            "fail",
+            f"credentialDelivery {name} changes the signed canonical hash",
+            credential_case,
+            unsigned_credential_field_mutation(mutate),
+        ))
     for dependency in (
         "storage", "entitlement", "credential", "payload", "attestation", "method",
     ):

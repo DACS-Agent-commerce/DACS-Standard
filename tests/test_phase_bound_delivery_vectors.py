@@ -2723,6 +2723,61 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             with self.subTest(field=name):
                 self.assertFalse(verify_signature(artifact, DELIVERY_DOMAIN))
 
+    def test_credential_field_mutation_vectors_reach_signature_guard(self):
+        control = next(
+            vector for vector in self.data["vectors"]
+            if vector["name"] == "credential-buyer-only-exact-binding"
+        )
+        names = (
+            "ref-anchor-kind", "ref-anchor-locator", "ref-content-hash",
+            "ref-signer", "access-model", "cleartext-hash", "renewal-seq",
+        )
+
+        def leaves(binding):
+            ref = binding["credentialRef"]["ref"]
+            return {
+                "ref-anchor-kind": ref["anchor"]["kind"],
+                "ref-anchor-locator": ref["anchor"]["locator"],
+                "ref-content-hash": ref["contentHash"],
+                "ref-signer": ref["signer"],
+                "access-model": binding["credentialRef"]["accessModel"],
+                "cleartext-hash": binding["credentialCleartextHash"],
+                "renewal-seq": binding["renewalSeq"],
+            }
+
+        control_artifact = control["evidenceRecords"][0]["artifact"]
+        self.assertEqual(evaluate(control), "pass")
+        self.assertTrue(verify_signature(control_artifact, DELIVERY_DOMAIN))
+        original_leaves = leaves(control_artifact["credentialDelivery"])
+        for name in names:
+            case = copy.deepcopy(next(
+                vector for vector in self.data["vectors"]
+                if vector["name"] == f"credential-{name}-signature-mutation"
+            ))
+            artifact = case["evidenceRecords"][0]["artifact"]
+            with self.subTest(field=name):
+                changed = {
+                    field for field in names
+                    if leaves(artifact["credentialDelivery"])[field] != original_leaves[field]
+                }
+                self.assertEqual(changed, {name})
+                self.assertEqual(artifact["signature"], control_artifact["signature"])
+                self.assertNotEqual(artifact_hash(artifact), artifact_hash(control_artifact))
+                self.assertTrue(exact_delivery_evidence_shape(artifact))
+                self.assertTrue(verify_bundle_signatures(case["bundle"]))
+                supplied = case["bundle"]["settlementEvidence"][0]
+                self.assertEqual(resolve_evidence(case, supplied)[0], "pass")
+                self.assertFalse(verify_signature(artifact, DELIVERY_DOMAIN))
+                self.assertIsNone(authenticated_evidence_type(artifact))
+                self.assertEqual(evaluate(case), "fail")
+
+                # With only the delivery signature repaired, the same valid
+                # shape and references reach PDE-5's semantic mismatch guard.
+                G.sign(artifact, G.ORCHESTRATOR_SEED, DELIVERY_DOMAIN)
+                self.assertEqual(resolve_evidence(case, supplied)[0], "pass")
+                self.assertEqual(authenticated_evidence_type(artifact), "delivery")
+                self.assertEqual(validate_delivery_artifact(case, artifact), "fail")
+
     def test_attested_delivery_executes_the_resolved_dpa_chain(self):
         vector = next(
             item for item in self.data["vectors"]

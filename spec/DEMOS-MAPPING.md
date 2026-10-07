@@ -174,7 +174,29 @@ validator-body-signed.
 
 - 🟢 new l2ps.L2PS() / new l2ps.L2PS(rsaPrivateKey). DemosWork orchestration with WorkStep (id, context, content, output, depends_on, critical), BaseOperation, ConditionalOperation (SDK module @kynesyslabs/demosdk/demoswork). Storage Programs for agreement-hash anchoring and sealed-envelope commitments.
 - 🟡 CCI-keyed L2PS membership — bind subnet membership to CCI primary claim so channel signatures map to the same identity that holds value on-chain. The interim §8.3.2 binding-proof path is shipped as l2ps.binding: createMembershipBinding (attestation signed by the CCI primary key), anchorMembershipBinding (Storage Program at a deterministic collision-safe name), resolveMember (signature check + SP-owner check against impostor programs). Native CCI-keyed subnet membership (node-side enforcement) remains pending; the current native subnet API is RSA-key-based.
-- 🟡 L2PS channel message envelope API shipped as `l2ps.channel.ChannelSession` in `@kynesyslabs/demosdk@4.0.16` — evidence for the §8.3.3 `LegacyDemosChannelMessage` historical read/import arm only (bare lowercase-hex signature and `dacs-channelmsg:v1:` raw-digest framing), plus monotonic sequence and CH-6 channel reuse handling. That evidence does not establish verifier-owned durable replay-state continuity across issuer reconstruction or restart; adapters must verify that requirement independently and keep historical audit state separate from live state. An adapter MUST expose those bytes only through the explicitly selected `legacy-import` operation; ordinary `current-read` rejects them without shape-based fallback. It is not the discriminated current DACS type. No Demos SDK version is recorded as a conforming `CanonicalChannelMessage` producer until a released version emits only the CH-7/CH-8 wire and passes the mixed-wire corpus; adapters MUST NOT claim current SR-4 message conformance in advance.
+- 🟡 L2PS channel message envelope API shipped as
+  `l2ps.channel.ChannelSession` in `@kynesyslabs/demosdk@4.0.16`, with
+  monotonic sequence and CH-6 channel reuse handling. Its shipped message wire
+  is **not** evidence for the frozen §8.3.3 `LegacyDemosChannelMessage`
+  historical read/import arm.
+
+  `signChannelMessage` signs UTF-8 bytes of `"dacs-channelmsg:v1:"` followed by
+  the lowercase-hex SHA-256 digest of the canonical unsigned message. It emits
+  a `{ sigVersion: "1", signature: "0x…" }` object. The frozen `legacy-import`
+  arm instead requires a bare lowercase-hex signature over the domain prefix
+  followed by the **raw** 32-byte digest. The shipped wire also lacks CH-7's
+  discriminator and signature envelope. It uses the historical, not CH-8,
+  domain/framing, so `current-read` rejects it. Neither operation may silently
+  fall back to another wire; this mapping does not change the frozen historical
+  arm.
+
+  Separately, the shipped API does not establish verifier-owned durable
+  replay-state continuity across issuer reconstruction or restart. Adapters
+  must verify that requirement independently and keep historical audit state
+  separate from live state. No Demos SDK version is recorded as a conforming
+  `CanonicalChannelMessage` producer. Recording one requires a released version
+  that emits only the CH-7/CH-8 wire and passes the mixed-wire corpus. Adapters
+  MUST NOT claim current SR-4 message conformance in advance.
 - 🟢 Encrypted transcript anchoring helper shipped as l2ps.anchor.anchorEncryptedTranscript — encrypts a ChannelTranscript to the subnet member set (AES-GCM via the L2PS key), anchors ciphertext + public content hash via SR-2 under a deterministic per-channel SP name, signs the plaintext hash with the Demos key, and implements all three terms.transcriptDisclosurePolicy behaviours (none → throw, recommended → consent-gated, required → propagate failure). decryptAnchoredTranscript / verifyAnchorIntegrity included.
 - 🔵 ERC-8183 escrow primitive (Ethereum, draft); institutional RFQ desks’ off-chain systems composed as L2PS-equivalent transport.
 

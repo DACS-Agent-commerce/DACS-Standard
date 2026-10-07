@@ -57,8 +57,8 @@
       "gitBlob": "d99fea77aed51b3381ca1db69121c23baed6bcae"
     },
     "wrappedStandard": {
-      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
-      "tree": "46adde3bf442a9bd014b53f8c99fda32c4f9b120",
+      "revision": "4b0e950c5648a561d4c73847571260960bf932f4",
+      "tree": "77feb9885ec0e127c56063b6aa4d64ef4a3729c0",
       "primitives": [
         {
           "path": "scripts/jcs.py",
@@ -67,8 +67,8 @@
         },
         {
           "path": "scripts/validate_conformance_vectors.py",
-          "sha256": "881b61a65b89a05b084f6885772c92acf626281fdb5bb671592f8875683ac00b",
-          "gitBlob": "325293f8c5c3a08582e6d3d658d78ac12ebcf8dc"
+          "sha256": "8a60a13b17de98a8a61b7e41dfd42e5e95fde7603e45b9fe9a904a1f4f07ef83",
+          "gitBlob": "5e7b41777a56f5dc9a3a691ed29ac5c54398c9f9"
         },
         {
           "path": "scripts/run_lifecycle_walkthrough.py",
@@ -118,9 +118,9 @@
     },
     "domainSeparatedSigning": {
       "path": "conformance/vectors/golden.json",
-      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
-      "sha256": "bce5128a79a7ecc0683bb1ed560f626a63cf5f4bd2cd5c4e1f8971840b95bd2b",
-      "gitBlob": "7713f3d2ac65e3f9a47ca347233a8daecb73bfd5"
+      "revision": "4b0e950c5648a561d4c73847571260960bf932f4",
+      "sha256": "de5ae707aeb8965f26dd960b4305398a153dcf9f926d22e626c6185987f0ec0b",
+      "gitBlob": "64d7d5c0dd49304dbac929a4097155dbe6c29dbf"
     }
   },
   "families": [

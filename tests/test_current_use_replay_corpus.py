@@ -1,4 +1,4 @@
-"""JSON-only replay of the committed eight-case current-use corpus.
+"""JSON-only replay of the committed current-use corpus.
 
 Every vector in ``current-use-reputation-v1.json`` embeds the complete
 executable replay input: the exact request, the full authenticated
@@ -19,12 +19,14 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 for path in (str(ROOT), str(ROOT / "tests")):
     if path not in sys.path:
         sys.path.insert(0, path)
 
+import dacs5_reference as D5  # noqa: E402
 from dacs5_reference import derive_current_use_replayable  # noqa: E402
 
 
@@ -88,7 +90,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         cls.cases = {vector["name"]: vector for vector in cls.data["vectors"]}
 
     def test_set_hash_binds_the_complete_replay_inputs(self):
-        self.assertEqual(8, self.data["count"])
+        self.assertEqual(13, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         encoded = canonical(self.data["vectors"])
         self.assertEqual(
@@ -164,8 +166,10 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         )
 
     def test_every_case_rejects_authority_receipt_and_finality_or_historical_mutations(self):
-        """All eight cases: each mutation family changes the payload and fails."""
+        """Every positive case: each mutation family changes the payload and fails."""
         for vector in self.data["vectors"]:
+            if vector["expected"] != "pass":
+                continue
             with self.subTest(case=vector["name"]):
                 # Authority: the verifier-owned role authority for this job.
                 def mutate_authority(replay, vector=vector):
@@ -409,6 +413,8 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
 
     def test_all_six_finality_models_and_both_historical_arms_replay(self):
         for vector in self.data["vectors"]:
+            if vector["expected"] != "pass":
+                continue
             with self.subTest(case=vector["name"]):
                 result = execute(vector["replay"])
                 self.assertEqual("pass", result["decision"], result["reason"])
@@ -445,6 +451,36 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
                     self.assertEqual(0.0, metrics["completionRate"])
                     self.assertIsNone(metrics["counterpartyAdjustedCompletionRate"])
                     self.assertEqual(1.0, metrics["counterpartyFaultRate"])
+
+    def test_legacy_negative_cases_reach_the_named_lab_guard(self):
+        expected_reasons = {
+            "buyer-seller-role-rebinding": ("fail", "historical receipt does not join the exact job, role, and content hash"),
+            "seller-buyer-role-rebinding": ("fail", "historical receipt does not join the exact job, role, and content hash"),
+            "fresh-post-checkpoint-legacy-creation": ("fail", "legacy bundle anchor is not strictly before the checkpoint"),
+            "post-checkpoint-re-anchor": ("fail", "legacy bundle anchor is not strictly before the checkpoint"),
+            "missing-era-proof": ("indeterminate", "legacy era evidence is unavailable"),
+        }
+        for name, (decision, reason) in expected_reasons.items():
+            with self.subTest(case=name):
+                vector = self.cases[name]
+                lab_results = []
+                original_guard = D5.validate_legacy_bundle_admission
+
+                def trace_lab(*args):
+                    outcome = original_guard(*args)
+                    lab_results.append(outcome)
+                    return outcome
+
+                with mock.patch.object(
+                    D5, "validate_legacy_bundle_admission",
+                    side_effect=trace_lab,
+                ) as lab_guard:
+                    result = execute(vector["replay"])
+                self.assertGreater(lab_guard.call_count, 0, "earlier admission gate blocked LAB")
+                self.assertIn((decision, reason), lab_results)
+                self.assertEqual(decision, result["decision"], result["reason"])
+                self.assertTrue(result["reason"].endswith(reason), result["reason"])
+                self.assertIsNone(result["derivation"])
 
 
 if __name__ == "__main__":

@@ -297,6 +297,25 @@ def document() -> dict:
         checkpoint=checkpoint,
         arm={"status": "observed", "observation": conflicting_observation},
     )
+    # Both fork views have complete native proofs and pinned RPC signatures.
+    # Only the resolution of incompatible authenticated heads is uncertain.
+    conflicting_head_response = signed_response(
+        keys["observer-b-key"],
+        authority_id="observer-b",
+        key_id="observer-b-key",
+        query=authority.issued_query,
+        checkpoint=checkpoint,
+        arm={"status": "observed", "observation": conflicting_observation},
+    )
+    reorg_response = signed_response(
+        keys["observer-a-key"],
+        authority_id="observer-a",
+        key_id="observer-a-key",
+        query=authority.issued_query,
+        checkpoint=checkpoint,
+        arm={"status": "observed", "observation": conflicting_observation},
+        signed_time=OBSERVED_AT + 1,
+    )
     checkpoint_mismatch_observation = {
         "kind": "chain",
         "observation": factory.chain_observation(
@@ -504,6 +523,10 @@ def document() -> dict:
     vectors = [
         {"name": "complete-all-authorities", "expected": "pass"},
         {"name": "retained-same-authority-conflict", "expected": "indeterminate"},
+        {"name": "fv-conflicting-authenticated-heads", "expected": "indeterminate",
+         "variant": "conflictingHeadResponse"},
+        {"name": "fv-reorg-unresolved", "expected": "indeterminate",
+         "variant": "reorgResponse"},
         {"name": "native-checkpoint-mismatch", "expected": "fail"},
         {"name": "authenticated-economic-contradiction", "expected": "fail"},
         {"name": "configured-authority-unavailable", "expected": "indeterminate"},
@@ -541,6 +564,18 @@ def document() -> dict:
                 "response": conflict_response,
                 "acquisition": acquisition(
                     conflict_response, authority.issued_query["nonce"], ACQUIRED_AT
+                ),
+            },
+            "conflictingHeadResponse": {
+                "response": conflicting_head_response,
+                "acquisition": acquisition(
+                    conflicting_head_response, authority.issued_query["nonce"], ACQUIRED_AT
+                ),
+            },
+            "reorgResponse": {
+                "response": reorg_response,
+                "acquisition": acquisition(
+                    reorg_response, authority.issued_query["nonce"], ACQUIRED_AT + 1
                 ),
             },
             "checkpointMismatchResponse": {

@@ -21,6 +21,7 @@ from finality_resolution_context_reference import (
     RESPONSE_DOMAIN,
     FinalityResolutionAuthority,
     hash_value,
+    response_signature_hash,
     replay_finality_resolution,
     verify_composite_resolution,
 )
@@ -235,6 +236,71 @@ class FinalityResolutionContextTests(unittest.TestCase):
         result = self.verify(value, self.authority(payload))
         self.assertEqual("indeterminate", result["decision"])
         self.assertIn("inconsistent", result["reason"])
+
+    def assert_valid_native_view(self, response):
+        seat = next(
+            seat for seat in self.data["positive"]["authority"]["policy"]["authorities"]
+            if seat["authorityId"] == response["authorityId"]
+        )
+        key = next(
+            key for key in seat["verificationKeys"]
+            if key["keyId"] == response["signature"]["keyId"]
+        )
+        Ed25519PublicKey.from_public_bytes(decode_key(key["publicKey"])).verify(
+            decode_key(response["signature"]["value"]),
+            (RESPONSE_DOMAIN + response_signature_hash(response)).encode("ascii"),
+        )
+        self.assertEqual(
+            hash_value(self.data["positive"]["authority"]["issuedQuery"]),
+            response["queryHash"],
+        )
+        candidate = copy.deepcopy(self.data["positive"]["value"])
+        candidate["context"] = copy.deepcopy(response["response"]["observation"])
+        result = _verify_single_view_finality(candidate, copy.deepcopy(self.base_trusted))
+        self.assertEqual("pass", result["decision"], result["reason"])
+        return candidate["context"]["observation"]["authenticatedHead"]["id"]
+
+    def test_conflicting_authenticated_heads_reach_frc7(self):
+        case = next(v for v in self.data["vectors"] if v["name"] == "fv-conflicting-authenticated-heads")
+        variant = self.data["variants"][case["variant"]]
+        value, payload = self.replace_seat(
+            self.data["positive"]["value"],
+            self.data["positive"]["authority"],
+            variant,
+        )
+        old_response = next(
+            response for response in value["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-a"
+        )
+        self.assertNotEqual(
+            self.assert_valid_native_view(old_response),
+            self.assert_valid_native_view(variant["response"]),
+        )
+        result = self.verify(value, self.authority(payload))
+        self.assertEqual(case["expected"], result["decision"])
+        self.assertIn("configured authorities supplied conflicting finalized views", result["reason"])
+
+    def test_retained_reorg_reaches_frc7(self):
+        case = next(v for v in self.data["vectors"] if v["name"] == "fv-reorg-unresolved")
+        variant = self.data["variants"][case["variant"]]
+        value = copy.deepcopy(self.data["positive"]["value"])
+        payload = copy.deepcopy(self.data["positive"]["authority"])
+        old_response = next(
+            response for response in value["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-a"
+        )
+        self.assertNotEqual(
+            self.assert_valid_native_view(old_response),
+            self.assert_valid_native_view(variant["response"]),
+        )
+        payload["retainedResponses"].append(copy.deepcopy(variant["response"]))
+        payload["acquisitionRecords"].append(copy.deepcopy(variant["acquisition"]))
+        value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+            payload["acquisitionRecords"]
+        )
+        result = self.verify(value, self.authority(payload))
+        self.assertEqual(case["expected"], result["decision"])
+        self.assertIn("one authority supplied unresolved inconsistent observations", result["reason"])
 
     def test_unavailable_missing_other_query_and_expiry_are_nonauthorizing(self):
         positive_value = self.data["positive"]["value"]

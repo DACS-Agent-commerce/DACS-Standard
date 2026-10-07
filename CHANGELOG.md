@@ -826,6 +826,13 @@ The format used per release:
   `error`, without any broad exception catch. The canonical map continues to
   pass through both the direct FV path and the composed DACS-5 path.
 
+- **Finality conflict and reorganization coverage** (DACS-4 §9.7.0 FRC-7,
+  FV-8; #382) — without changing normative semantics, adds
+  `fv-conflicting-authenticated-heads` and `fv-reorg-unresolved` to
+  `finality-resolution-context-v1` (13 cases). Each signed native view is first
+  shown to pass FV on its own; the combined evidence then returns
+  `indeterminate` at the FRC-7 conflict guard.
+
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
 - Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.

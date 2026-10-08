@@ -355,6 +355,49 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         self.assertIn("duplicate object member 'member'", errors[0])
         self.assertNotIn("SHA-256 mismatch", errors[0])
 
+    def test_golden_outputs_reject_duplicate_ap2_pin_members(self):
+        validator = load_vector_validator()
+        zero = "0" * 64
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            settlement = json.loads(golden.read_text(encoding="utf-8"))["settlement"]
+            pinned = json.dumps(settlement["ap2EvidenceHash"])
+            job = json.dumps(settlement["ap2JobId"])
+            fixture_name = json.dumps(settlement["ap2Fixture"])
+            verdict = json.dumps(settlement["decisions"]["ap2ReferencePass"])
+            variants = {
+                "ap2EvidenceHash": (
+                    f'{{"settlement":{{"ap2Fixture":{fixture_name},"ap2JobId":{job},'
+                    f'"ap2EvidenceHash":"{zero}","ap2EvidenceHash":{pinned},'
+                    f'"decisions":{{"ap2ReferencePass":{verdict}}}}}}}'
+                ),
+                "ap2ReferencePass": (
+                    f'{{"settlement":{{"ap2Fixture":{fixture_name},"ap2JobId":{job},'
+                    f'"ap2EvidenceHash":{pinned},'
+                    f'"decisions":{{"ap2ReferencePass":"fail","ap2ReferencePass":{verdict}}}}}}}'
+                ),
+                "settlement": (
+                    f'{{"settlement":{{}},"settlement":{{"ap2Fixture":{fixture_name},'
+                    f'"ap2JobId":{job},"ap2EvidenceHash":{pinned},'
+                    f'"decisions":{{"ap2ReferencePass":{verdict}}}}}}}'
+                ),
+            }
+            for member, text in variants.items():
+                with self.subTest(member=member):
+                    golden.write_text(text, encoding="utf-8")
+                    errors = validator.validate_golden_outputs(golden, manifest)
+                    self.assertEqual(len(errors), 1, errors)
+                    self.assertIn(f"duplicate object member {member!r}", errors[0])
+
+    def test_golden_outputs_reject_non_utf8_with_controlled_error(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            golden.write_bytes(b'{"settlement":{"ap2JobId":"\xff"}}')
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("invalid JSON", errors[0])
+
     def test_ap2_golden_duplicate_check_uses_exact_decoded_member_names(self):
         validator = load_vector_validator()
         parsed = validator.parse_json_bytes_without_duplicates(

@@ -810,9 +810,11 @@ def validate_ap2_golden_output(
 
 def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     errors: list[str] = []
+    # Golden pins must have one reading: a duplicate member would let a
+    # last-wins and a first-wins consumer see different pinned values.
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data = parse_json_bytes_without_duplicates(path.read_bytes())
+    except (UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMemberError) as exc:
         return [fail(path, f"invalid JSON: {exc}")]
 
     if not isinstance(data, dict):

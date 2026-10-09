@@ -6,8 +6,9 @@ dependency closure, the verifier configuration with public keys, the trusted
 query context, and the expected outcome.  These tests reconstitute nothing
 from the generator: they execute the committed bytes alone, proving the
 corpus is independently executable, that the set hash binds the complete
-replay inputs, and that mutating any bound authority, receipt, finality, or
-historical-evidence member changes the payload and yields a non-pass.
+replay inputs, that mutating any bound authority, receipt, finality, or
+historical-evidence member of a passing case changes the payload and yields a
+non-pass, and that each LAB negative is rejected only by its named guard.
 """
 
 from __future__ import annotations
@@ -457,7 +458,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
             "buyer-seller-role-rebinding": ("fail", "historical receipt does not join the exact job, role, and content hash"),
             "seller-buyer-role-rebinding": ("fail", "historical receipt does not join the exact job, role, and content hash"),
             "fresh-post-checkpoint-legacy-creation": ("fail", "legacy bundle anchor is not strictly before the checkpoint"),
-            "post-checkpoint-re-anchor": ("fail", "legacy bundle anchor is not strictly before the checkpoint"),
+            "post-checkpoint-anchor-without-pre-checkpoint-proof": ("fail", "legacy bundle anchor is not strictly before the checkpoint"),
             "missing-era-proof": ("indeterminate", "legacy era evidence is unavailable"),
         }
         for name, (decision, reason) in expected_reasons.items():
@@ -481,6 +482,70 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
                 self.assertEqual(decision, result["decision"], result["reason"])
                 self.assertTrue(result["reason"].endswith(reason), result["reason"])
                 self.assertIsNone(result["derivation"])
+
+    def test_legacy_negative_cases_pass_a_verifier_missing_only_their_guard(self):
+        """Bounded wrong implementations: drop one LAB guard and the case passes.
+
+        Each negative is otherwise admitted, so a decision-only runner cannot
+        satisfy it through an earlier gate (LAB-2 included) or later divergence.
+        """
+        original_guard = D5.validate_legacy_bundle_admission
+        original_mapping = D5._verify_original_binding_mapping
+
+        class RoleBlindReceipt(dict):
+            """Signed receipt bytes unchanged; the LAB-3 role read is skipped."""
+
+            def get(self, key, default=None):
+                if key == "subjectRole":
+                    return self.claimed_role
+                return dict.get(self, key, default)
+
+        def mapping_without_tuple_join(*args):
+            outcome = original_mapping(*args)
+            if outcome == ("fail", "historical receipt does not join the original BundleBinding tuple"):
+                return ("pass", "LAB-3 tuple join omitted")
+            return outcome
+
+        def without_lab3(bundle, evidence, dependencies, verifier_config):
+            evidence = dict(evidence)
+            receipt = RoleBlindReceipt(evidence["historicalAnchorReceipt"])
+            receipt.claimed_role = evidence["resolvedRole"]
+            evidence["historicalAnchorReceipt"] = receipt
+            with mock.patch.object(D5, "_verify_original_binding_mapping", mapping_without_tuple_join):
+                return original_guard(bundle, evidence, dependencies, verifier_config)
+
+        def without_lab6(bundle, evidence, dependencies, verifier_config):
+            if evidence is None:
+                return ("pass", "missing era evidence treated as historical")
+            return original_guard(bundle, evidence, dependencies, verifier_config)
+
+        lab3 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab3)
+        lab4 = mock.patch.object(D5, "_strictly_before", return_value=True)
+        lab6 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab6)
+        mutants = {
+            "buyer-seller-role-rebinding": lab3,
+            "seller-buyer-role-rebinding": lab3,
+            "fresh-post-checkpoint-legacy-creation": lab4,
+            "post-checkpoint-anchor-without-pre-checkpoint-proof": lab4,
+            "missing-era-proof": lab6,
+        }
+        self.assertEqual(
+            set(mutants),
+            {vector["name"] for vector in self.data["vectors"] if vector["expected"] != "pass"},
+        )
+        authentic = execute(self.cases["historical-original-bundle-binding"]["replay"])
+        self.assertEqual(1.0, authentic["derivation"]["metrics"]["counterpartyFaultRate"])
+        for name, mutant in mutants.items():
+            with self.subTest(case=name):
+                with mutant:
+                    result = execute(self.cases[name]["replay"])
+                self.assertEqual("pass", result["decision"], result["reason"])
+                self.assertIsNotNone(result["derivation"])
+                if name.endswith("role-rebinding"):
+                    # Without LAB-3 the rebound abort reverses the authentic blame.
+                    metrics = result["derivation"]["metrics"]
+                    self.assertEqual(0.0, metrics["counterpartyFaultRate"])
+                    self.assertEqual(0.0, metrics["counterpartyAdjustedCompletionRate"])
 
 
 if __name__ == "__main__":

@@ -680,7 +680,7 @@ def payment_phase_input(intent: dict[str, Any]) -> dict[str, Any]:
 def current_profile_admission(
     intent: dict[str, Any], authority: dict[str, Any]
 ) -> dict[str, Any]:
-    """Authenticate the synthetic outputs of current RSC/IBH/LAA admission."""
+    """Authenticate the synthetic outputs of current RSC/IBH/Vet/LAA admission."""
     listing = authority["listing"]
     agreement = authority["agreement"]
     payer_bundle = authority["payerBundle"]
@@ -707,6 +707,7 @@ def current_profile_admission(
             })),
         },
         "ibhDisposition": "verified",
+        "vetDisposition": "current-authorized",
         "laaDisposition": "current-eligible",
     }
     return encoded_evidence(
@@ -2406,6 +2407,32 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     substituted_current_profile_admission = add_composed_limit_evidence(
         substituted_current_profile_admission
     )
+    historical_vet_admission = copy.deepcopy(composed_purchase)
+    mutate_current_profile_admission(
+        historical_vet_admission["authority"],
+        ["vetDisposition"],
+        "historical-only",
+    )
+    historical_vet_admission = add_composed_limit_evidence(
+        historical_vet_admission
+    )
+    vet_unadmitted = copy.deepcopy(composed_purchase)
+    vet_unadmitted_subject = ref.verify_encoded_evidence(
+        vet_unadmitted["authority"]["currentProfileAdmission"],
+        "test-current-profile-admission",
+        PUBLIC_KEYS,
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+        expected_signer=CLAIMS["network"],
+    )
+    vet_unadmitted_subject.pop("signature")
+    vet_unadmitted_subject.pop("vetDisposition")
+    vet_unadmitted["authority"]["currentProfileAdmission"] = encoded_evidence(
+        "test-current-profile-admission",
+        vet_unadmitted_subject,
+        "network",
+        ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
+    )
+    vet_unadmitted = add_composed_limit_evidence(vet_unadmitted)
     legacy_purchase = purchase_intent()
     legacy_receipt = final_receipt(legacy_purchase)
     legacy_composed_admission = composed_purchase_admission(
@@ -2425,9 +2452,11 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     )
     return [
         vector("awp-purchase-composed-admission", ["AWP-3", "AWP-5", "AWP-6", "AWP-7", "AWP-10", "AWP-11", "AWP-12"], "purchase-admission", composed_purchase, "pass", "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt.", boundary_rules=["AWP-12"]),
-        vector("awp-purchase-current-profile-admission-missing", ["AWP-4", "AWP-7"], "purchase-admission", missing_current_profile_admission, "indeterminate", "Current Atomic execution remains unavailable when verifier-owned RSC, IBH, LAA, and current-profile admission authority is absent."),
+        vector("awp-purchase-current-profile-admission-missing", ["AWP-4", "AWP-7"], "purchase-admission", missing_current_profile_admission, "indeterminate", "Current Atomic execution remains unavailable when verifier-owned RSC, IBH, Vet, LAA, and current-profile admission authority is absent."),
         vector("awp-purchase-current-profile-admission-stale", ["AWP-4", "AWP-7"], "purchase-admission", stale_current_profile_admission, "fail", "A signed admission for a stale DACS-1 profile cannot authorize the advertised current Atomic tuple."),
         vector("awp-purchase-current-profile-listing-substitution", ["AWP-4", "AWP-7"], "purchase-admission", substituted_current_profile_admission, "fail", "Verifier-owned current-profile admission binds the exact signed Listing and rejects a substituted Listing hash."),
+        vector("awp-purchase-vet-record-historical-authority", ["AWP-1", "AWP-7"], "purchase-admission", historical_vet_admission, "fail", "An already-signed Vet record admitted only under historical semantics cannot authorize current Atomic execution; current production Vet authorization is required."),
+        vector("awp-purchase-vet-record-not-current-admitted", ["AWP-1", "AWP-7"], "purchase-admission", vet_unadmitted, "fail", "A current-profile admission covering RSC, IBH, and LAA but not current Vet authorization of the Work's exact signed Vet records cannot authorize execution."),
         vector("awp-purchase-legacy-agreement-not-current-authority", ["AWP-4", "AWP-7"], "purchase-admission", legacy_composed_admission, "indeterminate", "A historically readable AgreementDocument and commit-agreement phase do not authorize execution under the current Atomic tuple."),
         vector("awp-purchase-signed-sequential-admission", ["AWP-6", "AWP-7", "AWP-12"], "purchase-admission", composed_sequential_purchase, "pass", "A signed sequential gate selection is admitted only with the independently verified finalized commitment AnchorReceipt required before payment.", boundary_rules=["AWP-12"]),
         vector("awp-purchase-caller-gate-mode-mismatch", ["AWP-6"], "purchase-admission", mismatched_gate_copy, "fail", "An unsigned caller authority copy cannot change the proof path selected by the signed Work intent."),

@@ -1895,9 +1895,16 @@ def _verify_identity_bundle(bundle: dict[str, Any], public_keys: dict[str, str])
     if bundle.get("bundleVersion") != "1" or not isinstance(bundle.get("claims"), list):
         raise Invalid("pinned payer IdentityBundle malformed")
     presented = claim_key(bundle.get("presentedBy"))
-    refs = [claim_key(c.get("ref")) for c in bundle["claims"] if isinstance(c, dict)]
-    if not any(claim_equal(presented, ref) for ref in refs):
+    # DACS-1 exact presented-claim resolution: CF-3 identity matches collapse
+    # only when canonically identical; ambiguity resolves no presenter.
+    matches = {
+        jcs_bytes(c) for c in bundle["claims"]
+        if isinstance(c, dict) and claim_equal(c.get("ref"), presented)
+    }
+    if not matches:
         raise Invalid("IdentityBundle presentedBy missing from claims")
+    if len(matches) != 1:
+        raise Invalid("IdentityBundle presentedBy resolves to multiple distinct claims")
     presentation = bundle.get("presentation", {})
     if presentation.get("kind") != "per-claim":
         raise Invalid("synthetic profile requires per-claim IdentityBundle proof")
@@ -2286,9 +2293,10 @@ def _verify_current_profile_admission(
     """Consume verifier-owned current-profile authority for Atomic execution.
 
     The synthetic signed envelope stands in for the independently executed RSC,
-    IBH and LAA/current-profile admission pipeline.  Historical agreement bytes
-    remain readable by the focused helpers, but cannot authorize the composed
-    current Atomic profile.
+    IBH, current DACS-2 Vet production authorization, and LAA/current-profile
+    admission pipeline.  Historical agreement bytes or Vet records remain
+    readable by the focused helpers, but cannot authorize the composed current
+    Atomic profile.
     """
     admission = authority.get("currentProfileAdmission")
     if not isinstance(admission, dict):
@@ -2328,6 +2336,8 @@ def _verify_current_profile_admission(
             })),
         },
         "ibhDisposition": "verified",
+        # Bound through workId to the exact buyer-vet/seller-vet records.
+        "vetDisposition": "current-authorized",
         "laaDisposition": "current-eligible",
     }
     if set(subject) != set(expected) | {"signature"} or any(

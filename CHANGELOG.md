@@ -1237,6 +1237,23 @@ The format used per release:
   fifteen requirements are yet `EXISTING — PIN/EVIDENCE`, four require a DACS
   binding, and eleven require implementation. This assigns the remaining work
   without weakening the capability gate or the sequential fallback.
+- **Atomic Vet records under the corrective Vet boundary** (DACS-3 §8.6.1
+  AWP-1/AWP-7; DACS-1 §6.3.2; DACS-2 v0.6) — an already-signed
+  `CompositeVerificationRecord` carried by `buyer-vet` or `seller-vet` is no
+  longer current Vet authority by itself. The verifier-owned current-profile
+  admission consumed under AWP-7 MUST also establish DACS-2 v0.6 production
+  authorization of the Work's exact Vet records (exact `presentedBy` control,
+  presenter-proof requalification at trusted current time, and
+  composite-signer/verifier-identity authority); a record produced or
+  interpreted only under pre-correction semantics is historical and cannot
+  authorize the Work. Payer, payee, and Listing seller `IdentityBundle`s
+  resolve `presentedBy` to exactly one canonical-distinct claim. Adds
+  whole-profile historical-authority and unadmitted-record rejections and an
+  ambiguous-presenter regression.
+- **Atomic evidence under the LAA qualification** (DACS-5 §10.4.3 SEB-3) —
+  the Atomic evidence-family replacement does not bypass the per-payment
+  DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is
+  qualified like every other successful payment.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

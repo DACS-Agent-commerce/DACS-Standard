@@ -31,7 +31,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 307)
+        self.assertEqual(vector_count, 309)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -544,6 +544,51 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ref.evaluate_vector(auth_by_name["aw-auth-cf3-parameter-identity"])[0],
             "pass",
         )
+
+    def test_vet_records_require_current_production_authorization(self):
+        purchase = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-purchase-completion-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in purchase["vectors"]}
+        self.assertEqual(
+            ref.evaluate_vector(by_name["awp-purchase-composed-admission"])[0],
+            "pass",
+        )
+        for name in (
+            "awp-purchase-vet-record-historical-authority",
+            "awp-purchase-vet-record-not-current-admitted",
+        ):
+            with self.subTest(name=name):
+                verdict, reason = ref.evaluate_vector(by_name[name])
+                self.assertEqual(verdict, "fail")
+                self.assertIn("current-profile admission", reason)
+
+    def test_presented_by_resolves_to_exactly_one_distinct_claim(self):
+        def signed(bundle):
+            unsigned = {k: v for k, v in bundle.items() if k != "presentation"}
+            digest = ref.sha256_hex(ref.jcs_bytes(unsigned))
+            bundle["presentation"]["signatures"][0]["signature"] = ref.b64u(
+                ref.ed25519_sign(
+                    generator.SEEDS["buyer"],
+                    b"dacs-bundle-presentation:v1:" + digest.encode("ascii"),
+                )
+            )
+            return bundle
+
+        bundle = generator.identity_bundle("buyer", [generator.CLAIMS["payer"]])
+        ref._verify_identity_bundle(bundle, generator.PUBLIC_KEYS)
+
+        repeated = copy.deepcopy(bundle)
+        repeated["claims"].append(copy.deepcopy(repeated["claims"][0]))
+        ref._verify_identity_bundle(signed(repeated), generator.PUBLIC_KEYS)
+
+        ambiguous = copy.deepcopy(bundle)
+        distinct = copy.deepcopy(ambiguous["claims"][0])
+        distinct["metadata"] = {"nativeAccount": "dem-test-other"}
+        ambiguous["claims"].append(distinct)
+        with self.assertRaisesRegex(ref.Invalid, "multiple distinct claims"):
+            ref._verify_identity_bundle(signed(ambiguous), generator.PUBLIC_KEYS)
 
     def test_publication_proof_authenticates_create_only_prior_state(self):
         settlement = next(

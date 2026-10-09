@@ -1393,7 +1393,14 @@ operations and dependencies:
 | 5 | `payment` | `native-dem-transfer` | `["payment-slot"]` | `payer` |
 
 - (AWP-1) `buyer-vet` and `seller-vet` MUST carry complete, already-signed Vet
-  artifacts.
+  artifacts. A signed `CompositeVerificationRecord` is not by itself current
+  Vet authority: before either record can authorize the Purchase, the
+  verifier-owned current-profile admission of AWP-7 MUST establish DACS-2 v0.6
+  production authorization of that exact record, including exact `presentedBy`
+  control, requalification of every load-bearing result-backed presenter proof
+  at trusted current time, and composite-signer and verifier-identity
+  authority from trusted context. A record produced or interpreted only under
+  pre-correction semantics is historical and MUST NOT authorize the Work.
 - (AWP-2) A Vet operation MAY assert a finalized resolvable record or anchor
   byte-identical signed bytes through the Work overlay. A Vet
   `storage-program-put` MUST use the existing DACS-2 §7.7.2 logical address
@@ -1451,8 +1458,10 @@ CA-1, SR2-8, and DACS-4 PIPE-6, not a reinterpretation of any of those rules.
   independently valid Agreement signed by a different seller MUST be rejected.
   For the advertised current profile tuple this check MUST consume verifier-owned
   successful DACS-1 RSC current-head/revocation admission, DACS-2 identity-bundle
-  hash verification, and DACS-4 LAA current-eligibility and exact selector result
-  for the same signed Listing, Agreement, payer/payee bundles, `jobId`, and Work.
+  hash verification, DACS-2 current production authorization of the exact
+  `buyer-vet` and `seller-vet` records under AWP-1, and DACS-4 LAA
+  current-eligibility and exact selector result for the same signed Listing,
+  Agreement, payer/payee bundles, Vet records, `jobId`, and Work.
   Missing authority is indeterminate; stale, substituted, legacy-only, or
   contradictory authority is invalid. A caller assertion or a historically valid
   agreement signature cannot stand in for those current-profile results.

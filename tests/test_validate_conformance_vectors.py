@@ -121,7 +121,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                 self.assertEqual("candidate", case["status"])
                 self.assertIn("output-only expectation", case["reason"])
                 self.assertIn("not published", case["reason"])
-        self.assertEqual(176, sum(
+        self.assertEqual(182, sum(
             case["status"] == "golden" for case in data["cases"]
         ))
         self.assertEqual(64, sum(

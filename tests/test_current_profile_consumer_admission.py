@@ -584,8 +584,8 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
 
         The full six-stage tuple — CORE plus DACS-1 through DACS-5 — is
         parsed independently from each CORE §11.1.2 boundary sentence and
-        again from the PROFILE.md candidate tables and the channel-wire
-        CHANGELOG declaration, so a drift in any single stage fails; it is never
+        again from the PROFILE.md candidate tables and the Vet/channel-wire
+        CHANGELOG declarations, so a drift in any single stage fails; it is never
         sufficient for CORE to restate only its own version."""
         core_text = (ROOT / "spec/CORE.md").read_text(encoding="utf-8")
         profile_text = (ROOT / "spec/PROFILE.md").read_text(encoding="utf-8")
@@ -593,7 +593,7 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
         stage_keys = ("core", "dacs1", "dacs2", "dacs3", "dacs4", "dacs5")
 
         # Independent parse 1: the complete candidate tuple as declared by
-        # every CORE §11.1.2 boundary sentence (jobId and channel wire).
+        # every CORE §11.1.2 boundary sentence (jobId, channel wire, and Vet).
         # Each match alternates major/minor captures; preserve both parts so
         # a major-version drift cannot be hidden by an unchanged minor.
         core_sentences = re.findall(
@@ -647,6 +647,38 @@ class CurrentProfileConsumerAdmissionTests(unittest.TestCase):
             core_tuple,
             profile_tuple,
             "CORE §11.1.2 and PROFILE.md declare different corrective tuples",
+        )
+
+        vet_heading = re.search(
+            r"Vet admission, provenance, time, and receipt authority "
+            r"\(CORE v(\d+\.\d+) / DACS-1 v(\d+\.\d+) / "
+            r"DACS-2 v(\d+\.\d+)\)",
+            changelog_text,
+        )
+        self.assertIsNotNone(vet_heading, "CHANGELOG declares no Vet tuple")
+        self.assertEqual(
+            (core_tuple["core"], core_tuple["dacs1"], core_tuple["dacs2"]),
+            vet_heading.groups(),
+            "CHANGELOG Vet heading differs from the current CORE/PROFILE tuple",
+        )
+        self.assertIn(
+            "session-presentation and Vet rules below were introduced with DACS-1 v0.7",
+            changelog_text,
+        )
+        vet_tuple = re.search(
+            r"current complete tuple is CORE v(\d+\.\d+) / "
+            r"DACS-1 v(\d+\.\d+) / DACS-2\s+v(\d+\.\d+) / "
+            r"DACS-3 v(\d+\.\d+) / DACS-4 v(\d+\.\d+) / "
+            r"DACS-5 v(\d+\.\d+)",
+            changelog_text,
+        )
+        self.assertIsNotNone(
+            vet_tuple, "CHANGELOG Vet correction declares no complete tuple"
+        )
+        self.assertEqual(
+            tuple(core_tuple[key] for key in stage_keys),
+            vet_tuple.groups(),
+            "CHANGELOG Vet tuple differs from CORE/PROFILE",
         )
 
         dacs3_text = (ROOT / "spec/DACS-3-NEGOTIATE.md").read_text(encoding="utf-8")

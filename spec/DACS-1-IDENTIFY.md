@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.8 also adds RSC-1..RSC-10 and a listing-bound, append-only `RevocationStateHead`: a new-session reader can return `absent` only from an authenticated proof against the current finalized seller state, never from a discovery surface's omission. v0.7 participates in the declared CORE §11.1.2 pre-v1 JID-1 corrective boundary and requires exact profile admission before listing validation, keeps authoritative listing-time rail resolution on the existing DACS-4 registry contract while CORE registry-bootstrap activation remains deferred, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.8** on the common DACS v0.1 baseline. v0.8 adds the structurally distinct complete sealed-envelope negotiation and selection-bound agreement-commitment phase kinds from DACS-3 v0.6; their signed `candidateSetBinding` parameter makes older listing readers reject before acting rather than ignore candidate-set completeness. v0.8 also adds RSC-1..RSC-10 and a listing-bound, append-only `RevocationStateHead`: a new-session reader can return `absent` only from an authenticated proof against the current finalized seller state, never from a discovery surface's omission. v0.7 participates in the declared CORE §11.1.2 breaking pre-v1 corrective boundary, requires exact profile admission before listing validation, and changes existing session-presentation behaviour so the declared presentation kind selects the nonce conveyance and only the verifier-issued, issuer-owned SN-4 ledger can authorize and consume the attempt. The signed `IdentityBundle` shape is unchanged; the version label alone does not establish interoperability with pre-correction behavior. The existing unreleased v0.8 corrective candidate also makes exact `presentedBy` control mandatory for every bundle match and Vet decision; `primaryClaimSelector` adds authorization constraints but no longer gates the control requirement. v0.7 keeps authoritative listing-time rail resolution on the existing DACS-4 registry contract while CORE registry-bootstrap activation remains deferred, defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, and adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -205,7 +205,7 @@ type IdentityBundle = {
 
   presentedAt: number                  // unix milliseconds (always present); informational/diagnostic only — session freshness/replay is bound by sessionNonce (§6.3.2), not by presentedAt; verifiers MUST NOT gate acceptance on presentedAt
 
-  sessionNonce?: string                // session-binding nonce for per-claim / session-key presentations; top-level so it enters bundle_hash (§6.3.2). SIWD conveys the nonce in the SIWD message Nonce field instead.
+  sessionNonce?: string                // session-binding nonce for per-claim / session-key / sr1-root presentations; top-level so it enters bundle_hash (§6.3.2). SIWD conveys the nonce in the SIWD message Nonce field instead.
 
   claims: BundleClaim[]                // non-empty; order is meaningful
 
@@ -253,7 +253,7 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 
 `signed_bytes := "dacs-bundle-presentation:v1:" || bundle_hash`
 
-- **per-claim** — each per-claim signature signs `signed_bytes` (not the raw bundle hash).
+- **per-claim** — each per-claim signature signs `signed_bytes` (not the raw bundle hash). Every signature's `ref` MUST match the canonical `(Scheme, Identifier)` of a reference in this bundle's `claims` under CORE CF-3; a valid signature by an outsider does not verify the presentation, even when another listed claim's signature verifies. Reference parameters need not be byte-identical, and this rule does not require every claim to have its own signature.
 - **session-key** — the session key signs `signed_bytes`; if `rootBinding` is set, the root key additionally signs `"dacs-session-binding:v1:" || session_key || bundle_hash`.
 - **sr1-root** — the SR-1 aggregate signature signs `signed_bytes`; verifiers reconstruct the SR-1 aggregate from the `rootClaim`'s sub-identity set and verify against `signed_bytes`.
 - **siwd** — the wallet signs the SIWD message, which MUST carry `signed_bytes` as an EIP-4361 `Resources` entry in the exact form `dacs:<hex>`:
@@ -265,8 +265,18 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 
 **Session nonce binding.** `presentedAt` is always present (a required schema field). A bundle presented in the context of a specific session SHOULD additionally carry a session-binding nonce:
 
-- The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim and session-key presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
-- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the distinct challenge it issued for this exact `jobId` and presenter, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, distinct per presentation, bounded-lifetime, and consumed on the first attempt including failure — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it. A later stage reverifies the retained accepted presentation and does not re-accept the consumed nonce.
+- The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim, session-key, and sr1-root presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
+- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the distinct challenge it issued for this exact `jobId` and presenter, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, distinct per presentation, bounded-lifetime, and consumed on the first attempt including failure — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it.
+- The verifier extracts the nonce from the conveyance defined by the declared
+  presentation kind: the existing top-level `sessionNonce` for per-claim,
+  session-key, and sr1-root, or the parsed EIP-4361 `Nonce` field
+  from the exact SIWD message whose signature is being authenticated.  It MUST
+  NOT search arbitrary wrapper metadata or accept a caller-projected nonce.
+  Once the exact issued value is found, CORE SN-4 consumes the issuer-owned
+  ledger entry before the remaining presentation checks; nested checks use the
+  resulting admission and MUST NOT consume it a second time. A later stage
+  reverifies the retained accepted presentation and does not re-accept the
+  consumed nonce.
 - For SIWD the nonce lives in the omitted `presentation` field and so is not in `bundle_hash`; the verifier's nonce-match check above is the binding for that kind and is therefore a MUST, not advisory.
 - Bundles presented without session-nonce binding are usable only outside session contexts (e.g., listing publication where the bundle is the seller’s own self-binding to the listing).
 
@@ -293,13 +303,15 @@ The bundle follows the §B.2 canonical-form template, omitting the `presentation
 This ranking governs the `presentedBy` selection below — which primary claim to present, by scheme strength. The §6.3.2.1 `identityTier` derivation uses it only for the top level (a verified **tier-1** claim → `institutional`) and otherwise keys on *verification status*, not scheme tier: any other **verified** claim → `verified`, and **no** verified claim → `self-declared`. So a verified `key:` is `verified`, despite being the lowest presentedBy tier. The two rankings answer different questions — scheme strength vs verification status.
 
 **presentedBy selection rule**
-- presentedBy MUST be one of the claim references appearing in `claims` (matching by canonical scheme and identifier).
+- presentedBy MUST resolve uniquely to a claim reference appearing in `claims` (matching by canonical scheme and identifier).
 - If the listing's `BundleRequirement.primaryClaimSelector` is set, the presenter SHOULD select the highest-tier claim of the matching scheme. If no selector is set, the presenter SHOULD select the highest-tier claim available, per the **Claim tiers** table above.
-- Readers MUST accept any `presentedBy` value that resolves to a claim in `claims`. A reader MAY prefer a higher-tier alternative for display or reputation lookup but MUST NOT reject a bundle solely because `presentedBy` is not the highest-tier claim.
+- For an accepting bundle match or Vet decision, readers MUST accept any `presentedBy` value that resolves to a claim in `claims` **and passes the mandatory exact-claim control and applicable status/authorization gates below**. A reader MAY prefer a higher-tier alternative for display or reputation lookup but MUST NOT reject solely because `presentedBy` is not the highest-tier claim. Resolution alone does not establish control.
 
-**Controlled `presentedBy` for reputation.** Reputation MUST NOT be keyed against an uncontrolled `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. Ordinarily the resolved claim therefore needs a passing **and fresh** `verifiedBy` plus the applicable control proof from step (6). The narrow exception is an exact `key:` claim whose valid bundle presentation itself proves control: it MAY key reputation at the lowest (plain signing-key) tier without a `VerifyResult`. This exception proves control of that signing key only; it does not make the key verified, elevate `identityTier`, or transfer control to another presence-only claim. A presence-only authority identifier such as `lei:` remains existence-only and MUST NOT become `presentedBy` or a reputation key without an independent control proof. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
+**Exact presented-claim resolution.** A reader collects every `BundleClaim` whose reference has the same CF-3 canonical `(Scheme, Identifier)` identity as `presentedBy`, then deduplicates those matches by the CORE canonical bytes of the complete `BundleClaim` value. Exactly one canonical-distinct value MUST remain. Repeated canonically identical claim values therefore collapse to one candidate, while two canonical-distinct values with the same identity are ambiguous and resolve no presented claim; array order MUST NOT select either one. In an otherwise authenticated bundle match or Vet decision, zero or multiple canonical-distinct matches produce the existing semantic non-match/`fail`. A malformed claim container or reference remains an earlier structural `error`; this resolution rule does not reclassify malformed input as an identity-control failure.
 
-> **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself while preserving the useful self-authenticating `key:` case. The MA-3/PCR-5 controlled-presentedBy check (§6.3.3) enforces this at match time when a selector is set; this rule extends the same protection to the no-selector case where reputation still keys on `presentedBy` (§6.6, §10.5.2).
+**Mandatory exact `presentedBy` control.** Every accepting bundle match and Vet decision MUST require the exact claim resolved from `presentedBy` to be controlled under step (6), regardless of whether `primaryClaimSelector` is set. Reputation likewise MUST NOT be keyed against an uncontrolled `presentedBy`. This semantic decision gate does not make auxiliary wire/hash validation, `identityTier` derivation, or non-authorizing inspection reject solely for lack of control. Control and verification status are separate predicates: a result-backed control mechanism requires the exact passing **and fresh** `verifiedBy` on which it depends, while an already-supported independent mechanism permitted by the selected profile, such as an authenticated SR-1 address-key linkage, retains its own obligations without manufacturing a `VerifyResult`. When no selector is set, an accepting decision additionally requires the exact presenter to have a passing-and-fresh `verifiedBy`, except for the narrow exact-`key:` signature case below. When a selector is set, MA-3 instead applies its exact verified-or-explicit-presence authorization arm; explicit presence can combine with an already-supported independent control mechanism but cannot establish control itself. The narrow key exception is an exact `key:` claim whose own valid bundle-presentation signature proves control: it MAY be `presentedBy` and key reputation at the lowest (plain signing-key) tier without a `VerifyResult`. A different included claim's signature cannot lend control to that key. A well-shaped optional `verifiedBy` on the exact key does not defeat its signature control merely because the referenced result is failing, unavailable, or stale; the reference remains subject to the ordinary wire-shape rules and cannot satisfy a verification-required use unless it independently passes. This exception proves control of that signing key only; it does not make the key verified, elevate `identityTier`, or transfer control to another presence-only claim. A presence-only authority identifier such as `lei:` remains existence-only and MUST NOT become `presentedBy` or a reputation key without an independent control proof. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
+
+> **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself while preserving the useful self-authenticating `key:` case. MA-3/PCR-5 (§6.3.3) enforces exact `presentedBy` control for every match; when a selector is set, it additionally enforces that selector's verified-or-explicit-presence authorization arm.
 
 **Verification reference resolution.** For a BundleClaim with `verifiedBy` present, the reader runs these checks in order; **any failure makes the claim unverified** for evaluation against bundle requirements:
 
@@ -308,7 +320,7 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 3. **Parse + recipe-check** — parse the canonicalised content as a DACS-2 VerifyResult and verify it matches the recipe at `recipeVersion`.
 4. **Identifier match** — `VerifyResult.identifier` matches the `BundleClaim.ref` identifier component canonically.
 5. **Decision** — `VerifyResult.decision == "pass"`.
-6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
+6. **Control (mandatory for exact `presentedBy` in match/Vet decisions; otherwise for controlled use)** — the exact claim resolved from `presentedBy` MUST be **controlled** before a bundle match or Vet decision can accept, and any other claim used as a controlled reputation key MUST satisfy the same gate. Control is a **DACS-1** property, established only by one of the supported mechanisms: the exact `key:` claim's own **bundle presentation signature** (§6.3.2 / §B.7, compared by CF-3 identity); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). Another included claim or signer cannot lend control to `presentedBy`. A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 gates exact `presentedBy` for match/Vet acceptance and additionally gates other controlled uses. No unlisted verification method or bare existence result implies control.
 
    Key rotation, revocation, and post-revocation validity after this control proof are governed by the §6.6 **Key lifecycle** rules; a historical proof does not make a rotated or revoked key current for a new session.
 
@@ -324,14 +336,14 @@ A `verifiedBy` reference is **stale** when `now >` the effective expiry from the
 A conforming bundle **producer** MUST:
 - (BP-1) produce JCS-canonical serialisation for hashing and signing;
 - (BP-2) include at least one claim;
-- (BP-3) provide `presentedBy` that resolves to a claim;
+- (BP-3) provide `presentedBy` that resolves to exactly one canonical-distinct claim under the CF-3 rule above;
 - (BP-4) provide a presentation signature that verifies against the domain-separated payload `signed_bytes` (`"dacs-bundle-presentation:v1:" || bundle_hash`, §6.3.2) — not the raw bundle hash.
 A conforming bundle **reader** MUST:
 - (BR-1) recompute the bundle hash from canonical form before the signature check;
 - (BR-2) reject a bundle whose presentation signature does not verify;
 - (BR-3) reject a bundle in which a required (per listing) claim has a missing or invalid `verifiedBy` when `verificationRequired = true`;
 - (BR-4) treat claims with unknown schemes as unverified;
-- (BR-5) when the listing sets `primaryClaimSelector`, apply MA-3/PCR-5 to the exact `presentedBy` claim. It MUST be controlled and either verified-and-fresh or explicitly authorized by a satisfied presence-only selector requirement. The latter path is usable for a self-authenticating `key:` presentation but does not make an existence-only identifier controlled. A separately verified claim of the same scheme MUST NOT launder the selected claim.
+- (BR-5) when deciding a bundle match or Vet decision, apply MA-3/PCR-5 to the exact `presentedBy` claim. It MUST be controlled regardless of whether `primaryClaimSelector` is set. With no selector, the exact presenter additionally MUST be verified-and-fresh or be the exact `key:` whose own valid presentation signature supplies the narrow exception. When a selector is set, the exact claim instead additionally MUST be either verified-and-fresh or explicitly authorized by a satisfied presence-only selector requirement. The latter path changes only selector authorization: it is usable with an independently controlled claim, including an exact self-authenticating `key:` presentation or an existing SR-1 control proof, but does not make an existence-only identifier controlled or invent a verification result. A separately verified claim or signer of the same scheme MUST NOT launder the selected claim.
 **Selective disclosure (scope note).** v0.1 provides no per-claim selective-disclosure mechanism at the bundle layer: there is no per-claim blinding, no commitment-with-open-on-demand, and no proof-of-possession-without-disclosure for a claim a listing did not require. Concretely:
 
 - A verifier that receives a bundle sees every claim in `claims[]`; the `presentedBy` primary claim is always disclosed and is the cross-session correlator used for reputation and audit (§6.4 Rationale, §6.3.4).
@@ -392,7 +404,7 @@ type ClaimRequirement = {
 - **(PCR-2) Presence predicate.** A presence-only member passes only when the signed `IdentityBundle` contains a claim of the required known scheme whose reference is canonical, whose unexpired `expiresAt` (when present) contains `now`, and whose signed `BundleClaim` data satisfies `parameters` (when present). A match establishes only that the presenter signed those claim values; it does not authenticate them against an external authority. A missing claim, an expired `expiresAt`, or a parameter mismatch is a non-match. `issuedAt` is informational in this mode: it MAY be absent and, when present, MUST NOT be treated as an authority issuance time or proof of verification.
 - **(PCR-3) Optional verification reference.** A presence-matched claim MAY carry `verifiedBy`, but its decision, freshness, resolution availability, and reuse status MUST NOT elevate or defeat the presence decision. Readers MUST NOT dereference it solely to decide presence. The reference still MUST have the `VerifyResultRef` wire shape; a malformed reference makes the bundle evaluation an error. This rule does not erase the reference or permit its use as passing verification elsewhere.
 - **(PCR-4) Verified predicate.** A member with `verificationRequired = true` passes only through the §6.3.2 resolution, passing-decision, freshness, `maxAge`, recipe, and parameter checks. Presence of a matching claim is insufficient.
-- **(PCR-5) Control and tier boundary.** Presence is not control and is not verification. It MUST NOT elevate `identityTier`, establish a controlled `presentedBy`, or key reputation. MA-3 permits an exact presence-only selector only when the requirement explicitly authorizes that presence path **and** the presenter independently proves control under §6.3.2 step (6). A valid bundle presentation proves this for its exact `key:` claim; an existence-only authority identifier such as `lei:` does not. A different verified claim of the same scheme MUST NOT supply control or verification to the selected claim.
+- **(PCR-5) Control and tier boundary.** Presence is not control and is not verification. It MUST NOT elevate `identityTier`, establish a controlled `presentedBy`, or key reputation. MA-3 requires independent exact `presentedBy` control even when no selector is set. When a selector is set, MA-3 permits its exact presence-only authorization arm only when the requirement explicitly authorizes that path **and** the presenter independently proves control under §6.3.2 step (6). A valid bundle presentation proves this for its exact `key:` claim; an existence-only authority identifier such as `lei:` does not. A different verified claim or signer of the same scheme MUST NOT supply control or verification to the selected claim.
 - **(PCR-6) DACS-2 bridge.** Vet evaluates presence-only members directly against the exact signed bundle bound by `CompositeVerificationRecord.bundleHash`; it MUST NOT emit a synthetic `VerifyResult` or `VerifyResultRef` for presence. DACS-2 §7.7.1 defines mixed required/`oneOf` aggregation and strict replay.
 
 **Matching algorithm**
@@ -453,17 +465,41 @@ match(bundle, requirement):
 
        if bundle.presentedBy.scheme != requirement.primaryClaimSelector: return REJECT
 
-  3b. (MA-3) If requirement.primaryClaimSelector is set:
+  3b. (MA-3) For every bundle match, whether or not requirement.primaryClaimSelector is set:
 
        // The exact claim presentedBy resolves to MUST itself be controlled — not merely some claim of the selector scheme.
 
        // Otherwise a presenter could launder reputation by pairing an unverified (or third-party) presentedBy identifier with a *different*, already-verified claim of the same scheme.
 
-       presented := the claim c in bundle.claims whose c.ref matches bundle.presentedBy by canonical scheme AND identifier (the §6.3.2 presentedBy resolution rule)
+       presented := exact_presented_claim(bundle)
 
-       if presented is null: return REJECT   // presentedBy does not resolve to a claim in the bundle
+       // exact_presented_claim applies CF-3 identity, deduplicates complete
 
-       verified_selector := presented has a passing-and-fresh verifiedBy under the §6.3.2 verified-claim gate
+       // BundleClaim values by CORE canonical bytes, and returns the sole
+
+       // canonical-distinct match. Array order never selects an ambiguous claim.
+
+       if presented is null: return REJECT   // zero or multiple distinct matches
+
+       controlled := presenter proves control of the exact presented claim under §6.3.2 step (6)
+
+       if NOT controlled: return REJECT
+
+       // For an exact key: claim, its own valid presentation signature proves control without a VerifyResult.
+
+       // A different included signer does not; a well-shaped optional verifiedBy does not defeat that exact-key proof.
+
+       verified_presenter := presented has a passing-and-fresh verifiedBy under the §6.3.2 verified-claim gate
+
+       exact_key_exception := presented is key: AND its own valid presentation signature supplied control
+
+       if requirement.primaryClaimSelector is not set:
+
+         if NOT (verified_presenter OR exact_key_exception): return REJECT
+
+         proceed to step 4
+
+       verified_selector := verified_presenter
 
        presence_selector := exact_presented_satisfies_presence_member(requirement, presented)
 
@@ -475,13 +511,15 @@ match(bundle, requirement):
 
                                 member for presented or by a passing member of another scheme
 
-       controlled := presenter proves control of the exact presented claim under §6.3.2 step (6)
+       if NOT (verified_selector OR presence_selector): return REJECT
 
-       if NOT controlled OR NOT (verified_selector OR presence_selector): return REJECT
+       // A valid key: bundle presentation or another already-supported independent
 
-       // A valid key: bundle presentation can satisfy controlled+presence_selector.
+       // control mechanism can satisfy controlled+presence_selector.
 
-       // An existence-only lei: cannot. A different verified same-scheme claim cannot launder either predicate.
+       // An existence-only lei: cannot. A different verified same-scheme claim cannot
+
+       // launder either predicate, and independent control does not invent a VerifyResult.
 
   4. If requirement.preferredPresentation is set AND != "any":
 
@@ -548,7 +586,7 @@ find_claim(bundle, cr):
 scheme_specific_match is defined per scheme in DACS-2 recipes. Where parameters are unrecognised, readers MUST treat the requirement as unmatched (not silently passed).
 
 **Failure mode and selector semantics**
-A BundleRequirement that does not match MUST cause the buyer or seller to refuse to advance the transaction past the Vet stage. v0.1 specifies no downgrade or renegotiation path. The primaryClaimSelector controls which claim’s identifier is used as the reputation key in DACS-5 and the counterparty identifier of record for audit purposes. Listings that handle regulated flows SHOULD set primaryClaimSelector to an authority-issued scheme (e.g., lei) to ensure reputation accumulates against a stable, externally-verifiable identifier rather than a session key.
+A BundleRequirement that does not match MUST cause the buyer or seller to refuse to advance the transaction past the Vet stage. v0.1 specifies no downgrade or renegotiation path. The exact controlled `presentedBy` is the reputation key in DACS-5 and the counterparty identifier of record for audit purposes. `primaryClaimSelector`, when present, constrains its scheme and adds the verified-or-explicit-presence authorization arm; absence of a selector does not remove the exact-control gate. Listings that handle regulated flows SHOULD set `primaryClaimSelector` to an authority-issued scheme (e.g., `lei`) to ensure reputation accumulates against a stable, externally-verifiable identifier rather than a session key.
 
 #### 6.3.4 Service listing
 
@@ -1234,8 +1272,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 | Listing reader | LR-1 pin tuple; LR-2 reject `rejected`; LR-3 refuse new sessions for revocation- or rail-resolution `indeterminate`; RSC-1..RSC-10 prove current non-revocation; LRR-1..LRR-6 resolve every advertised rail |
 | Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone; RSC-2..RSC-5 append it to the stable current-state line |
 | Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 discovery-only disposition; RSC-1..RSC-10 authenticate the current append-only head and exact tuple proof |
-| Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
-| Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 reject unverified presentedBy when primaryClaimSelector set |
+| Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 `presentedBy` resolves to exactly one canonical-distinct claim by CF-3 identity; BP-4 valid presentation signature |
+| Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 require the uniquely resolved exact `presentedBy` claim's control for every accepting match/Vet decision, require exact verified/fresh presenter status or the exact-key exception when no selector is set, and require exact verified-or-explicit-presence selector authorization when `primaryClaimSelector` is set |
 | Well-known publisher | Publish dacs block; keep indexHash current; optional bundleBindings index per §10.4.2 BB-2 |
 | Catalog operator | Open read endpoints; honour caching constraint; decline write endpoints by spec discretion; if carrying bundle bindings, serve every §10.4.2 BB-4-valid record regardless of authoring party |
 | Catalog client | Dereference anchors before binding |
@@ -1276,7 +1314,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Forged listings.** *Threat:* an attacker publishes a listing impersonating a known seller. *Mitigation:* listings are signed; the signer MUST be a key referenced in seller.identity.claims, and the bundle itself MUST verify. A reader following the validation order detects the impersonation at the signature step or the bundle-conformance step.
 
-**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
+**Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one presentation or session and replays it. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates for a distinct verifier challenge and which is bound to that challenge when presented in a session context. The binding is direct for the per-claim, session-key, and sr1-root kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). The verifier consumes each challenge on its first attempt, including failure, retains an accepted presentation for cross-stage reuse under CORE IBH-4, and rejects any fresh, changed, or re-signed reuse. Bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings, omits real ones, or withholds a revocation tombstone while replaying an older active row. *Mitigation:* ListingSummary includes the anchor and contentHash, so clients dereference and verify the Listing. Current new-session readers additionally ignore catalog omission as revocation evidence and require the Listing-bound RSC current-head proof. A poisoned catalog can still cause UX confusion or denial of service, but cannot turn a partial active view into current non-revocation.
 

@@ -779,7 +779,7 @@ type AgreementParty = {
 
   vetRecordRef: AttestationRef         // DACS-2 composite verification record
 
-  encryptionKey?: string               // optional party encryption public key; binds which key an encrypt-to-buyer deliverable is sealed to (DACS-4 §9.6.1, DV-3). Distinct from the signing key.
+  encryptionKey?: string               // optional party encryption public key; declares which key the producer seals an encrypt-to-buyer deliverable to (DACS-4 §9.6.1). DV-3 checks the recipient identity and ciphertext commitment, not the envelope key or decryptability. Distinct from the signing key.
 
 }
 

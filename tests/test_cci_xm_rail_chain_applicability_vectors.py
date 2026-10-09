@@ -8,7 +8,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from dacs_reference import exact_safe_integer, parse_claim_reference  # noqa: E402
+from dacs_reference import (  # noqa: E402
+    canonical_bytes,
+    exact_safe_integer,
+    parse_claim_reference,
+)
 
 VECTORS = (
     ROOT
@@ -78,7 +82,10 @@ def rail_eip155_chain(rail):
             or asset_chain_id != chain_id
         ):
             raise ValueError("RD-5 asset/network chainId mismatch")
-    return f"eip155:{chain_id}"
+    # ``exact_safe_integer`` deliberately admits JSON-equivalent integral
+    # floats.  Derive the textual CAIP-2 identifier from the mathematical
+    # integer without rewriting either signed field in the rail artifact.
+    return f"eip155:{int(chain_id)}"
 
 
 def evaluate(vector):
@@ -205,6 +212,85 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertFalse(result["maySubmitPayment"])
                 self.assertTrue(result["mustNotUseTier3"])
 
+    def test_equivalent_chain_number_spellings_preserve_complete_dispositions(self):
+        spellings = {
+            "integer": 8453,
+            "dot-zero": json.loads("8453.0"),
+            "exponent": json.loads("8.453e3"),
+        }
+        for name in [
+            "base-mainnet-exact-chain-id-tier2",
+            "exact-chain-match-unresolvable-linkage-pauses",
+            "exact-chain-match-linkage-error-does-not-downgrade",
+        ]:
+            baseline = evaluate(self.by_name[name])
+            baseline_rail = self.by_name[name]["railDefinition"]
+            for spelling, chain_id in spellings.items():
+                with self.subTest(vector=name, spelling=spelling):
+                    changed = json.loads(json.dumps(self.by_name[name]))
+                    changed["railDefinition"]["network"]["chainId"] = chain_id
+                    changed["railDefinition"]["asset"]["chainId"] = chain_id
+                    before = json.loads(json.dumps(changed))
+                    self.assertEqual(
+                        canonical_bytes(baseline_rail),
+                        canonical_bytes(changed["railDefinition"]),
+                    )
+                    self.assertEqual(baseline, evaluate(changed))
+                    self.assertEqual(before, changed)
+
+    def test_non_integral_or_out_of_range_chain_numbers_remain_rejected(self):
+        for chain_id in (True, False, 0, -1, 8453.5, 2**53):
+            with self.subTest(chain_id=chain_id):
+                rejected = evaluate({
+                    "claim": "cci-xm:evm:8453:opaque-address",
+                    "railDefinition": {
+                        "network": {"kind": "evm", "chainId": chain_id},
+                        "asset": {"kind": "erc20", "chainId": chain_id},
+                    },
+                    "tier3AgreementAssertionPresent": True,
+                    "linkageDecision": "pass",
+                })
+                self.assertEqual("error", rejected["expected"])
+                self.assertEqual("RD-5", rejected["failedAt"])
+                self.assertFalse(rejected["maySubmitPayment"])
+
+    def test_safe_integer_boundary_holds_for_every_number_spelling(self):
+        # Equivalent admitted spellings of the largest safe chain ID keep the
+        # integer disposition; float spellings outside the safe range, and
+        # non-finite values, fail before tier selection exactly like 2**53.
+        maximum = 2**53 - 1
+        claim = f"cci-xm:evm:{maximum}:opaque-address"
+
+        def vector(chain_id):
+            return {
+                "claim": claim,
+                "railDefinition": {
+                    "network": {"kind": "evm", "chainId": chain_id},
+                    "asset": {"kind": "erc20", "chainId": chain_id},
+                },
+                "tier3AgreementAssertionPresent": True,
+                "linkageDecision": "pass",
+            }
+
+        accepted = evaluate(vector(maximum))
+        self.assertEqual(
+            {
+                "expected": "pass",
+                "railChain": f"eip155:{maximum}",
+                "claimChain": f"eip155:{maximum}",
+                "tier2Applicable": True,
+                "bindingTier": 2,
+                "maySubmitPayment": True,
+            },
+            accepted,
+        )
+        self.assertEqual(accepted, evaluate(vector(float(maximum))))
+        rejected = evaluate(vector(2**53))
+        self.assertEqual("RD-5", rejected["failedAt"])
+        for chain_id in (float(2**53), 1e16, float("inf"), float("nan")):
+            with self.subTest(chain_id=chain_id):
+                self.assertEqual(rejected, evaluate(vector(chain_id)))
+
     def test_address_is_nonempty_but_otherwise_opaque_for_chain_applicability(self):
         for name in [
             "nonempty-opaque-address-establishes-tier2",
@@ -272,6 +358,16 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual(result["failedAt"], "RD-5")
                 self.assertFalse(result["maySubmitPayment"])
 
+    def test_manifest_no_longer_promotes_the_contradictory_golden(self):
+        cases = {
+            case["id"]: case
+            for case in json.loads(MANIFEST.read_text(encoding="utf-8"))["cases"]
+        }
+        self.assertNotIn("settlement-cross-chainid-matching-kind-pass", cases)
+        corrected = cases["settlement-cross-chainid-mismatch-fail"]
+        self.assertEqual(corrected["want"], "fail")
+        self.assertEqual(corrected["status"], "candidate")
+
     def test_eip155_chain_ids_stop_at_the_safe_integer_boundary(self):
         maximum = 2**53 - 1
         claim = f"cci-xm:evm:{maximum}:opaque-address"
@@ -329,16 +425,6 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
         self.assertFalse(result["tier2Applicable"])
         self.assertEqual(result["bindingTier"], 3)
         self.assertTrue(result["maySubmitPayment"])
-
-    def test_manifest_no_longer_promotes_the_contradictory_golden(self):
-        cases = {
-            case["id"]: case
-            for case in json.loads(MANIFEST.read_text(encoding="utf-8"))["cases"]
-        }
-        self.assertNotIn("settlement-cross-chainid-matching-kind-pass", cases)
-        corrected = cases["settlement-cross-chainid-mismatch-fail"]
-        self.assertEqual(corrected["want"], "fail")
-        self.assertEqual(corrected["status"], "candidate")
 
     def test_normative_text_pins_the_same_predicate_and_empty_alias_table(self):
         dacs1 = DACS1.read_text(encoding="utf-8")

@@ -138,7 +138,12 @@ def document():
     ))
     wrong_projection = copy.deepcopy(projected_deps)
     for authority in wrong_projection["bundleAuthorityByContentHash"].values():
-        authority["effectivePipeline"][0]["parameters"]["rail"] = "fixture:unselected-apr-rail"
+        projected_payment = next(
+            step for step in authority["effectivePipeline"]
+            if isinstance(step.get("parameters"), dict)
+            and "rail" in step["parameters"]
+        )
+        projected_payment["parameters"]["rail"] = "fixture:unselected-apr-rail"
     vectors.append(_case(
         factory, fixture, "combined-wrong-apr-projection-refused",
         [projected_request], "indeterminate", dependencies=wrong_projection,

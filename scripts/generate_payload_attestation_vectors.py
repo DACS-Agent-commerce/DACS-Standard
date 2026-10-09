@@ -454,13 +454,26 @@ def build_vectors() -> list[dict]:
     ))
 
     def unavailable(case: dict) -> None:
-        case["methodEvidence"] = {"disposition": "unavailable"}
+        key = next(iter(case["trustedMethodEvidenceByCanonicalRef"]))
+        case["trustedMethodEvidenceByCanonicalRef"] = {
+            key: {"available": False}
+        }
 
     vectors.append(vector(
         "method-evidence-unresolvable",
         "indeterminate",
         "non-observation is not a clean negative and cannot produce success",
         unavailable,
+    ))
+
+    def unauthenticated_unavailable_marker(case: dict) -> None:
+        case["methodEvidence"] = {"disposition": "unavailable"}
+
+    vectors.append(vector(
+        "method-evidence-unavailable-marker-hash-mismatch",
+        "fail",
+        "an unauthenticated semantic marker cannot preempt method-evidence reference binding",
+        unauthenticated_unavailable_marker,
     ))
 
     def missing_tx(case: dict) -> None:
@@ -626,7 +639,7 @@ def build_document() -> dict:
             "matching listing/agreement/settlement bindings. Resolved contradictions "
             "fail; unavailable otherwise-valid evidence remains indeterminate."
         ),
-        "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+        "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),
         "count": len(vectors),
         "publicTestSeeds": {

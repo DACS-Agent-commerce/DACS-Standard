@@ -63,6 +63,97 @@ class ArtifactShapeTests(unittest.TestCase):
         self.assertIn("missing required field(s): ['b']", joined)
         self.assertIn("'x'", joined)
 
+    def test_shared_bundle_literal_keeps_attestation_bundle_checks(self):
+        # IdentityBundle and AttestationBundle share bundleVersion "1".  An
+        # AttestationBundle that omits phaseSummary must still be validated
+        # (and rejected), not skipped by the IdentityBundle discriminator.
+        v = load_validator()
+        types = v.collect_type_fields()
+        identity = {
+            "bundleVersion": "1", "presentedBy": "key:" + "11" * 32,
+            "presentedAt": 1, "claims": [{"ref": "key:" + "11" * 32}],
+            "presentation": {"kind": "per-claim", "signatures": []},
+        }
+        truncated = {"bundleVersion": "1", "jobId": "01J00000000000000000000001"}
+        pairs = v._embedded_reference_artifacts({"bundles": [identity, truncated]})
+        self.assertEqual(
+            [("IdentityBundle", identity), ("AttestationBundle", truncated)], pairs
+        )
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "fixture.json"
+            path.write_text(json.dumps({"bundles": [truncated]}), encoding="utf-8")
+            with mock.patch.object(v, "ROOT", Path(tmp)):
+                errors, count = v.check_reference_fixture(path, types)
+        self.assertEqual(1, count)
+        self.assertTrue(any("phaseSummary" in error for error in errors), errors)
+
+    def test_bundle_literal_with_claims_and_phase_summary_stays_an_attestation_bundle(self):
+        # Only an unambiguous IdentityBundle (claims without phaseSummary)
+        # leaves the stricter AttestationBundle check.
+        v = load_validator()
+        identity = {"bundleVersion": "1", "claims": [{"ref": "key:" + "11" * 32}]}
+        ambiguous = {**identity, "phaseSummary": []}
+        self.assertEqual(
+            [("IdentityBundle", identity), ("AttestationBundle", ambiguous)],
+            v._embedded_reference_artifacts({"bundles": [identity, ambiguous]}),
+        )
+        self.assertEqual(
+            [("AttestationBundle", ambiguous)],
+            v._embedded_reference_artifacts(ambiguous),
+        )
+
+    def test_embedded_discriminators_in_artifact_data_are_not_rediscovered(self):
+        v = load_validator()
+        result = {
+            "resultVersion": "1",
+            "requirement": {"domain": "example"},
+            "result": "pass",
+            "method": {"kind": "self-signed"},
+            "timestamp": 1,
+            "data": {
+                "futureMetadata": {
+                    "resultVersion": "1",
+                    "unrelated": True,
+                }
+            },
+        }
+        self.assertEqual(
+            [("VerifyResult", result)],
+            v._embedded_reference_artifacts({"artifact": result}),
+        )
+        self.assertEqual(
+            [],
+            v._embedded_reference_artifacts({"metadata": result}),
+        )
+
+        # Additive signed members on a root artifact are opaque even when a
+        # member name is also used by an outer fixture wrapper.
+        root = dict(result)
+        root["artifact"] = {"resultVersion": "1", "note": "metadata"}
+        self.assertEqual(
+            [("VerifyResult", root)],
+            v._embedded_reference_artifacts(root),
+        )
+
+    def test_declared_golden_result_artifact_is_discovered(self):
+        v = load_validator()
+        result = {"resultVersion": "1"}
+        wrapper = {
+            "cases": [{
+                "evaluations": {
+                    "result": {
+                        "input": {
+                            "resolvedResults": [{"artifact": result}],
+                        }
+                    }
+                }
+            }]
+        }
+        self.assertEqual(
+            [("VerifyResult", result)],
+            v._embedded_reference_artifacts(wrapper),
+        )
+
     def test_conformant_artifact_passes(self):
         v = load_validator()
         types = _types({"Foo": {"required": {"a", "b"}, "optional": {"c"}}})

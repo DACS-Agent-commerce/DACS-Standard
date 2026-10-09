@@ -130,7 +130,21 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             with self.subTest(address=bad), self.assertRaises(ValueError):
                 self.module.payment_anchor_tuple(bad)
 
-    def test_phase_indices_are_exact_integers_before_use(self):
+    def test_payment_anchor_tuple_uses_strict_cf4_decoder(self):
+        canonical = f"dacs4:payment:{self.module.JOB_ID}:pay-dem:3"
+        self.assertEqual(
+            self.module.payment_anchor_tuple(canonical),
+            (self.module.JOB_ID, "pay-dem", 3, False),
+        )
+        # Unicode is valid for generic CF-4, not the RailDefinition railId profile.
+        self.assertEqual(self.module.cf4_decode("r%C3%A9seau"), "réseau")
+        for encoded_rail in ("re%CC%81seau%3AUSDC", "%FF"):
+            with self.subTest(encoded_rail=encoded_rail), self.assertRaises(ValueError):
+                self.module.payment_anchor_tuple(
+                    f"dacs4:payment:{self.module.JOB_ID}:{encoded_rail}:3"
+                )
+
+    def test_phase_indices_are_exact_integers_before_keying_or_comparison(self):
         for invalid in (True, False, 3.0, -1, 9_007_199_254_740_992):
             with self.subTest(invalid=invalid), self.assertRaisesRegex(
                 ValueError, "exact non-negative safe integer"
@@ -143,9 +157,7 @@ class LifecycleWalkthroughTests(unittest.TestCase):
                     invalid,
                 )
 
-        stages, context = self.module.build_happy_path(
-            self.module.FakeSubstrate()
-        )
+        stages, context = self.module.build_happy_path(self.module.FakeSubstrate())
         candidate = copy.deepcopy(context)
         candidate["bundleBase"]["phaseSummary"][1]["index"] = True
         with self.assertRaisesRegex(ValueError, "phaseSummary index"):
@@ -258,7 +270,7 @@ class LifecycleWalkthroughTests(unittest.TestCase):
         listing = self.artifacts["listing-minimum-lifecycle"]
         agreement = self.artifacts["agreement-payee-bound-fixed-price"]
         payment = self.artifacts["settlement-payment-success"]
-        delivery = self.artifacts["settlement-delivery-success"]
+        delivery = self.artifacts["delivery-evidence-success"]
         buyer_bundle = self.artifacts["attestation-bundle-buyer"]
         seller_bundle = self.artifacts["attestation-bundle-seller"]
         orchestrator_bundle = self.artifacts["attestation-bundle-orchestrator"]
@@ -276,7 +288,25 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             listing["artifactHash"],
         )
         self.assertNotIn("phaseIndex", payment["artifact"])
-        self.assertNotIn("phaseIndex", delivery["artifact"])
+        self.assertEqual(delivery["kind"], "DeliveryEvidence")
+        self.assertEqual(delivery["domainSeparator"], "dacs-delivery-evidence:v1:")
+        self.assertEqual(delivery["artifact"]["deliveryEvidenceVersion"], "1")
+        self.assertNotIn("evidenceVersion", delivery["artifact"])
+        self.assertEqual(delivery["artifact"]["phaseIndex"], 4)
+        self.assertEqual(
+            delivery["logicalAddress"], f"dacs4:delivery:{self.module.JOB_ID}:4"
+        )
+        self.assertEqual(
+            delivery["artifact"]["deliverableAnchor"],
+            {
+                "kind": "storage-program",
+                "locator": f"dacs4:deliverable:{self.module.JOB_ID}:4",
+            },
+        )
+        self.assertEqual(
+            self.trace["stages"][3]["deliveredObject"]["logicalAddress"],
+            f"dacs4:deliverable:{self.module.JOB_ID}:4",
+        )
         self.assertEqual(
             self.module.payment_anchor_tuple(payment["logicalAddress"]),
             (agreement["artifact"]["jobId"], self.module.RAIL_ID, 3, False),
@@ -337,6 +367,22 @@ class LifecycleWalkthroughTests(unittest.TestCase):
         ):
             self.module.validate_happy_path(stages, candidate)
 
+    def test_happy_path_requires_phase_indexed_delivery_and_deliverable(self):
+        stages, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        candidate = copy.deepcopy(context)
+        candidate["deliveryTrace"]["logicalAddress"] = (
+            f"dacs4:delivery:{self.module.JOB_ID}"
+        )
+        with self.assertRaisesRegex(ValueError, "phase-indexed address"):
+            self.module.validate_happy_path(stages, candidate)
+
+        candidate_stages = copy.deepcopy(stages)
+        candidate_stages[3]["deliveredObject"]["logicalAddress"] = (
+            f"dacs4:deliverable:{self.module.JOB_ID}"
+        )
+        with self.assertRaisesRegex(ValueError, "phase-indexed address"):
+            self.module.validate_happy_path(candidate_stages, context)
+
     def test_all_five_negative_examples_reject_or_classify(self):
         self.assertEqual(
             [case["id"] for case in self.trace["negativeExamples"]],
@@ -390,7 +436,18 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             delivery["enforcementPath"], "evaluate_delivery_after_payment"
         )
         self.assertTrue(delivery["paymentRemainsRecorded"])
-        self.assertNotIn("phaseIndex", delivery["failureEvidence"]["artifact"])
+        self.assertEqual(
+            delivery["failureEvidence"]["artifact"]["phaseIndex"], 4
+        )
+        self.assertEqual(
+            delivery["failureEvidence"]["artifact"]["deliveryEvidenceVersion"],
+            "1",
+        )
+        self.assertNotIn("evidenceVersion", delivery["failureEvidence"]["artifact"])
+        self.assertEqual(
+            delivery["failureEvidence"]["signatureResults"][0]["verified"],
+            True,
+        )
         self.assertEqual(
             delivery["failureEvidence"]["artifact"]["outcome"], "failure"
         )

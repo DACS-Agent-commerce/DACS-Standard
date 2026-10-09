@@ -53,6 +53,66 @@ def authority_reference(name, phase_key):
     }
 
 
+def current_agreement_hash(job_id, phase_key=None):
+    return hashlib.sha256(
+        ("current-agreement:" + job_id).encode()
+    ).hexdigest()
+
+
+def current_session_id(job_id, phase_key=None):
+    return "session-" + hashlib.sha256(
+        job_id.encode()
+    ).hexdigest()
+
+
+def current_laa_phase_carrier(
+    bundle, listing, phase_key, record, ref, receipt, execution
+):
+    """Build deterministic authenticated current-agreement authority for SEB."""
+    agreement_hash = current_agreement_hash(bundle["jobId"], phase_key)
+    session_id = current_session_id(bundle["jobId"], phase_key)
+    orchestrator = execution["phaseOrchestrator"]
+    laa = {
+        "operation": "authorize-payment",
+        "pipelineHasPayment": True,
+        "agreement": {
+            "artifact": "payee-bound",
+            "shape": "valid",
+            "partySignaturesValid": True,
+            "contentHash": agreement_hash,
+            "jobId": bundle["jobId"],
+            "phase": record["phase"],
+            "listingRef": copy.deepcopy(bundle["listingRef"]),
+            "pbVerified": True,
+        },
+        "sessionAuthority": {
+            "state": "verified",
+            "jobId": bundle["jobId"],
+            "sessionId": session_id,
+            "orchestratorPrimaryClaim": orchestrator,
+        },
+    }
+    binding = {
+        "laaContentHash": hashlib.sha256(F.canonical(laa)).hexdigest(),
+        "bundleContentHash": F.bundle_hash(bundle),
+        "listingRef": copy.deepcopy(bundle["listingRef"]),
+        "listingContentHash": F.listing_hash(listing),
+        "agreementContentHash": agreement_hash,
+        "jobId": bundle["jobId"],
+        "sessionId": session_id,
+        "phaseKey": phase_key,
+        "phaseIndex": execution["phaseIndex"],
+        "phase": record["phase"],
+        "phaseOrchestrator": orchestrator,
+        "evidenceSigner": record["signature"]["signer"],
+        "evidenceContentHash": F.evidence_hash(record),
+        "evidenceRef": copy.deepcopy(ref),
+        "evidenceReceiptHash": hashlib.sha256(F.canonical(receipt)).hexdigest(),
+        "receiptWriter": receipt["writer"],
+    }
+    return {"laa": laa, "binding": binding}
+
+
 def make_authority(name, definition, signing_keys):
     job_id = f"SEB-AUTHORITY-{name}"
     listing = make_listing(
@@ -134,8 +194,18 @@ def make_authority(name, definition, signing_keys):
             if definition.get("evidenceReasonOverride") is not None:
                 evidence_reason = definition["evidenceReasonOverride"]
             legacy_delivery = False
+            execution_authority_role = "seller"
+            evidence_writer_role = "seller"
             if entry["kind"].startswith("deliver-"):
                 legacy_delivery = definition.get("legacyDeliveryEvidence") is True
+                execution_authority_role = (
+                    definition.get("deliveryExecutionAuthorityRole", "orchestrator")
+                    if not legacy_delivery
+                    else "seller"
+                )
+                evidence_writer_role = definition.get(
+                    "deliveryEvidenceSignerRole", execution_authority_role
+                )
                 if legacy_delivery:
                     record, ref, delivery_closure, native_observations = (
                         F.make_legacy_delivery_evidence(
@@ -159,6 +229,7 @@ def make_authority(name, definition, signing_keys):
                         outcome="success" if entry["outcome"] == "ok" else "failure",
                         reason=evidence_reason,
                         mutation=definition.get("innerArtifactMutation"),
+                        execution_authority_role=evidence_writer_role,
                     )
             else:
                 record, ref = F.make_evidence(
@@ -178,7 +249,10 @@ def make_authority(name, definition, signing_keys):
             settlement_evidence.append(ref)
             phase_key = f"{entry['index']}:{entry['kind']}"
             execution_authority = F.make_session_execution_authority(
-                job_id, entry["kind"], entry["index"]
+                job_id,
+                entry["kind"],
+                entry["index"],
+                signer_role=execution_authority_role,
             )
             legacy_evidence_address = None
             if entry["kind"].startswith("deliver-") and legacy_delivery:
@@ -210,14 +284,23 @@ def make_authority(name, definition, signing_keys):
                 entry["index"],
                 resolved=st8_resolved,
                 state=default_lifecycle["state"],
+                signer_role=execution_authority_role,
             )
             if legacy_evidence_address is not None:
                 receipt["logicalAddress"] = legacy_evidence_address
             verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = receipt
-            reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
+            record_authority = {
                 "record": record,
                 "lifecycle": copy.deepcopy(default_lifecycle),
             }
+            if entry["kind"].startswith("pay-"):
+                record_authority.update({
+                    "agreementHash": current_agreement_hash(job_id, phase_key),
+                    "sessionId": current_session_id(job_id, phase_key),
+                })
+            reference_validation_by_canonical_ref[
+                F.canonical(ref).decode("utf-8")
+            ] = record_authority
         phase_summary.append(entry)
 
     bundle = {
@@ -250,6 +333,20 @@ def make_authority(name, definition, signing_keys):
         "finalisedAt": 1785859200000,
         "signatures": [],
     }
+    successful_commit = next((
+        entry for entry in phase_summary
+        if entry.get("outcome") == "ok"
+        and entry.get("kind", "").startswith("commit-")
+    ), None)
+    if successful_commit is not None:
+        agreement_ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs3:agreement:" + job_id,
+            },
+            "contentHash": current_agreement_hash(job_id),
+        }
+        bundle["agreementRef"] = agreement_ref
     F.sign_bundle(bundle, "evidence-bound", signing_keys)
 
     if definition.get("corruptListingSignature"):
@@ -276,7 +373,45 @@ def make_authority(name, definition, signing_keys):
             trusted_native_transaction_observations_by_canonical_ref
         ),
         "bundleLifecycle": bundle_lifecycle,
+        "deliveryEvidenceProfile": (
+            "archival" if definition.get("legacyDeliveryEvidence") is True else "current"
+        ),
     }
+    if successful_commit is not None:
+        authority["additionalCommitPhase"] = successful_commit["kind"]
+        authority["agreementSelectionResult"] = {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(bundle["agreementRef"]),
+            "agreementType": "payee-bound",
+            "proofVerified": True,
+        }
+    current_laa_by_phase_key = {}
+    for ref in settlement_evidence:
+        ref_key = F.canonical(ref).decode("utf-8")
+        record = reference_validation_by_canonical_ref[ref_key]["record"]
+        if (
+            record.get("phase", "").startswith("pay-")
+            and record.get("outcome") == "success"
+        ):
+            phase_key = next(
+                key for key, execution in session_execution_authority_by_phase_key.items()
+                if execution.get("phaseIndex")
+                == next(
+                    entry["index"] for entry in phase_summary
+                    if entry.get("attestationRef") == ref
+                )
+                and execution.get("phaseKind") == record.get("phase")
+            )
+            current_laa_by_phase_key[phase_key] = current_laa_phase_carrier(
+                bundle,
+                listing,
+                phase_key,
+                record,
+                ref,
+                verified_receipt_by_canonical_ref[ref_key],
+                session_execution_authority_by_phase_key[phase_key],
+            )
+    authority["legacyAgreementAuthorityByPhaseKey"] = current_laa_by_phase_key
     cross_phase_reuse = definition.get("crossPhaseDeliveryReuse")
     if cross_phase_reuse is not None:
         apply_cross_phase_delivery_reuse(
@@ -394,6 +529,8 @@ def make_atomic_authority(variant="pass"):
         phase_summary[int(phase_index)]["attestationRef"] = ref
         resolutions[ref_key] = {
             "record": evidence,
+            "agreementHash": current_agreement_hash(job_id, phase_key),
+            "sessionId": current_session_id(job_id, phase_key),
             "lifecycle": {
                 "state": "finalized", "independentlyResolvable": True,
             },
@@ -421,6 +558,13 @@ def make_atomic_authority(variant="pass"):
             "logicalAddress": logical_address,
         }
 
+    agreement_ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:" + job_id,
+        },
+        "contentHash": current_agreement_hash(job_id),
+    }
     bundle = {
         "evidenceBoundFaultBundleVersion": "1",
         "jobId": job_id,
@@ -432,6 +576,7 @@ def make_atomic_authority(variant="pass"):
             "version": listing["listingVersion"],
             "contentHash": F.listing_hash(listing),
         },
+        "agreementRef": agreement_ref,
         "parties": [
             {
                 "role": role,
@@ -467,6 +612,27 @@ def make_atomic_authority(variant="pass"):
             "state": "finalized", "independentlyResolvable": True,
         },
         "additionalCommitPhase": "commit-identity-bound-payee-agreement",
+        "agreementSelectionResult": {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(agreement_ref),
+            "agreementType": "identity-bound-payee",
+            "proofVerified": True,
+        },
+    }
+    payment_phase_key = "2:pay-dem"
+    payment_record = evidence_by_key[payment_phase_key]["evidence"]
+    payment_ref = phase_summary[2]["attestationRef"]
+    payment_ref_key = F.canonical(payment_ref).decode("utf-8")
+    authority["legacyAgreementAuthorityByPhaseKey"] = {
+        payment_phase_key: current_laa_phase_carrier(
+            bundle,
+            listing,
+            payment_phase_key,
+            payment_record,
+            payment_ref,
+            receipts[payment_ref_key],
+            executions[payment_phase_key],
+        )
     }
     if variant == "missing-admission":
         authority.pop("atomicEvidenceAdmissionByCanonicalRef")
@@ -496,10 +662,16 @@ def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
     old_key = F.canonical(old_ref).decode("utf-8")
     top_receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_key)
     authority["referenceValidationByCanonicalRef"].pop(old_key)
+    signer = authority["sessionExecutionAuthorityByPhaseKey"][phase_key][
+        "phaseOrchestrator"
+    ]
+    signer_role = next(
+        role for role, claim in F.CLAIMS.items() if claim == signer
+    )
     F.sign_artifact(
         record,
-        signing_keys["seller"],
-        F.CLAIMS["seller"],
+        signing_keys[signer_role],
+        signer,
         F.DELIVERY_EVIDENCE_DOMAIN,
     )
     new_ref = copy.deepcopy(old_ref)
@@ -509,18 +681,34 @@ def _refresh_current_delivery_authority(authority, phase_key, signing_keys):
     authority["referenceValidationByCanonicalRef"][new_key] = resolution
     authority["verifiedReceiptByCanonicalRef"][new_key] = top_receipt
     authority["bundle"]["settlementEvidence"][position] = new_ref
-    authority["bundle"]["phaseSummary"][position]["attestationRef"] = new_ref
+    summary_entry = next(
+        entry for entry in authority["bundle"]["phaseSummary"]
+        if entry.get("index") == record.get("phaseIndex")
+        and entry.get("kind") == record.get("phase")
+    )
+    summary_entry["attestationRef"] = new_ref
 
     closure = authority["deliveryArtifactAuthorityByPhaseKey"][phase_key]
-    authority["verifiedReceiptByCanonicalRef"].update(
-        F.make_delivery_closure_receipts(
-            record,
-            closure,
-            record["jobId"],
-            record["phase"],
-            record["phaseIndex"],
-        )
+    refreshed_receipts = F.make_delivery_closure_receipts(
+        record,
+        closure,
+        record["jobId"],
+        record["phase"],
+        record["phaseIndex"],
     )
+    refreshed_anchors = {
+        F.canonical(json.loads(key)["anchor"])
+        for key in refreshed_receipts
+    }
+    # A mutated phase replaces its former SR-2 commitment at the same signed
+    # address. Leaving both makes the fixture fail receipt selection before
+    # the cross-phase ownership invariant can be exercised.
+    for key in list(authority["verifiedReceiptByCanonicalRef"]):
+        if key not in refreshed_receipts and (
+            F.canonical(json.loads(key)["anchor"]) in refreshed_anchors
+        ):
+            del authority["verifiedReceiptByCanonicalRef"][key]
+    authority["verifiedReceiptByCanonicalRef"].update(refreshed_receipts)
 
 
 def _apply_repeated_self_signed_proofs(
@@ -794,8 +982,11 @@ def generate(source):
         "authenticatedRecordByRef represents independently resolved, job-bound evidence content; "
         "the authenticated phase and uniquely verified signature domain fix its family before the "
         "selector is checked. Payment members are SettlementEvidence, current delivery members are DeliveryEvidence, "
-        "and verifier-selected Atomic Work phases use AtomicSettlementEvidenceV1 only with an exact passing AWS admission. "
-        "and PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. "
+        "and current DeliveryEvidence plus its top-level receipt are controlled by the authenticated "
+        "phase orchestrator even when that role is distinct from the seller that writes deliverables, "
+        "EntitlementRecords, and credentials; PDE-7 permits only a single unambiguous "
+        "delivery-shaped SettlementEvidence, while verifier-selected Atomic Work phases use "
+        "AtomicSettlementEvidenceV1 only with an exact passing AWS admission. "
         "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, "
         "entitlement/credential, or payload-attestation/method-proof closure required "
         "before successful current or legacy delivery evidence can authorize its phase; legacy "
@@ -815,6 +1006,94 @@ def generate(source):
     if "execution-authority-indeterminate" not in data["reasonPrecedence"]:
         data["reasonPrecedence"].insert(1, "execution-authority-indeterminate")
     definitions = semantic_definitions(data)
+    for definition in definitions.values():
+        if definition.get("legacyDeliveryEvidence") is True:
+            # These frozen comparison-only authorities are not current terminal
+            # admission fixtures.  Preserve their historical signed phase bytes.
+            if definition.get("listingPipeline", [])[:2] == [
+                "negotiate-fixed-price", "commit-payee-bound-agreement",
+            ]:
+                definition["listingPipeline"] = definition["listingPipeline"][2:]
+                definition["phaseSummary"] = [
+                    {**entry, "index": entry["index"] - 2}
+                    for entry in definition["phaseSummary"][2:]
+                ]
+            continue
+        definition["listingPipeline"] = [
+            "commit-payee-bound-agreement"
+            if kind == "commit-agreement" else kind
+            for kind in definition["listingPipeline"]
+        ]
+        for entry in definition["phaseSummary"]:
+            if entry.get("kind") == "commit-agreement":
+                entry["kind"] = "commit-payee-bound-agreement"
+        commitment_indexes = [
+            index for index, kind in enumerate(definition["listingPipeline"])
+            if kind.startswith("commit-")
+        ]
+        negotiation_indexes = [
+            index for index, kind in enumerate(definition["listingPipeline"])
+            if kind.startswith("negotiate-")
+        ]
+        if (
+            len(commitment_indexes) == 1
+            and len(negotiation_indexes) == 1
+            and negotiation_indexes[0] == commitment_indexes[0] - 1
+            and negotiation_indexes[0] > 0
+            and definition["listingPipeline"][negotiation_indexes[0] - 1]
+            == "vet-credentials"
+        ):
+            removed_index = negotiation_indexes[0] - 1
+            definition["listingPipeline"].pop(removed_index)
+            definition["phaseSummary"] = [
+                entry for entry in definition["phaseSummary"]
+                if entry["index"] != removed_index
+            ]
+            for entry in definition["phaseSummary"]:
+                if entry["index"] > removed_index:
+                    entry["index"] -= 1
+        elif len(commitment_indexes) == 1 and not negotiation_indexes:
+            commitment_index = commitment_indexes[0]
+            if (
+                commitment_index > 0
+                and definition["listingPipeline"][commitment_index - 1]
+                == "vet-credentials"
+            ):
+                definition["listingPipeline"][commitment_index - 1] = (
+                    "negotiate-fixed-price"
+                )
+                for entry in definition["phaseSummary"]:
+                    if entry["index"] == commitment_index - 1:
+                        entry["kind"] = "negotiate-fixed-price"
+            else:
+                definition["listingPipeline"].insert(
+                    commitment_index, "negotiate-fixed-price"
+                )
+                for entry in definition["phaseSummary"]:
+                    if entry["index"] >= commitment_index:
+                        entry["index"] += 1
+                definition["phaseSummary"].insert(commitment_index, {
+                    "index": commitment_index,
+                    "kind": "negotiate-fixed-price",
+                    "outcome": "ok",
+                })
+        if not any(
+            kind.startswith("commit-")
+            for kind in definition["listingPipeline"]
+        ):
+            definition["listingPipeline"] = [
+                "negotiate-fixed-price",
+                "commit-payee-bound-agreement",
+                *definition["listingPipeline"],
+            ]
+            if definition["phaseSummary"]:
+                for entry in definition["phaseSummary"]:
+                    entry["index"] += 2
+                definition["phaseSummary"] = [
+                    {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+                    {"index": 1, "kind": "commit-payee-bound-agreement", "outcome": "ok"},
+                    *definition["phaseSummary"],
+                ]
     definitions["completed-storage-delivery"] = {
         "listingPipeline": ["deliver-storage-program"],
         "bundleOutcome": "completed",
@@ -828,6 +1107,12 @@ def generate(source):
             "independentlyResolvable": True,
         },
     }
+    definitions["seller-substituted-current-delivery"] = copy.deepcopy(
+        definitions["completed-storage-delivery"]
+    )
+    definitions["seller-substituted-current-delivery"][
+        "deliveryEvidenceSignerRole"
+    ] = "seller"
     legacy_completed = {
         "bundleOutcome": "completed",
         "defaultReferenceLifecycle": {
@@ -1060,6 +1345,34 @@ def generate(source):
             },
         })
 
+    seller_substitution_vector = (
+        "bundle-settlement-bijection-seller-substituted-current-delivery-reject"
+    )
+    seller_substitution_case = {
+        "name": seller_substitution_vector,
+        "expected": "fail",
+        "input": {
+            "executionAuthorityRef": "seller-substituted-current-delivery",
+            "topLevelRefs": [],
+            "authenticatedRecordByRef": {},
+            "pointerMap": {},
+            "unrelatedAuthorityDisposition": "verified",
+        },
+        "want": {
+            "disposition": "rejected",
+            "reasonCode": "execution-authority",
+        },
+    }
+    existing_seller_substitution = next((
+        vector for vector in data["vectors"]
+        if vector["name"] == seller_substitution_vector
+    ), None)
+    if existing_seller_substitution is None:
+        data["vectors"].append(seller_substitution_case)
+    else:
+        existing_seller_substitution.clear()
+        existing_seller_substitution.update(seller_substitution_case)
+
     for authority_name in cross_phase_delivery_reuse:
         vector_name = f"bundle-settlement-bijection-{authority_name}-reject"
         if any(vector["name"] == vector_name for vector in data["vectors"]):
@@ -1276,6 +1589,32 @@ def generate(source):
         }
     }
 
+    # Definitions added locally below the source-corpus migration loop are
+    # full terminal fixtures too; give each the same valid PS-1/PS-2 prefix.
+    terminal_prefix_added = set()
+    for definition_name, definition in definitions.items():
+        if definition.get("legacyDeliveryEvidence") is True:
+            continue
+        if any(
+            kind.startswith("commit-")
+            for kind in definition["listingPipeline"]
+        ):
+            continue
+        definition["listingPipeline"] = [
+            "negotiate-fixed-price",
+            "commit-payee-bound-agreement",
+            *definition["listingPipeline"],
+        ]
+        if definition["phaseSummary"]:
+            for entry in definition["phaseSummary"]:
+                entry["index"] += 2
+            definition["phaseSummary"] = [
+                {"index": 0, "kind": "negotiate-fixed-price", "outcome": "ok"},
+                {"index": 1, "kind": "commit-payee-bound-agreement", "outcome": "ok"},
+                *definition["phaseSummary"],
+            ]
+        terminal_prefix_added.add(definition_name)
+
     signing_keys = F.keys()
     data["generator"] = "scripts/generate_bundle_settlement_evidence_vectors.py"
     data["seeds"] = F.SEEDS
@@ -1378,6 +1717,31 @@ def generate(source):
                 authenticated_records[ref] = record
         else:
             authenticated_records = copy.deepcopy(vector_input.get("authenticatedRecordByRef", {}))
+
+        # Component-vector record maps predate the terminal Listing prefix.
+        # Rebind their phase keys by phase-kind occurrence to the authenticated
+        # authority generated above, including signed optional pointer keys.
+        phase_key_remap = {}
+        if vector_input.get("executionAuthorityRef") in terminal_prefix_added:
+            for record in authenticated_records.values():
+                phase_key = record.get("phaseKey") if isinstance(record, dict) else None
+                if isinstance(phase_key, str) and ":" in phase_key:
+                    index_text, phase_kind = phase_key.split(":", 1)
+                    phase_key_remap[phase_key] = (
+                        str(int(index_text) + 2) + ":" + phase_kind
+                    )
+        for record in authenticated_records.values():
+            if isinstance(record, dict) and record.get("phaseKey") in phase_key_remap:
+                record["phaseKey"] = phase_key_remap[record["phaseKey"]]
+        if vector["name"] == "bundle-settlement-bijection-equal-count-wrong-phase-reject":
+            authenticated_records["ref-wrong"]["phaseKey"] = (
+                "4:deliver-attested-payload"
+            )
+        if isinstance(vector_input.get("pointerMap"), dict):
+            vector_input["pointerMap"] = {
+                phase_key_remap.get(key, key): ref
+                for key, ref in vector_input["pointerMap"].items()
+            }
 
         def st8_reason(phase_key):
             phase = phase_key.split(":", 1)[1] if isinstance(phase_key, str) and ":" in phase_key else None

@@ -185,8 +185,10 @@ validator-body-signed.
   a `{ sigVersion: "1", signature: "0x…" }` object. The frozen `legacy-import`
   arm instead requires a bare lowercase-hex signature over the domain prefix
   followed by the **raw** 32-byte digest. The shipped wire also lacks CH-7's
-  discriminator and signature envelope. It uses the historical, not CH-8,
-  domain/framing, so `current-read` rejects it. Neither operation may silently
+  discriminator and signature envelope. Its ASCII-hex digest framing is
+  CH-8-style, but it signs under the historical domain rather than CH-8's
+  `"dacs-canonical-channel-message:v1:"`. Its signed bytes are therefore
+  neither arm's, and `current-read` rejects it. Neither operation may silently
   fall back to another wire; this mapping does not change the frozen historical
   arm.
 

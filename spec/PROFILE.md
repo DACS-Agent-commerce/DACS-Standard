@@ -165,7 +165,7 @@ commit:
 | --- | --- | --- |
 | [CORE](CORE.md) | 0.3 | Draft / Demos DACS binding and evidence required |
 | [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate; current composed module |
-| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft; current composed module |
+| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft corrective candidate; Vet aggregation and authority behaviour affected; current presenter-proof requalification and verifier-identity control aligned |
 | [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft / Atomic candidate on current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft / Atomic candidate on current composed module |
 | [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.7 | Draft / Atomic candidate on current composed module |

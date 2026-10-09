@@ -196,6 +196,26 @@ def context_for(authority, responses: list[dict]) -> dict:
     }
 
 
+def resolved_input(
+    base_value: dict,
+    authority,
+    transported: list[dict],
+    retained: list[dict],
+    records: list[dict],
+) -> dict:
+    """Materialize one case as the exact `positive`-shaped verifier input."""
+    authority = with_acquisition(
+        authority, records=records, retained_responses=retained
+    )
+    value = {
+        "evidence": copy.deepcopy(base_value["evidence"]),
+        "rail": copy.deepcopy(base_value["rail"]),
+        "agreement": copy.deepcopy(base_value["agreement"]),
+        "context": context_for(authority, transported),
+    }
+    return {"value": value, "authority": serialize_authority(authority)}
+
+
 def document() -> dict:
     factory = FixtureFactory()
     base_value = factory.model_input("block-depth", job_id=JOB_ID)
@@ -297,24 +317,64 @@ def document() -> dict:
         checkpoint=checkpoint,
         arm={"status": "observed", "observation": conflicting_observation},
     )
-    # Both fork views have complete native proofs and pinned RPC signatures.
-    # Only the resolution of incompatible authenticated heads is uncertain.
+    # A sibling of the canonical inclusion block re-includes the transaction,
+    # so its head is a competing block at the pinned checkpoint height.  Both
+    # fork views have complete native proofs and pinned RPC signatures; only
+    # which authenticated head is canonical remains unresolved.
+    fork_observation = {
+        "kind": "chain",
+        "observation": factory.chain_observation(
+            profile, reference, event, "d2-reorg-replacement",
+            parent_id=observation["observation"]["inclusionBlock"]["parentId"],
+        ),
+    }
     conflicting_head_response = signed_response(
         keys["observer-b-key"],
         authority_id="observer-b",
         key_id="observer-b-key",
         query=authority.issued_query,
         checkpoint=checkpoint,
-        arm={"status": "observed", "observation": conflicting_observation},
+        arm={"status": "observed", "observation": fork_observation},
     )
-    reorg_response = signed_response(
-        keys["observer-a-key"],
-        authority_id="observer-a",
-        key_id="observer-a-key",
-        query=authority.issued_query,
-        checkpoint=checkpoint,
-        arm={"status": "observed", "observation": conflicting_observation},
-        signed_time=OBSERVED_AT + 1,
+    conflicting_heads_input = resolved_input(
+        base_value,
+        authority,
+        [response_a, conflicting_head_response],
+        [response_a, conflicting_head_response],
+        [
+            acquisition(response_a, authority.issued_query["nonce"], ACQUIRED_AT),
+            acquisition(
+                conflicting_head_response, authority.issued_query["nonce"], ACQUIRED_AT
+            ),
+        ],
+    )
+    # After the reorganisation both authorities report the replacement fork.
+    # The verifier retained observer-a's earlier canonical-fork response; the
+    # transported set omits it.  Later signing or acquisition is not a winner.
+    reorg_responses = [
+        signed_response(
+            keys[key_id],
+            authority_id=authority_id,
+            key_id=key_id,
+            query=authority.issued_query,
+            checkpoint=checkpoint,
+            arm={"status": "observed", "observation": fork_observation},
+            signed_time=OBSERVED_AT + 1,
+        )
+        for authority_id, key_id in (
+            ("observer-a", "observer-a-key"),
+            ("observer-b", "observer-b-key"),
+        )
+    ]
+    reorg_input = resolved_input(
+        base_value,
+        authority,
+        reorg_responses,
+        [response_a] + reorg_responses,
+        [acquisition(response_a, authority.issued_query["nonce"], ACQUIRED_AT)] + [
+            acquisition(response, authority.issued_query["nonce"], ACQUIRED_AT + 1 + index)
+            for index, response in enumerate(reorg_responses)
+        ],
     )
     checkpoint_mismatch_observation = {
         "kind": "chain",
@@ -524,9 +584,14 @@ def document() -> dict:
         {"name": "complete-all-authorities", "expected": "pass"},
         {"name": "retained-same-authority-conflict", "expected": "indeterminate"},
         {"name": "fv-conflicting-authenticated-heads", "expected": "indeterminate",
-         "variant": "conflictingHeadResponse"},
+         "note": "two configured authorities sign individually valid views whose "
+                 "heads are competing sibling-fork blocks at the checkpoint height",
+         "input": conflicting_heads_input},
         {"name": "fv-reorg-unresolved", "expected": "indeterminate",
-         "variant": "reorgResponse"},
+         "note": "a retained pre-reorganisation response conflicts with the same "
+                 "authority's later replacement-fork response; both authorities "
+                 "agree on the replacement and transport omits the retained view",
+         "input": reorg_input},
         {"name": "native-checkpoint-mismatch", "expected": "fail"},
         {"name": "authenticated-economic-contradiction", "expected": "fail"},
         {"name": "configured-authority-unavailable", "expected": "indeterminate"},
@@ -564,18 +629,6 @@ def document() -> dict:
                 "response": conflict_response,
                 "acquisition": acquisition(
                     conflict_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "conflictingHeadResponse": {
-                "response": conflicting_head_response,
-                "acquisition": acquisition(
-                    conflicting_head_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "reorgResponse": {
-                "response": reorg_response,
-                "acquisition": acquisition(
-                    reorg_response, authority.issued_query["nonce"], ACQUIRED_AT + 1
                 ),
             },
             "checkpointMismatchResponse": {

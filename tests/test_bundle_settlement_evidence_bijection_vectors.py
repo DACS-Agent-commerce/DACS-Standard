@@ -733,6 +733,44 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 )
                 self.assertEqual(disposition, expected)
 
+    def test_atomic_payment_is_laa_qualified_like_every_payment(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["atomic-current-completed"]
+        )
+
+        def validate(carriers):
+            return R.validate_ebfab_disposition(
+                authority["bundle"],
+                authority["listing"],
+                self.pubkeys,
+                authority["referenceValidationByCanonicalRef"],
+                authority["bundleLifecycle"],
+                authority["sessionExecutionAuthorityByPhaseKey"],
+                authority["verifiedReceiptByCanonicalRef"],
+                authority.get("deliveryArtifactAuthorityByPhaseKey"),
+                authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+                authority["atomicEvidenceAdmissionByCanonicalRef"],
+                effective_pipeline=authority.get("effectivePipeline"),
+                additional_commit_phase=authority.get("additionalCommitPhase"),
+                agreement_selection_result=authority.get("agreementSelectionResult"),
+                legacy_agreement_authority_by_phase_key=carriers,
+            )
+
+        carriers = refreshed_laa_phase_carriers(authority)
+        self.assertEqual(sorted(carriers), ["2:pay-dem"])
+        self.assertEqual(("pass", "ok"), validate(carriers)[:2])
+
+        missing = validate({})
+        self.assertEqual("indeterminate", missing[0], missing[1])
+        self.assertIn("legacy agreement authority", str(missing[1]))
+
+        for field in ("evidenceContentHash", "evidenceRef", "evidenceReceiptHash"):
+            mutated = copy.deepcopy(carriers)
+            mutated["2:pay-dem"]["binding"][field] = "substituted"
+            with self.subTest(binding=field):
+                result = validate(mutated)
+                self.assertEqual("fail", result[0], result[1])
+
     def test_cross_phase_inner_dependency_ownership_is_load_bearing(self):
         expected_reasons = {
             "cross-phase-credential-ref-reuse": (

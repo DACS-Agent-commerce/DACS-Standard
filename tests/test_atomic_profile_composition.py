@@ -9,6 +9,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / "spec" / "PROFILE.md"
 ROW = re.compile(r"^\| \[([A-Z0-9-]+)\]\([A-Z0-9-]+\.md\) \| ([0-9.]+) \| (.+) \|$")
+# Documents the Atomic candidate amends; their rows append an Atomic note to
+# the live status.  Every other row reports the live status verbatim.
+ATOMIC_AMENDED = {"CORE", "DACS-3-NEGOTIATE", "DACS-4-SETTLE", "DACS-5-VERIFY"}
+ATOMIC_NOTE = "; Atomic candidate"
 
 
 def section_table(text: str, heading: str) -> dict[str, tuple[str, str]]:
@@ -42,6 +46,19 @@ class AtomicProfileCompositionTests(unittest.TestCase):
         self.assertTrue(live_status.startswith("Draft corrective candidate"))
         self.assertEqual(atomic_status, live_status)
         self.assertNotIn("current composed module", atomic_status)
+
+    def test_every_row_reports_live_status(self):
+        self.assertEqual(set(self.atomic), set(self.live))
+        for name, (_, live_status) in self.live.items():
+            _, atomic_status = self.atomic[name]
+            with self.subTest(document=name):
+                if name in ATOMIC_AMENDED:
+                    self.assertTrue(
+                        atomic_status.startswith(live_status + ATOMIC_NOTE),
+                        atomic_status,
+                    )
+                else:
+                    self.assertEqual(atomic_status, live_status)
 
 
 if __name__ == "__main__":

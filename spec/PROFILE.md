@@ -163,12 +163,12 @@ commit:
 
 | Document | Version | Status |
 | --- | --- | --- |
-| [CORE](CORE.md) | 0.3 | Draft / Demos DACS binding and evidence required |
-| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate; current composed module |
+| [CORE](CORE.md) | 0.3 | Draft corrective candidate; JID-1 and shared Vet admission behaviour affected; Atomic candidate requires Demos DACS binding and evidence |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.8 | Draft corrective candidate; JID-1, session presentation, and current composed module behaviour affected; exact presenter control aligned |
 | [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft corrective candidate; Vet aggregation and authority behaviour affected; current presenter-proof requalification and verifier-identity control aligned |
-| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft / Atomic candidate on current composed module |
-| [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft / Atomic candidate on current composed module |
-| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.7 | Draft / Atomic candidate on current composed module |
+| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.6 | Draft; current composed module; Atomic candidate |
+| [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.8 | Draft corrective candidate; current composed module; Atomic candidate |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.7 | Draft corrective candidate; Atomic candidate |
 
 No implementation may claim this composition merely from generic Atomic Work,
 schema, or candidate-vector support. Demos's existing `DemosWork` orchestration

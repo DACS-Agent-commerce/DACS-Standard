@@ -394,8 +394,11 @@ The format used per release:
   `credential-*-signature-mutation` cases to
   `phase-bound-delivery-evidence-v0.7` (150 cases), one for each
   `credentialDelivery` leaf. Each keeps a valid bundle and resolvable reference
-  and fails at the delivery-signature guard; re-signed, the same input reaches
-  the PDE-5 mismatch guard.
+  and fails at the delivery-signature guard. The locator, content-hash,
+  access-model and cleartext-hash cases are otherwise coherent deliveries, so
+  a pinned witness shows that skipping the delivery signature turns them into
+  `pass`. The anchor-kind, signer and renewal cases have no coherent
+  alternative, so PDE-5 rejects them as well.
 
 ### Fixed — delivery closure reference validation
 

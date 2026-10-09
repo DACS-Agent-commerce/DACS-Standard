@@ -551,17 +551,21 @@ def credential_case(
     *,
     index: int = 5,
     cleartext: bytes = b"api-key:correct-horse-battery-staple",
+    ciphertext: bytes = b"ml-kem-aes:ciphertext",
+    credential_locator: str | None = None,
 ) -> dict:
     renewal = 0
     clear_hash = bytes_hash(cleartext)
-    ciphertext_hash = bytes_hash(b"ml-kem-aes:ciphertext")
+    ciphertext_hash = bytes_hash(ciphertext)
     stored_bytes = (
-        cleartext if access_model == "buyer-only" else b"ml-kem-aes:ciphertext"
+        cleartext if access_model == "buyer-only" else ciphertext
     )
     stored_hash = clear_hash if access_model == "buyer-only" else ciphertext_hash
+    if credential_locator is None:
+        credential_locator = f"dacs4:credential:{JOB}:{index}:{renewal}"
     credential_ref = {
         "ref": {
-            "anchor": {"kind": "storage-program", "locator": f"dacs4:credential:{JOB}:{index}:{renewal}"},
+            "anchor": {"kind": "storage-program", "locator": credential_locator},
             "contentHash": stored_hash,
             "signer": SELLER,
         },
@@ -1793,31 +1797,57 @@ def build_vectors() -> list[dict]:
         bundle(case)
     vectors.append(make("delivery-signature-mutation", "fail", "every signed binding is integrity protected", credential_case, signature_mutation))
 
-    # Change one well-formed credential-delivery leaf at a time. Rebind the
-    # evidence content hash in the signed bundle, but retain the original
-    # DeliveryEvidence signature: only the inner canonical-scope signature
-    # guard can reject these otherwise coherent presented references.
+    # Each case presents a credentialDelivery that differs from a passing
+    # control's in the named leaf, keeps that control's DeliveryEvidence
+    # signature, and rebinds the bundle so its signatures and the outer
+    # reference still verify. Where DACS-4 admits a coherent alternative
+    # binding, the case is that passing alternative (re-signed entitlement,
+    # rebound credential bytes and receipts), so the stale delivery signature
+    # is its only defect. No coherent alternative exists for the anchor kind
+    # (§9.6.1 private delivery is a storage program), the signer (§9.7: the
+    # seller signs any delivered credential) or renewalSeq 1 (this closure
+    # authenticates no renewal re-payment); those cases change only the
+    # binding leaf, so PDE-5 rejects them too.
+    def stale_delivery_signature(control: Callable[[], dict]) -> Callable[[dict], None]:
+        def apply(case: dict) -> None:
+            case["evidenceRecords"][0]["artifact"]["signature"] = copy.deepcopy(
+                control()["evidenceRecords"][0]["artifact"]["signature"]
+            )
+            bundle(case)
+        return apply
+
     def unsigned_credential_field_mutation(mutator: Callable[[dict], None]) -> Callable[[dict], None]:
         def apply(case: dict) -> None:
             mutator(case["evidenceRecords"][0]["artifact"]["credentialDelivery"])
             bundle(case)
         return apply
 
-    for name, mutate in (
-        ("ref-anchor-kind", lambda b: b["credentialRef"]["ref"]["anchor"].update({"kind": "ipfs"})),
-        ("ref-anchor-locator", lambda b: b["credentialRef"]["ref"]["anchor"].update({"locator": "dacs4:credential:other"})),
-        ("ref-content-hash", lambda b: b["credentialRef"]["ref"].update({"contentHash": "f0" * 32})),
-        ("ref-signer", lambda b: b["credentialRef"]["ref"].update({"signer": BUYER})),
-        ("access-model", lambda b: b["credentialRef"].update({"accessModel": "encrypt-to-buyer"})),
-        ("cleartext-hash", lambda b: b.update({"credentialCleartextHash": "e1" * 32})),
-        ("renewal-seq", lambda b: b.update({"renewalSeq": 1})),
+    def encrypted_credential_case(**fields: Any) -> dict:
+        return credential_case("encrypt-to-buyer", **fields)
+
+    coherent = "a coherent re-signed credentialDelivery {} cannot reuse the control's delivery signature"
+    binding_only = "credentialDelivery {} changes the signed canonical hash and the PDE-5 binding"
+    for name, reason, factory, mutate in (
+        ("ref-anchor-kind", binding_only, credential_case, unsigned_credential_field_mutation(
+            lambda b: b["credentialRef"]["ref"]["anchor"].update({"kind": "ipfs"}))),
+        ("ref-anchor-locator", coherent, lambda: credential_case(credential_locator="dacs4:credential:other"),
+            stale_delivery_signature(credential_case)),
+        ("ref-content-hash", coherent, lambda: encrypted_credential_case(ciphertext=b"ml-kem-aes:ciphertext-rotated"),
+            stale_delivery_signature(encrypted_credential_case)),
+        ("ref-signer", binding_only, credential_case, unsigned_credential_field_mutation(
+            lambda b: b["credentialRef"]["ref"].update({"signer": BUYER}))),
+        ("access-model", coherent, encrypted_credential_case, stale_delivery_signature(credential_case)),
+        ("cleartext-hash", coherent, lambda: credential_case(cleartext=b"api-key:rotated-horse-battery-staple"),
+            stale_delivery_signature(credential_case)),
+        ("renewal-seq", binding_only, credential_case, unsigned_credential_field_mutation(
+            lambda b: b.update({"renewalSeq": 1}))),
     ):
         vectors.append(make(
             f"credential-{name}-signature-mutation",
             "fail",
-            f"credentialDelivery {name} changes the signed canonical hash",
-            credential_case,
-            unsigned_credential_field_mutation(mutate),
+            reason.format(name),
+            factory,
+            mutate,
         ))
     for dependency in (
         "storage", "entitlement", "credential", "payload", "attestation", "method",

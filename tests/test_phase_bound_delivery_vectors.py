@@ -2723,15 +2723,28 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             with self.subTest(field=name):
                 self.assertFalse(verify_signature(artifact, DELIVERY_DOMAIN))
 
+    # Leaf -> (passing control whose delivery signature the case keeps,
+    # credentialDelivery leaves that differ from it, whether DACS-4 admits a
+    # coherent alternative binding). Buyer-only stored bytes are the
+    # cleartext (DV-4), so changing the access model or cleartext also
+    # changes ref.contentHash.
+    CREDENTIAL_FIELD_MUTATIONS = {
+        "ref-anchor-kind": ("credential-buyer-only-exact-binding", {"ref-anchor-kind"}, False),
+        "ref-anchor-locator": ("credential-buyer-only-exact-binding", {"ref-anchor-locator"}, True),
+        "ref-content-hash": ("credential-encrypt-to-buyer-cleartext-binding", {"ref-content-hash"}, True),
+        "ref-signer": ("credential-buyer-only-exact-binding", {"ref-signer"}, False),
+        "access-model": ("credential-buyer-only-exact-binding", {"access-model", "ref-content-hash"}, True),
+        "cleartext-hash": ("credential-buyer-only-exact-binding", {"cleartext-hash", "ref-content-hash"}, True),
+        "renewal-seq": ("credential-buyer-only-exact-binding", {"renewal-seq"}, False),
+    }
+
+    def _vector(self, name):
+        return copy.deepcopy(next(
+            vector for vector in self.data["vectors"] if vector["name"] == name
+        ))
+
     def test_credential_field_mutation_vectors_reach_signature_guard(self):
-        control = next(
-            vector for vector in self.data["vectors"]
-            if vector["name"] == "credential-buyer-only-exact-binding"
-        )
-        names = (
-            "ref-anchor-kind", "ref-anchor-locator", "ref-content-hash",
-            "ref-signer", "access-model", "cleartext-hash", "renewal-seq",
-        )
+        names = tuple(self.CREDENTIAL_FIELD_MUTATIONS)
 
         def leaves(binding):
             ref = binding["credentialRef"]["ref"]
@@ -2745,22 +2758,29 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 "renewal-seq": binding["renewalSeq"],
             }
 
-        control_artifact = control["evidenceRecords"][0]["artifact"]
-        self.assertEqual(evaluate(control), "pass")
-        self.assertTrue(verify_signature(control_artifact, DELIVERY_DOMAIN))
-        original_leaves = leaves(control_artifact["credentialDelivery"])
-        for name in names:
-            case = copy.deepcopy(next(
-                vector for vector in self.data["vectors"]
-                if vector["name"] == f"credential-{name}-signature-mutation"
-            ))
+        for name, (control_name, expected_leaves, coherent) in (
+            self.CREDENTIAL_FIELD_MUTATIONS.items()
+        ):
+            control = self._vector(control_name)
+            control_artifact = control["evidenceRecords"][0]["artifact"]
+            case = self._vector(f"credential-{name}-signature-mutation")
             artifact = case["evidenceRecords"][0]["artifact"]
             with self.subTest(field=name):
+                self.assertEqual(evaluate(control), "pass")
+                self.assertTrue(verify_signature(control_artifact, DELIVERY_DOMAIN))
+                original_leaves = leaves(control_artifact["credentialDelivery"])
                 changed = {
                     field for field in names
                     if leaves(artifact["credentialDelivery"])[field] != original_leaves[field]
                 }
-                self.assertEqual(changed, {name})
+                self.assertEqual(changed, expected_leaves)
+                # A coherent alternative re-signs the entitlement, whose hash
+                # is the evidence's deliverableContentHash (PDE-4).
+                self.assertEqual(
+                    {key for key in artifact if artifact[key] != control_artifact.get(key)},
+                    {"credentialDelivery", "deliverableContentHash"}
+                    if coherent else {"credentialDelivery"},
+                )
                 self.assertEqual(artifact["signature"], control_artifact["signature"])
                 self.assertNotEqual(artifact_hash(artifact), artifact_hash(control_artifact))
                 self.assertTrue(exact_delivery_evidence_shape(artifact))
@@ -2771,12 +2791,54 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 self.assertIsNone(authenticated_evidence_type(artifact))
                 self.assertEqual(evaluate(case), "fail")
 
-                # With only the delivery signature repaired, the same valid
-                # shape and references reach PDE-5's semantic mismatch guard.
+                # With only the delivery signature repaired, a coherent case
+                # passes, so the stale signature is its only defect. The
+                # binding-only cases still reach PDE-5's mismatch guard.
                 G.sign(artifact, G.ORCHESTRATOR_SEED, DELIVERY_DOMAIN)
                 self.assertEqual(resolve_evidence(case, supplied)[0], "pass")
                 self.assertEqual(authenticated_evidence_type(artifact), "delivery")
-                self.assertEqual(validate_delivery_artifact(case, artifact), "fail")
+                outcome = "pass" if coherent else "fail"
+                self.assertEqual(validate_delivery_artifact(case, artifact), outcome)
+                self.assertEqual(evaluate(case), outcome)
+
+    def test_credential_field_vectors_reject_delivery_signature_bypass(self):
+        # Wrong implementation: authenticate DeliveryEvidence by its selector
+        # and skip the PDE-2 delivery-signature check; every other guard runs.
+        module = sys.modules[__name__]
+        real_verify = module.verify_signature
+        real_type = module.authenticated_evidence_type
+
+        def unchecked_verify(artifact, domain):
+            return domain == DELIVERY_DOMAIN or real_verify(artifact, domain)
+
+        def unchecked_type(artifact):
+            if isinstance(artifact, dict) and "deliveryEvidenceVersion" in artifact:
+                return "delivery"
+            return real_type(artifact)
+
+        cases = {
+            f"credential-{name}-signature-mutation": coherent
+            for name, (_, _, coherent) in self.CREDENTIAL_FIELD_MUTATIONS.items()
+        }
+        controls = {
+            control for control, _, _ in self.CREDENTIAL_FIELD_MUTATIONS.values()
+        }
+        for name in (*cases, *controls, "delivery-signature-mutation"):
+            self.assertEqual(evaluate(self._vector(name)), self._vector(name)["expected"])
+        with mock.patch.object(module, "verify_signature", unchecked_verify), \
+                mock.patch.object(module, "authenticated_evidence_type", unchecked_type):
+            for name in controls:
+                with self.subTest(control=name):
+                    self.assertEqual(evaluate(self._vector(name)), "pass")
+            # The wrong implementation is effective: it accepts the corrupted
+            # signature of an otherwise valid record.
+            self.assertEqual(evaluate(self._vector("delivery-signature-mutation")), "pass")
+            for name, coherent in cases.items():
+                with self.subTest(case=name):
+                    self.assertEqual(
+                        evaluate(self._vector(name)), "pass" if coherent else "fail"
+                    )
+        self.assertEqual(sum(cases.values()), 4)
 
     def test_attested_delivery_executes_the_resolved_dpa_chain(self):
         vector = next(

@@ -690,6 +690,18 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_review_guard_witnesses.py",
         "test": "ReviewGuardWitnessTests.test_missing_bundle_diagnostic_is_not_active_admission",
     },
+    "pr336-atomic-exact-presenter-vector-consumer": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_whole_profile_admission_resolves_exactly_one_presented_claim",
+    },
+    "pr336-atomic-malformed-bundle-claim-structural": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_malformed_bundle_claim_is_a_structural_error",
+    },
+    "pr336-atomic-exact-presenter-wiring-witness": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicPresenterWiringWitnessTests.test_authority_context_presenter_wiring_is_load_bearing",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

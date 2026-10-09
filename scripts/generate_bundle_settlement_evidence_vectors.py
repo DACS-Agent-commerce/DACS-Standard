@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 import generate_evidence_bound_fault_bundle_fixture as F
+import generate_atomic_work_vectors as A
+import atomic_work_reference as AR
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -418,6 +420,225 @@ def make_authority(name, definition, signing_keys):
     return authority
 
 
+def _sign_atomic_bundle(bundle):
+    bundle["signatures"] = []
+    payload = (
+        F.DOMAINS["evidence-bound"] + F.bundle_hash(bundle)
+    ).encode("utf-8")
+    bundle["signatures"] = [
+        {
+            "party": A.CLAIMS[role],
+            "algorithm": "ed25519",
+            "value": AR.b64u(AR.ed25519_sign(A.SEEDS[role], payload)),
+        }
+        for role in ("buyer", "seller")
+    ]
+
+
+def _atomic_anchor_receipt(ref, phase_key, logical_address):
+    phase_index, phase = phase_key.split(":", 1)
+    transaction = "tx-atomic-ebfab-" + phase_index
+    return {
+        "receiptVersion": "1",
+        "substrate": "demos-testnet",
+        "finalityProfile": "demos-bft-proof/test-1",
+        "logicalAddress": logical_address,
+        "nativeAddress": ref["anchor"]["locator"],
+        "contentHash": ref["contentHash"],
+        "transactionRef": {"kind": "demos-transaction", "value": transaction},
+        "writer": A.CLAIMS["orchestrator"],
+        "nonce": phase_index,
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": 1_800_000_041_000 + int(phase_index),
+        "blockRef": {
+            "id": "block-atomic-ebfab-" + phase_index,
+            "height": str(1200 + int(phase_index)),
+            "timestamp": 1_800_000_040_000 + int(phase_index),
+        },
+        "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": hashlib.sha256(transaction.encode()).hexdigest(),
+        },
+    }
+
+
+def make_atomic_authority(variant="pass"):
+    """Compose a real passing AWS result into DACS-5 SEB/ST-11 authority."""
+    job_id = "01K1DPA0000000000000000000"
+    purchase = A.purchase_intent(job_id, current_profile=True)
+    purchase_receipt = A.final_receipt(purchase)
+    completion = A.completion_intent(purchase_receipt, job_id)
+    completion_receipt = A.final_receipt(completion)
+    purchase_admission = A.composed_purchase_admission(
+        purchase, purchase_receipt
+    )
+    completion_admission = A.composed_completion_admission(
+        purchase, purchase_receipt, completion, completion_receipt
+    )
+    for admission in (purchase_admission, completion_admission):
+        admission.update({
+            "expectedNetworkAuthority": A.CLAIMS["network"],
+            "expectedProofProfile": "demos-bft-proof/test-1",
+            "expectedRailRegistryAuthority": A.CLAIMS["network"],
+        })
+    AR.evaluate_purchase_admission(purchase_admission)
+    AR.evaluate_completion_admission(completion_admission)
+
+    listing = copy.deepcopy(purchase_admission["authority"]["listing"])
+    evidence_by_key = {
+        "2:pay-dem": copy.deepcopy(purchase_admission["settlement"]),
+        "3:deliver-storage-program": copy.deepcopy(
+            completion_admission["settlement"]
+        ),
+    }
+    if variant == "dual-selector":
+        evidence = evidence_by_key["3:deliver-storage-program"]["evidence"]
+        evidence["evidenceVersion"] = "1"
+        evidence["signature"] = AR.sign_embedded(
+            {key: value for key, value in evidence.items() if key != "signature"},
+            A.CLAIMS["orchestrator"],
+            A.SEEDS["orchestrator"],
+            AR.EVIDENCE_DOMAIN,
+        )["signature"]
+
+    phase_summary = [
+        {"index": index, "kind": step["kind"], "outcome": "ok"}
+        for index, step in enumerate(listing["pipeline"])
+    ]
+    refs = []
+    resolutions = {}
+    receipts = {}
+    executions = {}
+    admissions = {}
+    for phase_key, settlement in evidence_by_key.items():
+        phase_index, phase = phase_key.split(":", 1)
+        evidence = settlement["evidence"]
+        evidence_hash = F.evidence_hash(evidence)
+        ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-" + hashlib.sha256(
+                    ("atomic-ebfab:" + phase_key).encode()
+                ).hexdigest(),
+            },
+            "contentHash": evidence_hash,
+        }
+        ref_key = F.canonical(ref).decode("utf-8")
+        refs.append(ref)
+        phase_summary[int(phase_index)]["attestationRef"] = ref
+        resolutions[ref_key] = {
+            "record": evidence,
+            "agreementHash": current_agreement_hash(job_id, phase_key),
+            "sessionId": current_session_id(job_id, phase_key),
+            "lifecycle": {
+                "state": "finalized", "independentlyResolvable": True,
+            },
+        }
+        logical_address = settlement["evidenceAddress"]
+        receipts[ref_key] = _atomic_anchor_receipt(
+            ref, phase_key, logical_address
+        )
+        executions[phase_key] = {
+            "jobId": job_id,
+            "phaseIndex": int(phase_index),
+            "phaseKind": phase,
+            "phaseOrchestrator": A.CLAIMS["orchestrator"],
+            "evidenceFamily": (
+                "ordinary" if variant == "wrong-family" else "atomic"
+            ),
+            "atomicEvidenceLogicalAddress": logical_address,
+            "anchorNonce": phase_index,
+            **({"railId": A.TEST_RAIL_ID} if phase.startswith("pay-") else {}),
+        }
+        admissions[ref_key] = {
+            "disposition": "pass",
+            "evidenceHash": evidence_hash,
+            "phaseKey": phase_key,
+            "logicalAddress": logical_address,
+        }
+
+    agreement_ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:" + job_id,
+        },
+        "contentHash": current_agreement_hash(job_id),
+    }
+    bundle = {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": job_id,
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+            "listingId": listing["listingId"],
+            "version": listing["listingVersion"],
+            "contentHash": F.listing_hash(listing),
+        },
+        "agreementRef": agreement_ref,
+        "parties": [
+            {
+                "role": role,
+                "bundleHash": hashlib.sha256(
+                    ("atomic-ebfab-" + role).encode()
+                ).hexdigest(),
+                "primaryClaim": A.CLAIMS[role],
+            }
+            for role in ("buyer", "seller")
+        ],
+        "phaseSummary": phase_summary,
+        "vetRecords": [],
+        "settlementEvidence": refs,
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1_800_000_042_000,
+        "signatures": [],
+    }
+    _sign_atomic_bundle(bundle)
+    authority = {
+        "listing": listing,
+        "bundle": bundle,
+        "defaultReferenceLifecycle": {
+            "state": "finalized", "independentlyResolvable": True,
+        },
+        "referenceValidationByCanonicalRef": resolutions,
+        "sessionExecutionAuthorityByPhaseKey": executions,
+        "verifiedReceiptByCanonicalRef": receipts,
+        "deliveryArtifactAuthorityByPhaseKey": {},
+        "trustedNativeTransactionObservationsByCanonicalRef": {},
+        "atomicEvidenceAdmissionByCanonicalRef": admissions,
+        "bundleLifecycle": {
+            "state": "finalized", "independentlyResolvable": True,
+        },
+        "additionalCommitPhase": "commit-identity-bound-payee-agreement",
+        "agreementSelectionResult": {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(agreement_ref),
+            "agreementType": "identity-bound-payee",
+            "proofVerified": True,
+        },
+    }
+    payment_phase_key = "2:pay-dem"
+    payment_record = evidence_by_key[payment_phase_key]["evidence"]
+    payment_ref = phase_summary[2]["attestationRef"]
+    payment_ref_key = F.canonical(payment_ref).decode("utf-8")
+    authority["legacyAgreementAuthorityByPhaseKey"] = {
+        payment_phase_key: current_laa_phase_carrier(
+            bundle,
+            listing,
+            payment_phase_key,
+            payment_record,
+            payment_ref,
+            receipts[payment_ref_key],
+            executions[payment_phase_key],
+        )
+    }
+    if variant == "missing-admission":
+        authority.pop("atomicEvidenceAdmissionByCanonicalRef")
+    return authority
+
+
 def _delivery_resolution(authority, phase_key):
     phase_index_text, phase = phase_key.split(":", 1)
     phase_index = int(phase_index_text)
@@ -764,7 +985,8 @@ def generate(source):
         "and current DeliveryEvidence plus its top-level receipt are controlled by the authenticated "
         "phase orchestrator even when that role is distinct from the seller that writes deliverables, "
         "EntitlementRecords, and credentials; PDE-7 permits only a single unambiguous "
-        "delivery-shaped SettlementEvidence. "
+        "delivery-shaped SettlementEvidence, while verifier-selected Atomic Work phases use "
+        "AtomicSettlementEvidenceV1 only with an exact passing AWS admission. "
         "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, "
         "entitlement/credential, or payload-attestation/method-proof closure required "
         "before successful current or legacy delivery evidence can authorize its phase; legacy "
@@ -1400,15 +1622,69 @@ def generate(source):
         F.CLAIMS[role]: F.b64u(key.public_key().public_bytes_raw())
         for role, key in signing_keys.items()
     }
+    data["publicKeys"].update(A.PUBLIC_KEYS)
     data["domains"] = {
         "listing": F.LISTING_DOMAIN,
         "evidenceBoundBundle": F.DOMAINS["evidence-bound"],
+        "atomicEvidence": AR.EVIDENCE_DOMAIN.decode("ascii"),
     }
     data["executionAuthorityDefinitions"] = definitions
     data["executionAuthorities"] = {
         name: make_authority(name, definition, signing_keys)
         for name, definition in definitions.items()
     }
+    data["executionAuthorities"].update({
+        "atomic-current-completed": make_atomic_authority("pass"),
+        "atomic-missing-aws-admission": make_atomic_authority("missing-admission"),
+        "atomic-wrong-phase-family": make_atomic_authority("wrong-family"),
+        "atomic-dual-selector": make_atomic_authority("dual-selector"),
+    })
+    atomic_vector_specs = (
+        (
+            "bundle-settlement-bijection-atomic-current-completed-pass",
+            "atomic-current-completed", "pass", "verified", "ok",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-missing-aws-indeterminate",
+            "atomic-missing-aws-admission", "indeterminate", "indeterminate",
+            "execution-authority-indeterminate",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-wrong-family-reject",
+            "atomic-wrong-phase-family", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-dual-selector-reject",
+            "atomic-dual-selector", "fail", "rejected", "execution-authority",
+        ),
+    )
+    known_vector_names = {vector["name"] for vector in data["vectors"]}
+    for name, authority_name, expected, disposition, reason_code in atomic_vector_specs:
+        if name in known_vector_names:
+            continue
+        data["vectors"].append({
+            "name": name,
+            "expected": expected,
+            "input": {
+                "executionAuthorityRef": authority_name,
+                "topLevelRefs": ["ref-atomic-pay", "ref-atomic-delivery"],
+                "authenticatedRecordByRef": {
+                    "ref-atomic-pay": {
+                        "jobId": "01K1DPA0000000000000000000",
+                        "phaseKey": "2:pay-dem", "outcome": "success",
+                    },
+                    "ref-atomic-delivery": {
+                        "jobId": "01K1DPA0000000000000000000",
+                        "phaseKey": "3:deliver-storage-program",
+                        "outcome": "success",
+                    },
+                },
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": disposition, "reasonCode": reason_code},
+        })
     for vector in data["vectors"]:
         vector_input = vector["input"]
         authority = data["executionAuthorities"].get(vector_input.get("executionAuthorityRef"))

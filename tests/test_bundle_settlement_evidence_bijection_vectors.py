@@ -515,6 +515,7 @@ def derive_phase_disposition(authority, pubkeys):
         authority.get("verifiedReceiptByCanonicalRef"),
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        authority.get("atomicEvidenceAdmissionByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
         additional_commit_phase=authority.get("additionalCommitPhase"),
         agreement_selection_result=authority.get("agreementSelectionResult"),
@@ -673,6 +674,102 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertEqual(
                     vector["expected"], verdict_for_disposition[actual_disposition]
                 )
+
+    def test_atomic_evidence_composes_with_exact_set_and_reputation_dispatch(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["atomic-current-completed"]
+        )
+        disposition, reason, phase_keys = derive_phase_disposition(
+            authority, self.pubkeys
+        )
+        self.assertEqual((disposition, reason), ("pass", "ok"))
+        self.assertEqual(
+            phase_keys, ["2:pay-dem", "3:deliver-storage-program"]
+        )
+        authority["publicKeys"] = self.pubkeys
+        self.assertEqual(
+            R._tagged_copy_validation_for_derive({
+                "bundle": authority["bundle"],
+                "ebfabAuthority": authority,
+            }),
+            ("pass", "ok"),
+        )
+
+        missing = copy.deepcopy(authority)
+        missing.pop("atomicEvidenceAdmissionByCanonicalRef")
+        self.assertEqual(
+            R._tagged_copy_validation_for_derive({
+                "bundle": missing["bundle"],
+                "ebfabAuthority": missing,
+            })[0],
+            "indeterminate",
+        )
+
+    def test_atomic_and_ordinary_delivery_families_cannot_be_cross_coerced(self):
+        ordinary = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        delivery_phase_key = next(
+            key
+            for key, execution in ordinary[
+                "sessionExecutionAuthorityByPhaseKey"
+            ].items()
+            if execution.get("phaseKind") == "deliver-storage-program"
+        )
+        ordinary["sessionExecutionAuthorityByPhaseKey"][delivery_phase_key][
+            "evidenceFamily"
+        ] = "atomic"
+        disposition, _, _ = derive_phase_disposition(ordinary, self.pubkeys)
+        self.assertEqual(disposition, "fail")
+
+        for name, expected in (
+            ("atomic-wrong-phase-family", "fail"),
+            ("atomic-dual-selector", "fail"),
+            ("atomic-missing-aws-admission", "indeterminate"),
+        ):
+            with self.subTest(authority=name):
+                disposition, _, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][name], self.pubkeys
+                )
+                self.assertEqual(disposition, expected)
+
+    def test_atomic_payment_is_laa_qualified_like_every_payment(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["atomic-current-completed"]
+        )
+
+        def validate(carriers):
+            return R.validate_ebfab_disposition(
+                authority["bundle"],
+                authority["listing"],
+                self.pubkeys,
+                authority["referenceValidationByCanonicalRef"],
+                authority["bundleLifecycle"],
+                authority["sessionExecutionAuthorityByPhaseKey"],
+                authority["verifiedReceiptByCanonicalRef"],
+                authority.get("deliveryArtifactAuthorityByPhaseKey"),
+                authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+                authority["atomicEvidenceAdmissionByCanonicalRef"],
+                effective_pipeline=authority.get("effectivePipeline"),
+                additional_commit_phase=authority.get("additionalCommitPhase"),
+                agreement_selection_result=authority.get("agreementSelectionResult"),
+                legacy_agreement_authority_by_phase_key=carriers,
+            )
+
+        carriers = refreshed_laa_phase_carriers(authority)
+        self.assertEqual(sorted(carriers), ["2:pay-dem"])
+        self.assertEqual(("pass", "ok"), validate(carriers)[:2])
+
+        missing = validate({})
+        self.assertEqual("indeterminate", missing[0], missing[1])
+        self.assertIn("legacy agreement authority", str(missing[1]))
+
+        for field in ("evidenceContentHash", "evidenceRef", "evidenceReceiptHash"):
+            mutated = copy.deepcopy(carriers)
+            mutated["2:pay-dem"]["binding"][field] = "substituted"
+            with self.subTest(binding=field):
+                result = validate(mutated)
+                self.assertEqual("fail", result[0], result[1])
 
     def test_cross_phase_inner_dependency_ownership_is_load_bearing(self):
         expected_reasons = {

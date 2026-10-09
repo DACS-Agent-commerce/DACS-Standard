@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import __future__
+import ast
 import copy
+import inspect
 import json
 import subprocess
 import sys
+import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "scripts") not in sys.path:
@@ -31,7 +36,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 309)
+        self.assertEqual(vector_count, 315)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -555,13 +560,13 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ref.evaluate_vector(by_name["awp-purchase-composed-admission"])[0],
             "pass",
         )
-        for name in (
-            "awp-purchase-vet-record-historical-authority",
-            "awp-purchase-vet-record-not-current-admitted",
+        for name, expected in (
+            ("awp-purchase-vet-record-historical-authority", "fail"),
+            ("awp-purchase-vet-record-not-current-admitted", "indeterminate"),
         ):
             with self.subTest(name=name):
                 verdict, reason = ref.evaluate_vector(by_name[name])
-                self.assertEqual(verdict, "fail")
+                self.assertEqual(verdict, expected)
                 self.assertIn("current-profile admission", reason)
 
     def test_presented_by_resolves_to_exactly_one_distinct_claim(self):
@@ -589,6 +594,42 @@ class AtomicWorkVectorTests(unittest.TestCase):
         ambiguous["claims"].append(distinct)
         with self.assertRaisesRegex(ref.Invalid, "multiple distinct claims"):
             ref._verify_identity_bundle(signed(ambiguous), generator.PUBLIC_KEYS)
+
+    def test_malformed_bundle_claim_is_a_structural_error(self):
+        bundle = generator.identity_bundle("buyer", [generator.CLAIMS["payer"]])
+        for label, claims in (
+            ("non-object claim", [*bundle["claims"], generator.CLAIMS["buyer"]]),
+            ("claim without ref", [*bundle["claims"], {"metadata": {}}]),
+            ("non-string ref", [*bundle["claims"], {"ref": None}]),
+            ("non-array container", {"0": bundle["claims"][0]}),
+        ):
+            with self.subTest(label=label):
+                malformed = {**copy.deepcopy(bundle), "claims": claims}
+                with self.assertRaises(ref.Malformed):
+                    ref._verify_identity_bundle(malformed, generator.PUBLIC_KEYS)
+
+    def test_whole_profile_admission_resolves_exactly_one_presented_claim(self):
+        purchase = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-purchase-completion-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in purchase["vectors"]}
+        ambiguous = "IdentityBundle presentedBy resolves to multiple distinct claims"
+        for name, expected, reason in (
+            ("awp-purchase-presenter-identical-duplicate", "pass", "predicate accepted"),
+            ("awp-purchase-payer-presenter-ambiguous", "fail", ambiguous),
+            ("awp-purchase-payee-presenter-ambiguous", "fail", ambiguous),
+            ("awp-purchase-listing-seller-presenter-ambiguous", "fail", ambiguous),
+            ("awp-completion-payer-presenter-ambiguous", "fail", ambiguous),
+            (
+                "awp-purchase-payer-bundle-claim-malformed", "error",
+                "IdentityBundle claim container or claim is malformed",
+            ),
+        ):
+            with self.subTest(name=name):
+                vector = by_name[name]
+                self.assertEqual(vector["expected"], expected)
+                self.assertEqual(ref.evaluate_vector(vector), (expected, reason))
 
     def test_publication_proof_authenticates_create_only_prior_state(self):
         settlement = next(
@@ -716,6 +757,68 @@ class AtomicWorkVectorTests(unittest.TestCase):
         )
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertIn("6 byte-identical sets", run.stdout)
+
+
+def _without_calls(function, callee: str):
+    """Recompile ``function`` with every bare ``callee(...)`` statement removed."""
+    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
+    removed = []
+
+    class StripCalls(ast.NodeTransformer):
+        def visit_Expr(self, node):
+            call = node.value
+            if (
+                isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Name)
+                and call.func.id == callee
+            ):
+                removed.append(call)
+                return None
+            return node
+
+    tree = ast.fix_missing_locations(StripCalls().visit(tree))
+    namespace = {}
+    exec(
+        compile(
+            tree, inspect.getsourcefile(function), "exec",
+            flags=__future__.annotations.compiler_flag, dont_inherit=True,
+        ),
+        function.__globals__, namespace,
+    )
+    return namespace[function.__name__], len(removed)
+
+
+class AtomicPresenterWiringWitnessTests(unittest.TestCase):
+    """The whole-profile vectors, not only the helper test, pin the wiring."""
+
+    def _run(self, method_name):
+        result = unittest.TestResult()
+        unittest.TestSuite([AtomicWorkVectorTests(method_name)]).run(result)
+        self.assertEqual(1, result.testsRun)
+        return result
+
+    def test_authority_context_presenter_wiring_is_load_bearing(self):
+        consumer = "test_whole_profile_admission_resolves_exactly_one_presented_claim"
+        helper = "test_presented_by_resolves_to_exactly_one_distinct_claim"
+        control = self._run(consumer)
+        self.assertEqual([], control.failures + control.errors + control.skipped)
+
+        # Wrong implementation: the authority context no longer consumes the
+        # exact presented-claim resolution for the payer and payee bundles.
+        mutant, removed = _without_calls(
+            ref._verified_authority_context, "_verify_identity_bundle"
+        )
+        self.assertEqual(removed, 2)
+        with mock.patch.object(ref, "_verified_authority_context", mutant):
+            caught = self._run(consumer)
+            helper_only = self._run(helper)
+        self.assertEqual([], caught.errors + caught.skipped)
+        self.assertTrue(caught.failures, "whole-profile vectors did not catch the mutation")
+        failures = "\n".join(test.id() for test, _ in caught.failures)
+        self.assertIn("awp-purchase-payee-presenter-ambiguous", failures)
+        self.assertIn("awp-completion-payer-presenter-ambiguous", failures)
+        # The direct helper test alone cannot see the missing consumer wiring.
+        self.assertEqual([], helper_only.failures + helper_only.errors)
 
 
 if __name__ == "__main__":

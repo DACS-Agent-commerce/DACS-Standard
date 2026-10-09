@@ -1247,9 +1247,15 @@ The format used per release:
   composite-signer/verifier-identity authority); a record produced or
   interpreted only under pre-correction semantics is historical and cannot
   authorize the Work. Payer, payee, and Listing seller `IdentityBundle`s
-  resolve `presentedBy` to exactly one canonical-distinct claim. Adds
-  whole-profile historical-authority and unadmitted-record rejections and an
-  ambiguous-presenter regression.
+  resolve `presentedBy` to exactly one canonical-distinct claim, and a
+  malformed claim container or claim is an earlier structural `error`. Adds a
+  whole-profile historical-authority rejection; an admission that carries no
+  Vet authorization result is missing authority and stays `indeterminate`.
+  Whole-profile vectors re-sign every bound artifact around an ambiguous
+  payer, payee, Listing seller, or Completion payer presenter (rejected), a
+  repeated identical presenter claim (accepted), and a non-object claim
+  (`error`); a pinned witness shows that removing the authority context's
+  presenter resolution fails those vectors, not only the helper test.
 - **Atomic evidence under the LAA qualification** (DACS-5 §10.4.3 SEB-3) —
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is

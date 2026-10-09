@@ -1892,14 +1892,20 @@ def _identity_bundle_hash(bundle: dict[str, Any]) -> str:
 
 
 def _verify_identity_bundle(bundle: dict[str, Any], public_keys: dict[str, str]) -> None:
-    if bundle.get("bundleVersion") != "1" or not isinstance(bundle.get("claims"), list):
+    if bundle.get("bundleVersion") != "1":
         raise Invalid("pinned payer IdentityBundle malformed")
+    claims = bundle.get("claims")
+    # DACS-1 §6.3.2: a malformed claim container or claim is an earlier
+    # structural error, never skipped by presented-claim resolution.
+    if not isinstance(claims, list) or any(
+        not isinstance(c, dict) or not isinstance(c.get("ref"), str) for c in claims
+    ):
+        raise Malformed("IdentityBundle claim container or claim is malformed")
     presented = claim_key(bundle.get("presentedBy"))
     # DACS-1 exact presented-claim resolution: CF-3 identity matches collapse
     # only when canonically identical; ambiguity resolves no presenter.
     matches = {
-        jcs_bytes(c) for c in bundle["claims"]
-        if isinstance(c, dict) and claim_equal(c.get("ref"), presented)
+        jcs_bytes(c) for c in claims if claim_equal(c["ref"], presented)
     }
     if not matches:
         raise Invalid("IdentityBundle presentedBy missing from claims")
@@ -2340,6 +2346,13 @@ def _verify_current_profile_admission(
         "vetDisposition": "current-authorized",
         "laaDisposition": "current-eligible",
     }
+    # AWP-7: missing authority is indeterminate; stale, substituted, or
+    # contradictory authority is invalid.
+    if any(
+        field not in subject
+        for field in ("rsc", "ibhDisposition", "vetDisposition", "laaDisposition")
+    ):
+        raise Unknown("current-profile admission lacks a required authority result")
     if set(subject) != set(expected) | {"signature"} or any(
         not _json_equal(subject.get(field), value)
         for field, value in expected.items()

@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import copy
 import difflib
 import json
@@ -223,9 +224,28 @@ def role_roster(seller_role: str = "seller") -> list[dict[str, Any]]:
     ]
 
 
-def identity_bundle(role: str, extra_claims: list[str] | None = None) -> dict[str, Any]:
+# Extra BundleClaim values appended to one party's IdentityBundle while a
+# fixture is built, keyed by (scope, role).  The "session" scope is the bundle
+# bound by Vet records, the agreement, payment input, SessionContext source and
+# current-profile admission; the "listing" scope is the Listing seller identity.
+# Every dependent hash and signature is therefore re-derived from the variant.
+_EXTRA_BUNDLE_CLAIMS: dict[tuple[str, str], list[Any]] = {}
+
+
+@contextlib.contextmanager
+def extra_bundle_claims(scope: str, role: str, records: list[Any]):
+    _EXTRA_BUNDLE_CLAIMS[(scope, role)] = copy.deepcopy(records)
+    try:
+        yield
+    finally:
+        del _EXTRA_BUNDLE_CLAIMS[(scope, role)]
+
+
+def identity_bundle(
+    role: str, extra_claims: list[str] | None = None, *, scope: str = "session",
+) -> dict[str, Any]:
     claims = [CLAIMS[role], *(extra_claims or [])]
-    claim_records = []
+    claim_records: list[Any] = []
     for value in claims:
         record: dict[str, Any] = {"ref": value}
         if value == CLAIMS["payer"]:
@@ -239,6 +259,9 @@ def identity_bundle(role: str, extra_claims: list[str] | None = None) -> dict[st
                 )
             }
         claim_records.append(record)
+    claim_records.extend(
+        copy.deepcopy(_EXTRA_BUNDLE_CLAIMS.get((scope, role), []))
+    )
     unsigned: dict[str, Any] = {
         "bundleVersion": "1", "presentedBy": CLAIMS[role],
         "presentedAt": 1_799_999_000_000,
@@ -310,7 +333,10 @@ def listing_fixture(
     }
     unsigned: dict[str, Any] = {
         "dacsVersion": "1", "listingVersion": 1, "listingId": "atomic-fixed-1",
-        "seller": {"identity": identity_bundle("seller"), "displayName": "Atomic Seller"},
+        "seller": {
+            "identity": identity_bundle("seller", scope="listing"),
+            "displayName": "Atomic Seller",
+        },
         "offering": {
             "title": "Deterministic result", "description": "Atomic vector fixture",
             "category": "test.atomic", "tags": ["atomic"], "deliverable": deliverable,
@@ -2433,6 +2459,34 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         ref._CURRENT_PROFILE_ADMISSION_TEST_DOMAIN,
     )
     vet_unadmitted = add_composed_limit_evidence(vet_unadmitted)
+    # DACS-1 exact presented-claim resolution: a second canonical-distinct
+    # claim with the presenter's CF-3 identity resolves no presenter, while a
+    # repeated identical claim collapses to one candidate.
+    alternate_buyer_claim = {
+        "ref": CLAIMS["buyer"], "metadata": {"displayName": "Alternate buyer"},
+    }
+    alternate_seller_claim = {
+        "ref": CLAIMS["seller"],
+        "metadata": {"nativeAccount": "dem-test-alternate-seller"},
+    }
+    ambiguous_payer = presenter_variant_admission(
+        "session", "buyer", [alternate_buyer_claim]
+    )
+    ambiguous_payee = presenter_variant_admission(
+        "session", "seller", [alternate_seller_claim]
+    )
+    ambiguous_listing_seller = presenter_variant_admission(
+        "listing", "seller", [alternate_seller_claim]
+    )
+    duplicate_payer = presenter_variant_admission(
+        "session", "buyer", [{"ref": CLAIMS["buyer"]}]
+    )
+    malformed_payer_claim = presenter_variant_admission(
+        "session", "buyer", [CLAIMS["buyer"]]
+    )
+    ambiguous_completion_payer = presenter_variant_admission(
+        "session", "buyer", [alternate_buyer_claim], completion=True
+    )
     legacy_purchase = purchase_intent()
     legacy_receipt = final_receipt(legacy_purchase)
     legacy_composed_admission = composed_purchase_admission(
@@ -2456,7 +2510,13 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-purchase-current-profile-admission-stale", ["AWP-4", "AWP-7"], "purchase-admission", stale_current_profile_admission, "fail", "A signed admission for a stale DACS-1 profile cannot authorize the advertised current Atomic tuple."),
         vector("awp-purchase-current-profile-listing-substitution", ["AWP-4", "AWP-7"], "purchase-admission", substituted_current_profile_admission, "fail", "Verifier-owned current-profile admission binds the exact signed Listing and rejects a substituted Listing hash."),
         vector("awp-purchase-vet-record-historical-authority", ["AWP-1", "AWP-7"], "purchase-admission", historical_vet_admission, "fail", "An already-signed Vet record admitted only under historical semantics cannot authorize current Atomic execution; current production Vet authorization is required."),
-        vector("awp-purchase-vet-record-not-current-admitted", ["AWP-1", "AWP-7"], "purchase-admission", vet_unadmitted, "fail", "A current-profile admission covering RSC, IBH, and LAA but not current Vet authorization of the Work's exact signed Vet records cannot authorize execution."),
+        vector("awp-purchase-vet-record-not-current-admitted", ["AWP-1", "AWP-7"], "purchase-admission", vet_unadmitted, "indeterminate", "A current-profile admission covering RSC, IBH, and LAA but carrying no current Vet authorization result for the Work's exact signed Vet records is missing authority under AWP-7 and cannot authorize execution."),
+        vector("awp-purchase-payer-presenter-ambiguous", ["AWP-4", "AWP-7"], "purchase-admission", ambiguous_payer, "fail", "A re-signed payer IdentityBundle with two canonical-distinct claims for its presentedBy identity resolves no presenter, so whole-profile admission rejects although every bound hash and signature is valid."),
+        vector("awp-purchase-payee-presenter-ambiguous", ["AWP-4", "AWP-7"], "purchase-admission", ambiguous_payee, "fail", "A re-signed payee IdentityBundle with two canonical-distinct claims for its presentedBy identity resolves no presenter, so whole-profile admission rejects although every bound hash and signature is valid."),
+        vector("awp-purchase-listing-seller-presenter-ambiguous", ["AWP-4", "AWP-7"], "purchase-admission", ambiguous_listing_seller, "fail", "A re-signed Listing whose seller IdentityBundle has two canonical-distinct claims for its presentedBy identity resolves no Listing publisher."),
+        vector("awp-purchase-presenter-identical-duplicate", ["AWP-4", "AWP-7"], "purchase-admission", duplicate_payer, "pass", "A repeated, canonically identical presentedBy claim collapses to one candidate; array order and repetition do not make the presenter ambiguous."),
+        vector("awp-purchase-payer-bundle-claim-malformed", ["AWP-4", "AWP-7"], "purchase-admission", malformed_payer_claim, "error", "A non-object BundleClaim is an earlier structural error; presented-claim resolution does not skip it or reclassify it as an identity non-match."),
+        vector("awp-completion-payer-presenter-ambiguous", ["AWP-4", "AWP-7", "AWP-13"], "completion-admission", ambiguous_completion_payer, "fail", "Completion consumes the same exact presented-claim resolution for the verified Purchase payer bundle."),
         vector("awp-purchase-legacy-agreement-not-current-authority", ["AWP-4", "AWP-7"], "purchase-admission", legacy_composed_admission, "indeterminate", "A historically readable AgreementDocument and commit-agreement phase do not authorize execution under the current Atomic tuple."),
         vector("awp-purchase-signed-sequential-admission", ["AWP-6", "AWP-7", "AWP-12"], "purchase-admission", composed_sequential_purchase, "pass", "A signed sequential gate selection is admitted only with the independently verified finalized commitment AnchorReceipt required before payment.", boundary_rules=["AWP-12"]),
         vector("awp-purchase-caller-gate-mode-mismatch", ["AWP-6"], "purchase-admission", mismatched_gate_copy, "fail", "An unsigned caller authority copy cannot change the proof path selected by the signed Work intent."),
@@ -2905,6 +2965,27 @@ def composed_completion_admission(
         "publicKeys": PUBLIC_KEYS,
     }
     return add_composed_limit_evidence(value)
+
+
+def presenter_variant_admission(
+    scope: str, role: str, records: list[Any], *, completion: bool = False,
+) -> dict[str, Any]:
+    """Build a complete current-profile admission around one bundle variant.
+
+    The Work, Vet records, agreement, Listing, receipts, settlement,
+    current-profile admission and limit evidence are all derived from the
+    variant bundle, so only presented-claim resolution can distinguish it.
+    """
+    with extra_bundle_claims(scope, role, records):
+        purchase = purchase_intent(current_profile=True)
+        purchase_receipt = final_receipt(purchase)
+        if not completion:
+            return composed_purchase_admission(purchase, purchase_receipt)
+        completion_work = completion_intent(purchase_receipt)
+        return composed_completion_admission(
+            purchase, purchase_receipt, completion_work,
+            final_receipt(completion_work),
+        )
 
 
 def settlement_slot_vectors() -> list[dict[str, Any]]:

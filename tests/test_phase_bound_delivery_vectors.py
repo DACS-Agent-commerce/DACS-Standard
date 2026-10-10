@@ -2724,15 +2724,16 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 self.assertFalse(verify_signature(artifact, DELIVERY_DOMAIN))
 
     # Leaf -> (passing control whose delivery signature the case keeps,
-    # credentialDelivery leaves that differ from it, whether DACS-4 admits a
+    # credentialDelivery leaves that differ from it, whether the case is a
     # coherent alternative binding). Buyer-only stored bytes are the
     # cleartext (DV-4), so changing the access model or cleartext also
-    # changes ref.contentHash.
+    # changes ref.contentHash. The signer alternative omits the optional
+    # AttestationRef.signer (DACS-2 §7.5.2).
     CREDENTIAL_FIELD_MUTATIONS = {
         "ref-anchor-kind": ("credential-buyer-only-exact-binding", {"ref-anchor-kind"}, False),
         "ref-anchor-locator": ("credential-buyer-only-exact-binding", {"ref-anchor-locator"}, True),
         "ref-content-hash": ("credential-encrypt-to-buyer-cleartext-binding", {"ref-content-hash"}, True),
-        "ref-signer": ("credential-buyer-only-exact-binding", {"ref-signer"}, False),
+        "ref-signer": ("credential-buyer-only-exact-binding", {"ref-signer"}, True),
         "access-model": ("credential-buyer-only-exact-binding", {"access-model", "ref-content-hash"}, True),
         "cleartext-hash": ("credential-buyer-only-exact-binding", {"cleartext-hash", "ref-content-hash"}, True),
         "renewal-seq": ("credential-buyer-only-exact-binding", {"renewal-seq"}, False),
@@ -2745,6 +2746,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
 
     def test_credential_field_mutation_vectors_reach_signature_guard(self):
         names = tuple(self.CREDENTIAL_FIELD_MUTATIONS)
+        absent = object()
 
         def leaves(binding):
             ref = binding["credentialRef"]["ref"]
@@ -2752,7 +2754,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 "ref-anchor-kind": ref["anchor"]["kind"],
                 "ref-anchor-locator": ref["anchor"]["locator"],
                 "ref-content-hash": ref["contentHash"],
-                "ref-signer": ref["signer"],
+                "ref-signer": ref.get("signer", absent),
                 "access-model": binding["credentialRef"]["accessModel"],
                 "cleartext-hash": binding["credentialCleartextHash"],
                 "renewal-seq": binding["renewalSeq"],
@@ -2774,6 +2776,13 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                     if leaves(artifact["credentialDelivery"])[field] != original_leaves[field]
                 }
                 self.assertEqual(changed, expected_leaves)
+                # The seller writes any delivered credential (DACS-4 §9.6.2
+                # step 6), with or without the optional ref signer.
+                credential_ref = case["credentials"][0]["credentialRef"]["ref"]
+                receipt = case["verifiedReceiptByCanonicalRef"][
+                    G.canonical_bytes(credential_ref).decode("utf-8")
+                ]["receipt"]
+                self.assertEqual(receipt["writer"], G.SELLER)
                 # A coherent alternative re-signs the entitlement, whose hash
                 # is the evidence's deliverableContentHash (PDE-4).
                 self.assertEqual(
@@ -2838,7 +2847,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                     self.assertEqual(
                         evaluate(self._vector(name)), "pass" if coherent else "fail"
                     )
-        self.assertEqual(sum(cases.values()), 4)
+        self.assertEqual(sum(cases.values()), 5)
 
     def test_attested_delivery_executes_the_resolved_dpa_chain(self):
         vector = next(

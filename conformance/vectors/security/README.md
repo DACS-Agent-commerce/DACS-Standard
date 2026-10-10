@@ -465,15 +465,16 @@ private content. Seven named field mutations cover every leaf of the signed
 `credentialCleartextHash`, and `renewalSeq`. Each keeps the delivery
 signature of a passing credential control, updates the outer evidence
 reference and bundle signatures, and fails that stale signature. For the
-locator, content hash, access model and cleartext hash, the case is a
+locator, content hash, signer, access model and cleartext hash, the case is a
 coherent alternative delivery with a re-signed entitlement and rebound
 credential bytes and receipts, so an evaluator that skips the delivery
-signature returns `pass`. Under `buyer-only` the stored bytes are the
-cleartext, so the access-model and cleartext cases also change
-`ref.contentHash`. The anchor-kind, signer and renewal cases have no coherent
-alternative (storage-program private delivery, seller-signed credential, no
-authenticated renewal re-payment); they change only the binding leaf, which
-PDE-5 also rejects.
+signature returns `pass`. The signer alternative omits the optional
+`AttestationRef.signer`, and the seller still writes the credential. Under
+`buyer-only` the stored bytes are the cleartext, so the access-model and
+cleartext cases also change `ref.contentHash`. The anchor-kind and renewal
+cases change only the binding leaf, which PDE-5 also rejects: §9.6.1 private
+delivery admits no anchor kind but a storage program, and these vectors model
+no authenticated renewal re-payment.
 Type/domain and signature mutation cases pin the minor-safe boundary. Focused
 review cases pin the bundle-job comparison, EntitlementRecord hash/signature checks, missing
 top-level and phase-summary members, wrong optional pointers, success-only

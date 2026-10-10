@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import importlib.util
 import itertools
 import json
@@ -13,6 +14,7 @@ import secrets
 import signal
 import subprocess
 import sys
+import threading
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -757,6 +759,9 @@ def _run():
         and not result.unexpectedSuccesses
     )
     if not accepted:
+        for test, traceback in result.failures + result.errors + result.expectedFailures:
+            print(str(test), file=sys.stderr)
+            print(traceback, file=sys.stderr)
         print(
             "exact unittest contract failed: " + json.dumps(summary, sort_keys=True),
             file=sys.stderr,
@@ -1356,6 +1361,51 @@ def _terminate_selected_test_process(process: subprocess.Popen) -> str | None:
     return cleanup_issue
 
 
+class _SelectedTestTerminated(BaseException):
+    pass
+
+
+@contextmanager
+def _selected_test_termination():
+    """Unwind runner cleanup on default SIGTERM, then retain signal exit status."""
+    if (
+        os.name != "posix"
+        or threading.current_thread() is not threading.main_thread()
+        or signal.getsignal(signal.SIGTERM) != signal.SIG_DFL
+    ):
+        yield lambda: None
+        return
+
+    launching = True
+    pending = False
+
+    def terminate(signum, frame):
+        nonlocal pending
+        # Defer cancellation until the new runner is published to its cleanup
+        # scope; interrupting Popen before assignment would orphan its session.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        if launching:
+            pending = True
+            return
+        raise _SelectedTestTerminated()
+
+    def communication_ready():
+        nonlocal launching
+        launching = False
+        if pending:
+            raise _SelectedTestTerminated()
+
+    signal.signal(signal.SIGTERM, terminate)
+    try:
+        yield communication_ready
+    except _SelectedTestTerminated:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGTERM)
+        raise
+    finally:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+
 def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
@@ -1374,38 +1424,38 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
             "regression" if label == "regression"
             else "independent review evidence"
         )
-        process = subprocess.Popen(
-            command,
-            cwd=ROOT,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env={**os.environ, "PYTHONPATH": python_path},
-            start_new_session=os.name == "posix",
-        )
-        try:
-            stdout, stderr = process.communicate(
-                input=nonce + "\n",
-                timeout=SELECTED_TEST_TIMEOUT_SECONDS,
+        with _selected_test_termination() as communication_ready:
+            process = subprocess.Popen(
+                command,
+                cwd=ROOT,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env={**os.environ, "PYTHONPATH": python_path},
+                start_new_session=os.name == "posix",
             )
-        except subprocess.TimeoutExpired:
-            cleanup_issue = _terminate_selected_test_process(process)
-            message = (
-                f"{entry['id']}: {failure_kind} timed out after "
-                f"{SELECTED_TEST_TIMEOUT_SECONDS:g} seconds"
-            )
-            if cleanup_issue:
-                message += f"; {cleanup_issue}"
-            raise GateError(message) from None
-        except BaseException as exc:
-            # start_new_session isolates the selected runner from terminal
-            # signals sent to this gate. Preserve subprocess.run-style cleanup
-            # by terminating the isolated group before propagating interrupts.
-            cleanup_issue = _terminate_selected_test_process(process)
-            if cleanup_issue and hasattr(exc, "add_note"):
-                exc.add_note(f"selected test cleanup: {cleanup_issue}")
-            raise
+            try:
+                communication_ready()
+                stdout, stderr = process.communicate(
+                    input=nonce + "\n",
+                    timeout=SELECTED_TEST_TIMEOUT_SECONDS,
+                )
+            except subprocess.TimeoutExpired:
+                cleanup_issue = _terminate_selected_test_process(process)
+                message = (
+                    f"{entry['id']}: {failure_kind} timed out after "
+                    f"{SELECTED_TEST_TIMEOUT_SECONDS:g} seconds"
+                )
+                if cleanup_issue:
+                    message += f"; {cleanup_issue}"
+                raise GateError(message) from None
+            except BaseException as exc:
+                # Isolated runners do not receive the gate's terminal signals.
+                cleanup_issue = _terminate_selected_test_process(process)
+                if cleanup_issue and hasattr(exc, "add_note"):
+                    exc.add_note(f"selected test cleanup: {cleanup_issue}")
+                raise
         if process.returncode or not _exact_unittest_completed(stdout, nonce):
             detail = (stdout + stderr).strip()
             raise GateError(

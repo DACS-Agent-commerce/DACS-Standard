@@ -70,6 +70,11 @@ jobs:
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
 
+      - name: Verify delivery-or-remedy candidate packs
+        run: |
+          python3 scripts/generate_delivery_remedy_candidate_vectors.py --check
+          python3 scripts/verify_delivery_remedy_candidate_vectors.py
+
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
 

@@ -807,11 +807,11 @@ The trace is an honest forward projection of what production DACS-on-Demos code 
 
 **Trace assumption.** `sendChannelMsg(...)` sends a fully-structured `CanonicalChannelMessage` envelope (discriminator, sequence, signature envelope, refs) and the SDK preserves the structure on the receive side.
 
-**Reality today.** `@kynesyslabs/demosdk@4.0.16` exposes the historical Demos message container: no current DACS discriminator, a bare lowercase-hex Ed25519 value, and the frozen `dacs-channelmsg:v1:` raw-digest signed bytes. It is evidence for the explicit read/import arm, not the current DACS type.
+**Reality today.** `@kynesyslabs/demosdk@4.0.16` ships `l2ps.channel.ChannelSession`, but its message wire matches neither DACS-3 §8.3.3 operation. It has no current DACS discriminator; its signature is a `{ sigVersion: "1", signature: "0x…" }` object, not a CH-7 envelope or the bare lowercase-hex value of the frozen historical arm; and it signs the historical `dacs-channelmsg:v1:` domain followed by the ASCII lowercase-hex digest, which is neither the frozen raw-digest recipe nor CH-8's canonical domain. `current-read` and `legacy-import` both reject it ([DEMOS-MAPPING](../spec/DEMOS-MAPPING.md) A.4). It is not evidence for the historical import arm or the current DACS type.
 
-**Gap.** Add a `CanonicalChannelMessage` producer/consumer that emits the CH-7/CH-8 discriminator, signature envelope, SIG-6 value, canonical domain and ASCII lowercase-hex digest framing; retain the old SDK object only behind an explicit historical import API. Execute the Standard's mixed-wire corpus and keep sequence validation/transcript export. Also on DACS-3 Tier 1.
+**Gap.** Add a `CanonicalChannelMessage` producer/consumer that emits the CH-7/CH-8 discriminator, signature envelope, SIG-6 value, canonical domain and ASCII lowercase-hex digest framing. The 4.0.16 object is not an importable historical message: unwrapping its signature still leaves a signature over the hex-digest bytes, not the frozen raw-digest recipe, so it cannot be routed through `legacy-import` either. Execute the Standard's mixed-wire corpus and keep sequence validation/transcript export. Also on DACS-3 Tier 1.
 
-**Spec impact.** DACS-3 §8.3.3 defines the current/historical split. This trace shows only the current arm; importing the SDK's historical message does not authorize re-emitting it.
+**Spec impact.** DACS-3 §8.3.3 defines the current/historical split. This trace shows only the current arm. The explicitly selected `legacy-import` arm accepts only the frozen historical wire, and importing such bytes does not authorize re-emitting them.
 
 ### 9.4 SR-4 (L2PS) — encrypted-transcript anchoring
 

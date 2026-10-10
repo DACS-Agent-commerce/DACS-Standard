@@ -430,7 +430,9 @@ class CurrentUseFixtureFactory:
         }
         return listing
 
-    def _legacy_bundle(self, job_id: str, role: str, listing: dict) -> dict:
+    def _legacy_bundle(
+        self, job_id: str, role: str, listing: dict, *, finalised_at: int | None = None
+    ) -> dict:
         outcome = "aborted-by-other" if role == "buyer" else "aborted-by-self"
         bundle = {
             "bundleVersion": "1",
@@ -455,13 +457,16 @@ class CurrentUseFixtureFactory:
             "settlementEvidence": [],
             "recipeRegistryVersion": 1,
             "railRegistryVersion": 1,
-            "finalisedAt": OBSERVED_AT - 10_000,
+            "finalisedAt": OBSERVED_AT - 10_000 if finalised_at is None else finalised_at,
             "signatures": [],
         }
         self.finality.sign_bundle(bundle, BUNDLE_DOMAIN)
         return bundle
 
-    def historical_job(self, job_id: str, *, pure: bool) -> dict:
+    def historical_job(
+        self, job_id: str, *, pure: bool, original_height: int = 90,
+        finalised_at: int | None = None,
+    ) -> dict:
         substrate = PURE_SUBSTRATE if pure else WRITE_SUBSTRATE
         checkpoint = self.checkpoints.get(substrate) or self.checkpoint(substrate, write_input=not pure)
         self.config["partyRolesByJob"][job_id] = {
@@ -473,7 +478,7 @@ class CurrentUseFixtureFactory:
         )
         roles = {}
         for role_index, role in enumerate(("buyer", "seller")):
-            bundle = self._legacy_bundle(job_id, role, listing)
+            bundle = self._legacy_bundle(job_id, role, listing, finalised_at=finalised_at)
             digest = bundle_hash(bundle)
             self.dependencies["bundleAuthorityByContentHash"][digest] = {
                 "listing": copy.deepcopy(listing),
@@ -515,7 +520,7 @@ class CurrentUseFixtureFactory:
                 transaction="fixture-tx-historical-" + hashlib.sha256((job_id + role).encode()).hexdigest(),
                 writer=CLAIMS[role],
                 nonce=10 + role_index,
-                height=90,
+                height=original_height,
                 index=role_index,
             )
             original_mapping.update({
@@ -939,7 +944,15 @@ class CurrentUseFixtureFactory:
         }
         native_addresses: list[str] = []
         eras: list[dict] = []
-        for role_request in request["roles"].values():
+        for role, role_request in request["roles"].items():
+            if role_request.get("disposition") == "absent":
+                authority = self.config["authenticatedAbsenceByJobRole"][
+                    request["jobId"] + ":" + role
+                ]
+                digest = authority["absenceEvidenceRef"]["contentHash"]
+                closure["absenceEvidenceByCanonicalRef"][digest] = copy.deepcopy(
+                    deps["absenceEvidenceByCanonicalRef"][digest]
+                )
             if role_request.get("mappingKind") == "binding":
                 native_addresses.extend(
                     binding["nativeAddress"]
@@ -1012,6 +1025,16 @@ class CurrentUseFixtureFactory:
                     authority = deps["bundleAuthorityByContentHash"].get(digest)
                     if authority is not None:
                         closure["bundleAuthorityByContentHash"][digest] = copy.deepcopy(authority)
+            # LAB-2 reconstructs the original BB-6 selection, so every original
+            # candidate's bundle is part of the closure.
+            original = era.get("originalMapping") or {}
+            if original.get("kind") == "binding":
+                for candidate in original["selectionContext"]["candidateBindings"]:
+                    original_native = candidate["nativeAddress"]
+                    if original_native in deps["bundlesByNativeAddress"]:
+                        closure["bundlesByNativeAddress"][original_native] = copy.deepcopy(
+                            deps["bundlesByNativeAddress"][original_native]
+                        )
         if not include_combined:
             closure.pop("outcomeTimeEvidenceByJobId")
             closure.pop("anchorReceiptHistoryByJobId")
@@ -1076,6 +1099,130 @@ def _serializable(value: Any) -> Any:
     return value
 
 
+def _legacy_negative_replays() -> list[tuple]:
+    """Build complete, signed LAB negatives from otherwise admitted role copies."""
+    cases = []
+    definitions = (
+        ("buyer-seller-role-rebinding", "fail", "LAB-3 historical role join"),
+        ("seller-buyer-role-rebinding", "fail", "LAB-3 historical role join"),
+        ("fresh-post-checkpoint-legacy-creation", "fail", "LAB-4 strict order"),
+        ("post-checkpoint-anchor-without-pre-checkpoint-proof", "fail", "LAB-4 strict order"),
+        ("missing-era-proof", "indeterminate", "LAB-6 missing era authority"),
+    )
+    for name, expected, guard in definitions:
+        factory = CurrentUseFixtureFactory()
+        fixture = factory.build()
+        request = fixture["historicalRequests"][0]
+        substrate = WRITE_SUBSTRATE
+        if name == "fresh-post-checkpoint-legacy-creation":
+            # Re-sign both complete role copies with a post-checkpoint finalisedAt;
+            # their original signed bindings and finalized receipts are also new.
+            request = factory.historical_job(
+                HISTORICAL_BINDING_JOB_ID, pure=False, original_height=101,
+                finalised_at=OBSERVED_AT + 1_000,
+            )
+        elif name == "post-checkpoint-anchor-without-pre-checkpoint-proof":
+            # Preserve the historical signed bytes and original binding, but the
+            # only authenticated original receipt available is post-checkpoint.
+            # This is not a LAB-5 same-role re-anchor: no pre-checkpoint original
+            # proof remains to re-verify.
+            role_request = request["roles"]["buyer"]
+            native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+            era = role_request["legacyEraEvidenceByNativeAddress"][native]
+            old = era["historicalAnchorReceipt"]
+            era["historicalAnchorReceipt"] = factory.anchor_proof(
+                purpose="historical-bundle", substrate=substrate,
+                subject_id=old["subjectId"], subject_role=old["subjectRole"],
+                logical=old["logicalAddress"], native=old["nativeAddress"],
+                content_hash=old["contentHash"], transaction=old["transactionRef"],
+                writer=old["writer"], nonce=old["nonce"], height=101, index=0,
+            )
+        elif name == "missing-era-proof":
+            role_request = request["roles"]["buyer"]
+            native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+            del role_request["legacyEraEvidenceByNativeAddress"][native]
+        elif name in {"buyer-seller-role-rebinding", "seller-buyer-role-rebinding"}:
+            # The source role's historical abort is presented, one-sided, as the
+            # target role's copy, reversing its blame. The source role is
+            # authenticated absent, so no copy can diverge, and the target
+            # role-holder's own signed original BundleBinding and BB-6 selection
+            # resolve the bytes (LAB-2). Only the historical receipt, which binds
+            # the source role, rejects the copy (LAB-3).
+            source_role, target_role = name.split("-role-rebinding")[0].split("-")
+            job_id = request["jobId"]
+            source = request["roles"][source_role]
+            source_binding = source["selectionContext"]["candidateBindings"][0]
+            source_native = source_binding["nativeAddress"]
+            source_era = source["legacyEraEvidenceByNativeAddress"][source_native]
+            original_bundle = factory.dependencies["bundlesByNativeAddress"][source_native]
+            rebound = copy.deepcopy(original_bundle)
+            rebound["anchoredByRole"] = target_role  # excluded from legacy hash
+            original = factory.legacy_bundle_binding(
+                rebound, target_role, job_id + ":historical-rebound:" + target_role
+            )
+            factory.dependencies["bundlesByNativeAddress"][original["nativeAddress"]] = rebound
+            historical_receipt = source_era["historicalAnchorReceipt"]
+            absence = {
+                "kind": "synthetic-finalized-non-membership",
+                "nativeAddress": source_native,
+                "finalizedStateRef": "fixture-finalized-state:" + job_id,
+            }
+            absence_hash = old_hash(absence, "__no_omitted_member__")
+            factory.dependencies["absenceEvidenceByCanonicalRef"][absence_hash] = absence
+            factory.config["authenticatedAbsenceByJobRole"][job_id + ":" + source_role] = {
+                "disposition": "absent",
+                "absenceEvidenceRef": {
+                    "kind": absence["kind"],
+                    "locator": "fixture-absence:" + job_id + ":" + source_role,
+                    "contentHash": absence_hash,
+                },
+                "absenceBinding": copy.deepcopy(source_binding),
+            }
+            request["roles"][source_role] = {"disposition": "absent"}
+            target = request["roles"][target_role]
+            binding = factory.bundle_binding(
+                rebound, target_role, "rebound-current-" + target_role,
+                trusted_contexts=factory.current_authority(CLAIMS["buyer"], FIXTURE_QUERY_WINDOW),
+            )
+            native = binding["nativeAddress"]
+            factory.dependencies["bundlesByNativeAddress"][native] = rebound
+            target["selectionContext"]["candidateBindings"] = [binding]
+            target["anchorReceiptsByNativeAddress"] = {
+                native: factory.anchor_proof(
+                    purpose="current-bundle", substrate=substrate,
+                    subject_id=request["jobId"], subject_role=target_role,
+                    logical=binding["logicalAddress"], native=native,
+                    content_hash=binding["bundleContentHash"],
+                    transaction="fixture-tx-rebound-current-" + target_role,
+                    writer=CLAIMS[target_role], nonce=35, height=110, index=1,
+                )
+            }
+            original_era = copy.deepcopy(source_era)
+            original_era["resolvedRole"] = target_role
+            original_era["originalMapping"] = {
+                "kind": "binding",
+                "binding": copy.deepcopy(original),
+                "selectionContext": {
+                    "candidateBindings": [copy.deepcopy(original)],
+                    "partyMap": {CLAIMS["buyer"]: "buyer", CLAIMS["seller"]: "seller"},
+                    "budget": 8,
+                },
+                "anchorTransaction": historical_receipt["transactionRef"],
+                "writer": historical_receipt["writer"],
+                "nonce": historical_receipt["nonce"],
+            }
+            target["legacyEraEvidenceByNativeAddress"] = {native: original_era}
+        cases.append((
+            name, _serializable(request),
+            _serializable(factory.replay_dependencies(request)),
+            _serializable(factory.replay_config(request)),
+            {"name": name, "mappingKind": "binding", "expected": expected,
+             "guard": guard},
+            factory.replay_context(request), _serializable(factory.replay_keys()),
+        ))
+    return cases
+
+
 def document() -> dict:
     factory = CurrentUseFixtureFactory()
     fixture = factory.build()
@@ -1135,6 +1282,7 @@ def document() -> dict:
             _serializable(factory.replay_keys()),
         ),
     ]
+    replay_inputs.extend(_legacy_negative_replays())
     vectors = []
     for _name, request, dependencies, verifier_config, expected, context, keys in replay_inputs:
         vector = dict(expected)

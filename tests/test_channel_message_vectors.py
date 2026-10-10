@@ -47,6 +47,8 @@ GENERATOR = ROOT / "scripts" / "generate_channel_message_vectors.py"
 DACS3 = ROOT / "spec" / "DACS-3-NEGOTIATE.md"
 CORE = ROOT / "spec" / "CORE.md"
 DEMOS = ROOT / "spec" / "DEMOS-MAPPING.md"
+FLOW_TRACE = ROOT / "docs" / "flow-trace.md"
+CHANGELOG = ROOT / "CHANGELOG.md"
 CURRENT_DOMAIN = b"dacs-canonical-channel-message:v1:"
 LEGACY_DOMAIN = b"dacs-channelmsg:v1:"
 LEGACY_FILE_SHA256 = "ce43b226e358e15cb126b4b7d53b8638648c14ca55250eb57e6db68e451ba13f"
@@ -1599,6 +1601,38 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertIn("read/import-only", core)
         self.assertIn("@kynesyslabs/demosdk@4.0.16", demos)
         self.assertIn("historical read/import arm", demos)
+
+    def test_shipped_demos_sdk_wire_is_recorded_as_neither_arm(self):
+        """DACS-3 §8.3.3: the frozen arm needs a bare lowercase-hex signature
+        over the raw 32-byte digest (CH-9 item 2, CH-10); CH-8 signs the ASCII
+        lowercase-hex digest under the canonical domain. The shipped 4.0.16
+        wire (historical domain, hex-digest framing, `0x` signature object)
+        is neither, so no document may record it as historical-arm evidence."""
+        def flat(path):
+            return " ".join(path.read_text(encoding="utf-8").split())
+
+        demos, trace, changelog = flat(DEMOS), flat(FLOW_TRACE), flat(CHANGELOG)
+        self.assertIn(
+            "is **not** evidence for the frozen §8.3.3 "
+            "`LegacyDemosChannelMessage` historical read/import arm",
+            demos,
+        )
+        self.assertIn(
+            "Its ASCII-hex digest framing is CH-8-style, but it signs under "
+            "the historical domain",
+            demos,
+        )
+        self.assertNotIn("historical, not CH-8, domain/framing", demos)
+        for text in (trace, changelog):
+            self.assertIn("@kynesyslabs/demosdk@4.0.16", text)
+            self.assertIn("`current-read` and `legacy-import` both reject it", text)
+        for stale in (
+            "It is evidence for the explicit read/import arm",
+            "raw-digest signed bytes",
+            "retain the old SDK object only behind an explicit historical import API",
+        ):
+            self.assertNotIn(stale, trace)
+        self.assertNotIn("recorded only as historical-arm evidence", changelog)
 
 
 if __name__ == "__main__":

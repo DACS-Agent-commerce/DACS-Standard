@@ -50,12 +50,12 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
 | [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 15 | `indeterminate` / `pass` |
-| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 8 | `pass` |
+| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 13 | `fail` / `indeterminate` / `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 11 | `fail` / `indeterminate` / `pass` |
+| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 13 | `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 398 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
@@ -91,7 +91,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 85 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 86 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1941,18 +1941,38 @@ python3 -m unittest tests.test_settlement_finality_verification_vectors -v
 
 ### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
 
-Eight candidate fixtures drive the complete stronger DACS-5 consumer path. Six
+Thirteen candidate fixtures drive the complete stronger DACS-5 consumer path. Six
 compose the finality-bound bundle consumer with every FV model, exact RSV and
 applicable SB-3 checks; the provider-receipt case remains classified as
 provisional capture. Two retain the complete original requests for the legacy
-write-input BundleBinding and deterministic pure-mapping arms.
+write-input BundleBinding and deterministic pure-mapping arms; their legacy
+copies are also re-anchored under the same role after the checkpoint, so they
+are the passing LAB-5 re-anchor controls. Five named non-passing cases each
+isolate one LAB guard:
+
+- `buyer-seller-role-rebinding` and `seller-buyer-role-rebinding` (LAB-3,
+  `fail`): one role's historical abort is presented, one-sided, as the other
+  role's copy, reversing its blame. The source role is authenticated absent and
+  the target role-holder's own signed original BundleBinding and BB-6 selection
+  resolve the bytes (LAB-2), so only the historical receipt's role join rejects
+  the copy.
+- `fresh-post-checkpoint-legacy-creation` (LAB-4, `fail`): both role copies are
+  new legacy bundles first anchored after the checkpoint.
+- `post-checkpoint-anchor-without-pre-checkpoint-proof` (LAB-4, `fail`): the
+  original signed bytes and binding are kept, but the only authenticated
+  original receipt is after the checkpoint.
+- `missing-era-proof` (LAB-6, `indeterminate`): the buyer copy's era evidence
+  is absent.
+
+Each negative carries otherwise valid signed bundles, bindings and finalized
+receipts: a verifier that omits only its named guard accepts it.
 
 Every vector embeds the complete executable replay input: the exact request, its
 full authenticated dependency closure, the verifier configuration with public
 keys, the trusted query context, and the expected outcome. The set hash binds
 these complete replay inputs, so each case is independently executable from the
-committed JSON alone and any authority, receipt, finality, or
-historical-evidence mutation changes the bound payload and yields a non-pass
+committed JSON alone. For every passing case, any authority, receipt, finality,
+or historical-evidence mutation changes the bound payload and yields a non-pass
 decision.
 
 The focused executable tests mutate every duplicated historical join, checkpoint
@@ -1960,7 +1980,8 @@ discovery and external trust, BB-6 standing/budget/admission order, role absence
 new/older precedence, required settlement binding, metrics and replay inputs. They
 also execute old-reader refusal and malformed-container totality, and the
 JSON-only replay corpus tests re-execute the committed bytes and their mutation
-boundary directly. Native anchor
+boundary directly, and replay each negative against a verifier missing only its
+named LAB guard. Native anchor
 and settlement-binding proofs are independently pinned signed synthetic fixtures
 for offline testing only; they do not define a production Demos proof codec.
 

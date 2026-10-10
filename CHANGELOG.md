@@ -791,6 +791,17 @@ The format used per release:
   independently executable and any authority, receipt, finality, or
   historical-evidence mutation yields a non-pass decision.
 
+- **Legacy-bundle era admission negatives** (DACS-5 §10.4 LAB-3, LAB-4,
+  LAB-6; #381) — without changing normative semantics, adds signed, replayable
+  `current-use-reputation-v1` cases for one-sided buyer→seller and
+  seller→buyer role rebinding that reverses abort blame (LAB-3), fresh
+  post-checkpoint legacy creation and a post-checkpoint anchor without
+  pre-checkpoint proof (LAB-4) (`fail`), and missing era proof (LAB-6,
+  `indeterminate`). Each negative is otherwise admitted, and a JSON-only test
+  shows that a verifier omitting only its named guard accepts it. The existing
+  historical controls remain the passing LAB-5 same-role re-anchor cases. The
+  corpus grows from 8 to 13 cases; the existing cases are byte-identical.
+
 ### Added — unallocated #392 consumer-verifiable settlement finality candidate
 
 - **Finality-bound evidence** (#392) — adds the structurally distinct
@@ -838,6 +849,20 @@ The format used per release:
   unavailable), and a malformed list, string, number, or Boolean map as
   `error`, without any broad exception catch. The canonical map continues to
   pass through both the direct FV path and the composed DACS-5 path.
+
+- **Finality conflict, reorganization and stale-fork coverage** (DACS-4 §9.7.0
+  FRC-7, FRC-8, FV-6, FV-8, FV-10; #382) — without changing normative
+  semantics, adds `fv-conflicting-authenticated-heads` and
+  `fv-reorg-unresolved` to `finality-resolution-context-v1` (13 cases), each
+  carrying its complete verifier input. Both use a sibling fork that
+  re-includes the signed transaction under a competing head at the pinned
+  checkpoint height; every signed native view first passes FV on its own. Two
+  authorities disagreeing on that head, or one authority's retained
+  pre-reorganisation view beside its later replacement view, returns
+  `indeterminate`; later signing or acquisition does not pick a winner. Adds
+  `fv-stale-fork-inclusion` to `settlement-finality-verification` (86 cases):
+  an authentic sibling-fork inclusion block beside the authenticated canonical
+  head and ancestry fails.
 
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
@@ -916,9 +941,11 @@ The format used per release:
   malformed, mismatched, duplicated, and unauthenticated profile authority;
   and reject an explicitly present `refs: null` rather than treating it as an
   absent optional member.
-  `@kynesyslabs/demosdk@4.0.16` is
-  recorded only as historical-arm evidence; no current Demos SDK producer
-  version is claimed.
+  `@kynesyslabs/demosdk@4.0.16` is not
+  evidence for either arm (#414): it signs the historical domain over the
+  ASCII-hex digest and emits a `0x`-prefixed signature object, so
+  `current-read` and `legacy-import` both reject it. No current Demos SDK
+  producer version is claimed.
 - **Authenticated channel membership** — the executable reader obtains each
   sender's claim, key, and key type through a verifier-owned fixed CH-1
   membership capability that is separate from message and session input.

@@ -690,6 +690,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_review_guard_witnesses.py",
         "test": "ReviewGuardWitnessTests.test_missing_bundle_diagnostic_is_not_active_admission",
     },
+    "pr417-legacy-negatives-isolate-named-lab-guard-witness": {
+        "file": "tests/test_current_use_replay_corpus.py",
+        "test": "CurrentUseReplayCorpusTests.test_legacy_negative_cases_pass_a_verifier_missing_only_their_guard",
+    },
     "pr418-credential-field-delivery-signature-bypass-witness": {
         "file": "tests/test_phase_bound_delivery_vectors.py",
         "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",

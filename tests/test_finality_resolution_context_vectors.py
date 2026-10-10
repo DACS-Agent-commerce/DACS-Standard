@@ -21,6 +21,7 @@ from finality_resolution_context_reference import (
     RESPONSE_DOMAIN,
     FinalityResolutionAuthority,
     hash_value,
+    response_signature_hash,
     replay_finality_resolution,
     verify_composite_resolution,
 )
@@ -235,6 +236,126 @@ class FinalityResolutionContextTests(unittest.TestCase):
         result = self.verify(value, self.authority(payload))
         self.assertEqual("indeterminate", result["decision"])
         self.assertIn("inconsistent", result["reason"])
+
+    def assert_valid_native_view(self, response):
+        seat = next(
+            seat for seat in self.data["positive"]["authority"]["policy"]["authorities"]
+            if seat["authorityId"] == response["authorityId"]
+        )
+        key = next(
+            key for key in seat["verificationKeys"]
+            if key["keyId"] == response["signature"]["keyId"]
+        )
+        Ed25519PublicKey.from_public_bytes(decode_key(key["publicKey"])).verify(
+            decode_key(response["signature"]["value"]),
+            (RESPONSE_DOMAIN + response_signature_hash(response)).encode("ascii"),
+        )
+        self.assertEqual(
+            hash_value(self.data["positive"]["authority"]["issuedQuery"]),
+            response["queryHash"],
+        )
+        candidate = copy.deepcopy(self.data["positive"]["value"])
+        candidate["context"] = copy.deepcopy(response["response"]["observation"])
+        result = _verify_single_view_finality(candidate, copy.deepcopy(self.base_trusted))
+        self.assertEqual("pass", result["decision"], result["reason"])
+        return candidate["context"]["observation"]["authenticatedHead"]["id"]
+
+    def assert_sibling_forks(self, canonical, replacement):
+        left = canonical["response"]["observation"]["observation"]
+        right = replacement["response"]["observation"]["observation"]
+        for member in ("networkId", "genesisHash", "transactionRef"):
+            self.assertEqual(left[member], right[member])
+        self.assertEqual(
+            left["selectedEventProof"]["eventBytes"],
+            right["selectedEventProof"]["eventBytes"],
+        )
+        self.assertEqual(left["inclusionBlock"]["parentId"], right["inclusionBlock"]["parentId"])
+        self.assertNotEqual(left["inclusionBlock"]["id"], right["inclusionBlock"]["id"])
+        self.assertEqual(left["authenticatedHead"]["position"], right["authenticatedHead"]["position"])
+        self.assertNotEqual(left["authenticatedHead"]["id"], right["authenticatedHead"]["id"])
+
+    def materialized(self, name):
+        case = next(v for v in self.data["vectors"] if v["name"] == name)
+        return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
+
+    def test_materialized_cases_execute_their_expectation(self):
+        executed = set()
+        for case in self.data["vectors"]:
+            if "input" not in case:
+                continue
+            with self.subTest(case=case["name"]):
+                result = self.verify(
+                    case["input"]["value"], self.authority(case["input"]["authority"])
+                )
+                self.assertEqual(case["expected"], result["decision"], result["reason"])
+            executed.add(case["name"])
+        self.assertLessEqual(
+            {"fv-conflicting-authenticated-heads", "fv-reorg-unresolved"}, executed
+        )
+
+    def test_conflicting_authenticated_heads_reach_frc7(self):
+        case, value, payload = self.materialized("fv-conflicting-authenticated-heads")
+        responses = {
+            response["authorityId"]: response
+            for response in value["context"]["responseArtifacts"]
+        }
+        self.assertEqual(value["context"]["responseArtifacts"], payload["retainedResponses"])
+        self.assertEqual(["observer-a", "observer-b"], sorted(responses))
+        self.assert_valid_native_view(responses["observer-a"])
+        self.assert_valid_native_view(responses["observer-b"])
+        self.assert_sibling_forks(responses["observer-a"], responses["observer-b"])
+        result = self.verify(value, self.authority(payload))
+        self.assertEqual(case["expected"], result["decision"])
+        self.assertIn("configured authorities supplied conflicting finalized views", result["reason"])
+
+    def test_retained_reorg_reaches_frc7(self):
+        case, value, payload = self.materialized("fv-reorg-unresolved")
+        transported = value["context"]["responseArtifacts"]
+        retained_only = [
+            response for response in payload["retainedResponses"]
+            if response not in transported
+        ]
+        self.assertEqual(1, len(retained_only))
+        before = retained_only[0]
+        self.assertEqual("observer-a", before["authorityId"])
+        self.assertEqual(
+            sorted(["observer-a", "observer-b"]),
+            sorted(response["authorityId"] for response in transported),
+        )
+        self.assert_valid_native_view(before)
+        for after in transported:
+            self.assert_valid_native_view(after)
+            self.assert_sibling_forks(before, after)
+            self.assertGreater(after["signedObservationTime"], before["signedObservationTime"])
+        self.assertEqual(
+            1,
+            len({
+                hash_value(response["response"]["observation"])
+                for response in transported
+            }),
+        )
+        result = self.verify(value, self.authority(payload))
+        self.assertEqual(case["expected"], result["decision"])
+        self.assertIn("one authority supplied unresolved inconsistent observations", result["reason"])
+
+        # Without the retained pre-reorganisation response -- equivalently,
+        # letting each authority's latest signed response win -- the
+        # replacement fork alone is complete consistent coverage.
+        before_hash = hash_value(before)
+        self.assertIn(
+            before_hash,
+            [record["responseHash"] for record in payload["acquisitionRecords"]],
+        )
+        payload["retainedResponses"].remove(before)
+        payload["acquisitionRecords"] = [
+            record for record in payload["acquisitionRecords"]
+            if record["responseHash"] != before_hash
+        ]
+        value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+            payload["acquisitionRecords"]
+        )
+        result = self.verify(value, self.authority(payload))
+        self.assertEqual("pass", result["decision"], result["reason"])
 
     def test_unavailable_missing_other_query_and_expiry_are_nonauthorizing(self):
         positive_value = self.data["positive"]["value"]

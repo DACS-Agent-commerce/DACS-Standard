@@ -826,6 +826,20 @@ The format used per release:
   `error`, without any broad exception catch. The canonical map continues to
   pass through both the direct FV path and the composed DACS-5 path.
 
+- **Finality conflict, reorganization and stale-fork coverage** (DACS-4 §9.7.0
+  FRC-7, FRC-8, FV-6, FV-8, FV-10; #382) — without changing normative
+  semantics, adds `fv-conflicting-authenticated-heads` and
+  `fv-reorg-unresolved` to `finality-resolution-context-v1` (13 cases), each
+  carrying its complete verifier input. Both use a sibling fork that
+  re-includes the signed transaction under a competing head at the pinned
+  checkpoint height; every signed native view first passes FV on its own. Two
+  authorities disagreeing on that head, or one authority's retained
+  pre-reorganisation view beside its later replacement view, returns
+  `indeterminate`; later signing or acquisition does not pick a winner. Adds
+  `fv-stale-fork-inclusion` to `settlement-finality-verification` (86 cases):
+  an authentic sibling-fork inclusion block beside the authenticated canonical
+  head and ancestry fails.
+
 ### Fixed — corrective-profile consumer and AP2 composition boundaries
 
 - Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.

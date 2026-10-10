@@ -167,7 +167,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(85, self.data["count"])
+        self.assertEqual(86, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -255,6 +255,41 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             value["context"]["observation"]["ancestryProof"][index]["childId"] = "00" * 32
             with self.subTest(link=index):
                 self.assertEqual("fail", verify_finality(value, self.trust)["decision"])
+
+    def test_authentic_stale_fork_inclusion_fails_on_canonical_membership(self):
+        canonical = self.cases["fv-block-depth-canonical-success"]["input"]["context"]["observation"]
+        case = self.cases["fv-stale-fork-inclusion"]
+        stale = case["input"]["context"]["observation"]
+        # Same signed transaction and event, re-included in a sibling block.
+        def transaction(observation):
+            raw = observation["transactionInclusionProof"]["transactionBytes"]
+            return json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)))
+
+        self.assertEqual(
+            transaction(canonical)["transactionRef"],
+            transaction(stale)["transactionRef"],
+        )
+        self.assertEqual(
+            canonical["selectedEventProof"]["eventBytes"],
+            stale["selectedEventProof"]["eventBytes"],
+        )
+        self.assertEqual(canonical["inclusionBlock"]["parentId"], stale["inclusionBlock"]["parentId"])
+        self.assertEqual(canonical["inclusionBlock"]["position"], stale["inclusionBlock"]["position"])
+        self.assertNotEqual(canonical["inclusionBlock"]["id"], stale["inclusionBlock"]["id"])
+        header_bytes = base64.urlsafe_b64decode(
+            stale["inclusionBlock"]["header"] + "=" * (-len(stale["inclusionBlock"]["header"]) % 4)
+        )
+        self.assertEqual(stale["inclusionBlock"]["id"], hashlib.sha256(header_bytes).hexdigest())
+        self.assertEqual(
+            stale["transactionInclusionProof"]["root"],
+            json.loads(header_bytes)["transactionsRoot"],
+        )
+        # The authenticated head, canonical path and head authority are unchanged.
+        for member in ("authenticatedHead", "ancestryProof", "authorityEvidence"):
+            self.assertEqual(canonical[member], stale[member])
+        result = self.evaluate_case(case)
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("ancestry link does not extend the authenticated path", result["reason"])
 
     def test_missing_htlc_and_tank_arms_never_pass(self):
         models = {

@@ -33,6 +33,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Set up Node for producer regression tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+
       - name: Install validation dependencies
         run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
 

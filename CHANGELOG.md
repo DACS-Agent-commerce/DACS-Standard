@@ -928,9 +928,11 @@ The format used per release:
   malformed, mismatched, duplicated, and unauthenticated profile authority;
   and reject an explicitly present `refs: null` rather than treating it as an
   absent optional member.
-  `@kynesyslabs/demosdk@4.0.16` is
-  recorded only as historical-arm evidence; no current Demos SDK producer
-  version is claimed.
+  `@kynesyslabs/demosdk@4.0.16` is not
+  evidence for either arm (#414): it signs the historical domain over the
+  ASCII-hex digest and emits a `0x`-prefixed signature object, so
+  `current-read` and `legacy-import` both reject it. No current Demos SDK
+  producer version is claimed.
 - **Authenticated channel membership** — the executable reader obtains each
   sender's claim, key, and key type through a verifier-owned fixed CH-1
   membership capability that is separate from message and session input.

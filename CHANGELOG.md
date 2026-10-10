@@ -778,6 +778,17 @@ The format used per release:
   independently executable and any authority, receipt, finality, or
   historical-evidence mutation yields a non-pass decision.
 
+- **Legacy-bundle era admission negatives** (DACS-5 §10.4 LAB-3, LAB-4,
+  LAB-6; #381) — without changing normative semantics, adds signed, replayable
+  `current-use-reputation-v1` cases for one-sided buyer→seller and
+  seller→buyer role rebinding that reverses abort blame (LAB-3), fresh
+  post-checkpoint legacy creation and a post-checkpoint anchor without
+  pre-checkpoint proof (LAB-4) (`fail`), and missing era proof (LAB-6,
+  `indeterminate`). Each negative is otherwise admitted, and a JSON-only test
+  shows that a verifier omitting only its named guard accepts it. The existing
+  historical controls remain the passing LAB-5 same-role re-anchor cases. The
+  corpus grows from 8 to 13 cases; the existing cases are byte-identical.
+
 ### Added — unallocated #392 consumer-verifiable settlement finality candidate
 
 - **Finality-bound evidence** (#392) — adds the structurally distinct

@@ -389,6 +389,19 @@ The format used per release:
   already was at terminal admission. The two affected identity-bundle vectors
   now expect `fail`.
 
+- **Credential-delivery signed-scope coverage** (DACS-4 §9.7 PDE-5; #330) —
+  without changing normative semantics, adds seven
+  `credential-*-signature-mutation` cases to
+  `phase-bound-delivery-evidence-v0.7` (150 cases), one for each
+  `credentialDelivery` leaf. Each keeps a valid bundle and resolvable reference
+  and fails at the delivery-signature guard. The locator, content-hash,
+  signer, access-model and cleartext-hash cases are otherwise coherent
+  deliveries, so a pinned witness shows that skipping the delivery signature
+  turns them into `pass`. The anchor-kind and renewal cases change only the
+  binding leaf (private delivery admits only a storage-program anchor, and the
+  vectors model no authenticated renewal re-payment), so PDE-5 rejects them as
+  well.
+
 ### Fixed — delivery closure reference validation
 
 - **Signed-format and legacy closure parity** (#333) — the executable DACS-4/DACS-5

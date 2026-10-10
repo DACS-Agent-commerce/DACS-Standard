@@ -7,8 +7,8 @@
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
   },
   "scope": "capability evidence only; no chain deployment or DACS rail is registered",
-  "hash": "f9f380cadc71823e04207f890b660af9b84c6ae2e16d6b9abe9898fc919adb6f",
-  "count": 17,
+  "hash": "928509bd564fc7a6f2cb9cd152881f030535b2d1fdbff464a1b83eb567168364",
+  "count": 18,
   "manifests": {
     "synthetic-control": {
       "manifestVersion": "1",
@@ -148,8 +148,35 @@
         "DRL-8",
         "DRL-9"
       ],
-      "note": "all DRC rules pass, but fixtureOnly keeps registration ineligible",
+      "note": "all DRC rules pass, but a capability evaluation never establishes registration eligibility",
       "patch": []
+    },
+    {
+      "name": "drc-11-manifest-labels",
+      "base": "synthetic-control",
+      "expected": "verified",
+      "registrationEligible": false,
+      "expectedFailedRules": [],
+      "rules": [
+        "DRC-11"
+      ],
+      "note": "eligibility needs independently resolved deployment and registry facts, not manifest labels",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "fixtureOnly"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "registrationStatus"
+          ],
+          "value": "listed"
+        }
+      ]
     },
     {
       "name": "drc-1-preterminal-payout",

@@ -618,6 +618,23 @@ def build_vectors() -> list[dict]:
              lambda v: v["railDefinition"].update({"apiKey": "secret"}),
              operation="validate-definition")
 
+    def consumer_finality_profile(v):
+        v["railDefinition"]["consumerFinalityProfile"] = {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+                "kind": "block-depth",
+                "networkId": "eip155:8453",
+                "genesisHash": "0x" + "77" * 32,
+                "requiredDepth": 12,
+                "observation": {},
+            },
+        }
+    add_case(vectors, "definition-with-consumer-finality-profile", "error", "RD-7/XN-1",
+             "the closed protocol arm has no consumerFinalityProfile member, so it cannot "
+             "produce FinalityBoundSettlementEvidence",
+             consumer_finality_profile, operation="validate-definition")
+
     def duplicate_ref(v):
         v["listing"]["acceptedRails"].append(copy.deepcopy(v["listing"]["acceptedRails"][0]))
     add_case(vectors, "listing-duplicate-canonical-ref", "fail", "XN-2/LRR-1",

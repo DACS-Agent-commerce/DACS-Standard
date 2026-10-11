@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 106,
-  "hash": "ecc7c6fe038ab3bdf917e1bec61911d49421c578fd07819b319b717ffcd7c69e",
+  "count": 107,
+  "hash": "467a565350f876c292970e19a36d6a3850a3dcd84135034ee09bd69a0d2ce79b",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -1631,6 +1631,43 @@
             "value"
           ],
           "value": "UQuIV-2frTGUDG04k1mX4thwsmrhQlpFqGARVyw8CyOLdN87iez8lp85nR4ff28YvgOeS2hUAZ89Y3bGky2oDQ"
+        }
+      ]
+    },
+    {
+      "name": "definition-with-consumer-finality-profile",
+      "expected": "error",
+      "rule": "RD-7/XN-1",
+      "operation": "validate-definition",
+      "note": "the closed protocol arm has no consumerFinalityProfile member, so it cannot produce FinalityBoundSettlementEvidence",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "consumerFinalityProfile"
+          ],
+          "value": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0x7777777777777777777777777777777777777777777777777777777777777777",
+              "requiredDepth": 12,
+              "observation": {}
+            }
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "3zcjAZ8ZxI_zYd08DWsV5OUqbymJgFtx7bAxauhCuIdohxz-k8pdj74Hsndg8SjvvXV_y35_mLrq00DiF7mMAA"
         }
       ]
     },

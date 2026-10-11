@@ -24,9 +24,15 @@ into executable review evidence:
   a pinned assessment of
   [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol).
   The pinned reference is `rejected`, remains unregistered, and is never
-  reported as available. Its source facts fail DRC-1 through DRC-7 and, because
-  it has no separately enforced submission cutoff, DRC-13; DRC-8 and DRC-10
-  through DRC-12 stay unknown without deployment evidence.
+  reported as available. Its source facts fail DRC-1 through DRC-7 and DRC-13;
+  DRC-8 and DRC-10 through DRC-12 stay unknown without deployment evidence.
+  The manifest records both halves of DRC-13 from the source as `false`. There
+  is no separately enforced per-job submission cutoff
+  (`submissionCutoffEnforced`; DREB-13). Expiry recovery does not open at the
+  evaluation deadline (`expiryRecoveryDeadlineEnforced`; DREB-15): `claimRefund`
+  on a `Submitted` job reverts until `expiredAt + EVALUATION_GRACE_PERIOD`, a
+  one-hour constant (`ERC8183.sol` lines 78 and 869–870), and on a `Funded` job
+  with a pending claim it reverts with `PendingClaimExists` (lines 871–872).
 
 The synthetic control proves only that the checker can observe all thirteen
 positive capability predicates. Those predicates come from the manifest

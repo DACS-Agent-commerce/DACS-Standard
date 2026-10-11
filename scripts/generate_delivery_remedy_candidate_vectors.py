@@ -1813,7 +1813,12 @@ def current_reference_manifest() -> dict[str, Any]:
             "decisionOrderingProfile": None,
             "deadlineProfile": None,
             "submissionCutoffEnforced": False,
-            "expiryRecoveryDeadlineEnforced": None,
+            # claimRefund on a Submitted job reverts until expiredAt +
+            # EVALUATION_GRACE_PERIOD, a one-hour constant (ERC8183.sol lines 78,
+            # 869-870), so recovery opens an hour after the DREB-15 deadline; a
+            # Funded job with a pending claim reverts with PendingClaimExists
+            # (lines 871-872).
+            "expiryRecoveryDeadlineEnforced": False,
         },
         "evidence": {
             "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
@@ -1833,6 +1838,10 @@ def current_reference_manifest() -> dict[str, Any]:
             "settleClaim and approveClaim can release provider value from Funded",
             "claimRefund is pause-gated and a pending claim can delay Funded recovery",
             "one canonical expiredAt and no separately enforced per-job submission cutoff",
+            "claimRefund on a Submitted job reverts with GracePeriodActive until expiredAt + "
+            "EVALUATION_GRACE_PERIOD (1 hours) (ERC8183.sol lines 78, 869-870)",
+            "claimRefund on a Funded job with a pending claim reverts with PendingClaimExists "
+            "(ERC8183.sol lines 871-872)",
         ],
     }
 

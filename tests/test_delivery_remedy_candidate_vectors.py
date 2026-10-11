@@ -992,6 +992,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # §8.4 states the pinned source has no separately enforced submission
         # cutoff, so the fixture records that fact and DRC-13 fails with DRC-1..7.
         self.assertIs(manifest["capabilities"]["submissionCutoffEnforced"], False)
+        # ERC8183.sol lines 78 and 869-872: claimRefund on a Submitted job waits
+        # out a one-hour grace period past expiredAt, and a pending claim blocks
+        # Funded recovery, so recovery does not open at the DREB-15 deadline.
+        self.assertIs(manifest["capabilities"]["expiryRecoveryDeadlineEnforced"], False)
         self.assertEqual(
             [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "fail"],
             ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13"],
@@ -1001,6 +1005,20 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
         )
         self.assertFalse(observed["registrationEligible"])
+
+    def test_pinned_reference_states_both_drc13_halves_from_source(self):
+        """Either half of DRC-13 alone, as read from the pinned source, fails it."""
+        manifest = self.deployment_pack["manifests"]["current-reference-142e669"]
+        facts = " ".join(manifest["observedSourceFacts"])
+        for citation in ("EVALUATION_GRACE_PERIOD", "lines 78, 869-870", "PendingClaimExists",
+                         "lines 871-872"):
+            with self.subTest(citation=citation):
+                self.assertIn(citation, facts)
+        for unresolved in ("submissionCutoffEnforced", "expiryRecoveryDeadlineEnforced"):
+            with self.subTest(unresolved=unresolved):
+                halved = copy.deepcopy(manifest)
+                halved["capabilities"][unresolved] = None
+                self.assertEqual(deployment_rule_statuses(halved)["DRC-13"], "fail")
 
     def test_known_unenforced_native_deadline_fails_drc13_despite_unresolved_companions(self):
         for field in ("submissionCutoffEnforced", "expiryRecoveryDeadlineEnforced"):

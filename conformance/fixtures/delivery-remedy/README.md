@@ -94,7 +94,12 @@ instead: the pipeline has exactly one delivery step, at the overlay's
 `deliveryPhaseIndex` (DRP-3, DRA-11), and the record's `jobId` and `phase`
 must be that job and that step's kind (DRE-2, DRP-7).
 `deliverableContentHash` must be the content hash of the delivered-artifact
-input; the anchor's locator is not resolved. The delivery outcome does not
+input. A storage-program success must name the DACS-4 §9.6.1 anchor for this
+job, `{kind: "storage-program", locator: "dacs4:deliverable:{jobId}"}`, with
+the overlay's `jobId`; another kind or another job's address is rejected
+(DRE-2). The verifier compares that locator but does not resolve it, so it
+does not prove that a Storage Program exists at the address or holds the
+content-hashed payload. The delivery outcome does not
 choose the disposition; the evaluation under the bound rule does. Each
 evaluation subject reference must resolve to a lifecycle record the verifier
 authenticated: the escrow job, the funding evidence, or the delivery evidence

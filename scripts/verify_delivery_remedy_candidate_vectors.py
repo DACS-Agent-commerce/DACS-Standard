@@ -1004,6 +1004,21 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRV-2", "delivery evidence is not an exact delivery SettlementEvidence")
     if delivery["phase"] != value["pipeline"][phase_index]["kind"]:
         return result("rejected", "DRE-2", "delivery evidence phase is not the agreed delivery step")
+    # DACS-4 §9.6.1 writes the deliverable as a Storage Program at
+    # dacs4:deliverable:{jobId}, so a storage-program success names that
+    # anchor.  The locator is compared, not resolved.
+    if (
+        delivery["phase"] == "deliver-storage-program"
+        and "deliverableAnchor" in delivery
+        and anchor != {
+            "kind": "storage-program",
+            "locator": "dacs4:deliverable:" + value["artifacts"]["agreement"]["jobId"],
+        }
+    ):
+        return result(
+            "rejected", "DRE-2",
+            "deliverable anchor is not the DACS-4 §9.6.1 storage program for this job",
+        )
     return None
 
 

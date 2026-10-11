@@ -950,6 +950,15 @@ def build_vector_pack() -> dict[str, Any]:
         }),
         # DRE-2, DRP-7: the delivery SettlementEvidence of the agreed phase.
         "dre-2-delivery-phase-kind": make_base("release", hooks={"delivery": put("phase", "deliver-entitlement")}),
+        # DRE-2: a storage-program success anchors the deliverable at the
+        # DACS-4 §9.6.1 Storage Program dacs4:deliverable:{jobId}.  Each control
+        # changes one axis and is re-signed and re-bound downstream.
+        "dre-2-deliverable-anchor-kind": make_base("release", hooks={
+            "delivery": put("deliverableAnchor", "kind", "not-storage-program"),
+        }),
+        "dre-2-deliverable-anchor-other-job": make_base("release", hooks={
+            "delivery": put("deliverableAnchor", "locator", "dacs4:deliverable:another-job"),
+        }),
         # DRV-2: terminalState is a closed string discriminator; an array or
         # object in a re-signed terminal is malformed input, not a crash.
         "drv-2-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
@@ -1318,6 +1327,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("wrong-decision-signer", "release", "rejected", "DRD-1", "only the agreement-bound evaluator may sign the escrow decision", [{"op": "replace", "path": ["artifacts", "decision", "signature"], "value": bad_decision_signer}]),
         vector("delivery-reference-mismatch", "delivery-reference-mismatch", "rejected", "DRE-2", "the delivery reference must resolve the signed delivery evidence"),
         vector("dre-2-delivery-phase-kind", "dre-2-delivery-phase-kind", "rejected", "DRE-2", "delivery evidence must name the agreed delivery step", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-kind", "dre-2-deliverable-anchor-kind", "rejected", "DRE-2", "a storage-program delivery anchors a DACS-4 §9.6.1 Storage Program, not another anchor kind", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-other-job", "dre-2-deliverable-anchor-other-job", "rejected", "DRE-2", "the storage-program anchor is dacs4:deliverable:{jobId} for this job, not another job's address", rules=["DRE-2", "DRP-7"]),
         vector("drv-2-delivery-evidence-shape", "drv-2-delivery-evidence-shape", "error", "DRV-2", "delivery evidence keeps the exact delivery SettlementEvidence shape", rules=["DRE-2", "DRV-2"]),
         vector("dre-2-failed-delivery-without-deliverable", "dre-2-failed-delivery-without-deliverable", "verified", "DRV-7", "a failed delivery's SettlementEvidence may omit the deliverable content hash and anchor", rules=["DRE-2", "DRP-7", "DRV-7"]),
         vector("dre-2-failed-delivery-carries-artifact-input", "dre-2-failed-delivery-without-deliverable", "rejected", "DRE-2", "delivery evidence that names no deliverable resolves no delivered-artifact input", [{"op": "replace", "path": ["reproductionInputs", "deliveredArtifact"], "value": {"kind": "delivered-artifact-input"}}]),

@@ -5,8 +5,8 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "021827a2a649e6476393e36faa8ec521e8e05b30f1c2dbea372be0d1cc67cb14",
-  "count": 227,
+  "hash": "f1cda62e9d22bc0b121636e3e7a3311aeb710e91b3f9b69462f0e88fe09da482",
+  "count": 229,
   "fixtures": {
     "release": {
       "candidateProfile": "delivery-or-remedy-v1",
@@ -15853,6 +15853,1352 @@
           "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22657865637574696f6e2d6576616c756174696f6e222c22726566223a7b22636f6e74656e7448617368223a2238616561653932393562656261353833313031633134346163373061333537303664636536336262306632366434336331376333346463666135633436646166222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e3a30227d7d2c2264656c697665727945766964656e6365526566223a7b22636f6e74656e7448617368223a2230623564646630326438613636653361323538373539376165623666303261353130316131303964356132643663386335333633663737313234663366316432222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a65766964656e63653a30314a384d453053584b513454395632524335484a36575837443a64656c6976657279227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a2272656c656173652d746f2d70726f7669646572222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
           "contentHash": "7e4e5a4f0554eecbf783202e458b853b0d1585894ecad6344c99ee9966101445",
           "mappedNativeValue": "0x7e4e5a4f0554eecbf783202e458b853b0d1585894ecad6344c99ee9966101445"
+        }
+      }
+    },
+    "dre-2-deliverable-anchor-kind": {
+      "candidateProfile": "delivery-or-remedy-v1",
+      "fixtureOnly": true,
+      "pipeline": [
+        {
+          "kind": "commit-delivery-or-remedy-agreement"
+        },
+        {
+          "kind": "job-escrow",
+          "parameters": {
+            "action": "fund",
+            "rail": "pay-evm-erc8183:fixture-v1"
+          }
+        },
+        {
+          "kind": "deliver-storage-program"
+        },
+        {
+          "kind": "job-escrow",
+          "parameters": {
+            "action": "terminal",
+            "rail": "pay-evm-erc8183:fixture-v1"
+          }
+        },
+        {
+          "kind": "rate"
+        }
+      ],
+      "executionContext": {
+        "acceptedRails": [
+          {
+            "kind": "storage-program",
+            "locator": "fixture:rail:pay-evm-erc8183:fixture-v1",
+            "contentHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f"
+          }
+        ],
+        "commitmentReceipt": {
+          "status": "finalized",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "agreementHash": "db6d85b5cdae3c7caa0889370536a666dc61a3a3581235d0cd3726a1009ff927"
+        },
+        "fundingFinalizedBeforeDelivery": true,
+        "terminalGate": "delivery-returned",
+        "lateDeliveryDisabled": true,
+        "dacs5PurchaseCount": 1
+      },
+      "artifacts": {
+        "bilateralAgreement": {
+          "agreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "buyer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "seller": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "price": {
+            "amount": "1000000",
+            "currency": "USDC"
+          }
+        },
+        "railDefinition": {
+          "railVersion": 1,
+          "railId": "pay-evm-erc8183:fixture-v1",
+          "railType": "evm-erc8183",
+          "availability": "mocked",
+          "fixtureOnly": true,
+          "chainId": 8453,
+          "contractAddress": "0x8181818181818181818181818181818181818181",
+          "runtimeBytecodeHash": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489",
+          "paymentToken": "0x5555555555555555555555555555555555555555",
+          "tokenDecimals": 6,
+          "profileParameters": {
+            "minimumEvaluationWindowSec": 3600,
+            "deadlineProfile": "separate-submission-cutoff-v1",
+            "finalityBlocks": 64,
+            "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1",
+            "platformFeeBP": 0,
+            "evaluatorFeeBP": 0,
+            "capabilityProfile": "dacs-delivery-gate-v1"
+          }
+        },
+        "agreement": {
+          "deliveryOrRemedyAgreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "agreementRef": {
+            "kind": "storage-program",
+            "locator": "fixture:agreement:01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "contentHash": "db6d85b5cdae3c7caa0889370536a666dc61a3a3581235d0cd3726a1009ff927"
+          },
+          "agreementHash": "db6d85b5cdae3c7caa0889370536a666dc61a3a3581235d0cd3726a1009ff927",
+          "railDefinitionRef": {
+            "kind": "storage-program",
+            "locator": "fixture:rail:pay-evm-erc8183:fixture-v1",
+            "contentHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f"
+          },
+          "fundPhaseIndex": 1,
+          "deliveryPhaseIndex": 2,
+          "terminalPhaseIndex": 3,
+          "buyer": {
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "vetRecordRef": {
+              "kind": "storage-program",
+              "locator": "fixture:vet:buyer",
+              "contentHash": "28489ce27b9654c65d5cba9d5ab678a08b0fd83ee2d9f1c2fc788b998b0dd7e8"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+          },
+          "seller": {
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "vetRecordRef": {
+              "kind": "storage-program",
+              "locator": "fixture:vet:seller",
+              "contentHash": "6e6ea65179a6a4e277905f39496569171a241950fc01ff74ef974b73a0a64dfd"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          },
+          "evaluator": {
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "vetRecordRef": {
+              "kind": "storage-program",
+              "locator": "fixture:vet:evaluator",
+              "contentHash": "152b172968947066bc90a2fafc67f83b1ca4d8731ceadfe212379babc73ce86f"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x3333333333333333333333333333333333333333",
+            "requirement": {
+              "op": "all",
+              "of": [
+                {
+                  "claimType": "demos-agent",
+                  "verificationRequired": true
+                },
+                {
+                  "claimType": "cci-xm",
+                  "verificationRequired": true
+                }
+              ]
+            },
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          },
+          "budgetBaseUnits": "1000000",
+          "submissionCutoffSec": 1800000000,
+          "evaluationDeadlineSec": 1800007200,
+          "preSubmissionRefundPolicy": "evaluator-rejection",
+          "disclosurePolicy": "public-evidence-only",
+          "evaluationRuleRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evaluation-rule:exact-output-v1",
+            "contentHash": "e269004bdd130cef5462db7f7b8044b0afd450c5275d257dce2ec4efb397038b"
+          },
+          "signatures": [
+            {
+              "role": "buyer",
+              "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "algorithm": "ed25519",
+              "value": "TxxFcP3JeZUrTHrUugxBWclTp3mw18QGh-TEHTiQDnQURGhKJ_AX79vgas4Jbzv6XGNKAyrKDL6j-Od4tNe1AQ"
+            },
+            {
+              "role": "seller",
+              "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "algorithm": "ed25519",
+              "value": "qY1m-iaxeAjfMvAOrpx2Wf1bFWe_btb6garcGaMDn8vUNXtD3guOdx3Z0MJ15TiLWXJAJmww-NYUNu3UA8LdBQ"
+            },
+            {
+              "role": "evaluator",
+              "party": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+              "algorithm": "ed25519",
+              "value": "-nCVhs7K5n-tQZQWfTC1zUnyCVQqXQYi4Y_18lIgEYTL8a1vetsjgqWcfhSxR5p3v68FNMVC32pQMZNQThz8Aw"
+            }
+          ]
+        },
+        "job": {
+          "escrowJobRefVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "railDefinitionRef": {
+            "kind": "storage-program",
+            "locator": "fixture:rail:pay-evm-erc8183:fixture-v1",
+            "contentHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f"
+          },
+          "chainId": 8453,
+          "contractAddress": "0x8181818181818181818181818181818181818181",
+          "runtimeBytecodeHash": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489",
+          "nativeJobId": "1",
+          "creationEvent": {
+            "kind": "evm-event",
+            "chainId": 8453,
+            "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+            "logIndex": 0
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "4R4fjaLdQvP7FgrkfR-ryDeAv8oL7og_SchSYGOLGGPq4qavofhhGhDTJ7bb6qkXYgaSC_bNVjEa5P9jUL-tBQ"
+          }
+        },
+        "funding": {
+          "escrowFundingEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "fundPhaseIndex": 1,
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "fundingEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
+          },
+          "observedAt": 1799990128000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
+          }
+        },
+        "delivery": {
+          "evidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "phase": "deliver-storage-program",
+          "outcome": "success",
+          "deliverableContentHash": "0011ce269ef3c56e99db038b35105d1284da8a16d65dd089bac96e7414526aa6",
+          "deliverableAnchor": {
+            "kind": "not-storage-program",
+            "locator": "dacs4:deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+          },
+          "observedAt": 1799994800000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "LQyegRHusIaS7CNxq3tA9Pp_dhxk9S9eu0Mm4jkWUpvCtlJLKO-ocjTacWyuKxQKEz6Qg3XjwkEaVINbUvCkDw"
+          }
+        },
+        "deliveryRef": {
+          "kind": "storage-program",
+          "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+          "contentHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+        },
+        "evaluation": {
+          "executionEvaluationVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "evaluationSeq": 0,
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "deliveryEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+            "contentHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+          },
+          "result": "accept",
+          "finding": {
+            "classification": "seller-fulfilled",
+            "rationaleCode": "fixture-exact-output-match"
+          },
+          "subjectEvidenceRefs": [
+            {
+              "kind": "storage-program",
+              "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+              "contentHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+            }
+          ],
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "JBLHlYTuUvCWu32Z0TVw_SpiJs5TPezaJAcruAHoxP9IBxfKkyL_M75erEGYJv07Il8Wr1eoej_zlckJ7wpUCg"
+          }
+        },
+        "evaluationRef": {
+          "kind": "storage-program",
+          "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0",
+          "contentHash": "7a0fbd2eb82c735e9c71189f2d51fbe6fb3c903e5a3e501a9753a402cd04afcc"
+        },
+        "decision": {
+          "escrowDecisionVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "deliveryEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+            "contentHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+          },
+          "basisRef": {
+            "kind": "execution-evaluation",
+            "ref": {
+              "kind": "storage-program",
+              "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0",
+              "contentHash": "7a0fbd2eb82c735e9c71189f2d51fbe6fb3c903e5a3e501a9753a402cd04afcc"
+            }
+          },
+          "disposition": "release-to-provider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "9DcM0gvkM5VCZ7VLYE7lJCfuzV4Ogh7aYEVQBASwsSiziBTXEw1FCjbFCEU0dOC2B3y5SqVRxhNaSpgc7il5BA"
+          }
+        },
+        "decisionRef": {
+          "kind": "storage-program",
+          "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
+          "contentHash": "6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f"
+        },
+        "terminal": {
+          "escrowTerminalEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "fundingEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
+          },
+          "terminalState": "released",
+          "disposition": "release-to-provider",
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "recipient": "0x2222222222222222222222222222222222222222",
+          "terminalEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
+          },
+          "observedAt": 1800001128000,
+          "decisionRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
+            "contentHash": "6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f"
+          },
+          "deliveryEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+            "contentHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "tpwpu91qVGNO9Tm9JU2J1EbIlSr6SkUi2PeOP4leNY3UjA5TcSyVquW2cogLd4OkcBMzdfy-nnSwGpE-mdFIAg"
+          }
+        }
+      },
+      "publicKeys": {
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "NpV3UpHN1Wn6wTGbe62QzmZbbQKHHeTv5C-ALgJzqos",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "cMQiiygaNrR6K2x4-qCMLn4yEzp8b7_oTGm_f-Gi-HE",
+        "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "a-n25Q_Ld7U2Di8MT2HdYh9mCR43rbd2eboqTcBHXiE",
+        "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "wYM0ddCjKwBOvoMONnWHPGV0Nv-pVOFq1NHRYvi_4YA"
+      },
+      "orchestratorClaim": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+      "bundleRequiredSigners": [
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "evaluatorVetResult": "pass",
+      "profileParameters": {
+        "minimumEvaluationWindowSec": 3600,
+        "deadlineProfile": "separate-submission-cutoff-v1",
+        "finalityBlocks": 64,
+        "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1",
+        "platformFeeBP": 0,
+        "evaluatorFeeBP": 0,
+        "capabilityProfile": "dacs-delivery-gate-v1"
+      },
+      "mappingSources": {
+        "agreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+        "deliveryHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0",
+        "decisionHash": "6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f"
+      },
+      "native": {
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "runtimeBytecodeHash": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489",
+        "client": "0x1111111111111111111111111111111111111111",
+        "provider": "0x2222222222222222222222222222222222222222",
+        "evaluator": "0x3333333333333333333333333333333333333333",
+        "token": "0x5555555555555555555555555555555555555555",
+        "payoutReceiver": "0x2222222222222222222222222222222222222222",
+        "amountBaseUnits": "1000000",
+        "fundedAtSec": 1799990000,
+        "deliverable": "0x1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0",
+        "reason": "0x6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f",
+        "submissionCutoffSec": 1800000000,
+        "expiredAt": 1800007200,
+        "terminalState": "released",
+        "terminalAction": "complete",
+        "portableStateHistory": [
+          "created",
+          "funded",
+          "submitted",
+          "released"
+        ]
+      },
+      "resolverEvidence": {
+        "terminalCall": {
+          "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+          "outerSubmitter": "0x3333333333333333333333333333333333333333",
+          "nativeCaller": "0x3333333333333333333333333333333333333333",
+          "nativeCallerAccountType": "eoa"
+        },
+        "priorTerminals": [],
+        "nativeState": {
+          "submissionCutoffEnforced": true,
+          "expiryRecoveryAtSec": 1800007200,
+          "preterminalProviderPayoutBaseUnits": "0",
+          "platformFeeBP": 0,
+          "evaluatorFeeBP": 0,
+          "evaluatorBindingMode": "direct",
+          "evaluatorAdapter": null
+        },
+        "deliveryDigestAnchor": {
+          "deliverable": "0x1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0",
+          "blockNumber": 20000040,
+          "blockTimestampSec": 1799994900
+        },
+        "statuses": {
+          "agreementResolution": "verified",
+          "railResolution": "verified",
+          "codeResolution": "verified",
+          "authorityResolution": "verified",
+          "fundingFinality": "verified",
+          "deliveryFinality": "verified",
+          "decisionFinality": "verified",
+          "terminalFinality": "verified",
+          "decisionOrdering": "verified",
+          "nativeStateResolution": "verified"
+        },
+        "resolverEvidenceVersion": "1",
+        "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+        "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+        "railDefinitionHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f",
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "nativeJobId": "1",
+        "eventObservationsHash": "780321902351eff53665baa471d2e7bc2f79fc39f05299aa8f3345e76a1ce170",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+          "value": "IFV74NJ3kR6eHpeIvsHxxiXHo5575eytQcZJOsX0AhgGT3TzpPSGaPTughdbcUZl_NLjrXHIBgaGg2dNQ19_BA"
+        }
+      },
+      "deliveryBinding": {
+        "nativeSubmissionEvent": {
+          "kind": "evm-event",
+          "chainId": 8453,
+          "txHash": "0x8eadac423dcf6c3f30187a10ce7025f801237fe6196320944559890dc2ebc8cc",
+          "logIndex": 0
+        }
+      },
+      "reproductionInputs": {
+        "publicTestSeedHex": {
+          "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "df39e375ecc12c4f875aff23000a9e112e9dceec44e9a0b8d6d09e0f48e90f66",
+          "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "fea104be48be49f011d74db054c1850aabf45f6145a7f2e5e3cac600998b573b",
+          "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "656fb97ab3351ee666aaecf376b3b7c2030b7cfb009ac13632e5b2905d9ea42e",
+          "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "1a59503ed8a0d34fba0b349342271c932e71d0880340e21c9d5e70a8474ef0b7"
+        },
+        "roleBundles": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "claims": [
+              "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+            ]
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "claims": [
+              "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            ]
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "claims": [
+              "cci-xm:evm:8453:0x3333333333333333333333333333333333333333"
+            ]
+          }
+        },
+        "vetRecords": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000,
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          }
+        },
+        "evaluationRule": {
+          "fixtureRecordVersion": "1",
+          "kind": "evaluation-rule-input",
+          "rule": "exact-output-v1"
+        },
+        "deliveredArtifact": {
+          "fixtureRecordVersion": "1",
+          "kind": "delivered-artifact-input",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "payloadUtf8": "deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+        },
+        "disputeCase": null,
+        "runtimeBytecode": {
+          "encoding": "utf-8",
+          "value": "synthetic DACS delivery gate runtime v1",
+          "sha256": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489"
+        },
+        "nativeEventInputs": [
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobCreated",
+            "arguments": {
+              "client": "0x1111111111111111111111111111111111111111",
+              "provider": "0x2222222222222222222222222222222222222222",
+              "evaluator": "0x3333333333333333333333333333333333333333",
+              "submissionCutoffSec": 1800000000,
+              "expiredAt": 1800007200,
+              "description": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobFunded",
+            "arguments": {
+              "token": "0x5555555555555555555555555555555555555555",
+              "amountBaseUnits": "1000000"
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x8eadac423dcf6c3f30187a10ce7025f801237fe6196320944559890dc2ebc8cc",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:0x1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0",
+            "blockNumber": 20000050,
+            "blockHash": "0x684b4bf0776224cc50966284a583e048f4dc12a9a858201c3f3b3b5d7c575c59",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:0x1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobSubmitted",
+            "arguments": {
+              "deliverable": "0x1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobCompleted",
+            "arguments": {
+              "token": "0x5555555555555555555555555555555555555555",
+              "amountBaseUnits": "1000000",
+              "recipient": "0x2222222222222222222222222222222222222222",
+              "reason": "0x6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f"
+            }
+          }
+        ]
+      },
+      "reputationProjection": {
+        "buyerFault": false,
+        "sellerFault": false,
+        "releaseAloneEstablishesNonFinancialCompletion": false
+      },
+      "submittedBeforeCutoff": true,
+      "canonicalRecords": {
+        "agreement": {
+          "canonicalUtf8Hex": "7b2261677265656d656e7448617368223a2264623664383562356364616533633763616130383839333730353336613636366463363161336133353831323335643063643337323661313030396666393237222c2261677265656d656e74526566223a7b22636f6e74656e7448617368223a2264623664383562356364616533633763616130383839333730353336613636366463363161336133353831323335643063643337323661313030396666393237222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a61677265656d656e743a30314a384d453053584b513454395632524335484a3657583744227d2c2262756467657442617365556e697473223a2231303030303030222c226275796572223a7b2262756e646c6548617368223a2236653837373666643431313335633866613535396239616339363530393935323263613330363934316337366137376138346261633230626533356463616236222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307831313131313131313131313131313131313131313131313131313131313131313131313131313131222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131222c227665745265636f7264526566223a7b22636f6e74656e7448617368223a2232383438396365323762393635346336356435636261396435616236373861303862306664383365653264396631633266633738386239393862306464376538222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a6275796572227d7d2c2264656c69766572794f7252656d65647941677265656d656e7456657273696f6e223a2231222c2264656c69766572795068617365496e646578223a322c22646973636c6f73757265506f6c696379223a227075626c69632d65766964656e63652d6f6e6c79222c226576616c756174696f6e446561646c696e65536563223a313830303030373230302c226576616c756174696f6e52756c65526566223a7b22636f6e74656e7448617368223a2265323639303034626464313330636566353436326462376637623830343462306166643435306335323735643235376463653265633465666233393730333862222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a6576616c756174696f6e2d72756c653a65786163742d6f75747075742d7631227d2c226576616c7561746f72223a7b2262756e646c6548617368223a2232393837646235616433633164303532363038663666643132613030353235656361363635313664343131653962376635636136363635656130633066353765222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307833333333333333333333333333333333333333333333333333333333333333333333333333333333222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333222c22726571756972656d656e74223a7b226f66223a5b7b22636c61696d54797065223a2264656d6f732d6167656e74222c22766572696669636174696f6e5265717569726564223a747275657d2c7b22636c61696d54797065223a226363692d786d222c22766572696669636174696f6e5265717569726564223a747275657d5d2c226f70223a22616c6c227d2c22726571756972656d656e7448617368223a2239373434646364356239613635626130633433643734653230366430383966393062663331373863353662323064623730396539633038616238373239623465222c227665745265636f7264526566223a7b22636f6e74656e7448617368223a2231353262313732393638393437303636626339306132666166633637663833623163613464383733316365616466653231323337396261626337336365383666222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a6576616c7561746f72227d7d2c2266756e645068617365496e646578223a312c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c227072655375626d697373696f6e526566756e64506f6c696379223a226576616c7561746f722d72656a656374696f6e222c227261696c446566696e6974696f6e526566223a7b22636f6e74656e7448617368223a2231616636316337373733346238303430313263306561346364346531366266303330323232323633623435646633643637633632336430646464313832653066222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7261696c3a7061792d65766d2d657263383138333a666978747572652d7631227d2c2273656c6c6572223a7b2262756e646c6548617368223a2236323731626134353232383066376464353263386462656632633234366436663138393031373635333937353336646265333863363935333831343637383835222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307832323232323232323232323232323232323232323232323232323232323232323232323232323232222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222c227665745265636f7264526566223a7b22636f6e74656e7448617368223a2236653665613635313739613661346532373739303566333934393635363931373161323431393530666330316666373465663937346237336130613634646664222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a73656c6c6572227d7d2c227375626d697373696f6e4375746f6666536563223a313830303030303030302c227465726d696e616c5068617365496e646578223a337d",
+          "contentHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "mappedNativeValue": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
+        },
+        "delivery": {
+          "canonicalUtf8Hex": "7b2264656c6976657261626c65416e63686f72223a7b226b696e64223a226e6f742d73746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c6976657261626c653a30314a384d453053584b513454395632524335484a3657583744227d2c2264656c6976657261626c65436f6e74656e7448617368223a2230303131636532363965663363353665393964623033386233353130356431323834646138613136643635646430383962616339366537343134353236616136222c2265766964656e636556657273696f6e223a2231222c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c226f627365727665644174223a313739393939343830303030302c226f7574636f6d65223a2273756363657373222c227068617365223a2264656c697665722d73746f726167652d70726f6772616d227d",
+          "contentHash": "1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0",
+          "mappedNativeValue": "0x1ea41437e11248ae0fa6d76de37c298c38735c01597b45a35b8e9ceec7cf51c0"
+        },
+        "decision": {
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22657865637574696f6e2d6576616c756174696f6e222c22726566223a7b22636f6e74656e7448617368223a2237613066626432656238326337333565396337313138396632643531666265366662336339303365356133653530316139373533613430326364303461666363222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e3a30227d7d2c2264656c697665727945766964656e6365526566223a7b22636f6e74656e7448617368223a2231656134313433376531313234386165306661366437366465333763323938633338373335633031353937623435613335623865396365656337636635316330222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a65766964656e63653a30314a384d453053584b513454395632524335484a36575837443a64656c6976657279227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a2272656c656173652d746f2d70726f7669646572222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f",
+          "mappedNativeValue": "0x6ebe092e47444a79c7df65ef8e05c84e575d2dec0b7e997e60e64f1509ec311f"
+        }
+      }
+    },
+    "dre-2-deliverable-anchor-other-job": {
+      "candidateProfile": "delivery-or-remedy-v1",
+      "fixtureOnly": true,
+      "pipeline": [
+        {
+          "kind": "commit-delivery-or-remedy-agreement"
+        },
+        {
+          "kind": "job-escrow",
+          "parameters": {
+            "action": "fund",
+            "rail": "pay-evm-erc8183:fixture-v1"
+          }
+        },
+        {
+          "kind": "deliver-storage-program"
+        },
+        {
+          "kind": "job-escrow",
+          "parameters": {
+            "action": "terminal",
+            "rail": "pay-evm-erc8183:fixture-v1"
+          }
+        },
+        {
+          "kind": "rate"
+        }
+      ],
+      "executionContext": {
+        "acceptedRails": [
+          {
+            "kind": "storage-program",
+            "locator": "fixture:rail:pay-evm-erc8183:fixture-v1",
+            "contentHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f"
+          }
+        ],
+        "commitmentReceipt": {
+          "status": "finalized",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "agreementHash": "db6d85b5cdae3c7caa0889370536a666dc61a3a3581235d0cd3726a1009ff927"
+        },
+        "fundingFinalizedBeforeDelivery": true,
+        "terminalGate": "delivery-returned",
+        "lateDeliveryDisabled": true,
+        "dacs5PurchaseCount": 1
+      },
+      "artifacts": {
+        "bilateralAgreement": {
+          "agreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "buyer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "seller": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "price": {
+            "amount": "1000000",
+            "currency": "USDC"
+          }
+        },
+        "railDefinition": {
+          "railVersion": 1,
+          "railId": "pay-evm-erc8183:fixture-v1",
+          "railType": "evm-erc8183",
+          "availability": "mocked",
+          "fixtureOnly": true,
+          "chainId": 8453,
+          "contractAddress": "0x8181818181818181818181818181818181818181",
+          "runtimeBytecodeHash": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489",
+          "paymentToken": "0x5555555555555555555555555555555555555555",
+          "tokenDecimals": 6,
+          "profileParameters": {
+            "minimumEvaluationWindowSec": 3600,
+            "deadlineProfile": "separate-submission-cutoff-v1",
+            "finalityBlocks": 64,
+            "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1",
+            "platformFeeBP": 0,
+            "evaluatorFeeBP": 0,
+            "capabilityProfile": "dacs-delivery-gate-v1"
+          }
+        },
+        "agreement": {
+          "deliveryOrRemedyAgreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "agreementRef": {
+            "kind": "storage-program",
+            "locator": "fixture:agreement:01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "contentHash": "db6d85b5cdae3c7caa0889370536a666dc61a3a3581235d0cd3726a1009ff927"
+          },
+          "agreementHash": "db6d85b5cdae3c7caa0889370536a666dc61a3a3581235d0cd3726a1009ff927",
+          "railDefinitionRef": {
+            "kind": "storage-program",
+            "locator": "fixture:rail:pay-evm-erc8183:fixture-v1",
+            "contentHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f"
+          },
+          "fundPhaseIndex": 1,
+          "deliveryPhaseIndex": 2,
+          "terminalPhaseIndex": 3,
+          "buyer": {
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "vetRecordRef": {
+              "kind": "storage-program",
+              "locator": "fixture:vet:buyer",
+              "contentHash": "28489ce27b9654c65d5cba9d5ab678a08b0fd83ee2d9f1c2fc788b998b0dd7e8"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+          },
+          "seller": {
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "vetRecordRef": {
+              "kind": "storage-program",
+              "locator": "fixture:vet:seller",
+              "contentHash": "6e6ea65179a6a4e277905f39496569171a241950fc01ff74ef974b73a0a64dfd"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          },
+          "evaluator": {
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "vetRecordRef": {
+              "kind": "storage-program",
+              "locator": "fixture:vet:evaluator",
+              "contentHash": "152b172968947066bc90a2fafc67f83b1ca4d8731ceadfe212379babc73ce86f"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x3333333333333333333333333333333333333333",
+            "requirement": {
+              "op": "all",
+              "of": [
+                {
+                  "claimType": "demos-agent",
+                  "verificationRequired": true
+                },
+                {
+                  "claimType": "cci-xm",
+                  "verificationRequired": true
+                }
+              ]
+            },
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          },
+          "budgetBaseUnits": "1000000",
+          "submissionCutoffSec": 1800000000,
+          "evaluationDeadlineSec": 1800007200,
+          "preSubmissionRefundPolicy": "evaluator-rejection",
+          "disclosurePolicy": "public-evidence-only",
+          "evaluationRuleRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evaluation-rule:exact-output-v1",
+            "contentHash": "e269004bdd130cef5462db7f7b8044b0afd450c5275d257dce2ec4efb397038b"
+          },
+          "signatures": [
+            {
+              "role": "buyer",
+              "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "algorithm": "ed25519",
+              "value": "TxxFcP3JeZUrTHrUugxBWclTp3mw18QGh-TEHTiQDnQURGhKJ_AX79vgas4Jbzv6XGNKAyrKDL6j-Od4tNe1AQ"
+            },
+            {
+              "role": "seller",
+              "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "algorithm": "ed25519",
+              "value": "qY1m-iaxeAjfMvAOrpx2Wf1bFWe_btb6garcGaMDn8vUNXtD3guOdx3Z0MJ15TiLWXJAJmww-NYUNu3UA8LdBQ"
+            },
+            {
+              "role": "evaluator",
+              "party": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+              "algorithm": "ed25519",
+              "value": "-nCVhs7K5n-tQZQWfTC1zUnyCVQqXQYi4Y_18lIgEYTL8a1vetsjgqWcfhSxR5p3v68FNMVC32pQMZNQThz8Aw"
+            }
+          ]
+        },
+        "job": {
+          "escrowJobRefVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "railDefinitionRef": {
+            "kind": "storage-program",
+            "locator": "fixture:rail:pay-evm-erc8183:fixture-v1",
+            "contentHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f"
+          },
+          "chainId": 8453,
+          "contractAddress": "0x8181818181818181818181818181818181818181",
+          "runtimeBytecodeHash": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489",
+          "nativeJobId": "1",
+          "creationEvent": {
+            "kind": "evm-event",
+            "chainId": 8453,
+            "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+            "logIndex": 0
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "4R4fjaLdQvP7FgrkfR-ryDeAv8oL7og_SchSYGOLGGPq4qavofhhGhDTJ7bb6qkXYgaSC_bNVjEa5P9jUL-tBQ"
+          }
+        },
+        "funding": {
+          "escrowFundingEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "fundPhaseIndex": 1,
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "fundingEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
+          },
+          "observedAt": 1799990128000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
+          }
+        },
+        "delivery": {
+          "evidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "phase": "deliver-storage-program",
+          "outcome": "success",
+          "deliverableContentHash": "0011ce269ef3c56e99db038b35105d1284da8a16d65dd089bac96e7414526aa6",
+          "deliverableAnchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:deliverable:another-job"
+          },
+          "observedAt": 1799994800000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "CItJzG9xjWkf5oADN-tJ4Bdp3Zd0bn9JX6XnUxG-SDRSm_zPEpiPr9NC617MATaX9I34BLbZGDbXND4_-AvgAA"
+          }
+        },
+        "deliveryRef": {
+          "kind": "storage-program",
+          "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+          "contentHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+        },
+        "evaluation": {
+          "executionEvaluationVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "evaluationSeq": 0,
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "deliveryEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+            "contentHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+          },
+          "result": "accept",
+          "finding": {
+            "classification": "seller-fulfilled",
+            "rationaleCode": "fixture-exact-output-match"
+          },
+          "subjectEvidenceRefs": [
+            {
+              "kind": "storage-program",
+              "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+              "contentHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+            }
+          ],
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "bn6LhMIkMVNto_8-fAYNWe5srQrFPcz0i-_KXweCfMHVaCETnwauXKEBgrPGXa1z3iib_Y0cMFE2vovP1C-3DQ"
+          }
+        },
+        "evaluationRef": {
+          "kind": "storage-program",
+          "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0",
+          "contentHash": "f1ae4a87ce8e6bf690c0d5313bb93ba91f0eb3f55ab67926886da2841d7219b2"
+        },
+        "decision": {
+          "escrowDecisionVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "deliveryEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+            "contentHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+          },
+          "basisRef": {
+            "kind": "execution-evaluation",
+            "ref": {
+              "kind": "storage-program",
+              "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0",
+              "contentHash": "f1ae4a87ce8e6bf690c0d5313bb93ba91f0eb3f55ab67926886da2841d7219b2"
+            }
+          },
+          "disposition": "release-to-provider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "gVVLJZjcK05RVggHe5K8DlqcdJrgqA30YZmyEE0MNj12q29jxyqX3pwFyxalh7NFjLxdl4_3-IaTVC5QfftrBQ"
+          }
+        },
+        "decisionRef": {
+          "kind": "storage-program",
+          "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
+          "contentHash": "14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083"
+        },
+        "terminal": {
+          "escrowTerminalEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "escrowJobRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job",
+            "contentHash": "46a981797b271b93c483b489ca264f5bcdb2ee40237b47524c0b2b162c914a81"
+          },
+          "fundingEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
+          },
+          "terminalState": "released",
+          "disposition": "release-to-provider",
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "recipient": "0x2222222222222222222222222222222222222222",
+          "terminalEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
+          },
+          "observedAt": 1800001128000,
+          "decisionRef": {
+            "kind": "storage-program",
+            "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
+            "contentHash": "14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083"
+          },
+          "deliveryEvidenceRef": {
+            "kind": "storage-program",
+            "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
+            "contentHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "b8I-_rKeZEicww2tJanzS_iskj4T8fHOi_HxISK5nq1JK01AF9zboxp5pkBmnbVBQ8WLcsERvXcAbDVzP4msAQ"
+          }
+        }
+      },
+      "publicKeys": {
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "NpV3UpHN1Wn6wTGbe62QzmZbbQKHHeTv5C-ALgJzqos",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "cMQiiygaNrR6K2x4-qCMLn4yEzp8b7_oTGm_f-Gi-HE",
+        "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "a-n25Q_Ld7U2Di8MT2HdYh9mCR43rbd2eboqTcBHXiE",
+        "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "wYM0ddCjKwBOvoMONnWHPGV0Nv-pVOFq1NHRYvi_4YA"
+      },
+      "orchestratorClaim": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+      "bundleRequiredSigners": [
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "evaluatorVetResult": "pass",
+      "profileParameters": {
+        "minimumEvaluationWindowSec": 3600,
+        "deadlineProfile": "separate-submission-cutoff-v1",
+        "finalityBlocks": 64,
+        "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1",
+        "platformFeeBP": 0,
+        "evaluatorFeeBP": 0,
+        "capabilityProfile": "dacs-delivery-gate-v1"
+      },
+      "mappingSources": {
+        "agreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+        "deliveryHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178",
+        "decisionHash": "14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083"
+      },
+      "native": {
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "runtimeBytecodeHash": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489",
+        "client": "0x1111111111111111111111111111111111111111",
+        "provider": "0x2222222222222222222222222222222222222222",
+        "evaluator": "0x3333333333333333333333333333333333333333",
+        "token": "0x5555555555555555555555555555555555555555",
+        "payoutReceiver": "0x2222222222222222222222222222222222222222",
+        "amountBaseUnits": "1000000",
+        "fundedAtSec": 1799990000,
+        "deliverable": "0xf0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178",
+        "reason": "0x14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083",
+        "submissionCutoffSec": 1800000000,
+        "expiredAt": 1800007200,
+        "terminalState": "released",
+        "terminalAction": "complete",
+        "portableStateHistory": [
+          "created",
+          "funded",
+          "submitted",
+          "released"
+        ]
+      },
+      "resolverEvidence": {
+        "terminalCall": {
+          "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+          "outerSubmitter": "0x3333333333333333333333333333333333333333",
+          "nativeCaller": "0x3333333333333333333333333333333333333333",
+          "nativeCallerAccountType": "eoa"
+        },
+        "priorTerminals": [],
+        "nativeState": {
+          "submissionCutoffEnforced": true,
+          "expiryRecoveryAtSec": 1800007200,
+          "preterminalProviderPayoutBaseUnits": "0",
+          "platformFeeBP": 0,
+          "evaluatorFeeBP": 0,
+          "evaluatorBindingMode": "direct",
+          "evaluatorAdapter": null
+        },
+        "deliveryDigestAnchor": {
+          "deliverable": "0xf0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178",
+          "blockNumber": 20000040,
+          "blockTimestampSec": 1799994900
+        },
+        "statuses": {
+          "agreementResolution": "verified",
+          "railResolution": "verified",
+          "codeResolution": "verified",
+          "authorityResolution": "verified",
+          "fundingFinality": "verified",
+          "deliveryFinality": "verified",
+          "decisionFinality": "verified",
+          "terminalFinality": "verified",
+          "decisionOrdering": "verified",
+          "nativeStateResolution": "verified"
+        },
+        "resolverEvidenceVersion": "1",
+        "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+        "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+        "railDefinitionHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f",
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "nativeJobId": "1",
+        "eventObservationsHash": "04e8effed3ad4145d67de2be1ca116e79dd5771186358219fb8c626ccdeabd34",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+          "value": "tl3ka4oggFB050-OaSiSNzTodc9fKvpU0v0OdMe2731690XtTlgEOlttCDHAuTHHd3s9etXCuq-vOssStDoaCg"
+        }
+      },
+      "deliveryBinding": {
+        "nativeSubmissionEvent": {
+          "kind": "evm-event",
+          "chainId": 8453,
+          "txHash": "0x57e4c2ffe92ad68aa31c9cedf43758c8ffade5b8bd8eb750678c1ecc0e393820",
+          "logIndex": 0
+        }
+      },
+      "reproductionInputs": {
+        "publicTestSeedHex": {
+          "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "df39e375ecc12c4f875aff23000a9e112e9dceec44e9a0b8d6d09e0f48e90f66",
+          "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "fea104be48be49f011d74db054c1850aabf45f6145a7f2e5e3cac600998b573b",
+          "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "656fb97ab3351ee666aaecf376b3b7c2030b7cfb009ac13632e5b2905d9ea42e",
+          "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "1a59503ed8a0d34fba0b349342271c932e71d0880340e21c9d5e70a8474ef0b7"
+        },
+        "roleBundles": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "claims": [
+              "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+            ]
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "claims": [
+              "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            ]
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "claims": [
+              "cci-xm:evm:8453:0x3333333333333333333333333333333333333333"
+            ]
+          }
+        },
+        "vetRecords": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000,
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          }
+        },
+        "evaluationRule": {
+          "fixtureRecordVersion": "1",
+          "kind": "evaluation-rule-input",
+          "rule": "exact-output-v1"
+        },
+        "deliveredArtifact": {
+          "fixtureRecordVersion": "1",
+          "kind": "delivered-artifact-input",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "payloadUtf8": "deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+        },
+        "disputeCase": null,
+        "runtimeBytecode": {
+          "encoding": "utf-8",
+          "value": "synthetic DACS delivery gate runtime v1",
+          "sha256": "1ec922103e235e50482997e62d60b7036bbad6a48d55e58b6ee0a04c48d70489"
+        },
+        "nativeEventInputs": [
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobCreated",
+            "arguments": {
+              "client": "0x1111111111111111111111111111111111111111",
+              "provider": "0x2222222222222222222222222222222222222222",
+              "evaluator": "0x3333333333333333333333333333333333333333",
+              "submissionCutoffSec": 1800000000,
+              "expiredAt": 1800007200,
+              "description": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobFunded",
+            "arguments": {
+              "token": "0x5555555555555555555555555555555555555555",
+              "amountBaseUnits": "1000000"
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x57e4c2ffe92ad68aa31c9cedf43758c8ffade5b8bd8eb750678c1ecc0e393820",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:0xf0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178",
+            "blockNumber": 20000050,
+            "blockHash": "0x5df321d9ca7b5b5c0489d3691dc73c721f88120e2bfc6d545d12c391d93629d8",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:0xf0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobSubmitted",
+            "arguments": {
+              "deliverable": "0xf0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventName": "JobCompleted",
+            "arguments": {
+              "token": "0x5555555555555555555555555555555555555555",
+              "amountBaseUnits": "1000000",
+              "recipient": "0x2222222222222222222222222222222222222222",
+              "reason": "0x14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083"
+            }
+          }
+        ]
+      },
+      "reputationProjection": {
+        "buyerFault": false,
+        "sellerFault": false,
+        "releaseAloneEstablishesNonFinancialCompletion": false
+      },
+      "submittedBeforeCutoff": true,
+      "canonicalRecords": {
+        "agreement": {
+          "canonicalUtf8Hex": "7b2261677265656d656e7448617368223a2264623664383562356364616533633763616130383839333730353336613636366463363161336133353831323335643063643337323661313030396666393237222c2261677265656d656e74526566223a7b22636f6e74656e7448617368223a2264623664383562356364616533633763616130383839333730353336613636366463363161336133353831323335643063643337323661313030396666393237222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a61677265656d656e743a30314a384d453053584b513454395632524335484a3657583744227d2c2262756467657442617365556e697473223a2231303030303030222c226275796572223a7b2262756e646c6548617368223a2236653837373666643431313335633866613535396239616339363530393935323263613330363934316337366137376138346261633230626533356463616236222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307831313131313131313131313131313131313131313131313131313131313131313131313131313131222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131222c227665745265636f7264526566223a7b22636f6e74656e7448617368223a2232383438396365323762393635346336356435636261396435616236373861303862306664383365653264396631633266633738386239393862306464376538222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a6275796572227d7d2c2264656c69766572794f7252656d65647941677265656d656e7456657273696f6e223a2231222c2264656c69766572795068617365496e646578223a322c22646973636c6f73757265506f6c696379223a227075626c69632d65766964656e63652d6f6e6c79222c226576616c756174696f6e446561646c696e65536563223a313830303030373230302c226576616c756174696f6e52756c65526566223a7b22636f6e74656e7448617368223a2265323639303034626464313330636566353436326462376637623830343462306166643435306335323735643235376463653265633465666233393730333862222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a6576616c756174696f6e2d72756c653a65786163742d6f75747075742d7631227d2c226576616c7561746f72223a7b2262756e646c6548617368223a2232393837646235616433633164303532363038663666643132613030353235656361363635313664343131653962376635636136363635656130633066353765222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307833333333333333333333333333333333333333333333333333333333333333333333333333333333222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333222c22726571756972656d656e74223a7b226f66223a5b7b22636c61696d54797065223a2264656d6f732d6167656e74222c22766572696669636174696f6e5265717569726564223a747275657d2c7b22636c61696d54797065223a226363692d786d222c22766572696669636174696f6e5265717569726564223a747275657d5d2c226f70223a22616c6c227d2c22726571756972656d656e7448617368223a2239373434646364356239613635626130633433643734653230366430383966393062663331373863353662323064623730396539633038616238373239623465222c227665745265636f7264526566223a7b22636f6e74656e7448617368223a2231353262313732393638393437303636626339306132666166633637663833623163613464383733316365616466653231323337396261626337336365383666222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a6576616c7561746f72227d7d2c2266756e645068617365496e646578223a312c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c227072655375626d697373696f6e526566756e64506f6c696379223a226576616c7561746f722d72656a656374696f6e222c227261696c446566696e6974696f6e526566223a7b22636f6e74656e7448617368223a2231616636316337373733346238303430313263306561346364346531366266303330323232323633623435646633643637633632336430646464313832653066222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7261696c3a7061792d65766d2d657263383138333a666978747572652d7631227d2c2273656c6c6572223a7b2262756e646c6548617368223a2236323731626134353232383066376464353263386462656632633234366436663138393031373635333937353336646265333863363935333831343637383835222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307832323232323232323232323232323232323232323232323232323232323232323232323232323232222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222c227665745265636f7264526566223a7b22636f6e74656e7448617368223a2236653665613635313739613661346532373739303566333934393635363931373161323431393530666330316666373465663937346237336130613634646664222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a73656c6c6572227d7d2c227375626d697373696f6e4375746f6666536563223a313830303030303030302c227465726d696e616c5068617365496e646578223a337d",
+          "contentHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
+          "mappedNativeValue": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
+        },
+        "delivery": {
+          "canonicalUtf8Hex": "7b2264656c6976657261626c65416e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c6976657261626c653a616e6f746865722d6a6f62227d2c2264656c6976657261626c65436f6e74656e7448617368223a2230303131636532363965663363353665393964623033386233353130356431323834646138613136643635646430383962616339366537343134353236616136222c2265766964656e636556657273696f6e223a2231222c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c226f627365727665644174223a313739393939343830303030302c226f7574636f6d65223a2273756363657373222c227068617365223a2264656c697665722d73746f726167652d70726f6772616d227d",
+          "contentHash": "f0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178",
+          "mappedNativeValue": "0xf0239cead515adf99811ea8f34fdeb5e17602d14e4423d6b7c3b8cc7050db178"
+        },
+        "decision": {
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22657865637574696f6e2d6576616c756174696f6e222c22726566223a7b22636f6e74656e7448617368223a2266316165346138376365386536626636393063306435333133626239336261393166306562336635356162363739323638383664613238343164373231396232222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e3a30227d7d2c2264656c697665727945766964656e6365526566223a7b22636f6e74656e7448617368223a2266303233396365616435313561646639393831316561386633346664656235653137363032643134653434323364366237633362386363373035306462313738222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a65766964656e63653a30314a384d453053584b513454395632524335484a36575837443a64656c6976657279227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a2272656c656173652d746f2d70726f7669646572222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083",
+          "mappedNativeValue": "0x14db1fcdfe31ae239c34febc3c13a879cb2b3843c8db6333eb9a7115397f5083"
         }
       }
     },
@@ -72016,6 +73362,30 @@
         "DRP-7"
       ],
       "note": "delivery evidence must name the agreed delivery step",
+      "patch": []
+    },
+    {
+      "name": "dre-2-deliverable-anchor-kind",
+      "base": "dre-2-deliverable-anchor-kind",
+      "expected": "rejected",
+      "expectedRule": "DRE-2",
+      "rules": [
+        "DRE-2",
+        "DRP-7"
+      ],
+      "note": "a storage-program delivery anchors a DACS-4 §9.6.1 Storage Program, not another anchor kind",
+      "patch": []
+    },
+    {
+      "name": "dre-2-deliverable-anchor-other-job",
+      "base": "dre-2-deliverable-anchor-other-job",
+      "expected": "rejected",
+      "expectedRule": "DRE-2",
+      "rules": [
+        "DRE-2",
+        "DRP-7"
+      ],
+      "note": "the storage-program anchor is dacs4:deliverable:{jobId} for this job, not another job's address",
       "patch": []
     },
     {

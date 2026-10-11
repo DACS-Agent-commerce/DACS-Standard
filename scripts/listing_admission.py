@@ -220,13 +220,22 @@ def retained_listing_admission(
 
     All inputs are deep-copied so a later caller mutation cannot mint authority.
     A caller-substituted listing or reference never re-enters the retained gate.
+    Inputs nested too deeply to copy yield a capability that only ever returns
+    ``indeterminate`` and never an admitted listing.
     """
-    retained_listing = copy.deepcopy(listing)
-    retained_ref = copy.deepcopy(listing_ref)
-    retained_binding = copy.deepcopy(native_binding)
-    retained_listing_evidence = copy.deepcopy(current_listing_evidence)
-    retained_state_evidence = copy.deepcopy(current_state_evidence)
-    retained_trusted = copy.deepcopy(trusted_state)
+    try:
+        retained_listing = copy.deepcopy(listing)
+        retained_ref = copy.deepcopy(listing_ref)
+        retained_binding = copy.deepcopy(native_binding)
+        retained_listing_evidence = copy.deepcopy(current_listing_evidence)
+        retained_state_evidence = copy.deepcopy(current_state_evidence)
+        retained_trusted = copy.deepcopy(trusted_state)
+    except RecursionError:
+        return ListingAdmissionCapability(
+            lambda candidate, candidate_ref, boundary: (
+                "indeterminate", "listing inputs could not be retained", None
+            )
+        )
 
     def revalidate(candidate, candidate_ref, boundary):
         if (

@@ -494,7 +494,12 @@ def prepare_listing_publication(listing, binding, *, substrate, finality_profile
         from .rsc_current_admission import validate_listing_capacity
     else:
         from rsc_current_admission import validate_listing_capacity
-    candidate = copy.deepcopy(listing)
+    try:
+        candidate = copy.deepcopy(listing)
+    except RecursionError:
+        # A signed extension nested past the interpreter's recursion limit
+        # cannot be retained, so it fails closed instead of escaping.
+        return "fail", None
     if not validate_listing_shape(candidate)[0]:
         return "fail", None
     disposition = validate_listing_capacity(candidate, binding, substrate=substrate,

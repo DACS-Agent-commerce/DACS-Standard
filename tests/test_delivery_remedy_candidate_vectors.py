@@ -275,6 +275,15 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
 
+    def test_readme_calls_the_drv2_malformed_input_label_a_fixture_convention(self):
+        """The candidate's malformed-encoding rule is DRV-3; DRV-2 is RPC availability."""
+        readme = " ".join(
+            (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8").split()
+        )
+        self.assertIn("malformed input under rule `DRV-2`; that label is a fixture convention", readme)
+        self.assertIn("DRV-3 is the malformed-encoding rule", readme)
+        self.assertNotIn("is malformed input (`error`, DRV-2)", readme)
+
     def test_readme_calls_the_logical_locator_a_fixture_choice(self):
         """§9.6.1 elides the locator; the README must not present one form as required."""
         readme = " ".join(

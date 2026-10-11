@@ -73,8 +73,12 @@ The verifier reads these facts only from the signed record.
 The escrow job, both escrow phases, and the native target follow the
 agreement-selected rail. Evaluation results, decision dispositions, and the
 terminal evidence's `terminalState` are closed discriminators; any other
-value, including an array or object, is malformed input (`error`, DRV-2)
-before any stage reads it. Only `accept` with `release-to-provider` and `reject`
+value, including an array, an object, or an unknown string, is malformed
+input and returns `error` before any stage reads it. The verifier reports
+malformed input under rule `DRV-2`; that label is a fixture convention. In the
+candidate profile, DRV-3 is the malformed-encoding rule (no repair before
+hashing or comparison), and DRV-2 keeps unavailable or inconsistent RPC data
+`indeterminate`. Only `accept` with `release-to-provider` and `reject`
 with `refund-to-client` can authorize a terminal action. A release decision
 needs delivery evidence (DRD-3), and a decision without delivery evidence must
 rest on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read

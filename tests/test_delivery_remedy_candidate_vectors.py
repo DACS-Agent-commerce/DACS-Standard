@@ -248,11 +248,11 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         # A proof-blocked rule is executed against a synthetic evidence shape.
         proofs = self.vector_pack["promotionBlockedProofs"]
-        # DRP-6/8/11/12 predicates read orchestrator-stated executionContext
+        # DRP-6/8/10/11/12 predicates read orchestrator-stated executionContext
         # values that are checked but not proven, so they are proof-blocked too.
         self.assertEqual(
             set(proofs),
-            {"DRE-2", "DRP-6", "DRP-7", "DRP-8", "DRP-9", "DRP-11", "DRP-12"},
+            {"DRE-2", "DRP-6", "DRP-7", "DRP-8", "DRP-9", "DRP-10", "DRP-11", "DRP-12"},
         )
         self.assertLessEqual(set(proofs), tagged)
         self.assertTrue(all(proofs.values()))

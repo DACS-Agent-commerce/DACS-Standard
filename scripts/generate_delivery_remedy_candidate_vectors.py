@@ -1491,6 +1491,11 @@ def build_vector_pack() -> dict[str, Any]:
             "requires authenticated DACS-5 volume accounting for the escrow pair; the pack "
             "checks the orchestrator-stated executionContext.dacs5PurchaseCount"
         ),
+        "DRP-10": (
+            "requires authenticated resolution of the signed Listing's acceptedRails "
+            "selection of the escrow rail; the pack checks the orchestrator-stated "
+            "executionContext.acceptedRails"
+        ),
         "DRP-11": (
             "requires authenticated resolution of the finalized DACS-3 commitment receipt "
             "before funding; the pack checks the orchestrator-stated "

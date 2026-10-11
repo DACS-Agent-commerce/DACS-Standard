@@ -179,9 +179,9 @@ to authenticated values:
 
 Some lifecycle statements are not yet derived from authenticated evidence.
 In `executionContext`, `fundingFinalizedBeforeDelivery` (DRP-6),
-`dacs5PurchaseCount` (DRP-8), the commitment receipt's `status` (DRP-11),
-`terminalGate`, and `lateDeliveryDisabled` (DRP-12) are orchestrator
-statements whose values are checked but not proven. Their vectors exercise the
+`dacs5PurchaseCount` (DRP-8), `acceptedRails` (DRP-10), the commitment
+receipt's `status` (DRP-11), `terminalGate`, and `lateDeliveryDisabled`
+(DRP-12) are orchestrator statements whose values are checked but not proven. Their vectors exercise the
 predicate, not the evidence behind it, so these rules are listed in the
 `promotionBlockedProofs` ledger described below.
 
@@ -243,7 +243,7 @@ against a synthetic evidence shape whose normative proof shape is undefined.
 It holds DRP-9, whose digest anchor is a fixture boundary, and DRE-2 and
 DRP-7, whose delivery evidence is bound to its phase through the session
 because DACS-4 defines no logical address for delivery evidence. It also holds
-DRP-6, DRP-8, DRP-11, and DRP-12, whose `executionContext` inputs are
+DRP-6, DRP-8, DRP-10, DRP-11, and DRP-12, whose `executionContext` inputs are
 orchestrator statements rather than authenticated evidence.
 
 ## Reproduce

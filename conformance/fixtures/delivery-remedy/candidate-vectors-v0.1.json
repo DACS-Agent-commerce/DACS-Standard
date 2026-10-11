@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "f3c5c8f8842f572aebc8fbbf0625c84c2c8bb1fc25bc32dba2d9fcbab12b74d1",
+  "hash": "109f81c79c2eaa917648edb3fe53cf9766b238fbb9588da580e9011e55533fbd",
   "count": 225,
   "fixtures": {
     "release": {
@@ -74361,6 +74361,7 @@
     "DRP-9": "requires a normative proof shape showing that the exact delivery digest was fixed before the native submission; the pack models it with a synthetic resolver-attested digest anchor",
     "DRP-6": "requires authenticated evidence that funding finality preceded the delivery step; the pack checks the orchestrator-stated executionContext.fundingFinalizedBeforeDelivery",
     "DRP-8": "requires authenticated DACS-5 volume accounting for the escrow pair; the pack checks the orchestrator-stated executionContext.dacs5PurchaseCount",
+    "DRP-10": "requires authenticated resolution of the signed Listing's acceptedRails selection of the escrow rail; the pack checks the orchestrator-stated executionContext.acceptedRails",
     "DRP-11": "requires authenticated resolution of the finalized DACS-3 commitment receipt before funding; the pack checks the orchestrator-stated executionContext.commitmentReceipt",
     "DRP-12": "requires authenticated evidence of the terminal gate and late-delivery cancellation; the pack checks the orchestrator-stated executionContext.terminalGate and lateDeliveryDisabled"
   }

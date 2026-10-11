@@ -1212,9 +1212,12 @@ XN-10.
   compatible extension: it would admit Listings this candidate rejects without
   changing any Listing or session it accepts. The request method
   MUST be a non-empty upper-case HTTP token. The URL MUST be an absolute HTTPS
-  URL with a non-empty host and no userinfo or fragment and is compared as the
-  exact signed string. A present `bodyHash` MUST be exactly 64 lower-case
-  hexadecimal digits. The selection's
+  URL with a non-empty host and no userinfo or fragment. It is compared as the
+  exact signed string. The URL MUST contain only printable ASCII (U+0021
+  through U+007E) and MUST NOT contain `\`. Its host MUST NOT contain `%`. An
+  internationalized host MUST be signed in A-label form. Any other spelling is
+  malformed and yields `error` before any request. A present `bodyHash` MUST
+  be exactly 64 lower-case hexadecimal digits. The selection's
   `x402Version` and `maxTimeoutSeconds` MUST be positive safe integers;
   `assetDecimals` MUST be an integer from 0 through 255, the range of the
   `uint8` ERC-20 `decimals()` and SPL mint `decimals` fields; `scheme`, `network`,
@@ -1231,6 +1234,18 @@ XN-10.
   used only through an explicit out-of-band operator allowlist that the
   listing, agreement, challenge, and other counterparty-controlled content
   cannot modify.
+
+  > **Note (non-normative).** The URL syntax rule removes three places where URL
+  > parsers disagree about the host. UTS-46 mapping drops default-ignorable code
+  > points such as U+00AD and U+200B, so `127.0.0.1` followed by one of them
+  > names `127.0.0.1`. A WHATWG parser ends an `https` authority at `\`, so
+  > `https://127.0.0.1\.seller.example/` names `127.0.0.1`. A WHATWG parser also
+  > percent-decodes the host, so `%6c%6fcalhost` names `localhost`. A parser that
+  > does none of these sees a DNS name in each case.
+  >
+  > The rule does not replace the DACS-1 §6.3.6 per-connection checks. An
+  > admitted ASCII name can still resolve to a non-public address, and only the
+  > resolved-address validation before each connection refuses it.
 
 - **(XN-3) Capability and operator separation.** Before the unpaid request, the
   executing implementation MUST establish local support for the exact

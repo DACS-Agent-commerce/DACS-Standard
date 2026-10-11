@@ -9,7 +9,7 @@ import sys
 import unicodedata
 import unittest
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -299,6 +299,8 @@ def validate_ref(ref):
     method = request.get("method")
     if not isinstance(method, str) or not HTTP_TOKEN.fullmatch(method):
         return "error"
+    if not request_url_syntax_ok(request.get("url")):
+        return "error"
     try:
         parsed = urlsplit(request.get("url"))
     except (TypeError, ValueError):
@@ -476,13 +478,36 @@ def _ipv4_number(part):
     return int(digits, radix)
 
 
-def _host_literal(hostname):
-    """Return the IP address a URL host denotes, or None for a DNS name.
+def request_url_syntax_ok(url):
+    """XN-2 signed URL syntax: printable ASCII only, no `\\`, no `%` in the host.
 
-    Follows the WHATWG URL host parser that fetch-style clients use: the host is
-    percent-decoded and compatibility-mapped, and a host whose last label is a
-    number is an IPv4 literal (shorthand, 32-bit, hex and octal spellings), never
-    a DNS name. A numeric-ending host that is not a valid IPv4 literal raises.
+    URL parsers disagree outside this syntax: UTS-46 drops default-ignorable code
+    points, WHATWG ends an https authority at `\\`, and WHATWG percent-decodes the
+    host, so `urlsplit` can see a DNS name where a fetch client connects to
+    127.0.0.1. An internationalized host passes only in A-label form. `%` is
+    checked over the whole netloc; userinfo is malformed anyway and a port has none.
+    """
+    if not isinstance(url, str) or not url:
+        return False
+    if any(not "\x21" <= char <= "\x7e" for char in url) or "\\" in url:
+        return False
+    try:
+        return "%" not in urlsplit(url).netloc
+    except ValueError:
+        return False
+
+
+def _host_literal(hostname):
+    """Return the IP address an XN-2-admitted ASCII host denotes, or None for a DNS name.
+
+    Classifies the host as the WHATWG IPv4 parser does: a host whose last label is
+    a number is an IPv4 literal (shorthand, 32-bit, hex and octal spellings),
+    never a DNS name, and a numeric-ending host that is not a valid IPv4 literal
+    raises. It is not a full WHATWG host parser: it applies no UTS-46 mapping and
+    relies on `urlsplit`, which does not end the authority at `\\`. Those
+    spellings never reach it, because public_http_target applies the XN-2 syntax
+    rule first. The percent-decoding and NFKC steps only keep a direct caller
+    with a non-XN-2 host on the literal reading.
     """
     host = unquote(hostname, errors="strict")
     if not host.isascii():
@@ -518,7 +543,11 @@ def public_http_target(url):
 
     Hostname DNS, mixed-answer, and rebinding enforcement remains an executable
     adapter obligation under DACS-1 §6.3.6; URL-only conformance cannot prove it.
+    validate_ref already returns `error` for a URL outside the XN-2 syntax; the
+    gate refuses it again first, as defence in depth for direct callers.
     """
+    if not request_url_syntax_ok(url):
+        return False
     try:
         hostname = urlsplit(url).hostname
         if hostname is None or hostname.lower().rstrip(".") == "localhost":
@@ -1081,10 +1110,19 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "bounded-fetch-ipv4-hex-loopback-target",
             "bounded-fetch-ipv4-octal-loopback-target",
             "bounded-fetch-ipv4-trailing-dot-loopback-target",
-            "bounded-fetch-ipv4-percent-encoded-loopback-target",
             "bounded-fetch-ipv4-shorthand-metadata-target",
             "bounded-fetch-ipv4-invalid-numeric-host-target",
             "bounded-fetch-ipv4-double-hex-prefix-invalid-host-target",
+            "request-url-host-soft-hyphen-loopback",
+            "request-url-host-zero-width-space-loopback",
+            "request-url-host-encoded-soft-hyphen-loopback",
+            "request-url-host-soft-hyphen-metadata",
+            "request-url-backslash-authority-loopback",
+            "request-url-backslash-authority-metadata",
+            "request-url-percent-encoded-localhost",
+            "request-url-full-width-localhost",
+            "request-url-idn-u-label-host",
+            "request-url-percent-encoded-ipv4-loopback",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",
@@ -1276,6 +1314,72 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         finally:
             public_http_target = gate
 
+    def test_every_request_url_error_vector_depends_on_the_syntax_rule(self):
+        """Each request-url-* error vector fails on the XN-2 syntax rule and would otherwise pass.
+
+        With the syntax rule removed and the address gate forced open, every one
+        reaches `pass`, so neither a stale hash nor a later check keeps it green.
+        """
+        global request_url_syntax_ok, public_http_target
+        names = [name for name, vector in self.by_name.items()
+                 if name.startswith("request-url-") and vector["expected"] == "error"]
+        self.assertEqual(len(names), 10)
+        for name in names:
+            with self.subTest(vector=name):
+                self.assertEqual(self.by_name[name].get("expectedReason"), "rail-ref-shape")
+        syntax, gate = request_url_syntax_ok, public_http_target
+        request_url_syntax_ok = lambda _url: True  # noqa: E731
+        public_http_target = lambda _url: True  # noqa: E731
+        try:
+            for name in names:
+                with self.subTest(vector=name, mutant="syntax rule removed, gate open"):
+                    self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), ("pass", None))
+        finally:
+            request_url_syntax_ok, public_http_target = syntax, gate
+
+    def test_parser_dependent_url_spellings_are_malformed_and_not_public(self):
+        """Spellings that WHATWG/UTS-46 parsers resolve to a non-public host are XN-2 `error`.
+
+        Sweeps the default-ignorable code points, raw and percent-encoded, over
+        loopback, metadata, private and shared-address hosts, plus the `\\`
+        authority and encoded or mapped `localhost` forms. Each is malformed under
+        validate_ref, and public_http_target refuses it too for direct callers.
+        """
+        ignorables = ("­", "​", "⁠", "﻿", "͏", "᠋", "️")
+        urls = []
+        for host in ("127.0.0.1", "169.254.169.254", "10.0.0.1", "100.100.100.200"):
+            head, _, tail = host.rpartition(".")
+            for char in ignorables:
+                for spelling in (char, quote(char)):
+                    urls.append(f"https://{host}{spelling}/pay")
+                    urls.append(f"https://{head}.{spelling}{tail}/pay")
+            urls.append(f"https://{host}\\.seller.example/pay")
+            urls.append(f"https://{host}\\@seller.example/pay")
+        urls += [
+            "https://%6c%6fcalhost/pay",
+            "https://localhost%2e/pay",
+            "https://local­host/pay",
+            "https://ｌｏｃａｌｈｏｓｔ/pay",
+            "https://127.0.0\t.1/pay",
+            "https://seller.example /pay",
+        ]
+        self.assertEqual(len(urls), 4 * (7 * 2 * 2 + 2) + 6)
+        base = self.by_name["protocol-v2-exact-success"]["agreement"]["terms"]["rail"]
+        self.assertEqual(validate_ref(base), "pass")
+        for url in urls:
+            with self.subTest(url=url):
+                ref = copy.deepcopy(base)
+                ref["parameters"]["request"]["url"] = url
+                self.assertEqual(validate_ref(ref), "error")
+                self.assertFalse(public_http_target(url))
+        for url in ("https://xn--bcher-kva.example/pay", "https://seller.example/p%C3%A9",
+                    "https://seller.example/pay?q=%5C"):
+            with self.subTest(url=url):
+                ref = copy.deepcopy(base)
+                ref["parameters"]["request"]["url"] = url
+                self.assertEqual(validate_ref(ref), "pass")
+                self.assertTrue(public_http_target(url))
+
     def test_ipv4_mapped_spellings_match_their_ipv4_verdict(self):
         """§6.3.6 requires equivalent IPv4-mapped IPv6 spellings to reach the same verdict."""
         for literal, _ in NON_PUBLIC_CLASS_CASES:
@@ -1297,6 +1401,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             'MUST NOT produce `SettlementEvidence.outcome: "success"`',
             '`availability: "disabled"`',
             "MUST NOT rewrite",
+            "Its host MUST NOT contain `%`.",
+            "internationalized host MUST be signed in A-label form",
         ):
             self.assertIn(text, spec)
 

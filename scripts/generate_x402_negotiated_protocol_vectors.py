@@ -830,7 +830,6 @@ def build_vectors() -> list[dict]:
         ("ipv4-hex-loopback", "https://0x7f.0.0.1/pay"),
         ("ipv4-octal-loopback", "https://0177.0.0.1/pay"),
         ("ipv4-trailing-dot-loopback", "https://127.0.0.1./pay"),
-        ("ipv4-percent-encoded-loopback", "https://%31%32%37.0.0.1/pay"),
         ("ipv4-shorthand-metadata", "https://169.254.43518/latest/meta-data/"),
         ("ipv4-invalid-numeric-host", "https://256.0.0.1/pay"),
         # 0x0x08 is not a WHATWG IPv4 number, so the host is invalid, not 8.8.8.8.
@@ -855,6 +854,63 @@ def build_vectors() -> list[dict]:
             legacy_ipv4_target,
             refresh=True,
             reason="non-public-request-target",
+        )
+    # XN-2 URL syntax: printable ASCII only, no `\`, no `%` in the host, and an
+    # internationalized host in A-label form. Outside it, parsers disagree on the
+    # host: UTS-46 drops default-ignorable code points, WHATWG ends an https
+    # authority at `\` and percent-decodes the host. Each error row would reach a
+    # fetch client as loopback, metadata or localhost although `urlsplit` sees a
+    # DNS name. Like the bounded-fetch rows, every row refreshes the received-object
+    # hashes, so an evaluator without the syntax rule (and with the address gate
+    # open) reaches "pass" and fails the vector.
+    for name, expected, request_url, note in (
+        ("host-soft-hyphen-loopback", "error", "https://127.0.0.1­/pay",
+         "U+00AD after an IPv4 loopback host is not printable ASCII"),
+        ("host-zero-width-space-loopback", "error", "https://127.0.0.1​/pay",
+         "U+200B after an IPv4 loopback host is not printable ASCII"),
+        ("host-encoded-soft-hyphen-loopback", "error", "https://127.0.0.1%C2%AD/pay",
+         "a percent-encoded U+00AD puts % in the host"),
+        ("host-soft-hyphen-metadata", "error",
+         "https://169.254.169.254­/latest/meta-data/",
+         "U+00AD after the metadata address is not printable ASCII"),
+        ("backslash-authority-loopback", "error", "https://127.0.0.1\\.seller.example/pay",
+         "a backslash ends a WHATWG https authority, so the host would be 127.0.0.1"),
+        ("backslash-authority-metadata", "error",
+         "https://169.254.169.254\\.seller.example/latest/meta-data/",
+         "a backslash ends a WHATWG https authority, so the host would be the metadata address"),
+        ("percent-encoded-localhost", "error", "https://%6c%6fcalhost/pay",
+         "a percent-encoded host is malformed even when it decodes to localhost"),
+        ("full-width-localhost", "error",
+         "https://ｌｏｃａｌｈｏｓｔ/pay",
+         "a full-width host is not printable ASCII"),
+        ("idn-u-label-host", "error", "https://bücher.example/pay",
+         "an internationalized host must be signed in A-label form"),
+        ("percent-encoded-ipv4-loopback", "error", "https://%31%32%37.0.0.1/pay",
+         "a percent-encoded IPv4 host puts % in the host"),
+        ("idn-a-label-host", "pass", "https://xn--bcher-kva.example/pay",
+         "the A-label form of an internationalized host is admitted"),
+        ("percent-in-path", "pass", "https://seller.example/p%C3%A9",
+         "percent-encoding outside the host is admitted"),
+    ):
+        def request_url_spelling(v, target=request_url):
+            request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
+            request["url"] = target
+            v["listing"]["acceptedRails"][0] = copy.deepcopy(
+                v["agreement"]["terms"]["rail"])
+            v["runtime"]["selectedRailRef"] = copy.deepcopy(
+                v["agreement"]["terms"]["rail"])
+            v["runtime"]["effectiveUrl"] = target
+            v["http"]["paymentRequired"]["resource"]["url"] = target
+            v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
+        add_case(
+            vectors,
+            f"request-url-{name}",
+            expected,
+            "XN-2",
+            note,
+            request_url_spelling,
+            refresh=True,
+            reason="rail-ref-shape" if expected == "error" else None,
         )
     add_case(vectors, "bare-network-label", "error", "XN-2/XN-4",
              "a bare network label is not CAIP-2",

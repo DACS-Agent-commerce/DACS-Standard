@@ -49,6 +49,13 @@ The format used per release:
   reconciliation retry make zero authorization calls.
   This addition is part of the existing unreleased coordinated candidate
   (DACS-3 v0.6 / DACS-4 v0.8); it does not create another module-version bump.
+- **Listing-time agreement type for `x402:protocol`** (DACS-3 §8.5.2; DACS-4
+  §9.5.7 XN-2, §9.9.1 APR-2) — a Listing that offers an `x402:protocol`
+  reference, directly or as a `pay-alternative` member, must use
+  `commit-payee-bound-agreement`. A Listing pairing it with the identity-bound
+  payee or sealed-selection commitment phase is rejected at listing admission
+  instead of being admitted and never committing. Widening the rail to all
+  three payout-bearing agreement types is left to a later compatible extension.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

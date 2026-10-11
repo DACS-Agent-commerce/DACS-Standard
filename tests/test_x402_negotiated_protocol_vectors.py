@@ -576,6 +576,29 @@ def decode_response_header(header, version):
     return response
 
 
+def listing_agreement_type_violation(listing):
+    """XN-2 listing admission: an offered x402:protocol ref needs the payee-bound phase."""
+    if not isinstance(listing, dict):
+        return "error", "listing-shape"
+    pipeline = listing.get("pipeline")
+    accepted = listing.get("acceptedRails")
+    if not isinstance(pipeline, list) or not isinstance(accepted, list):
+        return "error", "listing-shape"
+    if not all(isinstance(step, dict) for step in pipeline):
+        return "error", "listing-shape"
+    offered = list(accepted)
+    for step in pipeline:
+        if step.get("kind") == "pay-alternative":
+            offered.extend(step.get("parameters", {}).get("alternatives", []))
+    if not any(isinstance(ref, dict) and ref.get("railId") == "x402:protocol" for ref in offered):
+        return None
+    commits = [step.get("kind") for step in pipeline
+               if isinstance(step.get("kind"), str) and step["kind"].startswith("commit-")]
+    if commits != ["commit-payee-bound-agreement"]:
+        return "fail", "x402-protocol-agreement-type"
+    return None
+
+
 def native_event_matches(event, network, transaction):
     if not isinstance(event, str):
         return False
@@ -623,6 +646,11 @@ def evaluate(v, effects=None):
         if not verify_artifact_signatures(v):
             return "fail", "signature"
         return validate_protocol_definition(rail), None
+
+    if operation == "admit-listing":
+        if not verify_artifact_signatures(v):
+            return "fail", "signature"
+        return listing_agreement_type_violation(v.get("listing")) or ("pass", None)
 
     if operation == "new-session":
         if not verify_artifact_signatures(v):

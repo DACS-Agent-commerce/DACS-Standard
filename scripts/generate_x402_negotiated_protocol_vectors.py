@@ -665,6 +665,76 @@ def build_vectors() -> list[dict]:
         v["agreement"]["agreementVersion"] = "1"
     add_case(vectors, "protocol-legacy-agreement-artifact", "fail", "XN-2",
              "x402:protocol requires PayeeBoundAgreementDocument", legacy_agreement)
+    # XN-2 listing admission. The signed Listing's commitment phase fixes the
+    # agreement type (DACS-3 §8.5.2 check 9), so an x402:protocol offer beside
+    # any phase other than commit-payee-bound-agreement is rejected at listing
+    # time instead of being admitted and then never committing.
+    sealed_complete_negotiation = {
+        "kind": "negotiate-sealed-envelope-complete",
+        "parameters": {
+            "commitDeadline": 2000000000000,
+            "revealWindow": 120,
+            "selectionRule": "lowest-price",
+            "candidateSetBinding": {
+                "bindingId": "x402-274-complete-log",
+                "bindingVersion": "1",
+                "definitionRef": {
+                    "anchor": {"kind": "storage-program", "locator": "stor-x402-274-binding"},
+                    "contentHash": "77" * 32,
+                    "signer": SELLER_CLAIM,
+                },
+            },
+        },
+    }
+
+    def listing_pipeline(negotiate, commit, *, alternative=False):
+        def mutate(v):
+            listing = v["listing"]
+            protocol_ref = copy.deepcopy(listing["acceptedRails"][0])
+            if alternative:
+                dem_ref = {"railId": "demos-native:DEM", "railVersion": 1}
+                listing["acceptedRails"] = [protocol_ref, dem_ref]
+                pay = {"kind": "pay-alternative", "parameters": {
+                    "alternatives": [copy.deepcopy(protocol_ref), copy.deepcopy(dem_ref)],
+                }}
+            else:
+                pay = {"kind": "pay-x402", "parameters": {"rail": "x402:protocol"}}
+            listing["pipeline"] = [
+                copy.deepcopy(negotiate), {"kind": commit}, pay,
+                {"kind": "deliver-storage-program"},
+            ]
+        return mutate
+    fixed_price = {"kind": "negotiate-fixed-price"}
+    add_case(vectors, "listing-protocol-with-payee-bound-commit-admitted", "pass", "XN-2",
+             "a Listing offering x402:protocol with commit-payee-bound-agreement is admissible",
+             listing_pipeline(fixed_price, "commit-payee-bound-agreement"),
+             operation="admit-listing")
+    add_case(vectors, "listing-protocol-with-identity-bound-payee-commit-rejected", "fail",
+             "XN-2",
+             "an x402:protocol offer cannot be paired with IdentityBoundPayeeAgreementDocument in this candidate",
+             listing_pipeline(fixed_price, "commit-identity-bound-payee-agreement"),
+             operation="admit-listing", reason="x402-protocol-agreement-type")
+    add_case(vectors, "listing-protocol-with-selection-bound-commit-rejected", "fail",
+             "XN-2",
+             "an x402:protocol offer cannot be paired with SealedSelectionAgreementDocument in this candidate",
+             listing_pipeline(sealed_complete_negotiation, "commit-selection-bound-agreement"),
+             operation="admit-listing", reason="x402-protocol-agreement-type")
+    add_case(vectors, "listing-protocol-alternative-with-payee-bound-commit-admitted", "pass",
+             "XN-2/APR-2",
+             "a pay-alternative slot may offer x402:protocol under commit-payee-bound-agreement",
+             listing_pipeline(fixed_price, "commit-payee-bound-agreement", alternative=True),
+             operation="admit-listing")
+    add_case(vectors, "listing-protocol-alternative-with-identity-bound-payee-commit-rejected",
+             "fail", "XN-2/APR-2",
+             "APR-2 rejects an x402:protocol alternative under an identity-bound commitment phase",
+             listing_pipeline(fixed_price, "commit-identity-bound-payee-agreement", alternative=True),
+             operation="admit-listing", reason="x402-protocol-agreement-type")
+    add_case(vectors, "listing-protocol-alternative-with-selection-bound-commit-rejected",
+             "fail", "XN-2/APR-2",
+             "APR-2 rejects an x402:protocol alternative under the selection-bound commitment phase",
+             listing_pipeline(sealed_complete_negotiation, "commit-selection-bound-agreement",
+                              alternative=True),
+             operation="admit-listing", reason="x402-protocol-agreement-type")
     add_case(vectors, "unsigned-runtime-url-override", "fail", "XN-2/XN-6",
              "a runtime URL beside the signed rail ref cannot override it",
              lambda v: v["runtime"].update({"effectiveUrl": "https://attacker.example/pay"}))

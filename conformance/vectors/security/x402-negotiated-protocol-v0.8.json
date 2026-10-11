@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 108,
-  "hash": "09b4cc9fc7af851ec67d5abeb3f52ad1d4dc8716359614984f127aa8a1402483",
+  "count": 114,
+  "hash": "bbe875bb353e4d8fb161650ab3dd0cd230a7c4c28bcc35fcbed9f932e3b89b96",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -2045,6 +2045,530 @@
           "value": "kGWYVt67vDC3DAcbKijZywe1CPnk3jMnIl3B4Hba9Cih7qGGBavORqOLZX2WmaFNlMTH5-nTKJWaSsm-W47VAg"
         }
       ]
+    },
+    {
+      "name": "listing-protocol-with-payee-bound-commit-admitted",
+      "expected": "pass",
+      "rule": "XN-2",
+      "operation": "admit-listing",
+      "note": "a Listing offering x402:protocol with commit-payee-bound-agreement is admissible",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-x402",
+              "parameters": {
+                "rail": "x402:protocol"
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "VcxSqU90tVR_fICUeovstcO00ELgZXbdaOtZZ_3pBGBTzXtRt8RWQlIsiS095myeS-jlSpENF1F2nQCNHU0JAw"
+        }
+      ]
+    },
+    {
+      "name": "listing-protocol-with-identity-bound-payee-commit-rejected",
+      "expected": "fail",
+      "rule": "XN-2",
+      "operation": "admit-listing",
+      "note": "an x402:protocol offer cannot be paired with IdentityBoundPayeeAgreementDocument in this candidate",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-identity-bound-payee-agreement"
+            },
+            {
+              "kind": "pay-x402",
+              "parameters": {
+                "rail": "x402:protocol"
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "2mHXgBGeo-2ANAR4GpdgXUvIHBYjrR20iGDyKKZM_5uSWBIecFZ7Ep37xnlx4CaubOEzcIYNAiqMlt7rCGPXBQ"
+        }
+      ],
+      "expectedReason": "x402-protocol-agreement-type"
+    },
+    {
+      "name": "listing-protocol-with-selection-bound-commit-rejected",
+      "expected": "fail",
+      "rule": "XN-2",
+      "operation": "admit-listing",
+      "note": "an x402:protocol offer cannot be paired with SealedSelectionAgreementDocument in this candidate",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-sealed-envelope-complete",
+              "parameters": {
+                "commitDeadline": 2000000000000,
+                "revealWindow": 120,
+                "selectionRule": "lowest-price",
+                "candidateSetBinding": {
+                  "bindingId": "x402-274-complete-log",
+                  "bindingVersion": "1",
+                  "definitionRef": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "stor-x402-274-binding"
+                    },
+                    "contentHash": "7777777777777777777777777777777777777777777777777777777777777777",
+                    "signer": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "commit-selection-bound-agreement"
+            },
+            {
+              "kind": "pay-x402",
+              "parameters": {
+                "rail": "x402:protocol"
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "_A2196UY40IHATtlHdxGE3JrfsN9yykebdI_Cd6V0AM7PK91YG90E5xv91jW8VVnOYrdnlkokm43kwX-NF-gDQ"
+        }
+      ],
+      "expectedReason": "x402-protocol-agreement-type"
+    },
+    {
+      "name": "listing-protocol-alternative-with-payee-bound-commit-admitted",
+      "expected": "pass",
+      "rule": "XN-2/APR-2",
+      "operation": "admit-listing",
+      "note": "a pay-alternative slot may offer x402:protocol under commit-payee-bound-agreement",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": {
+                "alternatives": [
+                  {
+                    "railId": "x402:protocol",
+                    "railVersion": 1,
+                    "parameters": {
+                      "request": {
+                        "method": "GET",
+                        "url": "https://seller.example/dacs/resource?job=274"
+                      },
+                      "selection": {
+                        "x402Version": 2,
+                        "scheme": "exact",
+                        "network": "eip155:8453",
+                        "asset": "0x3333333333333333333333333333333333333333",
+                        "assetDecimals": 6,
+                        "currency": "USDC",
+                        "maxTimeoutSeconds": 60,
+                        "extra": {
+                          "name": "USDC",
+                          "version": "2",
+                          "verifyingContract": "0x6666666666666666666666666666666666666666"
+                        }
+                      },
+                      "paymentRequiredExtensions": {
+                        "payment-identifier": {
+                          "required": true
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "railId": "demos-native:DEM",
+                    "railVersion": 1
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "T1G-zB5H94S9X79ZSeoXMA4dYq6r731aUrLraTq2SUv8ONjWHQ49jrw_W4CLaPBrG7wd2rI3DCMuhyDI2ZWoAg"
+        }
+      ]
+    },
+    {
+      "name": "listing-protocol-alternative-with-identity-bound-payee-commit-rejected",
+      "expected": "fail",
+      "rule": "XN-2/APR-2",
+      "operation": "admit-listing",
+      "note": "APR-2 rejects an x402:protocol alternative under an identity-bound commitment phase",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-identity-bound-payee-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": {
+                "alternatives": [
+                  {
+                    "railId": "x402:protocol",
+                    "railVersion": 1,
+                    "parameters": {
+                      "request": {
+                        "method": "GET",
+                        "url": "https://seller.example/dacs/resource?job=274"
+                      },
+                      "selection": {
+                        "x402Version": 2,
+                        "scheme": "exact",
+                        "network": "eip155:8453",
+                        "asset": "0x3333333333333333333333333333333333333333",
+                        "assetDecimals": 6,
+                        "currency": "USDC",
+                        "maxTimeoutSeconds": 60,
+                        "extra": {
+                          "name": "USDC",
+                          "version": "2",
+                          "verifyingContract": "0x6666666666666666666666666666666666666666"
+                        }
+                      },
+                      "paymentRequiredExtensions": {
+                        "payment-identifier": {
+                          "required": true
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "railId": "demos-native:DEM",
+                    "railVersion": 1
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "ahHBqrx2cEmkyVwF3h7aV71eKv7m63uFNPdX8weNLyZ36jyLm9rloYqVMsNlGgWLSfYFQDC1zsZ3R8fIx-pMAA"
+        }
+      ],
+      "expectedReason": "x402-protocol-agreement-type"
+    },
+    {
+      "name": "listing-protocol-alternative-with-selection-bound-commit-rejected",
+      "expected": "fail",
+      "rule": "XN-2/APR-2",
+      "operation": "admit-listing",
+      "note": "APR-2 rejects an x402:protocol alternative under the selection-bound commitment phase",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-sealed-envelope-complete",
+              "parameters": {
+                "commitDeadline": 2000000000000,
+                "revealWindow": 120,
+                "selectionRule": "lowest-price",
+                "candidateSetBinding": {
+                  "bindingId": "x402-274-complete-log",
+                  "bindingVersion": "1",
+                  "definitionRef": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "stor-x402-274-binding"
+                    },
+                    "contentHash": "7777777777777777777777777777777777777777777777777777777777777777",
+                    "signer": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "commit-selection-bound-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": {
+                "alternatives": [
+                  {
+                    "railId": "x402:protocol",
+                    "railVersion": 1,
+                    "parameters": {
+                      "request": {
+                        "method": "GET",
+                        "url": "https://seller.example/dacs/resource?job=274"
+                      },
+                      "selection": {
+                        "x402Version": 2,
+                        "scheme": "exact",
+                        "network": "eip155:8453",
+                        "asset": "0x3333333333333333333333333333333333333333",
+                        "assetDecimals": 6,
+                        "currency": "USDC",
+                        "maxTimeoutSeconds": 60,
+                        "extra": {
+                          "name": "USDC",
+                          "version": "2",
+                          "verifyingContract": "0x6666666666666666666666666666666666666666"
+                        }
+                      },
+                      "paymentRequiredExtensions": {
+                        "payment-identifier": {
+                          "required": true
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "railId": "demos-native:DEM",
+                    "railVersion": 1
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "PwjQi75gNiQylYaMfq9jgEXO1UVHc4IS0WXNamEFMwDZWPSnXWS6cAhTiqezYdhwsaXKsEgTE-wTLDCB3vlAAw"
+        }
+      ],
+      "expectedReason": "x402-protocol-agreement-type"
     },
     {
       "name": "unsigned-runtime-url-override",

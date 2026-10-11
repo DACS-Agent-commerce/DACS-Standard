@@ -1200,7 +1200,17 @@ XN-10.
   optional fields to bypass the negotiated shape. A current `x402:protocol`
   session MUST use a `PayeeBoundAgreementDocument`; the agreement buyer and
   seller MUST each occur exactly once in `parties`, and the applicable
-  `(railId, phaseIndex)` payout binding MUST satisfy PB-1. The request method
+  `(railId, phaseIndex)` payout binding MUST satisfy PB-1. Because the signed
+  Listing's commitment phase fixes the artifact under DACS-3 §8.5.2 check 9,
+  a Listing that offers an `x402:protocol` reference, in `acceptedRails` or as
+  an APR-1 alternative, MUST have `commit-payee-bound-agreement` as its only
+  agreement commitment phase. A listing reader MUST reject a Listing that
+  pairs such a reference with `commit-identity-bound-payee-agreement`,
+  `commit-selection-bound-agreement`, or any other commitment phase at listing
+  admission rather than admit a Listing that can never commit. Widening
+  `x402:protocol` to all three payout-bearing agreement types is a later
+  compatible extension: it would admit Listings this candidate rejects without
+  changing any Listing or session it accepts. The request method
   MUST be a non-empty upper-case HTTP token. The URL MUST be an absolute HTTPS
   URL with a non-empty host and no userinfo or fragment and is compared as the
   exact signed string. A present `bodyHash` MUST be exactly 64 lower-case
@@ -2812,8 +2822,11 @@ not a caller-supplied identity.
   that definition's `phaseHandler` MUST be a concrete `PaymentPhaseType` the
   reader supports; it MUST NOT be `pay-alternative`. RD-6 still forbids
   same-railId handler drift, but different alternatives MAY resolve to
-  different concrete handlers. An authenticated absent definition, signature
-  or hash contradiction, recursive/unknown handler, or handler drift returns
+  different concrete handlers. An `x402:protocol` alternative additionally
+  requires the Listing's XN-2 agreement commitment phase. An authenticated
+  absent definition, signature or hash contradiction, recursive/unknown
+  handler, handler drift, or an `x402:protocol` alternative under any
+  commitment phase other than `commit-payee-bound-agreement` returns
   `rejected`; unavailable or unauthenticated required authority returns
   `indeterminate` under LRR-5 and MUST NOT be treated as absence or permission
   to ignore that alternative.

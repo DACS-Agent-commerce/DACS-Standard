@@ -1401,7 +1401,9 @@ not authorize a new session under XN-10.
    submit the request to the pinned resource.
 3. Receive the paid resource response and apply X402-1..X402-4.
 4. Identify the exact settling transfer event and construct an `x402-event`
-   reference; anchor via SR-2 and return success.
+   reference; anchor via SR-2 and return success. A handler that cannot
+   identify one settling event MUST NOT emit success evidence; it follows the
+   reconciliation/failure rules below instead.
 
 - **(X402-1) Versioned receipt selection.** For a success-outcome legacy record, `protocolVersion` MUST be the negotiated x402 version as a minimal unsigned-decimal string. Version `"1"` selects `X-PAYMENT-RESPONSE`; version `"2"` selects `PAYMENT-RESPONSE`. The handler MUST base64-decode the selected header, parse its JSON as that version's `SettlementResponse`, require `success == true`, and retain every received member, including `extensions` and unrecognised members. A handler MUST refuse a protocol version whose settlement-response header or schema it does not implement.
 - **(X402-2) Canonical receipt hash.** Before hashing, the handler MUST apply CORE §B.2 CF-1 to the complete X402-1 object. It MUST recursively NFC-normalise every JSON string value. It MUST then set `paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))`, where `nfcSettlementResponse` is that normalised object and JCS is RFC 8785. The value MUST be exactly 64 lower-case hexadecimal digits without `0x`. The base64 header text, decoded non-canonical JSON bytes, an on-chain transaction receipt, and `settlementTxHash` alone are not conforming preimages.

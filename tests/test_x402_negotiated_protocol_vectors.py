@@ -1205,6 +1205,16 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ):
             self.assertIn(text, spec)
 
+    def test_legacy_procedure_keeps_single_event_success_guard(self):
+        """The condensed legacy x402:default procedure keeps its success MUST NOT."""
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        start = spec.index("**Legacy static procedure and receipt rules.**")
+        procedure = " ".join(spec[start:spec.index("- **(X402-1)", start)].split())
+        self.assertIn(
+            "A handler that cannot identify one settling event MUST NOT emit success evidence",
+            procedure,
+        )
+
     def test_received_object_hashes_apply_cf1_nfc_pass(self):
         """XN-7 hashes NFC(JCS) of both received objects; raw-string hashing fails."""
         vector = self.by_name["received-objects-non-nfc-strings-hash-after-cf1"]

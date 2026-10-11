@@ -76,10 +76,11 @@ def keccak256(data: bytes) -> bytes:
     """Return the pre-FIPS Keccak-256 digest used by EVM addresses."""
 
     rate = 136
-    padded = bytearray(data)
-    padded.append(0x01)
-    padded.extend(b"\x00" * ((rate - len(padded) % rate - 1) % rate))
-    padded.append(0x80)
+    # pad10*1 with the Keccak domain bit: both bits land in the same zero
+    # padding, so a length of 135 mod 136 gets the single byte 0x81.
+    padded = bytearray(data) + bytearray(rate - len(data) % rate)
+    padded[len(data)] ^= 0x01
+    padded[-1] ^= 0x80
     state = [0] * 25
     for offset in range(0, len(padded), rate):
         block = padded[offset:offset + rate]

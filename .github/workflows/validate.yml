@@ -34,10 +34,43 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install validation dependencies
-        run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
+        run: python3 -m pip install -r requirements-ap2-reference.txt
 
-      - name: crypto import gate (fail-closed)
-        run: python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
+      - name: Official AP2 and crypto import gate (fail-closed)
+        run: |
+          python3 - <<'PY'
+          import json
+          from importlib.metadata import distribution, version
+
+          expected_commit = "e1ea56db72a6385bce3e5c1112b3a56ce60acb43"
+          direct_url = json.loads(distribution("ap2").read_text("direct_url.json"))
+          vcs = direct_url.get("vcs_info", {})
+          if vcs.get("requested_revision") != expected_commit:
+              raise SystemExit("official AP2 requested revision is not pinned")
+          if vcs.get("commit_id") != expected_commit:
+              raise SystemExit("installed official AP2 commit does not match the pin")
+
+          from ap2.sdk.checkout_mandate_chain import CheckoutMandateChain
+          from ap2.sdk.mandate import MandateClient
+          from ap2.sdk.payment_mandate_chain import PaymentMandateChain
+          import cryptography
+          import idna
+          import jwcrypto
+          import pydantic
+          import sd_jwt
+
+          print(
+              "ap2", version("ap2"),
+              "cryptography", version("cryptography"),
+              "idna", version("idna"),
+              "jwcrypto", version("jwcrypto"),
+              "pydantic", version("pydantic"),
+              "sd-jwt", version("sd-jwt"),
+              MandateClient.__name__,
+              CheckoutMandateChain.__name__,
+              PaymentMandateChain.__name__,
+          )
+          PY
 
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py

@@ -546,6 +546,58 @@ class RetainedAdmissionTests(unittest.TestCase):
         self.assertEqual(verdict, "rejected")
 
 
+def _deep_signed_listing(depth: int = 1500) -> dict:
+    listing = _legacy_listing()
+    node = {}
+    listing["extension"] = node
+    for _ in range(depth):
+        node["nested"] = {}
+        node = node["nested"]
+    listing["signature"] = _sign(
+        listing,
+        listing_artifact.LISTING_DOMAINS[listing_artifact.LEGACY_LISTING],
+        _seller_private(),
+    )
+    return listing
+
+
+class DeepListingCopyTests(unittest.TestCase):
+    """GHSA-5fhq: uncopyable nesting fails closed at both copy boundaries."""
+
+    def setUp(self):
+        self.listing = _deep_signed_listing()
+        self.assertTrue(listing_artifact.validate_listing_shape(self.listing)[0])
+
+    def test_publication_fails_closed_on_uncopyable_extension(self):
+        publication, candidate = listing_artifact.prepare_listing_publication(
+            self.listing,
+            _native_binding(),
+            substrate=CONFORMANCE_SUBSTRATE,
+            finality_profile=CONFORMANCE_FINALITY,
+        )
+        self.assertEqual(publication, "fail")
+        self.assertIsNone(candidate)
+
+    def test_retained_admission_never_issues_on_uncopyable_extension(self):
+        key = _public_hex(_seller_private())
+        raw = json.loads(IBH.read_text(encoding="utf-8"))
+        ref = copy.deepcopy(
+            raw["scenarios"]["identityBoundAgreement"]["agreement"]["listingRef"]
+        )
+        capability = listing_admission.retained_listing_admission(
+            self.listing, ref,
+            inclusion_key=key,
+            session_boundary=COMMITTED_BOUNDARY,
+            native_binding=_native_binding(),
+        )
+        self.assertIsInstance(capability, listing_admission.ListingAdmissionCapability)
+        for boundary in (COMMITTED_BOUNDARY, "new-session"):
+            verdict, reason, record = capability.verify(self.listing, ref, boundary)
+            self.assertEqual(verdict, "indeterminate")
+            self.assertIn("could not be retained", reason)
+            self.assertIsNone(record)
+
+
 class ImportModeTests(unittest.TestCase):
     def test_package_import_uses_repository_modules_without_path_mutation(self):
         code = (

@@ -14,6 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_conformance_vectors.py"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 GOLDEN_OUTPUTS = ROOT / "conformance" / "vectors" / "golden.json"
+AP2_FIXTURE = (
+    ROOT
+    / "conformance"
+    / "fixtures"
+    / "settlement"
+    / "settlement-ap2-reference.json"
+)
 VECTORS = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 IDENTITY_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "identity-bundle.json"
 RATING_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "rating-record.json"
@@ -238,7 +245,6 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                     "settlement": {
                         "fixture": "conformance/fixtures/settlement.json",
                         "deliveryFixture": "conformance/fixtures/delivery.json",
-                        "ap2Fixture": "conformance/fixtures/ap2.json",
                         "decisions": {"timeout": "indeterminate"},
                     },
                     "dispute": {"decisions": {"opened": "pass"}},
@@ -283,6 +289,284 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validated manifest", result.stdout)
         self.assertNotIn("validated 2 vectors", result.stdout)
+
+    def _write_ap2_golden_tree(self, base: Path):
+        conformance = base / "conformance"
+        fixture_dir = conformance / "fixtures" / "settlement"
+        fixture_dir.mkdir(parents=True)
+        vectors_dir = conformance / "vectors"
+        vectors_dir.mkdir()
+        fixture = fixture_dir / AP2_FIXTURE.name
+        shutil.copy2(AP2_FIXTURE, fixture)
+        repository_settlement = json.loads(GOLDEN_OUTPUTS.read_text())["settlement"]
+        settlement = {
+            "ap2Fixture": repository_settlement["ap2Fixture"],
+            "ap2JobId": repository_settlement["ap2JobId"],
+            "ap2EvidenceHash": repository_settlement["ap2EvidenceHash"],
+            "decisions": {
+                "ap2ReferencePass": repository_settlement["decisions"][
+                    "ap2ReferencePass"
+                ]
+            },
+        }
+        golden = vectors_dir / "golden.json"
+        golden.write_text(
+            json.dumps({"settlement": settlement}), encoding="utf-8"
+        )
+        manifest = conformance / "MANIFEST.json"
+        manifest.write_text("{}\n", encoding="utf-8")
+        return manifest, golden, fixture
+
+    def test_ap2_golden_pins_match_recomputed_fixture_evidence(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(errors, [])
+
+    def test_ap2_golden_accepts_exact_fixture_copy_under_custom_manifest_root(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            self.assertNotEqual(fixture.resolve(), AP2_FIXTURE.resolve())
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(errors, [])
+
+    def test_ap2_golden_rejects_semantically_identical_raw_byte_drift(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            fixture.write_bytes(fixture.read_bytes() + b"\n")
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn(
+            "is not the independently pinned canonical AP2 reference fixture",
+            errors[0],
+        )
+        self.assertNotIn("evidenceHash", errors[0])
+
+    def test_ap2_golden_rejects_recursive_duplicate_members_before_pin_check(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            fixture.write_bytes(b'{"outer":{"member":1,"member":2}}')
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("duplicate object member 'member'", errors[0])
+        self.assertNotIn("SHA-256 mismatch", errors[0])
+
+    def test_golden_outputs_reject_duplicate_ap2_pin_members(self):
+        validator = load_vector_validator()
+        zero = "0" * 64
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            settlement = json.loads(golden.read_text(encoding="utf-8"))["settlement"]
+            pinned = json.dumps(settlement["ap2EvidenceHash"])
+            job = json.dumps(settlement["ap2JobId"])
+            fixture_name = json.dumps(settlement["ap2Fixture"])
+            verdict = json.dumps(settlement["decisions"]["ap2ReferencePass"])
+            variants = {
+                "ap2EvidenceHash": (
+                    f'{{"settlement":{{"ap2Fixture":{fixture_name},"ap2JobId":{job},'
+                    f'"ap2EvidenceHash":"{zero}","ap2EvidenceHash":{pinned},'
+                    f'"decisions":{{"ap2ReferencePass":{verdict}}}}}}}'
+                ),
+                "ap2ReferencePass": (
+                    f'{{"settlement":{{"ap2Fixture":{fixture_name},"ap2JobId":{job},'
+                    f'"ap2EvidenceHash":{pinned},'
+                    f'"decisions":{{"ap2ReferencePass":"fail","ap2ReferencePass":{verdict}}}}}}}'
+                ),
+                "settlement": (
+                    f'{{"settlement":{{}},"settlement":{{"ap2Fixture":{fixture_name},'
+                    f'"ap2JobId":{job},"ap2EvidenceHash":{pinned},'
+                    f'"decisions":{{"ap2ReferencePass":{verdict}}}}}}}'
+                ),
+            }
+            for member, text in variants.items():
+                with self.subTest(member=member):
+                    golden.write_text(text, encoding="utf-8")
+                    errors = validator.validate_golden_outputs(golden, manifest)
+                    self.assertEqual(len(errors), 1, errors)
+                    self.assertIn(f"duplicate object member {member!r}", errors[0])
+
+    def test_golden_outputs_reject_non_utf8_with_controlled_error(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            golden.write_bytes(b'{"settlement":{"ap2JobId":"\xff"}}')
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("invalid JSON", errors[0])
+
+    def test_ap2_golden_duplicate_check_uses_exact_decoded_member_names(self):
+        validator = load_vector_validator()
+        parsed = validator.parse_json_bytes_without_duplicates(
+            '{"é":1,"e\\u0301":2}'.encode("utf-8")
+        )
+        self.assertEqual(parsed, {"é": 1, "e\u0301": 2})
+
+    def test_ap2_golden_rejects_non_utf8_fixture_with_controlled_error(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            fixture.write_bytes(b'{"text":"\xff"}')
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("settlement.ap2Fixture is not valid JSON", errors[0])
+
+    def test_complete_ap2_golden_group_rejects_unusable_fixture_paths(self):
+        validator = load_vector_validator()
+        for value in (None, "", "   ", 42, {}, []):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+                data = json.loads(golden.read_text())
+                data["settlement"]["ap2Fixture"] = value
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(any(
+                    "settlement.ap2Fixture MUST be a non-empty fixture path string" in error
+                    for error in errors
+                ), errors)
+
+    def test_ap2_golden_requires_canonical_fixture_selector(self):
+        validator = load_vector_validator()
+        for selector in (
+            "fixtures/settlement/settlement-ap2-reference.json",
+            "conformance/fixtures/settlement/copied-reference.json",
+        ):
+            with self.subTest(selector=selector), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+                shutil.copy2(fixture, fixture.with_name("copied-reference.json"))
+                self.assertIsNotNone(
+                    validator.resolve_fixture_path(manifest.parent, selector)
+                )
+                data = json.loads(golden.read_text())
+                data["settlement"]["ap2Fixture"] = selector
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(any(
+                    "settlement.ap2Fixture MUST equal conformance/fixtures/"
+                    "settlement/settlement-ap2-reference.json" in error
+                    for error in errors
+                ), errors)
+
+    def test_ap2_golden_rejects_stale_hash_job_and_decision_pins(self):
+        cases = [
+            (
+                "hash",
+                lambda data: data["settlement"].__setitem__(
+                    "ap2EvidenceHash", "00" * 32
+                ),
+                "settlement.ap2EvidenceHash MUST equal",
+            ),
+            (
+                "job",
+                lambda data: data["settlement"].__setitem__(
+                    "ap2JobId", "01K4AP2PAY0000000000000005"
+                ),
+                "settlement.ap2JobId MUST equal",
+            ),
+            (
+                "decision",
+                lambda data: data["settlement"]["decisions"].__setitem__(
+                    "ap2ReferencePass", "fail"
+                ),
+                "settlement.decisions.ap2ReferencePass MUST equal",
+            ),
+        ]
+        validator = load_vector_validator()
+        for name, mutate, expected in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, _fixture = self._write_ap2_golden_tree(
+                    Path(tmp)
+                )
+                data = json.loads(golden.read_text())
+                mutate(data)
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_ap2_golden_pins_are_all_or_none(self):
+        deletions = [
+            (
+                "fixture",
+                lambda settlement: settlement.pop("ap2Fixture"),
+                "ap2Fixture",
+            ),
+            (
+                "hash",
+                lambda settlement: settlement.pop("ap2EvidenceHash"),
+                "ap2EvidenceHash",
+            ),
+            (
+                "job",
+                lambda settlement: settlement.pop("ap2JobId"),
+                "ap2JobId",
+            ),
+            (
+                "decision",
+                lambda settlement: settlement["decisions"].pop(
+                    "ap2ReferencePass"
+                ),
+                "decisions.ap2ReferencePass",
+            ),
+        ]
+        validator = load_vector_validator()
+        for name, delete, expected in deletions:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, _fixture = self._write_ap2_golden_tree(
+                    Path(tmp)
+                )
+                data = json.loads(golden.read_text())
+                delete(data["settlement"])
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(
+                    any(
+                        "settlement AP2 golden is missing" in error
+                        and expected in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_ap2_fixture_alone_is_rejected_as_a_partial_golden_group(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            data = json.loads(golden.read_text())
+            data["settlement"] = {
+                "ap2Fixture": data["settlement"]["ap2Fixture"]
+            }
+            golden.write_text(json.dumps(data), encoding="utf-8")
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertTrue(
+            any(
+                "settlement AP2 golden is missing" in error
+                and "ap2EvidenceHash" in error
+                and "ap2JobId" in error
+                and "decisions.ap2ReferencePass" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_ap2_golden_rejects_unsigned_fixture_evidence_drift(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            data = json.loads(fixture.read_text())
+            data["evidence"]["paymentAmount"]["amount"] = "0.6"
+            fixture.write_text(json.dumps(data), encoding="utf-8")
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertTrue(
+            any(
+                "is not the independently pinned canonical AP2 reference fixture"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
 
 
 class B2ConformanceHashTests(unittest.TestCase):

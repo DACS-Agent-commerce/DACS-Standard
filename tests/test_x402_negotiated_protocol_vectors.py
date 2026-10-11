@@ -1092,6 +1092,25 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ):
             self.assertIn(text, spec)
 
+    def test_threat_model_summary_matches_xn9_dispositions(self):
+        """The §12.4 index row must not widen XN-9's single indeterminate case."""
+        threat_model = (ROOT / "spec/THREAT-MODEL.md").read_text(encoding="utf-8")
+        rows = [
+            line for line in threat_model.splitlines()
+            if line.startswith("| x402 server acknowledgement presented as independent")
+        ]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertNotIn("unsupported profiles indeterminate", row)
+        self.assertIn("`batch-settlement` without an eventual-settlement binding is indeterminate", row)
+        self.assertIn("`upto`, is a pre-authorization fail", row)
+        for verdict, name in (
+            ("indeterminate", "batch-commitment-is-not-financial-settlement"),
+            ("fail", "upto-has-no-dacs-success-profile"),
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(self.by_name[name])[0], verdict)
+
 
 if __name__ == "__main__":
     unittest.main()

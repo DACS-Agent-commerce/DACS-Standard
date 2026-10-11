@@ -12,7 +12,7 @@ SPEC = ROOT / "spec" / "DACS-4-SETTLE.md"
 README = ROOT / "conformance" / "vectors" / "security" / "README.md"
 
 NONCE_RE = re.compile(r"0x[0-9a-f]{64}\Z")
-ULID_RE = re.compile(r"[0-9A-HJKMNP-TV-Z]{26}\Z")
+ULID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 
 
 def canonical_json(value):
@@ -25,6 +25,21 @@ def canonical_json(value):
 
 
 def derive_nonce(job_id, phase_index):
+    if not isinstance(job_id, str) or ULID_RE.fullmatch(job_id) is None:
+        raise ValueError("jobId must satisfy JID-1")
+    if type(phase_index) is not int or phase_index < 0:
+        raise ValueError("phaseIndex must be a non-negative integer")
+    preimage = (
+        b"dacs-sb3:v1:"
+        + unicodedata.normalize("NFC", job_id).encode("utf-8")
+        + b":"
+        + str(phase_index).encode("ascii")
+    )
+    return "0x" + hashlib.sha256(preimage).hexdigest()
+
+
+def derive_legacy_nonce(job_id, phase_index):
+    """Frozen pre-JID-1 derivation-only fixture path; never live authority."""
     if not isinstance(job_id, str):
         raise ValueError("jobId must be a string")
     if type(phase_index) is not int or phase_index < 0:
@@ -58,10 +73,12 @@ class Sb3Eip3009NonceVectorTests(unittest.TestCase):
             with self.subTest(case=case["name"]):
                 expected = case["expectedNonce"]
                 self.assertRegex(expected, NONCE_RE)
-                self.assertEqual(
-                    derive_nonce(case["jobId"], case["phaseIndex"]),
-                    expected,
+                derive = (
+                    derive_nonce
+                    if case["validationScope"] == "full-input"
+                    else derive_legacy_nonce
                 )
+                self.assertEqual(derive(case["jobId"], case["phaseIndex"]), expected)
                 if "derivedNonce" in case:
                     self.assertEqual(case["derivedNonce"], expected)
                 if "derivedNonce" in case["want"]:
@@ -85,7 +102,7 @@ class Sb3Eip3009NonceVectorTests(unittest.TestCase):
                 case = self.cases[name]
                 self.assertNotIn("expectedNonce", case)
                 with self.assertRaises(ValueError):
-                    derive_nonce(case["jobId"], case["phaseIndex"])
+                    derive_legacy_nonce(case["jobId"], case["phaseIndex"])
                 self.assertEqual(case["expected"], "error")
                 self.assertEqual(case["want"]["binding"], "malformed-input")
 
@@ -98,16 +115,20 @@ class Sb3Eip3009NonceVectorTests(unittest.TestCase):
                 self.assertEqual(case["expected"], "error")
                 self.assertEqual(case["want"]["binding"], "malformed")
 
-    def test_nfc_equivalence_is_pinned(self):
+    def test_nfc_equivalence_is_archival_only_and_current_path_refuses(self):
         case = self.cases["job-id-nfc-normalized"]
         decomposed = case["jobId"]
         composed = unicodedata.normalize("NFC", decomposed)
         self.assertNotEqual(decomposed, composed)
         self.assertEqual(composed, case["want"]["normalizedJobId"])
         self.assertEqual(
-            derive_nonce(decomposed, case["phaseIndex"]),
-            derive_nonce(composed, case["phaseIndex"]),
+            derive_legacy_nonce(decomposed, case["phaseIndex"]),
+            derive_legacy_nonce(composed, case["phaseIndex"]),
         )
+        with self.assertRaises(ValueError):
+            derive_nonce(decomposed, case["phaseIndex"])
+        with self.assertRaises(ValueError):
+            derive_nonce(composed, case["phaseIndex"])
 
     def test_job_and_phase_separation_are_pinned(self):
         live = self.cases["reported-live-vector"]["expectedNonce"]
@@ -141,6 +162,7 @@ class Sb3Eip3009NonceVectorTests(unittest.TestCase):
         readme = README.read_text(encoding="utf-8")
         self.assertIn('"dacs-sb3:v1:"', spec)
         self.assertIn("UTF8(NFC(jobId))", spec)
+        self.assertIn("JID-1", spec)
         self.assertIn("tests.test_sb3_eip3009_nonce_vectors", readme)
         self.assertIn("`expectedNonce`", readme)
         self.assertIn("`validationScope`", readme)

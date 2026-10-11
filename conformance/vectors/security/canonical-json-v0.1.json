@@ -1,0 +1,289 @@
+{
+  "set": "canonical-json-v0.1",
+  "spec": "CORE \u00a7B.2 RFC 8785 JCS + CF-1",
+  "tier": "candidate",
+  "description": "Byte-discriminating canonicalization cases for DACS fractional-number, safe-magnitude, Unicode-value, and member-name rules.",
+  "taggedValueSemantics": {
+    "binary64": "Decode the 16 lowercase hex digits as one IEEE-754 binary64 value.",
+    "bigint": "Construct the language's native arbitrary-precision integer type, not a JSON number.",
+    "unicode-code-units": "Construct a string from the listed UTF-16 code units, including invalid lone surrogates."
+  },
+  "count": 25,
+  "hash": "ee91bf9e9f3d7915b528c0fe3edeac86d27962fc53af90dbaa25b1620d26c5a5",
+  "vectors": [
+    {
+      "name": "fraction-one-half",
+      "operation": "canonicalize",
+      "input": 0.5,
+      "expected": "pass",
+      "canonicalUtf8Hex": "302e35",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "A finite fractional JSON number inside the DACS bound is valid."
+    },
+    {
+      "name": "fraction-one-e-minus-seven",
+      "operation": "canonicalize",
+      "input": 1e-07,
+      "expected": "pass",
+      "canonicalUtf8Hex": "31652d37",
+      "rule": "RFC 8785 section 3.2.2.3",
+      "note": "Magnitudes below 1e-6 use ECMAScript scientific notation."
+    },
+    {
+      "name": "fraction-binary-sum",
+      "operation": "canonicalize",
+      "input": 0.30000000000000004,
+      "expected": "pass",
+      "canonicalUtf8Hex": "302e3330303030303030303030303030303034",
+      "rule": "RFC 8785 section 3.2.2.3",
+      "note": "The shortest round-trippable binary64 digits are preserved."
+    },
+    {
+      "name": "fraction-one-tenth",
+      "operation": "canonicalize",
+      "input": 0.1,
+      "expected": "pass",
+      "canonicalUtf8Hex": "302e31",
+      "rule": "RFC 8785 section 3.2.2.3",
+      "note": "A common non-integral metric canonicalizes without coercion."
+    },
+    {
+      "name": "fraction-negative-one-and-half",
+      "operation": "canonicalize",
+      "input": -1.5,
+      "expected": "pass",
+      "canonicalUtf8Hex": "2d312e35",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "The DACS magnitude profile is symmetric around zero."
+    },
+    {
+      "name": "fixed-notation-lower-threshold",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "3eb0c6f7a0b5ed8d"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "302e303030303031",
+      "rule": "RFC 8785 Appendix B",
+      "note": "Exactly 1e-6 uses fixed notation."
+    },
+    {
+      "name": "scientific-notation-below-threshold",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "3eb0c6f7a0b5ed8c"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "392e393939393939393939393939393937652d37",
+      "rule": "RFC 8785 Appendix B",
+      "note": "The adjacent binary64 below 1e-6 uses scientific notation."
+    },
+    {
+      "name": "negative-zero",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "8000000000000000"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "30",
+      "rule": "RFC 8785 Appendix B",
+      "note": "ECMAScript serializes negative zero as 0."
+    },
+    {
+      "name": "minimum-positive-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "0000000000000001"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "35652d333234",
+      "rule": "RFC 8785 Appendix B",
+      "note": "Subnormal binary64 values are valid when within the DACS magnitude bound."
+    },
+    {
+      "name": "minimum-negative-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "8000000000000001"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "2d35652d333234",
+      "rule": "RFC 8785 Appendix B",
+      "note": "The minimum negative subnormal retains its sign and shortest exponent form."
+    },
+    {
+      "name": "integral-binary64-one",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "3ff0000000000000"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "31",
+      "rule": "RFC 8785 Appendix B",
+      "note": "An integral binary64 serializes as an integer token without a decimal suffix."
+    },
+    {
+      "name": "round-to-even",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "43143ff3c1cb0959"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "313432343935333932333738313230362e32",
+      "rule": "RFC 8785 Appendix B note 4",
+      "note": "The shortest representation applies ECMAScript's round-to-even rule."
+    },
+    {
+      "name": "maximum-dacs-magnitude",
+      "operation": "canonicalize",
+      "input": 9007199254740991,
+      "expected": "pass",
+      "canonicalUtf8Hex": "39303037313939323534373430393931",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "The inclusive positive DACS magnitude boundary is accepted."
+    },
+    {
+      "name": "maximum-dacs-magnitude-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "433fffffffffffff"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "39303037313939323534373430393931",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "The inclusive positive boundary is also accepted through the binary64 path."
+    },
+    {
+      "name": "minimum-dacs-magnitude-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "c33fffffffffffff"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "2d39303037313939323534373430393931",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "The inclusive negative boundary is accepted through the binary64 path."
+    },
+    {
+      "name": "number-over-dacs-magnitude",
+      "operation": "canonicalize",
+      "input": 9007199254740992,
+      "expected": "fail",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "A number one above the DACS bound must use string carriage."
+    },
+    {
+      "name": "number-one-e-plus-twenty-one",
+      "operation": "canonicalize",
+      "input": 1e+21,
+      "expected": "fail",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "JCS can encode this value, but the stricter DACS magnitude profile rejects it."
+    },
+    {
+      "name": "not-a-number",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "7ff8000000000000"
+      },
+      "expected": "fail",
+      "expectedErrorCode": "NON-FINITE-NUMBER",
+      "rule": "RFC 8785 section 3.2.2.3",
+      "note": "NaN is not a JSON number."
+    },
+    {
+      "name": "positive-infinity",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "7ff0000000000000"
+      },
+      "expected": "fail",
+      "expectedErrorCode": "NON-FINITE-NUMBER",
+      "rule": "RFC 8785 section 3.2.2.3",
+      "note": "Infinity is not a JSON number."
+    },
+    {
+      "name": "bigint-native-type",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "bigint",
+        "decimal": "1"
+      },
+      "expected": "fail",
+      "expectedErrorCode": "UNSUPPORTED-NATIVE-TYPE",
+      "rule": "RFC 8785 section 3.1; CORE \u00a7B.2",
+      "note": "A native BigInt is not JSON; an adapter must test rejection or abstain explicitly."
+    },
+    {
+      "name": "nfd-string-value-normalizes-to-nfc",
+      "operation": "canonicalize",
+      "input": {
+        "label": "cafe\u0301"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "7b226c6162656c223a22636166c3a9227d",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "CF-1 normalizes string values before JCS serialization."
+    },
+    {
+      "name": "nfd-member-name-preserved",
+      "operation": "canonicalize",
+      "input": {
+        "cafe\u0301": 1
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "7b2263616665cc81223a317d",
+      "rule": "CORE \u00a7B.2 CF-1; RFC 8785 section 3.2.3",
+      "note": "CF-1 does not normalize object member names."
+    },
+    {
+      "name": "nfc-and-nfd-member-names-remain-distinct",
+      "operation": "canonicalize",
+      "input": {
+        "caf\u00e9": 2,
+        "cafe\u0301": 1
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "7b2263616665cc81223a312c22636166c3a9223a327d",
+      "rule": "CORE \u00a7B.2 CF-1; RFC 8785 section 3.2.3",
+      "note": "Canonical-equivalent member names do not collide and sort as received."
+    },
+    {
+      "name": "member-name-order-is-utf16",
+      "operation": "canonicalize",
+      "input": {
+        "\ue000": 1,
+        "\ud800\udc00": 2
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "7b22f0908080223a322c22ee8080223a317d",
+      "rule": "RFC 8785 section 3.2.3",
+      "note": "An astral key sorts before U+E000 by UTF-16 code units, not code points."
+    },
+    {
+      "name": "lone-surrogate-string",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "unicode-code-units",
+        "hex": "d800"
+      },
+      "expected": "fail",
+      "expectedErrorCode": "INVALID-UNICODE",
+      "rule": "RFC 8785 section 3.2.2.2",
+      "note": "Invalid Unicode terminates canonicalization."
+    }
+  ]
+}

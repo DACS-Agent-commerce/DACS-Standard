@@ -1,11 +1,20 @@
+import base64
 import json
+import io
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stderr
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
-VERIFY_DACSX = ROOT / "scripts" / "verify_dacsx_dispute_pack.py"
+VERIFY_HTLC9 = ROOT / "scripts" / "verify_htlc9_st8_pack.py"
+GENERATE_HTLC9 = ROOT / "scripts" / "generate_htlc9_st8_pack.py"
+INTERIM = ROOT / "conformance/fixtures/settlement/htlc9-asymmetric.json"
+RESOLVED = ROOT / "conformance/fixtures/settlement/htlc9-asymmetric-resolved.json"
 
 
 class IdentityRiskAndDacsXPackTests(unittest.TestCase):
@@ -20,7 +29,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertIn("`identityTier` on IdentityBundle (#103)", text)
         self.assertIn("`dacs-sybil-scan` — behavioural-Sybil flag scanner (#101)", text)
         self.assertIn("DACS-X (dispute / execution-verification)", text)
-        self.assertIn("DACS-X shared dispute fixtures / verifier pack (#99)", text)
+        self.assertIn("HTLC-9 / ST-8 asymmetric-settlement fixture pack (#99)", text)
         # HTLC-9 asymmetric settlement resolves via the ST-8 `settle-asymmetric` state
         # at the settlement layer; the former "correction-amendment" close-out was retired
         # (Round-4 R4-A, §9.5.4). The roadmap references the current mechanism.
@@ -54,29 +63,1010 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertTrue(derivation["suspiciousPatternFlags"])
         self.assertEqual(data["expectedCoreMetricsUnchanged"], True)
 
-    def test_dacsx_dispute_outcome_fixture_links_to_htlc9_correction(self):
-        fixture = ROOT / "conformance/fixtures/dacsx/dispute-outcome-htlc9-correction.json"
-        data = json.loads(fixture.read_text(encoding="utf-8"))
-        self.assertEqual(data["kind"], "DisputeOutcomeCase")
-        outcome = data["disputeOutcome"]
-        self.assertEqual(outcome["outcomeVersion"], "1")
-        self.assertEqual(outcome["disputeKind"], "htlc9-asymmetric-settlement")
-        correction = outcome["settlementAmendment"]
-        self.assertEqual(correction["amendmentType"], "correction")
-        self.assertNotIn("refundAmount", correction)
-        self.assertEqual(correction["reason"], "dacsx-htlc9-source-claim-confirmed")
+    # ── HTLC-9 / ST-8 supersession pack ───────────────────────────────────────
+    # The former DACS-X "correction amendment" fixture was retired (Round-4 R4-A):
+    # DACS-4 §9.5.4 resolves the asymmetric branch through the non-terminal
+    # settle-asymmetric state and a superseding success record, and states
+    # "No `correction` amendment is used". The pack is now that supersession pair,
+    # signed with the public orchestrator seed, and the verifier verifies Ed25519.
+    # Every guard below is proven load-bearing by a RE-SIGNED mutation, so the
+    # signature check alone cannot be what rejects it.
 
-    def test_shared_dacsx_verifier_accepts_repository_fixtures(self):
-        result = subprocess.run(
-            ["python3", str(VERIFY_DACSX)],
-            cwd=ROOT,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+    @staticmethod
+    def _load_pack_modules():
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import generate_htlc9_st8_pack as gen  # noqa: WPS433
+        import verify_htlc9_st8_pack as ver  # noqa: WPS433
+        return gen, ver
+
+    def setUp(self):
+        self._tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tempdir.cleanup)
+
+    def _write(self, data):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
+        out.write_text(json.dumps(data), encoding="utf-8")
+        return out
+
+    def _write_text(self, text):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
+        out.write_text(text, encoding="utf-8")
+        return out
+
+    def _write_bytes(self, value):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
+        out.write_bytes(value)
+        return out
+
+    def _write_raw(self, data):
+        return self._write_bytes(data)
+
+    def _pair(self, gen, mutate_interim=None, mutate_resolved=None,
+              interim_seed=None, resolved_seed=None, mutate_interim_signed=None,
+              mutate_resolved_signed=None):
+        """Build a (interim, resolved) pair where the resolved record is REBOUND to the
+        (possibly mutated) interim and both are RE-SIGNED, so the only thing that can
+        reject a mutation is the structural guard it targets — never the signature check
+        and never the supersession hash as a side effect."""
+        interim = gen.interim_record()
+        interim.pop("signature")
+        if mutate_interim:
+            mutate_interim(interim)
+        gen.sign(interim, interim_seed or gen.ORCHESTRATOR_SEED)
+        if mutate_interim_signed:
+            mutate_interim_signed(interim)
+        resolved = gen.resolved_record(interim)
+        resolved.pop("signature")
+        if mutate_resolved:
+            mutate_resolved(resolved)
+        gen.sign(resolved, resolved_seed or gen.ORCHESTRATOR_SEED)
+        if mutate_resolved_signed:
+            mutate_resolved_signed(resolved)
+        wrap = lambda r: {"kind": "SettlementEvidenceCase", "settlementEvidence": r, "specRefs": ["§9.5.4"]}
+        return self._write(wrap(interim)), self._write(wrap(resolved))
+
+    def test_valid_optional_units_agree_with_dacs5_consumer(self):
+        import importlib.util
+        gen, ver = self._load_pack_modules()
+        spec = importlib.util.spec_from_file_location("unit_dacs5_reference", ROOT / "tests/dacs5_reference.py")
+        consumer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(consumer)
+        for unit in ("", "request"):
+            with self.subTest(unit=unit):
+                case = json.loads(RESOLVED.read_text(encoding="utf-8"))
+                record = case["settlementEvidence"]
+                record["paymentAmount"]["unit"] = unit
+                gen.sign(record, gen.ORCHESTRATOR_SEED)
+                case["anchorReceipt"] = gen.fixture_receipt(record, resolved=True)
+                self.assertEqual(ver.validate_pair(INTERIM, self._write(case)), [])
+                self.assertTrue(consumer._price_term_shape_valid(record["paymentAmount"]))
+        self.assertTrue(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC"}))
+        for unit in (None, 1, [], {}):
+            self.assertFalse(consumer._price_term_shape_valid({"amount": "5", "currency": "USDC", "unit": unit}))
+
+    def test_non_json_numeric_constants_have_controlled_raw_admission_errors(self):
+        _, ver = self._load_pack_modules()
+        for token in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(token=token):
+                path = self._write_raw(("{\"x\":" + token + "}").encode("utf-8"))
+                evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertIn("invalid JSON", errors[0])
+                self.assertIn("non-JSON numeric constant", errors[0])
+
+    def test_htlc9_pack_is_deterministic_and_verifies(self):
+        check = subprocess.run(["python3", str(GENERATE_HTLC9), "--check"], cwd=ROOT, text=True, capture_output=True)
+        self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+        result = subprocess.run(["python3", str(VERIFY_HTLC9)], cwd=ROOT, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("both signatures verified", result.stdout)
+
+    def test_htlc9_raw_loader_rejects_invalid_json_before_verification(self):
+        _, ver = self._load_pack_modules()
+        cases = [
+            (
+                '{"kind":"SettlementEvidenceCase","kind":"Other","settlementEvidence":{}}',
+                "duplicate JSON member",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":{"phase":"one","phase":"two"}}',
+                "duplicate JSON member",
+            ),
+            ('{"kind":', "invalid JSON"),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":NaN}',
+                "non-JSON numeric constant",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":Infinity}',
+                "non-JSON numeric constant",
+            ),
+            (
+                '{"kind":"SettlementEvidenceCase","settlementEvidence":-Infinity}',
+                "non-JSON numeric constant",
+            ),
+        ]
+        for raw_json, expected_error in cases:
+            with self.subTest(raw_json=raw_json):
+                path = Path(self._tempdir.name) / "duplicate.json"
+                path.write_text(raw_json, encoding="utf-8")
+                with mock.patch.object(
+                    ver, "verify_signature", side_effect=AssertionError("verification reached")
+                ) as verify_signature:
+                    evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(expected_error in error for error in errors), errors)
+                verify_signature.assert_not_called()
+
+        path = Path(self._tempdir.name) / "invalid-utf8.json"
+        path.write_bytes(b"\xff")
+        with mock.patch.object(
+            ver, "verify_signature", side_effect=AssertionError("verification reached")
+        ) as verify_signature:
+            evidence, errors = ver.load_case(path)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("not valid UTF-8" in error for error in errors), errors)
+        verify_signature.assert_not_called()
+
+    def test_unique_json_loader_preserves_unique_nested_data_and_controls_parse_errors(self):
+        self._load_pack_modules()
+        from dacs_reference import loads_unique_json  # noqa: WPS433
+
+        raw_json = '{"outer":{"name":"value"},"items":[{"id":1},{"id":2}]}'
+        self.assertEqual(loads_unique_json(raw_json), json.loads(raw_json))
+        with self.assertRaisesRegex(ValueError, "invalid JSON"):
+            loads_unique_json('{"outer":')
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                with self.assertRaisesRegex(ValueError, "non-JSON numeric constant"):
+                    loads_unique_json(f'{{"value":{constant}}}')
+        # The cross-run tool passes file bytes; the same controls apply there.
+        self.assertEqual(loads_unique_json(raw_json.encode("utf-8")), json.loads(raw_json))
+        with self.assertRaisesRegex(ValueError, "invalid JSON: input is not valid UTF-8"):
+            loads_unique_json(b'{"value":"\xff"}')
+        with self.assertRaisesRegex(ValueError, "duplicate JSON member 'same'"):
+            loads_unique_json(b'{"outer":{"same":1,"same":1}}')
+        with self.assertRaisesRegex(ValueError, "non-JSON numeric constant NaN"):
+            loads_unique_json(b'{"value":NaN}')
+
+    def test_htlc9_loader_controls_recursion_and_read_errors(self):
+        _, ver = self._load_pack_modules()
+        path = Path(self._tempdir.name) / "case.json"
+        for error, expected in (
+            (RecursionError("maximum recursion depth exceeded"), "maximum recursion depth"),
+            (OSError("unreadable fixture"), "fixture file could not be read"),
+        ):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(Path, "read_bytes", side_effect=error):
+                    evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(expected in item for item in errors), errors)
+
+    def test_htlc9_json_file_admission_is_duplicate_aware_and_controlled(self):
+        _, ver = self._load_pack_modules()
+        with self.assertRaisesRegex(ver.DuplicateJSONMember, "duplicate JSON member"):
+            ver.loads_unique_json('{"outer":{"same":1,"same":2}}')
+        self.assertEqual(
+            len(ver.loads_unique_json(r'{"e\u0301":1,"\u00e9":2}')),
+            2,
         )
-        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-        self.assertIn("validated DACS-X dispute pack", result.stdout)
 
+        cases = [
+            (
+                self._write_raw(
+                    b'{"kind":"SettlementEvidenceCase",'
+                    b'"settlementEvidence":{"jobId":"first","jobId":"second"}}'
+                ),
+                "duplicate JSON member 'jobId'",
+            ),
+            (self._write_raw(b'{"kind":'), "invalid JSON"),
+            (self._write_raw(b"\xff"), "not valid UTF-8"),
+        ]
+        unreadable = Path(self._tempdir.name) / "directory.json"
+        unreadable.mkdir()
+        cases.append((unreadable, "fixture file could not be read"))
+        for path, message in cases:
+            with self.subTest(message=message):
+                evidence, errors = ver.load_case(path)
+                self.assertIsNone(evidence)
+                self.assertTrue(any(message in error for error in errors), errors)
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_price_term_optional_unit_is_string_only_and_may_be_empty(self):
+        gen, ver = self._load_pack_modules()
+        for value in ({}, {"unit": ""}, {"unit": "per-call"}):
+            with self.subTest(value=value):
+                self.assertTrue(ver.price_term_unit_is_valid(value))
+        for unit in (None, True, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertFalse(ver.price_term_unit_is_valid({"unit": unit}))
+
+        interim, resolved = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence["paymentAmount"].__setitem__(
+                "unit", ""
+            ),
+        )
+        self.assertEqual(ver.validate_pair(interim, resolved), [])
+
+        invalid = json.loads(RESOLVED.read_text(encoding="utf-8"))
+        invalid["settlementEvidence"]["paymentAmount"]["unit"] = 7
+        errors = ver.validate_pair(INTERIM, self._write(invalid))
+        self.assertTrue(
+            any("paymentAmount.unit MUST be a string when present" in error
+                for error in errors),
+            errors,
+        )
+
+    def test_htlc9_pair_uses_independently_expected_phase_orchestrator(self):
+        gen, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))[
+            "settlementEvidence"
+        ]
+        resolved = json.loads(RESOLVED.read_text(encoding="utf-8"))[
+            "settlementEvidence"
+        ]
+        self.assertEqual(
+            ver.EXPECTED_PHASE_ORCHESTRATOR,
+            interim["signature"]["signer"],
+        )
+        self.assertEqual(
+            ver.EXPECTED_PHASE_ORCHESTRATOR,
+            resolved["signature"]["signer"],
+        )
+        self.assertTrue(gen.ORCHESTRATOR_SIGNER.startswith("key:"))
+        errors = ver.validate_pair(
+            INTERIM,
+            RESOLVED,
+            expected_phase_orchestrator="key:" + "11" * 32,
+        )
+        self.assertEqual(2, sum("expected phase orchestrator" in e for e in errors))
+
+    def test_optional_supersedes_signer_binds_expected_interim_authority(self):
+        gen, ver = self._load_pack_modules()
+        valid_i, valid_r = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence[
+                "supersedesEvidenceRef"
+            ].__setitem__("signer", ver.EXPECTED_PHASE_ORCHESTRATOR),
+        )
+        self.assertEqual([], ver.validate_pair(valid_i, valid_r))
+
+        invalid_i, invalid_r = self._pair(
+            gen,
+            mutate_resolved=lambda evidence: evidence[
+                "supersedesEvidenceRef"
+            ].__setitem__("signer", "key:" + "11" * 32),
+        )
+        errors = ver.validate_pair(invalid_i, invalid_r)
+        self.assertTrue(any("expected phase orchestrator" in e for e in errors))
+
+    def test_htlc9_non_object_root_is_rejected_without_throwing(self):
+        _, ver = self._load_pack_modules()
+        errors = ver.validate_pair(self._write([]), RESOLVED)
+        self.assertTrue(any("root MUST be an object" in error for error in errors))
+
+    def test_htlc9_resolved_record_binds_the_interim_content_hash(self):
+        gen, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        resolved = json.loads(RESOLVED.read_text(encoding="utf-8"))["settlementEvidence"]
+        ref = resolved["supersedesEvidenceRef"]
+        self.assertEqual(set(ref), {"anchor", "contentHash"})            # DACS-2 §7.5.2 shape, not the pre-#308 flat form
+        self.assertEqual(set(ref["anchor"]), {"kind", "locator"})
+        self.assertEqual(ref["contentHash"], ver.content_hash_hex(interim))
+        self.assertEqual(resolved["outcome"], "success")
+        self.assertEqual(resolved["settlementFinality"]["model"], "htlc-reveal")
+        self.assertEqual({r["kind"] for r in resolved["paymentTxRefs"]}, {"htlc-lock", "htlc-reveal", "htlc-claim"})
+        self.assertNotIn("settlementAmendment", resolved)
+
+    def test_htlc9_receipt_reference_binding_and_path_policy(self):
+        _, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        ref = json.loads(RESOLVED.read_text(encoding="utf-8"))["settlementEvidence"]["supersedesEvidenceRef"]
+        check = lambda value, receipt=True: ver.supersession_binding_errors(
+            value, interim, expected_phase_orchestrator=ver.EXPECTED_PHASE_ORCHESTRATOR,
+            require_fixture_receipt=receipt,
+        )
+        self.assertEqual(check(ref), [])
+        with_signer = dict(ref, signer=ver.EXPECTED_PHASE_ORCHESTRATOR)
+        self.assertEqual(check(with_signer), [])
+        self.assertTrue(check(dict(ref, signer="key:" + "11" * 32)))
+        alternate = dict(ref, anchor={"kind": "https", "locator": "https://example.invalid/record"})
+        self.assertTrue(check(alternate))
+        self.assertEqual(check(alternate, receipt=False), [])
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, RESOLVED))
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM.parent / ".." / "settlement" / INTERIM.name, RESOLVED))
+        self.assertFalse(ver.requires_fixture_receipts(Path("custom-interim.json"), Path("custom-resolved.json")))
+
+    def test_htlc9_committed_fixture_receipts_are_load_bearing(self):
+        # The anchorReceipt wrapper is outside SettlementEvidence, so each
+        # mutation leaves both signatures and the supersession hash valid and
+        # only the committed-fixture receipt check can reject it.
+        _, ver = self._load_pack_modules()
+        bind = "anchorReceipt MUST bind the pinned logical/native address"
+        chronology = "anchorReceipt block/observation chronology is invalid"
+        mutations = (
+            ("missing receipt", lambda r, c: c.pop("anchorReceipt"),
+             "anchorReceipt MUST be an object in the committed fixture"),
+            ("extra receipt member", lambda r, c: r.__setitem__("extra", 1),
+             "anchorReceipt fields do not match the pinned fixture receipt shape"),
+            ("receipt version", lambda r, c: r.__setitem__("receiptVersion", "2"), bind),
+            ("logical address", lambda r, c: r.__setitem__("logicalAddress", r["logicalAddress"] + "x"), bind),
+            ("native equals logical", lambda r, c: r.__setitem__("nativeAddress", r["logicalAddress"]), bind),
+            ("content hash", lambda r, c: r.__setitem__("contentHash", "00" * 32), bind),
+            ("writer", lambda r, c: r.__setitem__("writer", "key:" + "11" * 32), bind),
+            ("lifecycle state", lambda r, c: r.__setitem__("state", "included"), bind),
+            ("observation disposition", lambda r, c: r.__setitem__("observationDisposition", "inferred"), bind),
+            ("empty transaction value", lambda r, c: r["transactionRef"].__setitem__("value", ""),
+             "anchorReceipt.transactionRef MUST be a non-empty kind/value binding"),
+            ("block before evidence observation",
+             lambda r, c: r["blockRef"].__setitem__("timestamp", c["settlementEvidence"]["observedAt"] - 1),
+             chronology),
+            ("block after receipt observation",
+             lambda r, c: r["blockRef"].__setitem__("timestamp", r["observedAt"] + 1), chronology),
+        )
+        backstops = ("signature does not verify", "SIG-6", "supersedesEvidenceRef.contentHash MUST")
+        for which, source in (("interim", INTERIM), ("resolved", RESOLVED)):
+            def pair(path):
+                return (path, RESOLVED) if which == "interim" else (INTERIM, path)
+
+            # Control: an exact copy at a custom path is still checked under the
+            # committed policy because the other path is the committed fixture.
+            control = json.loads(source.read_text(encoding="utf-8"))
+            self.assertEqual([], ver.validate_pair(*pair(self._write(control))))
+            for label, mutate, needle in mutations:
+                with self.subTest(record=which, mutation=label):
+                    case = json.loads(source.read_text(encoding="utf-8"))
+                    mutate(case.get("anchorReceipt"), case)
+                    errors = ver.validate_pair(*pair(self._write(case)))
+                    self.assertTrue(any(needle in error for error in errors), errors)
+                    self.assertFalse(
+                        any(backstop in error for error in errors for backstop in backstops),
+                        errors,
+                    )
+
+        # Custom pairs keep their documented hash/signature-only contract.
+        custom = []
+        for source in (INTERIM, RESOLVED):
+            case = json.loads(source.read_text(encoding="utf-8"))
+            case.pop("anchorReceipt")
+            custom.append(self._write(case))
+        self.assertEqual([], ver.validate_pair(*custom))
+
+    def test_htlc9_receipt_mode_binds_supersession_anchor_through_pair_entry_point(self):
+        # validate_pair selects the committed-fixture policy from either path;
+        # that policy must also reach the resolved record's supersession
+        # binding, not only the receipt wrappers.  Each resolved record is
+        # re-signed with its own fixture receipt, so its anchor is the only defect.
+        gen, ver = self._load_pack_modules()
+        anchor_error = (
+            "supersedesEvidenceRef.anchor MUST match the authenticated interim "
+            "fixture native anchor"
+        )
+
+        def resolved_case(anchor=None):
+            record = gen.resolved_record(gen.interim_record())
+            if anchor is not None:
+                record["supersedesEvidenceRef"]["anchor"] = anchor
+            gen.sign(record, gen.ORCHESTRATOR_SEED)
+            return self._write({
+                "kind": "SettlementEvidenceCase",
+                "settlementEvidence": record,
+                "anchorReceipt": gen.fixture_receipt(record, resolved=True),
+                "specRefs": ["§9.5.4", "§9.7", "§10.3.1"],
+            })
+
+        control = resolved_case()
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, control))
+        self.assertEqual([], ver.validate_pair(INTERIM, control))
+
+        candidate = resolved_case(
+            {"kind": "https", "locator": "https://example.invalid/interim"}
+        )
+        signed = json.loads(candidate.read_text(encoding="utf-8"))["settlementEvidence"]
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        self.assertIsNone(ver.verify_signature(signed))
+        self.assertEqual([], ver.attestation_ref_errors(signed["supersedesEvidenceRef"]))
+        self.assertEqual(
+            ver.content_hash_hex(interim), signed["supersedesEvidenceRef"]["contentHash"]
+        )
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, candidate))
+        expected = [ver.fail(candidate, anchor_error)]
+        self.assertEqual(expected, ver.validate_pair(INTERIM, candidate))
+        rejected = subprocess.run(
+            [sys.executable, str(VERIFY_HTLC9), str(INTERIM), str(candidate)],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        self.assertEqual(1, rejected.returncode, rejected.stdout + rejected.stderr)
+        self.assertEqual(expected, rejected.stderr.splitlines())
+
+        # The same signed resolved record beside a custom copy of the interim
+        # keeps the documented hash/signature-only custom-pair contract.
+        custom_interim = self._write(json.loads(INTERIM.read_text(encoding="utf-8")))
+        self.assertFalse(ver.requires_fixture_receipts(custom_interim, candidate))
+        self.assertEqual([], ver.validate_pair(custom_interim, candidate))
+
+    def test_htlc9_number_spelling_is_verdict_neutral_while_type_guards_hold(self):
+        # CORE CF-5(4): one admitted binary64 value has one JCS spelling, so a
+        # byte-level respelling leaves the signed hash, receipt and verdict
+        # unchanged.  The shared exact_safe_integer now admits such spellings;
+        # booleans, fractions and a zero chain ID must still be refused by the
+        # HTLC guards, so each negative is re-signed and rebound by _pair.
+        gen, ver = self._load_pack_modules()
+        text = INTERIM.read_text(encoding="utf-8")
+        for old, new in (
+            ('"chainId": 84532,', '"chainId": 84532.0,'),
+            ('"chainId": 80002,', '"chainId": 8.0002e4,'),
+            ('"observedAt": 1760000100000,', '"observedAt": 1.7600001e12,'),
+        ):
+            self.assertEqual(1, text.count(old), old)
+            text = text.replace(old, new)
+        respelled = self._write_text(text)
+        original = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        admitted = ver.load_raw_json(respelled.read_bytes())["settlementEvidence"]
+        self.assertIs(float, type(admitted["paymentTxRefs"][0]["chainId"]))
+        self.assertIs(float, type(admitted["paymentTxRefs"][1]["chainId"]))
+        self.assertIs(float, type(admitted["observedAt"]))
+        self.assertEqual(ver.content_hash_hex(original), ver.content_hash_hex(admitted))
+        # The committed resolved path keeps the receipt policy for the pair.
+        self.assertTrue(ver.requires_fixture_receipts(respelled, RESOLVED))
+        self.assertEqual([], ver.validate_pair(respelled, RESOLVED))
+        accepted = subprocess.run(
+            [sys.executable, str(VERIFY_HTLC9), str(respelled), str(RESOLVED)],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        self.assertEqual(0, accepted.returncode, accepted.stdout + accepted.stderr)
+        self.assertIn("both signatures verified", accepted.stdout)
+
+        chain = "htlc-lock chainId MUST be a positive integer"
+        observed = "observedAt MUST be an integer unix-ms"
+        backstops = ("signature does not verify", "SIG-6", "content hash")
+        for label, mutate, needle in (
+            ("boolean chainId", lambda e: e["paymentTxRefs"][0].__setitem__("chainId", True), chain),
+            ("fractional chainId", lambda e: e["paymentTxRefs"][0].__setitem__("chainId", 84532.5), chain),
+            ("zero chainId", lambda e: e["paymentTxRefs"][0].__setitem__("chainId", 0), chain),
+            ("boolean observedAt", lambda e: e.__setitem__("observedAt", True), observed),
+            ("fractional observedAt", lambda e: e.__setitem__("observedAt", 1760000100000.5), observed),
+        ):
+            with self.subTest(mutation=label):
+                errors = ver.validate_pair(*self._pair(gen, mutate_interim=mutate))
+                self.assertTrue(
+                    any(needle in error for error in errors),
+                    f"{label}: guard did not reject: {errors}",
+                )
+                self.assertFalse(
+                    any(backstop in error for error in errors for backstop in backstops),
+                    f"{label}: rejected by a backstop: {errors}",
+                )
+
+    def test_htlc9_signatures_are_bound_to_independently_trusted_phase_authority(self):
+        gen, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        self.assertEqual(ver.DEFAULT_PHASE_ORCHESTRATOR, gen.ORCHESTRATOR_SIGNER)
+        self.assertIsNone(ver.verify_signature(interim, ver.DEFAULT_PHASE_ORCHESTRATOR))
+
+        untrusted = "key:" + "00" * 32
+        self.assertIn("independently trusted expected phase orchestrator", ver.verify_signature(interim, untrusted))
+        unregistered = "cci:" + "00" * 32
+        self.assertIn("MUST be a trusted key:", ver.verify_signature(interim, unregistered))
+        errors = ver.validate_pair(INTERIM, RESOLVED, untrusted)
+        self.assertTrue(errors)
+        self.assertTrue(all("expected phase orchestrator" in e or "pair binding not evaluated" in e for e in errors), errors)
+
+    def test_htlc9_malformed_inputs_return_controlled_diagnostics(self):
+        _, ver = self._load_pack_modules()
+
+        duplicate = self._write_text(
+            '{"kind":"SettlementEvidenceCase","settlementEvidence":'
+            '{"signature":{"algorithm":"ed25519","algorithm":"ed25519"}}}'
+        )
+        evidence, errors = ver.load_case(duplicate)
+        self.assertIsNone(evidence)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("invalid JSON: duplicate JSON member 'algorithm'", errors[0])
+
+        nfd, nfc = "e" + chr(0x0301), chr(0x00E9)
+        distinct_keys = self._write({
+            "kind": "SettlementEvidenceCase",
+            "settlementEvidence": {
+                "evidenceVersion": "1", nfd: 1, nfc: 2,
+            },
+        })
+        evidence, errors = ver.load_case(distinct_keys)
+        self.assertIsNotNone(evidence)
+        self.assertEqual(len(evidence), 3)
+        self.assertFalse(any("duplicate JSON member" in e for e in errors), errors)
+
+        invalid_utf8 = self._write_bytes(b"\xff")
+        root_array = self._write([])
+        missing = Path(self._tempdir.name) / "missing.json"
+        for path, needle in (
+            (invalid_utf8, "not valid UTF-8"),
+            (root_array, "fixture root MUST be an object"),
+            (missing, "fixture file not found"),
+            (Path(self._tempdir.name), "fixture file could not be read"),
+        ):
+            with self.subTest(path=path, needle=needle):
+                _, errors = ver.validate_interim(path)
+                self.assertTrue(any(needle in e for e in errors), errors)
+        pair_errors = ver.validate_pair(root_array, RESOLVED)
+        self.assertTrue(any("pair binding not evaluated because interim evidence was rejected" in e
+                            for e in pair_errors), pair_errors)
+
+        for malformed_refs in (None, 7, {}, "bad"):
+            with self.subTest(paymentTxRefs=malformed_refs):
+                path = self._write({
+                    "kind": "SettlementEvidenceCase",
+                    "settlementEvidence": {
+                        "evidenceVersion": "1",
+                        "paymentTxRefs": malformed_refs,
+                    },
+                })
+                _, errors = ver.validate_interim(path)
+                self.assertTrue(any("paymentTxRefs MUST be a non-empty list" in e for e in errors))
+                errors = ver.validate_resolved(path, None)
+                self.assertTrue(any("paymentTxRefs MUST be a non-empty list" in e for e in errors))
+
+        malformed_nested = json.loads(INTERIM.read_text(encoding="utf-8"))
+        malformed_nested["settlementEvidence"]["paymentTxRefs"][0]["kind"] = []
+        _, errors = ver.validate_interim(self._write(malformed_nested))
+        self.assertTrue(any("paymentTxRefs[0]" in e for e in errors), errors)
+
+        errors = ver.validate_resolved(RESOLVED, {"paymentTxRefs": 7, "observedAt": []})
+        self.assertTrue(errors)
+        self.assertTrue(any("share jobId" in e for e in errors), errors)
+
+        uncanonicalizable = json.loads(INTERIM.read_text(encoding="utf-8"))
+        uncanonicalizable["settlementEvidence"]["observedAt"] = 2 ** 53
+        _, errors = ver.validate_interim(self._write(uncanonicalizable))
+        self.assertTrue(any("NUMBER-OUTSIDE-DACS-MAGNITUDE" in e for e in errors), errors)
+
+    def test_valid_custom_pack_accepts_its_independently_selected_authority(self):
+        gen, ver = self._load_pack_modules()
+        public_test_seed = bytes.fromhex("42" * 32)
+        expected = gen.signer_ref(public_test_seed)
+        paths = []
+        for source in (INTERIM, RESOLVED):
+            case = json.loads(source.read_text(encoding="utf-8"))
+            gen.sign(case["settlementEvidence"], public_test_seed)
+            paths.append(self._write(case))
+        self.assertEqual(ver.validate_pair(*paths, expected), [])
+        self.assertEqual(ver.main([str(paths[0]), str(paths[1]),
+                                  "--expected-phase-orchestrator", expected]), 0)
+
+    def test_htlc9_json_parser_rejects_duplicate_members_recursively(self):
+        _, ver = self._load_pack_modules()
+        for document in (
+            '{"member":1,"member":2}',
+            '{"outer":{"member":1,"member":2}}',
+            '[{"member":1,"member":2}]',
+        ):
+            with self.subTest(document=document), self.assertRaises(ver.DuplicateJsonMember):
+                ver.strict_json_loads(document)
+
+        # A duplicate top-level member is a parse error: the record is never
+        # canonicalized, hashed, or signature-checked (verify_signature is
+        # never invoked on rejected bytes).
+        duplicate_fixture = self._write_text(
+            '{"kind":"SettlementEvidenceCase","kind":"duplicate"}'
+        )
+        with mock.patch.object(
+            ver, "verify_signature", wraps=ver.verify_signature
+        ) as verify:
+            evidence, errors = ver.load_case(duplicate_fixture)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("duplicate JSON member" in error for error in errors))
+        verify.assert_not_called()
+
+    def test_htlc9_admission_controls_io_decode_shape_and_canonicalization_errors(self):
+        _, ver = self._load_pack_modules()
+
+        invalid_utf8 = self._write_bytes(b"\xff")
+        evidence, errors = ver.load_case(invalid_utf8)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("not valid UTF-8" in error for error in errors))
+
+        scalar_root = self._write_text("[]")
+        evidence, errors = ver.load_case(scalar_root)
+        self.assertIsNone(evidence)
+        self.assertTrue(any("fixture root MUST be an object" in error for error in errors))
+
+        with mock.patch.object(
+            Path, "read_bytes", side_effect=PermissionError("permission denied")
+        ):
+            evidence, errors = ver.load_case(Path(self._tempdir.name) / "unreadable")
+        self.assertIsNone(evidence)
+        self.assertTrue(any("fixture file could not be read" in error for error in errors))
+
+        malformed_nested = self._write_text(json.dumps({
+            "kind": "SettlementEvidenceCase",
+            "settlementEvidence": {
+                "evidenceVersion": "1",
+                "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                "observedAt": 1,
+                "outcome": "failure",
+                "phase": "pay-cross-chain-htlc",
+                "paymentTxRefs": [{"kind": []}],
+                "reason": "dest-revealed-source-unclaimed",
+                "signature": None,
+            },
+        }))
+        _, errors = ver.validate_interim(malformed_nested)
+        self.assertTrue(any("paymentTxRefs[0]" in error for error in errors))
+
+        canonicalization_reason = ver.verify_signature({
+            "payload": float("nan"),
+            "signature": {
+                "algorithm": "ed25519",
+                "signer": ver.EXPECTED_PHASE_ORCHESTRATOR,
+                "value": "AA",
+            },
+        })
+        self.assertIn("cannot be canonicalized", canonicalization_reason)
+
+    def test_htlc9_price_term_helper_preserves_optional_string_contract(self):
+        _, ver = self._load_pack_modules()
+        for amount in (
+            {"amount": "25", "currency": "USDC"},
+            {"amount": "25", "currency": "USDC", "unit": ""},
+            {"amount": "25", "currency": "USDC", "unit": "token"},
+        ):
+            with self.subTest(amount=amount):
+                self.assertEqual(ver.price_term_errors(amount), [])
+        for unit in (None, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertIn(
+                    "paymentAmount.unit MUST be a string when present",
+                    ver.price_term_errors(
+                        {"amount": "25", "currency": "USDC", "unit": unit}
+                    ),
+                )
+
+    def test_htlc9_rejected_interim_is_not_used_for_pair_checks(self):
+        _, ver = self._load_pack_modules()
+        missing_interim = Path(self._tempdir.name) / "missing-interim.json"
+        errors = ver.validate_pair(missing_interim, RESOLVED)
+        self.assertTrue(any("fixture file not found" in error for error in errors))
+        self.assertFalse(any("interim record's" in error for error in errors))
+        self.assertTrue(any("pair binding not evaluated" in error for error in errors))
+
+    def test_file_error_diagnostics_survive_path_resolution_failures(self):
+        _, ver = self._load_pack_modules()
+        missing = Path(self._tempdir.name) / "missing.json"
+        for error in (OSError("resolution unavailable"), RuntimeError("resolution unavailable")):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(Path, "resolve", side_effect=error):
+                    evidence, errors = ver.load_case(missing)
+                    self.assertIsNone(evidence)
+                    self.assertIn("fixture file not found", errors[0])
+                    stderr = io.StringIO()
+                    with redirect_stderr(stderr):
+                        result = ver.main([str(missing), str(missing)])
+                    self.assertEqual(result, 1)
+                    self.assertIn("fixture file not found", stderr.getvalue())
+                    self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_htlc9_payment_amount_unit_preserves_optional_string_contract(self):
+        gen, ver = self._load_pack_modules()
+        self.assertEqual(ver.validate_pair(INTERIM, RESOLVED), [])
+
+        for unit in ("", "per-call"):
+            with self.subTest(unit=unit):
+                interim = gen.interim_record()
+                resolved = gen.resolved_record(interim)
+                resolved["paymentAmount"]["unit"] = unit
+                resolved.pop("signature")
+                gen.sign(resolved, gen.ORCHESTRATOR_SEED)
+                wrap = lambda record: {
+                    "kind": "SettlementEvidenceCase",
+                    "settlementEvidence": record,
+                    "specRefs": ["§9.5.4"],
+                }
+                self.assertEqual(ver.validate_pair(self._write(wrap(interim)), self._write(wrap(resolved))), [])
+
+        nonstring = json.loads(RESOLVED.read_text(encoding="utf-8"))
+        nonstring["settlementEvidence"]["paymentAmount"]["unit"] = 7
+        errors = ver.validate_pair(INTERIM, self._write(nonstring))
+        self.assertTrue(any("paymentAmount.unit MUST be a string" in e for e in errors), errors)
+
+    def test_htlc9_verifier_rejects_a_garbage_signature(self):
+        gen, ver = self._load_pack_modules()
+        for which in ("interim", "resolved"):
+            i, r = self._pair(gen)
+            data = json.loads((i if which == "interim" else r).read_text())
+            data["settlementEvidence"]["signature"]["value"] = "NOT-A-SIGNATURE"
+            out = self._write(data)
+            errors = ver.validate_pair(out, r) if which == "interim" else ver.validate_pair(i, out)
+            self.assertTrue(any("SIG-6" in e or "signature" in e for e in errors), errors)
+
+    def test_htlc9_verifier_rejects_a_noncanonical_sig6_encoding(self):
+        gen, ver = self._load_pack_modules()
+        i, r = self._pair(gen)
+        data = json.loads(r.read_text()); value = data["settlementEvidence"]["signature"]["value"]
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        alt = next(value[:-1] + c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+                   if c != value[-1] and base64.urlsafe_b64decode(value[:-1] + c + "=" * (-len(value) % 4)) == raw)
+        data["settlementEvidence"]["signature"]["value"] = alt      # same bytes, non-canonical spelling
+        errors = ver.validate_pair(i, self._write(data))
+        self.assertTrue(any("SIG-6" in e for e in errors), errors)
+
+    def test_htlc9_expected_orchestrator_authority_is_load_bearing(self):
+        _, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        self.assertIsNone(ver.verify_signature(interim))
+        reason = ver.verify_signature(
+            interim, "key:" + "00" * 32
+        )
+        self.assertIn("independently trusted expected phase orchestrator", reason)
+        unregistered = ver.verify_signature(
+            interim, "cci:" + "00" * 32
+        )
+        self.assertIn("MUST be a trusted key:", unregistered)
+
+    def test_htlc9_structural_guards_are_load_bearing_under_resigned_rebound_mutation(self):
+        gen, ver = self._load_pack_modules()
+        R, I = "resolved", "interim"
+        cases = {
+            "resolved without htlc-claim": (R, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-claim"]), "htlc-claim"),
+            "resolved without htlc-lock": (R, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-lock"]), "htlc-lock"),
+            "resolved without htlc-reveal": (R, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-reveal"]), "htlc-reveal"),
+            "resolved kind-only claim (no claimTxHash)": (R, lambda e: e["paymentTxRefs"].__setitem__(2, {"kind": "htlc-claim"}), "claimTxHash"),
+            "resolved lock differs from interim": (R, lambda e: e["paymentTxRefs"][0].__setitem__("lockTxHash", "0x" + "dd" * 32), "identical to the interim"),
+            "resolved wrong supersedes hash": (R, lambda e: e["supersedesEvidenceRef"].__setitem__("contentHash", "00" * 32), "content hash"),
+            "resolved flat pre-#308 AttestationRef": (R, lambda e: e.__setitem__("supersedesEvidenceRef", {"kind": "storage-program", "locator": "x", "contentHash": e["supersedesEvidenceRef"]["contentHash"]}), "unknown field"),
+            "resolved smuggling settlementAmendment": (R, lambda e: e.__setitem__("settlementAmendment", {"amendmentType": "correction"}), "amendment"),
+            "resolved smuggling amendmentRefs": (R, lambda e: e.__setitem__("amendmentRefs", []), "amendment"),
+            "resolved smuggling amendsEvidenceRef": (R, lambda e: e.__setitem__("amendsEvidenceRef", {}), "amendment"),
+            "resolved smuggling refundAmount": (R, lambda e: e.__setitem__("refundAmount", {"amount": "1", "currency": "USDC"}), "amendment"),
+            "resolved without settlementFinality": (R, lambda e: e.pop("settlementFinality"), "settlementFinality"),
+            "resolved finality model bft-final": (R, lambda e: e["settlementFinality"].__setitem__("model", "bft-final"), "htlc-reveal"),
+            "resolved finalityObservedAt as string": (R, lambda e: e["settlementFinality"].__setitem__("finalityObservedAt", "1760000290000"), "finalityObservedAt"),
+            "resolved without paymentAmount": (R, lambda e: e.pop("paymentAmount"), "paymentAmount"),
+            "resolved paymentAmount zero": (R, lambda e: e["paymentAmount"].__setitem__("amount", "0"), "CD-1"),
+            "resolved paymentAmount non-canonical 25.0": (R, lambda e: e["paymentAmount"].__setitem__("amount", "25.0"), "CD-1"),
+            "resolved outcome failure": (R, lambda e: e.__setitem__("outcome", "failure"), "outcome success"),
+            "resolved wrong evidenceVersion": (R, lambda e: e.__setitem__("evidenceVersion", "2"), "evidenceVersion"),
+            "resolved wrong phase": (R, lambda e: e.__setitem__("phase", "pay-dem"), "phase"),
+            "resolved observedAt as string": (R, lambda e: e.__setitem__("observedAt", "1"), "observedAt"),
+            "resolved jobId differs from interim": (R, lambda e: e.__setitem__("jobId", "01ARZ3NDEKTSV4RRFFQ69G5FAW"), "share jobId"),
+            "interim carrying an htlc-claim": (I, lambda e: e["paymentTxRefs"].append({"kind": "htlc-claim", "chainId": 84532, "contractAddress": "0x" + "0" * 40, "claimTxHash": "0x" + "cc" * 32}), "htlc-claim"),
+            "interim outcome success": (I, lambda e: e.__setitem__("outcome", "success"), "outcome failure"),
+            "interim wrong reason": (I, lambda e: e.__setitem__("reason", "timeout"), "dest-revealed-source-unclaimed"),
+            "interim without htlc-reveal": (I, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-reveal"]), "htlc-reveal"),
+            "interim without htlc-lock": (I, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-lock"]), "htlc-lock"),
+            "interim carrying settlementFinality": (I, lambda e: e.__setitem__("settlementFinality", {"model": "htlc-reveal", "finalityObservedAt": 1}), "settlementFinality"),
+            # ── topology and closed arms (round-2 reviewer counterexamples) ──
+            "resolved claim on the destination chain": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("chainId", 80002), "claim.chainId == lock.chainId"),
+            "resolved claim against a different contract": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("contractAddress", "0x" + "9" * 40), "claim.contractAddress == lock.contractAddress"),
+            "resolved second htlc-lock appended": (R, lambda e: e["paymentTxRefs"].append({"kind": "htlc-lock", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "lockTxHash": "0x" + "99" * 32}), "exactly one htlc-lock"),
+            "resolved second htlc-claim appended": (R, lambda e: e["paymentTxRefs"].append({"kind": "htlc-claim", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "claimTxHash": "0x" + "ee" * 32}), "exactly one htlc-claim"),
+            "resolved extra field on a txRef": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("note", "x"), "unknown field"),
+            "resolved anchor.kind outside the enum": (R, lambda e: e["supersedesEvidenceRef"]["anchor"].__setitem__("kind", "not-a-kind"), "anchor.kind"),
+            "resolved empty anchor.locator": (R, lambda e: e["supersedesEvidenceRef"]["anchor"].__setitem__("locator", ""), "locator"),
+            "resolved non-string signer on the ref": (R, lambda e: e["supersedesEvidenceRef"].__setitem__("signer", 7), "signer"),
+            "resolved empty currency": (R, lambda e: e["paymentAmount"].__setitem__("currency", ""), "currency"),
+            "resolved invalid ULID jobId (interim too, so they still match)": (R, lambda e: e.__setitem__("jobId", "01HTLC9ASYMMETRIC000000000000"), "ULID"),
+            "resolved reveal differs from interim": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("revealTxHash", "0x" + "ab" * 32), "identical to the interim"),
+            "interim second htlc-lock appended": (I, lambda e: e["paymentTxRefs"].append({"kind": "htlc-lock", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "lockTxHash": "0x" + "99" * 32}), "exactly one htlc-lock"),
+            "interim invalid ULID jobId": (I, lambda e: e.__setitem__("jobId", "01HTLC9ASYMMETRIC000000000000"), "ULID"),
+        }
+        # Guards added after the converged Codex/Grok review. Every case uses _pair,
+        # which rebinds the supersession ref and re-signs both records. Assert that
+        # the named guard fires without relying on signature, SIG-6, or content-hash
+        # backstops.
+        new_cases = [
+            ("cross-signer phase pair", {"resolved_seed": bytes.fromhex("42" * 32)}, "expected phase orchestrator"),
+            ("interim observedAt equals finalityObservedAt", {"mutate_interim": lambda e: e.__setitem__("observedAt", 1760000290000)}, "interim.observedAt MUST be less"),
+            ("finalityObservedAt after resolved observedAt", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityObservedAt", 1760000300001)}, "less than or equal to resolved.observedAt"),
+            ("claim reuses lock transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "claim.claimTxHash MUST differ"),
+            ("claim reuses reveal transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal")["revealTxHash"])}, "claim.claimTxHash MUST differ from reveal.revealTxHash"),
+            ("interim reveal reuses lock transaction hash", {"mutate_interim": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("revealTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "reveal.revealTxHash MUST differ from lock.lockTxHash"),
+            ("resolved carries reason", {"mutate_resolved": lambda e: e.__setitem__("reason", "dest-revealed-source-unclaimed")}, "MUST NOT carry reason"),
+            ("ComponentSignature has an unknown field", {"mutate_resolved_signed": lambda e: e["signature"].__setitem__("keyId", "test")}, "ComponentSignature fields MUST be exactly"),
+            ("htlc-reveal finality carries finalityBlocks", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityBlocks", 1)}, "SettlementFinalityRecord"),
+            ("htlc-reveal finality carries finalityCommitmentLevel", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityCommitmentLevel", "final")}, "SettlementFinalityRecord"),
+            ("PriceTerm has an unknown field", {"mutate_resolved": lambda e: e["paymentAmount"].__setitem__("asset", "USDC")}, "PriceTerm fields MUST be exactly"),
+            ("AttestationRef signer is empty", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "")}, "canonical registered ClaimReference"),
+            ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "canonical registered ClaimReference"),
+            ("AttestationRef signer scheme has uppercase", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "Cci:deadbeef")}, "DACS-1 §6.3.1"),
+            ("AttestationRef signer scheme has plus", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "cci+x:deadbeef")}, "DACS-1 §6.3.1"),
+        ]
+        for field in ("deliverableContentHash", "deliverableAnchor", "attestationRef"):
+            new_cases.extend([
+                (f"interim carries delivery-only {field}", {"mutate_interim": lambda e, field=field: e.__setitem__(field, "x")}, "delivery-only"),
+                (f"resolved carries delivery-only {field}", {"mutate_resolved": lambda e, field=field: e.__setitem__(field, "x")}, "delivery-only"),
+            ])
+        for name, kwargs, needle in new_cases:
+            with self.subTest(name=name):
+                i, r = self._pair(gen, **kwargs)
+                errors = ver.validate_pair(i, r)
+                self.assertTrue(errors, f"{name}: accepted")
+                self.assertFalse(any("signature does not verify" in e or "SIG-6" in e or "content hash" in e for e in errors), f"{name}: rejected by a backstop, not {needle}: {errors}")
+                self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
+
+        # Both-sides topology case: mutate the interim; the resolved record inherits the
+        # mutated lock/reveal, so cross-pair identity holds and ONLY the topology guard can
+        # reject. (A pair CONSISTENTLY mirrored onto the other chain is not a case here: with
+        # no rail context, "source" is wherever the lock is, so that pair is indistinguishable
+        # from a correct one — a documented scope limit of this pack, see the verifier docstring.)
+        both = {
+            "all three legs on one chain": (lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("chainId", 84532), "reveal.chainId != lock.chainId"),
+        }
+        for name, (mutate, needle) in both.items():
+            with self.subTest(name=name):
+                i, r = self._pair(gen, mutate_interim=mutate, mutate_resolved=None)   # resolved inherits the mutated lock/reveal from the interim
+                errors = ver.validate_pair(i, r)
+                self.assertTrue(errors, f"{name}: accepted")
+                self.assertFalse(any("signature does not verify" in e or "SIG-6" in e or "content hash" in e or "identical to the interim" in e for e in errors), f"{name}: rejected by a backstop, not topology: {errors}")
+                self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
+        for name, (which, mutate, needle) in cases.items():
+            with self.subTest(name=name):
+                if "interim too" in name:
+                    i, r = self._pair(gen, mutate_interim=mutate, mutate_resolved=mutate)
+                else:
+                    i, r = self._pair(gen, mutate_interim=mutate if which == I else None, mutate_resolved=mutate if which == R else None)
+                errors = ver.validate_pair(i, r)
+                self.assertTrue(errors, f"{name}: accepted")
+                self.assertFalse(any("signature does not verify" in e or "SIG-6" in e for e in errors), f"{name}: rejected by the signature check, not the guard: {errors}")
+                if which == I and "content hash" not in needle:
+                    self.assertFalse(any("content hash" in e for e in errors), f"{name}: rejected by the supersession hash backstop, not the guard: {errors}")
+                self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
+
+    def test_htlc9_signed_additive_evidence_members_are_forward_readable(self):
+        gen, ver = self._load_pack_modules()
+        interim, resolved = self._pair(
+            gen,
+            mutate_interim=lambda evidence: evidence.__setitem__(
+                "futureOptional", {"version": 2}
+            ),
+            mutate_resolved=lambda evidence: evidence.__setitem__(
+                "futureOptional", {"version": 2}
+            ),
+        )
+        self.assertEqual([], ver.validate_pair(interim, resolved))
+
+        unsigned = json.loads(interim.read_text(encoding="utf-8"))
+        unsigned["settlementEvidence"]["anotherFutureMember"] = True
+        errors = ver.validate_pair(self._write(unsigned), resolved)
+        self.assertTrue(any("signature does not verify" in error for error in errors))
+
+    def test_htlc9_interim_rejects_resolved_only_supersession_reference(self):
+        # DACS-4 §9.5.4, §9.7, §9.7.1: supersedesEvidenceRef belongs on the
+        # ST-8 resolved success and points back to the interim failure.
+        gen, ver = self._load_pack_modules()
+        self.assertEqual([], ver.validate_pair(INTERIM, RESOLVED))
+        self.assertEqual([], ver.validate_pair(*self._pair(gen)))
+        inert = lambda evidence: evidence.__setitem__("futureOptional", {"version": 2})
+        self.assertEqual([], ver.validate_pair(
+            *self._pair(gen, mutate_interim=inert, mutate_resolved=inert)
+        ))
+
+        # A well-formed reference, signed into the interim; the resolved record
+        # is rebound to that interim's hash and re-signed.
+        reference = gen.attestation_ref(gen.interim_record())
+        self.assertEqual([], ver.attestation_ref_errors(reference))
+        interim, resolved = self._pair(
+            gen,
+            mutate_interim=lambda evidence: evidence.__setitem__(
+                "supersedesEvidenceRef", reference
+            ),
+        )
+        signed_interim = json.loads(interim.read_text(encoding="utf-8"))["settlementEvidence"]
+        signed_resolved = json.loads(resolved.read_text(encoding="utf-8"))["settlementEvidence"]
+        self.assertEqual(reference, signed_interim["supersedesEvidenceRef"])
+        self.assertIsNone(ver.verify_signature(signed_interim))
+        self.assertIsNone(ver.verify_signature(signed_resolved))
+        self.assertEqual(
+            ver.content_hash_hex(signed_interim),
+            signed_resolved["supersedesEvidenceRef"]["contentHash"],
+        )
+
+        errors = ver.validate_pair(interim, resolved)
+        self.assertEqual(2, len(errors), errors)
+        self.assertTrue(errors[0].startswith(ver.fail(interim, "")), errors)
+        self.assertIn(
+            "interim failure evidence MUST NOT carry supersedesEvidenceRef", errors[0]
+        )
+        self.assertEqual(
+            ver.fail(resolved, "pair binding not evaluated because interim evidence was rejected"),
+            errors[1],
+        )
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            self.assertEqual(1, ver.main([str(interim), str(resolved)]))
+        self.assertIn("MUST NOT carry supersedesEvidenceRef", stderr.getvalue())
+
+        # Only the interim state guard separates this pair from acceptance.
+        with mock.patch.object(ver, "interim_supersession_errors", return_value=[]):
+            self.assertEqual([], ver.validate_pair(interim, resolved))
+
+    def test_htlc9_rejects_signed_future_evidence_selector(self):
+        # DACS-4 §9.7: a record carrying more than one evidence-type
+        # discriminator, or an unsupported one, is rejected; CORE §11.2.5: an
+        # older reader refuses a new type instead of ignoring its selector.
+        # Both records are signed and the pair is rebound, so only the selector
+        # guard can reject. An unrelated signed member stays forward-readable.
+        gen, ver = self._load_pack_modules()
+
+        def cli(interim, resolved):
+            return subprocess.run(
+                [sys.executable, str(VERIFY_HTLC9), str(interim), str(resolved)],
+                cwd=ROOT, text=True, capture_output=True,
+            )
+
+        inert = lambda evidence: evidence.__setitem__("futureOptional", {"version": 2})
+        control = self._pair(gen, mutate_interim=inert, mutate_resolved=inert)
+        self.assertEqual([], ver.validate_pair(*control))
+        accepted = cli(*control)
+        self.assertEqual(0, accepted.returncode, accepted.stdout + accepted.stderr)
+        self.assertIn("both signatures verified", accepted.stdout)
+
+        future = lambda evidence: evidence.__setitem__("futureEvidenceVersion", "1")
+        selector = (
+            "SettlementEvidence selector MUST be exclusively evidenceVersion '1'; "
+            "observed selector(s): evidenceVersion, futureEvidenceVersion"
+        )
+        for which, kwargs in (
+            ("interim", {"mutate_interim": future}),
+            ("resolved", {"mutate_resolved": future}),
+        ):
+            with self.subTest(record=which):
+                interim, resolved = self._pair(gen, **kwargs)
+                signed = {
+                    name: json.loads(path.read_text(encoding="utf-8"))["settlementEvidence"]
+                    for name, path in (("interim", interim), ("resolved", resolved))
+                }
+                self.assertEqual("1", signed[which]["evidenceVersion"])
+                self.assertEqual("1", signed[which]["futureEvidenceVersion"])
+                self.assertIsNone(ver.verify_signature(signed["interim"]))
+                self.assertIsNone(ver.verify_signature(signed["resolved"]))
+                self.assertEqual(
+                    ver.content_hash_hex(signed["interim"]),
+                    signed["resolved"]["supersedesEvidenceRef"]["contentHash"],
+                )
+
+                if which == "interim":
+                    expected = [
+                        ver.fail(interim, selector),
+                        ver.fail(resolved, "pair binding not evaluated because interim evidence was rejected"),
+                    ]
+                else:
+                    expected = [ver.fail(resolved, selector)]
+                self.assertEqual(expected, ver.validate_pair(interim, resolved))
+                rejected = cli(interim, resolved)
+                self.assertEqual(1, rejected.returncode, rejected.stdout + rejected.stderr)
+                self.assertEqual(expected, rejected.stderr.splitlines())
+                self.assertNotIn("both signatures verified", rejected.stdout)
+
+                # Only the selector guard separates this pair from acceptance.
+                with mock.patch.object(
+                    ver, "settlement_evidence_selector_error", return_value=None
+                ):
+                    self.assertEqual([], ver.validate_pair(interim, resolved))
+
+    def test_nfd_and_nfc_values_hash_and_verify_identically(self):
+        gen, ver = self._load_pack_modules()
+        # Code points, not literals: an editor must not be able to NFC-fold this source (see tests/test_jcs.py).
+        nfd, nfc = "e" + chr(0x0301), chr(0x00E9)
+        self.assertNotEqual(nfd, nfc)
+        set_locator = lambda value: lambda evidence: evidence["supersedesEvidenceRef"]["anchor"].__setitem__("locator", value)
+        nfd_interim_path, nfd_resolved_path = self._pair(gen, mutate_resolved=set_locator(nfd))
+        nfc_interim_path, nfc_resolved_path = self._pair(gen, mutate_resolved=set_locator(nfc))
+
+        nfd_resolved = json.loads(nfd_resolved_path.read_text())["settlementEvidence"]
+        nfc_resolved = json.loads(nfc_resolved_path.read_text())["settlementEvidence"]
+        # The wire still carries the distinct spellings; only the canonical form normalises them.
+        self.assertEqual(nfd_resolved["supersedesEvidenceRef"]["anchor"]["locator"], nfd)
+        self.assertEqual(nfc_resolved["supersedesEvidenceRef"]["anchor"]["locator"], nfc)
+        self.assertEqual(ver.content_hash_hex(nfd_resolved), ver.content_hash_hex(nfc_resolved))
+        self.assertEqual(nfd_resolved["signature"], nfc_resolved["signature"])
+        self.assertEqual(ver.validate_pair(nfd_interim_path, nfd_resolved_path), [])
+        self.assertEqual(ver.validate_pair(nfc_interim_path, nfc_resolved_path), [])
+
+        self.assertNotEqual(
+            ver.content_hash_hex({nfd: "same value"}),
+            ver.content_hash_hex({nfc: "same value"}),
+        )
+
+    def test_dacsx_correction_zombie_is_gone(self):
+        self.assertFalse((ROOT / "conformance/fixtures/dacsx").exists())
+        self.assertFalse((ROOT / "scripts/verify_dacsx_dispute_pack.py").exists())

@@ -1,14 +1,19 @@
 import base64
+import copy
 import json
 import shutil
 import subprocess
 import tempfile
 import unittest
+from itertools import combinations
 from pathlib import Path
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_conformance_vectors.py"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
+GOLDEN_OUTPUTS = ROOT / "conformance" / "vectors" / "golden.json"
 VECTORS = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 IDENTITY_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "identity-bundle.json"
 RATING_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "rating-record.json"
@@ -61,7 +66,17 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             {
                 "count": len(separators),
                 "separators": separators,
+                "historicalImport": {
+                    "operation": "legacy-import",
+                    "separator": "dacs-channelmsg:v1:",
+                    "digestFraming": "raw-sha256-bytes",
+                },
             },
+        )
+        self.assertNotIn("dacs-channelmsg:v1:", separators)
+        self.assertEqual(
+            validator.load_historical_channel_domain(ROOT),
+            "dacs-channelmsg:v1:",
         )
 
     def test_registry_golden_rejects_same_count_substitution(self):
@@ -85,6 +100,40 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             result = run_validator("--manifest", str(manifest))
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("spec MUST identify the closed registry at §B.7", result.stderr)
+
+    def test_output_only_dacsx_rows_are_candidates_not_goldens(self):
+        data = json.loads(MANIFEST.read_text())
+        outputs = json.loads(GOLDEN_OUTPUTS.read_text())
+        dacsx = [
+            case for case in data["cases"]
+            if case["area"] in {"dispute", "disclosure"}
+        ]
+        self.assertEqual(17, len(dacsx))
+        self.assertEqual(
+            {"dispute": 8, "disclosure": 9},
+            {
+                area: sum(case["area"] == area for case in dacsx)
+                for area in ("dispute", "disclosure")
+            },
+        )
+        for case in dacsx:
+            with self.subTest(case=case["id"]):
+                self.assertEqual("candidate", case["status"])
+                self.assertIn("output-only expectation", case["reason"])
+                self.assertIn("not published", case["reason"])
+        self.assertEqual(182, sum(
+            case["status"] == "golden" for case in data["cases"]
+        ))
+        self.assertEqual(64, sum(
+            case["status"] == "candidate" for case in data["cases"]
+        ))
+        for area in ("dispute", "disclosure"):
+            with self.subTest(output_area=area):
+                self.assertIn("candidate", outputs[area]["status"])
+                self.assertIn("output-only expectations", outputs[area]["status"])
+                self.assertNotIn("golden", outputs[area]["status"])
+                self.assertIn("constructed deterministically", outputs[area]["inputs"])
+                self.assertIn("exact signed input/resolver pack is not published", outputs[area]["inputs"])
 
     def test_vector_covers_all_five_dacs_stages_in_order(self):
         data = json.loads(VECTORS.read_text())
@@ -145,7 +194,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         conformance = base / "conformance"
         (conformance / "fixtures").mkdir(parents=True)
         (conformance / "vectors").mkdir()
-        for fixture in ["bundle.json", "divergent-seller.json", "htlc9.json", "settlement.json", "delivery.json"]:
+        for fixture in ["bundle.json", "divergent-seller.json", "htlc9.json", "settlement.json", "delivery.json", "ap2.json"]:
             (conformance / "fixtures" / fixture).write_text("{}\n", encoding="utf-8")
         (conformance / "MANIFEST.json").write_text(
             json.dumps(
@@ -189,6 +238,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                     "settlement": {
                         "fixture": "conformance/fixtures/settlement.json",
                         "deliveryFixture": "conformance/fixtures/delivery.json",
+                        "ap2Fixture": "conformance/fixtures/ap2.json",
                         "decisions": {"timeout": "indeterminate"},
                     },
                     "dispute": {"decisions": {"opened": "pass"}},
@@ -416,6 +466,41 @@ class B2ConformanceHashTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("does not match the Listing §B.7 separator", result.stderr)
 
+    def test_lifecycle_wrapper_requires_one_matching_supported_selector(self):
+        module = load_vector_validator()
+        expected_by_kind = {
+            "DeliveryEvidence": "deliveryEvidenceVersion",
+            "SettlementEvidence": "evidenceVersion",
+        }
+        selectors = sorted(module.DACS4_EVIDENCE_SELECTORS)
+        self.assertEqual(len(selectors), 4)
+        for kind, expected_selector in expected_by_kind.items():
+            with self.subTest(kind=kind, case="expected-singleton"):
+                self.assertTrue(module.lifecycle_evidence_kind_matches(
+                    kind, {expected_selector: "1"}
+                ))
+            for selector in selectors:
+                artifact = {selector: "1"}
+                with self.subTest(kind=kind, case="singleton", selector=selector):
+                    self.assertIs(
+                        module.lifecycle_evidence_kind_matches(kind, artifact),
+                        selector == expected_selector,
+                    )
+            with self.subTest(kind=kind, case="missing"):
+                self.assertFalse(module.lifecycle_evidence_kind_matches(kind, {}))
+            with self.subTest(kind=kind, case="wrong-value"):
+                self.assertFalse(module.lifecycle_evidence_kind_matches(
+                    kind, {expected_selector: "2"}
+                ))
+            for left, right in combinations(selectors, 2):
+                artifact = {left: "1", right: "1"}
+                with self.subTest(
+                    kind=kind, case="mixed-pair", left=left, right=right
+                ):
+                    self.assertFalse(
+                        module.lifecycle_evidence_kind_matches(kind, artifact)
+                    )
+
     def test_non_ed25519_algorithm_recorded_as_fail(self):
         # C2: a non-ed25519 suite is unverifiable here -> observed 'fail' -> the
         # declared 'verify' pin mismatches. It must not crash or silently verify.
@@ -446,6 +531,127 @@ class B2ConformanceHashTests(unittest.TestCase):
         result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("unknown keys", result.stderr)
+
+
+class ListingBoundaryTests(unittest.TestCase):
+    """B8/C12/C13: body-discriminator binding, numeric safety, LR-2 size cap."""
+
+    def _module(self):
+        return load_vector_validator()
+
+    def _listing_artifact(self):
+        data = json.loads(VECTORS.read_text())
+        listing = next(a for a in data["artifacts"] if a["kind"] == "Listing")
+        return copy.deepcopy(listing)
+
+    def _vector(self, artifact):
+        return {
+            "vectorId": "listing-boundary",
+            "title": "listing boundary specimen",
+            "dacsVersion": "0.1",
+            "description": "constructed boundary specimen",
+            "artifacts": [artifact],
+            "expectedResult": {"verifies": True},
+        }
+
+    def _full_vector(self, artifact):
+        data = json.loads(VECTORS.read_text())
+        replaced = False
+        for entry in data["artifacts"]:
+            if entry["kind"] == "Listing":
+                entry["artifact"] = artifact["artifact"]
+                entry["contentHash"] = artifact["contentHash"]
+                entry["signatureChecks"] = artifact["signatureChecks"]
+                replaced = True
+        self.assertTrue(replaced, "happy-path vector has no Listing artifact")
+        return data
+
+    def _resign_listing(self, module, listing):
+        private = Ed25519PrivateKey.from_private_bytes(b"\x33" * 32)
+        public = private.public_key().public_bytes_raw().hex()
+        signer = "cci:" + public
+        digest = module.artifact_hash_hex("Listing", listing)
+        payload = ("dacs-listing:v1:" + digest).encode("ascii")
+        value = base64.urlsafe_b64encode(private.sign(payload)).rstrip(b"=").decode("ascii")
+        listing["signature"] = {"algorithm": "ed25519", "signer": signer, "value": value}
+        return listing, signer
+
+    def _write(self, data):
+        tmpdir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        path = tmpdir / "listing-boundary.json"
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        return path
+
+    def _errors(self, artifact):
+        module = self._module()
+        path = self._write(self._vector(artifact))
+        return module.validate_vector(path)
+
+    def test_body_discriminator_must_match_wrapper_kind(self):
+        # B8: a `Listing` wrapper whose body has an agreement discriminator and no
+        # dacsVersion is rejected before any hashing or signature work.
+        artifact = self._listing_artifact()
+        artifact["artifact"].pop("dacsVersion")
+        artifact["artifact"]["agreementVersion"] = "1"
+        errors = self._errors(artifact)
+        self.assertTrue(any("must carry dacsVersion: '1'" in e for e in errors), errors)
+        self.assertTrue(any("foreign type discriminator" in e for e in errors), errors)
+
+    def test_foreign_discriminator_rejected_even_with_own(self):
+        artifact = self._listing_artifact()
+        artifact["artifact"]["agreementVersion"] = "1"
+        errors = self._errors(artifact)
+        self.assertTrue(any("foreign type discriminator" in e for e in errors), errors)
+
+    def test_unsafe_numeric_listing_version_fails_closed(self):
+        # C12: 2**53 is outside the IEEE-754 safe-integer range; canonicalisation
+        # must reject it as a controlled error, never an uncaught ValueError.
+        artifact = self._listing_artifact()
+        artifact["artifact"]["listingVersion"] = 2**53
+        errors = self._errors(artifact)
+        self.assertTrue(any("canonical form is not an admissible DACS value" in e for e in errors), errors)
+
+    def _pad_listing(self, module, artifact, target_bytes):
+        listing = copy.deepcopy(artifact["artifact"])
+        listing.pop("signature", None)
+        listing.pop("zPad", None)
+        base = len(module.canonical_json(module.signing_scope("Listing", listing)))
+        listing["zPad"] = ""
+        header = (
+            len(module.canonical_json(module.signing_scope("Listing", listing))) - base
+        )
+        listing["zPad"] = "x" * (target_bytes - base - header)
+        sized = len(module.canonical_json(module.signing_scope("Listing", listing)))
+        self.assertEqual(sized, target_bytes, f"padding produced {sized} != {target_bytes}")
+        listing, signer = self._resign_listing(module, listing)
+        artifact["artifact"] = listing
+        artifact["contentHash"] = module.content_hash_uri("Listing", listing)
+        artifact["signatureChecks"] = [
+            {"path": "signature", "signer": signer, "expect": "verify"}
+        ]
+        return artifact
+
+    def _full_errors(self, artifact):
+        module = self._module()
+        path = self._write(self._full_vector(artifact))
+        return module.validate_vector(path)
+
+    def test_lr2_size_cap_boundary(self):
+        # C13: 16,383 and 16,384 byte canonical Listings, correctly re-hashed and
+        # re-signed, fully admit (zero errors); a correctly re-hashed/re-signed
+        # 16,385 byte Listing is rejected specifically by LR-2 and nothing else.
+        module = self._module()
+        for size in (16_383, 16_384):
+            with self.subTest(size=size):
+                artifact = self._pad_listing(module, self._listing_artifact(), size)
+                errors = self._full_errors(artifact)
+                self.assertEqual(errors, [])
+        with self.subTest(size=16_385):
+            artifact = self._pad_listing(module, self._listing_artifact(), 16_385)
+            errors = self._full_errors(artifact)
+            self.assertEqual(len(errors), 1, errors)
+            self.assertIn("LR-2 size cap", errors[0])
 
 
 if __name__ == "__main__":

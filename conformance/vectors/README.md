@@ -102,9 +102,19 @@ v0.1 conformance requirements:
 - `conformance/fixtures/reputation/reputation-suspicious-pattern-flags.json` —
   advisory `suspiciousPatternFlags` on a ReputationDerivation / derivation surface.
 - `conformance/fixtures/settlement/htlc9-asymmetric.json` — the HTLC-9
-  `dest-revealed-source-unclaimed` interim evidence state.
-- `conformance/fixtures/dacsx/dispute-outcome-htlc9-correction.json` — the
-  provisional DACS-X DisputeOutcome seam that emits a correction amendment.
+  `dest-revealed-source-unclaimed` interim evidence state (signed).
+- `conformance/fixtures/settlement/htlc9-asymmetric-resolved.json` — the ST-8
+  `:resolved` success record that supersedes it (`supersedesEvidenceRef` binds the
+  interim record's §B.2 content hash; no amendment — DACS-4 §9.5.4). Both are
+  emitted by `scripts/generate_htlc9_st8_pack.py` from the public orchestrator seed
+  under the registered `key:` ClaimReference. Their fixture wrappers carry
+  finalized receipt context. `scripts/verify_htlc9_st8_pack.py` independently
+  pins the expected phase orchestrator and verifies both signatures, receipt
+  logical/native/content/writer bindings, supersession, and the signed
+  source-lock / destination-reveal / source-claim topology. The wrapper receipt
+  context is a fixture precondition only: this pack does not query either
+  native chain, establish reveal transaction finality, or authenticate a
+  production rail/finality provider.
 
 ## Validate locally
 
@@ -115,10 +125,13 @@ python3 scripts/validate_conformance_vectors.py
 python3 scripts/validate_domain_separators.py
 python3 scripts/validate_rule_ids.py
 python3 scripts/validate_spec_tables.py
-python3 scripts/verify_dacsx_dispute_pack.py
+python3 scripts/generate_htlc9_st8_pack.py --check
+python3 scripts/verify_htlc9_st8_pack.py
 ```
 
-The validators are stdlib-only. The vector validator checks:
+The validators are stdlib-only, except signature verification (the vector validator
+and `verify_htlc9_st8_pack.py`), which needs `cryptography` and says so if it is missing.
+The vector validator checks:
 
 - required top-level vector fields
 - exactly ordered five-stage coverage

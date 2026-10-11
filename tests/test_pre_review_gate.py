@@ -1,0 +1,756 @@
+import copy
+import importlib.util
+import json
+import os
+from pathlib import Path
+import tempfile
+import time
+import unittest
+from unittest import mock
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts" / "pre_review_gate.py"
+MANIFEST = ROOT / "conformance" / "pre-review-invariants.json"
+
+
+def load_gate():
+    spec = importlib.util.spec_from_file_location("pre_review_gate", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class PreReviewGateTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.gate = load_gate()
+        cls.manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+    def test_manifest_and_registered_vectors_execute(self):
+        self.gate.validate_manifest(self.manifest)
+        self.assertEqual(self.gate.run_vector_matrices(self.manifest), 22)
+        self.assertEqual(
+            self.gate.run_independent_review_evidence(self.manifest), 20
+        )
+
+    def test_required_independent_review_lens_cannot_be_removed(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewLenses"].pop()
+        with self.assertRaisesRegex(
+            self.gate.GateError, "do not match the required set"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_each_lens_requires_counterexample_and_control_evidence(self):
+        for role in ("counterexampleEvidence", "controlEvidence"):
+            with self.subTest(role=role):
+                manifest = copy.deepcopy(self.manifest)
+                manifest["independentReviewLenses"][0][role] = []
+                with self.assertRaisesRegex(self.gate.GateError, role):
+                    self.gate.validate_manifest(manifest)
+
+    def test_dangling_independent_review_evidence_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewLenses"][0]["counterexampleEvidence"] = [
+            "missing-evidence"
+        ]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "dangling independent review evidence"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_duplicate_independent_review_evidence_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["independentReviewEvidence"][0])
+        manifest["independentReviewEvidence"].append(duplicate)
+        with self.assertRaisesRegex(
+            self.gate.GateError, "evidence must be unique and runnable"
+        ):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["independentReviewEvidence"][0])
+        duplicate["id"] = "different-id-same-target"
+        manifest["independentReviewEvidence"].append(duplicate)
+        with self.assertRaisesRegex(
+            self.gate.GateError, "code-pinned declaration"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_arbitrary_zero_exit_script_cannot_substitute_for_unittest(self):
+        for registry in ("unitRegressions", "independentReviewEvidence"):
+            with self.subTest(registry=registry):
+                manifest = copy.deepcopy(self.manifest)
+                manifest[registry][0]["file"] = "scripts/jcs.py"
+                with self.assertRaisesRegex(
+                    self.gate.GateError, "test_.*under tests"
+                ):
+                    self.gate.validate_manifest(manifest)
+
+        entries = [{
+            "id": "zero-exit-substitution",
+            "file": "scripts/jcs.py",
+            "test": "PlausibleTests.test_claimed_evidence",
+        }]
+        with self.assertRaisesRegex(self.gate.GateError, "test_.*under tests"):
+            self.gate._run_python_evidence(entries, "review evidence")
+
+    def test_unittest_identity_is_safe_and_nonexistent_target_fails(self):
+        unsafe = [{
+            "id": "unsafe-target",
+            "file": "tests/test_pr333_fix_2.py",
+            "test": "--help",
+        }]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "safe dotted unittest identity"
+        ):
+            self.gate._run_python_evidence(unsafe, "review evidence")
+
+        nonexistent = [{
+            "id": "nonexistent-target",
+            "file": "tests/test_pr333_fix_2.py",
+            "test": "AuthenticatedEvidenceWireTypeAlgorithmTests.test_does_not_exist",
+        }]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "nonexistent-target: independent review evidence.*failing"
+        ):
+            self.gate._run_python_evidence(nonexistent, "review evidence")
+
+    def test_helper_and_alternate_passing_regression_retargets_are_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["unitRegressions"][0]["test"] = (
+            "RevocationStateCompletenessTests._fixture"
+        )
+        with self.assertRaisesRegex(
+            self.gate.GateError, "final unittest identity must start with test_"
+        ):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        manifest["unitRegressions"][0]["test"] = (
+            "RevocationStateCompletenessTests.test_metadata_and_hash"
+        )
+        with self.assertRaisesRegex(
+            self.gate.GateError, "regression does not match.*code-pinned"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_selected_skip_is_rejected(self):
+        entry = {
+            "id": "skip-probe",
+            "file": "tests/test_pre_review_gate.py",
+            "test": "PreReviewGateTests.test_skip_probe",
+        }
+        with mock.patch.dict(
+            os.environ, {"DACS_PRE_REVIEW_SKIP_PROBE": "1"}
+        ):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "skip-probe: independent review evidence.*failing",
+            ):
+                self.gate._run_python_evidence([entry], "review evidence")
+
+    def test_skip_probe(self):
+        if os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE") == "1":
+            self.skipTest("selected skips must not satisfy review evidence")
+        self.assertNotEqual(os.environ.get("DACS_PRE_REVIEW_SKIP_PROBE"), "1")
+
+    def test_runner_loads_the_exact_unittest_file(self):
+        entry = self.manifest["independentReviewEvidence"][0]
+        process = mock.Mock(returncode=0)
+
+        def completed(**kwargs):
+            nonce = kwargs["input"].strip()
+            summary = json.dumps(self.gate.EXACT_UNITTEST_SUMMARY, sort_keys=True)
+            record = (
+                f"{self.gate.EXACT_UNITTEST_COMPLETION_MARKER} "
+                f"{nonce} {summary}\n"
+            )
+            return record, ""
+
+        process.communicate.side_effect = completed
+
+        with mock.patch.object(
+            self.gate.subprocess, "Popen", return_value=process
+        ) as popen:
+            self.assertEqual(
+                self.gate._run_python_evidence([entry], "review evidence"), 1
+            )
+        command = popen.call_args.args[0]
+        self.assertEqual(
+            command[:3],
+            [
+                self.gate.sys.executable,
+                "-c",
+                self.gate.EXACT_UNITTEST_RUNNER,
+            ],
+        )
+        self.assertEqual(
+            command[3],
+            str((ROOT / entry["file"]).resolve()),
+        )
+        self.assertEqual(command[4], entry["test"])
+        self.assertEqual(command[5], self.gate.EXACT_UNITTEST_COMPLETION_MARKER)
+        self.assertEqual(
+            len(process.communicate.call_args.kwargs["input"].strip()), 64
+        )
+        self.assertEqual(
+            process.communicate.call_args.kwargs["timeout"],
+            self.gate.SELECTED_TEST_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(
+            popen.call_args.kwargs["env"]["PYTHONPATH"],
+            os.pathsep.join((str(ROOT), str(ROOT / "tests"))),
+        )
+        self.assertEqual(
+            popen.call_args.kwargs["start_new_session"],
+            os.name == "posix",
+        )
+
+    def _run_temporary_evidence(
+        self,
+        body: str,
+        test: str = "ExitProbeTests.test_probe",
+    ) -> int:
+        entry = {
+            "id": "exit-probe",
+            "file": "tests/test_exit_probe.py",
+            "test": test,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "test_exit_probe.py"
+            path.write_text(body, encoding="utf-8")
+            with mock.patch.object(
+                self.gate, "_within_test_root", return_value=path
+            ):
+                return self.gate._run_python_evidence([entry], "review evidence")
+
+    def test_premature_zero_exit_is_not_review_evidence(self):
+        forged = json.dumps({
+            "errors": 0, "expectedFailures": 0, "failures": 0,
+            "skipped": 0, "testsRun": 1, "unexpectedSuccesses": 0,
+        }, sort_keys=True)
+        bodies = {
+            "import-system-exit": (
+                "import unittest\n"
+                "raise SystemExit(0)\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        self.fail('the selected test must never run')\n"
+            ),
+            "class-setup-system-exit": (
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    @classmethod\n"
+                "    def setUpClass(cls):\n"
+                "        raise SystemExit(0)\n"
+                "    def test_probe(self):\n"
+                "        self.fail('the selected test must never run')\n"
+            ),
+            "os-exit": (
+                "import os\n"
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        os._exit(0)\n"
+            ),
+            "forged-completion-record": (
+                "import os\n"
+                "import sys\n"
+                "import unittest\n"
+                f"sys.stdout.write(sys.argv[3] + ' ' + '0' * 64 + ' ' + {forged!r} + '\\n')\n"
+                "sys.stdout.flush()\n"
+                "os._exit(0)\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        pass\n"
+            ),
+        }
+        for name, body in bodies.items():
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    self.gate.GateError,
+                    "exit-probe: independent review evidence.*failing",
+                ):
+                    self._run_temporary_evidence(body)
+
+    def test_completed_passing_test_is_review_evidence(self):
+        self.assertEqual(
+            self._run_temporary_evidence(
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        print('ordinary test output')\n"
+                "        self.assertTrue(True)\n"
+            ),
+            1,
+        )
+
+    def test_hanging_selected_test_fails_within_its_deadline(self):
+        body = (
+            "import time\n"
+            "import unittest\n"
+            "class ExitProbeTests(unittest.TestCase):\n"
+            "    def test_probe(self):\n"
+            "        while True:\n"
+            "            time.sleep(1)\n"
+        )
+        started = time.monotonic()
+        with mock.patch.object(
+            self.gate, "SELECTED_TEST_TIMEOUT_SECONDS", 0.2
+        ), mock.patch.object(
+            self.gate, "SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS", 1
+        ):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "exit-probe: independent review evidence timed out after 0.2 seconds",
+            ):
+                self._run_temporary_evidence(body)
+        self.assertLess(time.monotonic() - started, 3)
+
+    def _assert_timeout_releases_descendant_lock(self, parent_tail: str):
+        import fcntl
+        import signal
+
+        with tempfile.TemporaryDirectory() as temporary:
+            lock_path = Path(temporary) / "descendant.lock"
+            ready_path = Path(temporary) / "descendant.ready"
+            lock_path.touch()
+            child = (
+                "import fcntl, os, pathlib, time\n"
+                f"lock = open({str(lock_path)!r}, 'r+')\n"
+                "fcntl.flock(lock, fcntl.LOCK_EX)\n"
+                f"pathlib.Path({str(ready_path)!r}).write_text(str(os.getpid()))\n"
+                "time.sleep(60)\n"
+            )
+            body = (
+                "import pathlib, subprocess, sys, time\n"
+                "import unittest\n"
+                f"CHILD = {child!r}\n"
+                f"READY = pathlib.Path({str(ready_path)!r})\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        subprocess.Popen([sys.executable, '-c', CHILD])\n"
+                "        deadline = time.monotonic() + 5\n"
+                "        while not READY.exists():\n"
+                "            if time.monotonic() >= deadline:\n"
+                "                self.fail('descendant did not acquire its lock')\n"
+                "            time.sleep(0.01)\n"
+                + parent_tail
+            )
+            started = time.monotonic()
+            with mock.patch.object(
+                self.gate, "SELECTED_TEST_TIMEOUT_SECONDS", 1
+            ), mock.patch.object(
+                self.gate, "SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS", 1
+            ):
+                with self.assertRaisesRegex(
+                    self.gate.GateError,
+                    "exit-probe: independent review evidence timed out after 1 seconds",
+                ):
+                    self._run_temporary_evidence(body)
+            self.assertLess(time.monotonic() - started, 4)
+            self.assertTrue(ready_path.is_file())
+            with lock_path.open("r+") as lock:
+                release_deadline = time.monotonic() + 2
+                while True:
+                    try:
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except BlockingIOError:
+                        if time.monotonic() < release_deadline:
+                            time.sleep(0.01)
+                            continue
+                        child_pid = int(ready_path.read_text())
+                        try:
+                            os.kill(child_pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        self.fail(
+                            "timed-out descendant still holds its lock two "
+                            "seconds after process-group termination"
+                        )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_timeout_kills_descendant_holding_output_pipes(self):
+        self._assert_timeout_releases_descendant_lock(
+            "        while True:\n"
+            "            time.sleep(1)\n"
+        )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_timeout_kills_pipe_holder_after_successful_runner_exit(self):
+        self._assert_timeout_releases_descendant_lock("")
+
+    def test_non_posix_timeout_cleanup_avoids_blocking_pipe_closes(self):
+        streams = [mock.Mock(), mock.Mock(), mock.Mock()]
+        process = mock.Mock(
+            stdin=streams[0],
+            stdout=streams[1],
+            stderr=streams[2],
+        )
+        with mock.patch.object(self.gate.os, "name", "nt"):
+            self.assertIsNone(
+                self.gate._terminate_selected_test_process(process)
+            )
+        process.kill.assert_called_once_with()
+        process.wait.assert_called_once_with(
+            timeout=self.gate.SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS
+        )
+        for stream in streams:
+            stream.close.assert_not_called()
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_keyboard_interrupt_kills_and_reaps_selected_test_group(self):
+        entry = self.manifest["independentReviewEvidence"][0]
+        streams = [mock.Mock(), mock.Mock(), mock.Mock()]
+        process = mock.Mock(
+            pid=424242,
+            stdin=streams[0],
+            stdout=streams[1],
+            stderr=streams[2],
+        )
+        process.communicate.side_effect = KeyboardInterrupt
+        with mock.patch.object(
+            self.gate.subprocess, "Popen", return_value=process
+        ), mock.patch.object(self.gate.os, "killpg") as killpg:
+            with self.assertRaises(KeyboardInterrupt):
+                self.gate._run_python_evidence([entry], "review evidence")
+        killpg.assert_called_once_with(process.pid, self.gate.signal.SIGKILL)
+        process.wait.assert_called_once_with(
+            timeout=self.gate.SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS
+        )
+        for stream in streams:
+            stream.close.assert_called_once_with()
+
+    def test_multiple_test_selection_is_rejected(self):
+        with self.assertRaisesRegex(
+            self.gate.GateError,
+            "exit-probe: independent review evidence.*failing",
+        ):
+            self._run_temporary_evidence(
+                "import unittest\n"
+                "class EvidenceFactory:\n"
+                "    @staticmethod\n"
+                "    def test_many():\n"
+                "        return unittest.TestSuite([\n"
+                "            unittest.FunctionTestCase(lambda: None),\n"
+                "            unittest.FunctionTestCase(lambda: None),\n"
+                "        ])\n",
+                test="EvidenceFactory.test_many",
+            )
+
+    def test_expected_failure_and_unexpected_success_are_rejected(self):
+        bodies = {
+            "expected-failure": (
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    @unittest.expectedFailure\n"
+                "    def test_probe(self):\n"
+                "        self.fail('expected failures are not passing evidence')\n"
+            ),
+            "unexpected-success": (
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    @unittest.expectedFailure\n"
+                "    def test_probe(self):\n"
+                "        pass\n"
+            ),
+        }
+        for name, body in bodies.items():
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    self.gate.GateError,
+                    "exit-probe: independent review evidence.*failing",
+                ):
+                    self._run_temporary_evidence(body)
+
+    def test_ambient_pythonpath_cannot_shadow_code_pinned_test(self):
+        entry = self.manifest["independentReviewEvidence"][0]
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "tests"
+            package.mkdir()
+            (package / "__init__.py").write_text("", encoding="utf-8")
+            (package / "test_pr333_fix_2.py").write_text(
+                "import os\n"
+                "from pathlib import Path\n"
+                "import unittest\n"
+                "Path(os.environ['DACS_SHADOW_MARKER']).write_text('shadowed')\n"
+                "class AuthenticatedEvidenceWireTypeAlgorithmTests(unittest.TestCase):\n"
+                "    def test_algorithm_array_rejected_without_exception_ebfab(self):\n"
+                "        pass\n",
+                encoding="utf-8",
+            )
+            marker = Path(temporary) / "shadow-marker"
+            with mock.patch.dict(os.environ, {
+                "PYTHONPATH": temporary,
+                "DACS_SHADOW_MARKER": str(marker),
+            }):
+                self.assertEqual(
+                    self.gate._run_python_evidence([entry], "review evidence"), 1
+                )
+            self.assertFalse(marker.exists(), "an external tests package ran")
+
+    def test_two_tests_cannot_claim_every_lens_and_surface(self):
+        manifest = copy.deepcopy(self.manifest)
+        counter = manifest["independentReviewEvidence"][0]["id"]
+        control = next(
+            item["id"] for item in manifest["independentReviewEvidence"]
+            if item["id"] == "type-totality-control"
+        )
+        for lens in manifest["independentReviewLenses"]:
+            lens["counterexampleEvidence"] = [counter]
+            lens["controlEvidence"] = [control]
+        with self.assertRaisesRegex(self.gate.GateError, "evidence belongs to both"):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(manifest)
+        for evidence in manifest["independentReviewEvidence"]:
+            if evidence["id"] in {counter, control}:
+                evidence["surfaces"] = sorted(self.gate.EVIDENCE_SURFACES)
+        with self.assertRaisesRegex(self.gate.GateError, "code-pinned declaration"):
+            self.gate.validate_manifest(manifest)
+
+    def test_pinned_evidence_id_cannot_be_retargeted(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewEvidence"][0]["test"] = (
+            "AuthenticatedEvidenceWireTypeAlgorithmTests.test_valid_algorithm_preserved"
+        )
+        with self.assertRaisesRegex(self.gate.GateError, "code-pinned declaration"):
+            self.gate.validate_manifest(manifest)
+
+    def test_invalid_independent_review_evidence_shape_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["independentReviewEvidence"][0]["surfaces"] = ["invented"]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "evidence must be unique and runnable"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_failing_independent_review_evidence_fails_the_gate(self):
+        failed = mock.Mock(returncode=1)
+        failed.communicate.return_value = ("", "deliberate failure")
+        with mock.patch.object(
+            self.gate.subprocess, "Popen", return_value=failed
+        ):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "type-totality-array-ebfab-counterexample: independent review evidence.*failing",
+            ):
+                self.gate.run_independent_review_evidence(self.manifest)
+
+    def test_incomplete_matrix_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["vectorMatrices"][0]["cases"].pop()
+        with self.assertRaisesRegex(self.gate.GateError, "incomplete matrix"):
+            self.gate.validate_manifest(manifest)
+
+    def test_duplicate_matrix_coordinate_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        duplicate = copy.deepcopy(manifest["vectorMatrices"][0]["cases"][0])
+        duplicate["caseId"] = "duplicate-case-id"
+        manifest["vectorMatrices"][0]["cases"].append(duplicate)
+        with self.assertRaisesRegex(self.gate.GateError, "duplicate coordinate"):
+            self.gate.validate_manifest(manifest)
+
+    def test_coverage_claim_requires_a_declared_executable_matrix(self):
+        self.assertEqual(self.manifest["plannedInvariantClasses"], [])
+        self.assertEqual(
+            {item["id"] for item in self.manifest["coveredInvariantClasses"]},
+            {
+                "same-sequence-conflict",
+                "closed-schema",
+                "reference-reuse",
+                "selector-exclusivity",
+                "cross-module-composition",
+            },
+        )
+        manifest = copy.deepcopy(self.manifest)
+        manifest["coveredInvariantClasses"][0]["matrixIds"] = ["missing-matrix"]
+        with self.assertRaisesRegex(self.gate.GateError, "coverage references missing matrix"):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        manifest["coveredInvariantClasses"][0]["matrixIds"] = [
+            "pr396-selector-exclusivity"
+        ]
+        with self.assertRaisesRegex(self.gate.GateError, "does not declare this invariant class"):
+            self.gate.validate_manifest(manifest)
+
+        manifest = copy.deepcopy(self.manifest)
+        manifest["coveredInvariantClasses"] = [
+            item for item in manifest["coveredInvariantClasses"]
+            if item["id"] != "closed-schema"
+        ]
+        with self.assertRaisesRegex(
+            self.gate.GateError, "matrix invariant classes must be claimed as covered"
+        ):
+            self.gate.validate_manifest(manifest)
+
+    def test_class_cannot_be_both_covered_and_planned(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["plannedInvariantClasses"] = [
+            {"id": "reference-reuse", "status": "planned"}
+        ]
+        with self.assertRaisesRegex(self.gate.GateError, "both covered and planned"):
+            self.gate.validate_manifest(manifest)
+
+    def test_disappeared_case_id_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["vectorMatrices"][0]["cases"][0]["caseId"] = "case-that-does-not-exist"
+        self.gate.validate_manifest(manifest)
+        with self.assertRaisesRegex(self.gate.GateError, "required case disappeared"):
+            self.gate.run_vector_matrices(manifest)
+
+    def test_duplicate_corpus_vector_names_are_rejected(self):
+        corpus = {"vectors": [
+            {"name": "same-name", "expected": "pass", "want": {}},
+            {"name": "same-name", "expected": "fail", "want": {}},
+        ]}
+        with self.assertRaisesRegex(
+            self.gate.GateError, "duplicate corpus vector name: same-name"
+        ):
+            self.gate._index_vectors(corpus, "duplicate-test")
+
+    def test_incomplete_consumer_effect_expectation_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["vectorMatrices"][0]["cases"][0]["expected"].pop("session")
+        with self.assertRaisesRegex(self.gate.GateError, "incomplete expected result"):
+            self.gate.validate_manifest(manifest)
+
+    def test_session_only_case_drift_is_rejected(self):
+        original_load = self.gate._load_evaluator
+
+        class SessionDrift:
+            def __init__(self, evaluator):
+                self.evaluator = evaluator
+
+            def evaluate(self, *args):
+                verdict, effects = self.evaluator.evaluate(*args)
+                return verdict, {**effects, "session": "continue"}
+
+        self.gate._load_evaluator = lambda relative: SessionDrift(original_load(relative))
+        try:
+            with self.assertRaisesRegex(self.gate.GateError, "expected.*session.*refuse"):
+                self.gate.run_vector_matrices(self.manifest)
+        finally:
+            self.gate._load_evaluator = original_load
+
+    def test_missing_or_extra_consumer_effect_is_rejected(self):
+        original_load = self.gate._load_evaluator
+
+        class EffectDrift:
+            def __init__(self, evaluator, mode):
+                self.evaluator = evaluator
+                self.mode = mode
+
+            def evaluate(self, *args):
+                verdict, effects = self.evaluator.evaluate(*args)
+                effects = dict(effects)
+                if self.mode == "missing":
+                    effects.pop("session", None)
+                else:
+                    effects["unexpectedEffect"] = "present"
+                return verdict, effects
+
+        for mode in ("missing", "extra"):
+            with self.subTest(mode=mode):
+                self.gate._load_evaluator = (
+                    lambda relative, mode=mode: EffectDrift(original_load(relative), mode)
+                )
+                try:
+                    with self.assertRaisesRegex(self.gate.GateError, "expected"):
+                        self.gate.run_vector_matrices(self.manifest)
+                finally:
+                    self.gate._load_evaluator = original_load
+
+    def test_control_only_drift_is_rejected(self):
+        original_load = self.gate._load_evaluator
+        corpus_path = ROOT / self.manifest["vectorMatrices"][0]["corpus"]
+        corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
+        control_input = next(
+            vector["input"] for vector in corpus["vectors"]
+            if vector["name"] == "rsc-valid-active-nonmembership"
+        )
+
+        class ControlDrift:
+            def __init__(self, evaluator):
+                self.evaluator = evaluator
+
+            def evaluate(self, data, *args):
+                if data == control_input:
+                    return "fail", {"revocationCheck": "revoked", "session": "refuse"}
+                return self.evaluator.evaluate(data, *args)
+
+        self.gate._load_evaluator = lambda relative: ControlDrift(original_load(relative))
+        try:
+            with self.assertRaisesRegex(self.gate.GateError, "control.*expected"):
+                self.gate.run_vector_matrices(self.manifest)
+        finally:
+            self.gate._load_evaluator = original_load
+
+    def test_case_must_discriminate_from_its_control(self):
+        manifest = copy.deepcopy(self.manifest)
+        case = manifest["vectorMatrices"][0]["cases"][0]
+        case["controlCase"] = case["caseId"]
+        case["controlExpected"] = copy.deepcopy(case["expected"])
+        self.gate.validate_manifest(manifest)
+        with self.assertRaisesRegex(self.gate.GateError, "no longer discriminates"):
+            self.gate.run_vector_matrices(manifest)
+
+    def test_each_new_invariant_class_rejects_adversarial_outcome_drift(self):
+        original_load = self.gate._load_evaluator
+        probes = (
+            ("pr396-cross-module-composition", "rsc-rb4-discovered-marker-precedes-nonmembership"),
+            ("pr396-selector-exclusivity", "rsc-selector-genesis-with-transition"),
+            ("pr396-reference-reuse", "rsc-reference-duplicate-consumed"),
+        )
+        for matrix_id, case_id in probes:
+            with self.subTest(invariant=matrix_id):
+                matrix = next(
+                    item for item in self.manifest["vectorMatrices"]
+                    if item["id"] == matrix_id
+                )
+                corpus = json.loads((ROOT / matrix["corpus"]).read_text(encoding="utf-8"))
+                probe_input = next(
+                    item["input"] for item in corpus["vectors"]
+                    if item["name"] == case_id
+                )
+
+                class DriftedCase:
+                    def __init__(self, evaluator):
+                        self.evaluator = evaluator
+
+                    def evaluate(self, data, *args):
+                        if data == probe_input:
+                            return "pass", {"revocationCheck": "absent", "session": "continue"}
+                        return self.evaluator.evaluate(data, *args)
+
+                self.gate._load_evaluator = (
+                    lambda relative: DriftedCase(original_load(relative))
+                )
+                try:
+                    with self.assertRaisesRegex(self.gate.GateError, "expected"):
+                        self.gate.run_vector_matrices({
+                            "corpusPins": self.manifest["corpusPins"],
+                            "vectorMatrices": [matrix],
+                        })
+                finally:
+                    self.gate._load_evaluator = original_load
+
+    def test_corpus_revision_and_profile_drift_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        corpus = next(iter(manifest["corpusPins"].values()))
+        corpus["authoritativeProfile"]["moduleVersions"]["dacs1"] = "future"
+        self.gate.validate_manifest(manifest)
+        with self.assertRaisesRegex(self.gate.GateError, "revision/profile pin drifted"):
+            self.gate.run_vector_matrices(manifest)
+
+    @unittest.skipIf(os.name == "nt", "POSIX executable bit")
+    def test_gate_remains_executable(self):
+        self.assertTrue(os.access(SCRIPT, os.X_OK))
+
+
+if __name__ == "__main__":
+    unittest.main()

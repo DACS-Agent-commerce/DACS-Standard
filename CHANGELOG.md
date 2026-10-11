@@ -13,6 +13,1127 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — negotiated x402 rail (DACS-3 v0.6 / DACS-4 v0.8 candidate)
+
+- **Provider-neutral negotiated x402 rail** (DACS-3 §8.5.2; DACS-4 §9.3,
+  §9.4.3, §9.5.1, §9.5.7 XN-1..XN-11, §9.5.8; #274) — replaces the
+  unresolvable new-session use of seller-specific `x402:default` with a
+  discriminated `x402:protocol` definition that fixes protocol behaviour but
+  carries no provider, facilitator, resource URL, asset, network, scheme
+  allowlist, wallet, RPC, or credentials. The exact request and selected
+  requirement are covered by complete-reference JCS equality from the signed
+  Listing into a payee-bound Agreement; local implementations separately
+  declare `(x402Version, scheme, network)` capability. Before authorization the
+  handler obtains and matches one version-shaped challenge over method, URL,
+  body, version, scheme, CAIP-2 network, asset/decimals, exact amount, signed
+  payout destination, timeout, `extra`, and the complete top-level extensions
+  object, with redirects and post-signature parameter merging prohibited. New
+  `x402-protocol` evidence uses numeric `x402Version`, commits to both complete
+  PaymentRequired and settlement-response objects, carries a native
+  adapter-canonical event identifier, and can report success only after
+  independent asset/authorization/transfer/finality verification. `exact` is
+  the defined v0.8 scheme binding; other schemes remain protocol-valid but
+  cannot claim DACS success without their own binding profile. A receipt or
+  signed acknowledgement alone is diagnostic, never successful settlement.
+  The steward publishes `x402:default` disabled/deprecated for new sessions;
+  its static definition, string `protocolVersion`, and signed evidence bytes
+  remain unchanged for already-pinned continuation and historical replay.
+  Adds deterministic executable vectors for definition discrimination,
+  selection ambiguity, every pre-authorization substitution surface,
+  bounded public-fetch literal classes, v1/v2 hashing/version boundaries, local
+  capability, exact decimal conversion, party binding, independent-assurance
+  downgrade, cross-rail event identity, legacy replay, and retained-state retry
+  safety. The executable harness now places one instrumented wallet-call site
+  after every pre-authorization gate and proves that rejected inputs and every
+  reconciliation retry make zero authorization calls.
+  This addition is part of the existing unreleased coordinated candidate
+  (DACS-3 v0.6 / DACS-4 v0.8); it does not create another module-version bump.
+
+### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
+
+- **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened
+  session-presentation and Vet rules below were introduced with DACS-1 v0.7
+  and remain included in the existing unreleased coordinated corrective
+  candidate. The current complete tuple is CORE v0.3 / DACS-1 v0.8 / DACS-2
+  v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7. This
+  is a breaking pre-v1 correction, not an ordinary additive or same-version
+  interoperability claim. Live use requires a future exact coordinated
+  release tag or immutable specification commit plus the complete tuple to be
+  authenticated for every participant before protocol action. Matching module
+  labels, artifact-version fields, signatures, registry availability, fixture
+  hashes, the walkthrough `profileSha256`, or `MANIFEST.json` `inputBindings`
+  are insufficient. Existing signed artifact shapes and domains remain
+  frozen; pre-correction Vet decisions, composite/invocation records, and
+  conformance results retain only their explicitly selected historical
+  semantics and cannot be relabelled as current-profile evidence or authorize
+  current effects. A structurally unchanged `VerifyResult` v1 remains reusable
+  under VP-C1..VP-C3 after authenticated current-profile admission and current
+  qualification; the result itself does not establish a producing profile.
+
+- **Current Vet reconstruction corrections** (DACS-1 §§6.3.1–6.3.3;
+  DACS-2 §§7.4–7.8) — external Vet input now crosses the exact raw CF-5
+  boundary under verifier-owned admission; current scheme admission uses the
+  shared registry; source issuer/validator-set authority remains distinct from
+  result-producer authority; production aggregation binds both challenge issue
+  times and requalifies exact-owned evidence at trusted current time, while
+  signed-`generatedAt` replay is non-authorizing; every exact-owned current
+  non-pass is provenance-qualified before precedence and authenticated foreign
+  identities remain inert; optional selectors and presentation preferences are
+  type checked; wire fields declared as `number` retain finite fractional
+  values; and Vet reason text is advisory outside decision conformance.
+- **Exact presenter and verifier-identity control alignment** (DACS-1
+  §6.3.2 BR-5 and §6.3.3 MA-3/PCR-5; DACS-2 §§7.7.1, 7.7.3, 7.8) — every
+  accepting bundle match and Vet decision now requires control of the exact
+  `presentedBy` claim even
+  when `primaryClaimSelector` is absent. A selector adds its exact
+  verified-or-explicit-presence authorization arm; presence alone still never
+  establishes control, and another included claim, result, or signer cannot
+  lend it. Exact `key:` control remains satisfied by that key's own valid
+  presentation signature without a `VerifyResult`. With no selector, a non-key
+  presenter requires its exact passing-and-fresh result plus the applicable
+  supported DACS-1 control proof; an explicit selector-presence arm may instead
+  combine with an already-supported independent control proof such as SR-1,
+  without manufacturing a result. Production requalifies every exact
+  result-backed control or presenter-status dependency at `trustedNow` under
+  its own governing window even when verified-member method/version/`maxAge`
+  predicates exclude it; independent control mechanisms retain their own
+  current proof obligations without an invented result window; historical
+  presence-selector authorization remains evaluated at signed `generatedAt`. The independently
+  expected `verifierIdentity` must prove its own exact control; when it is
+  `key:`, that exact key must sign, including for a delegated orchestrator.
+  This corrects the existing unreleased DACS-1 v0.8 / DACS-2 v0.6 candidate
+  within the unchanged complete tuple and changes no signed artifact shape or
+  signature domain.
+- **Presentation challenge alignment** (CORE §B.8; DACS-1 §6.3.2; DACS-2
+  §7.7.3) — per-claim, session-key, and sr1-root presentations use the existing
+  signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the
+  receiving phase orchestrator issues the verifier-identity challenge.
+
+### Changed — current-delivery admission corrective boundary
+
+- **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,
+  DACS-5 v0.7 §10.4.3) — historical delivery-shaped `SettlementEvidence` no
+  longer establishes current delivery admission, including through the existing
+  Boolean reference-validator entry point. Current delivery uses the distinct
+  `DeliveryEvidence` contract; historical bytes remain eligible only for an
+  explicitly selected, non-authorizing frozen archival/audit path. This changes
+  the meaning of existing admission behaviour, not the historical bytes or the
+  released bundle discriminators, and is not an ordinary additive-minor claim.
+- **Coordinated migration** — the complete candidate tuple is CORE v0.3 /
+  DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7.
+  [PROFILE](spec/PROFILE.md) requires the exact coordinated release tag or
+  immutable specification commit before live activation; mixed corrective and
+  pre-corrective live participants are unsupported. The
+  [reference-validator migration guide](docs/pr333-reference-validator-migration.md)
+  distinguishes current and archival helper names, result shapes, and limits.
+- **Released AB/FAB rejection-category policy** (DACS-5 §10.4.3) — use `fail`
+  when rejection is established and unavailable context leaves only the
+  `fail`/`error` category unresolved. Independently established malformed-input
+  and explicit normative `error` results retain precedence; unresolved
+  admissibility remains `indeterminate`. This does not change archival
+  semantics or impose EBFAB payment exact-set obligations on older bundle types.
+- **Agreement admission after authenticated commitment** (DACS-5 §10.4.3,
+  DACS-3 §8.5.3) — a completed commitment requires the bundle's exact
+  `agreementRef`, including failed or aborted terminals after that point; the
+  verifier-owned agreement type and signed selected commitment phase must
+  agree under the five-way dispatch. Precommit omission remains valid, and
+  released AB/FAB do not acquire EBFAB payment exact-set rules.
+
+### Changed — legacy agreement activation boundary
+
+- **Current pay-bearing sessions require payout binding** (#377) — adds the
+  steward-signed `LegacyAgreementActivationCheckpoint` and LAA-1..LAA-7. At
+  activation, new pay-bearing commitments must use a payee-bound artifact —
+  `PayeeBoundAgreementDocument` or the stronger
+  `IdentityBoundPayeeAgreementDocument` with `commit-identity-bound-payee-agreement`;
+  the only transition is an exact legacy commitment plus distinct buyer/seller/
+  signed `LegacyPaymentReservation`, both finalized
+  strictly before the checkpoint. The reservation is derived from the real
+  Agreement, Listing, session, pinned rail, and `PaymentPhaseInput`, and binds
+  its actual destination, payer/payee bundle identities, authorized paying key,
+  economics, deadline, and idempotency key. Its exact signer set is the unique
+  buyer and seller plus the session orchestrator only when distinct.
+- **Authenticated historical admission** — legacy agreement signatures remain
+  verifiable, but historical settlement authority requires exact agreement,
+  commitment, and settlement-evidence bindings with finalized receipts strictly
+  before the governed checkpoint on one authenticated substrate and one exact
+  finality/genesis ordering domain. Another substrate's checkpoint absence and
+  cross-domain scalar positions are inert. Backdated producer timestamps, local
+  flags, ordinary not-found responses, and missing era proof authorize no payment.
+- **Negotiation gate** — DACS-3 CA-10 applies the same checkpoint before a
+  pay-bearing commitment and retains legacy agreement selection only for
+  authenticated pre-activation or zero-pay flows. A commitment `pass` carries
+  zero payment side effects; the later DACS-4 payment re-runs LAA-1..LAA-7.
+- **Activation-boundary hardening** — authoritative absence must cover the
+  authenticated payment-effect head (or be reserved atomically with it), so a
+  checkpoint that finalizes after a stale absence observation cannot authorize
+  payment, and a caller-supplied top-level `paymentPosition` cannot lower that
+  head to mask a stale absence. Historical-era proof binds the
+  settlement-evidence receipt to the exact authenticated agreement hash, job,
+  session, and phase (cross-agreement, cross-job, cross-session, and cross-phase
+  replay are rejected), and untrusted non-object containers, missing required
+  fields, wrong scalars, or unhashable list/dict shapes return the four-value
+  `error` disposition instead of raising (`TypeError`/`AttributeError`). DACS-5
+  marks a historical LAA `pass` current-ineligible — `historical-only`, never a
+  generic `continue` — excluded from every current numerator, denominator,
+  rating, volume, `bundleCount`, and `bundleRefs` on every bundle type and
+  derivation path. A permitted post-checkpoint completion is
+  `transition-only`: its payment and audit remain valid, but it contributes no
+  current-profile reputation, volume, `bundleCount`, or `bundleRefs`. It emits
+  the exclusive signed `LegacyTransitionSettlementEvidence` with an exact
+  full canonical reservation `AttestationRef`; its signature signer and SR-2
+  receipt writer both bind to the retained session orchestrator, and audit
+  authority proves the exact reservation idempotency key is consumed. Its
+  signed phase index is a strict non-boolean non-negative integer, while its
+  transaction references validate against the closed `ChainTxRef` union and
+  the duplicate-free exact success set for the authenticated phase. Ordinary
+  `SettlementEvidence` remains unchanged and cannot be coerced into the
+  transition type. Unsupported readers reject
+  the new discriminator instead of silently counting it. An
+  adapter-level fake-effect harness proves exactly one original transition can
+  call the effect; substitutions, missing authority, post-checkpoint
+  commitments/reservations, deadline failures, and duplicates cannot. This is
+  deterministic in-process call-order/idempotency evidence, not a claim of
+  crash-durable atomicity or native-provider conformance. The candidate
+  corrective release pin and complete module tuple are recorded on the affected
+  evidence.
+
+### Fixed — legacy-payment LAA session binding and replay carrier
+
+- **Verifier-owned session binding (fail-closed)** — the derive/job-bound path
+  no longer recovers the expected session identity from an optional caller/tag
+  `sessionId`. A current-eligible legacy-payment LAA binds its authenticated
+  `sessionAuthority.sessionId` to the verifier-owned session authority for the
+  bundle's `jobId`; an absent, mismatched, or cross-session authoritative session
+  binding excludes the bundle fail-closed on every current derive, job-bound, and
+  replay path. Only the explicitly named non-authorizing historical/audit-only
+  derivation retains released pre-LAA bytes.
+- **Closed legacy-payment replay carrier** — a current legacy-payment
+  `ResolutionContextEntry` now carries `legacyPayment`, the full `laa`, and a
+  canonical `legacyPaymentCarrier` commitment binding the exact marker, job,
+  authenticated session, agreement contentHash, bundle contentHash, and full LAA.
+  Replay recomputes and byte-matches the carrier before any authorizing result;
+  marker/LAA/carrier removal, agreement/session/job substitution, or marker/LAA
+  disagreement refuses replay fail-closed.
+
+### Fixed — DACS-4 v0.8 AP2 receipt references
+
+- **Provider resource and SR-3 transaction are now distinct** (DACS-4 §9.3,
+  §9.5.6 AP2-2; Demos mapping §A.3; #360) — adds the minor-safe `ap2-sr3`
+  `ChainTxRef` arm while freezing the existing `ap2` arm. The new arm requires
+  both `receiptAttestation` and `receiptTransactionRef`, so older closed-union
+  readers reject it safely before AP2-specific action. The
+  `receiptAttestation` locator identifies the provider-status resource and its
+  content hash commits to the authenticated raw response; a native SR-3
+  transaction is carried separately when the binding exposes one. Current
+  Demos DAHR uses `{ kind: "demos-web2-request", value: txHash }` and MUST NOT
+  mislabel its `web2Request` transaction as a Storage Program locator. AP2-2
+  now requires every provider-status assertion to be parsed from the exact
+  returned bytes whose hash DAHR authenticates; a detached projection cannot
+  borrow an unrelated authentic hash. Adds exact positive/negative shape
+  vectors and a public official-AP2-backed settlement fixture with replayable
+  non-secret provider bytes and deterministic DAHR wire evidence. The fixture
+  does not claim to be the live provider/network receipt. This establishes
+  provider-test reference-backing without changing the rail's operator-gated
+  production availability.
+### Added — exact participation and outcome-authorized reputation (#395)
+
+- **Typed source-backed participation (SPA-1..SPA-6)** — adds the closed
+  `SessionParticipationAdmission` and `TimeoutMarker` types for the unreleased
+  current profile. Both bind the same exact obligation; RFQ uses the existing
+  signed DACS-3 channel turn and derived responder, commit uses the exact
+  proposed Agreement hash, and settle uses the exact Agreement reference. The
+  separate admission anchor is derived from the unsigned-JCS obligation hash.
+- **Authenticated artifact and receipt admission** — participation and rating
+  consumers share unsigned RFC 8785 JCS artifact-hash and global-unique-roster
+  checks while applying their actual schemas, including RatingRecord's optional
+  `freeText` and `dimensions`. Admission references, signatures, and receipts
+  use that one unsigned hash. Portable CORE receipts carry fixture-native order,
+  replacement relation, and lineage-root authority inside canonical signed
+  `evidence: {kind, value}`; the selected finalized receipt must be an exact
+  canonical-history member reached by one complete unique incoming lineage.
+  Missing/disconnected predecessors, branch/cycle/late edges, and finalized
+  predecessors are non-countable. Producer
+  `evidenceValid`, writer-authorized, history, and nonce-freshness flags grant
+  no authority. Admission nonce matching follows the verifier-issued CORE
+  challenge for the job, whose issuer must be the actual counterparty or the
+  authenticated in-roster orchestrator acting for it; no global nonce index is
+  introduced.
+- **Exact outcome authority and ratings (SPA-6..SPA-8)** — elapsed deadlines,
+  admission/publication timestamps, and bundle absence do not prove nonresponse
+  or abort causality. Current timeout blame requires independently trusted exact
+  outcome evidence in addition to authoritative absence and participation;
+  missing or conflicting proof leaves the timeout audit-only and non-countable.
+  Current ratings require the shared artifact/roster gate, a fully signed
+  completed exact rate phase, exact unsigned-hash reference, and verified
+  completed-outcome occurrence. The corpus labels its positive adapter evidence
+  fixture-only; production Demos nonresponse authority remains unavailable.
+- **Verifier-owned corrective-profile admission for SPA** — the current
+  one-sided and rating consumers no longer trust a caller `currentProfile`
+  boolean. Both admit only through verifier- or orchestrator-owned trusted
+  context outside caller input that binds the exact session and authenticated
+  participant identities to the immutable corrective-profile release pin and the
+  complete module tuple CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 /
+  DACS-4 v0.8 / DACS-5 v0.7. A caller-supplied profile object or copied
+  reference label has no authority. An omitted `trustedContext` field fails
+  closed exactly like an explicit `null`; unauthenticated,
+  duplicated/ambiguous, pin-, tuple-, session-, or identity-mismatched authority
+  fails closed before any one-sided blame or rating becomes current/countable.
+- **Compatibility** — integrates the accepted #394 business-outcome occurrence,
+  receipt-lifecycle, canonical `blockRef.height` grammar, and compressed
+  `demos-bft-final` inclusion-final history repair through the shared signed
+  evidence adapter. The reconciled AWT corpus carries 185 vectors, including
+  signed height negatives (Unicode digit, decimal, and exponent forms). No released DACS-3 envelope or
+  historical DACS-5 signed-record meaning changes: unknown DACS-3 envelope
+  members remain in the signed hash. The fixture verifies only Ed25519/raw-key
+  cases, reports registered but unavailable algorithms/key resolution as
+  indeterminate, and rejects unknown or invalid algorithms. All five older
+  reputation algorithms remain frozen historical/partial signals.
+
+### Added — authenticated reputation-outcome time
+
+- **Outcome-window contract (AWT-1..AWT-8; #384)** — retains the structurally
+  distinct `AuthenticatedWindowReputationDerivation` as a narrower standalone
+  signal over its post-reconciliation/RSV precondition. Its window clock is
+  verifier-policy-proven business-outcome occurrence, never producer, audit,
+  or publication time.
+- **Combined current-use contract (CUAW-1..CUAW-6)** — adds the exclusive
+  `CurrentUseAuthenticatedWindowReputationDerivation`. It composes the complete
+  LAB/CUR/FV/RSV/SB/LAA/SAC admission path with AWT occurrence for every
+  requested job. Any indeterminate occurrence fails the whole request; verified
+  outside-window jobs remain in complete replay context. Provider capture
+  remains provisional in `finalityClassifiedVolume`.
+- **Older shapes preserved** — the five released derivations, CUR-v1, and
+  standalone AWT-v1 retain their distinct meanings as historical/partial
+  signals and cannot claim the combined current-use contract. Replay binds
+  exact anchor and outcome evidence histories. A pre-current era claim requires
+  authenticated profile-revision evidence bound to the RFC 8785 hash of the
+  exact unsigned derivation object.
+- **Recent-outcome and lifecycle repair (#394)** — keeps finalized bundle
+  receipts as provenance rather than occurrence clocks, so delayed publication
+  cannot refresh an old outcome and role-copy publication dates cannot split a
+  session's membership. The shared current/replay gate now enforces CORE §5.1
+  replacement causality before successor authorization, including terminal
+  finality, strict native order, cycle/branch/conflict refusal, and independent
+  successor finality. The candidate harness uses a clearly fixture-only adapter
+  projection; no universal terminal artifact, authority, signing domain, or
+  production proof mechanism is introduced.
+- **Replay conformance alignment** — requires the accepted outcome-policy ID in
+  replay, makes policy-defined equal-order serialization explicit without adding
+  causal authority, and exercises an old outcome with publication inside the
+  requested recent window.
+### Fixed — authenticated bundle/pointer and delivery authority
+
+- **Protocol-owned family admission** (#333) — requires fixed operation,
+  authenticated address, or uniquely verified registered-domain context before
+  a bundle, pointer, or delivery-evidence selector can choose a schema. Full
+  bundles require one supported recognized selector; pointers cannot be
+  promoted through shared `bundleVersion`; inert unknown signed members remain
+  SIG-5 hash-bound. FAB/EBFAB pointer domains and all legacy signed bytes remain
+  unchanged. The unresolved generic `BundleExtendedPointer` domain is recorded
+  without inventing a fallback, and unsupported shared-address dispatch refuses.
+- **Delivery authority closure** (#333) — binds every inner dependency to its
+  complete canonical reference and authenticated lifecycle receipt, verifies
+  effective ACL/encryption recipient and exact stored/ciphertext commitments,
+  supports arbitrary exact bytes, makes malformed alternate-dependency inputs
+  total, and derives standalone payload-attestation locators from authenticated
+  job/phase/method/attempt context. Missing authority remains indeterminate;
+  malformed input errors and authenticated contradictions fail.
+- **Legacy delivery and released-bundle payment membership** (#333) — PDE-7
+  delivery-shaped `SettlementEvidence` is readable only by a named
+  archival/audit verifier. Current EBFAB and finality-bound admission reject
+  it. An authenticated, exactly mapped legacy delivery on a released
+  `AttestationBundle` or `FaultAttestationBundle` is audit-valid but
+  current-ineligible: comparison-only in reconciliation, `indeterminate` for
+  pointer and current-use consumers. So is a successful payment whose LAA
+  pass is only `historical-only` or `transition-only`. Every consumer and
+  both archival lanes apply the same PDE-7 checks, so a repeated pipeline
+  kind, an indexed evidence address, or a legacy-closure contradiction fails.
+  Released-bundle payment membership stays a producer obligation, so a
+  payment record a copy omits never changes its disposition, even one
+  anchored later; omission detection requires an EBFAB. Every presented
+  payment member of an AttestationBundle or FAB is still fully validated; an
+  authentic ST-8 `:resolved` success passes under the SEB-3 edge rules, and
+  an `ok` row without a member is `indeterminate`. The reconciliation entry
+  now holds the receipt-contract label for every copy kind. A well-formed
+  indeterminate receipt observation is `indeterminate`, and unavailable
+  execution authority is distinguished from malformed. Current-use counts
+  only a copy's own listed members and signed rows toward the CUR-5 hold. An
+  AttestationBundle without current `DeliveryEvidence` is `indeterminate`
+  rather than failing the FAB-only delivery gate. Unavailable ST-8 interim
+  authority on a released copy is `indeterminate`, not `fail`; only the phase
+  orchestrator's own nonce- and reference-bound receipt at the ordinary PC-2
+  address can contradict the edge, so another writer's receipt there is inert.
+  An outage on a member that cannot fill a missing delivery invocation no
+  longer masks an incomplete released delivery set as `indeterminate`. An EBFAB or
+  finality-bound bundle or Listing that JCS cannot hash is a typed `error` on
+  direct, pointer and reconciliation paths. The released-copy verdict no
+  longer depends on member order. The `encrypt-to-buyer`
+  text now separates the producer's sealing duty from DV-3's
+  recipient/ciphertext check, and THREAT-MODEL records decryptability as a
+  residual.
+- **Four-state precedence and released-trace semantics** (#333) — on the EBFAB
+  and finality-bound cores (direct, Boolean, pointer and reconciliation
+  consumers), a well-formed receipt observation, unavailable LAA authority,
+  an unavailable member resolution or receipt, unavailable delivery execution
+  authority, and unavailable FV authority are pending under SEB-6. Every
+  independent member, set, pointer, ST-8 and lifecycle check still runs, so a
+  deterministic `fail` or `error` elsewhere is never downgraded to
+  `indeterminate`. A member whose execution authority is unavailable still
+  binds its present receipt against the only entry that could admit it, a
+  payment without a receipt still has its signed kind, outcome and ST-8 edge
+  checked against every row it could fill (a transition record only against
+  its signed invocation), and unplaced members and signed pointers for
+  missing invocations must admit a one-to-one assignment. A known ST-8
+  successor rejects only where every admitting entry would bind it. A
+  payment whose receipt is unavailable or only observed defers only LAA's
+  receipt-hash comparison, so malformed LAA authority, a carrier naming a
+  receipt writer other than the evidence signer, an authenticated agreement
+  or `agreementRef` mismatch, and present execution authority that names
+  another job, invocation or orchestrator still decide it on the EBFAB,
+  finality-bound and released AB/FAB gates. An unbindable execution rail,
+  nonce or non-integer invocation excludes such a candidate too, and a
+  receipt-hash contradiction no longer outranks malformed LAA authority.
+  The released gate runs its execution-entry, lifecycle, phase-kind,
+  outcome, ST-8 row-class, supersession-edge and LAA checks in the same
+  order whether the receipt is established, absent or only observed. While
+  the row's execution entry is unavailable, a present receipt binds the
+  only entry that could admit it, as on EBFAB, and its ST-8 edge decides
+  only where that entry would, unpinned or pinned to the receipt's own
+  nonce; a receipt whose address no entry could bind is rejected. An
+  unavailable ST-8 interim no longer skips the member's LAA checks.
+  Released `AttestationBundle`/`FaultAttestationBundle`
+  traces no longer require the optional `errorClass` or read the
+  non-action-bearing `retryExhausted`; a present `errorClass` that contradicts
+  the co-signed outcome still fails, an incomplete failed trace is
+  `indeterminate` without masking a member contradiction, and an ST-8 interim
+  row without `errorClass` takes its class only from the co-signed outcome.
+  EBFAB keeps SEB-1 exact completeness. Dependency receipts are checked for
+  shape (`error`) and reference contradiction (`fail`) before missing entry
+  authority (`indeterminate`). An authenticated self-signed proof with the
+  wrong method kind or payload hash is `fail`; only unevaluable input is
+  `error`. A non-string `faultedParty` is rejected content at both post-fetch
+  entry points, and an unselected or unparseable job-bound candidate is inert.
+- **Agreement authority join** (#333) — when a signed bundle carries
+  `agreementRef`, every LAA-qualified successful payment on the EBFAB,
+  finality-bound, and released AB/FAB paths (direct, pointer and
+  reconciliation) must be qualified by that same agreement; a valid but
+  unrelated agreement fails, a malformed `agreementRef` or agreement hash is
+  `error`, and malformed LAA or FV authority still outranks the mismatch. The
+  identity-bundle payment stage now applies DACS-4 LAA-2 before the payment
+  effect, so a non-payee `IdentityBoundAgreementDocument` is refused there as it
+  already was at terminal admission. The two affected identity-bundle vectors
+  now expect `fail`.
+
+- **Credential-delivery signed-scope coverage** (DACS-4 §9.7 PDE-5; #330) —
+  without changing normative semantics, adds seven
+  `credential-*-signature-mutation` cases to
+  `phase-bound-delivery-evidence-v0.7` (150 cases), one for each
+  `credentialDelivery` leaf. Each keeps a valid bundle and resolvable reference
+  and fails at the delivery-signature guard. The locator, content-hash,
+  signer, access-model and cleartext-hash cases are otherwise coherent
+  deliveries, so a pinned witness shows that skipping the delivery signature
+  turns them into `pass`. The anchor-kind and renewal cases change only the
+  binding leaf (private delivery admits only a storage-program anchor, and the
+  vectors model no authenticated renewal re-payment), so PDE-5 rejects them as
+  well.
+
+### Fixed — delivery closure reference validation
+
+- **Signed-format and legacy closure parity** (#333) — the executable DACS-4/DACS-5
+  reference consumers now hash exact delivered UTF-8 bytes, bind entitlement
+  grant roles to authenticated bundle parties, classify current registered artifact
+  discriminators without consuming contextual or inert version extensions, preserve
+  self-signed payload closure without a native transaction, and distinguish complete
+  DeliverableSpec/VerificationMethod hashes from signature-omitted envelope hashes.
+  Current `DeliveryEvidence` and PDE-7 legacy delivery-shaped `SettlementEvidence`
+  now share the same phase-specific inner closure checks while legacy reads retain
+  their signed unindexed addresses, never synthesize PDE-5 credential binding, and
+  remain indeterminate when required artifact or native authority is unavailable.
+
+### Fixed — DACS-3 sealed-auction candidate completeness
+
+- **Complete sealed-envelope profile (SAC-1..SAC-10; #376)** — adds new
+  demand/procurement phase kinds, signed bidder commit/reveal records, an
+  authenticated current-finalized candidate-set binding, exact every-record
+  accounting, and an independently reproducible `SealedSelectionReceipt`.
+  Omitting a better reveal, selecting from a stale or partial index, or
+  continuing through unavailable/forked evidence now blocks selection.
+- **Selection-bound agreement and commitment type** — adds the structurally
+  distinct `SealedSelectionAgreementDocument` and
+  `commit-selection-bound-agreement`. The agreement parties sign the exact
+  finalized receipt reference; DACS-4 and DACS-5 reproduce it before using the
+  winner, price, payout, or reputation. Older readers reject the unknown
+  phase/type before action under CORE §11.1.2.
+- **Unspecified rule execution removed from the complete profile** — only
+  CD-1 `lowest-price` and `highest-price` plus the SE-5 tie-break are supported.
+  `first-acceptable` and `rule-ref` are refused before fetch/execution until a
+  future structurally distinct phase pins a deterministic VM, byte encodings,
+  numeric/error semantics, resource bounds, and no ambient I/O.
+- **Demos capability boundary recorded** — positive Storage Program anchors do
+  not prove complete prefix enumeration. Complete sealed phases remain
+  capability-missing on Demos until the node/binding exposes authenticated
+  latest-finalized enumeration, record-set proof, ordering, lag, and fork/reorg
+  handling. Historical sealed phases remain audit-readable under their
+  released, explicitly non-complete semantics.
+- **Complete-profile conformance coverage completed** — the deterministic SAC
+  corpus now covers demand with absent and explicit mode, both role directions,
+  authenticated SR-2 definition resolution and policy derivation, the exact
+  reveal-deadline finality boundary, listing-derived non-USD currency, an
+  independently authenticated invocation tuple, fully re-signed cross-session
+  artifacts, and exact closed commit/reveal shapes. These fixture controls do
+  not add or imply a native provider completeness capability.
+
+
+### Fixed — DACS-3 context-bound sealed commitment (SAC-11/SAC-12)
+
+- **Complete-profile bid commitment is now context-bound** (CORE §B.7; DACS-3
+  §8.4.4 SAC-1..SAC-12). The structurally distinct, unreleased complete profile
+  inherits a commitment over `bid` + `salt` alone, which let another participant
+  copy a commitment and later open the original reveal under its own identity.
+  The complete-profile `bidHash` is now the byte-exact
+  `sha256("dacs-sealed-bid-context:v1:" || sha256(JCS(SealedBidCommitmentContext)) || salt)`,
+  binding the exact `jobId`, complete `listingRef` (including `contentHash`),
+  `phaseIndex`, CF-2-canonical `bidderClaim`, the bidder's own `channelId`, the
+  exact `SealedBid`, and the raw decoded salt bytes. Each `SealedAuctionRecord`
+  carries `channelId` and every context member needed for standalone
+  recomputation. `bidderClaim`/`signature.signer`, the verifier-owned
+  per-session channel assignment, exact pairwise membership, and the binding's
+  native-writer admission mapping are made explicit without conflating a native
+  writer account with a DACS ClaimReference.
+- **Historical `dacs-sealed-bid:v1:` remains frozen.** The released §8.4.3
+  preimage, its bytes, and its audit semantics are unchanged and are not
+  accepted for a complete-profile record; the two commitment domains are
+  distinct, non-interchangeable, and dispatched fail-closed (unknown/legacy
+  readers reject under CORE §11.1.2). This repairs only the unreleased complete
+  profile in place, since no released bytes exist for it on `next`.
+- **Deadline behavior made explicit.** A complete-profile reveal anchored before
+  `commitDeadline` is `early-reveal` and is not eligible even when every bidder
+  has committed; only the SR-2 anchor timestamp/finality decides window
+  membership, and local close/wall clocks are not authority. Pairwise
+  seller↔bidder channels remain the topology; no shared local close signal is
+  introduced.
+- **Coverage added** — copied commitment/opening under another bidder,
+  cross-channel/cross-job/cross-listing/cross-phase commitment replay, the
+  historical commitment refused in the complete profile, another bidder's
+  authenticated channel assignment, unavailable channel authority, record
+  signer and native anchor-writer mismatches, the inclusive commit-deadline
+  reveal boundary, premature reveal despite all commits, and full recomputation
+  after record-byte changes (including `channelId` signature binding). The
+  corpus grows 70 → 82 vectors; the Node.js evaluator now independently
+  reproduces 59 named controls.
+
+
+### Fixed — CORE v0.3 SR-2 registry authority and receipt copies
+
+- **Optional evidence extension is forward-readable** (#338 review) — the
+  `verifiedReceiptEvidence` sidecar and the receipt `evidence` record keep
+  their required members (`kind`/`value`; `evidence`/`receiptHash`) but no
+  longer enforce an exact key set: an additive future member is admitted
+  exactly when the independent verifier result repeats the complete extended
+  evidence record and the exact canonical receipt hash, so disagreement on
+  any member still leaves the receipt unauthorized. Adds three generated
+  vectors (extension pass, sidecar-mismatch indeterminate, removed-required
+  fail) plus direct re-sign/re-pin regressions, per SIG-5 / §11.1.2.
+- **Runtime-controlled input depth is normalized fail-closed** (#338 review) —
+  deeply nested descriptor/storage/receipt input can no longer leak
+  `RecursionError`/`OverflowError`: the initial deepcopy, canonicalization,
+  and hashing boundaries normalize those failures so bootstrap fails
+  deterministically and resolution returns `indeterminate`. Direct unit
+  regressions cover 1,200-level descriptor members, index storage, receipt
+  evidence, resolution receipts, and storage artifacts on both entry points;
+  depth cases live in tests because a committed vector must stay
+  JSON-serializable. No existing vector outcome changed (bootstrap corpus
+  grows 76 → 79).
+- **Registry authority provenance and rollback context repaired** (#338) — the
+  registry-bootstrap evaluator now requires a complete closed
+  `expectedRegistryTuple` supplied independently beside the release trust pin,
+  matches all four fields before root classification, validates complete
+  receipt/evidence context before nested access, and validates selection mode
+  plus every present closed stored-latest pair before choosing a chain.
+  Historical mode validates but does not apply latest ancestry. Logical/native
+  resolution now collapses only canonically identical receipt snapshots,
+  returns `indeterminate` for unequal same-tuple lifecycle snapshots without a
+  binding-native ordering primitive, and evaluates delivery after grouping from
+  the earliest finite verified delivery. This changes evaluator configuration
+  and corrected candidate verdicts only: `AnchorReceipt`,
+  `RegistryBootstrapDescriptor`, signature domains, and signed descriptor bytes
+  are unchanged. This repair adds candidate coverage without changing an
+  existing vector verdict. Independent verifier outputs bind the complete evidence reference and exact
+  canonical receipt hash; they remain modeled outputs rather than proof material.
+- **Numeric registry selection and historical fork semantics repaired** (#338,
+  ratified 11 September 2026) — corrects the unreleased
+  `RegistryIndexSnapshot` v1 entry version in place to a positive JSON safe
+  integer equal to `Recipe.recipeVersion` or `RailDefinition.railVersion`.
+  Explicit pins are exact and uncoerced; omitted pins select the unique greatest
+  numeric version in the authenticated recipe family or rail ID before
+  eligibility, with no older fallback. Registry identity comparisons use
+  derived NFC keys without changing authenticated bytes, and fetched definitions
+  must repeat the indexed identity and version. Historical traversal now
+  classifies every competitor through the exact sequence/hash target and stops
+  there, so a fork at or before the target remains `indeterminate` while a later
+  fork does not erase retained historical authority. The generator records the
+  definition→entry→snapshot→receipt→descriptor→evidence dependency order. The
+  signed registry-bootstrap corpus was subsequently renewed at `3c94a48`,
+  preserving all 76 case names and expected outcomes.
+### Fixed — explicit current revocation admission policy
+
+- Add `rsc-current-admission-v2`: authenticate Listing and revocation current values at one common finalized evaluation state, retaining distinct earlier inclusion receipts. Preserve known-revocation precedence, committed sessions and explicit recorded-policy replay; current consumers cannot fall back to v1 evidence.
+- Separate the 16,384-octet signature-omitted canonical Listing cap from the trusted binding's complete encoded-record capacity. Add an offline adapter contract and ordinary acceptance checks without changing signed artifacts or regenerating the frozen v1 corpus.
+- Fail closed in the local Listing admission bridge: signature, shape, native-capacity, unsigned state labels, and a caller's committed-session label cannot mint admission without the applicable authoritative evaluator. The pinned historical IBH fixture independently verifies its signed commitment chain before installing a retained test capability; this is not a general runtime exception. Admit the current complete sealed-phase shapes and align the RSC conformance profile tuple with the composed release. Positive current Listing admission remains an implementation gap, not a passing bridge claim.
+
+### Added — authoritative listing-revocation completeness
+
+- **Current revocation state (RSC-1..RSC-10; #375)** — adds the
+  listing-bound `RevocationStateRef`, signed append-only `RevocationStateHead`,
+  compact sparse-Merkle inclusion/non-membership proof, and exact replay
+  context. A current new-session check authenticates the stable state line's
+  latest finalized value, head authority and key rotation, complete checkpoint
+  chain, one-revocation transitions, and exact listing tuple. Discovery-only
+  absence, a stale signed head, rollback, equivocation, censored tombstone,
+  invalid proof, or unavailable current-state authority is `indeterminate` and
+  cannot make a listing session-eligible. Verified revocation still takes
+  precedence, while already committed sessions retain their pinned in-flight
+  semantics.
+- **Self-binding head receipts** — every historical head receipt recomputes
+  writer, transactionRef, nonce, blockRef, evidence, finalityProfile, and
+  native ordering; a provenance mutation is `indeterminate`, never `pass`.
+- **Load-bearing key-lifecycle authority evidence (RSC-2)** — head and marker
+  `authority.evidence` is a signed `(claim, key, validAt)` attestation from the
+  authenticated key-lifecycle authority, verified against each artifact's
+  finalized inclusion state. Omission, wrong container, attacker substitution,
+  or nested malformation fails closed as `indeterminate`, never `absent` or
+  `revoked`.
+- **Append-only freshness and downgrade boundary** — an authenticated
+  higher-sequence head whose exact transition revokes the tuple supersedes a
+  stale non-membership read (`revoked`); a same-sequence sibling omitting the
+  tuple is an equivocation. The current-profile boundary is the authenticated
+  CORE §11.1.2 corrective-profile admission, never the presence or absence of
+  `revocationState` on a same-`dacsVersion` Listing (RSC-10).
+- **Authenticated Listing evaluation state** — the Listing is a signed artifact
+  (no bare `authenticated` boolean); its signature binds the exact tuple the
+  revocation query recomputes. Wrong signer key and wrong signature algorithm
+  vectors fail closed.
+- **Verifier-owned corrective-profile admission** — a bare caller-supplied
+  `currentProfile` boolean has no authority. Current-profile admission is the
+  verifier-owned exact release pin plus complete module tuple, session- and
+  identity-bound; caller copies, missing, mismatched, incomplete, or
+  unauthenticated admission fails closed before listing interpretation.
+- **Signed conflict-observation completeness** — the complete
+  known-conflicting-head set is signed into the current-state evidence. Omitting
+  or substituting it is `indeterminate`, never `absent`, so a higher revoking
+  head cannot be downgraded by dropping the conflict observation.
+- **One authenticated finalized state** — the current-state signature binds the
+  exact Listing content hash and its finalized receipt (LP-1) to the head's
+  finalized state, so the Listing and its revocation non-membership are evaluated
+  in one authenticated finalized state; a missing, stale, or hash-mismatched
+  listing receipt is `indeterminate`.
+- **Sealed-auction new-session deadline gate (SE-1)** — the signed
+  `commitDeadline` MUST be at least 60 s after the verifier-trusted session
+  start time for both demand and procurement modes, enforced before any effect;
+  committed sessions are never re-gated.
+- **Sealed-envelope role direction (SE-8)** — a genuine procurement specimen
+  assigns the listing publisher as the agreement `buyer` and the winning bidder
+  as the agreement `seller`; demand keeps the publisher as the agreement
+  `seller`. The `auctionMode` marker alone never authorizes: a mode-marker
+  without the role swap, or a swapped/mismatched role assignment, is rejected
+  with `sealed-role-direction-invalid` before the SE-1 deadline gate.
+- **Listing boundary enforcement (LR-2)** — the validator rejects a Listing
+  whose signature-omitted canonical form exceeds 16,384 bytes and fails closed
+  (controlled rejection, no traceback) on unsafe numeric magnitudes such as
+  `2**53`, and binds the wrapper `kind` to the body type discriminator.
+
+### Fixed — authenticated Vet replay and reference consumers
+
+- **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
+  IDs are explicitly positive safe integers; the textual `cci-xm` PB profile
+  shares that applicability ceiling while retaining larger values as generic,
+  non-applicable claims. Unsafe numeric rails fail before tier selection.
+- The executable DACS-1/Vet reference now admits each presentation through a
+  verifier-owned active-phase context and an issuer-owned mutable SN-4 ledger.
+  Exact issued nonces are consumed on presentation attempt and retained by the
+  runtime; missing/wrong nonces and caller `consumed: false` snapshots cannot
+  authorize an invocation.  The context independently pins actor/evaluated
+  party, selected primary claim, attempt, expected verifier, phase orchestrator,
+  anchor writer, recipe
+  registry, trusted time, and composite receipt.  It also binds the expected
+  verifier to the verifier IdentityBundle and composite/reference signers while
+  keeping VerifyResult authority independent (#366).
+- Composite freshness now uses signed `generatedAt`, with safe-integer,
+  participating-result and authenticated receipt/execution chronology checks;
+  unsigned `evaluatedAt` is ignored as authority.  Record receipts validate the
+  CF-4 logical address separately from the native locator, content hash, writer,
+  transaction and finalized fixture lifecycle.  VerifyResult v1 remains
+  session-agnostic and reusable under VP-C1..VP-C3; no signed v1 shape changed.
+- A shared strict JCS/ClaimReference reference helper replaces ad-hoc
+  `json.dumps` equality/hashing in the affected paths, retains DID
+  method-specific bytes while enforcing exact percent escapes and the Demos
+  self-certifying DID profile, and rejects invalid numbers/Unicode without
+  changing four-disposition precedence.  The lifecycle walkthrough now rejects
+  bool/float phase indices before keying or comparison.
+- The HTLC-9/ST-8 fixtures use the registered `key:` signer spelling.  Their
+  existing public-key signatures remain under the frozen evidence domain, and
+  the regenerated wrappers add finalized receipt context; the verifier pins an
+  independent expected phase orchestrator and validates both receipts (#366).
+  Equivalent committed-file paths retain receipt validation; receipt-backed
+  supersession references bind the interim native anchor and any optional
+  signer to the expected authenticated authority. Custom pairs retain their
+  documented hash/signature-only locator contract.
+- Common invocation admission checks authenticated session/job/recipe pins
+  for every operation. The shared current registry excludes deferred CCI
+  contexts and validates specified structured identifier components, with the
+  existing deferred-LEI fixture arm explicitly selected for compatibility.
+
+### Fixed — executable DACS-1 / Vet golden inputs
+
+- The 30 DACS-1/Vet manifest cases now use only registered DACS-2 method
+  kinds and resolve every result against an exact, signed recipe family. The
+  three aggregation cases exercise CRQ-1 through signed composite records and
+  the production `VetCredentialsInput`/trusted-session boundary, including
+  exact job, bundle, requirement, registry-pin, and committed-result-set
+  checks. The fixture resolver independently binds the expected result signer,
+  authenticated source-attestation reference, and complete serialized result
+  hash in addition to the signature-excluded `VerifyResultRef.contentHash`;
+  result references must be unique and every exercised identifier must be in
+  its scheme's canonical form. Aggregate outputs retain only the normative
+  decision and reasons. Six additional CRQ-2 cases pin exact-family explicit
+  and implicit-latest resolution, reject another selected method family,
+  require verified parameters from authenticated `VerifyResult.data` rather
+  than signed claim metadata, and fail closed on malformed or unresolved
+  requirement selectors, and ensure unresolved qualification preflight cannot
+  be masked by either ordinary decision-precedence ladder;
+  VPC-4 terminal attribution is derived separately (`fail` maps to
+  `counterparty`, never `permanent`). The cross-run tool rejects the
+  superseded control-gate sketch and exposes all 44 replacement evaluations
+  under stable `<case>::<evaluation>` names (#363).
+- The Vet reference replay now follows DACS-2 §7.7.1 more closely.
+  Aggregation classifies the record's committed `freshness` ++ `dealSpecific`
+  results for each verified member (an empty committed set fails, a refreshed
+  committed result counts even when the bundle claim still cites an older
+  reference, and qualification preflight covers every committed method). A
+  committed result counts only for an unexpired claim of the exact bundle with
+  its identity; any other committed result does not participate, so it can
+  neither satisfy a member nor steer its decision or VPC-4 fault class. In
+  aggregation and direct evaluation alike, a result outside its governing
+  DACS-1 §6.3.2 window is excluded before family/version preflight (CRQ-1).
+  Only the authenticated aggregation path can select this mode. Every committed
+  result must be attributable to a verified member, agree with its referenced
+  recipe version, and be committed once.
+  `exact_selector_authorized` uses the presented claim's own verified-and-fresh
+  evidence independently of member order; a required verified selector member
+  disables the presence path; and a `oneOf` group that admits the selector
+  scheme through verification must be satisfied by exact presence or another
+  scheme, so a different same-scheme verified claim cannot launder a
+  presence-only selector (PCR-5). `presentedBy` resolves by CF-3 identity
+  (DACS-1 §6.3.2); ambiguous resolution is uncontrolled rather than an
+  exception. Replay refuses an unsupported or missing
+  `CompositeVerificationRecord.recordVersion` or `VerifyResult.resultVersion`,
+  a `VerifyResult` whose `decision`, `reason` or `data` violates §7.5 (even
+  when its own validity window has passed), a claim `issuedAt` or `expiresAt`
+  that is not a finite safe JSON number, and a malformed `warnings`
+  list, enforces the CORE CF-5(5) 128-level nesting bound per artifact
+  without leaking recursion errors, does not let the JSON
+  spelling of one number (for example `1` and `1.0`) change a verdict
+  (CF-5(4)), treats an optional omitted
+  `validUntil` under the exact recipe's authenticated `defaultMaxAgeSec`, and
+  treats an inverted validity window as stale. None of the 30 golden outputs
+  change; new negatives re-anchor the trusted receipt so the guard under test,
+  not a stale receipt hash, decides. The artifact-shape validator again checks
+  a `bundleVersion: "1"` object as an `AttestationBundle` unless it is
+  unambiguously an `IdentityBundle`, and shared JSON admission keeps the
+  decoder error type and position. The CORE §B.8 SN-4 Vet record binding is
+  scoped to DACS-1/DACS-2 Vet presentations, leaving other session-nonce
+  admission points (such as DACS-5 participation admission) unchanged.
+
+### Fixed — integrated presence and current-profile consumers
+
+- Private candidate review follow-up: retain exact production input hashes and authenticated session/registry pins; distinguish non-authorizing historical reconstruction from active current-time acceptance; require Composite members while preserving optional source-attestation signer semantics.
+- **Presence/Vet executable boundary repaired** (#362) — the candidate reader
+  now separates presenter-signed presence metadata from verified predicates,
+  which match only the authenticated `VerifyResult.method` and JCS-equal
+  `data`. It binds the complete ordered `freshness` + `dealSpecific` projection
+  before authenticating results, reconstructs the signed historical decision
+  at `generatedAt`, and applies VP-C1..VP-C3 reuse at independently trusted
+  current time. Verifier-issued nonce, job, actor, phase, attempt, and verifier
+  authority remain outer invocation state so reusable VerifyResult v1 artifacts
+  stay session-agnostic. Canonical ClaimReference parsing, safe-integer time
+  checks, and no-throw malformed-container handling are shared by the affected
+  consumers.
+- **HTLC and lifecycle authority checks aligned** — the HTLC-9/ST-8 fixture
+  pair uses the registered `key:` signer and both signatures are checked against
+  caller-independent expected phase-orchestrator authority. Optional
+  `supersedesEvidenceRef.signer` remains optional but, when present, binds that
+  authority and the authenticated interim signer. Lifecycle phase indices are
+  exact non-Boolean safe integers before addressing, lookup, or comparison, and
+  the walkthrough uses the repository JCS implementation.
+
+### Fixed — CORE v0.3 raw JSON admission
+
+- **Lossless pre-canonicalisation gate** (CORE §B.2 CF-5; #385) — makes
+  reader rejection of out-of-profile numbers mandatory and requires exact
+  received UTF-8 JSON text to pass duplicate-member, raw-number, Unicode,
+  single-value, and strict-JSON checks before JCS, hashing, signature
+  verification, or schema decisions. Parse, DACS-profile, and canonicalisation
+  failures remain distinct; rejected bytes acquire no content hash or signature
+  authority. The in-repository external admission APIs now require the exact
+  received bytes and refuse decoded strings whose source bytes may have been
+  transformed. The profile caps JSON container nesting at an inclusive 128
+  so parser, admission, and canonicalizer recursion limits cannot disagree or
+  escape as host exceptions. Adds 51 raw-text vectors covering depth
+  boundaries, nested/escape-equivalent duplicate keys, safe-magnitude
+  boundaries and exponent spellings, negative
+  zero/fractions, overflow/underflow, parser extensions, lone surrogates,
+  invalid UTF-8, a valid literal replacement character, BOM, comments, malformed
+  syntax, and trailing data, reproduced by both the standard-library adapter and
+  an independent recursive-descent parser.
+
+### Added — unallocated #391+#392 combined current-use reputation candidate
+
+- **Distinct all-or-nothing derivation** — adds the unsigned
+  `CurrentUseReplayableReputationDerivation` with the exclusive
+  `currentUseReplayableDerivationVersion: "1"` discriminator. It validates every
+  explicitly requested job before emitting metrics, composes finality-bound FV
+  with existing RSV/SB-3 checks, preserves provider capture as provisional, and
+  replays the complete authenticated dependency chain and canonical result.
+  Existing derivation discriminators, algorithms, metrics and bytes are unchanged;
+  unsupported old readers reject the new type. No DACS-5 minor is allocated.
+- **Authenticated historical arm** — adds the steward-signed
+  `LegacyBundleActivationCheckpoint` and write-input
+  `LegacyBundleCheckpointBinding` types/domains plus LAB-1..LAB-7. Current-use
+  admission proves an original signed BundleBinding and original BB-6 context,
+  or genuine pure mapping, then joins the exact finalized native receipt and
+  strict pre-checkpoint order under verifier-configured trust. Missing,
+  conflicting, pruned, reorganized or unorderable authority remains non-passing.
+- **Offline executable coverage** — adds deterministic, independently pinned
+  synthetic proof fixtures for both historical mapping arms, all six FV models,
+  role/BB-6/reconciliation/finality/replay negatives, old-reader refusal and
+  malformed-container totality. These fixtures do not claim a production Demos
+  native cryptographic codec.
+- **Defensive current-use admission corrections** — purpose-binds the fixture-only
+  synthetic checkpoint, historical and current proofs; ties both legacy mapping arms to the caller's
+  requested substrate; requires every authenticated present copy's exact
+  buyer/seller roster to match verifier-owned job roles; and admits historical
+  nonpayment only from an authenticated signed Listing plus a complete,
+  outcome-consistent execution/evidence set. Unsupported empty or incomplete summaries and
+  omitted or incomplete settlement evidence remain `indeterminate`; an authenticated
+  abort before the first phase may establish an empty complete execution prefix. Historical
+  algorithms, artifact shapes and signature domains are unchanged; the verifier
+  never converts signed historical bytes.
+- **Executable current-use replay corpus** — the committed eight-case
+  current-use corpus now embeds, for every case, the complete executable
+  request, the full authenticated dependency set, the verifier configuration
+  with public keys and trusted query context, and the expected outcome; the set
+  hash is computed over those complete replay inputs, so each case is
+  independently executable and any authority, receipt, finality, or
+  historical-evidence mutation yields a non-pass decision.
+
+- **Legacy-bundle era admission negatives** (DACS-5 §10.4 LAB-3, LAB-4,
+  LAB-6; #381) — without changing normative semantics, adds signed, replayable
+  `current-use-reputation-v1` cases for one-sided buyer→seller and
+  seller→buyer role rebinding that reverses abort blame (LAB-3), fresh
+  post-checkpoint legacy creation and a post-checkpoint anchor without
+  pre-checkpoint proof (LAB-4) (`fail`), and missing era proof (LAB-6,
+  `indeterminate`). Each negative is otherwise admitted, and a JSON-only test
+  shows that a verifier omitting only its named guard accepts it. The existing
+  historical controls remain the passing LAB-5 same-role re-anchor cases. The
+  corpus grows from 8 to 13 cases; the existing cases are byte-identical.
+
+### Added — unallocated #392 consumer-verifiable settlement finality candidate
+
+- **Finality-bound evidence** (#392) — adds the structurally distinct
+  `FinalityBoundSettlementEvidence` type and
+  `dacs-finality-bound-evidence:v1:` signature domain. An explicitly selected
+  finality-bound payment-success contract binds the exact signed RailDefinition
+  revision; older readers reject the new type instead of accepting an unverified
+  scalar confirmation count. No DACS-4 minor is allocated by this proposal.
+- **FV-1..FV-10 canonicality verifier** — derives the model and required
+  strength from the authenticated rail profile, verifies network/genesis or
+  provider identity, transaction/event inclusion, authenticated head and
+  ancestry, independent depth/commitment/BFT quorum, freshness and
+  reorg/replacement state. HTLC uses four independent authenticated observations
+  for source lock/claim and destination lock/reveal, each with its own inclusion
+  and finality proof; an aggregate status cannot replace them. Tank models verify
+  every leg; provider capture remains explicitly provisional.
+- **Typed DACS-5 consumer boundary** — adds the distinct
+  `FinalityBoundEvidenceFaultAttestationBundle` and matching extended pointer
+  domains. Its successful payment members run FV and propagate every non-pass;
+  old EBFAB and every existing derivation retain their prior meanings. #392
+  initially reserved `CurrentUseReplayableReputationDerivation`; this combined
+  #391+#392 candidate activates it with #391's authenticated historical-era and
+  role admission under CUR-1..CUR-8 and LAB-1..LAB-7.
+- **Producer report clarified** — `SettlementFinalityRecord` remains signed and
+  auditable but is not finality proof. Wrong or insufficient proof fails;
+  missing, conflicting, pruned or unstable authority is `indeterminate`;
+  malformed proof is `error`.
+- **Finality resolution context v1** (#392 D2) — adds a separate verifier-local
+  `FinalityResolutionContextVersion1`, signed
+  `FinalityObservationResponseVersion1`, and
+  `dacs-finality-observation-response:v1:` domain. A signed rail capability
+  selects this path without fallback to the frozen historical single-view
+  input. The first registered binding remains fixture-only and requires every
+  configured authority seat.
+- **Acquisition, conflict, replay and composite gates** — binds the complete
+  authenticated query, policy-ordered authority set, checkpoint, nonce and
+  local acquisition boundary; resolves the union of transported and retained
+  responses; preserves four-value dispositions and historical replay
+  provenance; and verifies each composite leg independently. Timing evidence
+  measures verifier CPU separately from a modeled slowest-seat acquisition
+  boundary and does not create a conformance latency threshold.
+- **Fail-closed provider attestation authority** — `_verify_provider` in the
+  executable FV reference treats a missing, null, empty, or nonmatching
+  `providerAttestations` trust map as `indeterminate` (authenticated authority
+  unavailable), and a malformed list, string, number, or Boolean map as
+  `error`, without any broad exception catch. The canonical map continues to
+  pass through both the direct FV path and the composed DACS-5 path.
+
+- **Finality conflict, reorganization and stale-fork coverage** (DACS-4 §9.7.0
+  FRC-7, FRC-8, FV-6, FV-8, FV-10; #382) — without changing normative
+  semantics, adds `fv-conflicting-authenticated-heads` and
+  `fv-reorg-unresolved` to `finality-resolution-context-v1` (13 cases), each
+  carrying its complete verifier input. Both use a sibling fork that
+  re-includes the signed transaction under a competing head at the pinned
+  checkpoint height; every signed native view first passes FV on its own. Two
+  authorities disagreeing on that head, or one authority's retained
+  pre-reorganisation view beside its later replacement view, returns
+  `indeterminate`; later signing or acquisition does not pick a winner. Adds
+  `fv-stale-fork-inclusion` to `settlement-finality-verification` (86 cases):
+  an authentic sibling-fork inclusion block beside the authenticated canonical
+  head and ancestry fails.
+
+### Fixed — corrective-profile consumer and AP2 composition boundaries
+
+- Private candidate review follow-up: fingerprint the complete effect-bearing AP2 request, dispatch its retained payload, validate recovered settlement continuity, and require globally unique trusted participants; preserve current/legacy API separation.
+- **Atomic AP2-7 admission composition** (DACS-4 §9.5.6 AP2-7; #343) —
+  composes verified CheckoutMandate/PaymentMandate admission with one
+  handler-owned atomic binding-store decision before provider metadata or
+  submission. The closed trusted context validates every participant before
+  selection. Durable modeled state retains the exact AP2-6 key plus immutable
+  operation payload/fingerprint and optional provider reference, allowing
+  reference-first reconciliation, lost-response same-key resubmission, and
+  settlement reuse. Only `bind-new` authorizes a new payment; a recovery request
+  remains `submitNewPayment: false`, and malformed continuity, cross-job/phase
+  replay, caller reset assertions, duplicates, and conflicts fail closed.
+- **Current DACS-5 consumers require trusted profile authority** (DACS-5
+  §10.4.2 BB-5 / §10.5 Replay; CORE §11.1.2; #343) — current logical-address,
+  BB-5 binding, resolution-context, and reputation-replay paths now require
+  verifier-owned `(session, role) → participant` authority for the exact release
+  pin and complete module tuple, plus independently authenticated Ed25519 keys.
+  Public reputation operations authenticate expected party/window/basis and
+  ordered content-reference authorities before every callback, including empty
+  results; signed/caller identities cannot initialize the role map. Explicitly
+  named legacy replay paths preserve frozen historical bytes and structural-only
+  behavior without current authority or effects.
+- **HTLC-9 verifier authority and parser boundary** (#343) — the fixture verifier
+  now checks each unchanged signed record against an independently pinned phase
+  orchestrator and rejects duplicate JSON members recursively before JCS,
+  hashing, or signature verification. Fixture payloads and signatures are
+  byte-preserved.
+
+### Fixed — DACS-3 v0.6 channel-message wire split
+
+- **Breaking pre-v1 corrective classification** (CORE §11.1.2; DACS-3
+  §8.3.3 CH-7..CH-10; #349) — the v0.6 current-wire replacement is a breaking
+  pre-v1 correction under the CORE §11.1.2 corrective boundary, not an
+  ordinary additive minor. The replacement is defined by its exclusive
+  `canonicalChannelMessageVersion: "1"` discriminator, the version-1
+  signature envelope, and the exact CH-8 signed-byte framing
+  `"dacs-canonical-channel-message:v1:" || ASCII(lowercase-hex
+  sha256(JCS(unsigned_message)))`. It is bound to the exact coordinated profile
+  tuple recorded in `PROFILE.md` (CORE v0.3, DACS-1 v0.8, DACS-2 v0.6, DACS-3
+  v0.6, DACS-4 v0.8, DACS-5 v0.7) and does not claim ordinary cross-minor
+  compatibility with a pre-v0.6 channel-message profile. The historical Demos
+  arm is archival-only: a conforming reader accepts historical bytes only
+  through the explicitly selected `legacy-import` operation, refuses them on
+  `current-read`, and never falls back between arms; no legacy fallback is
+  added anywhere.
+- **Canonical current message** (DACS-3 §8.3.3 CH-7..CH-10; #349) — replaces
+  the undefined `ChannelMessageSignature` and contradictory bare-hex positive
+  examples with a discriminated `CanonicalChannelMessage`, a versioned
+  signature envelope, CORE SIG-6 unpadded Base64URL, canonical signer/sender
+  authority, and byte-exact `dacs-canonical-channel-message:v1:` plus ASCII
+  lowercase-hex-digest framing.
+- **Historical Demos arm frozen** — retains
+  `channel-message-replay-v0.1.json` byte-for-byte as read/import-only evidence
+  for the discriminator-free bare-lowercase-hex wire and its historical
+  `dacs-channelmsg:v1:` plus raw-32-byte-digest payload. New producers cannot
+  emit that type. A trusted caller must select `current-read` or
+  `legacy-import` before parsing message-controlled bytes; structural dispatch
+  then occurs before crypto and never retries a value decoder, domain, digest
+  framing, or alternate arm.
+- **Executable migration boundary** — adds 55 generated current and mixed-wire
+  cases plus an in-repository oracle that also executes all 15 frozen legacy
+  cases. Valid, tampered, cross-domain, and wrong-framing cases execute all
+  three advertised algorithms against independently bound public-key fixtures.
+  Coverage also includes the four partial mixtures, encoding/version/signer
+  failures, CH-6 channel/sequence replay, SIG-5 unknown-field preservation, and
+  exact legacy signature-byte retention. Current-wire Ed25519 sender/signer
+  identities are canonical registered DACS-1 `key:<64hex>` claims; the oracle's
+  current arm reuses the shared registered-scheme parser from
+  `scripts/dacs_reference.py`, refuses a correctly signed generic `cci:<64hex>`
+  sender on `current-read`, and keeps the generic spelling readable only through
+  the explicit `legacy-import` arm for frozen archival bytes. The current cases
+  also require verifier-owned exact release, module-tuple, session, and
+  participant admission before live-state issuance; exercise missing,
+  malformed, mismatched, duplicated, and unauthenticated profile authority;
+  and reject an explicitly present `refs: null` rather than treating it as an
+  absent optional member.
+  `@kynesyslabs/demosdk@4.0.16` is not
+  evidence for either arm (#414): it signs the historical domain over the
+  ASCII-hex digest and emits a `0x`-prefixed signature object, so
+  `current-read` and `legacy-import` both reject it. No current Demos SDK
+  producer version is claimed.
+- **Authenticated channel membership** — the executable reader obtains each
+  sender's claim, key, and key type through a verifier-owned fixed CH-1
+  membership capability that is separate from message and session input.
+  Membership uniqueness and lookup use CF-3 identity without advisory
+  parameters. A correctly signed outsider, caller-supplied authority map,
+  parameter-variant key selection, and member message signed by another key
+  cannot establish admission.
+- **Atomic verifier-owned channel state** (#367) — replay, session, and terminal
+  state now comes from an issuer-retained capability rather than presented
+  vector context. Trusted fixture setup is separately reviewed, and the retained
+  registry is explicitly injected across issuer reconstruction. This in-memory
+  reference does not claim durable restart guarantees. Current negotiation state
+  and historical audit cursors are
+  separate; successful verification atomically advances arbitrary increasing
+  sequences, authenticated aborts terminate, and agreement/timeout closure is
+  recorded only through trusted lifecycle events. Known authenticated
+  algorithm mismatches fail before unavailable-key indeterminacy, and malformed
+  enum containers produce controlled errors without changing state. Signed
+  current and frozen historical wire bytes, domains, and shapes are unchanged.
+### Added — distinct identity-bound agreement paths
+
+- **Cross-stage admission and terminal correction** (CORE SN-1..SN-4 /
+  IBH-4..IBH-6; DACS-3 through DACS-5; #390) — makes verifier challenges
+  distinct per presentation and consumed on first attempt, then binds later
+  stages to the exact authenticated retained admission instead of re-accepting
+  the nonce. The shared action gate now preserves ordinary Listing ordering,
+  session, payment/payout, and APR obligations; APR replacement uses the genuine
+  signed `pay-alternative` projection and independently attested disposition;
+  completed EBFAB validation requires complete payment/delivery evidence and
+  finalized agreement/CVR/commitment/bundle dependency joins. Historical signed
+  carriers remain unchanged, while unimplemented historical evaluator stages
+  refuse non-authoritatively as explicit `indeterminate` rather than passing or
+  declaring valid historical bytes invalid.
+
+- **Identity-bound agreement artifacts and dispatch** (CORE §B.2
+  IBH-1..IBH-6; DACS-1 through DACS-5; #390) — proposes the additive
+  `IdentityBoundAgreementDocument` and
+  `IdentityBoundPayeeAgreementDocument`, each with an exclusive version
+  discriminator, registered signature domain, and signed Listing commitment
+  phase. In the integrated five-artifact registry, exact five-way
+  phase/artifact dispatch is enforced before commitment,
+  payment, terminal admission, or reputation counting.
+- **Authenticated cross-stage identity proof** — the new nested
+  `IdentityBoundAgreementParty` carries a bare recomputed IdentityBundleHash.
+  New phase-specific companions transport complete signed IdentityBundles and
+  CVRs, which consumers verify and uniquely join by agreement-derived role,
+  primary claim, `vetRecordRef`, job, presentation nonce, and digest. Identify/
+  Vet retains the exact accepted bundle/result; later consumers reverify that
+  authenticated admission without accepting the consumed nonce again. Missing
+  authority remains indeterminate; authenticated contradictions reject.
+- **Historical compatibility remains byte-stable** — `AgreementDocument`,
+  `PayeeBoundAgreementDocument`, `AgreementParty`, CVR, payment/session/bundle
+  carriers, and both commitment-record forms keep their released meanings.
+  Commitment kind does not select agreement era, historical prefixed party
+  hashes remain valid, and the existing payee corpus is not superseded. The
+  two new contracts are proposed without allocating competing per-stage minor
+  release numbers.
+- **Candidate conformance repairs** — closes PhaseType admission before every
+  stage action, uses signature-omitted artifact-reference hashes, replays the
+  exact signed-Listing requirement and CVR aggregate against authenticated
+  DACS-2 inputs, preserves sealed-envelope losing-bidder parties without adding
+  signer requirements, and replaces producer-authored finality assertions with
+  an independently pinned fixture-only native-observation adapter. The adapter
+  exercises receipt binding and ordering but is not live-substrate proof.
+
+### Fixed — DACS-4 v0.8 settlement collision authority
+
+- **SB-2 no longer trusts producer time** (§9.5.8; #380) — a canonical
+  settlement identifier claimed by distinct `(jobId, phaseIndex)` tuples is
+  resolved only by independently verified finalized settlement-side authority.
+  Without one exact authoritative tuple, every competitor is `indeterminate`
+  and non-countable; discovery of a later collision revokes any provisional
+  count. `observedAt`, evidence hashes, arrival order, SR-2 anchor order, and an
+  unauthenticated first-claim hint never select a winner. No atomic first-claim
+  mechanism is registered. Adds 32 deterministic group vectors covering
+  backdating, equal timestamps, cross-job/phase claims, two-group authority
+  substitution, missing/mismatched settlement and rail/profile dimensions,
+  Permit2/AP2 job-only phase ambiguity, EIP-3009 exact-phase authority,
+  stolen-first anchor, unavailable/pruned/conflicting/reorganised authority,
+  replacement hints, and distinct batched events. The executable DACS-5
+  consumer regression removes a late unresolved collision from count,
+  denominators, volume, and per-currency transaction count without assigning
+  party fault.
+
+### Fixed — DACS-4 v0.8 settlement-side binding downgrade
+
+- **Declared SB-3 binding is mandatory** (§9.5.8; #379) — a rail's
+  authenticated pinned definition, not caller/evidence metadata, decides
+  whether settlement-side job binding is required. Verified match continues;
+  mismatch fails; absence or unavailable/pruned/reorganised authority is
+  `indeterminate` and non-countable; malformed binding evidence is `error`.
+  The last two branches cannot fall back to a coincidentally matching transfer,
+  cannot satisfy DACS-5 final verification or reputation admission, and do not
+  create party fault during an outage. No historical downgrade profile is
+  registered. Adds 22 deterministic disposition vectors covering all required
+  issue cases and the explicitly weaker authenticated no-binding rail posture.
+
+### Fixed — DACS-X conformance provenance
+
+- **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9
+  transcript-disclosure manifest expectations from `golden` to `candidate`.
+  The repository does not ship their exact signed inputs, resolver context,
+  versioned dispute/disclosure artifacts, signature recipes, or an independent
+  executable predicate, so byte-stable expected strings cannot establish
+  conformance by themselves.
+- **Promotion gate made explicit** — the 17 expectations remain available for
+  DACS-X design work, but cannot return to `golden` until their public inputs
+  and normative contracts exist and an in-repository verifier consumes them.
+  A regression test pins the candidate status and the corrected integrated
+  golden/candidate totals.
+
+### Fixed — CORE canonicalization conformance
+
+- Retires the stale `canon-noninteger-throws` manifest row left behind by #345;
+  CORE §B.2 permits finite binary64 fractions, and the self-contained
+  `canonical-json-v0.1` corpus remains the executable authority for those bounds
+  (#354). The shared validator documentation now states the same rule.
+
+### Fixed — Demos SR-2 bundle co-signing status
+
+- **Artifact signatures separated from transaction signatures** (#369) —
+  corrects DEMOS-MAPPING §A.2 so a native multi-party Storage Program
+  transaction is not presented as an amber DACS v0.1 dependency. For non-abort
+  outcomes the bundle first carries every required DACS signature and each
+  required signing party anchors its role-specific copy through its own
+  owner-signed SR-2 write and verified receipt. Abort outcomes retain the
+  single-signature and bundle-suppression exceptions in §§10.4.1/10.11. Native
+  transaction co-signing remains an optional optimization and cannot replace
+  applicable artifact signatures or role-specific publication.
+
+### Fixed — lifecycle walkthrough current-wire compatibility
+
+- The executable lifecycle walkthrough now emits a canonical ULID `jobId`,
+  omits the non-schema `phaseIndex` from signed `SettlementEvidence`, recovers
+  the payment phase tuple from its canonical PC-2 logical address, authenticates
+  that tuple against the published logical/native/content binding and reference,
+  and emits failure evidence with `outcome: "failure"` and a non-empty `reason`
+  (#357). The signed bundle phase summary remains the delivery-phase binding.
+  The walkthrough's pinned DACS-4 v0.3 profile intentionally keeps the legacy
+  `evm` reference and does not advertise the v0.6+ SB-1 event-identity rule.
+
+### Fixed — DACS-4 RD-5 conformance data
+
+- **EVM rail chain-ID equality restored** (§9.4.3 RD-5; #352) — corrects the
+  stale golden manifest row that admitted matching asset/network kinds with
+  unequal `chainId` values even though RD-5 requires the same positive integer
+  and PB-2 derives payee applicability from that exact chain. The contradictory
+  positive is replaced by a fail candidate pending independent reference-run
+  convergence. The executable chain-applicability set now has explicit
+  equal-positive and mismatch controls for both `erc20` and `native-evm`, plus
+  zero and non-integer asset/network controls.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte
@@ -48,39 +1169,120 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
-### Added — DACS-3 v0.5 / DACS-4 v0.7
+### Added — CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 / DACS-4 v0.7
 
-- **Provider-neutral negotiated x402 rail** (DACS-3 §8.5.2; DACS-4 §9.3,
-  §9.4.3, §9.5.1, §9.5.7 XN-1..XN-11, §9.5.8; #274) — replaces the
-  unresolvable new-session use of seller-specific `x402:default` with a
-  discriminated `x402:protocol` definition that fixes protocol behaviour but
-  carries no provider, facilitator, resource URL, asset, network, scheme
-  allowlist, wallet, RPC, or credentials. The exact request and selected
-  requirement are covered by complete-reference JCS equality from the signed
-  Listing into a payee-bound Agreement; local implementations separately
-  declare `(x402Version, scheme, network)` capability. Before authorization the
-  handler obtains and matches one version-shaped challenge over method, URL,
-  body, version, scheme, CAIP-2 network, asset/decimals, exact amount, signed
-  payout destination, timeout, `extra`, and the complete top-level extensions
-  object, with redirects and post-signature parameter merging prohibited. New
-  `x402-protocol` evidence uses numeric `x402Version`, commits to both complete
-  PaymentRequired and settlement-response objects, carries a native
-  adapter-canonical event identifier, and can report success only after
-  independent asset/authorization/transfer/finality verification. `exact` is
-  the defined v0.7 scheme binding; other schemes remain protocol-valid but
-  cannot claim DACS success without their own binding profile. A receipt or
-  signed acknowledgement alone is diagnostic, never successful settlement.
-  The steward publishes `x402:default` disabled/deprecated for new sessions;
-  its static definition, string `protocolVersion`, and signed evidence bytes
-  remain unchanged for already-pinned continuation and historical replay.
-  Adds deterministic executable vectors for definition discrimination,
-  selection ambiguity, every pre-authorization substitution surface,
-  bounded public-fetch literal classes, v1/v2 hashing/version boundaries, local
-  capability, exact decimal conversion, party binding, independent-assurance
-  downgrade, cross-rail event identity, legacy replay, and retained-state retry
-  safety. The executable harness now places one instrumented wallet-call site
-  after every pre-authorization gate and proves that rejected inputs and every
-  reconciliation retry make zero authorization calls.
+- **Portable logical-to-native resolution and registry bootstrap** (CORE §5.1
+  SR2-10..SR2-13; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3;
+  Demos mapping §A.2; #242) — makes a verified `AnchorReceipt` the portable
+  mapping carrier on write-input substrates without changing its v1 bytes,
+  requires call-site authority and lifecycle checks, timely direct delivery
+  once a qualifying receipt exists, fail-closed substrate non-admission and
+  absence, and bounded public discovery, and preserves finalized
+  bundle references as the public audit path for session artifacts. Adds the
+  distinct signed `RegistryBootstrapDescriptor` trust root for the recipe and
+  rail index major lines, immutable content-sequenced snapshots, exact
+  first-contact pins, dual-authorized key rotation, cumulative revocation,
+  fork/rollback refusal, exact sequence-and-descriptor-hash historical replay,
+  and authenticated definition references. The bootstrap evaluator's explicit
+  historical target remains an exact sequence-and-descriptor-hash pair, but
+  activation in existing PA-2 `SessionContext`, Vet/Settle inputs, and signed
+  DACS-5 bundle shapes is deferred to a future coordinated profile with
+  distinct versioned action-bearing contracts; this release does not claim
+  descriptor-authenticated production or replay for the existing numeric
+  fields. Registry hashes use the repository's JCS/NFC implementation;
+  invalid candidates are discarded, unresolved signed competitors prevent
+  availability from selecting a branch, and equivalent receipt/reference
+  carriers do not create false forks. Exact-head security hardening restricts
+  authenticated references to the two registered class-specific predicates,
+  binds the registry-index v1 shape/kind/revision, requires every accepted
+  latest head to descend from the persisted descriptor pair, and discards
+  invalid same-key roots before fork counting. Closed snapshot, entry, and
+  entry-anchor shapes reject unknown members. Every transport copy is classified
+  before same-hash descriptor identities collapse and forks are counted, so an
+  invalid-signature copy cannot suppress a valid or unresolved copy by arriving
+  first. Canonicalization failures in
+  receipt tuples and resolved definitions now return fail-closed dispositions
+  instead of escaping the reference evaluator. Registers
+  `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,
+  indeterminate, and boundary vectors for both algorithms. Malformed receipt
+  and carrier shapes are discarded before storage lookup, ordering, or tuple
+  comparison; invalid first-contact roots are discarded before fork
+  classification; only the two SR2-10 authenticated-reference surfaces are
+  admitted; finite JCS fractions are accepted when signed and pinned; and
+  authenticated definition content with an unsafe JCS integer fails explicitly
+  rather than escaping the evaluator.
+
+### Fixed — DACS-1 v0.7 / DACS-2 v0.6
+
+- **Presence-only claim requirements made executable** (DACS-1 §6.3.3
+  PCR-1..PCR-6; DACS-2 §7.7.1; #334) — resolves the contradiction where
+  `verificationRequired: false` skipped the decision check but still failed the
+  unconditional freshness gate, while composite aggregation required a passing
+  `VerifyResult` for every member. Presence-only matching now evaluates the
+  exact signed bundle directly: canonical known claim, unexpired presenter
+  bound, and presenter-signed scheme parameters, with `issuedAt` informational. A well-shaped
+  optional `verifiedBy` is non-deciding for presence; malformed references are
+  errors, and `maxAge`/`recipeVersion` are invalid without verification.
+  DACS-2 excludes presence-only members from result evidence and replays mixed
+  required/`oneOf` aggregation against the exact bundle and requirement bound
+  by the existing CVR hashes; missing bundle is indeterminate, while synthetic
+  results, substitutions, invalid signatures, and decision mismatches reject.
+  Presence remains neither verification nor control: the exact `key:` bundle
+  signature may independently prove key control, but existence-only `lei:`
+  presence cannot become `presentedBy`, elevate identity tier, or key
+  reputation. Aggregation always authenticates the session-pinned recipe
+  registry snapshot, including for an all-presence requirement, so the
+  algorithm remains consistent with CRQ-1 and composes with descriptor-bound
+  registry resolution. Empty collection and exact-boolean configuration
+  semantics are explicit. Adds 47 deterministic vectors with genuine Ed25519
+  bundle, VerifyResult, and composite signatures, including an independently
+  bound authority context that rejects a valid replacement signature without
+  changing the referenced content hash. No artifact or schema change.
+
+### Added — signed alternative-payment projection
+
+- **One Listing, one buyer-selected payment handler** (DACS-1 §6.3.4,
+  DACS-3 §8.5.2, DACS-4 §9.9.1 APR-1..APR-8, DACS-5 §10.4.3; #340) — adds
+  the listing-only `pay-alternative` phase carrying complete
+  `PaymentRailRef` alternatives. Exactly one reference is selected into the
+  signed Agreement before commitment, its authenticated concrete handler is
+  projected at the original phase index, and evidence/bundles record that
+  concrete handler. Post-signature switching requires a fresh job and retries
+  never fall through to another rail after authorization or ambiguous
+  settlement. A claimed fresh-job replacement is now signed through
+  `priorPaymentDispositionRef` and can authorize only from an authenticated,
+  finalized `PriorPaymentDisposition` that durably closed before authorization
+  or proves the prior authorization cannot settle. Legacy readers reject the
+  unknown phase; ordinary and repeated payment pipelines retain their prior
+  meaning.
+
+### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7
+
+- **Canonical byte-exact `jobId` grammar** (CORE §B.1 JID-1..JID-4;
+  DACS-4 §9.5.8; DACS-5 §10.3/§10.4.2; #339) — replaces the ambiguous
+  “ULID or substrate-equivalent” form with one 26-character uppercase
+  Crockford ULID grammar (`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`). Current producers
+  emit that form directly; consumers validate before logical-address
+  assembly, job-specific hashing, discovery, lookup, comparison, signing, or
+  side effects and never trim, case-fold, alias-decode, percent-decode, or
+  Unicode-normalize it. Cross-artifact equality is byte-exact. The DACS-5
+  bundle address is now explicitly `stor-` plus the lowercase SHA-256 hex of
+  `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 47 deterministic
+  vectors with three independent literal address known answers, Unicode/case/
+  alias/overflow negatives, comparison cases, and executed zero-hash/
+  zero-lookup assertions for malformed input. Exact-profile cases refuse
+  caller-supplied matching objects—including empty, partial, and
+  unsupported-version tuples and copied reference labels—because only
+  verifier-owned trusted context bound to the exact session and authenticated
+  peer identity can establish admission. Missing, duplicate, unauthenticated,
+  identity-mismatched, and session-mismatched authority all fail closed.
+- **Compatibility boundary** (CORE §11.1.2; PROFILE) — this change is not
+  minor-additive. Live use requires the exact coordinated release/commit and
+  complete module tuple to be authenticated before protocol action; mixed
+  pre-JID-1/current operation refuses. Historical artifacts remain available
+  only through an explicitly selected legacy-replay path that cannot derive a
+  current address, perform a current lookup, create a current signature, or
+  authorize an effect.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 
@@ -100,6 +1302,26 @@ The format used per release:
   including mocked, disabled new/in-flight behavior, stale and forged
   definitions, missing authority, signed-scope mutation, untrusted mode input,
   and contradictory discovery hints.
+
+### Added — DACS-4 v0.7 / DACS-5 v0.5
+
+- **Phase-bound delivery evidence and exact credential handover — PDE-1..PDE-8**
+  (§9.6, §9.7, §10.4.3, CORE §B.1/§B.7; #329, #330) — introduces the
+  structurally distinct `DeliveryEvidence` artifact under
+  `dacs-delivery-evidence:v1:` so every delivery result signs its exact
+  `phaseIndex`. Current evidence, deliverable, entitlement, and payload-
+  attestation addresses are phase-indexed; renewal and attempt counters remain
+  independent within each invocation. Successful entitlement evidence binds
+  the exact EntitlementRecord hash/anchor and, when present, the complete
+  credential reference/access model, cleartext credential digest, and renewal
+  sequence while asserting delivered only. DACS-5 now verifies a one-to-one
+  phase/evidence mapping even when optional per-phase pointers are absent.
+  Historical unindexed delivery-shaped `SettlementEvidence` remains
+  byte-stable and readable only for one unambiguous matching delivery; it
+  cannot satisfy repetition or be reported as DV-5-verified. Adds deterministic
+  signed vectors for repeated storage/entitlement/attested delivery, address
+  and cross-phase replay, credential mismatch/substitution, legacy reads,
+  discriminator/domain separation, and unresolved evidence.
 
 ### Added — DACS-4 v0.6
 
@@ -141,10 +1363,36 @@ The format used per release:
   authority remains `indeterminate`; and inclusion time, not query time,
   governs the effective window. The persistent record cannot satisfy a fresh
   `domain-tls-control` requirement and controls a domain only when the bundle
-  presentation verifies under the same GCR-bound account. Adds 31 genuine
-  deterministic Ed25519 vectors and changes the example producer output to
+  presentation verifies under the same GCR-bound account. Carries 63
+  deterministic Ed25519 vectors (61 valid and two deliberately corrupted)
+  and changes the example producer output to
   canonical `domain:`. The steward's signed registry publication remains a
   separate post-review operation.
+
+- **DCR/DGCR conformance completion and spelling boundary** (DACS-1 §6.3.1
+  DCR-1/DCR-2/DCR-4/DCR-5/DCR-7; DACS-2 §7.3.10
+  DGCR-1/DGCR-2/DGCR-4; #332) — closes the remaining producer/read ambiguity:
+  a current U-label or upper-case `domain:` spelling is rejected rather than
+  repaired, while an otherwise-valid historical `web2:domain:` hostname is
+  ASCII-case-folded only after its original signature verifies. Expands
+  `domain-claim-gcr-v0.4` with those executable distinctions plus length and
+  A-label boundaries, non-IP numeric-host and distinct-host cases, direct/node
+  writer authorization, finalized inclusion, presentation-bound SR-1 control,
+  native context, and inclusion-time anti-reissue coverage. The generator is
+  checked byte-for-byte in CI.
+
+- **Signed bundle-version and verify-before-fold boundary** (DACS-1
+  §6.3.1 DCR-1/DCR-4/DCR-5; #347) — removes the corpus-only
+  `producerDacs1Version == "0.6"` selector from signed bundle bytes. Exact
+  spelling now follows the `domain:` scheme without a profile sidecar. Because
+  frozen `IdentityBundle.bundleVersion: "1"` has no authenticated minor-version
+  discriminator, current alias emission is tested at the producer/serializer
+  boundary from structured `producerInput` while readers permanently accept
+  signature-valid legacy aliases; adapters without that producer boundary must
+  abstain rather than replay the reader fixture. Mutable deployment state cannot
+  reclassify retained bytes. Adds single- and dual-alias current-production
+  rejections, `presentedBy` coverage, and paired signed/signature-corrupted
+  malformed-host rows that make verify-before-fold ordering evaluator-falsifiable.
 
 ### Added — DACS-4 v0.5
 
@@ -181,6 +1429,21 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **Canonical JSON cross-implementation repair** (CORE §B.2; #270) —
+  clarifies that the DACS 2^53−1 constraint is a finite-number magnitude
+  profile, not an integer-only profile, and makes `scripts/jcs.py` serialize
+  bounded fractional binary64 values using RFC 8785's ECMAScript form instead
+  of rejecting them. CF-1 now explicitly normalizes string values only:
+  member names remain as received, sort by UTF-16 code units, and NFC/NFD
+  spellings remain distinct. Adds 25 byte-discriminating candidate vectors
+  covering the seven observed cross-run divergences and relevant RFC edge
+  cases, including signed minimum subnormal, integral-binary64 formatting, and
+  both binary64 safe-magnitude boundaries. Each adapter must compare the exact
+  canonical bytes before emitting its verdict because the generic run-file
+  channel itself is verdict-only. Cross-run tooling records unsupported cases
+  as abstentions, excludes them from agreement denominators, refuses to label
+  a one-impl or abstaining run converged, and requires rule-by-rule
+  discrimination evidence before candidate promotion.
 - **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
   replaces the stale `verify-consume-one-sided` manifest hash after the
   normative reference-shape migration, binds manifest regeneration to the
@@ -200,11 +1463,9 @@ The format used per release:
   published vector exercised the §B.2 canonical-form hash of a *signed* artifact
   (an implementer could be §B.2-correct yet fail, or §B.2-wrong yet pass). The
   validator now canonicalises with a vendored stdlib-only module (`scripts/jcs.py`)
-  implementing RFC 8785 (JCS) for the JSON subset DACS lifecycle artifacts occupy —
-  integers |n| ≤ 2⁵³−1, strings, literals, arrays, objects; non-integral numbers
-  are rejected fail-closed (no normative DACS rule forbids them, but the corpus is
-  float-free (executed) and refusing beats emitting a possibly-nonconformant ES6
-  serialisation). It hashes the signature-omitted scope via an explicit per-kind
+  implementing RFC 8785 (JCS) for the DACS finite-number magnitude profile,
+  strings, literals, arrays, and objects (fractional serialization completed by
+  the #270 repair above). It hashes the signature-omitted scope via an explicit per-kind
   hash-excluded-field table (`signature` / `signatures`; bundles also omit
   `anchoredByRole` per §10.4.1). It additionally verifies every embedded ed25519
   signature over the §B.7 domain-separated payload (registry-validated separator ‖
@@ -218,8 +1479,7 @@ The format used per release:
   (pinned by an executed per-artifact equivalence test). Per CF-1's literal "every
   JSON string value", NFC is applied to string values only; member names are
   serialised and UTF-16-sorted as received (matching the in-repo `nfc_deep`
-  precedent) — whether CF-1 also binds member names is a spec-clarification
-  candidate, not resolved here.
+  precedent and now explicit in CORE §B.2 via #270).
   Residual: the signed internal cross-references
   (`listingRef` / `vetRecordRef` `contentHash`) still commit to the legacy
   whole-artifact hashes and cannot be corrected in place without the external

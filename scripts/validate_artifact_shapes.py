@@ -51,9 +51,11 @@ REFERENCE_FIXTURES = (
     ROOT / "conformance" / "fixtures" / "session-bundle-one-sided.json",
     ROOT / "conformance" / "fixtures" / "session-bundles-presence.json",
     ROOT / "conformance" / "fixtures" / "session-bundles-reputation.json",
+    ROOT / "conformance" / "fixtures" / "identity" / "dacs1-vet-golden-inputs-v0.1.json",
     ROOT / "conformance" / "fixtures" / "settlement-evidence-payment-success.json",
     ROOT / "conformance" / "fixtures" / "settlement-evidence-delivery-success.json",
     ROOT / "conformance" / "fixtures" / "settlement" / "htlc9-asymmetric.json",
+    ROOT / "conformance" / "fixtures" / "settlement" / "htlc9-asymmetric-resolved.json",
     ROOT / "conformance" / "vectors" / "security" / "bundle-binding-v0.1.json",
 )
 
@@ -81,7 +83,17 @@ _CHAIN_TX_REF_ARMS: dict[str, tuple[set[str], set[str]]] = {
     ),
     "demos": ({"kind", "txHash"}, {"blockNumber"}),
     "storage-program": ({"kind", "address", "writeTxHash"}, set()),
-    "ap2": ({"kind", "mandateId", "providerRef", "protocolVersion"}, {"receiptAttestation"}),
+    "ap2": (
+        {"kind", "mandateId", "providerRef", "protocolVersion"},
+        {"receiptAttestation"},
+    ),
+    "ap2-sr3": (
+        {
+            "kind", "mandateId", "providerRef", "protocolVersion",
+            "receiptAttestation", "receiptTransactionRef",
+        },
+        set(),
+    ),
     "x402": (
         {"kind", "httpResource", "paymentReceiptHash", "protocolVersion"},
         {"settlementTxHash", "chainId"},
@@ -248,7 +260,7 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
         "recoveryDeadline", "logIndex", "instructionIndex", "x402Version",
     }
     for field in required | optional:
-        if field not in value or field == "kind" or field == "receiptAttestation":
+        if field not in value or field in {"kind", "receiptAttestation", "receiptTransactionRef"}:
             continue
         expected = int if field in int_fields else str
         if not isinstance(value[field], expected) or (
@@ -262,6 +274,16 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
         errors.append(f"{ctx}: `{path}.cluster` MUST be mainnet, devnet, or testnet")
     if "receiptAttestation" in value:
         check_attestation_ref(value["receiptAttestation"], ctx, errors, f"{path}.receiptAttestation")
+    if "receiptTransactionRef" in value:
+        tx = value["receiptTransactionRef"]
+        if not isinstance(tx, dict) or set(tx) != {"kind", "value"}:
+            errors.append(
+                f"{ctx}: `{path}.receiptTransactionRef` MUST contain exactly kind + value"
+            )
+        elif not all(isinstance(tx.get(field), str) and tx[field] for field in ("kind", "value")):
+            errors.append(
+                f"{ctx}: `{path}.receiptTransactionRef.kind/value` MUST be non-empty strings"
+            )
 
 
 def check_nested_shapes(body: dict, typename: str, types: dict, ctx: str,
@@ -360,26 +382,102 @@ def check_file(path: Path, types: dict) -> tuple[list[str], int]:
 
 
 def _embedded_reference_artifacts(data) -> list[tuple[str, dict]]:
-    """Discover reference-bearing artifacts inside shared fixture wrappers."""
+    """Discover artifacts only at the declared locations used by fixtures.
+
+    A signed artifact may contain arbitrary application data.  Discriminator-
+    looking members inside that data are not independently declared artifacts
+    and must not be rediscovered by a recursive value walk.
+    """
     pairs: list[tuple[str, dict]] = []
 
-    def walk(value) -> None:
-        if isinstance(value, dict):
-            if value.get("bundleVersion") == "1":
-                pairs.append(("AttestationBundle", value))
-            elif value.get("faultBundleVersion") == "1":
-                pairs.append(("FaultAttestationBundle", value))
-            elif value.get("evidenceVersion") == "1":
-                pairs.append(("SettlementEvidence", value))
-            elif value.get("replayableDerivationVersion") == "1":
-                pairs.append(("ReplayableReputationDerivation", value))
-            for child in value.values():
-                walk(child)
-        elif isinstance(value, list):
-            for child in value:
-                walk(child)
+    def add(value) -> bool:
+        if not isinstance(value, dict):
+            return False
+        if value.get("bundleVersion") == "1":
+            # IdentityBundle and the legacy AttestationBundle share this
+            # literal.  Only an unambiguous IdentityBundle leaves the
+            # AttestationBundle check, so an AttestationBundle missing
+            # phaseSummary is still shape-checked and rejected.
+            kind = (
+                "IdentityBundle"
+                if "claims" in value and "phaseSummary" not in value
+                else "AttestationBundle"
+            )
+            pairs.append((kind, value))
+            return True
+        elif value.get("resultVersion") == "1":
+            pairs.append(("VerifyResult", value))
+            return True
+        elif value.get("faultBundleVersion") == "1":
+            pairs.append(("FaultAttestationBundle", value))
+            return True
+        elif value.get("evidenceVersion") == "1":
+            pairs.append(("SettlementEvidence", value))
+            return True
+        elif value.get("replayableDerivationVersion") == "1":
+            pairs.append(("ReplayableReputationDerivation", value))
+            return True
+        return False
 
-    walk(data)
+    if not isinstance(data, dict):
+        return pairs
+
+    # A fixture can itself be the artifact.
+    if add(data):
+        return pairs
+
+    # Named single-artifact/session wrapper positions.
+    for field in ("artifact", "bundle", "evidence", "settlementEvidence"):
+        add(data.get(field))
+    bundles = data.get("bundles")
+    if isinstance(bundles, list):
+        for bundle in bundles:
+            add(bundle)
+    for group_name in ("phaseIndexMismatch", "advisorySkew"):
+        group = data.get(group_name)
+        if isinstance(group, dict):
+            add(group.get("buyer"))
+            add(group.get("seller"))
+
+    # Golden Vet cases declare artifacts at input.bundle and at each
+    # input.resolvedResults[].artifact.  Evaluation names are map keys, not
+    # schema paths into the signed artifacts.
+    cases = data.get("cases")
+    if isinstance(cases, list):
+        for case in cases:
+            evaluations = case.get("evaluations") if isinstance(case, dict) else None
+            if not isinstance(evaluations, dict):
+                continue
+            for evaluation in evaluations.values():
+                input_value = (
+                    evaluation.get("input") if isinstance(evaluation, dict) else None
+                )
+                if not isinstance(input_value, dict):
+                    continue
+                add(input_value.get("bundle"))
+                authority = input_value.get("authority")
+                vet_input = (
+                    authority.get("vetInput")
+                    if isinstance(authority, dict) else None
+                )
+                if isinstance(vet_input, dict):
+                    add(vet_input.get("bundleToVet"))
+                    add(vet_input.get("verifierIdentity"))
+                resolved = input_value.get("resolvedResults")
+                if isinstance(resolved, list):
+                    for entry in resolved:
+                        if isinstance(entry, dict):
+                            add(entry.get("artifact"))
+
+    # Bundle-binding cases declare anchored artifacts as the values of their
+    # anchored registry.  Do not walk inside those artifacts.
+    vectors = data.get("vectors")
+    if isinstance(vectors, list):
+        for vector in vectors:
+            anchored = vector.get("anchored") if isinstance(vector, dict) else None
+            if isinstance(anchored, dict):
+                for artifact in anchored.values():
+                    add(artifact)
     return pairs
 
 

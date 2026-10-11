@@ -57,7 +57,7 @@ def binding_hash(binding):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
-def logical_address(job_id, role):
+def legacy_logical_address(job_id, role):
     return "stor-" + hashlib.sha256((job_id + "-bundle-" + role).encode("utf-8")).hexdigest()
 
 
@@ -140,7 +140,7 @@ class BundleBindingVectorTests(unittest.TestCase):
     def test_binding_logical_address_derivation(self):
         for v in self.vectors:
             for i, binding in enumerate(v.get("bindings", [])):
-                expected = logical_address(binding["jobId"], binding["role"])
+                expected = legacy_logical_address(binding["jobId"], binding["role"])
                 match = binding["logicalAddress"] == expected
                 with self.subTest(vector=v["name"], binding=i):
                     if v["name"] in INTENTIONAL_LOGICAL_ADDRESS_MISMATCH:

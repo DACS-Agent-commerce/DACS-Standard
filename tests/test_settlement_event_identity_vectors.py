@@ -2,7 +2,9 @@ import base64
 import hashlib
 import json
 import subprocess
+import sys
 import unittest
+import unicodedata
 from pathlib import Path
 from urllib.parse import quote, unquote_to_bytes
 
@@ -53,6 +55,8 @@ def parse_payment_anchor(value):
         rail_id = unquote_to_bytes(encoded_rail_id).decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError("railId is not UTF-8") from exc
+    if unicodedata.normalize("NFC", rail_id) != rail_id:
+        raise ValueError("railId is not NFC")
     if quote(rail_id, safe="-._~") != encoded_rail_id:
         raise ValueError("railId is not canonical CF-4")
     if not phase_text.isascii() or not phase_text.isdecimal():
@@ -287,7 +291,7 @@ def settlement_key(mode, parsed, index):
     return f"solana:{parsed['cluster']}:{parsed['signature']}:{index}"
 
 
-def evaluate(vector, public_key):
+def evaluate(vector, public_key, *, historical_first_claim=False):
     evidence = vector.get("settlementEvidence")
     if not isinstance(evidence, dict) or not signature_valid(evidence, public_key):
         return "fail"
@@ -386,6 +390,8 @@ def evaluate(vector, public_key):
     expected_key = vector.get("expectedSettlementTxId")
     if expected_key is not None and key != expected_key:
         return "fail"
+    if not historical_first_claim:
+        return "pass"
     prior = vector.get("priorClaims")
     if prior is None:
         return "indeterminate"
@@ -402,10 +408,18 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
     def setUpClass(cls):
         cls.document = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.public_key = bytes.fromhex(cls.document["publicKey"])
+        cls.historical_collision_vectors = set(
+            cls.document["conformanceProfile"]["historicalCollisionVectors"]
+        )
+
+    def test_payment_anchor_rejects_non_nfc_rail(self):
+        self.assertEqual(parse_payment_anchor("dacs4:payment:job:pay-dem:3"), ("job", "pay-dem", 3))
+        with self.assertRaisesRegex(ValueError, "NFC"):
+            parse_payment_anchor("dacs4:payment:job:e%CC%81:3")
 
     def test_generator_is_deterministic(self):
         subprocess.run(
-            ["python3", str(GENERATOR), "--check"],
+            [sys.executable, str(GENERATOR), "--check"],
             cwd=ROOT,
             check=True,
         )
@@ -417,10 +431,43 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
         names = [vector["name"] for vector in vectors]
         self.assertEqual(len(names), len(set(names)))
 
-    def test_all_vectors_execute(self):
+    def test_all_current_vectors_execute_with_sb1_only(self):
         for vector in self.document["vectors"]:
+            if vector["name"] in self.historical_collision_vectors:
+                continue
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector, self.public_key), vector["expected"])
+
+    def test_collision_decision_is_retained_only_as_historical(self):
+        self.assertEqual(
+            self.document["conformanceProfile"],
+            {
+                "status": "partially-superseded",
+                "currentCollisionAuthority": False,
+                "normativeScope": (
+                    "sb1-event-identity-projection-and-same-tuple-idempotency-only"
+                ),
+                "historicalCollisionVectors": [
+                    "same-event-second-job-rejected"
+                ],
+                "currentCollisionAuthoritySet": "sb2-collision-authority-v0.8",
+            },
+        )
+        self.assertEqual(
+            self.document["hash"],
+            "99de3b013d391b4f3a8b23a05101333dea5d5ae61d3a09c741fde2e86fa3b45a",
+        )
+        historical = [
+            vector
+            for vector in self.document["vectors"]
+            if vector["name"] in self.historical_collision_vectors
+        ]
+        self.assertEqual(len(historical), 1)
+        self.assertEqual(
+            evaluate(historical[0], self.public_key, historical_first_claim=True),
+            historical[0]["expected"],
+        )
+        self.assertEqual(evaluate(historical[0], self.public_key), "pass")
 
     def test_every_untampered_evidence_signature_is_real(self):
         tampered = {"event-discriminator-stripping", "cross-type-signature-replay"}

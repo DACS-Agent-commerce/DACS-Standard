@@ -48,20 +48,56 @@
   },
   "verifiedReceiptByCanonicalRef": {
     "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563\"},\"contentHash\":\"635cae52ab108be937c8174588c5ae54896e0c1f4f73d62b7ec26cab485e59c6\"}": {
+      "receiptVersion": "1",
+      "substrate": "demos-testnet",
+      "finalityProfile": "demos-bft-final",
       "logicalAddress": "dacs4:payment:EBFAB-COMPAT-1:test-rail:0",
       "nativeAddress": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563",
       "contentHash": "635cae52ab108be937c8174588c5ae54896e0c1f4f73d62b7ec26cab485e59c6",
-      "transaction": "demos-testnet:tx-279ca024fba32331a504f25bfced24f4",
+      "transactionRef": {
+        "kind": "demos-transaction",
+        "value": "tx-279ca024fba32331a504f25bfced24f4"
+      },
       "writer": "did:demos:seller",
-      "nonce": 0
+      "nonce": "0",
+      "state": "finalized",
+      "observationDisposition": "established",
+      "observedAt": 1785772800000,
+      "blockRef": {
+        "id": "block-7b90790f0d566ffbfd7381c5799ad69f",
+        "height": "1000",
+        "timestamp": 1785772800000
+      },
+      "evidence": {
+        "kind": "fixture-demos-bft-proof",
+        "value": "ab4b69ad46a42e70d106b79b4f1394a291a48174b7ff5bb3075485caccab6b22"
+      }
     },
     "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-45116d485e0f413dcab5421c6f88e0aa8d80e65f55cb578948f47d540bc534d3\"},\"contentHash\":\"635cae52ab108be937c8174588c5ae54896e0c1f4f73d62b7ec26cab485e59c6\"}": {
+      "receiptVersion": "1",
+      "substrate": "demos-testnet",
+      "finalityProfile": "demos-bft-final",
       "logicalAddress": "dacs4:payment:EBFAB-COMPAT-1:test-rail:0",
       "nativeAddress": "stor-45116d485e0f413dcab5421c6f88e0aa8d80e65f55cb578948f47d540bc534d3",
       "contentHash": "635cae52ab108be937c8174588c5ae54896e0c1f4f73d62b7ec26cab485e59c6",
-      "transaction": "demos-testnet:tx-279ca024fba32331a504f25bfced24f4",
+      "transactionRef": {
+        "kind": "demos-transaction",
+        "value": "tx-279ca024fba32331a504f25bfced24f4"
+      },
       "writer": "did:demos:seller",
-      "nonce": 0
+      "nonce": "0",
+      "state": "finalized",
+      "observationDisposition": "established",
+      "observedAt": 1785772800000,
+      "blockRef": {
+        "id": "block-7b90790f0d566ffbfd7381c5799ad69f",
+        "height": "1000",
+        "timestamp": 1785772800000
+      },
+      "evidence": {
+        "kind": "fixture-demos-bft-proof",
+        "value": "ab4b69ad46a42e70d106b79b4f1394a291a48174b7ff5bb3075485caccab6b22"
+      }
     }
   },
   "referenceValidationByCanonicalRef": {
@@ -569,7 +605,7 @@
       }
     },
     {
-      "name": "known-plus-unknown-discriminator-reject",
+      "name": "known-selector-plus-inert-unknown-member-pass",
       "bundle": {
         "evidenceBoundFaultBundleVersion": "1",
         "jobId": "EBFAB-COMPAT-1",
@@ -635,9 +671,9 @@
         "futureBundleVersion": "1"
       },
       "want": {
-        "type": null,
-        "signaturesValid": false,
-        "sebValid": false
+        "type": "evidence-bound",
+        "signaturesValid": true,
+        "sebValid": true
       }
     },
     {

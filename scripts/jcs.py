@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""RFC 8785 (JCS) canonicalisation for the JSON subset DACS lifecycle artifacts occupy.
+"""RFC 8785 (JCS) canonicalisation for DACS lifecycle artifacts.
 
-Scope, stated precisely (this is NOT an unqualified RFC 8785 implementation):
-the value model is integers with |n| <= 2**53 - 1, strings, the literals
-true/false/null, arrays, and objects. Non-integral numbers (any float, NaN,
-+/-Inf) and integers outside the safe range are rejected fail-closed. No
-normative DACS rule forbids non-integral JSON numbers, but the lifecycle corpus
-is float-free (executed by a CI equivalence test), and refusing beats emitting a
-possibly-nonconformant ES6 number serialisation — so the RFC 8785 Appendix B
-number vectors are inapplicable here by design (a declared omission, not silent).
+The value model is finite IEEE-754 binary64 numbers with magnitude no greater
+than 2**53 - 1, strings, the literals true/false/null, arrays, and objects.
+Integers and fractional numbers are both supported. Numbers outside the DACS
+safe-magnitude profile, NaN, and +/-Infinity are rejected fail-closed.
+
+CPython's float ``repr`` supplies the shortest round-trippable binary64 digits.
+``_encode_float`` rewrites only their decimal-point/exponent presentation to
+the ECMAScript thresholds required by RFC 8785: fixed notation for magnitudes
+in [1e-6, 1e21), scientific notation otherwise, and ``0`` for negative zero.
+The repository's deterministic vectors pin the exact UTF-8 bytes, including
+RFC 8785 Appendix B edge cases.
 
 From this the content hash (CORE §B.2) and the §B.7 signature payload derive. The
 module is dependency-free so a §B.2 hash reproduces from a clean clone.
@@ -19,15 +22,22 @@ serialisation; object **member names (keys)** are serialised and UTF-16-sorted
 **as received**, exactly as RFC 8785 specifies (RFC 8785 performs no Unicode
 normalisation of its own). This matches the in-repo precedent — the `nfc_deep`
 helpers (test_x402_receipt_hash_vectors.py, run_lifecycle_walkthrough.py) fold
-NFC over values only. Whether CF-1 also binds member names is unspecified by its
-literal text and is flagged as a spec-clarification candidate, not resolved here.
-On the all-ASCII DACS corpus the distinction is a no-op. Invalid Unicode (a lone
-surrogate, in a key or a value) is rejected — that is a well-formedness matter,
-not a CF-1 normalisation matter.
+NFC over values only. CORE §B.2 makes that values-only scope explicit.
+Canonically equivalent member names therefore remain distinct. Invalid Unicode
+(a lone surrogate, in a key or a value) is rejected — that is a well-formedness
+matter, not a CF-1 normalisation matter.
+
+CF-5 is intentionally not implemented here: by the time ``canonicalize``
+receives a language object, duplicate member names and raw numeric spellings may
+already have been lost. Externally supplied DACS JSON bytes must first pass
+``raw_json_profile.loads`` with the exact received bytes (or an equivalent
+strict raw-input gate); decoded text does not establish CF-5 admission. Only an
+accepted object model reaches this module.
 """
 
 from __future__ import annotations
 
+import math
 import unicodedata
 from typing import Any
 
@@ -95,36 +105,147 @@ def _encode_number(value: Any) -> str:
             )
         return str(value)
     if isinstance(value, float):
-        raise ValueError(
-            f"float {value!r} rejected fail-closed: DACS carries integers as JSON "
-            "ints and monetary values as CD-1 decimal strings; a non-integral ES6 "
-            "number serialisation is out of scope for this subset (CORE §B.2)"
-        )
+        return _encode_float(value)
     raise TypeError(f"unsupported number type: {type(value).__name__}")
 
 
+def _encode_float(value: float) -> str:
+    """Serialize one finite binary64 value using RFC 8785's ECMAScript form."""
+    if not math.isfinite(value):
+        raise ValueError(f"non-finite number {value!r} is not valid JSON (CORE §B.2)")
+    if abs(value) > _SAFE_INT_MAX:
+        raise ValueError(
+            f"number {value!r} exceeds the DACS safe-magnitude range "
+            f"+/-{_SAFE_INT_MAX} (CORE §B.2 — carry larger quantities as strings)"
+        )
+    # ECMAScript JSON.stringify(-0) is "0".
+    if value == 0:
+        return "0"
+
+    shortest = repr(value).lower()
+    sign = ""
+    if shortest.startswith("-"):
+        sign, shortest = "-", shortest[1:]
+
+    if "e" in shortest:
+        mantissa, exponent_text = shortest.split("e", 1)
+        exponent = int(exponent_text)
+    else:
+        mantissa, exponent = shortest, 0
+
+    if "." in mantissa:
+        whole, fraction = mantissa.split(".", 1)
+        digits = whole + fraction
+        decimal_position = len(whole) + exponent
+    else:
+        digits = mantissa
+        decimal_position = len(mantissa) + exponent
+
+    # Keep the decimal position tied to the first significant digit. Trailing
+    # zero removal does not move that position.
+    while len(digits) > 1 and digits.startswith("0"):
+        digits = digits[1:]
+        decimal_position -= 1
+    digits = digits.rstrip("0") or "0"
+
+    magnitude = abs(value)
+    if 1e-6 <= magnitude < 1e21:
+        if decimal_position <= 0:
+            body = "0." + "0" * (-decimal_position) + digits
+        elif decimal_position >= len(digits):
+            body = digits + "0" * (decimal_position - len(digits))
+        else:
+            body = digits[:decimal_position] + "." + digits[decimal_position:]
+    else:
+        body = digits[0]
+        if len(digits) > 1:
+            body += "." + digits[1:]
+        output_exponent = decimal_position - 1
+        body += "e" + ("+" if output_exponent >= 0 else "") + str(output_exponent)
+    return sign + body
+
+
 def _canonicalize(value: Any) -> str:
-    if value is None:
-        return "null"
-    if value is True:
-        return "true"
-    if value is False:
-        return "false"
-    if isinstance(value, str):
-        return _encode_value_string(value)
-    if isinstance(value, (int, float)):
-        return _encode_number(value)
-    if isinstance(value, list):
-        return "[" + ",".join(_canonicalize(item) for item in value) + "]"
-    if isinstance(value, dict):
-        for key in value:
-            if not isinstance(key, str):
-                raise ValueError(f"object member name must be a string, got {type(key).__name__}")
-            _ensure_utf8(key)
-        # RFC 8785 §3.2.3: sort member names by their UTF-16 code units, as received.
-        ordered = sorted(value.items(), key=lambda kv: kv[0].encode("utf-16-be"))
-        return "{" + ",".join(_encode_key(k) + ":" + _canonicalize(v) for k, v in ordered) + "}"
-    raise TypeError(f"unserialisable type: {type(value).__name__}")
+    """Traverse a JSON value iteratively, preserving all scalar encoders."""
+
+    output: list[str] = []
+    active_containers: set[int] = set()
+    stack: list[tuple[str, Any]] = [("value", value)]
+
+    while stack:
+        action, item = stack.pop()
+        if action == "text":
+            output.append(item)
+            continue
+        if action == "leave":
+            active_containers.remove(item)
+            continue
+        if action == "list-next":
+            iterator, first = item
+            try:
+                child = next(iterator)
+            except StopIteration:
+                output.append("]")
+                continue
+            if not first:
+                output.append(",")
+            stack.append(("list-next", (iterator, False)))
+            stack.append(("value", child))
+            continue
+
+        if item is None:
+            output.append("null")
+        elif item is True:
+            output.append("true")
+        elif item is False:
+            output.append("false")
+        elif isinstance(item, str):
+            output.append(_encode_value_string(item))
+        elif isinstance(item, (int, float)):
+            output.append(_encode_number(item))
+        elif isinstance(item, list):
+            identity = id(item)
+            if identity in active_containers:
+                raise ValueError("cyclic list/dict value is not serialisable as JSON")
+            active_containers.add(identity)
+            stack.append(("leave", identity))
+            # Preserve the public API's iterator semantics, including accepted
+            # list subclasses and mutations during child serialization.
+            output.append("[")
+            stack.append(("list-next", (iter(item), True)))
+        elif isinstance(item, dict):
+            identity = id(item)
+            if identity in active_containers:
+                raise ValueError("cyclic list/dict value is not serialisable as JSON")
+            for key in item:
+                if not isinstance(key, str):
+                    raise ValueError(
+                        "object member name must be a string, "
+                        f"got {type(key).__name__}"
+                    )
+                _ensure_utf8(key)
+            # RFC 8785 §3.2.3: sort member names by their UTF-16 code units,
+            # as received.  The list snapshots keys and values before traversal,
+            # matching the previous recursive implementation's validation-to-use
+            # behavior.
+            ordered = sorted(
+                item.items(), key=lambda pair: pair[0].encode("utf-16-be")
+            )
+            active_containers.add(identity)
+            stack.append(("leave", identity))
+            stack.append(("text", "}"))
+            for index in range(len(ordered) - 1, -1, -1):
+                key, member_value = ordered[index]
+                stack.append(("value", member_value))
+                stack.append(("text", ":"))
+                stack.append(("text", _encode_key(key)))
+                if index:
+                    stack.append(("text", ","))
+            stack.append(("text", "{"))
+        else:
+            raise TypeError(f"unserialisable type: {type(item).__name__}")
+
+    return "".join(output)
 
 
 def canonicalize(value: Any) -> str:

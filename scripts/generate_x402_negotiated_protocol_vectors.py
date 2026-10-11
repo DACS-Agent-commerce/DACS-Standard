@@ -683,8 +683,12 @@ def build_vectors() -> list[dict]:
     # The multicast rows are the ones an `is_global` gate lets through; ipv4-mapped-*
     # pin the "equivalent IPv4-mapped IPv6 spellings" clause.
     #
-    # NB these vectors assert REJECTION only. They are not deletion-sensitive on their
-    # own: 127.0.0.1, 169.254.1.1, 0.0.0.0 and 240.0.0.1 are all is_private in CPython,
+    # Every row refreshes the received-object hashes and pins the reason, so an
+    # evaluator without the address-class gate reaches "pass" and fails the vector
+    # instead of failing later on a stale challenge hash.
+    #
+    # NB these vectors assert REJECTION of each class, not which branch rejected it.
+    # They are not deletion-sensitive on their own: 127.0.0.1, 169.254.1.1, 0.0.0.0 and 240.0.0.1 are all is_private in CPython,
     # so removing the loopback, link-local, unspecified or reserved branch still rejects
     # them through the is_private fallback and leaves these green. The class-name unit
     # test is what makes a deleted branch fail.
@@ -737,11 +741,13 @@ def build_vectors() -> list[dict]:
             "XN-2/DACS-1-6.3.6",
             "a counterparty-selected non-public payable target is rejected",
             unsafe_public_target,
+            refresh=True,
+            reason="non-public-request-target",
         )
     # Legacy IPv4 host spellings. A fetch-style (WHATWG) URL parser treats a host
     # whose last label is a number as an IPv4 literal, so these denote the same
     # destinations as their dotted forms; a numeric host that is not a valid IPv4
-    # literal is not a valid host at all. Unlike the rows above, these refresh the
+    # literal is not a valid host at all. Like the rows above, these refresh the
     # received-object hashes and pin the reason, so an evaluator that treats the
     # host as a DNS name reaches "pass" and fails the vector.
     for name, unsafe_url in (

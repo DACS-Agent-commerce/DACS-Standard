@@ -1188,6 +1188,26 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertTrue(public_http_target(url))
 
+    def test_every_bounded_fetch_vector_depends_on_the_public_target_gate(self):
+        """Each literal-target vector fails at the gate and would otherwise pass.
+
+        The received-object hashes are refreshed and the reason pinned, so a stale
+        challenge hash cannot keep a vector green for an evaluator without the gate.
+        """
+        global public_http_target
+        names = [name for name in self.by_name if name.startswith("bounded-fetch-")]
+        self.assertGreaterEqual(len(names), 26)
+        gate = public_http_target
+        public_http_target = lambda _url: True  # noqa: E731
+        try:
+            for name in names:
+                with self.subTest(vector=name):
+                    vector = self.by_name[name]
+                    self.assertEqual(vector.get("expectedReason"), "non-public-request-target")
+                    self.assertEqual(evaluate(copy.deepcopy(vector)), ("pass", None))
+        finally:
+            public_http_target = gate
+
     def test_ipv4_mapped_spellings_match_their_ipv4_verdict(self):
         """§6.3.6 requires equivalent IPv4-mapped IPv6 spellings to reach the same verdict."""
         for literal, _ in NON_PUBLIC_CLASS_CASES:

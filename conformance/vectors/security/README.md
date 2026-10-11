@@ -1023,7 +1023,9 @@ single instrumented wallet-call site. A host whose last label is a number is
 classified as an IPv4 literal, as a fetch-style (WHATWG) URL parser does, so
 shorthand, single-number, hexadecimal, octal, trailing-dot, and percent-encoded
 spellings reach the verdict of their dotted form, and a numeric host that is not
-a valid IPv4 literal is rejected. Retry cases carry retained reconciliation
+a valid IPv4 literal is rejected. Every literal-target case refreshes the
+received-object hashes and pins `expectedReason: non-public-request-target`, so
+an evaluator without the address-class gate reaches `pass` and fails it. Retry cases carry retained reconciliation
 identity over job, phase, complete requirement, authorization identity, and
 transaction, and execute with zero additional wallet calls even when a caller
 asks to reauthorize or one retained binding is changed. DNS answer validation,

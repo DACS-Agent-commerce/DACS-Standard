@@ -675,7 +675,7 @@
     }
   },
   "count": 108,
-  "hash": "74d7576fcff929bfe13cb0141ea5ff4da801357bbb8cd203464757faeabe4a29",
+  "hash": "09b4cc9fc7af851ec67d5abeb3f52ad1d4dc8716359614984f127aa8a1402483",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -2202,10 +2202,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b3e59a9c7725ddb3f3df06df92d6c0fb9d8218cf5da7f93b24e7cf0a3491bbd1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "nNf18ofBI2nOX7hA-h5IerBQq2rKxNgoOhBiX43YDp77fbRAdt3LF9GBd5ufUvy_nfWKCclzZAFl12xXGwONAg"
+          "value": "4VbZGMWMVdIbS3DqSQvwywOFTR73T2Bj0LfxLejx679FjW5bJJ9GmEkO7H7wZHeHhPSqoOOQcEs0Y7-llS8lAQ"
         },
         {
           "op": "replace",
@@ -2257,7 +2267,8 @@
           ],
           "value": "https://localhost/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-loopback-target",
@@ -2313,10 +2324,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "cce98c79348c9ba99614297ace861293909a30b7dfabfefbb7dae5e683d2666b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "tZFJDCL0syySq2sFmAZl0I6fThAsmhgSSOf4ex41b0Lxs6p17JzjlItsZIFkr13Ckbutyt5HvZnBFTLD7lmtAg"
+          "value": "p5KoT6ymI9WVh61YvkofFzYS6pAec089wrJ6jZ2ORfubgZbDGICbRTmI0MiPhnwUQmmTWd2wD6_F1POfX7esCA"
         },
         {
           "op": "replace",
@@ -2368,7 +2389,8 @@
           ],
           "value": "https://127.0.0.1/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-private-target",
@@ -2424,10 +2446,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "4675d11ac19746a9aa30e17aa13c98b477cecbc9806474a6d3d558f207f33c9b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "SOUNPODm98rOiHAL1zkxIe8sFj_WTZZht9nCPJyhhyQQ2FA4WLa9TGWtwIVSd9dc42YIyHd8JiPZBVak0EwCDw"
+          "value": "1t_TpvWBYmlADk9ROlRLh68WHfsakV8JoA8mkoMdXdGZFu4Lq4nU0kV4VrXQdh-HioSbHHrvTcEm7Lm4xYcBDg"
         },
         {
           "op": "replace",
@@ -2479,7 +2511,8 @@
           ],
           "value": "https://10.0.0.1/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-link-local-metadata-target",
@@ -2535,10 +2568,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "cd1713ba797b39ba6705bab5df31831847dce58a66514f532108d98c44ce18be"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "8VwYF6pazSeuafQgG0upCTYQ-tLytfjapwSnGsK51QamP2cC8WalM634CgGFqXZliefXoL9EP44ZQEJivQyMCA"
+          "value": "_HlY8krKLvSZshhu6gvdVX5ffgmA08RL5u-3SYWdC1L3QX_e0aAyVz95etRJLS0OAi1Ugfc9YQjCLANpVa40Cg"
         },
         {
           "op": "replace",
@@ -2590,7 +2633,8 @@
           ],
           "value": "https://169.254.169.254/latest/meta-data/"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-link-local-only-target",
@@ -2646,10 +2690,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b5cb6828160725450ae006c783a82ce65618b8b91cc8cc90927bab95b29093a7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "oReH0dfIhS-wLLVBNirB3e6O2BPrspLxtNN5HS-by_LUVU0ZfW-qC1CY-MjdLwizoBliXIzjIT0MrKdty0M3Cw"
+          "value": "c5cuB1gPX1EtbFk1NyB6N_Eps4PkKTvKbmiV0Ws0kIfpvPrTkisStVtYRI4_e9BUBqyjr0MmtJsIC19w79s9Aw"
         },
         {
           "op": "replace",
@@ -2701,7 +2755,8 @@
           ],
           "value": "https://169.254.1.1/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv6-loopback-target",
@@ -2757,10 +2812,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "589182f100962d0b06836402b29cdb11b9706dd8d00fa944399e4108355cc2ac"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "ZTBI2Xvt2LgeWI20tAxi35nX-k0H7FXq0R5D-9pdbPBeI1xT5M_ZwQ0aU9q-OkDkCBu3vUma8dFYfd7H9WVoCA"
+          "value": "Fu1IfLK38-AwrFsvW8EKQqrH2pDwGWbmj_TVOXUZMPSVWVEWt-sMxqbtYp7PwAOAWJ_2vy1EJXUvwuGd0t8uCw"
         },
         {
           "op": "replace",
@@ -2812,7 +2877,8 @@
           ],
           "value": "https://[::1]/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-multicast-target",
@@ -2868,10 +2934,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "8dfdd91bdd9d1174e54ca047fdd979a35cbd6dea7717725e1abcacc8f7e9b936"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "41-C34oxsfDq56HoJeHsopfMx5LE5nSb1IOTAQ6Ea9w5Zw72UT2TwQ98qsYvm_FmPAVBaVPzMSuZVEn6RbgiCg"
+          "value": "luopqomVF9ILW15Ux502yJxuHOl0yA95LVhA6n276jBl4u6_XzaWh4AD_PLJUGT2pn1JWvQjziJ92zOi_yyHCw"
         },
         {
           "op": "replace",
@@ -2923,7 +2999,8 @@
           ],
           "value": "https://224.0.0.1/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-multicast-ssdp-target",
@@ -2979,10 +3056,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "500e533752ef5e2e3acd191f4ad6cf010f2a428083afc9dd8f8ef069a273219a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "SwvxiIes2quDx2vnWttKvUpqVfmIMDq4Or_dxLj_bC1E_W3GgdDaJPVZOVVIYcRGo8B6No2XdCvtMoSydgbRDg"
+          "value": "_x3zULWEYeVN1PABDqX_Nk-Ewvd3Ob-XeISGak3sxMzuSbhwXX2q6VeVrfm3XcgLObUgLGX4Bt49NSFpxwJpDQ"
         },
         {
           "op": "replace",
@@ -3034,7 +3121,8 @@
           ],
           "value": "https://239.255.255.250/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv6-multicast-target",
@@ -3090,10 +3178,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "53a60f79e92911ae21fedb22f0e4ace7183529858f25e6b4b26951eb33e37198"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "54CTC76D9233M5Cw1e-gPxumRa77qGWPT3CFkYscwfF8MOU98pQTGqPg9lh3Bz1TNsjXjdt2ZewNol6f0lmEAA"
+          "value": "d2cJVlf_Vdg1IskqcWlD3YXsBuUTKx2NW3BsgTgmu5FAVqm8eSnpfvp9xN5TRrmjAttoSiLaZL5TVeYvSnPeAg"
         },
         {
           "op": "replace",
@@ -3145,7 +3243,8 @@
           ],
           "value": "https://[ff02::1]/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-shared-address-target",
@@ -3201,10 +3300,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "30f4f6cc54ce3f3420a0ee7ec413f3a23f20eaeb2ae951ea807d9f5785359692"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "RCEG_JZOfoAmyoqj3Dh-vyMtYNDZr94e8ByVcklGf7eq_HgLgcg7GOHUMOU5zrALYLWz6_CcbR89Pi1RXZ3rAA"
+          "value": "Kjtu9DimXaHG70kwG68ipN9N-FfSAGdWv7iw_WkMvnuQkibZOLCJ6arMz4WP0j7oUswNct8U2xJ5fq5lrmHVDg"
         },
         {
           "op": "replace",
@@ -3256,7 +3365,8 @@
           ],
           "value": "https://100.64.0.1/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-unspecified-target",
@@ -3312,10 +3422,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "234f0bd6b4064964e9649580f77076dad266431ce42843a002316572e51f306e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "L8ixfauGa47vV1xw0xj-1tQuuT1p-sKFJsiCeNx1W21M_JX2av8Y1A80Tfl0os9aimeH-ff2_GRg7dev44SYDg"
+          "value": "ZetK3YIG-WRwiOlqfwqJSlt9RfIll8-s-iUVL4Ntu5iMTkH7x23Qmzp5oDG46hNxdtRTHOvxapnCR01uiYXmAA"
         },
         {
           "op": "replace",
@@ -3367,7 +3487,8 @@
           ],
           "value": "https://0.0.0.0/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-reserved-target",
@@ -3423,10 +3544,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "5bf7397fb12938c75706d11cdbb8b8941555165c847706950b214f3e6a43a724"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "0_i54CWTjLs8YGJalwGOC6wuC_dLWUkQLamp041CXH8bzBFLpRExJdnQyfz450Xmw9zNisnZ5BLYSBeanMnWBw"
+          "value": "rSrY5OBSF7-DHN62mOJaGC8wC2b92rf3z5zwcGmYipdWPdrpNXryyxpOBP_cDlWs5gapBA3HON9ax5UVQYOqCQ"
         },
         {
           "op": "replace",
@@ -3478,7 +3609,8 @@
           ],
           "value": "https://240.0.0.1/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-broadcast-target",
@@ -3534,10 +3666,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a08af44a65bf6a1cc948056be5ed4b8dd618ea30e535ee03a3f490942d41e47e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "6Zs5mVa9_bxHQzFrQZb6PHTpFPfZHLWajfiQJhm34yHrkAZ-rbto7uopsh_rx7lwkfjznYL7Aslrb1AzYlBmCA"
+          "value": "gHEx9a-7FcwfAGRaFk9HzVPaMVqsNZr_wXjh2FJDpNeReKrOthxfTHSFijsvniQTjyhW9cLKdEL6r4OiLcaLDw"
         },
         {
           "op": "replace",
@@ -3589,7 +3731,8 @@
           ],
           "value": "https://255.255.255.255/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv6-aws-imds-metadata-target",
@@ -3645,10 +3788,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "44d9b2d84dae85106adcafef12e8917fcc821e293230500bc71996d631f7e13d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "54PGysJfOt_AOTfSna5rn5KVkBkzHp6Av5WUtAL2Fy6OJcafNJ3Kx8kwL600rGE2zNjHCJjao0wdDtiKUHAfAw"
+          "value": "9rSWNvt9AeyEZyi-LNRcgUMo1EtlPF61ovlLodrUWAynXmxz5hlsnHOmlgIyw3cPIop02xRdtKZ46F8wxTdaAw"
         },
         {
           "op": "replace",
@@ -3700,7 +3853,8 @@
           ],
           "value": "https://[fd00:ec2::254]/latest/meta-data/"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv6-unique-local-target",
@@ -3756,10 +3910,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d6c8b3d1da90ee14dbba1074a0cf6ec44bae3868959e94cac4940ffe7460147a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "Ux165ZMGoz28Tv2Dm8RV_qr9gyz0oDO8JYE-UMrdZNFkvImn4soky6GrkPO19PKpDu_MCDmvDAD84bIGnk9_Dg"
+          "value": "diZU2S5APCE6TgjUjQZt_bFQ8RDs6swpcyf8Z4V_w7M6aV1sSZ2vdkuIPud52XN34Zi-OeuOipcbis3PQSiTDw"
         },
         {
           "op": "replace",
@@ -3811,7 +3975,8 @@
           ],
           "value": "https://[fc00::1]/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-mapped-loopback-target",
@@ -3867,10 +4032,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a485a4a25e8af86dc496e6d5705803b965909f773f7f99033a4a53d54add674d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "bTW53Pq8PtFGf9sTUBVGooYyyeuucxq7JFTjo_-dDviCll5tbt5wG_b0V7M2BdCxXBxktbsEhfyR2IwVvRulAw"
+          "value": "VvfOLgSGKO0PWOzbkVs0UJrZu4b7huSgSo5Q3AG5dsIfNcDUYyqgf8-IZn92uJKzpOdSEimmseGCtR6kzlHdDw"
         },
         {
           "op": "replace",
@@ -3922,7 +4097,8 @@
           ],
           "value": "https://[::ffff:127.0.0.1]/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-mapped-metadata-target",
@@ -3978,10 +4154,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "6e32a9c3a64e5442754862e2657a57eb07486461bb2b15106cd8606dc56fc5c8"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "bc-1THQB-xjbFka-WGw8x1hNQrx7-gaVf40t7Jj2QK9YIGfl185F_gt82K5gz4j_ZZ4OQUGaAB70FaDYc22IAg"
+          "value": "VAYLAi6Lco_bwRUjf7UNOhsMDslIeEaxss8PxxdaJi022QjMkcDzEJq0x-hAzLAKsL5ISf59yM8RLl1sTssoBA"
         },
         {
           "op": "replace",
@@ -4033,7 +4219,8 @@
           ],
           "value": "https://[::ffff:169.254.169.254]/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-mapped-multicast-target",
@@ -4089,10 +4276,20 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "4f3d798bdd146cc00342192b42e04ac68fe84fb4d75480a8a8651b620ffe3b7b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
-          "value": "XmE9qY7IlbCE2KuIzzBt4ZSdzPvJK_iqN6iw8uNKUCaE43TEFDq1l2csKL77lW-dX4cK9-wKLDHlwdZUeSlDBg"
+          "value": "lt_jt7w3ybDqigusVJkfq0upTKMhEB3DQUDsNFS5aoFGqYCr_AifwpgLWSydMjeoFvAPzl0cTdxID4w9cnMvDQ"
         },
         {
           "op": "replace",
@@ -4144,7 +4341,8 @@
           ],
           "value": "https://[::ffff:224.0.0.1]/pay"
         }
-      ]
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bounded-fetch-ipv4-shorthand-loopback-target",

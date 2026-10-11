@@ -100,12 +100,20 @@ instead: the pipeline has exactly one delivery step, at the overlay's
 `deliveryPhaseIndex` (DRP-3, DRA-11), and the record's `jobId` and `phase`
 must be that job and that step's kind (DRE-2, DRP-7).
 `deliverableContentHash` must be the content hash of the delivered-artifact
-input. A storage-program success must name the DACS-4 §9.6.1 anchor for this
-job, `{kind: "storage-program", locator: "dacs4:deliverable:{jobId}"}`, with
-the overlay's `jobId`; another kind or another job's address is rejected
-(DRE-2). The verifier compares that locator but does not resolve it, so it
-does not prove that a Storage Program exists at the address or holds the
-content-hashed payload. The delivery outcome does not
+input. DACS-4 §9.6.1 writes the deliverable as a Storage Program at
+`dacs4:deliverable:{jobId}`, but its step 5 elides the anchor locator
+(`locator: …`), so the text does not fix the locator form. A storage-program
+success must carry `kind: "storage-program"` and one of two locator forms.
+The logical form `dacs4:deliverable:{jobId}` must name the overlay's `jobId`.
+The logical form is a fixture choice, not a DACS-4 §9.6.1 requirement. A
+native Storage Program address, `stor-` followed by 40 or 64 lower-case
+hexadecimal digits, is the form the lifecycle walkthrough emits; the verifier
+checks only its kind and syntax. Another kind, another job's logical address,
+or a locator in neither form is rejected (DRE-2). The verifier resolves
+neither form, so it does not prove that a Storage Program exists at the
+address or holds the content-hashed payload. It also cannot tell whether a
+native address is this job's Storage Program, because the fixture models no
+logical-to-native resolver. The delivery outcome does not
 choose the disposition; the evaluation under the bound rule does. Each
 evaluation subject reference must resolve to a lifecycle record the verifier
 authenticated: the escrow job, the funding evidence, or the delivery evidence
@@ -278,6 +286,11 @@ the fixture itself. The vectors depend on them and do not prove them:
 - **Deliverable anchor locator** (DRE-2, DRP-7). The `dacs4:deliverable:{jobId}`
   locator is compared, not resolved, so the Storage Program's existence and
   contents at that address are not proven.
+- **Native locator binding** (DRE-2, DRP-7). A native `stor-…` locator is
+  accepted on its kind and syntax only. The binding from
+  `dacs4:deliverable:{jobId}` to that native address is not modelled, so a
+  native address of another job's Storage Program would be accepted. Proving it
+  needs a published logical-to-native binding and a resolver.
 - **Replay ledger durability**. The `DecisionLedger` is in-memory and
   single-process, as described above; durable or cross-process one-use
   enforcement is not claimed.

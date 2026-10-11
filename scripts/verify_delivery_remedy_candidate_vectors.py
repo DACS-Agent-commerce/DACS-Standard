@@ -42,6 +42,9 @@ JID_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 BYTES32_RE = re.compile(r"^0x[0-9a-f]{64}$")
 EVM_TX_RE = re.compile(r"^0x[0-9a-f]{64}$")
+# A Demos Storage Program native address: `stor-` and a lower-case SHA-256
+# digest (DEMOS-MAPPING), whole or cut to 40 hex digits as the walkthrough emits.
+NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 
 DOMAINS = {
     "agreement": "dacs-x-delivery-remedy-agreement:v1:",
@@ -1005,20 +1008,20 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     if delivery["phase"] != value["pipeline"][phase_index]["kind"]:
         return result("rejected", "DRE-2", "delivery evidence phase is not the agreed delivery step")
     # DACS-4 §9.6.1 writes the deliverable as a Storage Program at
-    # dacs4:deliverable:{jobId}, so a storage-program success names that
-    # anchor.  The locator is compared, not resolved.
-    if (
-        delivery["phase"] == "deliver-storage-program"
-        and "deliverableAnchor" in delivery
-        and anchor != {
-            "kind": "storage-program",
-            "locator": "dacs4:deliverable:" + value["artifacts"]["agreement"]["jobId"],
-        }
-    ):
-        return result(
-            "rejected", "DRE-2",
-            "deliverable anchor is not the DACS-4 §9.6.1 storage program for this job",
-        )
+    # dacs4:deliverable:{jobId}; its step 5 elides the anchor locator.  A
+    # storage-program success names that kind and either the logical address,
+    # which must be this job's, or a native Storage Program address, whose
+    # syntax alone is checked.  Neither is resolved, and the logical-to-native
+    # binding of a native locator is not proven (README, synthetic proof limits).
+    if delivery["phase"] == "deliver-storage-program" and "deliverableAnchor" in delivery:
+        logical = "dacs4:deliverable:" + value["artifacts"]["agreement"]["jobId"]
+        if anchor["kind"] != "storage-program" or not (
+            anchor["locator"] == logical or NATIVE_STORAGE_LOCATOR_RE.fullmatch(anchor["locator"])
+        ):
+            return result(
+                "rejected", "DRE-2",
+                "deliverable anchor is not a DACS-4 §9.6.1 storage program for this job",
+            )
     return None
 
 

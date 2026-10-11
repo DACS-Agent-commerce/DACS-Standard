@@ -269,10 +269,20 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "**`priorTerminals` completeness** (DRD-8, DRL-4, DRT-4)",
             "**Block-scoped log index** (DRD-8, DRL-4, DRT-4)",
             "**Deliverable anchor locator** (DRE-2, DRP-7)",
+            "**Native locator binding** (DRE-2, DRP-7)",
             "**Replay ledger durability**",
         ):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
+
+    def test_readme_calls_the_logical_locator_a_fixture_choice(self):
+        """§9.6.1 elides the locator; the README must not present one form as required."""
+        readme = " ".join(
+            (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8").split()
+        )
+        self.assertIn("The logical form is a fixture choice, not a DACS-4 §9.6.1 requirement", readme)
+        self.assertIn("native Storage Program address", readme)
+        self.assertNotIn("must name the DACS-4 §9.6.1 anchor for this job", readme)
 
     def test_no_finding_reports_a_promotion_blocked_rule(self):
         blocked = set(self.vector_pack["promotionBlockedRules"])

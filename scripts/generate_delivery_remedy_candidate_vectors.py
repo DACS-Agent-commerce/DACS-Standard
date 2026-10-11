@@ -39,8 +39,10 @@ LIFECYCLE_JOBS = {
     "expired-pre": "01J8ME0SXKQ4T9V2RC5HJ6WX7J",
     "expired-post": "01J8ME0SXKQ4T9V2RC5HJ6WX7K",
 }
-# The failed-delivery refund positive is a further job of its own.
+# The failed-delivery refund and native-locator release positives are further
+# jobs of their own.
 FAILED_DELIVERY_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7M"
+NATIVE_LOCATOR_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7N"
 NATIVE_JOB_IDS = {
     JOB_A: "1",
     JOB_B: "2",
@@ -49,6 +51,7 @@ NATIVE_JOB_IDS = {
         for index, job_id in enumerate(list(LIFECYCLE_JOBS.values())[1:], start=3)
     },
     FAILED_DELIVERY_JOB: "7",
+    NATIVE_LOCATOR_JOB: "8",
 }
 BUYER = "did:demos:agent:" + "11" * 32
 SELLER = "did:demos:agent:" + "22" * 32
@@ -78,6 +81,10 @@ SELLER_ACCOUNT = "0x" + "22" * 20
 EVALUATOR_ACCOUNT = "0x" + "33" * 20
 RELAYER_ACCOUNT = "0x" + "77" * 20
 RUNTIME_HASH = hashlib.sha256(b"synthetic DACS delivery gate runtime v1").hexdigest()
+# A native Storage Program address in the walkthrough's stor-{40 hex} form.
+NATIVE_DELIVERABLE_LOCATOR = "stor-" + hashlib.sha256(
+    b"synthetic native Storage Program for the release deliverable"
+).hexdigest()[:40]
 
 DOMAINS = {
     "agreement": "dacs-x-delivery-remedy-agreement:v1:",
@@ -959,6 +966,20 @@ def build_vector_pack() -> dict[str, Any]:
         "dre-2-deliverable-anchor-other-job": make_base("release", hooks={
             "delivery": put("deliverableAnchor", "locator", "dacs4:deliverable:another-job"),
         }),
+        # §9.6.1 step 5 elides the locator, and the lifecycle walkthrough anchors
+        # at the substrate's native stor-… address.  That form is accepted on
+        # kind and syntax; its logical-to-native binding is not proven.
+        "dre-2-deliverable-anchor-native-locator": make_base("release", NATIVE_LOCATOR_JOB, hooks={
+            "delivery": put("deliverableAnchor", "locator", NATIVE_DELIVERABLE_LOCATOR),
+        }),
+        "dre-2-deliverable-anchor-native-locator-kind": make_base("release", hooks={
+            "delivery": put("deliverableAnchor", {
+                "kind": "not-storage-program", "locator": NATIVE_DELIVERABLE_LOCATOR,
+            }),
+        }),
+        "dre-2-deliverable-anchor-native-locator-malformed": make_base("release", hooks={
+            "delivery": put("deliverableAnchor", "locator", "stor-" + "Z" * 40),
+        }),
         # DRV-2: terminalState is a closed string discriminator; an array or
         # object in a re-signed terminal is malformed input, not a crash.
         "drv-2-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
@@ -1328,7 +1349,10 @@ def build_vector_pack() -> dict[str, Any]:
         vector("delivery-reference-mismatch", "delivery-reference-mismatch", "rejected", "DRE-2", "the delivery reference must resolve the signed delivery evidence"),
         vector("dre-2-delivery-phase-kind", "dre-2-delivery-phase-kind", "rejected", "DRE-2", "delivery evidence must name the agreed delivery step", rules=["DRE-2", "DRP-7"]),
         vector("dre-2-deliverable-anchor-kind", "dre-2-deliverable-anchor-kind", "rejected", "DRE-2", "a storage-program delivery anchors a DACS-4 §9.6.1 Storage Program, not another anchor kind", rules=["DRE-2", "DRP-7"]),
-        vector("dre-2-deliverable-anchor-other-job", "dre-2-deliverable-anchor-other-job", "rejected", "DRE-2", "the storage-program anchor is dacs4:deliverable:{jobId} for this job, not another job's address", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-other-job", "dre-2-deliverable-anchor-other-job", "rejected", "DRE-2", "a logical storage-program locator is dacs4:deliverable:{jobId} for this job, not another job's address", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-native-locator", "dre-2-deliverable-anchor-native-locator", "verified", "DRV-7", "a native stor- Storage Program locator is accepted on kind and syntax; its logical-to-native binding is not proven", rules=["DRE-2", "DRP-7", "DRV-7"]),
+        vector("dre-2-deliverable-anchor-native-locator-kind", "dre-2-deliverable-anchor-native-locator-kind", "rejected", "DRE-2", "a native locator still needs the storage-program anchor kind", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-native-locator-malformed", "dre-2-deliverable-anchor-native-locator-malformed", "rejected", "DRE-2", "a stor- locator outside the native address syntax is neither locator form", rules=["DRE-2", "DRP-7"]),
         vector("drv-2-delivery-evidence-shape", "drv-2-delivery-evidence-shape", "error", "DRV-2", "delivery evidence keeps the exact delivery SettlementEvidence shape", rules=["DRE-2", "DRV-2"]),
         vector("dre-2-failed-delivery-without-deliverable", "dre-2-failed-delivery-without-deliverable", "verified", "DRV-7", "a failed delivery's SettlementEvidence may omit the deliverable content hash and anchor", rules=["DRE-2", "DRP-7", "DRV-7"]),
         vector("dre-2-failed-delivery-carries-artifact-input", "dre-2-failed-delivery-without-deliverable", "rejected", "DRE-2", "delivery evidence that names no deliverable resolves no delivered-artifact input", [{"op": "replace", "path": ["reproductionInputs", "deliveredArtifact"], "value": {"kind": "delivered-artifact-input"}}]),

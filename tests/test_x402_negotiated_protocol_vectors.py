@@ -710,7 +710,7 @@ def evaluate(v, effects=None):
     if tuple_value not in capability.get("supportedTuples", []):
         return "fail", "x402-capability-unsupported"
     if selection["scheme"] != "exact" or "dacs-x402-exact:v1" not in capability.get("bindingProfiles", []):
-        # Other schemes are protocol-valid but have no v0.7 DACS success profile.
+        # Other schemes are protocol-valid but have no v0.8 DACS success profile.
         return ("indeterminate" if selection["scheme"] == "batch-settlement" else "fail"), "x402-capability-unsupported"
 
     request = ref["parameters"]["request"]

@@ -675,7 +675,7 @@
     }
   },
   "count": 106,
-  "hash": "18905f8eb2d96ad7ab6130c14fba223202267a76d647d7b0688519a0ba2e5943",
+  "hash": "ecc7c6fe038ab3bdf917e1bec61911d49421c578fd07819b319b717ffcd7c69e",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -6817,7 +6817,7 @@
       "expected": "fail",
       "rule": "XN-8",
       "operation": "execute",
-      "note": "the finality binding profile must name the exact v0.7 DACS semantics",
+      "note": "the finality binding profile must name the exact v0.8 DACS semantics",
       "base": "v2",
       "patch": [
         {

@@ -988,7 +988,7 @@ def build_vectors() -> list[dict]:
                  "network": "eip155:1"
              }), authorization_submitted=True)
     add_case(vectors, "finality-binding-profile-substitution", "fail", "XN-8",
-             "the finality binding profile must name the exact v0.7 DACS semantics",
+             "the finality binding profile must name the exact v0.8 DACS semantics",
              lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
                  "bindingProfile": "counterparty-profile:v1"
              }), authorization_submitted=True)

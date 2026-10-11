@@ -676,7 +676,16 @@ def listing_agreement_type_violation(listing):
     offered = list(accepted)
     for step in pipeline:
         if step.get("kind") == "pay-alternative":
-            offered.extend(step.get("parameters", {}).get("alternatives", []))
+            # Shape before use: a signed but malformed slot is `error`, not an exception.
+            parameters = step.get("parameters")
+            if not isinstance(parameters, dict):
+                return "error", "listing-shape"
+            alternatives = parameters.get("alternatives")
+            if not isinstance(alternatives, list) or not all(
+                isinstance(alternative, dict) for alternative in alternatives
+            ):
+                return "error", "listing-shape"
+            offered.extend(alternatives)
     if not any(isinstance(ref, dict) and ref.get("railId") == "x402:protocol" for ref in offered):
         return None
     commits = [step.get("kind") for step in pipeline

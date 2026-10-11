@@ -739,6 +739,29 @@ def build_vectors() -> list[dict]:
              listing_pipeline(sealed_complete_negotiation, "commit-selection-bound-agreement",
                               alternative=True),
              operation="admit-listing", reason="x402-protocol-agreement-type")
+
+    # A signed pay-alternative slot whose parameters or alternatives have the
+    # wrong JSON type is malformed before the offered set is built.
+    def malformed_alternative_slot(path, value):
+        def mutate(v):
+            listing_pipeline(fixed_price, "commit-payee-bound-agreement", alternative=True)(v)
+            slot = next(step for step in v["listing"]["pipeline"]
+                        if step["kind"] == "pay-alternative")
+            if path == "parameters":
+                slot["parameters"] = value
+            else:
+                slot["parameters"]["alternatives"] = value
+        return mutate
+    for name, path, value, note in (
+        ("parameters-null", "parameters", None, "pay-alternative parameters must be an object"),
+        ("parameters-array", "parameters", [], "pay-alternative parameters must be an object"),
+        ("alternatives-null", "alternatives", None, "pay-alternative alternatives must be an array"),
+        ("alternatives-object", "alternatives", {},
+         "pay-alternative alternatives must be an array, not an object"),
+    ):
+        add_case(vectors, f"listing-pay-alternative-{name}", "error", "XN-2/APR-1", note,
+                 malformed_alternative_slot(path, value), operation="admit-listing",
+                 reason="listing-shape")
     add_case(vectors, "unsigned-runtime-url-override", "fail", "XN-2/XN-6",
              "a runtime URL beside the signed rail ref cannot override it",
              lambda v: v["runtime"].update({"effectiveUrl": "https://attacker.example/pay"}))

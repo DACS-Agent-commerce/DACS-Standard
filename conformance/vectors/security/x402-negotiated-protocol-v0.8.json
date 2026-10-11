@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 138,
-  "hash": "7844ad43a44f3984c2dd3b1806da3fe87d50b206ce1e35bcc563723e681acb34",
+  "count": 142,
+  "hash": "335009f7db57114f47a9a7c10d744f8282879f70385f712caa8ef4bdab5ce25d",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -2569,6 +2569,346 @@
         }
       ],
       "expectedReason": "x402-protocol-agreement-type"
+    },
+    {
+      "name": "listing-pay-alternative-parameters-null",
+      "expected": "error",
+      "rule": "XN-2/APR-1",
+      "operation": "admit-listing",
+      "note": "pay-alternative parameters must be an object",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": null
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "Uc9v8ofPFqRrn58b9XyqfPN7Ux3NmyDZAkhzRKv_bEE8K9EP3LRp7e-JwFVjgsxXSfz71TOyLgbyGBW-P9b_Cg"
+        }
+      ],
+      "expectedReason": "listing-shape"
+    },
+    {
+      "name": "listing-pay-alternative-parameters-array",
+      "expected": "error",
+      "rule": "XN-2/APR-1",
+      "operation": "admit-listing",
+      "note": "pay-alternative parameters must be an object",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": []
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "1l3KooMx4KYiYLvSYd65NWuCkm3a10PLey_jqSCjeJf8sGx7M6K1mn12v3EF06CO5TL7-FBStslL6V91kKb0Cg"
+        }
+      ],
+      "expectedReason": "listing-shape"
+    },
+    {
+      "name": "listing-pay-alternative-alternatives-null",
+      "expected": "error",
+      "rule": "XN-2/APR-1",
+      "operation": "admit-listing",
+      "note": "pay-alternative alternatives must be an array",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": {
+                "alternatives": null
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "-oEK2kOf8f0a99nvhQ5SpyiyAZ9ZZMO2GBXQmM_nyAUL6op2tpT7IyqbA_oMMSeY4f4y7bYvVqu1n91hSJ87BQ"
+        }
+      ],
+      "expectedReason": "listing-shape"
+    },
+    {
+      "name": "listing-pay-alternative-alternatives-object",
+      "expected": "error",
+      "rule": "XN-2/APR-1",
+      "operation": "admit-listing",
+      "note": "pay-alternative alternatives must be an array, not an object",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-alternative",
+              "parameters": {
+                "alternatives": {}
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "demos-native:DEM",
+              "railVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "Olcv4nVD27kFJqvrMCuENld25lGAuCYmu-p0rkBUGH8eX92A2kn8_SWprsEM69-a9dPQqguLiUtwtl5byfpOCA"
+        }
+      ],
+      "expectedReason": "listing-shape"
     },
     {
       "name": "unsigned-runtime-url-override",

@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 138 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 142 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1088,6 +1088,9 @@ concrete `pay-x402` phase or as a `pay-alternative` member, is admitted with
 `commit-identity-bound-payee-agreement` or `commit-selection-bound-agreement`.
 APR-1 states the rule for an alternative slot and DACS-1 LRR-4 points to it;
 the rejection needs no registry, so it precedes registry-dependent checks.
+A signed `pay-alternative` slot whose `parameters` is not an object, or whose
+`alternatives` is not an array of objects, is `error` with reason
+`listing-shape` before the offered set is built.
 These cases check only that rule; registry resolution under DACS-1 LRR-2..LRR-6
 and APR-2 is covered by the listing-resolution and alternative-payment sets.
 

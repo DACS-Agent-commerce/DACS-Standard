@@ -984,6 +984,8 @@ def build_vector_pack() -> dict[str, Any]:
         # object in a re-signed terminal is malformed input, not a crash.
         "drv-2-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
         "drv-2-terminal-state-object": make_base("release", hooks={"terminal": put("terminalState", {})}),
+        # A string outside the closed set is malformed too, not a DRT-4 mismatch.
+        "drv-2-terminal-state-unknown-string": make_base("release", hooks={"terminal": put("terminalState", "bogus")}),
         "drv-2-delivery-evidence-shape": make_base("release", hooks={"delivery": put("paymentTxRefs", [])}),
         # A §9.7 failure may omit the deliverable members it has no value for.
         "dre-2-failed-delivery-without-deliverable": make_base("rejected-refund", FAILED_DELIVERY_JOB, hooks={
@@ -1387,6 +1389,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("terminal-delivery-reference-mismatch", "terminal-delivery-reference-mismatch", "rejected", "DRT-12", "post-submission terminal evidence must reference the exact delivery"),
         vector("drv-2-terminal-state-array", "drv-2-terminal-state-array", "error", "DRV-2", "a signed terminal whose terminalState is an array is malformed input"),
         vector("drv-2-terminal-state-object", "drv-2-terminal-state-object", "error", "DRV-2", "a signed terminal whose terminalState is an object is malformed input"),
+        vector("drv-2-terminal-state-unknown-string", "drv-2-terminal-state-unknown-string", "error", "DRV-2", "a signed terminal whose terminalState is a string outside the closed discriminator set is malformed input"),
         vector("native-terminal-state-divergence", "release", "rejected", "DRT-4", "the native terminal state must equal the signed terminal state", [{"op": "replace", "path": ["native", "terminalState"], "value": "rejected-refund"}]),
         vector("funding-job-reference-mismatch", "funding-job-mismatch", "rejected", "DRF-1", "funding evidence must reference the exact escrow job"),
         vector("funding-phase-index-mismatch", "funding-phase-index-mismatch", "rejected", "DRF-1", "funding evidence must bind the agreement's fund phase index"),
@@ -1573,6 +1576,8 @@ FOLLOW_ON_FINDINGS = {
     # An unsupported evaluation result or disposition authorizes no settlement.
     "drv-2-evaluation-result": ("rejected", "DRD-2"),
     "drv-2-decision-disposition": ("rejected", "DRD-2"),
+    # A terminal state outside the closed set matches no terminal event.
+    "drv-2-terminal-state-unknown-string": ("rejected", "DRT-4"),
     # A release whose decision is missing has no authorizing decision.
     "decision-artifact-unavailable": ("rejected", "DRT-3"),
     # An overlay delivery index on a non-delivery step names no delivery step.

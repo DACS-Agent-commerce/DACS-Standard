@@ -1403,6 +1403,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "MUST NOT rewrite",
             "Its host MUST NOT contain `%`.",
             "internationalized host MUST be signed in A-label form",
+            "It MUST also compare it with the authenticated ledger",
         ):
             self.assertIn(text, spec)
 
@@ -1540,6 +1541,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                          " 0x" + tx, "0x", "", None, 1):
             with self.subTest(spelling=spelling):
                 self.assertIsNone(adapter_canonical_transaction("eip155:8453", spelling))
+
+    def test_ledger_transaction_is_compared_in_the_collapsed_form(self):
+        """XN-7: the ledger side is collapsed too, in both spelling directions."""
+        for name, response_tx, ledger_tx in (
+            ("protocol-v2-exact-success", "0x" + "ab" * 32, "0x" + "ab" * 32),
+            ("response-transaction-unprefixed", "ab" * 32, "0x" + "ab" * 32),
+            ("response-transaction-0x-ledger-unprefixed", "0x" + "ab" * 32, "ab" * 32),
+        ):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                response = decode_response_header(vector["http"]["responseHeader"], 2)
+                self.assertEqual(response["transaction"], response_tx)
+                self.assertEqual(
+                    vector["evidence"]["paymentTxRefs"][0]["settlementTransaction"], response_tx
+                )
+                self.assertEqual(vector["ledger"]["transaction"], ledger_tx)
+                self.assertEqual(evaluate(vector), ("pass", None))
 
     def test_threat_model_summary_matches_xn9_dispositions(self):
         """The §12.4 index row must not widen XN-9's single indeterminate case."""

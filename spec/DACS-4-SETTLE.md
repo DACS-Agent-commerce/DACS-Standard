@@ -1350,16 +1350,17 @@ XN-10.
   member. `httpResource` MUST equal the exact signed URL;
   `settlementNetwork` and `settlementTransaction` MUST equal the successful
   response and the selected network; `settlementTransaction` keeps the
-  response's `transaction` spelling verbatim. To compare that transaction with
-  `settlementEvent` and with authenticated ledger data, the EIP-155 `exact`
-  adapter applies the SB-1 EVM hash rule: it removes at most one leading `0x`
-  or `0X`, compares hexadecimal digits case-insensitively, and requires exactly
-  32 bytes (64 hexadecimal digits) after the prefix. A response `transaction`
+  response's `transaction` spelling verbatim. The EIP-155 `exact` adapter MUST
+  compare that transaction in the SB-1 EVM hash form. That form removes at most
+  one leading `0x` or `0X`, ignores hexadecimal case, and requires exactly 32
+  bytes (64 hexadecimal digits) after the prefix. A response `transaction`
   with no such form, including a wrong length, a second prefix, or a
   non-hexadecimal character, is a malformed coordinate and yields `error`.
-  This applies only to the received response; the DACS-produced
-  `settlementEvent` MUST already be canonical under SB-1. Version 1 selects
-  `X-PAYMENT-RESPONSE`; version 2 selects `PAYMENT-RESPONSE`; an unsupported
+  The adapter MUST compare the collapsed response transaction with the hash in
+  `settlementEvent`. It MUST also compare it with the authenticated ledger
+  transaction, collapsed to the same form. The collapse never applies to the
+  DACS-produced `settlementEvent`, which MUST already be canonical under SB-1.
+  Version 1 selects `X-PAYMENT-RESPONSE`; version 2 selects `PAYMENT-RESPONSE`; an unsupported
   version/header/schema, invalid base64/JSON, non-success response, missing
   complete object, non-canonical stored hash, or recomputed mismatch MUST NOT
   produce success evidence.

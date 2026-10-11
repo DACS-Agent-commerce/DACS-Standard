@@ -1134,18 +1134,24 @@ def build_vectors() -> list[dict]:
              response_transaction_mismatch, refresh=True, authorization_submitted=True)
 
     # XN-7 keeps the response transaction verbatim in settlementTransaction; the
-    # EIP-155 adapter compares it with settlementEvent and the ledger after the
-    # SB-1 collapse: at most one 0x/0X, hex in either case, exactly 32 bytes.
-    def response_transaction_spelling(spelling):
+    # EIP-155 adapter compares it with settlementEvent, and with the ledger
+    # transaction in the same form, after the SB-1 collapse: at most one 0x/0X,
+    # hex in either case, exactly 32 bytes. The base fixture already carries the
+    # upstream 0x lower-case spelling in the response and the ledger.
+    def response_transaction_spelling(spelling, ledger_spelling=None):
         def mutate(v):
             response = settlement_response(2)
             response["transaction"] = spelling
             v["http"]["responseHeader"] = encoded_header(response, 2)
             v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = spelling
+            if ledger_spelling is not None:
+                v["ledger"]["transaction"] = ledger_spelling
         return mutate
+    add_case(vectors, "response-transaction-0x-ledger-unprefixed", "pass", "XN-7/XN-8/SB-1",
+             "a 0x response matches an unprefixed authenticated ledger transaction in the collapsed form",
+             response_transaction_spelling("0x" + SAFE_TX, SAFE_TX), refresh=True,
+             authorization_submitted=True)
     for name, expected, spelling, note in (
-        ("response-transaction-0x-lowercase", "pass", "0x" + SAFE_TX,
-         "the upstream 0x-prefixed lower-case hash matches the canonical event key"),
         ("response-transaction-unprefixed", "pass", SAFE_TX,
          "a hash without a prefix is already the canonical form"),
         ("response-transaction-0x-mixed-case", "pass", "0x" + "Ab" * 32,

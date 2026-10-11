@@ -675,7 +675,7 @@
     }
   },
   "count": 137,
-  "hash": "5a6aab5bbdc6f44b0da56d4835367e9a841e829bf6a7ab283c5a9db1e401d954",
+  "hash": "f43601b6a505c1f68c772003e81946ddffb9a3e891a2e9a2683073cfa687f64c",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -10609,13 +10609,21 @@
       ]
     },
     {
-      "name": "response-transaction-0x-lowercase",
+      "name": "response-transaction-0x-ledger-unprefixed",
       "expected": "pass",
       "rule": "XN-7/XN-8/SB-1",
       "operation": "execute",
-      "note": "the upstream 0x-prefixed lower-case hash matches the canonical event key",
+      "note": "a 0x response matches an unprefixed authenticated ledger transaction in the collapsed form",
       "base": "v2",
       "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "abababababababababababababababababababababababababababababababab"
+        },
         {
           "op": "replace",
           "path": [

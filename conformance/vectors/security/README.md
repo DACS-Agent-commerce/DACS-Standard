@@ -1059,9 +1059,12 @@ stack.
 
 Response-transaction cases keep the response spelling verbatim in
 `settlementTransaction` and compare it with the canonical event key under the
-EIP-155 adapter rule: `0x` lower-case, unprefixed, mixed-case, and `0X`
-upper-case spellings pass, while 63 hexadecimal digits or a second `0x` prefix
-is `error` with reason `settlement-transaction-form`. The two
+EIP-155 adapter rule. The authenticated ledger transaction is compared in the
+same collapsed form, so its spelling need not match the response's. The base
+fixtures carry the upstream `0x` lower-case spelling in both; unprefixed,
+mixed-case, and `0X` upper-case responses over that ledger pass, and so does a
+`0x` response over an unprefixed ledger transaction. 63 hexadecimal digits or a
+second `0x` prefix is `error` with reason `settlement-transaction-form`. The two
 `noncanonical-native-event-key*` cases change only the DACS-produced
 `settlementEvent`, keep the response unchanged, and stay `error`.
 

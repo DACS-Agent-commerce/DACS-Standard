@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 103,
-  "hash": "cb5852f6297687ac552d16bf9abe37e49c48e9aad19220aabd841e28f2fc6664",
+  "count": 105,
+  "hash": "83ba28a8399249451b9fdc6afb4d1a3e7205b4d1a90fe1e4e8676d8e0fe2e572",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -5883,6 +5883,189 @@
           "value": "1.0000001"
         }
       ]
+    },
+    {
+      "name": "agreement-price-large-exact-amount",
+      "expected": "pass",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "a price with more significant digits than a default decimal context converts exactly",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "e08pi6YFv5MW3_Aq2j_6YGyPg1cLztiMB0JFWtMX10Q3FVfppGWgwKEIJUMSawM2vxOEGHzHU1tf6xqGIpdlAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "OQgFi-BbJRwWUOfp_Ocjy1aOsoXGmj8I13UmctMEfkGGTCCP6b3pK1p0yGAP-whkIikTcchwQcXuApM5IuskAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "123456789012345678901234567.25"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "123456789012345678901234567.25"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "9574519e52bac791d579217d2a493a3a62f139f5c0665cb4c27ce7d4ce4dd919"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "JnN5uwSxJE448nsJZOWfVLz8GoYBtl4f4wOuiV7rnlxWRZb-OAfbqfxoNDfhVJB53N5g1gqGSUygZC2i9dFSCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "123456789012345678901234567250000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "123456789012345678901234567250000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "agreement-price-rounded-by-decimal-context",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "excess precision rejects even when the challenge carries the context-rounded amount",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "GdXJykGSp2X3PMRy-3qDLvsE-hm_Nw8EKElp24keW0nQxRMspHuJ3yEoEa8YKYdFSHUoswGUEHsfA8JLRYSKCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "u5fx1BXnyY8B19pUULO3n2p4kq3jf51sDZ5e2YEO-uEJIc5w1UkND80m5Z9K_LK2MyGZ6QVhbXYJFqYnr7_jBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "1000000000000000000000000.0000001"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "1000000000000000000000000.0000001"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "2cf084842434fd30a80ba64884a47b00087020fcc5812020c9755f26c6394c8a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "CwAbvdfrS8zZnqWfb8PQ3LTQ3pcz1Ja8VsIIPPta0zXuX11FpxpmqmhHYLxjABOL1A3_yplF9Rs0Xf0N61ytDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "1000000000000000000000000000000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "1000000000000000000000000000000"
+        }
+      ],
+      "expectedReason": "exact-amount"
     },
     {
       "name": "runtime-payer-not-agreement-buyer",

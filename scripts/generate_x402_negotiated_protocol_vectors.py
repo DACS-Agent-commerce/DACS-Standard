@@ -850,6 +850,26 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "agreement-price-excess-precision", "fail", "XN-5",
              "exact conversion never rounds excess fractional precision",
              lambda v: v["agreement"]["terms"]["price"].update({"amount": "1.0000001"}))
+
+    # Exact shifting must not depend on an arithmetic context: a 28-digit
+    # decimal context would round both prices below and accept the second.
+    def price_and_atomic(price, atomic):
+        def mutate(v):
+            v["agreement"]["terms"]["price"]["amount"] = price
+            v["evidence"]["paymentAmount"]["amount"] = price
+            v["http"]["paymentRequired"]["accepts"][0]["amount"] = atomic
+            v["ledger"]["amount"] = atomic
+        return mutate
+    add_case(vectors, "agreement-price-large-exact-amount", "pass", "XN-5",
+             "a price with more significant digits than a default decimal context converts exactly",
+             price_and_atomic("123456789012345678901234567.25",
+                              "123456789012345678901234567250000"),
+             refresh=True)
+    add_case(vectors, "agreement-price-rounded-by-decimal-context", "fail", "XN-5",
+             "excess precision rejects even when the challenge carries the context-rounded amount",
+             price_and_atomic("1000000000000000000000000.0000001",
+                              "1000000000000000000000000000000"),
+             refresh=True, reason="exact-amount")
     add_case(vectors, "runtime-payer-not-agreement-buyer", "fail", "XN-5",
              "runtime payer must resolve to the signed buyer",
              lambda v: v["runtime"]["payer"].update({"primaryClaim": "did:demos:agent:" + "99" * 32}))

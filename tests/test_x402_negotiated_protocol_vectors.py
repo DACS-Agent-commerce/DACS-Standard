@@ -8,7 +8,6 @@ import subprocess
 import sys
 import unicodedata
 import unittest
-from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -546,13 +545,17 @@ def reconciliation_identity(v):
 def exact_atomic(amount, decimals):
     if not isinstance(amount, str) or not CD1.fullmatch(amount):
         raise ValueError("non-canonical decimal")
-    try:
-        atomic = Decimal(amount) * (Decimal(10) ** decimals)
-    except InvalidOperation as exc:
-        raise ValueError("invalid decimal") from exc
-    if atomic != atomic.to_integral_value() or atomic <= 0:
+    if not is_safe_nonnegative(decimals):
+        raise ValueError("invalid decimals")
+    # Exact decimal shifting on the canonical digits: no arithmetic context,
+    # so there is no precision limit and nothing can round.
+    whole, _, fraction = amount.partition(".")
+    if len(fraction) > decimals:
         raise ValueError("not exactly representable")
-    value = str(int(atomic))
+    atomic = int(whole + fraction) * 10 ** (decimals - len(fraction))
+    if atomic <= 0:
+        raise ValueError("not exactly representable")
+    value = str(atomic)
     if not re.fullmatch(r"[1-9][0-9]*", value):
         raise ValueError("non-canonical atomic amount")
     return value
@@ -1026,6 +1029,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "body-sent-without-signed-hash",
             "asset-decimals-adapter-mismatch",
             "agreement-price-excess-precision",
+            "agreement-price-rounded-by-decimal-context",
             "runtime-payer-not-agreement-buyer",
             "runtime-paying-key-not-buyer-controlled",
             "runtime-payer-address-not-derived-from-paying-key",
@@ -1193,6 +1197,27 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "MUST NOT rewrite",
         ):
             self.assertIn(text, spec)
+
+    def test_exact_atomic_never_rounds_beyond_decimal_context_precision(self):
+        """XN-5 exact shifting has no 28-digit precision limit and never rounds."""
+        for amount, decimals, want in (
+            ("1.25", 6, "1250000"),
+            ("123456789012345678901234567.25", 6, "123456789012345678901234567250000"),
+            ("1234567890123456789012345678901234", 0, "1234567890123456789012345678901234"),
+            ("0.000001", 6, "1"),
+        ):
+            with self.subTest(amount=amount, decimals=decimals):
+                self.assertEqual(exact_atomic(amount, decimals), want)
+        for amount, decimals in (
+            ("1000000000000000000000000.0000001", 6),
+            ("1234567890123456789012345678.9", 0),
+            ("1.0000001", 6),
+            ("0", 6),
+            ("0.0000001", 6),
+        ):
+            with self.subTest(amount=amount, decimals=decimals):
+                with self.assertRaises(ValueError):
+                    exact_atomic(amount, decimals)
 
     def test_threat_model_summary_matches_xn9_dispositions(self):
         """The §12.4 index row must not widen XN-9's single indeterminate case."""

@@ -937,6 +937,11 @@
       "test": "CurrentUseReplayCorpusTests.test_legacy_negative_cases_pass_a_verifier_missing_only_their_guard"
     },
     {
+      "id": "pr418-credential-field-delivery-signature-bypass-witness",
+      "file": "tests/test_phase_bound_delivery_vectors.py",
+      "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass"
+    },
+    {
       "id": "pr336-atomic-exact-presenter-vector-consumer",
       "file": "tests/test_atomic_work_vectors.py",
       "test": "AtomicWorkVectorTests.test_whole_profile_admission_resolves_exactly_one_presented_claim"

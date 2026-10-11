@@ -7,7 +7,7 @@
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
   },
   "scope": "capability evidence only; no chain deployment or DACS rail is registered",
-  "hash": "928509bd564fc7a6f2cb9cd152881f030535b2d1fdbff464a1b83eb567168364",
+  "hash": "56baf3e35906c87278b24f4183561f92333fe7385d7a634ff661f3481cc55ff6",
   "count": 18,
   "manifests": {
     "synthetic-control": {
@@ -113,7 +113,7 @@
         "eventIdentityComplete": true,
         "decisionOrderingProfile": null,
         "deadlineProfile": null,
-        "submissionCutoffEnforced": null,
+        "submissionCutoffEnforced": false,
         "expiryRecoveryDeadlineEnforced": null
       },
       "evidence": {
@@ -133,7 +133,7 @@
         "ADMIN_ROLE pause, emergencyWithdraw, mutable fees, hook whitelist, and hook detachment",
         "settleClaim and approveClaim can release provider value from Funded",
         "claimRefund is pause-gated and a pending claim can delay Funded recovery",
-        "no separately enforced per-job submission cutoff is evidenced"
+        "one canonical expiredAt and no separately enforced per-job submission cutoff"
       ]
     }
   },
@@ -536,10 +536,12 @@
         "DRC-4",
         "DRC-5",
         "DRC-6",
-        "DRC-7"
+        "DRC-7",
+        "DRC-13"
       ],
       "rules": [
         "DRC-1",
+        "DRC-13",
         "DRC-2",
         "DRC-3",
         "DRC-4",
@@ -553,8 +555,7 @@
         "DRC-8",
         "DRC-10",
         "DRC-11",
-        "DRC-12",
-        "DRC-13"
+        "DRC-12"
       ]
     },
     {

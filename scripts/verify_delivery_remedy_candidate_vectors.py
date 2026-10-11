@@ -1997,15 +1997,20 @@ def deployment_rule_statuses(manifest: Any) -> dict[str, str] | None:
         capabilities.get("expiryRecoveryDeadlineEnforced"),
         evidence.get("deadlineEnforcementAuthenticated"),
     ]
-    statuses["DRC-13"] = _status(
-        deadline_values,
-        lambda profile, cutoff, recovery, authenticated: (
-            profile == "separate-submission-cutoff-v1"
-            and type(cutoff) is bool and cutoff is True
-            and type(recovery) is bool and recovery is True
-            and type(authenticated) is bool and authenticated is True
-        ),
-    )
+    # A native deadline known to be unenforced already violates DRC-13;
+    # unresolved companion facts cannot turn that into "unknown".
+    if any(value is False for value in deadline_values[1:3]):
+        statuses["DRC-13"] = "fail"
+    else:
+        statuses["DRC-13"] = _status(
+            deadline_values,
+            lambda profile, cutoff, recovery, authenticated: (
+                profile == "separate-submission-cutoff-v1"
+                and type(cutoff) is bool and cutoff is True
+                and type(recovery) is bool and recovery is True
+                and type(authenticated) is bool and authenticated is True
+            ),
+        )
     return statuses
 
 

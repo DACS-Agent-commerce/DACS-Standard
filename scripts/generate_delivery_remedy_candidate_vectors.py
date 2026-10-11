@@ -1767,7 +1767,7 @@ def current_reference_manifest() -> dict[str, Any]:
             "eventIdentityComplete": True,
             "decisionOrderingProfile": None,
             "deadlineProfile": None,
-            "submissionCutoffEnforced": None,
+            "submissionCutoffEnforced": False,
             "expiryRecoveryDeadlineEnforced": None,
         },
         "evidence": {
@@ -1787,7 +1787,7 @@ def current_reference_manifest() -> dict[str, Any]:
             "ADMIN_ROLE pause, emergencyWithdraw, mutable fees, hook whitelist, and hook detachment",
             "settleClaim and approveClaim can release provider value from Funded",
             "claimRefund is pause-gated and a pending claim can delay Funded recovery",
-            "no separately enforced per-job submission cutoff is evidenced",
+            "one canonical expiredAt and no separately enforced per-job submission cutoff",
         ],
     }
 
@@ -1834,9 +1834,9 @@ def build_deployment_pack() -> dict[str, Any]:
             "current-reference-142e669-ineligible",
             "current-reference-142e669",
             "rejected",
-            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7"],
+            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13"],
             "the pinned reference source is not a DACS-eligible deployment",
-            unknown=["DRC-8", "DRC-10", "DRC-11", "DRC-12", "DRC-13"],
+            unknown=["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
         ),
         deployment_case("malformed-deployment-manifest", "synthetic-control", "error", [], "malformed capability input fails before eligibility", [{"op": "remove", "path": ["capabilities"]}]),
     ]

@@ -24,7 +24,9 @@ into executable review evidence:
   a pinned assessment of
   [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol).
   The pinned reference is `rejected`, remains unregistered, and is never
-  reported as available.
+  reported as available. Its source facts fail DRC-1 through DRC-7 and, because
+  it has no separately enforced submission cutoff, DRC-13; DRC-8 and DRC-10
+  through DRC-12 stay unknown without deployment evidence.
 
 The synthetic control proves only that the checker can observe all thirteen
 positive capability predicates. Those predicates come from the manifest

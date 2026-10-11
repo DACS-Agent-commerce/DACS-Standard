@@ -967,15 +967,34 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         observed = evaluate_deployment(manifest)
         self.assertEqual(observed["result"], "rejected")
+        # §8.4 states the pinned source has no separately enforced submission
+        # cutoff, so the fixture records that fact and DRC-13 fails with DRC-1..7.
+        self.assertIs(manifest["capabilities"]["submissionCutoffEnforced"], False)
         self.assertEqual(
             [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "fail"],
-            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7"],
+            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13"],
         )
         self.assertEqual(
             [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "unknown"],
-            ["DRC-8", "DRC-10", "DRC-11", "DRC-12", "DRC-13"],
+            ["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
         )
         self.assertFalse(observed["registrationEligible"])
+
+    def test_known_unenforced_native_deadline_fails_drc13_despite_unresolved_companions(self):
+        for field in ("submissionCutoffEnforced", "expiryRecoveryDeadlineEnforced"):
+            with self.subTest(unenforced=field):
+                manifest = copy.deepcopy(self.deployment_pack["manifests"]["synthetic-control"])
+                manifest["capabilities"].update({
+                    "deadlineProfile": None,
+                    "submissionCutoffEnforced": None,
+                    "expiryRecoveryDeadlineEnforced": None,
+                })
+                manifest["evidence"]["deadlineEnforcementAuthenticated"] = None
+                self.assertEqual(deployment_rule_statuses(manifest)["DRC-13"], "unknown")
+                manifest["capabilities"][field] = False
+                self.assertEqual(deployment_rule_statuses(manifest)["DRC-13"], "fail")
+                observed = evaluate_deployment(manifest)
+                self.assertEqual((observed["result"], observed["rule"]), ("rejected", "DRC-13"))
 
     def test_signed_funding_and_terminal_records_cannot_bypass_finality_or_events(self):
         expected = {

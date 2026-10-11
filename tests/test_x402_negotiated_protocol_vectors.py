@@ -28,6 +28,9 @@ HTTP_TOKEN = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Z-]+$")
 CAIP2 = re.compile(r"^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$")
 CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
 EVM_EVENT = re.compile(r"^evm:([1-9][0-9]*):([0-9a-f]{64}):(0|[1-9][0-9]*)$")
+# A received EIP-155 response transaction: at most one 0x/0X prefix, then
+# exactly 32 bytes of hex in either case (the SB-1 legacy-spelling collapse).
+EVM_RESPONSE_TRANSACTION = re.compile(r"^(?:0[xX])?([0-9a-fA-F]{64})$")
 # XN-2: ERC-20 decimals() and an SPL mint's decimals are both uint8.
 ASSET_DECIMALS_MAX = 255
 # XN-5 overflow ceiling per exact binding, keyed by CAIP-2 namespace: EIP-3009
@@ -588,6 +591,24 @@ def decode_response_header(header, version):
     return response
 
 
+def adapter_canonical_transaction(network, transaction):
+    """The adapter's comparison form of a received response `transaction`.
+
+    settlementTransaction keeps the response spelling verbatim (XN-7). Only the
+    comparison with settlementEvent and ledger data uses this form, so None (no
+    canonical form) is a malformed coordinate. DACS-produced settlementEvent
+    keys get no such collapse: EVM_EVENT accepts only the canonical spelling.
+    """
+    if not isinstance(transaction, str):
+        return None
+    if network.startswith("eip155:"):
+        match = EVM_RESPONSE_TRANSACTION.fullmatch(transaction)
+        return match.group(1).lower() if match else None
+    if network.startswith("solana:"):
+        return transaction
+    return None
+
+
 def listing_agreement_type_violation(listing):
     """XN-2 listing admission: an offered x402:protocol ref needs the payee-bound phase."""
     if not isinstance(listing, dict):
@@ -886,6 +907,9 @@ def evaluate(v, effects=None):
         or evidence_ref.get("settlementTransaction") != response.get("transaction")
     ):
         return "fail", "evidence-response-binding"
+    transaction = adapter_canonical_transaction(selection["network"], response.get("transaction"))
+    if transaction is None:
+        return "error", "settlement-transaction-form"
     finality = evidence.get("settlementFinality", {})
     profile = finality.get("schemeNetworkFinality", {})
     if (
@@ -904,13 +928,11 @@ def evaluate(v, effects=None):
     if ledger.get("finalized") is not True:
         return "indeterminate", "settlement-not-final"
     event = evidence_ref.get("settlementEvent")
-    if not native_event_matches(
-        event, selection["network"], evidence_ref.get("settlementTransaction")
-    ):
+    if not native_event_matches(event, selection["network"], transaction):
         return "error", "native-event-key"
     if (
         ledger.get("network") != selection["network"]
-        or ledger.get("transaction") != response.get("transaction")
+        or adapter_canonical_transaction(selection["network"], ledger.get("transaction")) != transaction
         or ledger.get("settlementEvent") != event
         or ledger.get("scheme") != "exact"
         or ledger.get("asset") != selection["asset"]
@@ -1383,6 +1405,35 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr[-2000:])
         self.assertEqual(result.stdout.split(), ['["error",', '"rail-ref-shape"]', "rejected"])
+
+    def test_noncanonical_event_vectors_change_only_the_dacs_side_key(self):
+        """The SB-1 error vectors test the produced settlementEvent, not the response spelling."""
+        base = self.by_name["protocol-v2-exact-success"]
+        base_response = decode_response_header(base["http"]["responseHeader"], 2)
+        for name in ("noncanonical-native-event-key", "noncanonical-native-event-key-uppercase"):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                self.assertEqual(vector["expectedReason"], "native-event-key")
+                self.assertEqual(vector["http"], base["http"])
+                self.assertEqual(
+                    decode_response_header(vector["http"]["responseHeader"], 2), base_response
+                )
+                event = vector["evidence"]["paymentTxRefs"][0]["settlementEvent"]
+                self.assertNotRegex(event, EVM_EVENT)
+                # The same hash spelled as a response transaction would be accepted.
+                hash_text = event.split(":")[2]
+                self.assertIsNotNone(adapter_canonical_transaction("eip155:8453", hash_text))
+
+    def test_response_transaction_canonical_form_is_the_eip155_adapter_rule(self):
+        """At most one 0x/0X, hex in either case, exactly 32 bytes; nothing else."""
+        tx = "ab" * 32
+        for spelling in (tx, "0x" + tx, "0X" + tx.upper(), "0x" + "Ab" * 32):
+            with self.subTest(spelling=spelling):
+                self.assertEqual(adapter_canonical_transaction("eip155:8453", spelling), tx)
+        for spelling in ("0x" + tx[:63], "0x0x" + tx, "0x" + tx + "0", "0x" + "g" * 64,
+                         " 0x" + tx, "0x", "", None, 1):
+            with self.subTest(spelling=spelling):
+                self.assertIsNone(adapter_canonical_transaction("eip155:8453", spelling))
 
     def test_threat_model_summary_matches_xn9_dispositions(self):
         """The §12.4 index row must not widen XN-9's single indeterminate case."""

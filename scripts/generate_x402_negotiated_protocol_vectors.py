@@ -22,6 +22,9 @@ from evm_crypto import (
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.8.json"
 SAFE_TX = "ab" * 32
+# Upstream x402 EVM responses spell the transaction hash with 0x; settlementEvent
+# keys use the canonical SB-1 form (SAFE_TX).
+RESPONSE_TX = "0x" + SAFE_TX
 URL = "https://seller.example/dacs/resource?job=274"
 ASSET = "0x" + "33" * 20
 EVM_BUYER_PRIVATE_SCALAR = 1
@@ -233,7 +236,7 @@ def settlement_response(version: int = 2) -> dict:
     response = {
         "success": True,
         "payer": BUYER_ADDRESS,
-        "transaction": SAFE_TX,
+        "transaction": RESPONSE_TX,
         "network": "eip155:8453",
     }
     if version == 2:
@@ -360,7 +363,7 @@ def make_base(version: int = 2) -> dict:
                 "phaseIndex": 3,
                 "requirementHash": digest(ref),
                 "authorizationIdentity": BUYER_ADDRESS,
-                "settlementTransaction": SAFE_TX,
+                "settlementTransaction": RESPONSE_TX,
             },
         },
         "capability": {
@@ -382,7 +385,7 @@ def make_base(version: int = 2) -> dict:
         "ledger": {
             "available": True,
             "network": "eip155:8453",
-            "transaction": SAFE_TX,
+            "transaction": RESPONSE_TX,
             "settlementEvent": event,
             "scheme": "exact",
             "asset": ASSET,
@@ -406,7 +409,7 @@ def make_base(version: int = 2) -> dict:
                 "paymentReceiptHash": "",
                 "x402Version": version,
                 "settlementNetwork": "eip155:8453",
-                "settlementTransaction": SAFE_TX,
+                "settlementTransaction": RESPONSE_TX,
                 "settlementEvent": event,
             }],
             "paymentAmount": {"amount": "1.25", "currency": "USDC"},
@@ -665,6 +668,7 @@ def build_vectors() -> list[dict]:
         v["agreement"]["agreementVersion"] = "1"
     add_case(vectors, "protocol-legacy-agreement-artifact", "fail", "XN-2",
              "x402:protocol requires PayeeBoundAgreementDocument", legacy_agreement)
+
     # XN-2 listing admission. The signed Listing's commitment phase fixes the
     # agreement type (DACS-3 §8.5.2 check 9), so an x402:protocol offer beside
     # any phase other than commit-payee-bound-agreement is rejected at listing
@@ -977,6 +981,7 @@ def build_vectors() -> list[dict]:
              price_and_atomic("1000000000000000000000000.0000001",
                               "1000000000000000000000000000000"),
              refresh=True, reason="exact-amount")
+
     # XN-5 overflow is the binding's native amount type: EIP-3009 value is
     # uint256 on EIP-155 and SPL Token amounts are u64 on Solana. Prices use
     # the fixture's 6 decimals, so atomic = price * 10**6 exactly.
@@ -1066,11 +1071,40 @@ def build_vectors() -> list[dict]:
 
     def response_transaction_mismatch(v):
         response = settlement_response(2)
-        response["transaction"] = "cd" * 32
+        response["transaction"] = "0x" + "cd" * 32
         v["http"]["responseHeader"] = encoded_header(response, 2)
     add_case(vectors, "response-transaction-substitution", "fail", "XN-7",
              "a fully rehashed response cannot change the signed settlement transaction",
              response_transaction_mismatch, refresh=True, authorization_submitted=True)
+
+    # XN-7 keeps the response transaction verbatim in settlementTransaction; the
+    # EIP-155 adapter compares it with settlementEvent and the ledger after the
+    # SB-1 collapse: at most one 0x/0X, hex in either case, exactly 32 bytes.
+    def response_transaction_spelling(spelling):
+        def mutate(v):
+            response = settlement_response(2)
+            response["transaction"] = spelling
+            v["http"]["responseHeader"] = encoded_header(response, 2)
+            v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = spelling
+        return mutate
+    for name, expected, spelling, note in (
+        ("response-transaction-0x-lowercase", "pass", "0x" + SAFE_TX,
+         "the upstream 0x-prefixed lower-case hash matches the canonical event key"),
+        ("response-transaction-unprefixed", "pass", SAFE_TX,
+         "a hash without a prefix is already the canonical form"),
+        ("response-transaction-0x-mixed-case", "pass", "0x" + "Ab" * 32,
+         "hex digits compare case-insensitively"),
+        ("response-transaction-0X-uppercase", "pass", "0X" + SAFE_TX.upper(),
+         "an upper-case 0X prefix is one allowed prefix"),
+        ("response-transaction-63-hex-digits", "error", "0x" + SAFE_TX[:63],
+         "a hash that is not exactly 32 bytes has no canonical form"),
+        ("response-transaction-double-0x-prefix", "error", "0x0x" + SAFE_TX,
+         "at most one prefix is removed, so a second 0x is malformed"),
+    ):
+        add_case(vectors, name, expected, "XN-7/XN-8/SB-1", note,
+                 response_transaction_spelling(spelling), refresh=True,
+                 authorization_submitted=True,
+                 reason=None if expected == "pass" else "settlement-transaction-form")
 
     def response_payer_mismatch(v):
         response = settlement_response(2)
@@ -1108,7 +1142,7 @@ def build_vectors() -> list[dict]:
         v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
     add_case(vectors, "noncanonical-native-event-key", "error", "XN-8/SB-1",
              "a noncanonical event spelling cannot mint another SB-1 identity",
-             noncanonical_event, authorization_submitted=True)
+             noncanonical_event, authorization_submitted=True, reason="native-event-key")
 
     def uppercase_event(v):
         value = f"evm:8453:{SAFE_TX.upper()}:7"
@@ -1116,7 +1150,7 @@ def build_vectors() -> list[dict]:
         v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
     add_case(vectors, "noncanonical-native-event-key-uppercase", "error", "XN-8/SB-1",
              "an upper-case EVM hash cannot mint another SB-1 identity",
-             uppercase_event, authorization_submitted=True)
+             uppercase_event, authorization_submitted=True, reason="native-event-key")
     add_case(vectors, "native-event-coordinate-substitution", "fail", "XN-8/SB-1",
              "a different signed event coordinate cannot match authenticated ledger data",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({
@@ -1173,7 +1207,7 @@ def build_vectors() -> list[dict]:
         v["evidence"]["paymentTxRefs"] = [{
             "kind": "x402-event",
             "httpResource": URL,
-            "paymentReceiptHash": digest(settlement_response(2)),
+            "paymentReceiptHash": digest({**settlement_response(2), "transaction": SAFE_TX}),
             "settlementTxHash": SAFE_TX,
             "chainId": 8453,
             "logIndex": 7,

@@ -222,7 +222,7 @@
           "phaseIndex": 3,
           "requirementHash": "3719c5a8dd65552e65f119324d2833b3038aca532a959ab40fcb34e32880e25c",
           "authorizationIdentity": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
-          "settlementTransaction": "abababababababababababababababababababababababababababababababab"
+          "settlementTransaction": "0xabababababababababababababababababababababababababababababababab"
         }
       },
       "capability": {
@@ -271,14 +271,14 @@
         },
         "responseHeader": {
           "name": "X-PAYMENT-RESPONSE",
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyJ9"
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIn0="
         },
         "actionBearingExtensions": []
       },
       "ledger": {
         "available": true,
         "network": "eip155:8453",
-        "transaction": "abababababababababababababababababababababababababababababababab",
+        "transaction": "0xabababababababababababababababababababababababababababababababab",
         "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7",
         "scheme": "exact",
         "asset": "0x3333333333333333333333333333333333333333",
@@ -300,10 +300,10 @@
             "kind": "x402-protocol",
             "httpResource": "https://seller.example/dacs/resource?job=274",
             "paymentRequiredHash": "882f303a5dbe7c6e28c8e0acf1f63066bc717f9f2ffe4ec19dc112418e6e3a0e",
-            "paymentReceiptHash": "65a84ba136f584a3b50f67fcfd8e59c0d1259ce68cc5df9e6af9fe995178b83c",
+            "paymentReceiptHash": "a93d3992931006f5046e393ce24dc96f3d2014ae22454daf3374203352810359",
             "x402Version": 1,
             "settlementNetwork": "eip155:8453",
-            "settlementTransaction": "abababababababababababababababababababababababababababababababab",
+            "settlementTransaction": "0xabababababababababababababababababababababababababababababababab",
             "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7"
           }
         ],
@@ -324,7 +324,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-          "value": "Q2ZWiEUtf84KaH5kIzqSzyJ20Q0MuZE8dkDCG8IsrEqi_WypUB_papl8Gih2AFpzvqu12erki5AQ6rbyu5D0DQ"
+          "value": "PDF8LHW9yiVxcdbxhizyAEfpj1jPi9Fp0DT3xSfOLTSyyE-o1eQDHUTlGCBXA1IoDjKURzlbx598IJCQ24-fDg"
         }
       },
       "keys": {
@@ -553,7 +553,7 @@
           "phaseIndex": 3,
           "requirementHash": "6458b2ea4eef3b82e7e3090c0214a3e05aaa9b7fa333fc32178b610821d8b5ef",
           "authorizationIdentity": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
-          "settlementTransaction": "abababababababababababababababababababababababababababababababab"
+          "settlementTransaction": "0xabababababababababababababababababababababababababababababababab"
         }
       },
       "capability": {
@@ -608,7 +608,7 @@
         },
         "responseHeader": {
           "name": "PAYMENT-RESPONSE",
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
         },
         "actionBearingExtensions": [
           "payment-identifier"
@@ -617,7 +617,7 @@
       "ledger": {
         "available": true,
         "network": "eip155:8453",
-        "transaction": "abababababababababababababababababababababababababababababababab",
+        "transaction": "0xabababababababababababababababababababababababababababababababab",
         "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7",
         "scheme": "exact",
         "asset": "0x3333333333333333333333333333333333333333",
@@ -639,10 +639,10 @@
             "kind": "x402-protocol",
             "httpResource": "https://seller.example/dacs/resource?job=274",
             "paymentRequiredHash": "66fc4a4b33fc50defdf940aa93518668d2db8bf261820824794f5ddbd75b0c51",
-            "paymentReceiptHash": "f4a4cd6929c5ae98e330f073ceb217b4ca7ba981a3b9320686a22c1544758e24",
+            "paymentReceiptHash": "c16614f3b39d1fb6e0fc0c6ae356a67591c485166a4dae4b63cf8d649b3d780d",
             "x402Version": 2,
             "settlementNetwork": "eip155:8453",
-            "settlementTransaction": "abababababababababababababababababababababababababababababababab",
+            "settlementTransaction": "0xabababababababababababababababababababababababababababababababab",
             "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7"
           }
         ],
@@ -663,7 +663,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-          "value": "2Wy0mB-YWdB-sp4KQ7ysbaCTafMh7SvNVDc7D_UdFBdtmO3KlTz-Qx8LWr1UUtKdI2_dZNG6JmS7yQmzdPikAA"
+          "value": "vT1pi3Wfh5PnA0OTcMhclZZ4FPDEygCzlbRBn9isoPGMTz_vG8i0kvvdAk0DV5oqNk4C0bsxSbTvs5RGm2-MAw"
         }
       },
       "keys": {
@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 120,
-  "hash": "a206aa369df8390516c8b5a3701726d87b21c372bb6559c13f845381569db092",
+  "count": 126,
+  "hash": "0b03253c6ce38872754dbc3722bd9a88c9aa6bd48ebd18d1676ec00c26db5fe2",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -780,7 +780,7 @@
             "signature",
             "value"
           ],
-          "value": "2M5ihlXFBwBCko8DJxIEc2OfoLUHM6Yw9UTnjNPAB_zRxsTPiBj9HtZIq-D9kZETCb67UGRHpXZZtKWfjlShBA"
+          "value": "CTxxpPEZ499hkJzLDNNeJiLz1dBrPi6s1qF9Pa4uPQ4K58Bq-eYqce8jNv9M43O57Z2q7_oyLvpgxU5koLZQCQ"
         },
         {
           "op": "replace",
@@ -2739,7 +2739,7 @@
             "signature",
             "value"
           ],
-          "value": "4VbZGMWMVdIbS3DqSQvwywOFTR73T2Bj0LfxLejx679FjW5bJJ9GmEkO7H7wZHeHhPSqoOOQcEs0Y7-llS8lAQ"
+          "value": "F5epl7ASE8ODMwtp_5KlRmYr39_J2qDQJVFVciGMwg76ndoKDXo7g6i0TEoGpJyPXIkvELz0TD2_poG4l6dUCA"
         },
         {
           "op": "replace",
@@ -2861,7 +2861,7 @@
             "signature",
             "value"
           ],
-          "value": "p5KoT6ymI9WVh61YvkofFzYS6pAec089wrJ6jZ2ORfubgZbDGICbRTmI0MiPhnwUQmmTWd2wD6_F1POfX7esCA"
+          "value": "oF2xphxR0tJFt2k5RR_VTsFGv3OGgpbAuqkQVNESMf_xYS8yPvn7lKz9yL-9geYRSpbC9r7-068Q4q15x8SmDQ"
         },
         {
           "op": "replace",
@@ -2983,7 +2983,7 @@
             "signature",
             "value"
           ],
-          "value": "1t_TpvWBYmlADk9ROlRLh68WHfsakV8JoA8mkoMdXdGZFu4Lq4nU0kV4VrXQdh-HioSbHHrvTcEm7Lm4xYcBDg"
+          "value": "40kvUMxe37ROqtYMD-f35EmxC8kzd1haxaFIXMXmpgnlaM7aY-Mga-l6qghx3a1eUBv7HoxUXNJzhmwdzDZ2BA"
         },
         {
           "op": "replace",
@@ -3105,7 +3105,7 @@
             "signature",
             "value"
           ],
-          "value": "_HlY8krKLvSZshhu6gvdVX5ffgmA08RL5u-3SYWdC1L3QX_e0aAyVz95etRJLS0OAi1Ugfc9YQjCLANpVa40Cg"
+          "value": "k2aXJimvluOTaSVMgOhXqczOoZSpcxbAY8AZvI7gRb9YCyUhtHA-w5vauWGpELyFpWL2zWJ1cW-J0GJrkvWDBQ"
         },
         {
           "op": "replace",
@@ -3227,7 +3227,7 @@
             "signature",
             "value"
           ],
-          "value": "c5cuB1gPX1EtbFk1NyB6N_Eps4PkKTvKbmiV0Ws0kIfpvPrTkisStVtYRI4_e9BUBqyjr0MmtJsIC19w79s9Aw"
+          "value": "SaPSUaWgi-q5CD6UhBWh9KpltXenaxtx_IAhxscy55va4ZnGFujJutRfLEKQislgFfC0l-Pr60i7qMqwArhZBw"
         },
         {
           "op": "replace",
@@ -3349,7 +3349,7 @@
             "signature",
             "value"
           ],
-          "value": "Fu1IfLK38-AwrFsvW8EKQqrH2pDwGWbmj_TVOXUZMPSVWVEWt-sMxqbtYp7PwAOAWJ_2vy1EJXUvwuGd0t8uCw"
+          "value": "hZMBW0UB7GDJWWSvPlsBwN6Sl7Op6vYmL_PlpR9p3bIr04rQ_R4racybFHraTSZk5YgANjS09oI_Nlc-6FDaAA"
         },
         {
           "op": "replace",
@@ -3471,7 +3471,7 @@
             "signature",
             "value"
           ],
-          "value": "luopqomVF9ILW15Ux502yJxuHOl0yA95LVhA6n276jBl4u6_XzaWh4AD_PLJUGT2pn1JWvQjziJ92zOi_yyHCw"
+          "value": "_NqhrqVJ8RprK71UYwObyWz5LREco354a2fny_U3kqdpwuOATMAVRModN8WO39cFAOkCf-pLYyD3x7BnGLE3BA"
         },
         {
           "op": "replace",
@@ -3593,7 +3593,7 @@
             "signature",
             "value"
           ],
-          "value": "_x3zULWEYeVN1PABDqX_Nk-Ewvd3Ob-XeISGak3sxMzuSbhwXX2q6VeVrfm3XcgLObUgLGX4Bt49NSFpxwJpDQ"
+          "value": "jJFPqrmn4OcLLpDu9VJzr7ROMV8K4BDBaLj1P2f4Hgr6a-U6XKBy8N8EktAGZw30XPPAEvFDtSHk4hTv8pljDA"
         },
         {
           "op": "replace",
@@ -3715,7 +3715,7 @@
             "signature",
             "value"
           ],
-          "value": "d2cJVlf_Vdg1IskqcWlD3YXsBuUTKx2NW3BsgTgmu5FAVqm8eSnpfvp9xN5TRrmjAttoSiLaZL5TVeYvSnPeAg"
+          "value": "XwV8pZOZ6SaJ08bUjr9pbUroTeGknjgssuJKcbwXUB6n_I7CMjNEob9OGGgTH5dh5UoiMIZtebVjatus_OXQCg"
         },
         {
           "op": "replace",
@@ -3837,7 +3837,7 @@
             "signature",
             "value"
           ],
-          "value": "Kjtu9DimXaHG70kwG68ipN9N-FfSAGdWv7iw_WkMvnuQkibZOLCJ6arMz4WP0j7oUswNct8U2xJ5fq5lrmHVDg"
+          "value": "ahd9HPyBN4-m0-XZTOShOmCxGHu6xifYEs4Yj0PoYBlQJy3Jm8k3z9SHm8AFPSILmWLpVG6fGaUn7vFGTImrBQ"
         },
         {
           "op": "replace",
@@ -3959,7 +3959,7 @@
             "signature",
             "value"
           ],
-          "value": "ZetK3YIG-WRwiOlqfwqJSlt9RfIll8-s-iUVL4Ntu5iMTkH7x23Qmzp5oDG46hNxdtRTHOvxapnCR01uiYXmAA"
+          "value": "4u3VvNajrEzZx5VH4Z8OABkN7ZTY0Ry211O3V1dnDGzYsTCst-n_S026v9VTtNUvw2B4dFIHU8-cqXcAj2hnCw"
         },
         {
           "op": "replace",
@@ -4081,7 +4081,7 @@
             "signature",
             "value"
           ],
-          "value": "rSrY5OBSF7-DHN62mOJaGC8wC2b92rf3z5zwcGmYipdWPdrpNXryyxpOBP_cDlWs5gapBA3HON9ax5UVQYOqCQ"
+          "value": "Tq5DoX-cFfWTrs67w0HCl_o6UTnsbmHV1CJnN7Xwg24JefTLU0acwIqYsjrVbxK1RummNmnjLqDvx4b47OGsBg"
         },
         {
           "op": "replace",
@@ -4203,7 +4203,7 @@
             "signature",
             "value"
           ],
-          "value": "gHEx9a-7FcwfAGRaFk9HzVPaMVqsNZr_wXjh2FJDpNeReKrOthxfTHSFijsvniQTjyhW9cLKdEL6r4OiLcaLDw"
+          "value": "zx5VblJyYh5hMjo5Acw2rQ_ui6QKLjT0W8X-yJProNOjw7tv3gJNPbCnZCg81o4k_W4zal7wHkc9FTgkx7LECw"
         },
         {
           "op": "replace",
@@ -4325,7 +4325,7 @@
             "signature",
             "value"
           ],
-          "value": "9rSWNvt9AeyEZyi-LNRcgUMo1EtlPF61ovlLodrUWAynXmxz5hlsnHOmlgIyw3cPIop02xRdtKZ46F8wxTdaAw"
+          "value": "MFa3_CDQiNCacoL-zGiQvQAMEOuqVZ3cnxdIcWGx4VISAC7OUtq_pM7s7K6cexr9UnHrw2cFBfpJxaadNJs9Bg"
         },
         {
           "op": "replace",
@@ -4447,7 +4447,7 @@
             "signature",
             "value"
           ],
-          "value": "diZU2S5APCE6TgjUjQZt_bFQ8RDs6swpcyf8Z4V_w7M6aV1sSZ2vdkuIPud52XN34Zi-OeuOipcbis3PQSiTDw"
+          "value": "zVqnlGruVV8tWPq8NOUDaY5frdkebmuXl7q-3wNN4F_XMVRAhVT3hIADhygK3MQkH8UzULyTvzvEubAfNAe5DQ"
         },
         {
           "op": "replace",
@@ -4569,7 +4569,7 @@
             "signature",
             "value"
           ],
-          "value": "VvfOLgSGKO0PWOzbkVs0UJrZu4b7huSgSo5Q3AG5dsIfNcDUYyqgf8-IZn92uJKzpOdSEimmseGCtR6kzlHdDw"
+          "value": "Piah-1JR2RxnDWg0kChAhFdxQ8umTvHgYKQEs91LDxW82SL5U4gdFBDFC9I242raT1HoJvffCRmq1afdPco2DQ"
         },
         {
           "op": "replace",
@@ -4691,7 +4691,7 @@
             "signature",
             "value"
           ],
-          "value": "VAYLAi6Lco_bwRUjf7UNOhsMDslIeEaxss8PxxdaJi022QjMkcDzEJq0x-hAzLAKsL5ISf59yM8RLl1sTssoBA"
+          "value": "lj2LM9pFAfyJfv2Y7FH2PGR5iX3NGz09zTwENfwIR99r7WLj4vIrnhFrlqsehtK3aIpO2RAAEe_cqKZdEBPnCQ"
         },
         {
           "op": "replace",
@@ -4813,7 +4813,7 @@
             "signature",
             "value"
           ],
-          "value": "lt_jt7w3ybDqigusVJkfq0upTKMhEB3DQUDsNFS5aoFGqYCr_AifwpgLWSydMjeoFvAPzl0cTdxID4w9cnMvDQ"
+          "value": "Si9pAI_i_Xw-jiy94z9IinxQXN8N7dj5vC1NKg3iuBzNxwo9J_0wfe5KxEuCeyT7nCSGMN1wXGR_zwV8olKfAA"
         },
         {
           "op": "replace",
@@ -4935,7 +4935,7 @@
             "signature",
             "value"
           ],
-          "value": "gHm18JAkaBykQsfd4sFeqNts1cJvvNDXt33s458ylw7ghWLxxuT5nd0UZk84l-lI4bE17gyJl_7eF7lvhrbaBg"
+          "value": "EMru6Gi5I4rhtsZEH6QjUZS2ffo6xIYWWBwR8tD6vHd0MWB4K9JymSBR0sEHdA2vcT3PG4NYYRy4Wwc8F6jICg"
         },
         {
           "op": "replace",
@@ -5057,7 +5057,7 @@
             "signature",
             "value"
           ],
-          "value": "gvRU-r-iU2c7RdRu3QJYoo3s8tpqHz80U0EjSIZRO4oXOTruc2f05Fpccxt5JlyOr1Vq20HhKlW91nrfRwuhBA"
+          "value": "n62u_Nw0bWZCFESDu55uikJ4i8-vxd14eGccG1yQvTPfQB4SUiRVIzS5yhW91gDe4-6lNnznEXSss7Vin3TRBQ"
         },
         {
           "op": "replace",
@@ -5179,7 +5179,7 @@
             "signature",
             "value"
           ],
-          "value": "4TqD_0IZPB9MzakEUKcFlCc9saj-yvuQQnUkRxJkq3qF8Sqikkib7jHQdr1Szst-ZxOBsXlIiI5nYtwQGU6UCg"
+          "value": "L6i47wKuW290eTVpHCheh0v-nZ9wwHGunbbaVkToSoBoFIHUDnCrpTR0SfoKJHxHGou9rD085VwmWqqTqsqqAQ"
         },
         {
           "op": "replace",
@@ -5301,7 +5301,7 @@
             "signature",
             "value"
           ],
-          "value": "GjNRuQTo11JsesqA-Wm390j6P07s9P4JaJbXVHSVEUqMduNVDi802rMz91wftngPEO2XXUgjHlzNNe2rFUHlBQ"
+          "value": "la1kfkS6Yl9o3PzypeoQzEQUPRDj6ROiHfY88EwsdaI9JFwHX6tVLCz_x38Lt0Sga0aHDbfwJDoWLm-xNKdsCg"
         },
         {
           "op": "replace",
@@ -5423,7 +5423,7 @@
             "signature",
             "value"
           ],
-          "value": "P643vtS5m-tGmHjLM-XlqHGpMz0SMH5atlTdO5Z-ggw0IhdGYtlx-3YAq6ogitaqm5pAHzWIyekv65wOR9zICw"
+          "value": "njGA5jSVt_1pxz14AIM61W9CeqSKnVehLkPC7mqtatZng7ElbluqAkUsqVriHEqyD-FM6PZRKqGwH8-vX9ynCw"
         },
         {
           "op": "replace",
@@ -5545,7 +5545,7 @@
             "signature",
             "value"
           ],
-          "value": "3rVtMX6KEuJwMR3XhzvsgzG0g5vofSauUR-MBrEnp2LNklOHpp9GjA-OduMyDe7QoGQgMWXRhyG0SepXzTtBDQ"
+          "value": "GGTEf4aXafX4epH9OElaTlHXNjcGqtfZhjyPkrK8mq3I2AvttG12tClJzzz2hqh4Gcmo9NXRzj1hAHKzqVXKAQ"
         },
         {
           "op": "replace",
@@ -5667,7 +5667,7 @@
             "signature",
             "value"
           ],
-          "value": "IkeZAtf79KzgSkcup0ts0QLuhLh0WTWahSXZ6wYiTOsL2-k1kwzr4GVYp88is8OA1kfMmsc7j31K5J4GtRAmDA"
+          "value": "V-c682iby6ZZDk_AJsDkosF-p-i4slrgfcnceL0q88HR9Fh2m3tSx6mePlqTgUR44tO4X7tNngWi1RO2v8HfAg"
         },
         {
           "op": "replace",
@@ -5789,7 +5789,7 @@
             "signature",
             "value"
           ],
-          "value": "KrsmLHJl9rPsTAd_7rsfstZzO8nSrP21hT-vSns896_45Z9-6AMeAhkZ7eA7UVB4RYmcluWVOEVUfSkJDkeGDw"
+          "value": "GapYBqCdEey1sX5QhTk18fqrH4pXHkVBQ3k8ezolNG8qfOsGihzMp-JPmLudpjp-0LPIHWdlfUL4QjJ06_7pAw"
         },
         {
           "op": "replace",
@@ -5911,7 +5911,7 @@
             "signature",
             "value"
           ],
-          "value": "vqrAfjXi2xFDEZtsU7vOjt7uf-kEliM9su_3CBIzb7_N6ZFfwwPVsZYWZ4dwd4Ve1Hi3BAJcQz1vQOGw_CMeBg"
+          "value": "T3QxkJlclp1107PGjG2X3zT0ZdDk1CbV8L2ZjKzFsvR-lYiuBw1_AiE_5BvDJR7U6GAiJFtenHnbBC48QKItDw"
         },
         {
           "op": "replace",
@@ -6226,7 +6226,7 @@
             "signature",
             "value"
           ],
-          "value": "xToPZ5_DvL_ODXSOE4awdruzPot_dj2RERSpkP3rgm5tidXrIN02RxSPp-gV0kGsCpM0gxr0NWD30tZ268-SCA"
+          "value": "MK3jtp3qzpNfxcCJPFXLLn3P0ryEMmigoz7has_KrLP5OtqjDeaeO1zh_muM5jBYkPG9YVPTceP4FeMValaOAw"
         },
         {
           "op": "replace",
@@ -6299,7 +6299,7 @@
             "signature",
             "value"
           ],
-          "value": "zdDe2vy0CG8lZ0_MG1Yl-6Qf5rjJcG9jqlH9EAXaPJqJDPrVSJx1gCEJQi1gG-bhT4bWuEyNfU_C18ar9Le_Cg"
+          "value": "fdgakq5EG8yR5A2TVUFdGaaeC7EhRyaNGKvgUnNqsMYYGWJqBu58mMUmh-e3NkzMLn3f5Uf0KZBUYg9HL9OjAw"
         },
         {
           "op": "replace",
@@ -6531,7 +6531,7 @@
             "signature",
             "value"
           ],
-          "value": "yT4OBytdONmtKWXrqeUYhtBzCa5H5J8XE1SMrhYC52vDUp8lEBaNL_suHEt2MBLsbqjaCnH0x3J8_t38ursAAg"
+          "value": "BY8YQrxq6F2iyy7eeJgPsaZJf-4IZw3Ol36CDOT8JZu6M0QTJhObLABs4elir3UEvaRwz7-pO7p8HZq5Y3-sAQ"
         },
         {
           "op": "add",
@@ -6570,7 +6570,7 @@
             0,
             "paymentReceiptHash"
           ],
-          "value": "f5c8c0692a8929b16cbb58165fc9a6fc6e736fd9d71d52f07da69d7f72434de7"
+          "value": "f6f79d4a09eda449045cb6455226be75194f2b3d24b09eb33c5d2bea1c6e3232"
         },
         {
           "op": "replace",
@@ -6589,7 +6589,7 @@
             "signature",
             "value"
           ],
-          "value": "2pkgiEJmZpKuw0hhJ-YsE-R9zTfxgDdK_oNxPvxQF_rcucQr7zgfZ2HhF0_RDVNuFb56SvaCYVOxFwBfoXCUBw"
+          "value": "_O8Zko1BdKuZybtdVndVTW1xGBhqG6JpkUA_J_TEltcbTdM7IqIyKxN5sa9HCE-MckQJB7XFhPdaYpFunt3pDg"
         },
         {
           "op": "replace",
@@ -6608,7 +6608,7 @@
             "responseHeader",
             "value"
           ],
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifSwibm90ZSI6IkNhZmXMgSByZcyBc3VtZcyBIn0="
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJub3RlIjoiQ2FmZcyBIHJlzIFzdW1lzIEifQ=="
         },
         {
           "op": "replace",
@@ -6895,7 +6895,7 @@
             "signature",
             "value"
           ],
-          "value": "JnN5uwSxJE448nsJZOWfVLz8GoYBtl4f4wOuiV7rnlxWRZb-OAfbqfxoNDfhVJB53N5g1gqGSUygZC2i9dFSCQ"
+          "value": "17-aTwQ-FamkXedi7mVgvhgw_0S0_7n21LggfvJ93zzpsv9phhsDmMZjE0xt4Vhr07EtUDqz5o5_aGlAqw4kBg"
         },
         {
           "op": "replace",
@@ -6990,7 +6990,7 @@
             "signature",
             "value"
           ],
-          "value": "CwAbvdfrS8zZnqWfb8PQ3LTQ3pcz1Ja8VsIIPPta0zXuX11FpxpmqmhHYLxjABOL1A3_yplF9Rs0Xf0N61ytDg"
+          "value": "tgGqOxI1le6udIru3VleGSFyUFYG0uK_SSxUe74b_a-xClRICdHGLLPN0EiQsF4g2OlNvQbBvooblXGeJ5LwDw"
         },
         {
           "op": "replace",
@@ -7078,7 +7078,7 @@
             "signature",
             "value"
           ],
-          "value": "snPoYBwwN9mys5Ll9Z_wCCENlSVz0iyk36q8RkJmIQljyrGkQ323AtdHAMP5lsbmZUNag92B2rvSaIgbWYzOBQ"
+          "value": "3xsnGY1NhjwhnrGH6exPrPAoxtQSG7F4Np5tHTIiqwxq3JLDkG6aZL7SzV2jXlivyw7almvHL_r8NgDDu2eOAw"
         },
         {
           "op": "replace",
@@ -7173,7 +7173,7 @@
             "signature",
             "value"
           ],
-          "value": "CtcMgXNaNAAXe9z6GSadLTyhgVZdgvGgiLovDraOBFAA29FCvH-dtRnHzMgUGmLsTYjPXPm0ThtOYvOtHFPUCw"
+          "value": "opYQlOUKQ1WC2SZj3bO6FzOF92ushm8KC2iROeVLT4TzQUwdtXeCa_pGIGE0PrgB-h-XL-05U3_N7LJDfoNJBw"
         },
         {
           "op": "replace",
@@ -8711,7 +8711,7 @@
             "signature",
             "value"
           ],
-          "value": "46Kc2TM6Aj_f_knUBStrOD241tha3NwVOQuyUqsk04qGQcfdnzRvwL4KzK2O77_GtGU1V9sCqyR2V52Wg8gaDg"
+          "value": "iygAmqJ4o-8dSpLwX43yK3PYaPgNXfMZJda5nSJDxwG4y9eCRKWylxg4hseDzPuomoXQUBRGPq6a86Dy_y87DQ"
         },
         {
           "op": "replace",
@@ -8867,7 +8867,7 @@
             "signature",
             "value"
           ],
-          "value": "rwIxEowLcOz033-ozKQFjeVUckAEz3D5QbHJOo1HqaX0ojSiOvDHf5AO247SkDoKs18fWMa9g2OtrW58KLb1AQ"
+          "value": "xe3f5rJt_lcwtWrYvy6p2kNl1CyrcUkRCSwYskt7dV69YgjuA-EwjTDNxIuhOvRizr4oWnJBgums7pieXmnwAw"
         },
         {
           "op": "replace",
@@ -9084,7 +9084,7 @@
             "signature",
             "value"
           ],
-          "value": "0Dut4yyMgN912NgUirBmPmEyiD2mbkMRZdLcJoLOBoqj0c0wwK-pRcXw2WZZGLeTxnrvQG3tC85wh9A60LyIAQ"
+          "value": "4X_wFxXpL9j7Z2yGsBKuL84Fep0Z1qFxbpyLrcDH3ygb6u8FBneC3DjaKbyyFwk9ixbavBVc0xfFLUJJggDTBw"
         },
         {
           "op": "replace",
@@ -9121,7 +9121,7 @@
             "signature",
             "value"
           ],
-          "value": "qMCjc_6Bm7IJRhSxBdvWkRwV1WWMNOgKjmm--FPTzFv98uoNsLdRGrCh_QznUM8biKzBP876axbDNkbUn6FnCA"
+          "value": "SZG4KijTNvWRvT_U491_nxpgxSwEX_VJhgGRzsGmiRIFPjB22AgoQbl1f6UEVTJGa_AyQ8KUsp5v1TL_A0KkCQ"
         },
         {
           "op": "replace",
@@ -9176,7 +9176,7 @@
             0,
             "paymentReceiptHash"
           ],
-          "value": "232908b134e238e57393f1fe7592a152494e189f1573383afcfcb56ec2ea2790"
+          "value": "4abdd30767a4a92f153ccb9177a2d6f37223c207612eca9c848dfa1d04ba7faa"
         },
         {
           "op": "replace",
@@ -9185,7 +9185,7 @@
             "signature",
             "value"
           ],
-          "value": "Az4SBkWhSKP7_AVDdGVV0sLHZGuRAYmoHAMRKROi-tFRR255GHv8UsFmpcGUx2Cobwb2txkHk2E_d694SXIcAA"
+          "value": "UjoFqYY4p39XoH9XOYMAcsxmwXSN-VHsd-6xyqOpGOUo3oFG9m00F7f55rpYpi_TMIvKirCpCMdCIspjMdtDBA"
         },
         {
           "op": "replace",
@@ -9194,7 +9194,7 @@
             "responseHeader",
             "value"
           ],
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6MSIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NToxIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
         },
         {
           "op": "replace",
@@ -9222,7 +9222,7 @@
             0,
             "paymentReceiptHash"
           ],
-          "value": "45d3cda866a7febfb87791ae36a56b3567589389cfdb78ba6d837ba00f241a5c"
+          "value": "c4ae3dd9da2a7ef2e20aab9868c4322a1a8ce6d3c00a0c64ec6911b24f4232b6"
         },
         {
           "op": "replace",
@@ -9231,7 +9231,7 @@
             "signature",
             "value"
           ],
-          "value": "VJFxWUTo2WhKdhMyIHOTPLbeB6yb9i6RvAuJ6JcT7Pf8mpJMa6n8J3QQQBLN2SDnsIN20O1VSLJUO6AV1YWTBg"
+          "value": "n_nXGgOuzbjwACuir2GHwy3y9tDHug_FfYq5WG0p3AWCSkoyOfNkEl0gdnhyMJIK5BCgBAeXrrlcleSiQWC9DQ"
         },
         {
           "op": "replace",
@@ -9240,7 +9240,7 @@
             "responseHeader",
             "value"
           ],
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
         },
         {
           "op": "replace",
@@ -9251,6 +9251,306 @@
           "value": true
         }
       ]
+    },
+    {
+      "name": "response-transaction-0x-lowercase",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "execute",
+      "note": "the upstream 0x-prefixed lower-case hash matches the canonical event key",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-transaction-unprefixed",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "execute",
+      "note": "a hash without a prefix is already the canonical form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "f4a4cd6929c5ae98e330f073ceb217b4ca7ba981a3b9320686a22c1544758e24"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "abababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "2Wy0mB-YWdB-sp4KQ7ysbaCTafMh7SvNVDc7D_UdFBdtmO3KlTz-Qx8LWr1UUtKdI2_dZNG6JmS7yQmzdPikAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-transaction-0x-mixed-case",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "execute",
+      "note": "hex digits compare case-insensitively",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "08dab52b74c8572d04a34dcce3ec3ddbcf8d616b1c368579f0537f739544dab8"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0xAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "twiYE73qprsxtFVCgMei6Q5sOqjER8WGUpi2DTvEcNvDMs1mSLMohcdY2Q5YwiOFiEN7nmIQyH9mectYsUCaBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiQWJBYkFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-transaction-0X-uppercase",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "execute",
+      "note": "an upper-case 0X prefix is one allowed prefix",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "e632e149b99567543f7023a8201d199fa1bb1e1331ce9903ec529f2dfd61e6f1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0XABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "zuL3PRJEcOg3mn6giXb7BLSKWJOWSWuKG7BJyjZxAKEnW34tACeYfTr86J5to2MV0f0j3IGn8D24OvJ-9RECCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMFhBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-transaction-63-hex-digits",
+      "expected": "error",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "execute",
+      "note": "a hash that is not exactly 32 bytes has no canonical form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "034ac283efe514136a34f4ee816f2b45eb25ff8eab045a51036f13849583a046"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0xabababababababababababababababababababababababababababababababa"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "DMDHG6Aq3ys9lWdEHyihKMR-POsM-tIKdppRwQNTzN02hGcCWjBkOMXWFPib-Z7zQeRRwIHliCH6go351eYbCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmEiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6InBheW1lbnQtMjc0In19"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
+    },
+    {
+      "name": "response-transaction-double-0x-prefix",
+      "expected": "error",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "execute",
+      "note": "at most one prefix is removed, so a second 0x is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "9e783633ab09eda9e3ddf7f22abc6abf993de0c39392d88b859576ad61e2bafe"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0x0xabababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "61JxTRYG1gzLBHAXhAkM5mwnJBGxytk7g_AHsYbI2vEw4-3eY--McWovr27shmabJ4biVW62-NvFEh59WOR8CA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHgweGFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWIiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6InBheW1lbnQtMjc0In19"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
     },
     {
       "name": "response-payer-substitution",
@@ -9268,7 +9568,7 @@
             0,
             "paymentReceiptHash"
           ],
-          "value": "327205147981fa15421d6ee1bb1a512d4746173ce2760d21045ef0ed5143ec74"
+          "value": "c6f9aa6fc623fd6e9db35cbe7bd0b599dc09819acafd06870cb438b0ce72693d"
         },
         {
           "op": "replace",
@@ -9277,7 +9577,7 @@
             "signature",
             "value"
           ],
-          "value": "bIt7HPtM48jgPIvD1S2apy9cn_R0FKrtawJwhs8Iui4hzyqZSbXN-N8cfA7gRe2G_P_27korExZ4v6JQqhhhBw"
+          "value": "hVgNsyWINkHBy--HdjaHh7zDWylWATGojEoDXDpjAq1S8PMr8WlKv4F83u1hJgfjfDRkaoZkP5nSCY5ujQfBBw"
         },
         {
           "op": "replace",
@@ -9286,7 +9586,7 @@
             "responseHeader",
             "value"
           ],
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OSIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OSIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
         },
         {
           "op": "replace",
@@ -9332,7 +9632,7 @@
             "signature",
             "value"
           ],
-          "value": "V39t-n2RPu0TytHATG2HTWpntBPoA0QdEZ0YfOB1Mrg1O1cIeOeTNDagPTKH8ANaSgYJUvnDG0EUIx1Rgj6BDg"
+          "value": "gQQWQpCCfNx8_Vb1N-F9qlvo6ox2whmitJYg_7kODIyzogXnT65_7_gvfhEB0NHuTAwgy6wXzldgM4kRj-JtCg"
         },
         {
           "op": "replace",
@@ -9471,7 +9771,7 @@
             "signature",
             "value"
           ],
-          "value": "4YrceVrRuBEYYW5nXhTt_6S82kpyJ95JVmiDUN27oYwbONDlfQwWnmLEsMGPxJVs29RjqfMyFQ7mP0Ux0nNvCw"
+          "value": "DhPZLryZ2E4FCy--czBN3zfBsqeujLBWllhs8WvKxevBp-Q_X2-BB-XMPbAj65jfT62bQ1bER0YtiPRwn6w_DQ"
         },
         {
           "op": "replace",
@@ -9489,7 +9789,8 @@
           ],
           "value": true
         }
-      ]
+      ],
+      "expectedReason": "native-event-key"
     },
     {
       "name": "noncanonical-native-event-key-uppercase",
@@ -9516,7 +9817,7 @@
             "signature",
             "value"
           ],
-          "value": "c221AmCCL9kbeUY_aq8Ved-dhCOwLtl1W4sU2HXoFbnYMkYnbz-RcaKnEKK2bBF0D3_axjuh3aciI0x1ZKfMBQ"
+          "value": "zoVjmKeo5jMucInTenbvWIIIssUhjgSEZOyFZcxMZtnFGS0UhGQRKtb0ZwzCSU-4LF54Mu_6uKESE8naVG3oDw"
         },
         {
           "op": "replace",
@@ -9534,7 +9835,8 @@
           ],
           "value": true
         }
-      ]
+      ],
+      "expectedReason": "native-event-key"
     },
     {
       "name": "native-event-coordinate-substitution",
@@ -9561,7 +9863,7 @@
             "signature",
             "value"
           ],
-          "value": "vbJhy9t2PxmSr8pB1GpbjGW3HmuUb-VdADq04bXhoh__79ONMWj4TDWBivuPpxT3zG6eegfMRYjnfFS_Xa-JAw"
+          "value": "8Mj_hlEQIko4sMQLHfoXgraEcxQG_817hE1MyXbGTG0pPo2O7t3pNI5T7CM4T9msLQfYdjGJ6xKRrWMYYyE7Dw"
         },
         {
           "op": "replace",
@@ -9598,7 +9900,7 @@
             "signature",
             "value"
           ],
-          "value": "2-WqKTC7s9Eynu1m7sBklHTV_471dAEHOI84RjdlKOHFXV-U_m0s__ekeQLHorzvjrp2C53OwlI0XwQnkxwlBA"
+          "value": "bzKYCjhmTVjTeJ7mDv3R38PynLCc49qxBunbaFuOb0WrtVpjk8vrHf2HdHZV7SzIDSYOcMn-d1XOcP7VjY1TAA"
         },
         {
           "op": "replace",
@@ -9635,7 +9937,7 @@
             "signature",
             "value"
           ],
-          "value": "4WAMVCjBNNOrcduWwkbntn653buCrZqBFyVk0BFOamexYZ7hq5NavrhfEDUt8eUxhknhqWtqHGjXh8CHYGBsDA"
+          "value": "mNvZgPc75JRL1A8Kth-5X1UjzxmkoVu0Y1DVnPAF7exIJw1LoWn3vg1bc6EqxQKVF3QGP9EBGJzjfwcTqW6fDA"
         },
         {
           "op": "replace",
@@ -10183,6 +10485,16 @@
           "op": "replace",
           "path": [
             "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "f4a4cd6929c5ae98e330f073ceb217b4ca7ba981a3b9320686a22c1544758e24"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
             "signature",
             "value"
           ],
@@ -10368,6 +10680,16 @@
             "kind"
           ],
           "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "f4a4cd6929c5ae98e330f073ceb217b4ca7ba981a3b9320686a22c1544758e24"
         },
         {
           "op": "replace",
@@ -10703,7 +11025,7 @@
             "signature",
             "value"
           ],
-          "value": "g6dorw-fRGaok3zPARlat2OsohXKNfMoF1b76GlWDdkNxaDK_l_SOwnzjnHOimeshrh9M5TuR9-SXsXFvhp2Cg"
+          "value": "QDoBfCl-GqEqczaaUv4PyzvsNknwGaudm-FogCMy4vH6Ab1ETdhZOzjcl8tM-QkC0TcskCTLM4vI5jHEcLmiDA"
         },
         {
           "op": "replace",

@@ -62,6 +62,12 @@ The format used per release:
   binding's native amount type: 2²⁵⁶−1 for EIP-155 `exact` (EIP-3009 `value`
   and ERC-20 amounts are `uint256`), 2⁶⁴−1 for Solana `exact` (SPL Token `u64`),
   or a narrower authorization-form bound.
+- **Response transaction comparison** (DACS-4 §9.5.7 XN-7; §9.5.8 SB-1) —
+  `settlementTransaction` keeps the settlement response's `transaction`
+  spelling verbatim. The EIP-155 adapter compares it with `settlementEvent` and
+  ledger data after the SB-1 collapse (at most one `0x`/`0X`, any hex case,
+  exactly 32 bytes); any other spelling is `error`. The upstream `0x` spelling
+  therefore verifies, while DACS-produced event keys stay strictly canonical.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

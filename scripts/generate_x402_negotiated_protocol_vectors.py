@@ -753,6 +753,8 @@ def build_vectors() -> list[dict]:
         ("ipv4-percent-encoded-loopback", "https://%31%32%37.0.0.1/pay"),
         ("ipv4-shorthand-metadata", "https://169.254.43518/latest/meta-data/"),
         ("ipv4-invalid-numeric-host", "https://256.0.0.1/pay"),
+        # 0x0x08 is not a WHATWG IPv4 number, so the host is invalid, not 8.8.8.8.
+        ("ipv4-double-hex-prefix-invalid-host", "https://0x0x08.8.8.8/pay"),
     ):
         def legacy_ipv4_target(v, target=unsafe_url):
             request = v["agreement"]["terms"]["rail"]["parameters"]["request"]

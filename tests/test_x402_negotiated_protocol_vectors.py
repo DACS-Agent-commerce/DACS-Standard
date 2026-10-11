@@ -445,6 +445,8 @@ NON_PUBLIC_CLASS_CASES = (
 
 
 _IDEOGRAPHIC_DOTS = str.maketrans({"。": ".", "．": ".", "｡": "."})
+_IPV4_DIGITS = {16: frozenset("0123456789abcdefABCDEF"), 8: frozenset("01234567"),
+                10: frozenset("0123456789")}
 
 
 def _ipv4_number(part):
@@ -457,7 +459,9 @@ def _ipv4_number(part):
         digits, radix = part, 10
     if digits == "":
         return 0
-    if not digits.isascii() or not digits.isalnum():
+    # Only the radix's own digits: int() would also accept a second 0x prefix,
+    # signs, underscores and surrounding whitespace, which WHATWG rejects.
+    if not set(digits) <= _IPV4_DIGITS[radix]:
         raise ValueError("invalid IPv4 number")
     return int(digits, radix)
 
@@ -1015,6 +1019,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "bounded-fetch-ipv4-percent-encoded-loopback-target",
             "bounded-fetch-ipv4-shorthand-metadata-target",
             "bounded-fetch-ipv4-invalid-numeric-host-target",
+            "bounded-fetch-ipv4-double-hex-prefix-invalid-host-target",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",
@@ -1167,6 +1172,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "https://1.2.3.4.5/pay",             # too many parts: not a valid host
             "https://256.0.0.1/pay",             # part out of range: not a valid host
             "https://0x7g.0.0.1/pay",            # bad hex part in a numeric host
+            "https://0x0x08.8.8.8/",             # second 0x prefix: not a valid host
+            "https://08.8.8.8/pay",              # 8 is not an octal digit
         )
         for url in rejected:
             with self.subTest(url=url):

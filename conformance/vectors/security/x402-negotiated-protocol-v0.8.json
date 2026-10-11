@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 107,
-  "hash": "467a565350f876c292970e19a36d6a3850a3dcd84135034ee09bd69a0d2ce79b",
+  "count": 108,
+  "hash": "74d7576fcff929bfe13cb0141ea5ff4da801357bbb8cd203464757faeabe4a29",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -5118,6 +5118,128 @@
             "url"
           ],
           "value": "https://256.0.0.1/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-double-hex-prefix-invalid-host-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "MyIc6Em_O94A_GDRRVrbs-hgm_Y7JjwqSN-gMrVBYRSgKsBnL2HjoAcVTKn5HA7S8C0JvTSAYxOEIGelwA0ADA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "DJv3cpa8FumCQSWzAmqjWreh_N2k-ihY8j4HKQh0wVNPw1fPOKJfdo7eLEHOr1lrdvBWxk2uFn2SkLMwrZK9Dg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "497933df43c23242d6d1314d41b9e10c4396f0aad5d25171501df219edb39f78"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "vqrAfjXi2xFDEZtsU7vOjt7uf-kEliM9su_3CBIzb7_N6ZFfwwPVsZYWZ4dwd4Ve1Hi3BAJcQz1vQOGw_CMeBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "UjtPVu1sli4in6jCkWbPiNGoiA9o627Ta2HjLqlTwF3eu5w3XK-gT4-vxngFUhGRffgjR7zADh1_Bo6SzyHhDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
         }
       ],
       "expectedReason": "non-public-request-target"

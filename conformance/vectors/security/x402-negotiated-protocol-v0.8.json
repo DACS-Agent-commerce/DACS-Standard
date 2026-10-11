@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 137,
-  "hash": "f43601b6a505c1f68c772003e81946ddffb9a3e891a2e9a2683073cfa687f64c",
+  "count": 138,
+  "hash": "731281b8b5c72bdf688cc4e323841599a3ecb0a14ed7eb10f80b5a2c3f31cf67",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -12401,6 +12401,42 @@
         }
       ],
       "expectedReason": "reconciliation-binding"
+    },
+    {
+      "name": "retry-retained-transaction-spelling-reconciles",
+      "expected": "pass",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "a retained transaction that differs from the record only by prefix and case reconciles in the XN-7 adapter form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ],
+          "value": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB"
+        }
+      ],
+      "expectedReason": "reconciliation-pending"
     }
   ]
 }

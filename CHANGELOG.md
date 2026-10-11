@@ -62,13 +62,15 @@ The format used per release:
   binding's native amount type: 2²⁵⁶−1 for EIP-155 `exact` (EIP-3009 `value`
   and ERC-20 amounts are `uint256`), 2⁶⁴−1 for Solana `exact` (SPL Token `u64`),
   or a narrower authorization-form bound.
-- **Response transaction comparison** (DACS-4 §9.5.7 XN-7; §9.5.8 SB-1) —
+- **Response transaction comparison** (DACS-4 §9.5.7 XN-7, XN-11; §9.5.8 SB-1) —
   `settlementTransaction` keeps the settlement response's `transaction`
   spelling verbatim. The EIP-155 adapter compares it with `settlementEvent`
   after the SB-1 collapse (at most one `0x`/`0X`, any hex case, exactly 32
   bytes), and with the authenticated ledger transaction in the same collapsed
   form; any other response spelling is `error`. The upstream `0x` spelling
   therefore verifies, while DACS-produced event keys stay strictly canonical.
+  XN-11 reconciliation compares a known `settlementTransaction` in the same
+  adapter form, and the retained value stays verbatim.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

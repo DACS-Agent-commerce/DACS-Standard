@@ -585,6 +585,31 @@ def reconciliation_identity(v):
     }
 
 
+def reconciliation_matches(retained, v):
+    """XN-11: the retained state names this session's identity.
+
+    The retained settlementTransaction stays verbatim, as XN-7 keeps it; only the
+    comparison uses the XN-7 adapter form, so the same hash spelled with another
+    prefix or case still reconciles.
+    """
+    identity = reconciliation_identity(v)
+    if identity is None or not isinstance(retained, dict) or set(retained) != set(identity):
+        return False
+    if any(retained[field] != value for field, value in identity.items()
+           if field != "settlementTransaction"):
+        return False
+    kept, recorded = retained["settlementTransaction"], identity["settlementTransaction"]
+    if kept == recorded:
+        return True
+    parameters = v["agreement"]["terms"]["rail"].get("parameters")
+    selection = parameters.get("selection") if isinstance(parameters, dict) else None
+    network = selection.get("network") if isinstance(selection, dict) else None
+    if not isinstance(network, str):
+        return False
+    kept_form = adapter_canonical_transaction(network, kept)
+    return kept_form is not None and kept_form == adapter_canonical_transaction(network, recorded)
+
+
 def exact_atomic(amount, decimals, ceiling):
     if not isinstance(amount, str) or not CD1.fullmatch(amount):
         raise ValueError("non-canonical decimal")
@@ -745,7 +770,7 @@ def evaluate(v, effects=None):
     if operation == "retry":
         if not verify_artifact_signatures(v):
             return "fail", "signature"
-        if v.get("runtime", {}).get("reconciliationState") != reconciliation_identity(v):
+        if not reconciliation_matches(v.get("runtime", {}).get("reconciliationState"), v):
             return "fail", "reconciliation-binding"
         return "pass", "reconciliation-pending"
 
@@ -1182,6 +1207,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-requirement-binding-mismatch",
             "retry-authorization-binding-mismatch",
             "retry-transaction-binding-mismatch",
+            "retry-retained-transaction-spelling-reconciles",
         )
         for name in names:
             with self.subTest(vector=name):
@@ -1404,6 +1430,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "Its host MUST NOT contain `%`.",
             "internationalized host MUST be signed in A-label form",
             "It MUST also compare it with the authenticated ledger",
+            "It MUST compare a known `settlementTransaction`",
         ):
             self.assertIn(text, spec)
 

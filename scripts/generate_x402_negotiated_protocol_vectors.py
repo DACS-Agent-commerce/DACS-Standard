@@ -1337,6 +1337,15 @@ def build_vectors() -> list[dict]:
              retry_transaction_mismatch, operation="retry", authorization_submitted=True,
              reason="reconciliation-binding")
 
+    def retry_retained_transaction_spelling(v):
+        v["ledger"]["available"] = False
+        v["runtime"]["reconciliationState"]["settlementTransaction"] = SAFE_TX.upper()
+    add_case(vectors, "retry-retained-transaction-spelling-reconciles", "pass", "XN-11/XN-7",
+             "a retained transaction that differs from the record only by prefix and case "
+             "reconciles in the XN-7 adapter form",
+             retry_retained_transaction_spelling, operation="retry",
+             authorization_submitted=True, reason="reconciliation-pending")
+
     return vectors
 
 

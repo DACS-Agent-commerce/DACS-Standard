@@ -1427,7 +1427,10 @@ XN-10.
   indeterminate adapter result MUST NOT authorize another payment. The handler
   MUST reconcile using the original `(jobId, phaseIndex)`, selected complete
   requirement, scheme-defined authorization identity, and any known
-  transaction/event reference. A proven finalized match resumes evidence
+  transaction/event reference. It MUST compare a known `settlementTransaction`
+  in the XN-7 adapter form. The retained value stays verbatim, as XN-7 keeps
+  it, so the same transaction in another prefix or hexadecimal case still
+  reconciles. A proven finalized match resumes evidence
   construction and PC-7 catch-up; a proven terminal non-settlement follows the
   scheme profile; an indeterminate result stays pending. The handler MUST NOT
   switch provider, facilitator, scheme, network, asset, resource, destination,

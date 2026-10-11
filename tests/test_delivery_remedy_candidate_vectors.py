@@ -257,6 +257,23 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertLessEqual(set(proofs), tagged)
         self.assertTrue(all(proofs.values()))
 
+    def test_readme_lists_the_synthetic_proof_limits(self):
+        """The coverage statement names every proof-blocked rule and resolver assumption."""
+        readme = (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8")
+        start = readme.index("The separate `promotionBlockedProofs` ledger")
+        limits = " ".join(readme[start:readme.index("## Reproduce", start)].split())
+        for rule in self.vector_pack["promotionBlockedProofs"]:
+            with self.subTest(rule=rule):
+                self.assertIn(rule, limits)
+        for assumption in (
+            "**`priorTerminals` completeness** (DRD-8, DRL-4, DRT-4)",
+            "**Block-scoped log index** (DRD-8, DRL-4, DRT-4)",
+            "**Deliverable anchor locator** (DRE-2, DRP-7)",
+            "**Replay ledger durability**",
+        ):
+            with self.subTest(assumption=assumption):
+                self.assertIn(assumption, limits)
+
     def test_no_finding_reports_a_promotion_blocked_rule(self):
         blocked = set(self.vector_pack["promotionBlockedRules"])
         for vector in self.vector_pack["vectors"]:

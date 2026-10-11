@@ -253,6 +253,29 @@ because DACS-4 defines no logical address for delivery evidence. It also holds
 DRP-6, DRP-8, DRP-10, DRP-11, and DRP-12, whose `executionContext` inputs are
 orchestrator statements rather than authenticated evidence.
 
+### Synthetic proof limits
+
+Beyond the two ledgers, these assumptions come from the synthetic resolver or
+the fixture itself. The vectors depend on them and do not prove them:
+
+- **`priorTerminals` completeness** (DRD-8, DRL-4, DRT-4). The verifier treats
+  the resolver-attested `priorTerminals` as the complete set of earlier
+  terminal transactions for the native job, decision, and terminal event. A
+  terminal the resolver omits is detected only if it is evaluated in the same
+  ledger. No normative completeness proof, such as an authenticated range or
+  index proof, is defined or checked.
+- **Block-scoped log index** (DRD-8, DRL-4, DRT-4). Conflicting terminals are
+  ordered by authenticated block number, then log index. This assumes the log
+  index is block-scoped, as EVM receipts report it. A transaction-scoped index,
+  or a ledger without block-scoped indexes, needs its own position rule and is
+  not covered.
+- **Deliverable anchor locator** (DRE-2, DRP-7). The `dacs4:deliverable:{jobId}`
+  locator is compared, not resolved, so the Storage Program's existence and
+  contents at that address are not proven.
+- **Replay ledger durability**. The `DecisionLedger` is in-memory and
+  single-process, as described above; durable or cross-process one-use
+  enforcement is not claimed.
+
 ## Reproduce
 
 From the repository root:

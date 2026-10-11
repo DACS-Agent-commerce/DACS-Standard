@@ -690,6 +690,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_review_guard_witnesses.py",
         "test": "ReviewGuardWitnessTests.test_missing_bundle_diagnostic_is_not_active_admission",
     },
+    "pr417-legacy-negatives-isolate-named-lab-guard-witness": {
+        "file": "tests/test_current_use_replay_corpus.py",
+        "test": "CurrentUseReplayCorpusTests.test_legacy_negative_cases_pass_a_verifier_missing_only_their_guard",
+    },
     "pr336-atomic-exact-presenter-vector-consumer": {
         "file": "tests/test_atomic_work_vectors.py",
         "test": "AtomicWorkVectorTests.test_whole_profile_admission_resolves_exactly_one_presented_claim",

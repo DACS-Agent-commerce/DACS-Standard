@@ -245,6 +245,7 @@ class FixtureFactory:
         head_position: int = 111,
         commitment: str | None = None,
         bft_signers=("validator-a", "validator-b"),
+        parent_id: str | None = None,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
@@ -260,7 +261,9 @@ class FixtureFactory:
             "fixture-transaction-merkle-v1", "transactionBytes", transaction, label + ":transaction"
         )
         inclusion_position = 100
-        parent_id = hashlib.sha256((label + ":block:99").encode()).hexdigest()
+        # A caller-supplied parent places this block on a sibling fork.
+        if parent_id is None:
+            parent_id = hashlib.sha256((label + ":block:99").encode()).hexdigest()
         inclusion_header = {
             "networkId": profile["networkId"],
             "genesisHash": profile["genesisHash"],
@@ -1351,6 +1354,19 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         depth_value["evidence"]["paymentTxRefs"][0], event, "insufficient-depth", head_position=110,
     )
     vectors.append(case("fv-insufficient-recomputed-depth", "fail", "authenticated path length, not a scalar summary, determines depth", depth_value))
+
+    # The sibling block is authentic and includes the signed transaction, but
+    # the authenticated head and ancestry are those of the canonical fork.
+    stale_fork = factory.model_input("block-depth")
+    canonical = stale_fork["context"]["observation"]
+    sibling = factory.chain_observation(
+        stale_fork["rail"]["consumerFinalityProfile"]["settlement"],
+        stale_fork["evidence"]["paymentTxRefs"][0], event, "stale-fork",
+        parent_id=canonical["inclusionBlock"]["parentId"],
+    )
+    for member in ("transactionInclusionProof", "selectedEventProof", "inclusionBlock"):
+        canonical[member] = sibling[member]
+    vectors.append(case("fv-stale-fork-inclusion", "fail", "an authentic inclusion block on a sibling fork is outside the authenticated canonical path", stale_fork))
 
     wrong_amount = factory.model_input("block-depth")
     factory.rebuild_observation_event(wrong_amount, ("observation",), lambda event: event.__setitem__("amount", "6"))

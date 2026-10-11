@@ -20,7 +20,7 @@ from scripts.jcs import canonicalize as jcs_canonicalize
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VECTORS = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.7.json"
+VECTORS = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.8.json"
 GENERATOR = ROOT / "scripts/generate_x402_negotiated_protocol_vectors.py"
 SAFE_INT = 2**53 - 1
 HEX_32 = re.compile(r"^[0-9a-f]{64}$")
@@ -901,6 +901,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             vectors, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         self.assertEqual(self.data["hash"], hashlib.sha256(encoded).hexdigest())
+
+    def test_set_identifier_names_the_dacs4_module_version(self):
+        """The unreleased corpus carries the DACS-4 version whose XN rules it pins."""
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        version = re.search(r"\*\*Status:\*\* Draft — \*\*DACS-4 (v0\.\d+)\*\*", spec).group(1)
+        self.assertEqual(self.data["set"], f"x402-negotiated-protocol-{version}")
+        self.assertEqual(VECTORS.stem, self.data["set"])
 
     def test_buyer_bundle_and_native_payment_key_proofs_are_cryptographic(self):
         generator_public_key = bytes.fromhex(

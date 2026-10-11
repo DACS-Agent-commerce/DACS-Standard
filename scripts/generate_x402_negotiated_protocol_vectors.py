@@ -20,7 +20,7 @@ from evm_crypto import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.7.json"
+OUTPUT = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.8.json"
 SAFE_TX = "ab" * 32
 URL = "https://seller.example/dacs/resource?job=274"
 ASSET = "0x" + "33" * 20
@@ -1161,7 +1161,7 @@ def build() -> dict:
     fixtures = {"v1": make_base(1), "v2": make_base(2)}
     vectors = [compact_case(case, fixtures) for case in build_vectors()]
     return {
-        "set": "x402-negotiated-protocol-v0.7",
+        "set": "x402-negotiated-protocol-v0.8",
         "spec": "§8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1",
         "upstream": {
             "repository": "x402-foundation/x402",

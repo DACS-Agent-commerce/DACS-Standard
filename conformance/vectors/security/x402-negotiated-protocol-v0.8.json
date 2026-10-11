@@ -1,5 +1,5 @@
 {
-  "set": "x402-negotiated-protocol-v0.7",
+  "set": "x402-negotiated-protocol-v0.8",
   "spec": "§8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1",
   "upstream": {
     "repository": "x402-foundation/x402",

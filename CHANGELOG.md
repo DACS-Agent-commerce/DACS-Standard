@@ -40,7 +40,8 @@ The format used per release:
   remain unchanged for already-pinned continuation and historical replay.
   Adds deterministic executable vectors for definition discrimination,
   selection ambiguity, every pre-authorization substitution surface,
-  bounded public-fetch literal classes, v1/v2 hashing/version boundaries, local
+  bounded public-fetch literal classes (including legacy numeric IPv4 host
+  spellings), v1/v2 hashing/version boundaries, local
   capability, exact decimal conversion, party binding, independent-assurance
   downgrade, cross-rail event identity, legacy replay, and retained-state retry
   safety. The executable harness now places one instrumented wallet-call site

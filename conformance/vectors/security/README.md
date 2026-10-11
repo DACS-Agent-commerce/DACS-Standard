@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.7.json`](x402-negotiated-protocol-v0.7.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 95 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.7.json`](x402-negotiated-protocol-v0.7.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 103 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1017,7 +1017,11 @@ interpretation.
 
 The literal-target cases explicitly reject loopback, private, link-local,
 shared-address, multicast, reserved, and IPv4-mapped IPv6 spellings before the
-single instrumented wallet-call site. Retry cases carry retained reconciliation
+single instrumented wallet-call site. A host whose last label is a number is
+classified as an IPv4 literal, as a fetch-style (WHATWG) URL parser does, so
+shorthand, single-number, hexadecimal, octal, trailing-dot, and percent-encoded
+spellings reach the verdict of their dotted form, and a numeric host that is not
+a valid IPv4 literal is rejected. Retry cases carry retained reconciliation
 identity over job, phase, complete requirement, authorization identity, and
 transaction, and execute with zero additional wallet calls even when a caller
 asks to reauthorize or one retained binding is changed. DNS answer validation,

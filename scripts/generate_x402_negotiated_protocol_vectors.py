@@ -721,6 +721,42 @@ def build_vectors() -> list[dict]:
             "a counterparty-selected non-public payable target is rejected",
             unsafe_public_target,
         )
+    # Legacy IPv4 host spellings. A fetch-style (WHATWG) URL parser treats a host
+    # whose last label is a number as an IPv4 literal, so these denote the same
+    # destinations as their dotted forms; a numeric host that is not a valid IPv4
+    # literal is not a valid host at all. Unlike the rows above, these refresh the
+    # received-object hashes and pin the reason, so an evaluator that treats the
+    # host as a DNS name reaches "pass" and fails the vector.
+    for name, unsafe_url in (
+        ("ipv4-shorthand-loopback", "https://127.1/pay"),
+        ("ipv4-integer-loopback", "https://2130706433/pay"),
+        ("ipv4-hex-loopback", "https://0x7f.0.0.1/pay"),
+        ("ipv4-octal-loopback", "https://0177.0.0.1/pay"),
+        ("ipv4-trailing-dot-loopback", "https://127.0.0.1./pay"),
+        ("ipv4-percent-encoded-loopback", "https://%31%32%37.0.0.1/pay"),
+        ("ipv4-shorthand-metadata", "https://169.254.43518/latest/meta-data/"),
+        ("ipv4-invalid-numeric-host", "https://256.0.0.1/pay"),
+    ):
+        def legacy_ipv4_target(v, target=unsafe_url):
+            request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
+            request["url"] = target
+            v["listing"]["acceptedRails"][0] = copy.deepcopy(
+                v["agreement"]["terms"]["rail"])
+            v["runtime"]["selectedRailRef"] = copy.deepcopy(
+                v["agreement"]["terms"]["rail"])
+            v["runtime"]["effectiveUrl"] = target
+            v["http"]["paymentRequired"]["resource"]["url"] = target
+            v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
+        add_case(
+            vectors,
+            f"bounded-fetch-{name}-target",
+            "fail",
+            "XN-2/DACS-1-6.3.6",
+            "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+            legacy_ipv4_target,
+            refresh=True,
+            reason="non-public-request-target",
+        )
     add_case(vectors, "bare-network-label", "error", "XN-2/XN-4",
              "a bare network label is not CAIP-2",
              lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"network": "base"}))

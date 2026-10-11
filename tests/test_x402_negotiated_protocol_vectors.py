@@ -6,10 +6,11 @@ import json
 import re
 import subprocess
 import sys
+import unicodedata
 import unittest
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -444,6 +445,61 @@ NON_PUBLIC_CLASS_CASES = (
 )
 
 
+_IDEOGRAPHIC_DOTS = str.maketrans({"。": ".", "．": ".", "｡": "."})
+
+
+def _ipv4_number(part):
+    """WHATWG URL IPv4 number parser: decimal, 0x-hex, or leading-0 octal."""
+    if part[:2] in ("0x", "0X"):
+        digits, radix = part[2:], 16
+    elif len(part) > 1 and part[0] == "0":
+        digits, radix = part[1:], 8
+    else:
+        digits, radix = part, 10
+    if digits == "":
+        return 0
+    if not digits.isascii() or not digits.isalnum():
+        raise ValueError("invalid IPv4 number")
+    return int(digits, radix)
+
+
+def _host_literal(hostname):
+    """Return the IP address a URL host denotes, or None for a DNS name.
+
+    Follows the WHATWG URL host parser that fetch-style clients use: the host is
+    percent-decoded and compatibility-mapped, and a host whose last label is a
+    number is an IPv4 literal (shorthand, 32-bit, hex and octal spellings), never
+    a DNS name. A numeric-ending host that is not a valid IPv4 literal raises.
+    """
+    host = unquote(hostname, errors="strict")
+    if not host.isascii():
+        host = unicodedata.normalize("NFKC", host.translate(_IDEOGRAPHIC_DOTS))
+    host = host.lower()
+    try:
+        return ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    parts = host.split(".")
+    if parts[-1] == "" and len(parts) > 1:
+        parts.pop()
+    last = parts[-1]
+    try:
+        ends_in_number = last != "" and (last.isascii() and last.isdigit() or _ipv4_number(last) >= 0)
+    except ValueError:
+        ends_in_number = False
+    if not ends_in_number:
+        return None
+    if len(parts) > 4 or "" in parts:
+        raise ValueError("invalid IPv4 host")
+    numbers = [_ipv4_number(part) for part in parts]
+    if any(number > 255 for number in numbers[:-1]) or numbers[-1] >= 256 ** (5 - len(numbers)):
+        raise ValueError("IPv4 host out of range")
+    value = numbers[-1]
+    for index, number in enumerate(numbers[:-1]):
+        value += number * 256 ** (3 - index)
+    return ipaddress.IPv4Address(value)
+
+
 def public_http_target(url):
     """Reject directly encoded non-public targets before a network adapter runs.
 
@@ -452,10 +508,12 @@ def public_http_target(url):
     """
     try:
         hostname = urlsplit(url).hostname
-        if hostname is None or hostname.lower() == "localhost":
+        if hostname is None or hostname.lower().rstrip(".") == "localhost":
             return False
-        address = ipaddress.ip_address(hostname)
-    except ValueError:
+        address = _host_literal(hostname)
+    except (UnicodeError, ValueError):
+        return False
+    if address is None:
         return True
     # An IPv4-mapped IPv6 spelling must reach the same verdict as its IPv4 form.
     mapped = getattr(address, "ipv4_mapped", None)
@@ -939,6 +997,14 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "bounded-fetch-ipv4-mapped-loopback-target",
             "bounded-fetch-ipv4-mapped-metadata-target",
             "bounded-fetch-ipv4-mapped-multicast-target",
+            "bounded-fetch-ipv4-shorthand-loopback-target",
+            "bounded-fetch-ipv4-integer-loopback-target",
+            "bounded-fetch-ipv4-hex-loopback-target",
+            "bounded-fetch-ipv4-octal-loopback-target",
+            "bounded-fetch-ipv4-trailing-dot-loopback-target",
+            "bounded-fetch-ipv4-percent-encoded-loopback-target",
+            "bounded-fetch-ipv4-shorthand-metadata-target",
+            "bounded-fetch-ipv4-invalid-numeric-host-target",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",
@@ -1067,6 +1133,42 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         """
         self.assertFalse(public_http_target("https://168.63.129.16/machine/"))
         self.assertFalse(public_http_target("https://[::ffff:168.63.129.16]/machine/"))
+
+    def test_legacy_ipv4_host_spellings_are_classified_as_literals(self):
+        """WHATWG URL hosts that end in a number are IPv4 literals, not DNS names.
+
+        Fetch-style URL parsers and resolvers map these spellings to the dotted
+        address, so the literal gate must classify them the same way; a
+        numeric-ending host that is not a valid IPv4 literal fails closed.
+        """
+        rejected = (
+            "https://127.1/pay",                 # shorthand loopback
+            "https://2130706433/pay",            # one 32-bit number
+            "https://0x7f.0.0.1/pay",            # hexadecimal part
+            "https://0x7f000001/pay",            # hexadecimal 32-bit number
+            "https://0177.0.0.1/pay",            # octal part
+            "https://127.0.0.1./pay",            # trailing root dot
+            "https://%31%32%37.0.0.1/pay",       # percent-encoded digits
+            "https://１２７．０．０．１/pay",  # full-width
+            "https://10.1/pay",                  # shorthand private
+            "https://169.254.43518/pay",         # shorthand metadata (169.254.169.254)
+            "https://localhost./pay",
+            "https://1.2.3.4.5/pay",             # too many parts: not a valid host
+            "https://256.0.0.1/pay",             # part out of range: not a valid host
+            "https://0x7g.0.0.1/pay",            # bad hex part in a numeric host
+        )
+        for url in rejected:
+            with self.subTest(url=url):
+                self.assertFalse(public_http_target(url))
+        for url in (
+            "https://8.8.8.8/pay",
+            "https://134744072/pay",             # 8.8.8.8 as one number
+            "https://seller.example/pay",
+            "https://1.2.3.example/pay",         # ends in a label, not a number
+            "https://0x.example/pay",
+        ):
+            with self.subTest(url=url):
+                self.assertTrue(public_http_target(url))
 
     def test_ipv4_mapped_spellings_match_their_ipv4_verdict(self):
         """§6.3.6 requires equivalent IPv4-mapped IPv6 spellings to reach the same verdict."""

@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 95,
-  "hash": "b6b85fc50c322949290e6171c41e3b2a9e03a3e9c56b663a3b2e92459af2d10b",
+  "count": 103,
+  "hash": "cb5852f6297687ac552d16bf9abe37e49c48e9aad19220aabd841e28f2fc6664",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -4108,6 +4108,982 @@
           "value": "https://[::ffff:224.0.0.1]/pay"
         }
       ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-shorthand-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "0PS5M3O5XHPSzQdh8QVRRIxtpahJVE6nldy5LwPr70gHoo0E4V5gQs5fy3k_R5UNGizQDgd4p_ShhbTP1wDlCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Cu837ZojAyZ4sMnmbEwzxc6GjZYeG5m2mTpw7MR3eUQFk6UTvMRuooF_Bgl4o-zaHtQMhjtPPwIe5Vk4oyAjBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "7b5d1ade9856492e0ef7264fca76d48ee337976b35fb8fdd85e10b665da8a2fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "gHm18JAkaBykQsfd4sFeqNts1cJvvNDXt33s458ylw7ghWLxxuT5nd0UZk84l-lI4bE17gyJl_7eF7lvhrbaBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "dQblD4O4w5VKhdACQaJKt6LivzeJON6JgqB5nv5BZ6NNwXzq00W4klVHne4tRDDoDloLQD0ZZl1rBYBI6fdxAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.1/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-integer-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "gy8Zpsn2MlQjcH2j8YKssnmb_Izl-Ldga2HNT-IlQ9P0zePRpm7GamwM1Ie4pYWHCFXpv33-pB2RykNNLhCfCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "UT3RaOSNFmupd2xL0Pu3HR5pIYQ6fC7eBlaw2_DHjKRM8fBfBpTAgYTFL2y5o8xNl5CIXjHJuqW9WIHB9NHSBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "35ca2d3d2ea6bfd3068a96d9d6dc39042028a7ed537e82994933d7529abd501b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "gvRU-r-iU2c7RdRu3QJYoo3s8tpqHz80U0EjSIZRO4oXOTruc2f05Fpccxt5JlyOr1Vq20HhKlW91nrfRwuhBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "DIHuRFlYyj4JV6ai8wuwFV5AtQv6t21spjke0y5ntw-Qal1I97iET5e-MlTVvQGBAerzcxAzE6gGJNFkTzDuAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://2130706433/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-hex-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "v7sSs_2NEgrgcEKyClhvxLITZm8Jf9SShtK4FLVgncCAon2Qrd34l30BbABIbGk9hYiVmRXfGo91GbY0WlMJCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "LmnyvMZjY7vF14xPKhcDT_G2qUAVF2AbpaYDOxTGqGv0oHYO9KM4qofmQGRuy4cusjoAnG2PjVOVVFT6qWChCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "7c998185c9c90a53ac564cdec53e6df428f6efaac1a0d721063cc84073d60747"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "4TqD_0IZPB9MzakEUKcFlCc9saj-yvuQQnUkRxJkq3qF8Sqikkib7jHQdr1Szst-ZxOBsXlIiI5nYtwQGU6UCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "MeUbyf-oFLZ3ktLl5XxNH2RRKMuTzIvQ0I0zBFI_tKlp5ivvEqrOE0mWt0q6RGL4lFdlxheT3e3Yc-5CcOIpCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-octal-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "_aN6nVrZI6MvBaUleeOhbp0EOmmQJf0tI3_WwyQr3zes6PF3O7hVSMT51ri6fmW_9hLqrhfA30UOZCPOqNo_Ag"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "BJhkrzy3keEZWNXLDt3_nq5ApExb2X7hpPgdvUzC9S8nddJNzBewa-8GD5ktnDrZBIipNSdMIgn5iVB7l_0mAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "34e659c5c66e08a228bad4899a6545eac510df9cb34cfa97a932f8833a484efb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "GjNRuQTo11JsesqA-Wm390j6P07s9P4JaJbXVHSVEUqMduNVDi802rMz91wftngPEO2XXUgjHlzNNe2rFUHlBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "c_F0ZrfNot7A_qBMxAur_kDbIjB1LxXo8bu6Y5hKBKdQFRwXNBwDVPgI7vgrw_w-Cs9-6q80dCmUa9AT8kToDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-trailing-dot-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "fRt1bGofvQxovQ54B2UASsgZUJLfdWR2ZvhNrAICuhdaNE2Krle4hJLLPetg_VfZzbLuYza33buZe488LRkcBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "L5PLWsyT9lB5mA-Bq4zEXwz0oFvLTYcBdSL86n1CntvyDuHERmiMvv9wta-YvXAJSELyAZi2D_l1gGc6geVBBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "99241495a7e6f18010d5a9e12fdda11c5c7a8fd16ca4a0aa0741850cb9db51fe"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "P643vtS5m-tGmHjLM-XlqHGpMz0SMH5atlTdO5Z-ggw0IhdGYtlx-3YAq6ogitaqm5pAHzWIyekv65wOR9zICw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "i_ncHUIyfuesG-VIuG-UBatMvdWfZQYUrl6NFKSIxpj6tNIOeJfi3PTEIeQF6Nf-a77drTWmauEDhDRvrRaZDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.0.0.1./pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-percent-encoded-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "avUoSYbv5pPDNrKsqS0hivZ7-qP-7KZk4JMmcCvxEnsHP7uLhwHEiZerHm5hhfh5VPu9JGmJR2IN8ONqb9cFDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "cznnjvhGC_5j7gEy9Bq04Z8K_NHYJpmeWLaTlmAQ1uSmNUoT_HYXFnSD85ZMsNCmqGvZxyI9oQIfW0LgDnSLCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "3535de24d43a65bdb6663bdf0d16781dad2868bfb745cc67e8d4fafa14c9de52"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "3rVtMX6KEuJwMR3XhzvsgzG0g5vofSauUR-MBrEnp2LNklOHpp9GjA-OduMyDe7QoGQgMWXRhyG0SepXzTtBDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "iz0uT0VEBIWUjZDhwQiVoeoXUr6AIOYD7w4VmTTUZWcIS1Ys9KfT4r5y_2muryFhIVjPNmDwVoklSqGj9nZOAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-shorthand-metadata-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "dJ-xzM5sT6E4rJ3h4c9Be5uKA1fgWFW-2JOR0XSLU0Uhc5Bf7P_Yz0iSiB0-fjDrxWliLdlH4q0blmFJrWQOAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "on7qjoRLEdc_O-NeRvTa9oLVVKr4meEL8z_KgFM1pQBd-8RVMQt4wFPPrFiqE6r1hFnqFIfPoVZpUbS3oGsGAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "67043b76594acee0bf1259e8359e6191c5cccf81f4d2c2561e3e7932bbf6f73b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "IkeZAtf79KzgSkcup0ts0QLuhLh0WTWahSXZ6wYiTOsL2-k1kwzr4GVYp88is8OA1kfMmsc7j31K5J4GtRAmDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "AhwlA_kUUFDlu3jtiljMyUC67k7fyHBgHQMSNkFQb8hbHT-ww0GUyHL8M_OJR3WlMas536wJBWj1hA2SyfzzCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-invalid-numeric-host-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a legacy numeric IPv4 host spelling is classified as its literal address, never as a DNS name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "po65JHb8MfU9kmY83enp_oQkGLYm0cYvmKVjaAv_y6cOckkm44AQ6sLDIaZsWo3hmF8-4UqGriqdnAZkZG7sCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "U_xLVSohVO8JpT_r8pJ6Y0Q4Cd4AtShnoMQ4W-LiryzpVyB6LX2exOmvvr7K5qL6GGAfTDLAcC3iyoF6lsC7Bw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "973629c74cac695b6d6f1c21338a0ffd7aceeba781f5c323363c28d4c3c25b1b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "KrsmLHJl9rPsTAd_7rsfstZzO8nSrP21hT-vSns896_45Z9-6AMeAhkZ7eA7UVB4RYmcluWVOEVUfSkJDkeGDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "aorhpzYHobHLhrM2e3RhAcbwbZzTB7axgeV7MFEyz4BCbMY_9giXHfP1pFMGs2MAjZj3SNXYo162fCm-7S6LAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://256.0.0.1/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
     },
     {
       "name": "bare-network-label",

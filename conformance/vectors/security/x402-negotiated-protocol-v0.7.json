@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 105,
-  "hash": "83ba28a8399249451b9fdc6afb4d1a3e7205b4d1a90fe1e4e8676d8e0fe2e572",
+  "count": 106,
+  "hash": "18905f8eb2d96ad7ab6130c14fba223202267a76d647d7b0688519a0ba2e5943",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -5662,6 +5662,72 @@
           "value": {
             "label": "v3-readable"
           }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "received-objects-non-nfc-strings-hash-after-cf1",
+      "expected": "pass",
+      "rule": "XN-7",
+      "operation": "execute",
+      "note": "challenge and receipt hashes apply the recursive CF-1 NFC pass to decomposed strings",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "f5c8c0692a8929b16cbb58165fc9a6fc6e736fd9d71d52f07da69d7f72434de7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d6a06762a0b1354735fb1a50bb6faeef33e1ed49b3775a9b3fed6e9fe25c3cc9"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "2pkgiEJmZpKuw0hhJ-YsE-R9zTfxgDdK_oNxPvxQF_rcucQr7zgfZ2HhF0_RDVNuFb56SvaCYVOxFwBfoXCUBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "description"
+          ],
+          "value": "Café résumé"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifSwibm90ZSI6IkNhZmXMgSByZcyBc3VtZcyBIn0="
         },
         {
           "op": "replace",

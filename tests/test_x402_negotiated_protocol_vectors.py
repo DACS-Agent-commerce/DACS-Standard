@@ -1198,6 +1198,30 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ):
             self.assertIn(text, spec)
 
+    def test_received_object_hashes_apply_cf1_nfc_pass(self):
+        """XN-7 hashes NFC(JCS) of both received objects; raw-string hashing fails."""
+        vector = self.by_name["received-objects-non-nfc-strings-hash-after-cf1"]
+        self.assertEqual(evaluate(vector), ("pass", None))
+        required = vector["http"]["paymentRequired"]
+        response = decode_response_header(vector["http"]["responseHeader"], 2)
+        ref = vector["evidence"]["paymentTxRefs"][0]
+
+        def without_nfc(value):
+            # RFC 8785 bytes for these integer/string-only objects, minus CF-1.
+            return hashlib.sha256(json.dumps(
+                value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")).hexdigest()
+
+        for name, received, committed in (
+            ("PaymentRequired", required, ref["paymentRequiredHash"]),
+            ("settlement response", response, ref["paymentReceiptHash"]),
+        ):
+            with self.subTest(object=name):
+                raw = json.dumps(received, ensure_ascii=False)
+                self.assertNotEqual(raw, unicodedata.normalize("NFC", raw))
+                self.assertEqual(committed, digest(received))
+                self.assertNotEqual(committed, without_nfc(received))
+
     def test_exact_atomic_never_rounds_beyond_decimal_context_precision(self):
         """XN-5 exact shifting has no 28-digit precision limit and never rounds."""
         for amount, decimals, want in (

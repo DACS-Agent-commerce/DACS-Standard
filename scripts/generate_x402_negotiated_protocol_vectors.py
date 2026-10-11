@@ -822,6 +822,18 @@ def build_vectors() -> list[dict]:
              "an unrecognised descriptive member remains in the complete challenge commitment",
              lambda v: v["http"]["paymentRequired"].update({"futureDescription": {"label": "v3-readable"}}),
              refresh=True)
+
+    def non_nfc_received_objects(v):
+        # Decomposed (non-NFC) descriptive strings in both received objects. XN-7
+        # hashes them after the recursive CF-1 NFC pass, so an implementation
+        # that hashes the raw strings computes different commitments.
+        v["http"]["paymentRequired"]["resource"]["description"] = "Café résumé"
+        response = settlement_response(2)
+        response["note"] = "Café résumé"
+        v["http"]["responseHeader"] = encoded_header(response, 2)
+    add_case(vectors, "received-objects-non-nfc-strings-hash-after-cf1", "pass", "XN-7",
+             "challenge and receipt hashes apply the recursive CF-1 NFC pass to decomposed strings",
+             non_nfc_received_objects, refresh=True)
     add_case(vectors, "unsupported-action-bearing-extension", "fail", "XN-6",
              "an action-bearing extension the adapter cannot validate rejects before signing",
              lambda v: v["capability"].update({"understoodActionExtensions": []}))

@@ -1466,6 +1466,17 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         lrr4 = next(line for line in lrr.splitlines() if line.startswith("- (LRR-4) "))
         self.assertIn("DACS-4 XN-2 commitment-phase rule", lrr4)
 
+    def test_pay_alternative_members_must_be_objects(self):
+        """A non-object alternative is listing-shape `error`, not silently offered."""
+        base = self.by_name["listing-protocol-alternative-with-payee-bound-commit-admitted"]["listing"]
+        self.assertIsNone(listing_agreement_type_violation(base))
+        for member in (1, "x402:protocol", None, []):
+            with self.subTest(member=member):
+                listing = copy.deepcopy(base)
+                slot = next(step for step in listing["pipeline"] if step["kind"] == "pay-alternative")
+                slot["parameters"]["alternatives"].append(member)
+                self.assertEqual(listing_agreement_type_violation(listing), ("error", "listing-shape"))
+
     def test_legacy_procedure_keeps_single_event_success_guard(self):
         """The condensed legacy x402:default procedure keeps its success MUST NOT."""
         spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")

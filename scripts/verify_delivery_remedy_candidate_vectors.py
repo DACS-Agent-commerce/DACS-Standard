@@ -110,6 +110,7 @@ DELIVERABLE_FIELDS = {"deliverableContentHash", "deliverableAnchor"}
 DELIVERY_OUTCOMES = {"success", "failure"}
 EVALUATION_RESULTS = {"accept", "reject", "indeterminate"}
 DECISION_DISPOSITIONS = {"release-to-provider", "refund-to-client"}
+TERMINAL_STATES = {"released", "rejected-refund", "expired-refund"}
 # The only evaluation results that can authorize a settlement, and the one
 # disposition each authorizes.  Every other result fails closed.
 SETTLEMENT_AUTHORIZATIONS = {
@@ -592,6 +593,11 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     decision = artifacts.get("decision")
     if decision is not None and decision.get("disposition") not in tuple(DECISION_DISPOSITIONS):
         return result("error", "DRV-2", "decision disposition is not a supported discriminator")
+    # Checked here, before any stage uses it as a lookup key: an array or
+    # object would otherwise escape the four results as a TypeError.
+    terminal_state = artifacts["terminal"].get("terminalState")
+    if not isinstance(terminal_state, str) or terminal_state not in TERMINAL_STATES:
+        return result("error", "DRV-2", "terminal state is not a supported discriminator")
     if dispute is not None:
         if type(dispute.get("revision")) is not int or dispute["revision"] < 0:
             return result("error", "DRAA-2", "dispute revision is not minimal unsigned integer form")

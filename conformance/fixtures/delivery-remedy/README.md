@@ -65,8 +65,10 @@ and the exact `nativeEventInputs`. It also carries:
 The verifier reads these facts only from the signed record.
 
 The escrow job, both escrow phases, and the native target follow the
-agreement-selected rail. Evaluation results and decision dispositions are
-closed discriminators. Only `accept` with `release-to-provider` and `reject`
+agreement-selected rail. Evaluation results, decision dispositions, and the
+terminal evidence's `terminalState` are closed discriminators; any other
+value, including an array or object, is malformed input (`error`, DRV-2)
+before any stage reads it. Only `accept` with `release-to-provider` and `reject`
 with `refund-to-client` can authorize a terminal action. A release decision
 needs delivery evidence (DRD-3), and a decision without delivery evidence must
 rest on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read
@@ -217,8 +219,8 @@ checks, before it writes or checks the pack, that each negative becomes
 `verified` once the guard that decides it is removed. Any other outcome,
 including an exception, fails the check, with two listed exceptions.
 `FOLLOW_ON_FINDINGS` lists five negatives whose single defect also breaks a
-second rule, each with that exact finding. `STRUCTURAL_NEGATIVES` lists nine
-negatives that remove a structure the verifier reads. Without their guard the
+second rule, each with that exact finding. `STRUCTURAL_NEGATIVES` lists eleven
+negatives that remove or malform a structure the verifier reads. Without their guard the
 verifier raises, so isolation is not claimed for them.
 
 The unit suite also requires every verifier guard to be decided by a vector

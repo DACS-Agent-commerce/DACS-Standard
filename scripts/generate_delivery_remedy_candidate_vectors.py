@@ -950,6 +950,10 @@ def build_vector_pack() -> dict[str, Any]:
         }),
         # DRE-2, DRP-7: the delivery SettlementEvidence of the agreed phase.
         "dre-2-delivery-phase-kind": make_base("release", hooks={"delivery": put("phase", "deliver-entitlement")}),
+        # DRV-2: terminalState is a closed string discriminator; an array or
+        # object in a re-signed terminal is malformed input, not a crash.
+        "drv-2-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
+        "drv-2-terminal-state-object": make_base("release", hooks={"terminal": put("terminalState", {})}),
         "drv-2-delivery-evidence-shape": make_base("release", hooks={"delivery": put("paymentTxRefs", [])}),
         # A §9.7 failure may omit the deliverable members it has no value for.
         "dre-2-failed-delivery-without-deliverable": make_base("rejected-refund", FAILED_DELIVERY_JOB, hooks={
@@ -1346,6 +1350,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("terminal-funding-reference-mismatch", "terminal-funding-mismatch", "rejected", "DRT-11", "terminal evidence must reference the exact finalized funding record"),
         vector("terminal-job-reference-mismatch", "terminal-job-reference-mismatch", "rejected", "DRT-4", "terminal evidence must reference the exact escrow job"),
         vector("terminal-delivery-reference-mismatch", "terminal-delivery-reference-mismatch", "rejected", "DRT-12", "post-submission terminal evidence must reference the exact delivery"),
+        vector("drv-2-terminal-state-array", "drv-2-terminal-state-array", "error", "DRV-2", "a signed terminal whose terminalState is an array is malformed input"),
+        vector("drv-2-terminal-state-object", "drv-2-terminal-state-object", "error", "DRV-2", "a signed terminal whose terminalState is an object is malformed input"),
         vector("native-terminal-state-divergence", "release", "rejected", "DRT-4", "the native terminal state must equal the signed terminal state", [{"op": "replace", "path": ["native", "terminalState"], "value": "rejected-refund"}]),
         vector("funding-job-reference-mismatch", "funding-job-mismatch", "rejected", "DRF-1", "funding evidence must reference the exact escrow job"),
         vector("funding-phase-index-mismatch", "funding-phase-index-mismatch", "rejected", "DRF-1", "funding evidence must bind the agreement's fund phase index"),
@@ -1553,6 +1559,8 @@ STRUCTURAL_NEGATIVES = {
     "native-event-selector-substitution": "the creation observation has no lifecycle selector",
     "drp-9-digest-anchor-unavailable": "the resolver record has no digest anchor to read",
     "drv-2-evaluation-subject-refs": "the evaluation has no subject reference array to read",
+    "drv-2-terminal-state-array": "an array terminal state cannot key the terminal-event lookup",
+    "drv-2-terminal-state-object": "an object terminal state cannot key the terminal-event lookup",
 }
 # Pack runner and deployment-capability code are outside the lifecycle audit.
 _UNAUDITED_FUNCTIONS = {

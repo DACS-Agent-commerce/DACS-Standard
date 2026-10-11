@@ -28,6 +28,11 @@ HTTP_TOKEN = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Z-]+$")
 CAIP2 = re.compile(r"^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$")
 CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
 EVM_EVENT = re.compile(r"^evm:([1-9][0-9]*):([0-9a-f]{64}):(0|[1-9][0-9]*)$")
+# XN-2: ERC-20 decimals() and an SPL mint's decimals are both uint8.
+ASSET_DECIMALS_MAX = 255
+# XN-5 overflow ceiling per exact binding, keyed by CAIP-2 namespace: EIP-3009
+# value and ERC-20 amounts are uint256; SPL Token amounts are u64.
+ATOMIC_AMOUNT_MAX = {"eip155": 2**256 - 1, "solana": 2**64 - 1}
 SOLANA_EVENT = re.compile(
     r"^solana:(mainnet|devnet|testnet):([1-9A-HJ-NP-Za-km-z]+):(0|[1-9][0-9]*)$"
 )
@@ -309,7 +314,9 @@ def validate_ref(ref):
         return "error"
     if not is_safe_positive(selection.get("maxTimeoutSeconds")):
         return "error"
-    if not is_safe_nonnegative(selection.get("assetDecimals")):
+    if not is_safe_nonnegative(selection.get("assetDecimals")) or (
+        selection["assetDecimals"] > ASSET_DECIMALS_MAX
+    ):
         return "error"
     for field in ("scheme", "network", "asset", "currency"):
         if not isinstance(selection.get(field), str) or not selection[field]:
@@ -546,11 +553,14 @@ def reconciliation_identity(v):
     }
 
 
-def exact_atomic(amount, decimals):
+def exact_atomic(amount, decimals, ceiling):
     if not isinstance(amount, str) or not CD1.fullmatch(amount):
         raise ValueError("non-canonical decimal")
-    if not is_safe_nonnegative(decimals):
+    # Bound decimals before any power of ten is computed.
+    if not is_safe_nonnegative(decimals) or decimals > ASSET_DECIMALS_MAX:
         raise ValueError("invalid decimals")
+    if type(ceiling) is not int:
+        raise ValueError("no binding amount ceiling")
     # Exact decimal shifting on the canonical digits: no arithmetic context,
     # so there is no precision limit and nothing can round.
     whole, _, fraction = amount.partition(".")
@@ -559,6 +569,8 @@ def exact_atomic(amount, decimals):
     atomic = int(whole + fraction) * 10 ** (decimals - len(fraction))
     if atomic <= 0:
         raise ValueError("not exactly representable")
+    if atomic > ceiling:
+        raise ValueError("overflows the binding amount type")
     value = str(atomic)
     if not re.fullmatch(r"[1-9][0-9]*", value):
         raise ValueError("non-canonical atomic amount")
@@ -801,7 +813,10 @@ def evaluate(v, effects=None):
     ):
         return "fail", "asset-metadata"
     try:
-        amount = exact_atomic(price.get("amount"), selection["assetDecimals"])
+        amount = exact_atomic(
+            price.get("amount"), selection["assetDecimals"],
+            ATOMIC_AMOUNT_MAX.get(selection["network"].split(":", 1)[0]),
+        )
     except (TypeError, ValueError):
         return "fail", "exact-amount"
     pay_to = binding[0]["payeeAddress"]
@@ -1070,6 +1085,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "asset-decimals-adapter-mismatch",
             "agreement-price-excess-precision",
             "agreement-price-rounded-by-decimal-context",
+            "exact-amount-above-uint256-limit",
+            "solana-exact-amount-above-u64-limit",
+            "asset-decimals-above-uint8-limit",
             "runtime-payer-not-agreement-buyer",
             "runtime-paying-key-not-buyer-controlled",
             "runtime-payer-address-not-derived-from-paying-key",
@@ -1303,7 +1321,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("0.000001", 6, "1"),
         ):
             with self.subTest(amount=amount, decimals=decimals):
-                self.assertEqual(exact_atomic(amount, decimals), want)
+                self.assertEqual(exact_atomic(amount, decimals, ATOMIC_AMOUNT_MAX["eip155"]), want)
         for amount, decimals in (
             ("1000000000000000000000000.0000001", 6),
             ("1234567890123456789012345678.9", 0),
@@ -1313,7 +1331,58 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ):
             with self.subTest(amount=amount, decimals=decimals):
                 with self.assertRaises(ValueError):
-                    exact_atomic(amount, decimals)
+                    exact_atomic(amount, decimals, ATOMIC_AMOUNT_MAX["eip155"])
+
+    def test_exact_atomic_enforces_the_binding_amount_type_and_decimals_bound(self):
+        """XN-5 overflow is the binding's native amount type; XN-2 bounds decimals to uint8."""
+        for namespace, ceiling in (("eip155", 2**256 - 1), ("solana", 2**64 - 1)):
+            with self.subTest(namespace=namespace):
+                self.assertEqual(ATOMIC_AMOUNT_MAX[namespace], ceiling)
+                self.assertEqual(exact_atomic(str(ceiling), 0, ceiling), str(ceiling))
+                with self.assertRaises(ValueError):
+                    exact_atomic(str(ceiling + 1), 0, ceiling)
+        uint256 = ATOMIC_AMOUNT_MAX["eip155"]
+        self.assertEqual(exact_atomic("0." + "0" * 254 + "1", 255, uint256), "1")
+        # Only a cheap out-of-range value here; huge ones run in a bounded child
+        # process (test_huge_asset_decimals_are_rejected_before_exponentiation).
+        with self.assertRaises(ValueError):
+            exact_atomic("1", 256, uint256)
+        with self.assertRaises(ValueError):
+            exact_atomic("1", 6, None)  # a network with no exact binding has no ceiling
+
+    def test_huge_asset_decimals_are_rejected_before_exponentiation(self):
+        """A safe-integer assetDecimals of 10**9 must not reach 10 ** decimals.
+
+        Runs in a child process with a 256 MiB address-space limit and a timeout,
+        so an unbounded power of ten fails the test instead of stalling the suite.
+        """
+        script = (
+            "import copy, json, sys\n"
+            "import tests.test_x402_negotiated_protocol_vectors as m\n"
+            "data = json.loads(m.VECTORS.read_text(encoding='utf-8'))\n"
+            "raw = next(x for x in data['vectors'] if x['name'] == 'protocol-v2-exact-success')\n"
+            "v = m.materialize_vector(data, raw)\n"
+            "huge = 1_000_000_000\n"
+            "for ref in (v['listing']['acceptedRails'][0], v['agreement']['terms']['rail'],\n"
+            "            v['runtime']['selectedRailRef']):\n"
+            "    ref['parameters']['selection']['assetDecimals'] = huge\n"
+            "v['capability']['assetMetadata']['decimals'] = huge\n"
+            "m.verify_artifact_signatures = lambda _v: True\n"
+            "print(json.dumps(m.evaluate(v)))\n"
+            "try:\n"
+            "    m.exact_atomic('1', huge, m.ATOMIC_AMOUNT_MAX['eip155'])\n"
+            "except ValueError:\n"
+            "    print('rejected')\n"
+        )
+        limit = (
+            "import resource; resource.setrlimit(resource.RLIMIT_AS, (256 << 20, 256 << 20))\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", limit + script], cwd=ROOT,
+            capture_output=True, text=True, timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr[-2000:])
+        self.assertEqual(result.stdout.split(), ['["error",', '"rail-ref-shape"]', "rejected"])
 
     def test_threat_model_summary_matches_xn9_dispositions(self):
         """The §12.4 index row must not widen XN-9's single indeterminate case."""

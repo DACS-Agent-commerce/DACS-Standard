@@ -87,7 +87,7 @@ type X402ProtocolRailParameters = {
     scheme: string                     // x402 scheme token; "exact" is the v0.8 success profile
     network: string                    // CAIP-2 namespace:reference
     asset: string                      // exact PaymentRequirements.asset value
-    assetDecimals: number              // independently established by the selected scheme/network adapter
+    assetDecimals: number              // 0..255 (XN-2); independently established by the selected scheme/network adapter
     currency: string                   // MUST equal agreement.terms.price.currency
     maxTimeoutSeconds: number
     extra: Record<string, unknown>     // complete PaymentRequirements.extra object
@@ -1216,7 +1216,8 @@ XN-10.
   exact signed string. A present `bodyHash` MUST be exactly 64 lower-case
   hexadecimal digits. The selection's
   `x402Version` and `maxTimeoutSeconds` MUST be positive safe integers;
-  `assetDecimals` MUST be a non-negative safe integer; `scheme`, `network`,
+  `assetDecimals` MUST be an integer from 0 through 255, the range of the
+  `uint8` ERC-20 `decimals()` and SPL mint `decimals` fields; `scheme`, `network`,
   `asset`, and `currency` MUST be non-empty strings; `network` MUST have the
   CAIP-2 `namespace:reference` form; and `extra` plus any
   `paymentRequiredExtensions` MUST be JSON objects valid under CORE §B.2.
@@ -1272,7 +1273,13 @@ XN-10.
   atomic units by exact decimal shifting. Excess fractional precision,
   rounding, floating-point conversion, overflow, a non-canonical unsigned
   atomic amount, or inequality with the matched requirement's `amount` MUST
-  reject before authorization. The matched requirement's `payTo` MUST equal the
+  reject before authorization. Overflow is measured against the selected
+  binding's native amount type: the EIP-155 `exact` binding's atomic amount
+  MUST NOT exceed 2²⁵⁶−1, because ERC-20 amounts and the EIP-3009 `value` are
+  `uint256`; the Solana `exact` binding's MUST NOT exceed 2⁶⁴−1, because SPL
+  Token amounts are `u64`; and an authorization form with a narrower amount
+  field applies that narrower bound. The handler MUST check `assetDecimals`
+  against the XN-2 range before computing any power of ten. The matched requirement's `payTo` MUST equal the
   PB-1 payout binding for this `(x402:protocol, phaseIndex)`. The
   `PaymentPhaseInput` payer and payee MUST equal the signed agreement buyer and
   seller respectively. Before signing, the handler MUST resolve the buyer's
@@ -3180,7 +3187,7 @@ unresolved private state `indeterminate`.
 
 **Refund laundering.** *Threat:* a seller refunds to quietly unwind a failed delivery without recording failure. *Mitigation:* SettlementAmendments are anchored, signed, and included in DACS-5 bundles, so the trail shows both the original payment and the later refund; reputation derivation MUST treat refunded sessions appropriately. The inverse — a refund against a non-existent/failure-outcome record, or an over-refund — is guarded by AMEND-1..4 (§9.7.1).
 
-**Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Static rail authors MUST specify `asset.decimals` exactly; an x402 adapter independently verifies the agreement-signed `selection.assetDecimals` under XN-5. Phase handlers validate precision against the applicable value, and excess precision is an error rather than a rounded payment.
+**Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Static rail authors MUST specify `asset.decimals` exactly; an x402 adapter independently verifies the agreement-signed `selection.assetDecimals`, bounded to 0..255 by XN-2, and rejects an atomic amount above the selected binding's native amount type under XN-5. Phase handlers validate precision against the applicable value, and excess precision is an error rather than a rounded payment.
 
 **Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start (per `railRegistryVersion` in `SessionContext`). Settle MUST use the pinned rail definition, even if the registry has since superseded it. This existing numeric pin does not authorize CORE registry-bootstrap historical evaluation or permit a descriptor hash to be inferred from current state, transport metadata, or a sidecar.
 

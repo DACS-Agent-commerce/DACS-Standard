@@ -56,6 +56,12 @@ The format used per release:
   payee or sealed-selection commitment phase is rejected at listing admission
   instead of being admitted and never committing. Widening the rail to all
   three payout-bearing agreement types is left to a later compatible extension.
+- **Amount ceiling and decimals bound** (DACS-4 §9.3, §9.5.7 XN-2/XN-5) —
+  `selection.assetDecimals` is bounded to 0..255 (`uint8`) and checked before
+  any power of ten. XN-5's overflow rejection is measured against the
+  binding's native amount type: 2²⁵⁶−1 for EIP-155 `exact` (EIP-3009 `value`
+  and ERC-20 amounts are `uint256`), 2⁶⁴−1 for Solana `exact` (SPL Token `u64`),
+  or a narrower authorization-form bound.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

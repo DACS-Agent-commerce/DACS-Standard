@@ -977,6 +977,51 @@ def build_vectors() -> list[dict]:
              price_and_atomic("1000000000000000000000000.0000001",
                               "1000000000000000000000000000000"),
              refresh=True, reason="exact-amount")
+    # XN-5 overflow is the binding's native amount type: EIP-3009 value is
+    # uint256 on EIP-155 and SPL Token amounts are u64 on Solana. Prices use
+    # the fixture's 6 decimals, so atomic = price * 10**6 exactly.
+    def at_atomic(atomic):
+        digits = str(atomic)
+        whole, fraction = digits[:-6], digits[-6:].rstrip("0")
+        return price_and_atomic(whole + ("." + fraction if fraction else ""), digits)
+    add_case(vectors, "exact-amount-at-uint256-limit", "pass", "XN-5",
+             "the largest EIP-3009 uint256 value converts exactly and settles",
+             at_atomic(2**256 - 1), refresh=True)
+    add_case(vectors, "exact-amount-above-uint256-limit", "fail", "XN-5",
+             "an atomic amount of 2**256 overflows EIP-3009 value and rejects before authorization",
+             at_atomic(2**256), refresh=True, reason="exact-amount")
+
+    def solana_at_atomic(atomic):
+        def mutate(v):
+            solana_exact(v)
+            at_atomic(atomic)(v)
+        return mutate
+    add_case(vectors, "solana-exact-amount-at-u64-limit", "pass", "XN-5",
+             "the largest SPL Token u64 amount converts exactly and settles",
+             solana_at_atomic(2**64 - 1), refresh=True)
+    add_case(vectors, "solana-exact-amount-above-u64-limit", "fail", "XN-5",
+             "an atomic amount of 2**64 overflows the SPL Token u64 and rejects before authorization",
+             solana_at_atomic(2**64), refresh=True, reason="exact-amount")
+
+    def with_decimals(decimals, price, atomic):
+        def mutate(v):
+            for ref in (
+                v["listing"]["acceptedRails"][0],
+                v["agreement"]["terms"]["rail"],
+                v["runtime"]["selectedRailRef"],
+            ):
+                ref["parameters"]["selection"]["assetDecimals"] = decimals
+            v["capability"]["assetMetadata"]["decimals"] = decimals
+            v["ledger"]["assetDecimals"] = decimals
+            price_and_atomic(price, atomic)(v)
+        return mutate
+    add_case(vectors, "asset-decimals-at-uint8-limit", "pass", "XN-2/XN-5",
+             "assetDecimals 255 is the uint8 maximum and converts exactly",
+             with_decimals(255, "0." + "0" * 254 + "1", "1"), refresh=True)
+    add_case(vectors, "asset-decimals-above-uint8-limit", "error", "XN-2/XN-5",
+             "assetDecimals 256 exceeds uint8 and is malformed before any power of ten",
+             with_decimals(256, "0." + "0" * 255 + "1", "1"), refresh=True,
+             reason="rail-ref-shape")
     add_case(vectors, "runtime-payer-not-agreement-buyer", "fail", "XN-5",
              "runtime payer must resolve to the signed buyer",
              lambda v: v["runtime"]["payer"].update({"primaryClaim": "did:demos:agent:" + "99" * 32}))

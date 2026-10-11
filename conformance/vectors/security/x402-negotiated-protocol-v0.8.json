@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 114,
-  "hash": "bbe875bb353e4d8fb161650ab3dd0cd230a7c4c28bcc35fcbed9f932e3b89b96",
+  "count": 120,
+  "hash": "a206aa369df8390516c8b5a3701726d87b21c372bb6559c13f845381569db092",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -7013,6 +7013,1923 @@
         }
       ],
       "expectedReason": "exact-amount"
+    },
+    {
+      "name": "exact-amount-at-uint256-limit",
+      "expected": "pass",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "the largest EIP-3009 uint256 value converts exactly and settles",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "ZK4Hw28TWF4CsdDHDwYtSBChH-u-KEazs6RXqpJjDWuhfH-CgZQwf72zBsOJxCItUg994LPaPNrdvSCFnf_RAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "4SRmO0l02LOnKXJeJCR7cB9Xrl_Tihg1txqksAXpexELS9qkYgba3srY23LMFMAPDXXTArFYKWmB33ChhBPoBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129.639935"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129.639935"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a9df205b173ef690ad0a658ad5b5d05ed66028da6e6ce4a546064c7e2984d1a8"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "snPoYBwwN9mys5Ll9Z_wCCENlSVz0iyk36q8RkJmIQljyrGkQ323AtdHAMP5lsbmZUNag92B2rvSaIgbWYzOBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "exact-amount-above-uint256-limit",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "an atomic amount of 2**256 overflows EIP-3009 value and rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "P8HIE6BqLCybkf_QRTTVTVE7yV5fykOLSUT5fborbuqnanqGp4AEMGUCW3GRNb_GF6-V8Zn6nDJRnLQY64yYCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "0o9PfTQIIAMIu3ykNvFsZxNi9P4IosxdWZCiJASbdDEWNC_2IT3Zs7MFOJ65MHKOUSkh0K8SJyRu4PXduYO-CA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129.639936"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129.639936"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "ffdd5effe0388c19a1cca8d12296f8a3262bae03f15f61a00db0004e88b79bdc"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "CtcMgXNaNAAXe9z6GSadLTyhgVZdgvGgiLovDraOBFAA29FCvH-dtRnHzMgUGmLsTYjPXPm0ThtOYvOtHFPUCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129639936"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "115792089237316195423570985008687907853269984665640564039457584007913129639936"
+        }
+      ],
+      "expectedReason": "exact-amount"
+    },
+    {
+      "name": "solana-exact-amount-at-u64-limit",
+      "expected": "pass",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "the largest SPL Token u64 amount converts exactly and settles",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "fkWaQ8jKmqPLoodeFUzGLUR8Sp6PwKDzgYnSc17ZuAucYssBPVBsgBStpmfHtrq07tsWWieDodXyQ1a7D75PBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "LqCUKufte5L3crA7gvg3NQ0m1x5aqeOsboPAbFLF-hlh6a2dgA40_ZhmrqsBXG3q0Pn-aRGlufLg9-sgACJwCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "18446744073709.551615"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "LCyZRHh3dZsJv7zBrDifn1L4D5jyaa90sOFbv3NpChXUT9xdF_6AV6frCg9_yvTX6hGaIMAHgnZxGyGgOwgcCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "Jgu141BVWeH7D6tPR_JWZfAerYNIwR2izxYOviZu1STntC-i9pqiergfNeqQnMu8wTHIwE17yXJRmtBygFyUCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "18446744073709.551615"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74db93b879a21a9d016b8a7c271319bb99f9ed30c329ecb3598ec70a97682a52"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "057743413fd8af65b1e4b33f9727f59714ac7c0060142f4b06eb927dd6794901"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "GgAuedUQdQGcd85DqeUyLVx9VQM1RnbZcFyFM2xLtS9_Y5zucoAMWUWRvmoDlcHmJBrlHVLtVIOXUPYTfEcHDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "18446744073709551615"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTpFdFdUUkFCWmFZcTZpTWZlWUtvdVJ1MTY2VlUyeHFhMSIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "18446744073709551615"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBound"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "bLRgJoIqIAmiv8sKFuisAHSY4S9er41g6r_cShLV1zY6GzUPWrkG_u8aOt72w9pG44LNzy5_XVTURNejASsJBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ]
+    },
+    {
+      "name": "solana-exact-amount-above-u64-limit",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "an atomic amount of 2**64 overflows the SPL Token u64 and rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "S28hon_C7AK5r5n18HdU0clT2-At2lD_O0PxeHGVrDGqgqQ2sPRbb-G5qAXG1i0JekpCn4tRHRuJcM5EanFdDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "pByYTRvB1pEAO9DFpsoZ6JkO8NV9Hv3FEof33ciWxzmVC8BATFQ3r_5lCTW7VnHD-LNrz7gTTm63T0Wb8yNxBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "18446744073709.551616"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "LCyZRHh3dZsJv7zBrDifn1L4D5jyaa90sOFbv3NpChXUT9xdF_6AV6frCg9_yvTX6hGaIMAHgnZxGyGgOwgcCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "Jgu141BVWeH7D6tPR_JWZfAerYNIwR2izxYOviZu1STntC-i9pqiergfNeqQnMu8wTHIwE17yXJRmtBygFyUCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "18446744073709.551616"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74db93b879a21a9d016b8a7c271319bb99f9ed30c329ecb3598ec70a97682a52"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "c2c19860416e226fb29802a6c8c11856e04118856d68ffe731967817f5a2b209"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "DsuXkK1JrxUu5rsegi_9sZsUAVyIurlM3SgoMwK6SDDVchuUJhlKIlQsq5pGE7NWFhvBR_Dm8sbSk-Ck_pPGBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "18446744073709551616"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTpFdFdUUkFCWmFZcTZpTWZlWUtvdVJ1MTY2VlUyeHFhMSIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "18446744073709551616"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBound"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "bLRgJoIqIAmiv8sKFuisAHSY4S9er41g6r_cShLV1zY6GzUPWrkG_u8aOt72w9pG44LNzy5_XVTURNejASsJBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ],
+      "expectedReason": "exact-amount"
+    },
+    {
+      "name": "asset-decimals-at-uint8-limit",
+      "expected": "pass",
+      "rule": "XN-2/XN-5",
+      "operation": "execute",
+      "note": "assetDecimals 255 is the uint8 maximum and converts exactly",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "_xtjLnGvDH4yWXiBnS0aet9AzbLCEm6QwtKezltR2Rbc_f5YCEUnYBU9BytPoiZNzCNqKdq2yPZVOwzUMPYSBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "du7lrImAZkey6z0fVfr4O9P4PHqsUSuEJNM3d5bElGb-kQt1nYobWJOZN-6AYlYwcJ_5iWG5cYm_eNSM3BRQBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": 255
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "decimals"
+          ],
+          "value": 255
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "142acaafc766d5ac5c1ec44c817140932a0594ee4b22f9f121b0a39697e84ff2"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "46Kc2TM6Aj_f_knUBStrOD241tha3NwVOQuyUqsk04qGQcfdnzRvwL4KzK2O77_GtGU1V9sCqyR2V52Wg8gaDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ],
+          "value": 255
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": 255
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "f2f-IC2v50jUDyGJLIEAr6YOy8FIWghaqk5b_lLQGhApShMa3K_cd2uXPjVKY0ykhVSO-Z-YuiJbXV2rCOZdDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": 255
+        }
+      ]
+    },
+    {
+      "name": "asset-decimals-above-uint8-limit",
+      "expected": "error",
+      "rule": "XN-2/XN-5",
+      "operation": "execute",
+      "note": "assetDecimals 256 exceeds uint8 and is malformed before any power of ten",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "6nBj1qlCF7jmglL2d-3VVXKIcA4mpVxyAiwEaTgscIZUPG-oRVLMuG3zjE28l5iClSKamc2Q5AHyIH2ny5AYAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "zv3Rre22yay7xDe0o02w6iZRUZJMaXqbAAwjfYq9FRNvsxdPbgoMveJaCN8zdL-pfB7IvBmBjaI_FQ9qJlAgDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": 256
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "decimals"
+          ],
+          "value": 256
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentAmount",
+            "amount"
+          ],
+          "value": "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "142acaafc766d5ac5c1ec44c817140932a0594ee4b22f9f121b0a39697e84ff2"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "rwIxEowLcOz033-ozKQFjeVUckAEz3D5QbHJOo1HqaX0ojSiOvDHf5AO247SkDoKs18fWMa9g2OtrW58KLb1AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ],
+          "value": 256
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": 256
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "5_qfU5cacEg8Ua5G-5X4nFzcmiQ5PxCsvNZ0a8qhzYbHB5HSl4FD-On6CKEQoMLaUS2YJtTPKFHigX2WA6_OCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": 256
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
     },
     {
       "name": "runtime-payer-not-agreement-buyer",

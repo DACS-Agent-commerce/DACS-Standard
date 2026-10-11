@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "30b683df55e23392c12e8f8e3e50e2e8d61843fee803e2c2d0f0978b26499733",
+  "hash": "f3c5c8f8842f572aebc8fbbf0625c84c2c8bb1fc25bc32dba2d9fcbab12b74d1",
   "count": 225,
   "fixtures": {
     "release": {
@@ -74358,6 +74358,10 @@
   "promotionBlockedProofs": {
     "DRE-2": "requires a normative logical address for delivery SettlementEvidence, which DACS-4 does not define; the pack binds the record to the single agreement-bound delivery step and models its resolution with the synthetic resolver",
     "DRP-7": "requires authenticated resolution of the delivery SettlementEvidence produced by the intervening step; the pack binds the record to the single agreement-bound delivery step, as for DRE-2",
-    "DRP-9": "requires a normative proof shape showing that the exact delivery digest was fixed before the native submission; the pack models it with a synthetic resolver-attested digest anchor"
+    "DRP-9": "requires a normative proof shape showing that the exact delivery digest was fixed before the native submission; the pack models it with a synthetic resolver-attested digest anchor",
+    "DRP-6": "requires authenticated evidence that funding finality preceded the delivery step; the pack checks the orchestrator-stated executionContext.fundingFinalizedBeforeDelivery",
+    "DRP-8": "requires authenticated DACS-5 volume accounting for the escrow pair; the pack checks the orchestrator-stated executionContext.dacs5PurchaseCount",
+    "DRP-11": "requires authenticated resolution of the finalized DACS-3 commitment receipt before funding; the pack checks the orchestrator-stated executionContext.commitmentReceipt",
+    "DRP-12": "requires authenticated evidence of the terminal gate and late-delivery cancellation; the pack checks the orchestrator-stated executionContext.terminalGate and lateDeliveryDisabled"
   }
 }

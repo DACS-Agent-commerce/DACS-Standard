@@ -1480,6 +1480,27 @@ def build_vector_pack() -> dict[str, Any]:
             "fixed before the native submission; the pack models it with a synthetic "
             "resolver-attested digest anchor"
         ),
+        # executionContext values below are orchestrator statements: the
+        # vectors check the predicate, not authenticated evidence behind it.
+        "DRP-6": (
+            "requires authenticated evidence that funding finality preceded the delivery "
+            "step; the pack checks the orchestrator-stated "
+            "executionContext.fundingFinalizedBeforeDelivery"
+        ),
+        "DRP-8": (
+            "requires authenticated DACS-5 volume accounting for the escrow pair; the pack "
+            "checks the orchestrator-stated executionContext.dacs5PurchaseCount"
+        ),
+        "DRP-11": (
+            "requires authenticated resolution of the finalized DACS-3 commitment receipt "
+            "before funding; the pack checks the orchestrator-stated "
+            "executionContext.commitmentReceipt"
+        ),
+        "DRP-12": (
+            "requires authenticated evidence of the terminal gate and late-delivery "
+            "cancellation; the pack checks the orchestrator-stated "
+            "executionContext.terminalGate and lateDeliveryDisabled"
+        ),
     }
     payload = {
         "fixtures": fixtures,

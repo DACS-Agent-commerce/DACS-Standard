@@ -49,13 +49,17 @@ The format used per release:
   reconciliation retry make zero authorization calls.
   This addition is part of the existing unreleased coordinated candidate
   (DACS-3 v0.6 / DACS-4 v0.8); it does not create another module-version bump.
-- **Listing-time agreement type for `x402:protocol`** (DACS-3 §8.5.2; DACS-4
-  §9.5.7 XN-2, §9.9.1 APR-2) — a Listing that offers an `x402:protocol`
+- **Listing-time agreement type for `x402:protocol`** (DACS-1 §6.3.4 LRR-4;
+  DACS-3 §8.5.2; DACS-4 §9.5.7 XN-2, §9.9.1 APR-1) — a new listing-admission
+  rule for DACS-1 listing readers: a Listing that offers an `x402:protocol`
   reference, directly or as a `pay-alternative` member, must use
   `commit-payee-bound-agreement`. A Listing pairing it with the identity-bound
   payee or sealed-selection commitment phase is rejected at listing admission
-  instead of being admitted and never committing. Widening the rail to all
-  three payout-bearing agreement types is left to a later compatible extension.
+  instead of being admitted and never committing. The rejection needs no
+  registry and is returned before registry-dependent checks; APR-1 states it
+  for an alternative slot and DACS-1 LRR-4 points to it. This addition is part
+  of the unreleased DACS-1 v0.8 candidate. Widening the rail to all three
+  payout-bearing agreement types is left to a later compatible extension.
 - **Amount ceiling and decimals bound** (DACS-4 §9.3, §9.5.7 XN-2/XN-5) —
   `selection.assetDecimals` is bounded to 0..255 (`uint8`) and checked before
   any power of ten. XN-5's overflow rejection is measured against the

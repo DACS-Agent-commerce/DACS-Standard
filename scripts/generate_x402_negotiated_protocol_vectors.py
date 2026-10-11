@@ -724,18 +724,18 @@ def build_vectors() -> list[dict]:
              listing_pipeline(sealed_complete_negotiation, "commit-selection-bound-agreement"),
              operation="admit-listing", reason="x402-protocol-agreement-type")
     add_case(vectors, "listing-protocol-alternative-with-payee-bound-commit-admitted", "pass",
-             "XN-2/APR-2",
+             "XN-2/APR-1",
              "a pay-alternative slot may offer x402:protocol under commit-payee-bound-agreement",
              listing_pipeline(fixed_price, "commit-payee-bound-agreement", alternative=True),
              operation="admit-listing")
     add_case(vectors, "listing-protocol-alternative-with-identity-bound-payee-commit-rejected",
-             "fail", "XN-2/APR-2",
-             "APR-2 rejects an x402:protocol alternative under an identity-bound commitment phase",
+             "fail", "XN-2/APR-1",
+             "APR-1 rejects an x402:protocol alternative under an identity-bound commitment phase",
              listing_pipeline(fixed_price, "commit-identity-bound-payee-agreement", alternative=True),
              operation="admit-listing", reason="x402-protocol-agreement-type")
     add_case(vectors, "listing-protocol-alternative-with-selection-bound-commit-rejected",
-             "fail", "XN-2/APR-2",
-             "APR-2 rejects an x402:protocol alternative under the selection-bound commitment phase",
+             "fail", "XN-2/APR-1",
+             "APR-1 rejects an x402:protocol alternative under the selection-bound commitment phase",
              listing_pipeline(sealed_complete_negotiation, "commit-selection-bound-agreement",
                               alternative=True),
              operation="admit-listing", reason="x402-protocol-agreement-type")

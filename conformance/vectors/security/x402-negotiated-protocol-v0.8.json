@@ -675,7 +675,7 @@
     }
   },
   "count": 138,
-  "hash": "731281b8b5c72bdf688cc4e323841599a3ecb0a14ed7eb10f80b5a2c3f31cf67",
+  "hash": "7844ad43a44f3984c2dd3b1806da3fe87d50b206ce1e35bcc563723e681acb34",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -2197,7 +2197,7 @@
     {
       "name": "listing-protocol-alternative-with-payee-bound-commit-admitted",
       "expected": "pass",
-      "rule": "XN-2/APR-2",
+      "rule": "XN-2/APR-1",
       "operation": "admit-listing",
       "note": "a pay-alternative slot may offer x402:protocol under commit-payee-bound-agreement",
       "base": "v2",
@@ -2316,9 +2316,9 @@
     {
       "name": "listing-protocol-alternative-with-identity-bound-payee-commit-rejected",
       "expected": "fail",
-      "rule": "XN-2/APR-2",
+      "rule": "XN-2/APR-1",
       "operation": "admit-listing",
-      "note": "APR-2 rejects an x402:protocol alternative under an identity-bound commitment phase",
+      "note": "APR-1 rejects an x402:protocol alternative under an identity-bound commitment phase",
       "base": "v2",
       "patch": [
         {
@@ -2436,9 +2436,9 @@
     {
       "name": "listing-protocol-alternative-with-selection-bound-commit-rejected",
       "expected": "fail",
-      "rule": "XN-2/APR-2",
+      "rule": "XN-2/APR-1",
       "operation": "admit-listing",
-      "note": "APR-2 rejects an x402:protocol alternative under the selection-bound commitment phase",
+      "note": "APR-1 rejects an x402:protocol alternative under the selection-bound commitment phase",
       "base": "v2",
       "patch": [
         {

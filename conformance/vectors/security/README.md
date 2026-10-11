@@ -1086,6 +1086,8 @@ listing-time agreement-type rule: an `x402:protocol` offer, either for a
 concrete `pay-x402` phase or as a `pay-alternative` member, is admitted with
 `commit-payee-bound-agreement` and rejected with
 `commit-identity-bound-payee-agreement` or `commit-selection-bound-agreement`.
+APR-1 states the rule for an alternative slot and DACS-1 LRR-4 points to it;
+the rejection needs no registry, so it precedes registry-dependent checks.
 These cases check only that rule; registry resolution under DACS-1 LRR-2..LRR-6
 and APR-2 is covered by the listing-resolution and alternative-payment sets.
 

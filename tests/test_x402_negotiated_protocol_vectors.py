@@ -1434,6 +1434,29 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ):
             self.assertIn(text, spec)
 
+    def test_listing_admission_rule_precedes_registry_checks_and_is_cross_referenced(self):
+        """XN-2's listing rule needs no registry: APR-1 carries it, not APR-2, and LRR-4 points to it."""
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+
+        def block(start, end):
+            begin = spec.index(start)
+            return " ".join(spec[begin:spec.index(end, begin)].split())
+
+        apr1 = block("- (APR-1) ", "- (APR-2) ")
+        apr2 = block("- (APR-2) ", "- (APR-3) ")
+        xn2 = block("- **(XN-2) ", "- **(XN-3) ")
+        self.assertIn("An `x402:protocol` alternative MUST NOT appear unless "
+                      "`commit-payee-bound-agreement` is the Listing's only agreement "
+                      "commitment phase (XN-2).", apr1)
+        self.assertNotIn("x402:protocol", apr2)
+        self.assertIn("before registry-dependent checks", xn2)
+        rule_text, _, notes = xn2.partition("> **Note (non-normative).**")
+        self.assertNotIn("later compatible extension", rule_text)
+        self.assertIn("later compatible extension", notes)
+        lrr = (ROOT / "spec/DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
+        lrr4 = next(line for line in lrr.splitlines() if line.startswith("- (LRR-4) "))
+        self.assertIn("DACS-4 XN-2 commitment-phase rule", lrr4)
+
     def test_legacy_procedure_keeps_single_event_success_guard(self):
         """The condensed legacy x402:default procedure keeps its success MUST NOT."""
         spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")

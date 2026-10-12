@@ -1549,8 +1549,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         """XN-2: every `idna` conversion failure means "not an A-label", never an exception.
 
         `idna` 3.6 raises a bare ValueError on the Tangut/ZWNJ label; other
-        releases raise IDNAError. Each class is forced here, so the result does
-        not depend on which release is installed.
+        releases raise IDNAError. Force each exception class from both conversion
+        stages so this failure handling does not depend on the installed release.
         """
         url = "https://xn--ukba655qaaaa14431eeaaba.c/pay"
         self.assertFalse(_is_a_label("xn--ukba655qaaaa14431eeaaba"))
@@ -1560,11 +1560,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         effects = {}
         self.assertEqual(evaluate(copy.deepcopy(vector), effects), ("error", "rail-ref-shape"))
         self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
-        for exc in (idna.IDNAError("x"), UnicodeError("x"), ValueError("no such name")):
-            with self.subTest(raised=type(exc).__name__), \
-                    mock.patch.object(idna, "ulabel", side_effect=exc):
-                self.assertFalse(_is_a_label("xn--bcher-kva"))
-                self.assertFalse(request_url_syntax_ok("https://xn--bcher-kva.example/pay"))
+        for stage in ("ulabel", "alabel"):
+            for exc in (idna.IDNAError("x"), UnicodeError("x"), ValueError("no such name")):
+                with self.subTest(stage=stage, raised=type(exc).__name__), \
+                        mock.patch.object(idna, stage, side_effect=exc) as conversion:
+                    self.assertFalse(_is_a_label("xn--bcher-kva"))
+                    self.assertFalse(request_url_syntax_ok("https://xn--bcher-kva.example/pay"))
+                    self.assertEqual(conversion.call_count, 2)
 
     def test_ipv4_mapped_spellings_match_their_ipv4_verdict(self):
         """§6.3.6 requires equivalent IPv4-mapped IPv6 spellings to reach the same verdict."""

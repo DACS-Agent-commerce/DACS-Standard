@@ -1300,6 +1300,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "challenge-payto-not-20-bytes",
             "payout-binding-not-20-bytes",
             "payout-binding-not-20-bytes-runtime-payee-valid",
+            "solana-challenge-payto-case-changed",
             "upto-has-no-dacs-success-profile",
             "legacy-default-new-session-disabled",
             "legacy-default-pinned-live-new-session",
@@ -1852,6 +1853,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("payout-binding-not-20-bytes-runtime-payee-valid", ("error", "address-form"), 0),
             ("ledger-payer-mixed-case", ("pass", None), 1),
             ("solana-ledger-payer-case-changed", ("fail", "ledger-event"), 1),
+            ("solana-lettered-seller-exact-success", ("pass", None), 1),
+            ("solana-challenge-payto-case-changed", ("fail", "challenge-match"), 0),
+            ("solana-response-payer-case-changed", ("fail", "response-payer"), 1),
+            ("solana-ledger-payto-case-changed", ("fail", "ledger-event"), 1),
         ):
             with self.subTest(vector=name):
                 effects = {}

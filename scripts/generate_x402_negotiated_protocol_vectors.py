@@ -97,6 +97,8 @@ def solana_public_key_bytes() -> bytes:
 
 
 SOLANA_BUYER = base58(solana_public_key_bytes())
+# XN-5 Solana case vectors need a seller with letters, which SOLANA_SELLER lacks.
+LETTERED_SOLANA_SELLER = base58(hashlib.sha256(b"DACS #274 lettered Solana seller").digest())
 
 
 def public_key(role: str) -> str:
@@ -1266,6 +1268,42 @@ def build_vectors() -> list[dict]:
              "base58 is case-sensitive, so one changed letter case names a different Solana payer",
              solana_ledger_payer_case_changed, refresh=True, authorization_submitted=True,
              reason="ledger-event")
+
+    # The other Solana address sites stay exact too. The payTo cases use
+    # LETTERED_SOLANA_SELLER, whose unchanged spelling passes first.
+    def solana_lettered_seller(pay_to=LETTERED_SOLANA_SELLER, ledger_pay_to=LETTERED_SOLANA_SELLER):
+        def mutate(v):
+            solana_exact(v)
+            v["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"] = LETTERED_SOLANA_SELLER
+            v["runtime"]["payee"]["payeeAddress"] = LETTERED_SOLANA_SELLER
+            v["http"]["paymentRequired"]["accepts"][0]["payTo"] = pay_to
+            v["ledger"]["payTo"] = ledger_pay_to
+        return mutate
+    add_case(vectors, "solana-lettered-seller-exact-success", "pass", "XN-5/XN-8",
+             "a letter-bearing Solana payTo that matches exactly settles",
+             solana_lettered_seller(), refresh=True)
+    add_case(vectors, "solana-challenge-payto-case-changed", "fail", "XN-4/XN-5",
+             "one changed letter case in the Solana challenge payTo names a different destination",
+             solana_lettered_seller(pay_to=LETTERED_SOLANA_SELLER.replace("E", "e", 1)),
+             refresh=True, reason="challenge-match")
+    add_case(vectors, "solana-ledger-payto-case-changed", "fail", "XN-5/XN-8",
+             "one changed letter case in the Solana ledger payTo names a different payee",
+             solana_lettered_seller(ledger_pay_to=LETTERED_SOLANA_SELLER.replace("E", "e", 1)),
+             refresh=True, authorization_submitted=True, reason="ledger-event")
+
+    def solana_response_payer_case_changed(v):
+        solana_exact(v)
+        response = settlement_response(2)
+        response.update({
+            "payer": SOLANA_BUYER.replace("k", "K", 1),
+            "transaction": SOLANA_TX,
+            "network": SOLANA_NETWORK,
+        })
+        v["http"]["responseHeader"] = encoded_header(response, 2)
+    add_case(vectors, "solana-response-payer-case-changed", "fail", "XN-5/XN-7",
+             "one changed letter case in the Solana response payer names a different payer",
+             solana_response_payer_case_changed, refresh=True, authorization_submitted=True,
+             reason="response-payer")
 
     def response_payer(payer):
         def mutate(v):

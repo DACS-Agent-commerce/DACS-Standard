@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 175 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 179 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1097,8 +1097,11 @@ address in mixed case is still `fail` (`challenge-match`). A value that is not
 authorization for `payTo` and the payout binding, even when the runtime payee
 is well formed. The lettered seller address is EIP-55's own first
 example, so its checksum spelling can be checked against the EIP. Solana
-addresses compare exactly: one changed letter case in the ledger payer is
-`fail`.
+addresses compare exactly: one changed letter case is `fail` in the challenge
+`payTo` (`challenge-match`), the response `payer` (`response-payer`), and the
+ledger payer and `payTo` (`ledger-event`). The all-digit Solana seller has no
+letter to change, so the `payTo` cases use a letter-bearing seller whose
+unchanged spelling passes.
 
 Negative cases reject global provider or asset policy, a
 `consumerFinalityProfile` on the closed protocol arm (RD-7), first-`railId` lookup,

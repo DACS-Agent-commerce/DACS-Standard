@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 186 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 192 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1084,9 +1084,21 @@ same collapsed form, so its spelling need not match the response's. The base
 fixtures carry the upstream `0x` lower-case spelling in both; unprefixed,
 mixed-case, and `0X` upper-case responses over that ledger pass, and so does a
 `0x` response over an unprefixed ledger transaction. 63 hexadecimal digits or a
-second `0x` prefix is `error` with reason `settlement-transaction-form`. The two
+second `0x` prefix in `settlementTransaction` is `error` with reason
+`settlement-transaction-form`. The two
 `noncanonical-native-event-key*` cases change only the DACS-produced
 `settlementEvent`, keep the response unchanged, and stay `error`.
+
+After the wallet call only the authenticated ledger decides (XN-11). A
+settlement response that is not received under the version's header, reports
+`success: false`, or names another network, payer or transaction is a response
+defect, the seller's protocol fault. Over the base ledger, an exact finalized
+settlement, such a case is `pass` and its `expectedReason` names the recorded
+defect (`response-header`, `response-not-success`, `response-network`,
+`response-payer`, `response-transaction`). Each has a `-no-settlement` twin
+without ledger data, which stays `indeterminate`; the response alone never
+makes the session fail. The receipt hash commits to the response as received,
+and to JSON `null` when no version-selected object decodes.
 
 Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding
 and the runtime payee, the paying-key claim address, the derived and
@@ -1101,12 +1113,14 @@ against a lower-case binding. A different address in mixed case is still
 `fail` (`challenge-match`). A value that is not `0x` plus 40 hexadecimal digits
 is `error` with reason `address-form`, before authorization for `payTo`, the
 payout binding, the runtime payer and the runtime payee, even when the value it
-is compared with is well formed. The lettered seller address is EIP-55's own
-first example, so its checksum spelling can be checked against the EIP. Solana
-addresses compare exactly: one changed letter case is `fail` in the challenge
-`payTo` (`challenge-match`), the response `payer` (`response-payer`), the
-ledger payer and `payTo` (`ledger-event`), and the retained authorization
-identity on retry (`reconciliation-binding`). The all-digit Solana seller has no
+is compared with is well formed. In the response such a `payer` is a response
+defect instead: the settled case is `pass` with reason `response-payer`. The
+lettered seller address is EIP-55's own first example, so its checksum spelling
+can be checked against the EIP. Solana addresses compare exactly: one changed
+letter case is `fail` in the challenge `payTo` (`challenge-match`), the ledger
+payer and `payTo` (`ledger-event`), and the retained authorization identity on
+retry (`reconciliation-binding`), and a recorded `response-payer` defect in the
+response `payer`. The all-digit Solana seller has no
 letter to change, so the `payTo` cases use a letter-bearing seller whose
 unchanged spelling passes.
 

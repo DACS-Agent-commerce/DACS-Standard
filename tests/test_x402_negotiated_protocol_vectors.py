@@ -691,11 +691,39 @@ def decode_response_header(header, version):
     wanted = "X-PAYMENT-RESPONSE" if version == 1 else "PAYMENT-RESPONSE" if version == 2 else None
     if wanted is None or not isinstance(header, dict) or header.get("name") != wanted:
         raise ValueError("wrong response header")
-    raw = base64.b64decode(header.get("value"), validate=True)
+    if not isinstance(header.get("value"), str):
+        raise ValueError("response header has no value")
+    raw = base64.b64decode(header["value"], validate=True)
     response = json.loads(raw.decode("utf-8"))
     if not isinstance(response, dict):
         raise ValueError("response is not object")
     return response
+
+
+def read_settlement_response(header, version, network, payer):
+    """XN-7/XN-11: the received settlement response and its first defect, if any.
+
+    The response is the payee's unsigned acknowledgement, so a defect here is
+    the seller's protocol fault and never the outcome. Returns the complete
+    decoded object (None when no version-selected object decodes) and None or
+    the defect: `response-header`, `response-not-success`, `response-network`
+    or `response-payer`. Its transaction is compared later, with the one the
+    reconciliation establishes (`response-transaction`).
+    """
+    try:
+        response = decode_response_header(header, version)
+    except ValueError:
+        return None, "response-header"
+    if response.get("success") is not True:
+        return response, "response-not-success"
+    if response.get("network") != network:
+        return response, "response-network"
+    try:
+        if adapter_address(network, response.get("payer")) != payer:
+            return response, "response-payer"
+    except ValueError:
+        return response, "response-payer"
+    return response, None
 
 
 def adapter_canonical_transaction(network, transaction):
@@ -1034,21 +1062,14 @@ def evaluate(v, effects=None):
     # returns through the reconciliation branch without reaching this call.
     record_wallet_authorization(effects)
 
-    try:
-        response = decode_response_header(http.get("responseHeader"), version)
-    except Exception:
-        return "error", "response-header"
-    if response.get("success") is not True:
-        return "fail", "response-not-success"
-    if response.get("network") != selection["network"]:
-        return "fail", "response-network"
-    try:
-        payer = adapter_address(network, runtime.get("payer", {}).get("paymentAddress"))
-        response_payer = adapter_address(network, response.get("payer"))
-    except ValueError:
-        return "error", "address-form"
-    if response_payer != payer:
-        return "fail", "response-payer"
+    # XN-11: from here on only the authenticated ledger decides the outcome
+    # (XN-8). A response defect is the seller's protocol fault: it is returned
+    # as the reason beside the ledger's verdict and never replaces it. The
+    # payer-control gate already validated the authorization payer.
+    payer = adapter_address(network, runtime["payer"]["paymentAddress"])
+    response, response_fault = read_settlement_response(
+        http.get("responseHeader"), version, network, payer
+    )
 
     evidence = v.get("evidence", {})
     refs = evidence.get("paymentTxRefs")
@@ -1067,17 +1088,27 @@ def evaluate(v, effects=None):
         return "error", "evidence-hash-shape"
     if evidence_ref["paymentRequiredHash"] != digest(required):
         return "fail", "payment-required-hash"
+    # The receipt commitment covers the response as received, defective or
+    # not; with no decoded object its preimage is JSON null (XN-7).
     if evidence_ref["paymentReceiptHash"] != digest(response):
         return "fail", "payment-receipt-hash"
     if (
         evidence_ref.get("httpResource") != request["url"]
         or evidence_ref.get("settlementNetwork") != selection["network"]
-        or evidence_ref.get("settlementTransaction") != response.get("transaction")
     ):
-        return "fail", "evidence-response-binding"
-    transaction = adapter_canonical_transaction(selection["network"], response.get("transaction"))
+        return "fail", "evidence-binding"
+    # settlementTransaction is the transaction the reconciliation establishes.
+    transaction = adapter_canonical_transaction(
+        selection["network"], evidence_ref.get("settlementTransaction")
+    )
     if transaction is None:
         return "error", "settlement-transaction-form"
+    if response_fault is None and evidence_ref["settlementTransaction"] != response.get("transaction"):
+        # A sound response's own transaction spelling is kept verbatim; one that
+        # names another transaction, or none, is a response defect.
+        if adapter_canonical_transaction(network, response.get("transaction")) == transaction:
+            return "fail", "evidence-response-binding"
+        response_fault = "response-transaction"
     finality = evidence.get("settlementFinality", {})
     profile = finality.get("schemeNetworkFinality", {})
     if (
@@ -1117,7 +1148,8 @@ def evaluate(v, effects=None):
         return "fail", "ledger-event"
     if ledger.get("authorization") in {"eip-3009", "permit2"} and ledger.get("sessionBound") is not True:
         return "fail", "sb3"
-    return "pass", None
+    # The exact finalized settlement stands; a response defect stays recorded.
+    return "pass", response_fault
 
 
 class X402NegotiatedProtocolVectorTests(unittest.TestCase):
@@ -1358,6 +1390,36 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 effects = {"walletAuthorizationCalls": 0}
                 evaluate(self.by_name[name], effects)
                 self.assertEqual(effects["walletAuthorizationCalls"], 0)
+
+    def test_response_defects_never_decide_the_outcome(self):
+        """XN-11: after authorization the ledger decides; a response defect is the recorded fault."""
+        success_ledger = self.by_name["protocol-v2-exact-success"]["ledger"]
+        for name, fault in (
+            ("wrong-version-response-header", "response-header"),
+            ("response-not-success", "response-not-success"),
+            ("response-network-substitution", "response-network"),
+            ("response-transaction-substitution", "response-transaction"),
+            ("response-payer-substitution", "response-payer"),
+        ):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                self.assertEqual(vector["ledger"], success_ledger)
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(vector), effects), ("pass", fault))
+                self.assertEqual(effects["walletAuthorizationCalls"], 1)
+                twin = self.by_name[f"{name}-no-settlement"]
+                self.assertNotIn("ledger", twin)
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(twin), effects),
+                                 ("indeterminate", "independent-settlement-unavailable"))
+                self.assertEqual(effects["walletAuthorizationCalls"], 1)
+                # A contradiction the ledger itself resolves is still `fail`.
+                contradicted = copy.deepcopy(vector)
+                contradicted["ledger"]["amount"] = "1249999"
+                self.assertEqual(evaluate(contradicted), ("fail", "ledger-event"))
+        # With no decoded response the receipt commits to JSON null (XN-7).
+        ref = self.by_name["wrong-version-response-header"]["evidence"]["paymentTxRefs"][0]
+        self.assertEqual(ref["paymentReceiptHash"], digest(None))
 
     def test_retry_authorization_identity_compares_as_an_xn5_address(self):
         """XN-11/XN-5: both sides of the authorization identity take the adapter form first."""
@@ -1670,7 +1732,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
             "An adapter MUST accept such an address whatever its EIP-55 checksum.",
             "Any other value is a malformed coordinate and yields `error`.",
+            "A response `payer` in any other form is instead a response defect under XN-11.",
             "Other networks compare these addresses as exact strings.",
+            "When no version-selected object decodes, that preimage is the JSON value `null`.",
+            "After authorization the handler MUST take the outcome only from this reconciliation "
+            "against authenticated ledger data (XN-8).",
+            "A response defect is then recorded as the seller's protocol fault and does not "
+            "reverse the settlement.",
         ):
             self.assertIn(text, spec)
         # Notes are hard-wrapped blockquotes: compare without wrapping or markers.
@@ -1897,7 +1965,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("response-payer-mixed-case", ("pass", None), 1),
             ("challenge-payto-substitution-mixed-case", ("fail", "challenge-match"), 0),
             ("challenge-payto-not-20-bytes", ("error", "address-form"), 0),
-            ("response-payer-not-20-bytes", ("error", "address-form"), 1),
+            ("response-payer-not-20-bytes", ("pass", "response-payer"), 1),
             ("payout-binding-not-20-bytes", ("error", "address-form"), 0),
             ("paying-key-claim-eip55-derived-payer-lower-case", ("pass", None), 1),
             ("runtime-payee-eip55-binding-lower-case", ("pass", None), 1),
@@ -1909,7 +1977,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("solana-ledger-payer-case-changed", ("fail", "ledger-event"), 1),
             ("solana-lettered-seller-exact-success", ("pass", None), 1),
             ("solana-challenge-payto-case-changed", ("fail", "challenge-match"), 0),
-            ("solana-response-payer-case-changed", ("fail", "response-payer"), 1),
+            ("solana-response-payer-case-changed", ("pass", "response-payer"), 1),
             ("solana-ledger-payto-case-changed", ("fail", "ledger-event"), 1),
         ):
             with self.subTest(vector=name):

@@ -449,19 +449,36 @@ def make_base(version: int = 2) -> dict:
     return value
 
 
+def received_response(value: dict) -> dict | None:
+    """The version-selected settlement response object, or None if none decodes.
+
+    XN-7 hashes the response as received, defective or not; with no decoded
+    object the receipt preimage is JSON null.
+    """
+    header = value.get("http", {}).get("responseHeader")
+    try:
+        version = value["agreement"]["terms"]["rail"]["parameters"]["selection"]["x402Version"]
+    except (KeyError, TypeError):
+        return None
+    wanted = {1: "X-PAYMENT-RESPONSE", 2: "PAYMENT-RESPONSE"}.get(version) if type(version) is int else None
+    if not isinstance(header, dict) or wanted is None or header.get("name") != wanted:
+        return None
+    try:
+        response = json.loads(base64.b64decode(header["value"], validate=True).decode("utf-8"))
+    except Exception:
+        return None
+    return response if isinstance(response, dict) else None
+
+
 def refresh_received_hashes(value: dict) -> None:
     required = value.get("http", {}).get("paymentRequired")
-    header = value.get("http", {}).get("responseHeader")
     evidence = value.get("evidence", {})
     refs = evidence.get("paymentTxRefs", [])
-    if isinstance(required, dict) and refs and refs[0].get("kind") == "x402-protocol":
+    if not refs or refs[0].get("kind") != "x402-protocol":
+        return
+    if isinstance(required, dict):
         refs[0]["paymentRequiredHash"] = digest(required)
-    if isinstance(header, dict) and refs and refs[0].get("kind") == "x402-protocol":
-        try:
-            response = json.loads(base64.b64decode(header["value"], validate=True))
-        except Exception:
-            return
-        refs[0]["paymentReceiptHash"] = digest(response)
+    refs[0]["paymentReceiptHash"] = digest(received_response(value))
 
 
 def sign_all(value: dict) -> None:
@@ -1319,8 +1336,9 @@ def build_vectors() -> list[dict]:
             "network": SOLANA_NETWORK,
         })
         v["http"]["responseHeader"] = encoded_header(response, 2)
-    add_case(vectors, "solana-response-payer-case-changed", "fail", "XN-5/XN-7",
-             "one changed letter case in the Solana response payer names a different payer",
+    add_case(vectors, "solana-response-payer-case-changed", "pass", "XN-5/XN-11",
+             "one changed letter case in the Solana response payer names a different payer, "
+             "a response defect; the exact finalized settlement stands",
              solana_response_payer_case_changed, refresh=True, authorization_submitted=True,
              reason="response-payer")
 
@@ -1333,10 +1351,11 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "response-payer-mixed-case", "pass", "XN-5/XN-7",
              "an EIP-55 mixed-case response payer is the same 20-byte payer",
              response_payer(eip55(BUYER_ADDRESS)), refresh=True)
-    add_case(vectors, "response-payer-not-20-bytes", "error", "XN-5/XN-7",
-             "an EIP-155 response payer that is not 0x plus 40 hex digits is malformed",
+    add_case(vectors, "response-payer-not-20-bytes", "pass", "XN-5/XN-11",
+             "an EIP-155 response payer that is not 0x plus 40 hex digits is a response "
+             "defect, not a malformed coordinate; the exact finalized settlement stands",
              response_payer(BUYER_ADDRESS + "00"), refresh=True,
-             authorization_submitted=True, reason="address-form")
+             authorization_submitted=True, reason="response-payer")
 
     add_case(vectors, "payment-required-hash-substitution", "fail", "XN-7",
              "stored challenge hash must recompute from the complete object",
@@ -1346,26 +1365,57 @@ def build_vectors() -> list[dict]:
              "stored receipt hash must recompute from the complete response",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentReceiptHash": "00" * 32}),
              authorization_submitted=True)
-    add_case(vectors, "wrong-version-response-header", "error", "XN-7",
-             "numeric version selects one exact response header",
-             lambda v: v["http"]["responseHeader"].update({"name": "X-PAYMENT-RESPONSE"}),
-             authorization_submitted=True)
+    # XN-11: after authorization only the authenticated ledger decides. Each
+    # response defect below sits over the base ledger, an exact finalized
+    # settlement, so the payment settled and the defect is the reason: the
+    # seller's recorded protocol fault. Its -no-settlement twin has no ledger
+    # data, so reconciliation stays pending instead of failing on the response.
+    def response_defect(name, note, mutate, fault):
+        add_case(vectors, name, "pass", "XN-7/XN-11",
+                 f"{note}; the exact finalized settlement stands and the defect is the "
+                 "seller's recorded protocol fault",
+                 mutate, refresh=True, authorization_submitted=True, reason=fault)
+
+        def no_settlement(v):
+            mutate(v)
+            v.pop("ledger")
+        add_case(vectors, f"{name}-no-settlement", "indeterminate", "XN-7/XN-11",
+                 f"{note}; with no matching settlement reconciliation stays pending, "
+                 "never a permanent failure from the response alone",
+                 no_settlement, refresh=True, authorization_submitted=True,
+                 reason="independent-settlement-unavailable")
+
+    response_defect("wrong-version-response-header",
+                    "a v2 session reads only PAYMENT-RESPONSE, so a response under the v1 "
+                    "header is not received and the receipt preimage is JSON null",
+                    lambda v: v["http"]["responseHeader"].update({"name": "X-PAYMENT-RESPONSE"}),
+                    "response-header")
+
+    def response_not_success(v):
+        response = settlement_response(2)
+        response.update({"success": False, "errorReason": "unexpected_settle_error",
+                         "transaction": ""})
+        v["http"]["responseHeader"] = encoded_header(response, 2)
+    response_defect("response-not-success",
+                    "a response reporting success false cannot undo a settlement the "
+                    "ledger proves", response_not_success, "response-not-success")
 
     def response_network_mismatch(v):
         response = settlement_response(2)
         response["network"] = "eip155:1"
         v["http"]["responseHeader"] = encoded_header(response, 2)
-    add_case(vectors, "response-network-substitution", "fail", "XN-7",
-             "a fully rehashed response still cannot change the signed network",
-             response_network_mismatch, refresh=True, authorization_submitted=True)
+    response_defect("response-network-substitution",
+                    "a fully rehashed response naming another network is a response defect",
+                    response_network_mismatch, "response-network")
 
     def response_transaction_mismatch(v):
         response = settlement_response(2)
         response["transaction"] = "0x" + "cd" * 32
         v["http"]["responseHeader"] = encoded_header(response, 2)
-    add_case(vectors, "response-transaction-substitution", "fail", "XN-7",
-             "a fully rehashed response cannot change the signed settlement transaction",
-             response_transaction_mismatch, refresh=True, authorization_submitted=True)
+    response_defect("response-transaction-substitution",
+                    "a fully rehashed response naming another transaction than the one the "
+                    "ledger establishes is a response defect",
+                    response_transaction_mismatch, "response-transaction")
 
     # XN-7 keeps the response transaction verbatim in settlementTransaction; the
     # EIP-155 adapter compares it with settlementEvent, and with the ledger
@@ -1406,9 +1456,9 @@ def build_vectors() -> list[dict]:
         response = settlement_response(2)
         response["payer"] = "0x" + "99" * 20
         v["http"]["responseHeader"] = encoded_header(response, 2)
-    add_case(vectors, "response-payer-substitution", "fail", "XN-5/XN-7",
-             "the settlement response payer must be the buyer-controlled payer",
-             response_payer_mismatch, refresh=True, authorization_submitted=True)
+    response_defect("response-payer-substitution",
+                    "a response payer other than the buyer-controlled payer is a response defect",
+                    response_payer_mismatch, "response-payer")
 
     def protocol_version_field(v):
         ref = v["evidence"]["paymentTxRefs"][0]

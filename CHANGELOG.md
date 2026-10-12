@@ -73,8 +73,9 @@ The format used per release:
   spelling verbatim. The EIP-155 adapter compares it with `settlementEvent`
   after the SB-1 collapse (at most one `0x`/`0X`, any hex case, exactly 32
   bytes), and with the authenticated ledger transaction in the same collapsed
-  form; any other response spelling is `error`. The upstream `0x` spelling
-  therefore verifies, while DACS-produced event keys stay strictly canonical.
+  form; a `settlementTransaction` with no such form is `error`. The upstream
+  `0x` spelling therefore verifies, while DACS-produced event keys stay
+  strictly canonical.
   XN-11 reconciliation compares a known `settlementTransaction` in the same
   adapter form, and the retained value stays verbatim. Both the retained and
   the recorded value are taken to that form first, so a value with none is
@@ -87,11 +88,23 @@ The format used per release:
   hexadecimal digits, letter case ignored. An adapter must accept such an
   address whatever its EIP-55 checksum, so a checksummed upstream address
   matches a lower-case binding. Any other spelling is a malformed coordinate and yields `error`,
-  even when the value it is compared with is well formed. XN-11 reconciliation
+  even when the value it is compared with is well formed; in the response
+  `payer` it is a response defect instead (below). XN-11 reconciliation
   compares an address in the authorization identity the same way, so a
   malformed one is `error` even when the retained and session spellings are
   identical. Other networks, including Solana's case-sensitive base58, compare
   these addresses exactly.
+- **Settlement-response defects after authorization** (DACS-4 §9.5.7 XN-5,
+  XN-7, XN-11) — once the wallet call is made, only the authenticated ledger
+  decides the outcome. A response that is not received under the version's
+  header, reports `success: false`, or names another network, payer or
+  transaction is a response defect, recorded as the seller's protocol fault.
+  Beside an exact finalized settlement the payment has settled; without a
+  matching settlement the session stays reconciliation-pending
+  (`indeterminate`) and never fails on the response alone. The receipt hash
+  commits to the response as received, or to JSON `null` when no
+  version-selected object decodes, and `settlementTransaction` names the
+  transaction the reconciliation establishes.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

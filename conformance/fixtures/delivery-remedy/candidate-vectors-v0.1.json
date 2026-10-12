@@ -5,8 +5,8 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "953d425b2fc367edca3e3a936e9ca60d650d45749a0ba2670bda272fecf2049d",
-  "count": 236,
+  "hash": "4695ddef2cad115b260f22bca069e1ca5d070ee5d17fb837c15aa6ea80b0ba59",
+  "count": 237,
   "fixtures": {
     "release": {
       "candidateProfile": "delivery-or-remedy-v1",
@@ -79554,6 +79554,77 @@
               "algorithm": "ed25519",
               "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
               "value": "w99m2UF_hRpIpYxbJI0rd-NbtYmtad6sCuaEUyKU_IeuMpOHaDl-prh7zZY2fCWw8ryz_XBxHP_FgdAvl3HpCw"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "resolver-status-applicability-verified-without-delivery",
+      "base": "expired-pre",
+      "expected": "rejected",
+      "expectedRule": "DRV-6",
+      "rules": [
+        "DRV-6"
+      ],
+      "note": "DRV-6: an authenticated resolver record that vouches for delivery finality contradicts a pre-submission expiry that has no delivery",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence",
+            "statuses",
+            "deliveryFinality"
+          ],
+          "value": "verified"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence"
+          ],
+          "value": {
+            "terminalCall": {
+              "txHash": "0xd21d4c4c045e3b281741f29b2881d485fa7473b3cdba57b9e1fc7cf29b53a385",
+              "outerSubmitter": "0x1111111111111111111111111111111111111111",
+              "nativeCaller": "0x1111111111111111111111111111111111111111",
+              "nativeCallerAccountType": "eoa"
+            },
+            "priorTerminals": [],
+            "nativeState": {
+              "submissionCutoffEnforced": true,
+              "expiryRecoveryAtSec": 1800007200,
+              "preterminalProviderPayoutBaseUnits": "0",
+              "platformFeeBP": 0,
+              "evaluatorFeeBP": 0,
+              "evaluatorBindingMode": "direct",
+              "evaluatorAdapter": null
+            },
+            "deliveryDigestAnchor": null,
+            "statuses": {
+              "agreementResolution": "verified",
+              "railResolution": "verified",
+              "codeResolution": "verified",
+              "authorityResolution": "verified",
+              "fundingFinality": "verified",
+              "deliveryFinality": "verified",
+              "decisionFinality": "not-applicable",
+              "terminalFinality": "verified",
+              "decisionOrdering": "not-applicable",
+              "nativeStateResolution": "verified"
+            },
+            "resolverEvidenceVersion": "1",
+            "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7J",
+            "railDefinitionHash": "1af61c77734b804012c0ea4cd4e16bf030222263b45df3d67c623d0ddd182e0f",
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "5",
+            "eventObservationsHash": "0b6b2dbb6e0ce24e175b39a6b686e95ed2da3b3065b91f74bbd08708ce36433c",
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+              "value": "yHL0XCBq9oXxK38OYLRPWmhM1h7FqKlqTBnBHNiDB6r6X-WAMsHiQJeplKE3N7W3hoESPSMvFfbTm1-PH-19AQ"
             }
           }
         }

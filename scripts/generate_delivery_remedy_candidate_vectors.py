@@ -1457,6 +1457,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("decision-artifact-unavailable", "missing-decision", "indeterminate", "DRD-10", "missing decision evidence without contradiction remains indeterminate"),
         vector("authenticated-native-contradiction", "release", "rejected", "DRV-6", "authenticated contradictory chain evidence rejects", authenticated("release", status("codeResolution", "contradictory"))),
         vector("resolver-status-applicability-mismatch", "release", "rejected", "DRV-6", "DRV-6: an authenticated resolver record that marks delivery finality not applicable contradicts the signed delivery evidence", authenticated("release", status("deliveryFinality", "not-applicable"))),
+        vector("resolver-status-applicability-verified-without-delivery", "expired-pre", "rejected", "DRV-6", "DRV-6: an authenticated resolver record that vouches for delivery finality contradicts a pre-submission expiry that has no delivery", authenticated("expired-pre", status("deliveryFinality", "verified"))),
         # DRV-1, DRV-6: the pinned resolver record.
         vector("drv-1-signed-status", "release", "rejected", "DRV-1", "DRV-1: a resolver status is evidence only as signed", authenticated("release", status("codeResolution", "unavailable")) + status("codeResolution", "verified")),
         vector("drv-1-signed-observation", "release", "rejected", "DRV-1", "DRV-1: an event observation is evidence only as signed", observation(0, "confirmations", value=65)),

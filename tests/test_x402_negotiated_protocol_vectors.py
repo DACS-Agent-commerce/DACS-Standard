@@ -691,27 +691,32 @@ def adapter_canonical_transaction(network, transaction):
 
 
 def listing_agreement_type_violation(listing):
-    """XN-2 listing admission: an offered x402:protocol ref needs the payee-bound phase."""
+    """XN-2 listing admission: an offered x402:protocol ref needs the payee-bound phase.
+
+    A malformed Listing is DACS-1 `rejected`, which this corpus scores as `fail`;
+    ListingValidationDisposition has no `error`.
+    """
     if not isinstance(listing, dict):
-        return "error", "listing-shape"
+        return "fail", "listing-shape"
     pipeline = listing.get("pipeline")
     accepted = listing.get("acceptedRails")
     if not isinstance(pipeline, list) or not isinstance(accepted, list):
-        return "error", "listing-shape"
+        return "fail", "listing-shape"
     if not all(isinstance(step, dict) for step in pipeline):
-        return "error", "listing-shape"
+        return "fail", "listing-shape"
     offered = list(accepted)
     for step in pipeline:
         if step.get("kind") == "pay-alternative":
-            # Shape before use: a signed but malformed slot is `error`, not an exception.
+            # Shape before use: a signed but malformed slot is APR-1 `rejected`,
+            # not an exception. APR-1 requires at least two alternatives.
             parameters = step.get("parameters")
             if not isinstance(parameters, dict):
-                return "error", "listing-shape"
+                return "fail", "listing-shape"
             alternatives = parameters.get("alternatives")
-            if not isinstance(alternatives, list) or not all(
+            if not isinstance(alternatives, list) or len(alternatives) < 2 or not all(
                 isinstance(alternative, dict) for alternative in alternatives
             ):
-                return "error", "listing-shape"
+                return "fail", "listing-shape"
             offered.extend(alternatives)
     if not any(isinstance(ref, dict) and ref.get("railId") == "x402:protocol" for ref in offered):
         return None
@@ -1520,7 +1525,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertIn("DACS-4 XN-2 commitment-phase rule", lrr4)
 
     def test_pay_alternative_members_must_be_objects(self):
-        """A non-object alternative is listing-shape `error`, not silently offered."""
+        """A non-object alternative, or fewer than two, is APR-1 `rejected` (`fail`), not offered."""
         base = self.by_name["listing-protocol-alternative-with-payee-bound-commit-admitted"]["listing"]
         self.assertIsNone(listing_agreement_type_violation(base))
         for member in (1, "x402:protocol", None, []):
@@ -1528,7 +1533,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 listing = copy.deepcopy(base)
                 slot = next(step for step in listing["pipeline"] if step["kind"] == "pay-alternative")
                 slot["parameters"]["alternatives"].append(member)
-                self.assertEqual(listing_agreement_type_violation(listing), ("error", "listing-shape"))
+                self.assertEqual(listing_agreement_type_violation(listing), ("fail", "listing-shape"))
+        for count in (0, 1):
+            with self.subTest(alternatives=count):
+                listing = copy.deepcopy(base)
+                slot = next(step for step in listing["pipeline"] if step["kind"] == "pay-alternative")
+                del slot["parameters"]["alternatives"][count:]
+                self.assertEqual(listing_agreement_type_violation(listing), ("fail", "listing-shape"))
+
+    def test_listing_shape_is_a_rejection_not_an_error(self):
+        """DACS-1 ListingValidationDisposition has no `error`; APR-1 calls these Listings `rejected`."""
+        names = [name for name, vector in self.by_name.items()
+                 if vector.get("expectedReason") == "listing-shape"]
+        self.assertEqual(len(names), 8)
+        for name in names:
+            with self.subTest(vector=name):
+                self.assertEqual(self.by_name[name]["operation"], "admit-listing")
+                self.assertEqual(evaluate(self.by_name[name]), ("fail", "listing-shape"))
 
     def test_legacy_procedure_keeps_single_event_success_guard(self):
         """The condensed legacy x402:default procedure keeps its success MUST NOT."""

@@ -740,26 +740,41 @@ def build_vectors() -> list[dict]:
                               alternative=True),
              operation="admit-listing", reason="x402-protocol-agreement-type")
 
-    # A signed pay-alternative slot whose parameters or alternatives have the
-    # wrong JSON type is malformed before the offered set is built.
+    # A signed pay-alternative slot whose parameters or alternatives are absent,
+    # have the wrong JSON type, or offer fewer than two objects is a malformed
+    # Listing before the offered set is built. APR-1 returns `rejected`, which
+    # this corpus scores as `fail`; DACS-1 has no `error` listing disposition.
+    absent = object()
+
     def malformed_alternative_slot(path, value):
         def mutate(v):
             listing_pipeline(fixed_price, "commit-payee-bound-agreement", alternative=True)(v)
             slot = next(step for step in v["listing"]["pipeline"]
                         if step["kind"] == "pay-alternative")
-            if path == "parameters":
-                slot["parameters"] = value
+            if path == "member":
+                slot["parameters"]["alternatives"].append(value)
+                return
+            target = slot if path == "parameters" else slot["parameters"]
+            if value is absent:
+                del target[path]
             else:
-                slot["parameters"]["alternatives"] = value
+                target[path] = value
         return mutate
     for name, path, value, note in (
         ("parameters-null", "parameters", None, "pay-alternative parameters must be an object"),
         ("parameters-array", "parameters", [], "pay-alternative parameters must be an object"),
+        ("parameters-absent", "parameters", absent, "APR-1 rejects absent pay-alternative parameters"),
         ("alternatives-null", "alternatives", None, "pay-alternative alternatives must be an array"),
         ("alternatives-object", "alternatives", {},
          "pay-alternative alternatives must be an array, not an object"),
+        ("alternatives-absent", "alternatives", absent,
+         "APR-1 rejects a pay-alternative slot without alternatives"),
+        ("alternatives-empty", "alternatives", [],
+         "APR-1 requires at least two alternatives, so an empty array is malformed"),
+        ("alternatives-non-object-member", "member", "x402:protocol",
+         "every pay-alternative member must be a complete PaymentRailRef object"),
     ):
-        add_case(vectors, f"listing-pay-alternative-{name}", "error", "XN-2/APR-1", note,
+        add_case(vectors, f"listing-pay-alternative-{name}", "fail", "XN-2/APR-1", note,
                  malformed_alternative_slot(path, value), operation="admit-listing",
                  reason="listing-shape")
     add_case(vectors, "unsigned-runtime-url-override", "fail", "XN-2/XN-6",

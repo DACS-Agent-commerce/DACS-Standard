@@ -957,6 +957,15 @@ def build_vector_pack() -> dict[str, Any]:
                 put("resolverEvidence", "deliveryDigestAnchor", "blockTimestampSec", 1799995000),
             ),
         }),
+        # An anchor block earlier than the submission's, at the same block time.
+        "drp-9-digest-anchor-time-equals-submission": make_base("release", hooks={
+            "fixture": put("resolverEvidence", "deliveryDigestAnchor", "blockTimestampSec", 1799995000),
+        }),
+        "deliveryless-lifecycle-carries-digest-anchor": make_base("expired-pre", hooks={
+            "fixture": put("resolverEvidence", "deliveryDigestAnchor", {
+                "deliverable": "0x" + "15" * 32, "blockNumber": 20000040, "blockTimestampSec": 1799994900,
+            }),
+        }),
         "drp-9-delivery-observed-after-submission": make_base("release", hooks={
             "delivery": put("observedAt", 1799995001000),
         }),
@@ -1053,6 +1062,18 @@ def build_vector_pack() -> dict[str, Any]:
                 "locator": f"fixture:evidence:{JOB_A}:delivery",
                 "contentHash": "13" * 32,
             }]),
+        }),
+        # The subject reference names the delivery's locator and hash but
+        # another reference kind.
+        "dre-3-evaluation-subject-kind": make_base("release", hooks={
+            "evaluation": put("subjectEvidenceRefs", [{
+                "kind": "ipfs",
+                "locator": f"fixture:evidence:{JOB_A}:delivery",
+                "contentHash": make_base("release")["artifacts"]["deliveryRef"]["contentHash"],
+            }]),
+        }),
+        "drv-3-failed-delivery-empty-reason": make_base("rejected-refund", FAILED_DELIVERY_JOB, hooks={
+            "delivery": each(put("outcome", "failure"), put("reason", "")),
         }),
         "drv-3-evaluation-subject-refs": make_base("release", hooks={"evaluation": put("subjectEvidenceRefs", None)}),
         "evaluator-claim-is-buyer": make_base("release", evaluator_claim=BUYER),
@@ -1385,6 +1406,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("drp-9-digest-fixed-after-submission", "drp-9-digest-fixed-after-submission", "rejected", "DRP-9", "a delivery digest fixed only after the native submission may derive from it"),
         vector("drp-9-digest-anchored-in-submission-block", "drp-9-digest-anchored-in-submission-block", "indeterminate", "DRP-9", "an anchor in the submission's own block cannot be ordered before it"),
         vector("drp-9-digest-anchor-time-after-submission", "drp-9-digest-anchor-time-after-submission", "rejected", "DRP-9", "an anchor block must be earlier than the submission in time as well as in height"),
+        vector("drp-9-digest-anchor-time-equals-submission", "drp-9-digest-anchor-time-equals-submission", "rejected", "DRP-9", "an anchor block with the submission's own block time is not before it"),
+        vector("deliveryless-lifecycle-carries-digest-anchor", "deliveryless-lifecycle-carries-digest-anchor", "rejected", "DRP-9", "a lifecycle without delivery has no delivery digest for the resolver to anchor"),
         vector("drp-9-delivery-observed-after-submission", "drp-9-delivery-observed-after-submission", "rejected","DRP-9", "hashed delivery evidence cannot record a time after its digest was fixed"),
         vector("native-submission-at-cutoff", "release", "rejected", "DRP-9", "a native submission at the cutoff is late", authenticated("release", retime("release", "JobSubmitted", cutoff)) + [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
         vector("submission-event-deliverable-mismatch", "release", "rejected", "DRP-9", "the native submission event must carry the delivery digest", authenticated("release", observation(2, "arguments", "deliverable", value="0x" + rehash_delivery))),
@@ -1455,10 +1478,12 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dre-2-deliverable-anchor-native-locator-uppercase", "dre-2-deliverable-anchor-native-locator-uppercase", "rejected", "DRE-2", "a native stor- address carries lower-case hex digits", rules=["DRE-2", "DRP-7"]),
         vector("drv-3-delivery-evidence-shape", "drv-3-delivery-evidence-shape", "error", "DRV-3", "delivery evidence keeps the exact delivery SettlementEvidence shape", rules=["DRE-2", "DRV-3"]),
         vector("dre-2-failed-delivery-without-deliverable", "dre-2-failed-delivery-without-deliverable", "verified", "DRV-7", "a failed delivery's SettlementEvidence may omit the deliverable content hash and anchor", rules=["DRE-2", "DRP-7", "DRV-7"]),
+        vector("drv-3-failed-delivery-empty-reason", "drv-3-failed-delivery-empty-reason", "error", "DRV-3", "a failed delivery's SettlementEvidence carries a non-empty reason", rules=["DRE-2", "DRV-3"]),
         vector("dre-2-failed-delivery-carries-artifact-input", "dre-2-failed-delivery-without-deliverable", "rejected", "DRE-2", "delivery evidence that names no deliverable resolves no delivered-artifact input", [{"op": "replace", "path": ["reproductionInputs", "deliveredArtifact"], "value": {"kind": "delivered-artifact-input"}}]),
         vector("drd-8-evaluation-job-reference", "drd-8-evaluation-job-reference", "rejected", "DRD-8", "the evaluation must reference this escrow job"),
         vector("drd-8-decision-job-reference", "drd-8-decision-job-reference", "rejected", "DRD-8", "the decision must reference this escrow job"),
         vector("dre-5-evaluation-subject-unresolved", "dre-5-evaluation-subject-unresolved", "indeterminate", "DRE-5", "subject evidence that does not resolve to authenticated evidence stays indeterminate", rules=["DRE-3", "DRE-5"]),
+        vector("dre-3-evaluation-subject-kind", "dre-3-evaluation-subject-kind", "rejected", "DRE-3", "a subject reference must name the authenticated record's reference kind, not only its locator and hash"),
         vector("dre-3-evaluation-subject-contradiction", "dre-3-evaluation-subject-contradiction", "rejected", "DRE-3", "a subject reference must hash-bind the authenticated record it names"),
         vector("drv-3-evaluation-subject-refs", "drv-3-evaluation-subject-refs", "error", "DRV-3", "evaluation subject references are an array of exact references", rules=["DRE-3", "DRV-3"]),
         vector("evaluation-reference-mismatch", "evaluation-reference-mismatch", "rejected", "DRE-7", "the evaluation reference must resolve exactly"),

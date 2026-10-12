@@ -1036,7 +1036,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                         self.assertEqual(set(anchor), verifier.DIGEST_ANCHOR_FIELDS)
                 else:
                     self.assertIsNone(binding)
-                    self.assertIsNone(anchor)
+                    if name != "deliveryless-lifecycle-carries-digest-anchor":
+                        self.assertIsNone(anchor)
         for name, outcome in (
             ("delivery-submission-circularity", ("rejected", "DRP-9")),
             ("drp-9-digest-anchor-unavailable", ("indeterminate", "DRP-9")),
@@ -1044,7 +1045,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("drp-9-digest-fixed-after-submission", ("rejected", "DRP-9")),
             ("drp-9-digest-anchored-in-submission-block", ("indeterminate", "DRP-9")),
             ("drp-9-digest-anchor-time-after-submission", ("rejected", "DRP-9")),
+            ("drp-9-digest-anchor-time-equals-submission", ("rejected", "DRP-9")),
             ("drp-9-delivery-observed-after-submission", ("rejected", "DRP-9")),
+            ("deliveryless-lifecycle-carries-digest-anchor", ("rejected", "DRP-9")),
         ):
             with self.subTest(vector=name):
                 value = self._vector(name)

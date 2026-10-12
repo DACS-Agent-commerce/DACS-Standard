@@ -1619,7 +1619,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "They are `payTo`, the PB-1 payout binding and `PaymentPhaseInput.payee.payeeAddress`; "
             "the `payingKey` address component, the derived payer and the authorization payer; "
             "the response `payer`; and the authenticated event's payer and payee.",
-            "the EIP-55 checksum is neither required nor checked.",
+            "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
+            "An adapter MUST NOT require or check the EIP-55 checksum.",
+            "Any other value is a malformed coordinate and yields `error`.",
             "Other networks compare these addresses as exact strings.",
         ):
             self.assertIn(text, spec)
@@ -1842,6 +1844,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
 
         for name, want, calls in (
             ("challenge-payto-eip55-checksum-binding-lower-case", ("pass", None), 1),
+            ("challenge-payto-wrong-eip55-checksum-binding-lower-case", ("pass", None), 1),
             ("ledger-payto-upper-case", ("pass", None), 1),
             ("response-payer-mixed-case", ("pass", None), 1),
             ("challenge-payto-substitution-mixed-case", ("fail", "challenge-match"), 0),

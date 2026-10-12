@@ -84,7 +84,7 @@ The format used per release:
   the `payingKey` address component, the derived payer and the authorization
   payer, the response `payer`, and the authenticated event's payer and payee
   compare as 20-byte values: `0x` plus 40 hexadecimal digits, letter case
-  ignored. The EIP-55 checksum is neither required nor checked, so a
+  ignored. An adapter must not require or check the EIP-55 checksum, so a
   checksummed upstream address matches a lower-case binding. Any other
   spelling is a malformed coordinate and yields `error`, even when the value
   it is compared with is well formed. Other networks, including Solana's

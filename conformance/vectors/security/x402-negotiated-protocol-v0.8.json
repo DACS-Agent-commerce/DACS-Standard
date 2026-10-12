@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 179,
-  "hash": "0d63b3d134863a25c188adb57119c1962d6f9c9667dfab54354a91446e7be26f",
+  "count": 180,
+  "hash": "df9910bd13c773ae40466ec0253340241cf61bb3eb85e47d27d09464df7c95e4",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -13592,6 +13592,102 @@
             "payTo"
           ],
           "value": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        }
+      ]
+    },
+    {
+      "name": "challenge-payto-wrong-eip55-checksum-binding-lower-case",
+      "expected": "pass",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "a mixed-case payTo whose every letter has the wrong EIP-55 case still matches, since the adapter must not check the checksum",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "h9p95geERLMQ9o-kqQ7I-d0r6WSOQ4k9IcPqayWQKfE20yygInKKOy3ONHJX65PjwvA2tB6npPb5ylJi0Q-qDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "3OSs54U0NNpWE0lQcLn9u6-HKEWSETyCGktaOmYZBKLEv9kqjnf2aGU0Mg38newShdoPUQiiADyy0u098wOKBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b8904927694307ba63600cd7e939bc533c684f0f3b24736063c01bfb0faa8da0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "a21udcNUJKkLVV_3LAU_HWARjjvlP2zxdlJYk-QAEU7B9xBu6LYJEWrMF7C7gj_oUmgoih0a3Q04yubdmjORCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "0x5AaEB6053f3e94c9B9a09F33669435e7eF1bEaED"
         },
         {
           "op": "replace",

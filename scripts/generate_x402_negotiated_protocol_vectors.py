@@ -1208,6 +1208,10 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "challenge-payto-eip55-checksum-binding-lower-case", "pass", "XN-5",
              "an EIP-55 checksummed payTo matches the lower-case payout binding",
              lettered_seller(eip55(LETTERED_SELLER)), refresh=True)
+    add_case(vectors, "challenge-payto-wrong-eip55-checksum-binding-lower-case", "pass", "XN-5",
+             "a mixed-case payTo whose every letter has the wrong EIP-55 case still matches, "
+             "since the adapter must not check the checksum",
+             lettered_seller("0x" + eip55(LETTERED_SELLER)[2:].swapcase()), refresh=True)
     add_case(vectors, "ledger-payto-upper-case", "pass", "XN-5/XN-8",
              "an upper-case authenticated ledger payTo is the same 20-byte destination",
              lettered_seller(LETTERED_SELLER, "0x" + LETTERED_SELLER[2:].upper()), refresh=True)

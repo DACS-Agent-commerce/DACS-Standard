@@ -116,8 +116,10 @@ The overlay's `budgetBaseUnits` must be the bilateral agreement's price
 converted with the rail's pinned token decimals (DRA-10), as DACS-4 §9.5.2
 steps 2 and 3 convert a `PriceTerm`. The price currency must be the rail's
 `paymentTokenSymbol`, and `amount × 10^tokenDecimals` is computed exactly from
-the CD-1 decimal text. A wrong amount, currency, or decimals, or a price with
-more fractional digits than the token carries, is rejected under DRA-10.
+the CD-1 decimal text. A wrong amount, currency, or decimals, a zero price
+(DACS-4 §9.3 requires an agreed `PriceTerm.amount` strictly greater than zero),
+or a price with more fractional digits than the token carries, is rejected
+under DRA-10.
 
 Delivery evidence is a DACS-4 §9.7 delivery `SettlementEvidence` with the
 members a storage-program delivery carries: `evidenceVersion`, `jobId`,

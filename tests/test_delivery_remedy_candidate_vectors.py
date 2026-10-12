@@ -1543,7 +1543,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         cases = {
             "fractional price": ({"bilateral": put("price", "amount", "0.5"), "agreement": put("budgetBaseUnits", "500000")}, ("verified", "DRV-7")),
             "18 decimals": ({"rail": put("tokenDecimals", 18), "agreement": put("budgetBaseUnits", "1" + "0" * 18)}, ("verified", "DRV-7")),
-            "zero price and budget": ({"bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0")}, ("verified", "DRV-7")),
+            "zero price and budget": ({"bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0")}, ("rejected", "DRA-10")),
+            "zero price": ({"bilateral": put("price", "amount", "0")}, ("rejected", "DRA-10")),
             "excess precision": ({"bilateral": put("price", "amount", "1.0000001")}, ("rejected", "DRA-10")),
             "wrong amount": ({"bilateral": put("price", "amount", "2")}, ("rejected", "DRA-10")),
             "wrong currency": ({"bilateral": put("price", "currency", "DAI")}, ("rejected", "DRA-10")),

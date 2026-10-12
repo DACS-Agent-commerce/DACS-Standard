@@ -921,6 +921,9 @@ def build_vector_pack() -> dict[str, Any]:
         "dra-10-price-currency": make_base("release", hooks={"bilateral": put("price", "currency", "DAI")}),
         "dra-10-token-decimals": make_base("release", hooks={"rail": put("tokenDecimals", 18)}),
         "dra-10-zero-budget": make_base("release", hooks={"agreement": put("budgetBaseUnits", "0")}),
+        "dra-10-zero-price": make_base("release", hooks={
+            "bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0"),
+        }),
         "rail-reference-mismatch": make_base("release", hooks={"agreement": put("railDefinitionRef", "contentHash", "04" * 32)}),
         "unsupported-disclosure-policy": make_base("release", hooks={"agreement": put("disclosurePolicy", "encrypted-transcript")}),
         "transcript-in-delivered-artifact": make_base("release", hooks={"inputs": put("deliveredArtifact", "transcriptExcerpt", "forbidden")}),
@@ -1390,6 +1393,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dra-10-price-currency-not-rail-token", "dra-10-price-currency", "rejected", "DRA-10", "the agreed price currency must be the pinned payment token"),
         vector("dra-10-budget-uses-other-decimals", "dra-10-token-decimals", "rejected", "DRA-10", "the agreed 1 USDC at the rail's pinned 18 decimals is not 1000000 base units"),
         vector("dra-10-zero-budget-for-nonzero-price", "dra-10-zero-budget", "rejected", "DRA-10", "a zero budget is not the non-zero agreed price"),
+        vector("dra-10-zero-price", "dra-10-zero-price", "rejected", "DRA-10", "an agreed price must be strictly greater than zero (DACS-4 §9.3), so a zero price and its zero budget move nothing"),
         vector("rail-definition-reference-mismatch", "rail-reference-mismatch", "rejected", "DRA-12", "the selected rail definition must resolve exactly"),
         vector("evaluator-added-as-bundle-party", "release", "rejected", "DRA-13", "the evaluator overlay signature does not create a third bundle party", [{"op": "add", "path": ["bundleRequiredSigners", 2], "value": EVALUATOR}]),
         vector("unsupported-disclosure-policy", "unsupported-disclosure-policy", "rejected", "DRQ-1", "the first profile accepts only its two signed disclosure policies"),

@@ -772,6 +772,10 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
         or not 0 <= decimals <= MAX_TOKEN_DECIMALS
     ):
         return result("error", "DRV-3", "agreement price or pinned token decimals are malformed")
+    # DACS-4 §9.3: an agreed `PriceTerm.amount` MUST be strictly greater than
+    # zero.  CD-1 makes "0" the only spelling of zero, and it has no sign.
+    if price["amount"] == "0":
+        return result("rejected", "DRA-10", "agreement price is not strictly greater than zero")
     if price["currency"] != rail["paymentTokenSymbol"]:
         return result("rejected", "DRA-10", "agreement price currency is not the pinned payment token")
     if price_base_units(price["amount"], decimals) != agreement["budgetBaseUnits"]:

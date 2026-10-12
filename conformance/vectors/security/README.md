@@ -1141,7 +1141,8 @@ Negative cases reject global provider or asset policy, a
 `consumerFinalityProfile` on the closed protocol arm (RD-7), first-`railId` lookup,
 challenge substitution, redirects, incomplete `extra` or `extensions`, a
 facilitator acknowledgement without authenticated settlement, conflicting
-native event identity, unsupported `upto`/`batch` schemes, and use of the
+native event identity, `upto` and `batch-settlement` schemes (refused before
+authorization with no wallet call, since v0.8 binds neither), and use of the
 legacy `x402:default` rail for a new session—even by pinning its historical
 live revision. Legacy string-version evidence remains represented only for
 replay or an already-pinned continuation; negotiated evidence carries numeric

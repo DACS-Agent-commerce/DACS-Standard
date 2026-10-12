@@ -679,7 +679,7 @@
     }
   },
   "count": 201,
-  "hash": "20c4b29f77ee07781be7a5d9932d8cabae6c3574b820563e92a1aa05800d5d06",
+  "hash": "904d8202f8d1ab79455321782fef7d0f25c97f9d7eb281c83e15d49e2e5cc594",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -19518,18 +19518,12 @@
     },
     {
       "name": "batch-commitment-is-not-financial-settlement",
-      "expected": "indeterminate",
-      "rule": "XN-8/XN-9",
+      "expected": "fail",
+      "rule": "XN-9",
       "operation": "execute",
-      "note": "batch commitment acknowledgement stays distinct from eventual settlement",
+      "note": "batch commitment acceptance is never eventual settlement and v0.8 has no binding for it, so a supported batch-settlement tuple is refused before authorization with no wallet call",
       "base": "v2",
       "patch": [
-        {
-          "op": "remove",
-          "path": [
-            "ledger"
-          ]
-        },
         {
           "op": "replace",
           "path": [
@@ -19608,14 +19602,6 @@
           "op": "replace",
           "path": [
             "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
             "selectedRailRef",
             "parameters",
             "selection",
@@ -19623,7 +19609,8 @@
           ],
           "value": "batch-settlement"
         }
-      ]
+      ],
+      "expectedReason": "x402-capability-unsupported"
     },
     {
       "name": "legacy-default-new-session-disabled",

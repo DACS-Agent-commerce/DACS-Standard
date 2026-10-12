@@ -116,6 +116,11 @@ The format used per release:
   mismatch is `fail`, an absent or unverifiable binding `indeterminate`, and
   malformed binding evidence `error`. An earlier plain transfer of the same
   amount therefore cannot stand in for the bound authorization.
+- **Unbound schemes end before authorization** (DACS-4 §9.5.7 XN-3, XN-9) —
+  every locally supported scheme without a DACS success binding, `upto` and
+  `batch-settlement` alike, is a pre-authorization `fail` / permanent handler
+  result: no wallet call is made and the phase ends there. `batch-settlement`
+  no longer stays `indeterminate` with no end state.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

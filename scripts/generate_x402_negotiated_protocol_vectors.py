@@ -1566,10 +1566,11 @@ def build_vectors() -> list[dict]:
             ref["parameters"]["selection"]["scheme"] = "batch-settlement"
         v["http"]["paymentRequired"]["accepts"][0]["scheme"] = "batch-settlement"
         v["capability"]["supportedTuples"] = [[2, "batch-settlement", "eip155:8453"]]
-        v.pop("ledger")
-    add_case(vectors, "batch-commitment-is-not-financial-settlement", "indeterminate", "XN-8/XN-9",
-             "batch commitment acknowledgement stays distinct from eventual settlement", batch_ack,
-             authorization_submitted=True)
+    add_case(vectors, "batch-commitment-is-not-financial-settlement", "fail", "XN-9",
+             "batch commitment acceptance is never eventual settlement and v0.8 has no "
+             "binding for it, so a supported batch-settlement tuple is refused before "
+             "authorization with no wallet call", batch_ack,
+             reason="x402-capability-unsupported")
 
     def disabled_default(v):
         v["railDefinition"] = legacy_rail()

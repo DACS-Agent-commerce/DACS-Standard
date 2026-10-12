@@ -994,8 +994,9 @@ def evaluate(v, effects=None):
     if tuple_value not in capability.get("supportedTuples", []):
         return "fail", "x402-capability-unsupported"
     if selection["scheme"] != "exact" or "dacs-x402-exact:v1" not in capability.get("bindingProfiles", []):
-        # Other schemes are protocol-valid but have no v0.8 DACS success profile.
-        return ("indeterminate" if selection["scheme"] == "batch-settlement" else "fail"), "x402-capability-unsupported"
+        # XN-9: other schemes, batch-settlement included, are protocol-valid but
+        # have no v0.8 DACS success binding, so they end here, unauthorized.
+        return "fail", "x402-capability-unsupported"
 
     request = ref["parameters"]["request"]
     if not public_http_target(request["url"]):
@@ -1387,6 +1388,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "runtime-payee-not-20-bytes-binding-valid",
             "solana-challenge-payto-case-changed",
             "upto-has-no-dacs-success-profile",
+            "batch-commitment-is-not-financial-settlement",
             "legacy-default-new-session-disabled",
             "legacy-default-pinned-live-new-session",
         )
@@ -2142,7 +2144,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertEqual(evaluate(vector), ("pass", None))
 
     def test_threat_model_summary_matches_xn9_dispositions(self):
-        """The §12.4 index row must not widen XN-9's single indeterminate case."""
+        """The §12.4 index row states XN-9's one disposition: refused before authorization."""
         threat_model = (ROOT / "spec/THREAT-MODEL.md").read_text(encoding="utf-8")
         rows = [
             line for line in threat_model.splitlines()
@@ -2150,15 +2152,17 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ]
         self.assertEqual(len(rows), 1)
         row = rows[0]
-        self.assertNotIn("unsupported profiles indeterminate", row)
-        self.assertIn("`batch-settlement` without an eventual-settlement binding is indeterminate", row)
-        self.assertIn("`upto`, is a pre-authorization fail", row)
-        for verdict, name in (
-            ("indeterminate", "batch-commitment-is-not-financial-settlement"),
-            ("fail", "upto-has-no-dacs-success-profile"),
-        ):
+        self.assertNotIn("indeterminate", row)
+        self.assertIn("including `upto` and `batch-settlement`, is a pre-authorization fail "
+                      "with no wallet call", row)
+        for name in ("batch-commitment-is-not-financial-settlement",
+                     "upto-has-no-dacs-success-profile"):
             with self.subTest(vector=name):
-                self.assertEqual(evaluate(self.by_name[name])[0], verdict)
+                effects = {}
+                self.assertEqual(evaluate(self.by_name[name], effects),
+                                 ("fail", "x402-capability-unsupported"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+                self.assertIs(self.by_name[name]["runtime"]["authorizationSubmitted"], False)
 
 
 if __name__ == "__main__":

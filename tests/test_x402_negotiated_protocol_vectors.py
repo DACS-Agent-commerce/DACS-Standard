@@ -50,6 +50,13 @@ SOLANA_NETWORK_CLUSTERS = {
     "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "devnet",
     "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z": "testnet",
 }
+# XN-9/SB-3: the pinned x402:protocol definition's `dacs-x402-exact:v1` binding
+# authorizes an EIP-155 payment only through EIP-3009 or Permit2. Both declare
+# an SB-3 job binding, so it is mandatory on those networks whatever the
+# observed event's `authorization` says. Binding evidence uses the
+# sb3-binding-required set's model: {"state": "match" | "mismatch" | ...}.
+SB3_BINDING_NAMESPACES = frozenset({"eip155"})
+SB3_UNRESOLVED_STATES = frozenset({"absent", "unavailable"})
 PROTOCOL_REQUIRED = {
     "railVersion", "railId", "railType", "phaseHandler", "resolution",
     "availability", "governance", "signature",
@@ -1157,6 +1164,16 @@ def evaluate(v, effects=None):
         ledger_pay_to = adapter_address(network, ledger.get("payTo"))
     except ValueError:
         return "error", "address-form"
+    # SB-3: a mandatory binding is resolved before the transfer checks.
+    if network.split(":", 1)[0] in SB3_BINDING_NAMESPACES:
+        binding = ledger.get("sessionBinding")
+        state = binding.get("state") if isinstance(binding, dict) else None
+        if state == "mismatch":
+            return "fail", "sb3"
+        if state in SB3_UNRESOLVED_STATES:
+            return "indeterminate", "sb3"
+        if state != "match":
+            return "error", "sb3"
     if (
         ledger.get("network") != selection["network"]
         or adapter_canonical_transaction(selection["network"], ledger.get("transaction")) != transaction
@@ -1169,8 +1186,6 @@ def evaluate(v, effects=None):
         or ledger_pay_to != pay_to
     ):
         return "fail", "ledger-event"
-    if ledger.get("authorization") in {"eip-3009", "permit2"} and ledger.get("sessionBound") is not True:
-        return "fail", "sb3"
     # The exact finalized settlement stands; a response defect stays recorded.
     return "pass", response_fault
 
@@ -1481,6 +1496,30 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # With no decoded response the receipt commits to JSON null (XN-7).
         ref = self.by_name["wrong-version-response-header"]["evidence"]["paymentTxRefs"][0]
         self.assertEqual(ref["paymentReceiptHash"], digest(None))
+
+    def test_sb3_policy_comes_from_the_pinned_definition_not_the_observed_event(self):
+        """XN-9/SB-3: EIP-155 exact always needs the job binding; the event's form cannot waive it."""
+        base = self.by_name["protocol-v2-exact-success"]
+        self.assertEqual(base["ledger"]["sessionBinding"], {"state": "match"})
+        for authorization in ("eip-3009", "permit2", "erc20-transfer", "something-else", None):
+            for binding, want in (
+                ({"state": "match"}, ("pass", None)),
+                ({"state": "mismatch"}, ("fail", "sb3")),
+                ({"state": "absent"}, ("indeterminate", "sb3")),
+                ({"state": "unavailable"}, ("indeterminate", "sb3")),
+                ({"state": 7}, ("error", "sb3")),
+                ({}, ("error", "sb3")),
+                ("match", ("error", "sb3")),
+            ):
+                with self.subTest(authorization=authorization, binding=binding):
+                    vector = copy.deepcopy(base)
+                    vector["ledger"]["authorization"] = authorization
+                    vector["ledger"]["sessionBinding"] = binding
+                    self.assertEqual(evaluate(vector), want)
+        # Solana's exact binding declares no job binding, so nothing is consulted.
+        vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
+        vector["ledger"].pop("sessionBinding")
+        self.assertEqual(evaluate(vector), ("pass", None))
 
     def test_retry_authorization_identity_compares_as_an_xn5_address(self):
         """XN-11/XN-5: both sides of the authorization identity take the adapter form first."""
@@ -1802,6 +1841,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "against authenticated ledger data (XN-8).",
             "A response defect is then recorded as the seller's protocol fault and does not "
             "reverse the settlement.",
+            "The v0.8 EIP-155 `exact` binding authorizes only through one of those two forms, so "
+            "its SB-3 job binding is always mandatory there.",
+            "A verifier MUST take this binding policy from the pinned definition and the signed "
+            "selection, never from the observed ledger event,",
         ):
             self.assertIn(text, spec)
         # Notes are hard-wrapped blockquotes: compare without wrapping or markers.

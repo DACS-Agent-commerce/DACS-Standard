@@ -108,6 +108,14 @@ The format used per release:
   commits to the response as received, or to JSON `null` when no
   version-selected object decodes, and `settlementTransaction` names the
   transaction the reconciliation establishes.
+- **SB-3 job binding on the negotiated rail** (DACS-4 §9.5.7 XN-9, §9.5.8
+  SB-3) — the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009 or
+  Permit2, so the SB-3 job binding is always mandatory there. A verifier takes
+  that policy from the pinned definition and the signed selection, never from
+  the observed ledger event, and resolves it under SB-3's four branches: a
+  mismatch is `fail`, an absent or unverifiable binding `indeterminate`, and
+  malformed binding evidence `error`. An earlier plain transfer of the same
+  amount therefore cannot stand in for the bound authorization.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

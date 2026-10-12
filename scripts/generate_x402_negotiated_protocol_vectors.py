@@ -411,8 +411,10 @@ def make_base(version: int = 2) -> dict:
             "amount": "1250000",
             "payer": BUYER_ADDRESS,
             "payTo": SELLER_ADDRESS,
+            # The observed form is informational: the SB-3 policy comes from the
+            # pinned definition and the signed selection (XN-9).
             "authorization": "eip-3009",
-            "sessionBound": True,
+            "sessionBinding": {"state": "match"},
             "finalized": True,
         },
         "evidence": {
@@ -626,7 +628,7 @@ def build_vectors() -> list[dict]:
             "payer": SOLANA_BUYER,
             "payTo": SOLANA_SELLER,
             "authorization": "solana-transfer",
-            "sessionBound": False,
+            "sessionBinding": {"state": "absent"},
         })
         evidence_ref = v["evidence"]["paymentTxRefs"][0]
         evidence_ref.update({
@@ -1514,6 +1516,41 @@ def build_vectors() -> list[dict]:
              }), authorization_submitted=True)
     add_case(vectors, "event-key-cross-rail-alias", "pass", "XN-8/SB-1",
              "EIP-155 x402 evidence emits the same evm event key as the direct rail")
+
+    # XN-9/SB-3: the EIP-155 exact binding always requires the SB-3 job
+    # binding, so its four branches apply whatever form the event shows. The
+    # ledger matches the evidence in every case; only the binding differs.
+    def session_binding(binding, authorization="eip-3009"):
+        def mutate(v):
+            v["ledger"]["authorization"] = authorization
+            if binding is absent:
+                v["ledger"].pop("sessionBinding")
+            else:
+                v["ledger"]["sessionBinding"] = binding
+        return mutate
+    for name, expected, binding, note in (
+        ("sb3-binding-mismatch", "fail", {"state": "mismatch"},
+         "a verified EIP-3009 nonce derived for another job or phase rejects the evidence"),
+        ("sb3-binding-absent", "indeterminate", {"state": "absent"},
+         "an EIP-3009 transfer without the derived job nonce is non-countable, never unbound success"),
+        ("sb3-binding-unverifiable", "indeterminate", {"state": "unavailable"},
+         "binding evidence that cannot be verified now keeps the settlement non-countable"),
+        ("sb3-binding-evidence-missing", "error", absent,
+         "a missing binding-evidence value is malformed, not unavailable"),
+        ("sb3-binding-evidence-null", "error", None,
+         "a non-object binding-evidence value is malformed"),
+        ("sb3-binding-unknown-state", "error", {"state": "future-state"},
+         "an unknown binding state is malformed"),
+    ):
+        add_case(vectors, name, expected, "XN-9/SB-3", note, session_binding(binding),
+                 authorization_submitted=True, reason="sb3")
+    add_case(vectors, "sb3-earlier-plain-transfer-cannot-replace-binding", "indeterminate",
+             "XN-9/SB-3",
+             "an earlier plain ERC-20 transfer from the buyer to the seller for the same amount "
+             "carries no job binding; the policy comes from the pinned definition, not from the "
+             "observed transfer form, so the payment stays non-countable",
+             session_binding({"state": "absent"}, authorization="erc20-transfer"),
+             authorization_submitted=True, reason="sb3")
 
     def upto_scheme(v):
         for ref in (v["listing"]["acceptedRails"][0], v["agreement"]["terms"]["rail"], v["runtime"]["selectedRailRef"]):

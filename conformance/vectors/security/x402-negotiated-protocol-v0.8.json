@@ -287,7 +287,9 @@
         "payer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
         "payTo": "0x2222222222222222222222222222222222222222",
         "authorization": "eip-3009",
-        "sessionBound": true,
+        "sessionBinding": {
+          "state": "match"
+        },
         "finalized": true
       },
       "evidence": {
@@ -626,7 +628,9 @@
         "payer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
         "payTo": "0x2222222222222222222222222222222222222222",
         "authorization": "eip-3009",
-        "sessionBound": true,
+        "sessionBinding": {
+          "state": "match"
+        },
         "finalized": true
       },
       "evidence": {
@@ -674,8 +678,8 @@
       }
     }
   },
-  "count": 194,
-  "hash": "a6e9c52a00c375d0002f1037046db5cb9ad79b3d1789cf91760cfbcdac24fcfc",
+  "count": 201,
+  "hash": "20c4b29f77ee07781be7a5d9932d8cabae6c3574b820563e92a1aa05800d5d06",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -1282,9 +1286,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -1962,9 +1967,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -12140,9 +12146,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -12858,9 +12865,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -14906,9 +14914,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -15587,9 +15596,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -16267,9 +16277,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -16940,9 +16951,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -17621,9 +17633,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",
@@ -19205,6 +19218,207 @@
           "value": true
         }
       ]
+    },
+    {
+      "name": "sb3-binding-mismatch",
+      "expected": "fail",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "a verified EIP-3009 nonce derived for another job or phase rejects the evidence",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "mismatch"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-absent",
+      "expected": "indeterminate",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "an EIP-3009 transfer without the derived job nonce is non-countable, never unbound success",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "absent"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-unverifiable",
+      "expected": "indeterminate",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "binding evidence that cannot be verified now keeps the settlement non-countable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "unavailable"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-evidence-missing",
+      "expected": "error",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "a missing binding-evidence value is malformed, not unavailable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-evidence-null",
+      "expected": "error",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "a non-object binding-evidence value is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-unknown-state",
+      "expected": "error",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "an unknown binding state is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "future-state"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-earlier-plain-transfer-cannot-replace-binding",
+      "expected": "indeterminate",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "an earlier plain ERC-20 transfer from the buyer to the seller for the same amount carries no job binding; the policy comes from the pinned definition, not from the observed transfer form, so the payment stays non-countable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "erc20-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "absent"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
     },
     {
       "name": "upto-has-no-dacs-success-profile",
@@ -21015,9 +21229,10 @@
           "op": "replace",
           "path": [
             "ledger",
-            "sessionBound"
+            "sessionBinding",
+            "state"
           ],
-          "value": false
+          "value": "absent"
         },
         {
           "op": "replace",

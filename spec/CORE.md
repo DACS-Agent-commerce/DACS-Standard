@@ -1593,7 +1593,7 @@ All ten follow the same domain-separation discipline, preventing cross-use of
 the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the
 "sign every artifact kind" conformance do not apply to them. The three Atomic
 Work identifier and receipt tags are introduced by the CORE v0.3 candidate;
-the two Atomic payment and settlement tags are introduced by the DACS-4 v0.7
+the two Atomic payment and settlement tags are introduced by the DACS-4 v0.8
 candidate; the AP2 idempotency tag is introduced by DACS-4 v0.6; and the
 sealed-bid and SB-3 tags remain owned by their cited DACS-3 and DACS-4 sections.
 Collectively these are the sanctioned non-signature hash-domain tags for the

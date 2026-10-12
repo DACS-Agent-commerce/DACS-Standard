@@ -1135,7 +1135,13 @@ AWS-29 for the exact complete evidence bytes, Work receipt/proof closure,
 Missing Atomic verification authority is indeterminate; malformed, stale,
 substituted, cross-phase, or non-passing authority rejects admission. Both the
 `pay-dem` result and `deliver-storage-program` result enter the SEB-4 exact set,
-ST-11 lifecycle checks, and reputation derivation through this branch. An Atomic
+ST-11 lifecycle checks, and a reputation deriver's EBFAB copy validation through
+this branch. Admission here does not make the job current-use eligible: CUR-4
+requires a selected job with a successful payment to be represented by a valid
+`FinalityBoundEvidenceFaultAttestationBundle`, whose successful payments use
+`FinalityBoundSettlementEvidence`, not `AtomicSettlementEvidenceV1`. A job with a
+successful Atomic `pay-dem` is therefore non-passing for current use, and under
+CUR-2 a current-use request that includes it emits no derivation. An Atomic
 record MUST NOT self-select this branch, and an ordinary `DeliveryEvidence` MUST
 still satisfy PDE-1 through PDE-8; neither relabelling nor an Atomic selector can
 bypass the ordinary DeliveryEvidence/PDE path. This evidence-family

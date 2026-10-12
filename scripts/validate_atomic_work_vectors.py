@@ -315,7 +315,7 @@ def main() -> int:
     report = coverage_report()
     print(
         f"Atomic Work vectors OK ({set_count} sets, {total} vectors; "
-        f"{len(EXPECTED_RULES)} rules with complete applicable P/N/B coverage; "
+        f"{len(EXPECTED_RULES)} rules with every applicable P/N/B cell rule-referenced; "
         "hashes/signatures/semantics verified)"
     )
     print("Atomic Work applicable P/N/B coverage (X = justified not applicable):")

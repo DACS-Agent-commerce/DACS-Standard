@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install validation dependencies
-        run: python3 -m pip install -r requirements-ap2-reference.txt 'jsonschema==4.25.1'
+        run: python3 -m pip install -r requirements-ap2-reference.txt 'jsonschema==4.25.1' 'referencing==0.37.0' 'rpds-py==2026.9.1'
 
       - name: Official AP2 and crypto import gate (fail-closed)
         run: |
@@ -58,6 +58,8 @@ jobs:
           import jsonschema
           import jwcrypto
           import pydantic
+          import referencing
+          import rpds
           import sd_jwt
 
           print(
@@ -67,6 +69,8 @@ jobs:
               "jsonschema", version("jsonschema"),
               "jwcrypto", version("jwcrypto"),
               "pydantic", version("pydantic"),
+              "referencing", version("referencing"),
+              "rpds-py", version("rpds-py"),
               "sd-jwt", version("sd-jwt"),
               MandateClient.__name__,
               CheckoutMandateChain.__name__,

@@ -14,6 +14,11 @@ ROW = re.compile(r"^\| \[([A-Z0-9-]+)\]\([A-Z0-9-]+\.md\) \| ([0-9.]+) \| (.+) \
 # the live status.  Every other row reports the live status verbatim.
 ATOMIC_AMENDED = {"CORE", "DACS-3-NEGOTIATE", "DACS-4-SETTLE", "DACS-5-VERIFY"}
 ATOMIC_NOTE = "; Atomic candidate"
+# A module label such as "DACS-4 v0.8", or a bare "v0.6" that names the
+# version of the document it appears in.  "DACS v0.1" is the shared baseline.
+VERSION_LABEL = re.compile(
+    r"\b(CORE|DACS-[1-5]) v([0-9]+\.[0-9]+)\b|(?<![\w-])(?<!DACS )v([0-9]+\.[0-9]+)\b"
+)
 
 
 def section_table(text: str, heading: str) -> dict[str, tuple[str, str]]:
@@ -61,6 +66,33 @@ class AtomicProfileCompositionTests(unittest.TestCase):
                 for name in ATOMIC_AMENDED
             ),
         )
+
+    def test_every_atomic_version_label_matches_the_composition(self):
+        pins = {
+            name if name == "CORE" else name.rsplit("-", 1)[0]: version
+            for name, (version, _) in self.atomic.items()
+        }
+        changelog = CHANGELOG.read_text(encoding="utf-8")
+        entry = changelog.split("### Added — candidate CORE v", 1)[1]
+        sources = [("CHANGELOG.md", None, entry.split("\n### ", 1)[0])]
+        for name in sorted(ATOMIC_AMENDED):
+            module = name if name == "CORE" else name.rsplit("-", 1)[0]
+            path = ROOT / "spec" / f"{name}.md"
+            sources.append((path.name, module, path.read_text(encoding="utf-8")))
+        checked = 0
+        for source, own_module, text in sources:
+            for clause in re.split(r";|\.\s|\n\s*\n", text):
+                if "Atomic" not in clause:
+                    continue
+                clause = " ".join(clause.split())
+                for match in VERSION_LABEL.finditer(clause):
+                    module = match.group(1) or own_module
+                    if module is None:
+                        continue
+                    checked += 1
+                    with self.subTest(source=source, label=match.group(0), clause=clause[:160]):
+                        self.assertEqual(match.group(2) or match.group(3), pins[module])
+        self.assertGreater(checked, 0)
 
     def test_vet_row_reports_live_corrective_candidate_status(self):
         _, live_status = self.live["DACS-2-VET"]

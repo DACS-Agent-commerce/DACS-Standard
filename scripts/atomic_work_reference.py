@@ -274,6 +274,10 @@ def _decode_point(encoded: bytes) -> tuple[int, int, int, int]:
     if y >= _Q:
         raise Invalid("non-canonical Ed25519 point")
     x = _xrecover(y)
+    # RFC 8032 §5.1.3: the candidate root must satisfy v * x^2 = u, where
+    # u = y^2 - 1 and v = d * y^2 + 1; otherwise y names no curve point.
+    if (x * x * (_D * y * y + 1) - (y * y - 1)) % _Q != 0:
+        raise Invalid("Ed25519 point is not on the curve")
     if (x & 1) != (value >> 255):
         x = _Q - x
     p = (x, y, 1, x * y % _Q)
@@ -4301,9 +4305,12 @@ def evaluate_vector(vector: dict[str, Any]) -> tuple[str, str]:
         return "error", str(exc)
     except Unknown as exc:
         return "indeterminate", str(exc)
-    except (Invalid, ValueError, TypeError, KeyError, IndexError) as exc:
+    except Invalid as exc:
         return "fail", str(exc)
-    except Exception as exc:  # pragma: no cover - fail closed for malformed corpus
+    except Exception as exc:
+        # Only a predicate's own Invalid is a deterministic ``fail``.  An
+        # incidental exception (KeyError, TypeError, ...) means the input did
+        # not have the shape the predicate reads, so it is malformed input.
         return "error", f"{type(exc).__name__}: {exc}"
 
 

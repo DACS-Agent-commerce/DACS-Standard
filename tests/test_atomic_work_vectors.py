@@ -247,31 +247,39 @@ class AtomicWorkVectorTests(unittest.TestCase):
         self.assertIn("X", "".join(report["byRule"].values()))
 
     def test_changelog_atomic_coverage_agrees_with_strict_gate(self):
+        # The gate is mechanical: it counts rule references by verdict class.
+        # The prose must say so, and must keep the CONFORMANCE-PLAN §14.8
+        # semantically meaningful fixture requirement open, not claim it met.
         self.assertTrue(validator.coverage_report()["completeApplicablePolarity"])
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         entry = changelog.split("- **Atomic Purchase and Completion Works**", 1)[1]
         entry = " ".join(entry.split("\n- **", 1)[0].split())
-        self.assertNotRegex(entry, r"(?i)coverage[^.]*\bblocker\b")
-        self.assertIn(
-            "every new rule ID has complete applicable positive/negative/boundary coverage",
-            entry,
-        )
-        self.assertIn("non-applicable cells carry explicit rationales", entry)
-        self.assertIn(
-            "generator and strict validator reject any uncovered applicable polarity",
-            entry,
-        )
         readme = (ROOT / "conformance" / "vectors" / "security" / "README.md").read_text(
             encoding="utf-8"
         )
         atomic = readme.split("## Atomic Work candidate test profile", 1)[1]
         atomic = " ".join(atomic.split("\n## ", 1)[0].split())
-        self.assertIn("jointly gate complete **applicable** P/N/B coverage", atomic)
-        self.assertIn("non-applicable cell with an explicit rationale", atomic)
-        self.assertIn(
-            "generator and strict validator both reject any uncovered applicable polarity",
-            atomic,
-        )
+        for name, text in (("CHANGELOG", entry), ("README", atomic)):
+            with self.subTest(document=name):
+                self.assertNotRegex(text, r"(?i)coverage[^.]*\bblocker\b")
+                self.assertNotRegex(
+                    text, r"(?i)\bcomplete\W+(\*\*)?applicable\b[^.]*\bcoverage\b"
+                )
+                self.assertRegex(text, r"rule-referenced fixture of the (matching|right)")
+                self.assertRegex(text, r"non-applicable cell\w* (carries|with) an explicit rationale")
+                self.assertRegex(text, r"generator and (the )?strict validator both refuse")
+                self.assertIn("does not", text.split("rule references by", 1)[1][:60])
+                self.assertIn(
+                    "Some cells are currently decided by self-reported or "
+                    "caller-supplied values",
+                    text,
+                )
+                self.assertIn(
+                    "semantically meaningful fixtures CONFORMANCE-PLAN §14.8 "
+                    "requires remains open for this candidate",
+                    text,
+                )
+                self.assertNotRegex(text, r"\b(AWS?|AWP|AWB)-[0-9]+\b[^.]*self-reported")
 
     def test_boundary_attribution_is_rule_specific(self):
         for data in self.sets:
@@ -729,6 +737,38 @@ class AtomicWorkVectorTests(unittest.TestCase):
         # from a well-formed semantic mismatch (``fail``).
         self.assertGreater(verdict_counts["error"], 0)
 
+    def test_incidental_exception_is_error_never_fail(self):
+        # Only a predicate's own Invalid is ``fail``.  A rejection that comes
+        # from an incidental Python exception reports malformed input.
+        by_name = {
+            vector["name"]: vector
+            for data in self.sets
+            for vector in data["vectors"]
+        }
+        for name in ("aw-receipt-complete-and-final", "aws-final-work-receipt-bound"):
+            vector = copy.deepcopy(by_name[name])
+            self.assertEqual(ref.evaluate_vector(vector)[0], "pass")
+            del vector["input"]["publicKeys"]
+            with self.subTest(vector=name, dropped="publicKeys"):
+                verdict, diagnostic = ref.evaluate_vector(vector)
+                self.assertEqual(verdict, "error", diagnostic)
+                self.assertTrue(diagnostic.startswith("KeyError"), diagnostic)
+        for exception in (KeyError("x"), TypeError("x"), IndexError("x"), ValueError("x")):
+            def evaluator(_data, exception=exception):
+                raise exception
+            with self.subTest(raised=type(exception).__name__):
+                with mock.patch.dict(ref.EVALUATORS, {"receipt": evaluator}):
+                    verdict, _ = ref.evaluate_vector({"surface": "receipt", "input": {}})
+                self.assertEqual(verdict, "error")
+
+        def invalid(_data):
+            raise ref.Invalid("predicate rejected")
+        with mock.patch.dict(ref.EVALUATORS, {"receipt": invalid}):
+            self.assertEqual(
+                ref.evaluate_vector({"surface": "receipt", "input": {}}),
+                ("fail", "predicate rejected"),
+            )
+
     def test_fixed_seed_signatures_without_optional_crypto(self):
         seed = bytes.fromhex("9d" * 32)
         message = b"Atomic DACS Work deterministic signature self-test"
@@ -755,6 +795,47 @@ class AtomicWorkVectorTests(unittest.TestCase):
         self.assertEqual(ref.ed25519_public_key(seed), public)
         self.assertEqual(ref.ed25519_sign(seed, b""), signature)
         self.assertTrue(ref.ed25519_verify(public, b"", signature))
+
+    def test_ed25519_refuses_off_curve_point_encodings(self):
+        # RFC 8032 §5.1.3: y names a curve point only when u/v is a square
+        # mod p (u = y^2 - 1, v = d*y^2 + 1).  Euler's criterion finds the
+        # first canonical y that names none, independently of the decoder.
+        q = 2**255 - 19
+        d = (-121665 * pow(121666, q - 2, q)) % q
+        y = next(
+            candidate for candidate in range(2, 1000)
+            if pow(
+                (candidate * candidate - 1)
+                * pow(d * candidate * candidate + 1, q - 2, q) % q,
+                (q - 1) // 2,
+                q,
+            ) == q - 1
+        )
+        off_curve = int.to_bytes(y, 32, "little")
+        with self.assertRaisesRegex(ref.Invalid, "not on the curve"):
+            ref._decode_point(off_curve)
+        seed = bytes.fromhex("9d" * 32)
+        message = b"Atomic DACS Work off-curve public key"
+        signature = ref.ed25519_sign(seed, message)
+        self.assertFalse(ref.ed25519_verify(off_curve, message, signature))
+        # The same encoding as R is refused before the group equation.
+        self.assertFalse(
+            ref.ed25519_verify(
+                ref.ed25519_public_key(seed), message, off_curve + signature[32:]
+            )
+        )
+
+    def test_ed25519_refuses_non_reduced_s(self):
+        # RFC 8032 §5.1.7: s MUST be < L.  s + L is the classic malleated
+        # twin: it satisfies the group equation, so only this bound refuses it.
+        seed = bytes.fromhex("9d" * 32)
+        message = b"Atomic DACS Work signature malleability"
+        public = ref.ed25519_public_key(seed)
+        signature = ref.ed25519_sign(seed, message)
+        self.assertTrue(ref.ed25519_verify(public, message, signature))
+        s = int.from_bytes(signature[32:], "little")
+        malleated = signature[:32] + int.to_bytes(s + ref._L, 32, "little")
+        self.assertFalse(ref.ed25519_verify(public, message, malleated))
 
     def test_rfc6962_tree_does_not_duplicate_odd_leaf(self):
         leaves = [

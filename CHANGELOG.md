@@ -1266,10 +1266,15 @@ The format used per release:
   publication receipt. Current v1 admits no bundle-anchor Work operation; its
   bundle remains in that tail. Adds eleven JSON Schemas plus deterministic
   candidate vectors with explicit acceptance/rejection/indeterminate/malformed
-  and true boundary metadata. Across the six Atomic sets, every new rule ID has
-  complete applicable positive/negative/boundary coverage; non-applicable cells
-  carry explicit rationales. The generator and strict validator reject any
-  uncovered applicable polarity. Demos provides a generic `DemosWork`
+  and true boundary metadata. Across the six Atomic sets, every applicable
+  positive/negative/boundary cell of every new rule ID has a rule-referenced
+  fixture of the matching verdict class, and every non-applicable cell carries
+  an explicit rationale; the generator and the strict validator both refuse a
+  gap. This gate counts rule references by class; it does not show that each
+  fixture exercises its rule. Some cells are currently decided by self-reported
+  or caller-supplied values, and strengthening them to the semantically
+  meaningful fixtures CONFORMANCE-PLAN §14.8 requires remains open for this
+  candidate. Demos provides a generic `DemosWork`
   orchestration primitive; the
   consensus-atomic DACS binding remains ineligible to advertise
   `AtomicWorkCapabilityV1` until its

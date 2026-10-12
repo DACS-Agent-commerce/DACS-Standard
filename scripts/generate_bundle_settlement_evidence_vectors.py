@@ -557,6 +557,21 @@ def make_atomic_authority(variant="pass"):
             "phaseKey": phase_key,
             "logicalAddress": logical_address,
         }
+    # Each foreign-* variant keeps every artifact exact and moves one binding
+    # of the pay-dem member's passing AWS admission (or its receipt) to the
+    # delivery member's value, so only that binding can refuse it.
+    pay_key, delivery_key = (F.canonical(ref).decode("utf-8") for ref in refs)
+    foreign_admission_field = {
+        "foreign-evidence-hash": "evidenceHash",
+        "foreign-phase-key": "phaseKey",
+        "foreign-logical-address": "logicalAddress",
+    }.get(variant)
+    if foreign_admission_field is not None:
+        admissions[pay_key][foreign_admission_field] = (
+            admissions[delivery_key][foreign_admission_field]
+        )
+    if variant == "foreign-receipt-address":
+        receipts[pay_key]["logicalAddress"] = receipts[delivery_key]["logicalAddress"]
 
     agreement_ref = {
         "anchor": {
@@ -1638,6 +1653,14 @@ def generate(source):
         "atomic-missing-aws-admission": make_atomic_authority("missing-admission"),
         "atomic-wrong-phase-family": make_atomic_authority("wrong-family"),
         "atomic-dual-selector": make_atomic_authority("dual-selector"),
+        "atomic-foreign-evidence-hash": make_atomic_authority("foreign-evidence-hash"),
+        "atomic-foreign-phase-key": make_atomic_authority("foreign-phase-key"),
+        "atomic-foreign-logical-address": make_atomic_authority(
+            "foreign-logical-address"
+        ),
+        "atomic-foreign-receipt-address": make_atomic_authority(
+            "foreign-receipt-address"
+        ),
     })
     atomic_vector_specs = (
         (
@@ -1657,6 +1680,26 @@ def generate(source):
         (
             "bundle-settlement-bijection-atomic-dual-selector-reject",
             "atomic-dual-selector", "fail", "rejected", "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-evidence-hash-reject",
+            "atomic-foreign-evidence-hash", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-phase-key-reject",
+            "atomic-foreign-phase-key", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-logical-address-reject",
+            "atomic-foreign-logical-address", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-receipt-address-reject",
+            "atomic-foreign-receipt-address", "fail", "rejected",
+            "execution-authority",
         ),
     )
     known_vector_names = {vector["name"] for vector in data["vectors"]}

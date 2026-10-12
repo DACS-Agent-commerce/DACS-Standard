@@ -733,6 +733,66 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 )
                 self.assertEqual(disposition, expected)
 
+    def test_atomic_admission_binds_exact_hash_phase_and_logical_address(self):
+        # SEB-3: Atomic evidence enters only through an exact passing AWS
+        # admission for its complete bytes, phase, and Atomic logical address;
+        # substituted or cross-phase authority rejects admission.  Each case
+        # keeps every artifact exact and moves one binding of the pay-dem
+        # member to the (itself valid) delivery member's value.
+        base = self.data["executionAuthorities"]["atomic-current-completed"]
+        disposition, reason, _ = derive_phase_disposition(
+            copy.deepcopy(base), self.pubkeys
+        )
+        self.assertEqual((disposition, reason), ("pass", "ok"))
+        admission_keys = {
+            admission["phaseKey"]: ref_key
+            for ref_key, admission in base[
+                "atomicEvidenceAdmissionByCanonicalRef"
+            ].items()
+        }
+        pay_key = admission_keys["2:pay-dem"]
+        delivery_key = admission_keys["3:deliver-storage-program"]
+        cases = (
+            (
+                "atomic-foreign-evidence-hash",
+                "atomicEvidenceAdmissionByCanonicalRef", "evidenceHash",
+                "Atomic Work settlement admission is malformed or mismatched",
+            ),
+            (
+                "atomic-foreign-phase-key",
+                "atomicEvidenceAdmissionByCanonicalRef", "phaseKey",
+                "Atomic Work admission resolves to another phase",
+            ),
+            (
+                "atomic-foreign-logical-address",
+                "atomicEvidenceAdmissionByCanonicalRef", "logicalAddress",
+                "evidence does not resolve to exactly one authenticated phase receipt",
+            ),
+            (
+                "atomic-foreign-receipt-address",
+                "verifiedReceiptByCanonicalRef", "logicalAddress",
+                "evidence does not resolve to exactly one authenticated phase receipt",
+            ),
+        )
+        for corpus_name, container, field, expected_reason in cases:
+            authority = copy.deepcopy(base)
+            entries = authority[container]
+            self.assertNotEqual(entries[pay_key][field], entries[delivery_key][field])
+            entries[pay_key][field] = entries[delivery_key][field]
+            with self.subTest(binding=f"{container}.{field}"):
+                disposition, reason, phase_keys = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+                self.assertIsNone(phase_keys)
+            with self.subTest(corpus=corpus_name):
+                disposition, reason, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][corpus_name], self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+
     def test_atomic_payment_is_laa_qualified_like_every_payment(self):
         authority = copy.deepcopy(
             self.data["executionAuthorities"]["atomic-current-completed"]

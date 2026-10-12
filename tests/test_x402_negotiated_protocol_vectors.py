@@ -33,6 +33,8 @@ EVM_EVENT = re.compile(r"^evm:([1-9][0-9]*):([0-9a-f]{64}):(0|[1-9][0-9]*)$")
 # A received EIP-155 response transaction: at most one 0x/0X prefix, then
 # exactly 32 bytes of hex in either case (the SB-1 legacy-spelling collapse).
 EVM_RESPONSE_TRANSACTION = re.compile(r"^(?:0[xX])?([0-9a-fA-F]{64})$")
+# XN-5: an EIP-155 address is `0x` plus 20 bytes of hex in either letter case.
+EVM_ADDRESS = re.compile(r"^0x[0-9a-fA-F]{40}$")
 # XN-2: ERC-20 decimals() and an SPL mint's decimals are both uint8.
 ASSET_DECIMALS_MAX = 255
 # XN-5 overflow ceiling per exact binding, keyed by CAIP-2 namespace: EIP-3009
@@ -696,6 +698,22 @@ def adapter_canonical_transaction(network, transaction):
     return None
 
 
+def adapter_address(network, address):
+    """XN-5: the comparison form of an address on the selected network.
+
+    An EIP-155 address compares as a 20-byte value: `0x` plus 40 hex digits,
+    letter case ignored. The EIP-55 checksum is neither required nor checked;
+    case carries no account identity. Anything else is a malformed coordinate
+    (ValueError). Other networks compare the exact string, since Solana's
+    base58 is case-sensitive.
+    """
+    if network.startswith("eip155:"):
+        if not (isinstance(address, str) and EVM_ADDRESS.fullmatch(address)):
+            raise ValueError("EVM address is not 0x plus 40 hexadecimal digits")
+        return address.lower()
+    return address
+
+
 def listing_agreement_type_violation(listing):
     """XN-2 listing admission: an offered x402:protocol ref needs the payee-bound phase.
 
@@ -945,7 +963,11 @@ def evaluate(v, effects=None):
         )
     except (TypeError, ValueError):
         return "fail", "exact-amount"
-    pay_to = binding[0]["payeeAddress"]
+    network = selection["network"]
+    try:
+        pay_to = adapter_address(network, binding[0]["payeeAddress"])
+    except ValueError:
+        return "error", "address-form"
     matches = []
     for candidate in accepts:
         if not isinstance(candidate, dict):
@@ -961,9 +983,12 @@ def evaluate(v, effects=None):
             and isinstance(candidate.get("extra"), dict)
             and jcs_canonicalize(candidate["extra"]) == jcs_canonicalize(selection["extra"])
             and candidate_amount == amount
-            and candidate.get("payTo") == pay_to
         ):
-            matches.append(candidate)
+            try:
+                if adapter_address(network, candidate.get("payTo")) == pay_to:
+                    matches.append(candidate)
+            except ValueError:
+                return "error", "address-form"
     if len(matches) != 1:
         return "fail", "challenge-match"
     action_bearing = set(http.get("actionBearingExtensions", []))
@@ -984,7 +1009,12 @@ def evaluate(v, effects=None):
         return "fail", "response-not-success"
     if response.get("network") != selection["network"]:
         return "fail", "response-network"
-    if response.get("payer") != runtime.get("payer", {}).get("paymentAddress"):
+    try:
+        payer = adapter_address(network, runtime.get("payer", {}).get("paymentAddress"))
+        response_payer = adapter_address(network, response.get("payer"))
+    except ValueError:
+        return "error", "address-form"
+    if response_payer != payer:
         return "fail", "response-payer"
 
     evidence = v.get("evidence", {})
@@ -1035,6 +1065,11 @@ def evaluate(v, effects=None):
     event = evidence_ref.get("settlementEvent")
     if not native_event_matches(event, selection["network"], transaction):
         return "error", "native-event-key"
+    try:
+        ledger_payer = adapter_address(network, ledger.get("payer"))
+        ledger_pay_to = adapter_address(network, ledger.get("payTo"))
+    except ValueError:
+        return "error", "address-form"
     if (
         ledger.get("network") != selection["network"]
         or adapter_canonical_transaction(selection["network"], ledger.get("transaction")) != transaction
@@ -1043,8 +1078,8 @@ def evaluate(v, effects=None):
         or ledger.get("asset") != selection["asset"]
         or ledger.get("assetDecimals") != selection["assetDecimals"]
         or ledger.get("amount") != amount
-        or ledger.get("payer") != runtime.get("payer", {}).get("paymentAddress")
-        or ledger.get("payTo") != pay_to
+        or ledger_payer != payer
+        or ledger_pay_to != pay_to
     ):
         return "fail", "ledger-event"
     if ledger.get("authorization") in {"eip-3009", "permit2"} and ledger.get("sessionBound") is not True:
@@ -1241,6 +1276,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "runtime-paying-key-not-buyer-controlled",
             "runtime-payer-address-not-derived-from-paying-key",
             "runtime-payee-not-signed-destination",
+            "challenge-payto-substitution-mixed-case",
+            "challenge-payto-not-20-bytes",
+            "payout-binding-not-20-bytes",
             "upto-has-no-dacs-success-profile",
             "legacy-default-new-session-disabled",
             "legacy-default-pinned-live-new-session",
@@ -1529,6 +1567,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
             "It MUST derive that form for both the retained and the recorded value before comparing them.",
+            "and the authenticated event's payer and payee as 20-byte values.",
+            "the EIP-55 checksum is neither required nor checked.",
+            "Other networks compare these addresses as exact strings.",
         ):
             self.assertIn(text, spec)
         # Notes are hard-wrapped blockquotes: compare without wrapping or markers.
@@ -1727,6 +1768,56 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                          " 0x" + tx, "0x", "", None, 1):
             with self.subTest(spelling=spelling):
                 self.assertIsNone(adapter_canonical_transaction("eip155:8453", spelling))
+
+    def test_evm_addresses_compare_as_20_byte_values(self):
+        """XN-5: EIP-155 addresses ignore letter case and the EIP-55 checksum; Solana is exact."""
+        lower = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        for spelling in (
+            lower,
+            "0x" + lower[2:].upper(),
+            "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",   # EIP-55's own spelling
+            "0x5AAEB6053f3e94c9b9a09f33669435e7ef1beaed",   # a wrong checksum is not checked
+        ):
+            with self.subTest(spelling=spelling):
+                self.assertEqual(adapter_address("eip155:8453", spelling), lower)
+        for spelling in ("0X" + lower[2:], lower[2:], lower[:-1], lower + "0", "0x" + "g" * 40,
+                         " " + lower, lower + "\n", "0x", "", None, 1):
+            with self.subTest(spelling=spelling), self.assertRaises(ValueError):
+                adapter_address("eip155:8453", spelling)
+        solana = "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        network = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        self.assertEqual(adapter_address(network, solana), solana)
+        self.assertNotEqual(adapter_address(network, solana.swapcase()), solana)
+
+        for name, want, calls in (
+            ("challenge-payto-eip55-checksum-binding-lower-case", ("pass", None), 1),
+            ("ledger-payto-upper-case", ("pass", None), 1),
+            ("response-payer-mixed-case", ("pass", None), 1),
+            ("challenge-payto-substitution-mixed-case", ("fail", "challenge-match"), 0),
+            ("challenge-payto-not-20-bytes", ("error", "address-form"), 0),
+            ("response-payer-not-20-bytes", ("error", "address-form"), 1),
+            ("payout-binding-not-20-bytes", ("error", "address-form"), 0),
+            ("ledger-payer-mixed-case", ("pass", None), 1),
+            ("solana-ledger-payer-case-changed", ("fail", "ledger-event"), 1),
+        ):
+            with self.subTest(vector=name):
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(self.by_name[name]), effects), want)
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), calls)
+        binding = self.by_name["challenge-payto-eip55-checksum-binding-lower-case"]
+        self.assertEqual(binding["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"], lower)
+        self.assertEqual(binding["http"]["paymentRequired"]["accepts"][0]["payTo"],
+                         "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed")
+
+        # Base58 is case-sensitive: a case change in the Solana ledger payer is a different payer.
+        vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
+        self.assertEqual(vector["ledger"]["payer"], solana)
+        vector["ledger"]["payer"] = solana.swapcase()
+        self.assertEqual(evaluate(vector), ("fail", "ledger-event"))
+        # An EIP-155 ledger address that is not 0x plus 40 hex digits is malformed.
+        vector = copy.deepcopy(self.by_name["protocol-v2-exact-success"])
+        vector["ledger"]["payer"] = vector["ledger"]["payer"][2:]
+        self.assertEqual(evaluate(vector), ("error", "address-form"))
 
     def test_ledger_transaction_is_compared_in_the_collapsed_form(self):
         """XN-7: the ledger side is collapsed too, in both spelling directions."""

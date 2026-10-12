@@ -79,6 +79,14 @@ The format used per release:
   adapter form, and the retained value stays verbatim. Both the retained and
   the recorded value are taken to that form first, so a value with none is
   `error` even when the two spellings are identical.
+- **EVM address comparison** (DACS-4 §9.5.7 XN-5) — on an EIP-155 network,
+  `payTo`, the PB-1 payout binding, the response `payer`, and the
+  authenticated event's payer and payee compare as 20-byte values: `0x` plus
+  40 hexadecimal digits, letter case ignored. The EIP-55 checksum is neither
+  required nor checked, so a checksummed upstream address matches a
+  lower-case binding. Any other spelling is a malformed coordinate and yields
+  `error`. Other networks, including Solana's case-sensitive base58, compare
+  these addresses exactly.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

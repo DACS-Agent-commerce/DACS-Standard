@@ -15,6 +15,7 @@ from jcs import canonicalize as jcs_canonicalize
 from evm_crypto import (
     deterministic_ecdsa_sha256,
     evm_address,
+    keccak256,
     uncompressed_public_key,
 )
 
@@ -31,6 +32,11 @@ EVM_BUYER_PRIVATE_SCALAR = 1
 EVM_BUYER_PUBLIC_KEY = uncompressed_public_key(EVM_BUYER_PRIVATE_SCALAR)
 BUYER_ADDRESS = evm_address(EVM_BUYER_PUBLIC_KEY)
 SELLER_ADDRESS = "0x" + "22" * 20
+# XN-5 address-case vectors need hex letters, which SELLER_ADDRESS lacks. These
+# are EIP-55's first two examples, so their checksum spellings can be checked
+# against the EIP.
+LETTERED_SELLER = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+OTHER_LETTERED_ADDRESS = "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359"
 SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
 SOLANA_ASSET = "3" * 44
 SOLANA_SELLER = "5" * 44
@@ -110,6 +116,16 @@ def sign(role: str, domain: str, unsigned: object) -> str:
 
 def unsigned(value: dict, signature_field: str) -> dict:
     return {k: v for k, v in value.items() if k != signature_field}
+
+
+def eip55(address: str) -> str:
+    """The EIP-55 mixed-case checksum spelling of a 0x-prefixed EVM address."""
+    digits = address[2:].lower()
+    hashed = keccak256(digits.encode("ascii")).hex()
+    return "0x" + "".join(
+        char.upper() if int(nibble, 16) >= 8 else char
+        for char, nibble in zip(digits, hashed)
+    )
 
 
 def payment_claim(network: str, address: str) -> str:
@@ -1172,6 +1188,64 @@ def build_vectors() -> list[dict]:
              "authenticated event destination must be the signed payout binding",
              lambda v: v["ledger"].update({"payTo": "0x" + "99" * 20}),
              authorization_submitted=True)
+
+    # XN-5: an EIP-155 address compares as a 20-byte value, letter case ignored;
+    # the EIP-55 checksum is neither required nor checked. The seller here is
+    # LETTERED_SELLER, signed in lower case in the payout binding.
+    def lettered_seller(pay_to, ledger_pay_to=LETTERED_SELLER):
+        def mutate(v):
+            v["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"] = LETTERED_SELLER
+            v["runtime"]["payee"]["payeeAddress"] = LETTERED_SELLER
+            v["http"]["paymentRequired"]["accepts"][0]["payTo"] = pay_to
+            v["ledger"]["payTo"] = ledger_pay_to
+        return mutate
+    add_case(vectors, "challenge-payto-eip55-checksum-binding-lower-case", "pass", "XN-5",
+             "an EIP-55 checksummed payTo matches the lower-case payout binding",
+             lettered_seller(eip55(LETTERED_SELLER)), refresh=True)
+    add_case(vectors, "ledger-payto-upper-case", "pass", "XN-5/XN-8",
+             "an upper-case authenticated ledger payTo is the same 20-byte destination",
+             lettered_seller(LETTERED_SELLER, "0x" + LETTERED_SELLER[2:].upper()), refresh=True)
+    add_case(vectors, "challenge-payto-substitution-mixed-case", "fail", "XN-4/XN-5",
+             "a different address stays a mismatch in EIP-55 mixed case",
+             lettered_seller(eip55(OTHER_LETTERED_ADDRESS)), refresh=True,
+             reason="challenge-match")
+    add_case(vectors, "challenge-payto-not-20-bytes", "error", "XN-5",
+             "an EIP-155 payTo that is not 0x plus 40 hex digits is malformed before authorization",
+             lettered_seller(LETTERED_SELLER[:-2]), refresh=True, reason="address-form")
+
+    def malformed_payout_binding(v):
+        lettered_seller(LETTERED_SELLER)(v)
+        v["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"] = LETTERED_SELLER[:-2]
+        v["runtime"]["payee"]["payeeAddress"] = LETTERED_SELLER[:-2]
+    add_case(vectors, "payout-binding-not-20-bytes", "error", "XN-5/PB-1",
+             "a signed EIP-155 payout binding that is not 0x plus 40 hex digits is malformed "
+             "before authorization, even beside a well-formed payTo",
+             malformed_payout_binding, refresh=True, reason="address-form")
+    add_case(vectors, "ledger-payer-mixed-case", "pass", "XN-5/XN-8",
+             "an EIP-55 mixed-case authenticated ledger payer is the same 20-byte payer",
+             lambda v: v["ledger"].update({"payer": eip55(BUYER_ADDRESS)}))
+
+    def solana_ledger_payer_case_changed(v):
+        solana_exact(v)
+        v["ledger"]["payer"] = SOLANA_BUYER.replace("k", "K", 1)
+    add_case(vectors, "solana-ledger-payer-case-changed", "fail", "XN-5/XN-8",
+             "base58 is case-sensitive, so one changed letter case names a different Solana payer",
+             solana_ledger_payer_case_changed, refresh=True, authorization_submitted=True,
+             reason="ledger-event")
+
+    def response_payer(payer):
+        def mutate(v):
+            response = settlement_response(2)
+            response["payer"] = payer
+            v["http"]["responseHeader"] = encoded_header(response, 2)
+        return mutate
+    add_case(vectors, "response-payer-mixed-case", "pass", "XN-5/XN-7",
+             "an EIP-55 mixed-case response payer is the same 20-byte payer",
+             response_payer(eip55(BUYER_ADDRESS)), refresh=True)
+    add_case(vectors, "response-payer-not-20-bytes", "error", "XN-5/XN-7",
+             "an EIP-155 response payer that is not 0x plus 40 hex digits is malformed",
+             response_payer(BUYER_ADDRESS + "00"), refresh=True,
+             authorization_submitted=True, reason="address-form")
 
     add_case(vectors, "payment-required-hash-substitution", "fail", "XN-7",
              "stored challenge hash must recompute from the complete object",

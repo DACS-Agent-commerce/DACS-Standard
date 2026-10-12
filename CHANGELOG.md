@@ -182,7 +182,7 @@ The format used per release:
   as success). A refused challenge is `error` before authorization; a refused
   response does not decode, which is a response defect, so the ledger still
   decides. Vectors may carry the challenge as raw bytes
-  (`http.paymentRequiredRaw`).
+  (`http.paymentRequiredRaw`), but not in both forms.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

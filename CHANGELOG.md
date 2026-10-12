@@ -121,6 +121,11 @@ The format used per release:
   `batch-settlement` alike, is a pre-authorization `fail` / permanent handler
   result: no wallet call is made and the phase ends there. `batch-settlement`
   no longer stays `indeterminate` with no end state.
+- **Transient answers to the unpaid request** (DACS-4 §9.5.7 XN-4) — no answer,
+  a 5xx, 408, or 429 to the unpaid request is transient: nothing was
+  authorized, the result is `indeterminate`, and the request may be retried
+  with no party at fault. Only a definite non-payment answer (2xx, 3xx, or
+  another 4xx) rejects before authorization.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

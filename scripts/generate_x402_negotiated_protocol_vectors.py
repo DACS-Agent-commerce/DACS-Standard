@@ -1047,6 +1047,28 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "non-402-response-before-authorization", "fail", "XN-4",
              "a normal 200 response is not an x402 challenge",
              lambda v: v["http"].update({"status": 200}))
+    # XN-4: only a definite non-payment answer fails. No answer, a server error,
+    # a timeout or a rate limit is transient: nothing was authorized, so the
+    # unpaid request is retried and no party is at fault.
+    for name, expected, status, note in (
+        ("unpaid-request-not-found-404", "fail", 404,
+         "a 404 is a definite non-payment answer, not an x402 challenge"),
+        ("unpaid-request-server-error-500", "indeterminate", 500,
+         "a 500 to the unpaid request is transient and retryable"),
+        ("unpaid-request-service-unavailable-503", "indeterminate", 503,
+         "a 503 to the unpaid request is transient and retryable"),
+        ("unpaid-request-gateway-timeout-504", "indeterminate", 504,
+         "a 504 to the unpaid request is transient and retryable"),
+        ("unpaid-request-timeout-408", "indeterminate", 408,
+         "a 408 request timeout is transient and retryable"),
+        ("unpaid-request-rate-limited-429", "indeterminate", 429,
+         "a 429 rate limit is transient and retryable"),
+        ("unpaid-request-no-answer", "indeterminate", None,
+         "no answer to the unpaid request (a timeout) is transient and retryable"),
+    ):
+        add_case(vectors, name, expected, "XN-4", note,
+                 lambda v, s=status: v["http"].update({"status": s}),
+                 reason="not-payment-required" if expected == "fail" else "unpaid-request-transient")
     add_case(vectors, "challenge-resource-substitution", "fail", "XN-4",
              "resource URL substitution rejects before signing",
              lambda v: v["http"]["paymentRequired"]["resource"].update({"url": "https://attacker.example/pay"}))

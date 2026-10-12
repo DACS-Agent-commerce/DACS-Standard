@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 201,
-  "hash": "904d8202f8d1ab79455321782fef7d0f25c97f9d7eb281c83e15d49e2e5cc594",
+  "count": 208,
+  "hash": "75049eb52ba22506ef2795a316ab00c97b624a5d5e8b85268f3461bbaf201a6b",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -10651,6 +10651,139 @@
           "value": 200
         }
       ]
+    },
+    {
+      "name": "unpaid-request-not-found-404",
+      "expected": "fail",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a 404 is a definite non-payment answer, not an x402 challenge",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 404
+        }
+      ],
+      "expectedReason": "not-payment-required"
+    },
+    {
+      "name": "unpaid-request-server-error-500",
+      "expected": "indeterminate",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a 500 to the unpaid request is transient and retryable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 500
+        }
+      ],
+      "expectedReason": "unpaid-request-transient"
+    },
+    {
+      "name": "unpaid-request-service-unavailable-503",
+      "expected": "indeterminate",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a 503 to the unpaid request is transient and retryable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 503
+        }
+      ],
+      "expectedReason": "unpaid-request-transient"
+    },
+    {
+      "name": "unpaid-request-gateway-timeout-504",
+      "expected": "indeterminate",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a 504 to the unpaid request is transient and retryable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 504
+        }
+      ],
+      "expectedReason": "unpaid-request-transient"
+    },
+    {
+      "name": "unpaid-request-timeout-408",
+      "expected": "indeterminate",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a 408 request timeout is transient and retryable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 408
+        }
+      ],
+      "expectedReason": "unpaid-request-transient"
+    },
+    {
+      "name": "unpaid-request-rate-limited-429",
+      "expected": "indeterminate",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a 429 rate limit is transient and retryable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 429
+        }
+      ],
+      "expectedReason": "unpaid-request-transient"
+    },
+    {
+      "name": "unpaid-request-no-answer",
+      "expected": "indeterminate",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "no answer to the unpaid request (a timeout) is transient and retryable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": null
+        }
+      ],
+      "expectedReason": "unpaid-request-transient"
     },
     {
       "name": "challenge-resource-substitution",

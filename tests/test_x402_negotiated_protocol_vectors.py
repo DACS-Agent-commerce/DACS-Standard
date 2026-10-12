@@ -1014,7 +1014,12 @@ def evaluate(v, effects=None):
         return "fail", "unsigned-request-body"
 
     http = v.get("http", {})
-    if http.get("status") != 402:
+    status = http.get("status")
+    # XN-4: no answer, a server error, a timeout or a rate limit is transient.
+    # Nothing is authorized yet, so the unpaid request can simply be retried.
+    if status is None or type(status) is int and (500 <= status <= 599 or status in (408, 429)):
+        return "indeterminate", "unpaid-request-transient"
+    if status != 402:
         return "fail", "not-payment-required"
     required = http.get("paymentRequired")
     if not isinstance(required, dict) or required.get("x402Version") != selection["x402Version"]:
@@ -1357,6 +1362,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "unsupported-local-capability",
             "counterparty-operator-config",
             "non-402-response-before-authorization",
+            "unpaid-request-not-found-404",
+            "unpaid-request-server-error-500",
+            "unpaid-request-service-unavailable-503",
+            "unpaid-request-gateway-timeout-504",
+            "unpaid-request-timeout-408",
+            "unpaid-request-rate-limited-429",
+            "unpaid-request-no-answer",
             "challenge-resource-substitution",
             "challenge-duplicate-exact-accepts",
             "challenge-network-substitution",
@@ -1522,6 +1534,25 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
         vector["ledger"].pop("sessionBinding")
         self.assertEqual(evaluate(vector), ("pass", None))
+
+    def test_unpaid_request_answers_split_transient_from_definite(self):
+        """XN-4: no answer, 5xx, 408 and 429 are transient; other non-402 answers fail."""
+        base = self.by_name["protocol-v2-exact-success"]
+        for status in (None, 408, 429, 500, 502, 503, 504, 599):
+            with self.subTest(status=status):
+                vector = copy.deepcopy(base)
+                vector["http"]["status"] = status
+                effects = {}
+                self.assertEqual(evaluate(vector, effects),
+                                 ("indeterminate", "unpaid-request-transient"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        for status in (200, 204, 301, 302, 400, 401, 403, 404, 410, 499):
+            with self.subTest(status=status):
+                vector = copy.deepcopy(base)
+                vector["http"]["status"] = status
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), ("fail", "not-payment-required"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
 
     def test_retry_authorization_identity_compares_as_an_xn5_address(self):
         """XN-11/XN-5: both sides of the authorization identity take the adapter form first."""
@@ -1818,6 +1849,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             '`availability: "disabled"`',
             "MUST NOT rewrite",
             "Its host MUST NOT contain `%`.",
+            "No answer, a 5xx, 408, or 429 is transient: nothing is authorized, the result is "
+            "`indeterminate`, and the unpaid request may be retried.",
             "internationalized host MUST be signed in A-label form",
             "every host label that begins with `xn--` in any letter case MUST be an RFC 5890 A-label",
             "no userinfo or fragment, even an empty one.",

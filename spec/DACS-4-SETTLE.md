@@ -1224,7 +1224,7 @@ XN-10.
 
 - **(XN-3) Capability and operator separation.** Before the unpaid request, the executing implementation MUST establish local support for the exact `(x402Version, scheme, network)` and for a DACS scheme-binding profile capable of independently verifying that network. Unsupported local capability is `ok: false` / `errorClass: "permanent"` with reason `x402-capability-unsupported`; it is not proof that the signed offer or provider is globally invalid. Facilitator endpoints and credentials, wallet selection, RPC endpoints, API keys, and routing preferences MUST remain trusted local configuration. They MUST NOT be read from the global protocol definition, the selected rail reference, a PaymentRequired extension, a catalog, or another counterparty-controlled input. Changing them MUST NOT change `railId`, `railVersion`, or the agreement's selected requirement. A tuple the implementation does not support is therefore a pre-authorization `fail` / permanent handler result. A supported tuple whose scheme lacks a DACS success binding follows the XN-9 disposition; implementations MUST NOT choose another one locally.
 
-- **(XN-4) Exact challenge match.** The unpaid response MUST be an HTTP 402 with a well-formed `PaymentRequired` for the signed `x402Version`. The version adapter preserves the complete raw object for hashing and exposes one comparison surface. v2 uses top-level `resource.url` and `PaymentRequirements.amount`; v1 maps the selected member's `resource` to the URL and `maxAmountRequired` to `amount` without rewriting the retained object. `PaymentRequired.x402Version` and the effective resource URL MUST equal the signed selection. Exactly one `accepts` member MUST match the signed `scheme`, CAIP-2 `network`, `asset`, `maxTimeoutSeconds`, and complete CORE §B.2 JCS `extra` object, plus the amount and destination derived by XN-5. Zero or multiple matches, a non-parseable/non-version-shaped 402 body, a bare network label, or any mismatch MUST reject before authorization. For v2, the presence and complete JCS value of top-level `PaymentRequired.extensions` MUST equal `paymentRequiredExtensions`; omitted and `{}` are distinct. A v1 selection MUST omit `paymentRequiredExtensions`.
+- **(XN-4) Exact challenge match.** The unpaid response MUST be an HTTP 402 with a well-formed `PaymentRequired` for the signed `x402Version`. No answer, a 5xx, 408, or 429 is transient: nothing is authorized, the result is `indeterminate`, and the unpaid request may be retried. Any other status is a definite non-payment answer and rejects before authorization. The version adapter preserves the complete raw object for hashing and exposes one comparison surface. v2 uses top-level `resource.url` and `PaymentRequirements.amount`; v1 maps the selected member's `resource` to the URL and `maxAmountRequired` to `amount` without rewriting the retained object. `PaymentRequired.x402Version` and the effective resource URL MUST equal the signed selection. Exactly one `accepts` member MUST match the signed `scheme`, CAIP-2 `network`, `asset`, `maxTimeoutSeconds`, and complete CORE §B.2 JCS `extra` object, plus the amount and destination derived by XN-5. Zero or multiple matches, a non-parseable/non-version-shaped 402 body, a bare network label, or any mismatch MUST reject before authorization. For v2, the presence and complete JCS value of top-level `PaymentRequired.extensions` MUST equal `paymentRequiredExtensions`; omitted and `{}` are distinct. A v1 selection MUST omit `paymentRequiredExtensions`.
 
 - **(XN-5) Exact amount and signed parties.** v0.8 defines DACS settlement success only for `selection.scheme == "exact"`.
   - The handler MUST require `selection.currency == agreement.terms.price.currency`, independently establish that `selection.assetDecimals` is correct for the selected asset through its scheme/network adapter, and convert the CD-1 agreement amount to atomic units by exact decimal shifting. Excess fractional precision, rounding, floating-point conversion, overflow, a non-canonical unsigned atomic amount, or inequality with the matched requirement's `amount` MUST reject before authorization.
@@ -1287,6 +1287,8 @@ not authorize a new session under XN-10.
 
 **Failure modes.**
 
+- unpaid request gets no answer, a 5xx, 408, or 429 → `transient`; retry the unpaid request, which authorized nothing
+- unpaid request gets another non-402 answer (2xx, 3xx, or another 4xx) → `counterparty`
 - challenge is malformed or differs from the signed selection before authorization → `counterparty`
 - local version/scheme/network capability is unsupported before authorization → `permanent` with `x402-capability-unsupported`, not `counterparty`
 - settlement response after submission that rejects the payment or is missing, malformed, non-success, payer/network/transaction-inconsistent, or carries an invalid signed receipt extension → the ledger decides under XN-11, never the response
@@ -2996,9 +2998,10 @@ timeout, `extra`, or extensions after agreement and before authorization.
 *Mitigation:* XN-1 keeps the global arm provider-neutral; XN-2 places every
 resolution input inside the co-signed agreement; XN-4..XN-6 require one exact
 challenge match and prohibit redirect/effective-request changes before wallet
-use. *Residual:* endpoint availability remains a seller operational concern; a
-dead signed endpoint fails or stays transient and cannot be silently replaced
-inside the session.
+use. *Residual:* endpoint availability remains a seller operational concern. An
+unanswering, overloaded, or rate-limiting signed endpoint stays transient
+(XN-4) and a definite non-payment answer fails; neither can be silently
+replaced inside the session.
 
 **x402 acknowledgement downgrade.** *Threat:* a server/facilitator response or
 signed extension is presented as finalized payment without independent

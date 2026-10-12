@@ -1261,6 +1261,21 @@ def build_vectors() -> list[dict]:
              "a malformed signed EIP-155 payout binding is malformed before authorization "
              "even when the runtime payee is well formed",
              malformed_binding_runtime_payee_valid, refresh=True, reason="address-form")
+    # The unsigned runtime copies at the same two gates.
+    add_case(vectors, "runtime-payer-eip55-derived-payer-lower-case", "pass", "XN-5",
+             "an EIP-55 runtime authorization payer is the same 20-byte payer as the "
+             "lower-case paying-key claim and derived payer",
+             lambda v: v["runtime"]["payer"].update({"paymentAddress": eip55(BUYER_ADDRESS)}))
+    add_case(vectors, "runtime-payer-not-20-bytes", "error", "XN-5",
+             "a runtime authorization payer that is not 0x plus 40 hex digits is malformed "
+             "before authorization, even beside a well-formed claim and derived payer",
+             lambda v: v["runtime"]["payer"].update({"paymentAddress": BUYER_ADDRESS[:-2]}),
+             reason="address-form")
+    add_case(vectors, "runtime-payee-not-20-bytes-binding-valid", "error", "XN-5/PB-1",
+             "a runtime payee that is not 0x plus 40 hex digits is malformed before "
+             "authorization, even beside a well-formed signed payout binding",
+             lambda v: v["runtime"]["payee"].update({"payeeAddress": SELLER_ADDRESS[:-2]}),
+             reason="address-form")
     add_case(vectors, "ledger-payer-mixed-case", "pass", "XN-5/XN-8",
              "an EIP-55 mixed-case authenticated ledger payer is the same 20-byte payer",
              lambda v: v["ledger"].update({"payer": eip55(BUYER_ADDRESS)}))

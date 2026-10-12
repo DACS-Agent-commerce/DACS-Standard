@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 182,
-  "hash": "a1bc229b20852fbc3dad93236f2e0adee66f70c9f7e108310297b8e99875d4aa",
+  "count": 185,
+  "hash": "0846d9cc24d2f62d41cc3e1af5ea369f3666e11fafee8348be90673a7eec2f5a",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -14369,6 +14369,73 @@
             "payeeAddress"
           ],
           "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "runtime-payer-eip55-derived-payer-lower-case",
+      "expected": "pass",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "an EIP-55 runtime authorization payer is the same 20-byte payer as the lower-case paying-key claim and derived payer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
+        }
+      ]
+    },
+    {
+      "name": "runtime-payer-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "a runtime authorization payer that is not 0x plus 40 hex digits is malformed before authorization, even beside a well-formed claim and derived payer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "0x7e5f4552091a69125d5dfcb7b8c2659029395b"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "runtime-payee-not-20-bytes-binding-valid",
+      "expected": "error",
+      "rule": "XN-5/PB-1",
+      "operation": "execute",
+      "note": "a runtime payee that is not 0x plus 40 hex digits is malformed before authorization, even beside a well-formed signed payout binding",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "0x22222222222222222222222222222222222222"
         }
       ],
       "expectedReason": "address-form"

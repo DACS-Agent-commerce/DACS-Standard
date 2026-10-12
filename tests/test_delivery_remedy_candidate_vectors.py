@@ -93,6 +93,29 @@ def _nested(levels):
     return value
 
 
+# Runs the verifier's command line with the pure-Python JSON scanner, whose
+# recursion only `sys.setrecursionlimit` bounds, and reports how the parse
+# ended.  At the default limit a deep text raises RecursionError, as 3.12's C
+# scanner does; at a raised limit it parses, as 3.13's and later ones can.
+FORCED_PARSE = """
+import json, json.scanner, sys
+from scripts import verify_delivery_remedy_candidate_vectors as verifier
+json.scanner.make_scanner = json.scanner.py_make_scanner
+sys.setrecursionlimit(int(sys.argv[1]))
+loads = json.loads
+def recording(*args, **kwargs):
+    try:
+        value = loads(*args, **kwargs)
+    except RecursionError:
+        print("parse raised RecursionError")
+        raise
+    print("parse returned")
+    return value
+json.loads = recording
+sys.exit(verifier.main(sys.argv[2:]))
+"""
+
+
 def _without_reproduction_inputs(value):
     value["reproductionInputs"] = []
     value["resolverEvidence"]["eventObservationsHash"] = content_hash(None)
@@ -1785,13 +1808,17 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             (scratch / "nan.json").write_text(text.replace('"fundedAtSec": 1799990000', '"fundedAtSec": NaN', 1), encoding="utf-8")
             (scratch / "huge.json").write_text(text.replace('"fundedAtSec": 1799990000', '"fundedAtSec": 9007199254740992', 1), encoding="utf-8")
             (scratch / "broken.json").write_text("{", encoding="utf-8")
-            # Too deep for the parser, and parseable but too deep to copy.
-            (scratch / "deep.json").write_text("[" * 100_000 + "]" * 100_000, encoding="utf-8")
-            nested = '{"k":' * 2000 + "0" + "}" * 2000
-            (scratch / "deep-member.json").write_text(
-                text.replace('"fundedAtSec": 1799990000', f'"deep": {nested}, "fundedAtSec": 1799990000', 1),
-                encoding="utf-8",
-            )
+            # The real pack with one member nested past MAX_JSON_DEPTH, so
+            # only the depth bound can refuse it: 100,000 levels, which 3.12's
+            # parser refuses and later ones can parse, and 2,000 levels, which
+            # every interpreter parses.
+            too_deep = f"invalid JSON: arrays and objects nest deeper than {verifier.MAX_JSON_DEPTH} levels"
+            for name, levels in (("deep.json", 100_000), ("deep-member.json", 2000)):
+                nested = '{"k":' * levels + "0" + "}" * levels
+                (scratch / name).write_text(
+                    text.replace('"fundedAtSec": 1799990000', f'"deep": {nested}, "fundedAtSec": 1799990000', 1),
+                    encoding="utf-8",
+                )
             relative = Path("conformance/fixtures/delivery-remedy/candidate-vectors-v0.1.json")
             for args, returncode, needle in (
                 (["--vectors", str(relative)], 0, "no rail registered"),
@@ -1799,8 +1826,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 (["--vectors", str(scratch / "nan.json")], 1, "invalid JSON: NaN is not a JSON number"),
                 (["--vectors", str(scratch / "huge.json")], 1, "invalid JSON: integer 9007199254740992 is outside"),
                 (["--vectors", str(scratch / "broken.json")], 1, "invalid JSON"),
-                (["--vectors", str(scratch / "deep.json")], 1, "invalid JSON: arrays and objects nest too deeply to parse"),
-                (["--vectors", str(scratch / "deep-member.json")], 1, "deep-member.json: arrays and objects nest too deeply to verify"),
+                (["--vectors", str(scratch / "deep.json")], 1, f"deep.json: {too_deep}"),
+                (["--vectors", str(scratch / "deep-member.json")], 1, f"deep-member.json: {too_deep}"),
                 (["--vectors", str(scratch)], 1, "cannot read"),
                 (["--vectors", str(scratch / "absent.json")], 1, "file not found"),
             ):
@@ -1811,6 +1838,38 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     self.assertEqual(proc.returncode, returncode, proc.stdout + proc.stderr)
                     self.assertIn(needle, proc.stdout + proc.stderr)
                     self.assertNotIn("Traceback", proc.stderr)
+            # The listed error does not depend on whether `json.loads` refuses
+            # the deep pack: each parse outcome is forced, whatever this
+            # interpreter does natively, and lists the same error.
+            deep = scratch / "deep.json"
+            listed = {}
+            for outcome, command in (
+                ("native", [str(VERIFIER)]),
+                ("raised RecursionError", ["-c", FORCED_PARSE, "1000"]),
+                ("returned", ["-c", FORCED_PARSE, "1000000"]),
+            ):
+                with self.subTest(parse=outcome):
+                    proc = subprocess.run(
+                        [sys.executable, *command, "--vectors", str(deep)], cwd=ROOT, capture_output=True, text=True,
+                    )
+                    listed[outcome] = proc.stderr
+                    self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+                    if outcome != "native":
+                        # The vector pack, then the deployment pack.
+                        self.assertEqual(proc.stdout, f"parse {outcome}\nparse returned\n")
+            self.assertEqual(listed["raised RecursionError"], listed["returned"], "the listed error depends on the parse")
+            self.assertEqual(listed["native"], listed["returned"], "the listed error depends on the interpreter")
+            self.assertEqual(
+                listed["native"], f"delivery-or-remedy candidate verification failed:\n- {deep}: {too_deep}\n",
+            )
+            # The bound is inclusive, and checked on the parsed value.
+            limit = verifier.MAX_JSON_DEPTH
+            bound = scratch / "bound.json"
+            bound.write_text("[" * limit + "]" * limit, encoding="utf-8")
+            self.assertTrue(verifier.nesting_within(verifier.load_json(bound), limit))
+            bound.write_text("[" * (limit + 1) + "]" * (limit + 1), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, f"^arrays and objects nest deeper than {limit} levels$"):
+                verifier.load_json(bound)
             # A relative path from another directory is reported as given.
             proc = subprocess.run(
                 [sys.executable, str(VERIFIER), "--vectors", "stale.json"], cwd=scratch, capture_output=True, text=True,

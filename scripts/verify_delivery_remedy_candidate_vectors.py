@@ -55,12 +55,14 @@ MAX_TOKEN_DECIMALS = 255
 # CORE §B.2 numeric safe-magnitude constraint: every JSON number is finite and
 # at most 2^53 - 1 in magnitude.
 SAFE_INTEGER_MAX = 2 ** 53 - 1
-# The deepest array/object nesting a lifecycle may have.  The pack's deepest
-# lifecycle nests 7 levels.  JCS canonicalisation, `json.dumps` and
-# `copy.deepcopy` recurse once or more per level, and a lifecycle a few hundred
-# levels deep exhausts CPython's default 1,000-frame recursion limit; 64 leaves
-# room for producer extensions and stays far inside that limit.
+# The deepest array/object nesting a lifecycle or a pack file may have.  The
+# pack's deepest lifecycle nests 7 levels, and the packs themselves 9.  JCS
+# canonicalisation, `json.dumps` and `copy.deepcopy` recurse once or more per
+# level, and a lifecycle a few hundred levels deep exhausts CPython's default
+# 1,000-frame recursion limit; 64 leaves room for producer extensions and stays
+# far inside that limit.
 MAX_JSON_DEPTH = 64
+TOO_DEEP = f"arrays and objects nest deeper than {MAX_JSON_DEPTH} levels"
 # What a malformed value can raise while a check reads it.  Each lifecycle in a
 # batch that raises one is its own `error`; the guard audit sets this to ().
 MALFORMED_INPUT_ERRORS: tuple[type[Exception], ...] = (
@@ -2510,12 +2512,21 @@ def _reject_constant(text: str) -> Any:
 
 
 def load_json(path: Path) -> Any:
-    """Parse JSON in the CORE §B.2 number profile: no NaN, no Infinity, no unsafe integer."""
+    """Parse JSON in the CORE §B.2 number profile: no NaN, no Infinity, no unsafe integer.
+
+    Nesting is bounded by MAX_JSON_DEPTH.  Whether `json.loads` refuses a deep
+    text depends on the interpreter (3.12 raises RecursionError; 3.13 and later
+    can parse it), so the bound is checked on the parsed value, and both ways
+    give the same error.
+    """
     text = path.read_text(encoding="utf-8")
     try:
-        return json.loads(text, parse_int=_parse_safe_int, parse_constant=_reject_constant)
+        value = json.loads(text, parse_int=_parse_safe_int, parse_constant=_reject_constant)
     except RecursionError:
-        raise ValueError("arrays and objects nest too deeply to parse") from None
+        raise ValueError(TOO_DEEP) from None
+    if not nesting_within(value, MAX_JSON_DEPTH):
+        raise ValueError(TOO_DEEP)
+    return value
 
 
 def _display_path(path: Path) -> str:
@@ -2542,15 +2553,11 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, UnicodeDecodeError) as exc:
             errors.append(f"{path}: cannot read: {exc}")
             continue
-        except ValueError as exc:  # json.JSONDecodeError, or outside the number profile
+        except ValueError as exc:  # json.JSONDecodeError, or outside the number or depth profile
             errors.append(f"{path}: invalid JSON: {exc}")
             continue
         packs.append(pack)
-        try:
-            messages = verifier(pack)
-        except RecursionError:  # copying or hashing a pack nested past the stack
-            messages = ["arrays and objects nest too deeply to verify"]
-        errors.extend(f"{_display_path(path)}: {message}" for message in messages)
+        errors.extend(f"{_display_path(path)}: {message}" for message in verifier(pack))
     if errors:
         print("delivery-or-remedy candidate verification failed:", file=sys.stderr)
         for error in errors:

@@ -83,8 +83,10 @@ So is a lifecycle that nests arrays and objects more than 64 deep:
 the pack's deepest lifecycle nests 7, and the bound is checked iteratively
 before anything is hashed, because canonicalisation recurses once per level.
 A batch gives one malformed lifecycle its own `error` and still judges the
-others, and the command line lists a pack it cannot parse, or one nested too
-deeply to verify, as an error.
+others. The command line lists a pack it cannot parse as an error, and a pack
+file nested more than 64 deep too. It checks that bound on the parsed value,
+so the error is the same whether or not the interpreter's JSON parser refuses
+a deep text itself (Python 3.12 does; 3.13 and later can parse it).
 The verifier reports malformed input (candidate §9 step 2) under DRV-3, the
 malformed-encoding rule: nothing is repaired before hashing or comparison.
 DRV-2 keeps unavailable or inconsistent RPC data `indeterminate`, as for an

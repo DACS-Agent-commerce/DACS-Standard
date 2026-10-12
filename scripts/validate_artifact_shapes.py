@@ -263,7 +263,10 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
         if field not in value or field in {"kind", "receiptAttestation", "receiptTransactionRef"}:
             continue
         expected = int if field in int_fields else str
+        # bool is an int subclass in Python, but JSON true/false is not a number.
         if not isinstance(value[field], expected) or (
+            expected is int and isinstance(value[field], bool)
+        ) or (
             expected is str and not value[field]
         ):
             errors.append(

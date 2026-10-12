@@ -1527,11 +1527,17 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "(string-decimal multiplication, no float).",
             SETTLE_SPEC.read_text(encoding="utf-8"),
         )
+        # String arithmetic, so an amount longer than Python's int-string limit
+        # (4,300 digits) converts exactly too.
+        long_amount = "9" * 4301
         for amount, decimals, expected in (
             ("1", 6, "1000000"), ("0.5", 6, "500000"), ("12.345678", 6, "12345678"),
             ("0", 6, "0"), ("7", 0, "7"), ("1.0000001", 6, None), ("0.1", 0, None),
+            ("0.000001", 6, "1"), ("0.05", 18, "5" + "0" * 16), ("0", 0, "0"),
+            (long_amount, 0, long_amount), (long_amount, 2, long_amount + "00"),
+            ("0." + "0" * 254 + "1", 255, "1"),
         ):
-            with self.subTest(amount=amount, decimals=decimals):
+            with self.subTest(amount=amount[:20], decimals=decimals):
                 self.assertEqual(verifier.price_base_units(amount, decimals), expected)
         release = self._fixture("release")["artifacts"]
         self.assertEqual(release["bilateralAgreement"]["price"], {"amount": "1", "currency": "USDC"})
@@ -1545,7 +1551,20 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "18 decimals": ({"rail": put("tokenDecimals", 18), "agreement": put("budgetBaseUnits", "1" + "0" * 18)}, ("verified", "DRV-7")),
             "zero price and budget": ({"bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0")}, ("rejected", "DRA-10")),
             "zero price": ({"bilateral": put("price", "amount", "0")}, ("rejected", "DRA-10")),
-            "excess precision": ({"bilateral": put("price", "amount", "1.0000001")}, ("rejected", "DRA-10")),
+            # A valid canonical amount of 4,301 digits is compared exactly.
+            "4,301-digit price and budget": ({
+                "bilateral": put("price", "amount", long_amount), "rail": put("tokenDecimals", 0),
+                "agreement": put("budgetBaseUnits", long_amount),
+            }, ("verified", "DRV-7")),
+            "4,301-digit price, budget one unit short": ({
+                "bilateral": put("price", "amount", long_amount), "rail": put("tokenDecimals", 0),
+                "agreement": put("budgetBaseUnits", "9" * 4300 + "8"),
+            }, ("rejected", "DRA-10")),
+            # DACS-4 §9.13: excess precision is an error, decided before the
+            # budget comparison whatever the budget is.
+            "excess precision": ({"bilateral": put("price", "amount", "1.0000001")}, ("error", "DRV-3")),
+            "excess precision, zero decimals": ({"bilateral": put("price", "amount", "1.5"), "rail": put("tokenDecimals", 0)}, ("error", "DRV-3")),
+            "excess precision, zero budget": ({"bilateral": put("price", "amount", "0.0000001"), "agreement": put("budgetBaseUnits", "0")}, ("error", "DRV-3")),
             "wrong amount": ({"bilateral": put("price", "amount", "2")}, ("rejected", "DRA-10")),
             "wrong currency": ({"bilateral": put("price", "currency", "DAI")}, ("rejected", "DRA-10")),
             "wrong decimals": ({"rail": put("tokenDecimals", 18)}, ("rejected", "DRA-10")),

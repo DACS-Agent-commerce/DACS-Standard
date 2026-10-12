@@ -116,10 +116,14 @@ The overlay's `budgetBaseUnits` must be the bilateral agreement's price
 converted with the rail's pinned token decimals (DRA-10), as DACS-4 §9.5.2
 steps 2 and 3 convert a `PriceTerm`. The price currency must be the rail's
 `paymentTokenSymbol`, and `amount × 10^tokenDecimals` is computed exactly from
-the CD-1 decimal text. A wrong amount, currency, or decimals, a zero price
-(DACS-4 §9.3 requires an agreed `PriceTerm.amount` strictly greater than zero),
-or a price with more fractional digits than the token carries, is rejected
-under DRA-10.
+the CD-1 decimal text as string arithmetic: the fraction is padded to
+`tokenDecimals` digits, leading zeros are stripped, and the result is compared
+with `budgetBaseUnits` as minimal decimal text, with no integer or float
+conversion and no length limit. A wrong amount, currency, or decimals, or a
+zero price (DACS-4 §9.3 requires an agreed `PriceTerm.amount` strictly greater
+than zero), is rejected under DRA-10. A price with more fractional digits than
+the token carries is an `error` under DRV-3: DACS-4 §9.13 makes excess
+precision an error, and no base-unit budget equals it.
 
 Delivery evidence is a DACS-4 §9.7 delivery `SettlementEvidence` with the
 members a storage-program delivery carries: `evidenceVersion`, `jobId`,
@@ -293,7 +297,7 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative becomes
 `verified` once the guard that decides it is removed. Any other outcome,
 including an exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists 20 negatives whose single defect reaches one exact
+`FOLLOW_ON_FINDINGS` lists 21 negatives whose single defect reaches one exact
 second finding once its guard is removed. Some of those defects break a
 second rule. For a record that was not supplied, a later check finds the
 lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 12 negatives that

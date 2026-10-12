@@ -354,14 +354,16 @@ def _finality_check(
 def price_base_units(amount: str, decimals: int) -> str | None:
     """Convert a CD-1 amount to token base units (DACS-4 §9.5.2 step 3).
 
-    `amount × 10^decimals` in exact decimal arithmetic, as minimal unsigned
-    decimal text.  None when the amount has more fractional digits than the
-    token carries: no base-unit amount equals it exactly.
+    `amount × 10^decimals` as string-decimal arithmetic, as minimal unsigned
+    decimal text: the fraction is padded to `decimals` digits and the leading
+    zeros are stripped.  No `int` or float is involved, so an amount of any
+    length converts exactly.  None when the amount has more fractional digits
+    than the token carries (excess precision, DACS-4 §9.13).
     """
     whole, _, fraction = amount.partition(".")
     if len(fraction) > decimals:
         return None
-    return str(int(whole + fraction.ljust(decimals, "0")))
+    return (whole + fraction.ljust(decimals, "0")).lstrip("0") or "0"
 
 
 def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
@@ -772,13 +774,19 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
         or not 0 <= decimals <= MAX_TOKEN_DECIMALS
     ):
         return result("error", "DRV-3", "agreement price or pinned token decimals are malformed")
+    # DACS-4 §9.13: a price more precise than the token's decimals is an
+    # error, not a budget mismatch: no base-unit amount equals it.
+    base_units = price_base_units(price["amount"], decimals)
+    if base_units is None:
+        return result("error", "DRV-3", "agreement price has more fractional digits than the pinned token decimals")
     # DACS-4 §9.3: an agreed `PriceTerm.amount` MUST be strictly greater than
     # zero.  CD-1 makes "0" the only spelling of zero, and it has no sign.
     if price["amount"] == "0":
         return result("rejected", "DRA-10", "agreement price is not strictly greater than zero")
     if price["currency"] != rail["paymentTokenSymbol"]:
         return result("rejected", "DRA-10", "agreement price currency is not the pinned payment token")
-    if price_base_units(price["amount"], decimals) != agreement["budgetBaseUnits"]:
+    # Both are minimal unsigned decimal text, so equal strings are equal amounts.
+    if base_units != agreement["budgetBaseUnits"]:
         return result(
             "rejected", "DRA-10",
             "budgetBaseUnits is not the agreement price converted with the pinned token decimals",

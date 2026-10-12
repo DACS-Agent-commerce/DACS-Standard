@@ -924,6 +924,7 @@ def build_vector_pack() -> dict[str, Any]:
         "dra-10-zero-price": make_base("release", hooks={
             "bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0"),
         }),
+        "dra-10-excess-precision": make_base("release", hooks={"bilateral": put("price", "amount", "1.0000001")}),
         "rail-reference-mismatch": make_base("release", hooks={"agreement": put("railDefinitionRef", "contentHash", "04" * 32)}),
         "unsupported-disclosure-policy": make_base("release", hooks={"agreement": put("disclosurePolicy", "encrypted-transcript")}),
         "transcript-in-delivered-artifact": make_base("release", hooks={"inputs": put("deliveredArtifact", "transcriptExcerpt", "forbidden")}),
@@ -1394,6 +1395,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dra-10-budget-uses-other-decimals", "dra-10-token-decimals", "rejected", "DRA-10", "the agreed 1 USDC at the rail's pinned 18 decimals is not 1000000 base units"),
         vector("dra-10-zero-budget-for-nonzero-price", "dra-10-zero-budget", "rejected", "DRA-10", "a zero budget is not the non-zero agreed price"),
         vector("dra-10-zero-price", "dra-10-zero-price", "rejected", "DRA-10", "an agreed price must be strictly greater than zero (DACS-4 §9.3), so a zero price and its zero budget move nothing"),
+        vector("drv-3-price-excess-precision", "dra-10-excess-precision", "error", "DRV-3", "an agreed price with more fractional digits than the rail's 6 token decimals is an error (DACS-4 §9.13), not a budget mismatch", rules=["DRA-10", "DRV-3"]),
         vector("rail-definition-reference-mismatch", "rail-reference-mismatch", "rejected", "DRA-12", "the selected rail definition must resolve exactly"),
         vector("evaluator-added-as-bundle-party", "release", "rejected", "DRA-13", "the evaluator overlay signature does not create a third bundle party", [{"op": "add", "path": ["bundleRequiredSigners", 2], "value": EVALUATOR}]),
         vector("unsupported-disclosure-policy", "unsupported-disclosure-policy", "rejected", "DRQ-1", "the first profile accepts only its two signed disclosure policies"),
@@ -1754,6 +1756,8 @@ FOLLOW_ON_FINDINGS = {
     "delivery-reference-mismatch": ("rejected", "DRE-3"),
     # Non-minimal budget text is not the converted agreement price either.
     "nonminimal-budget-base-units": ("rejected", "DRA-10"),
+    # No base-unit budget equals an over-precise price either.
+    "drv-3-price-excess-precision": ("rejected", "DRA-10"),
 }
 # Structural negatives: their deciding guard is what keeps the verifier from
 # reading a structure that the negative removes, so without that guard the

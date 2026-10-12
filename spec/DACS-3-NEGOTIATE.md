@@ -1494,6 +1494,9 @@ submission:
   address, content hash, transaction, writer, nonce, and finality profile. Its
   binding-defined evidence, not its fields alone, MUST establish that finality.
   A later Work receipt cannot retroactively satisfy this pre-sign gate.
+  The committed sequential Purchase retains AWP-5's commitment put at index 3
+  with `writeCondition: { kind: "create-only" }`, whose byte-identical
+  already-committed value reconciles under CORE AW-77.
 
 The selected path is the signed `AtomicDacsWorkIntentV1.gateMode`. A verifier
 MUST derive the effective mode exclusively from that field. It MUST NOT default

@@ -1325,6 +1325,9 @@ type AtomicPaymentSlotStateV1 =
     }
 ```
 
+The committed candidate vectors initialize a fresh `vacant` slot at generation
+`0`, and the reference's claim transition retains that authenticated generation.
+
 Before any slot lookup or transition, the node derives the authoritative key
 from authenticated DACS inputs. The independently verified CORE §5.2
 capability and network binding supply `networkId`. The verified signed Agreement
@@ -1391,6 +1394,11 @@ conflictDigest = lowerhex(SHA-256(
 
 `amount` is the CD-1 canonical agreed amount. `payer` and `payee` are the
 canonical native accounts resolved under §9.5.1.
+In the committed candidate vectors and reference, `agreementHash` is the
+lowercase SHA-256 hex string of the unsigned canonical Agreement,
+`commitmentLogicalAddress` is the signed commitment operation's logical-address
+string, `asset` is the selected RailDefinition's `asset.symbol` string, and
+`amount` is the Agreement's `terms.price.amount` canonical decimal string.
 
 - (AWS-7) Every Work for one slot generation MUST carry the same
   `conflictDigest`, derived slot key, and expected state/generation in its signed
@@ -1411,6 +1419,9 @@ canonical native accounts resolved under §9.5.1.
   `conflictDigest` to the ledger component-wise and type-strictly. Retaining an
   old wrapper `workId` while changing any canonical intent byte is not replay
   and MUST be rejected.
+  The committed in-flight vectors reconcile through the slot evaluator's
+  `action: "replay"` without another transfer; this slot action does not itself
+  establish an `AtomicWorkAttemptV1.attemptClass`.
 - (AWS-10) Exact replay of a settled Work MUST return or reconstruct its
   authoritative receipt without changing its winner, slot state, or receipt
   commitment.

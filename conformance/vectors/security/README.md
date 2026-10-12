@@ -116,7 +116,11 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 
 The six `atomic-work-*.json` sets exercise the candidate CORE §5.2 profile with
 deterministic, public Ed25519 fixtures. Their synthetic witnesses are not Demos
-contracts or production validator proofs. The candidate verifier recognizes
+contracts or production validator proofs.
+The reference input object's `publicKeys`, `expectedNetworkAuthority`,
+`expectedProofProfile`, and `expectedRailRegistryAuthority` are verifier-owned
+fixture configuration supplied by the harness, not trust roots to accept from
+an untrusted caller in a production port. The candidate verifier recognizes
 only `did:dacs:test:*` identities and canonical `domain:` A-label identifiers;
 other ClaimReference schemes remain unsupported by this test key resolver and
 fail closed.

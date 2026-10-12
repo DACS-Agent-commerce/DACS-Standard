@@ -63,7 +63,7 @@ class AtomicProfileCompositionTests(unittest.TestCase):
             sorted(versions),
             sorted(
                 (name.rsplit("-", 1)[0], self.atomic[name][0])
-                for name in ATOMIC_AMENDED
+                for name in self.atomic
             ),
         )
 

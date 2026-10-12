@@ -705,6 +705,11 @@ linkage.
 - (AW-13) `operations` array order is execution order and MUST NOT be inferred
   from object-member order or implementation iteration order.
 
+The committed Purchase vectors and authenticated reference include buyer,
+seller, orchestrator, and payer in the roster, independently of which roles
+authorize each operation; this observation does not define role omission for
+Completion or other profiles.
+
 The canonical bytes and identifier are:
 
 ```
@@ -947,11 +952,11 @@ type AtomicWorkReceiptV1 = {
   workId: string
   winningAttempt: {
     attemptId: string
-    nativeTransactionRef: { kind: string; value: string }
+    nativeTransactionRef: { kind: string; value: string; [member: string]: unknown }
   }
   blockRef: { id: string; height?: string; timestamp: number }
   outcome: "committed" | "rolled-back"
-  failedOperationId?: string
+  failedOperationId?: string // required for rolled-back; forbidden for committed
   operationResults: AtomicWorkOperationReceiptLeafV1[]
   operationReceiptRoot: string
   businessState: {
@@ -967,11 +972,11 @@ type AtomicWorkReceiptV1 = {
       jobId: string
       phaseIndex: number
     }
-    before: Record<string, unknown>
-    after: Record<string, unknown>
+    before: AtomicPaymentSlotStateV1 // DACS-4 §9.5.10; schema paymentSlotState
+    after: AtomicPaymentSlotStateV1
   }
   slotStateEvidence: { kind: string; value: string }
-  envelopeEffects: { nonceConsumed: boolean; feeCharged: string }
+  envelopeEffects: { nonceConsumed: boolean; feeCharged: string; [member: string]: unknown }
   receiptCommitment: string
   finalityEvidence: { kind: string; value: string }
 }
@@ -993,6 +998,18 @@ type AtomicWorkOperationReceiptLeafV1 = {
   errorCode?: string
 }
 ```
+
+The receipt schema requires `failedOperationId` for `outcome: "rolled-back"`
+and forbids it for `outcome: "committed"`; `paymentSlot.before` and `after`
+use the four-state `paymentSlotState` union defined in DACS-4 §9.5.10.
+Every object level in the receipt schema is open to additional members; this
+prose block lists named members rather than closing the other object shapes.
+The receipt schema leaves `envelopeEffects` and
+`winningAttempt.nativeTransactionRef` (its `evidenceRef` definition) open to
+additional members, which participate in the receipt commitment, whereas the
+attempt schema closes `replayEffects` and `nativeTransactionRef`; DACS-4 AWS-14
+still requires the receipt's winning attempt ID and native reference to equal
+the ledger-selected values.
 
 For every leaf, the portable input commitment is derived from the exact signed
 operation payload:

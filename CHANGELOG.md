@@ -1247,7 +1247,7 @@ The format used per release:
   only through an explicitly selected legacy-replay path that cannot derive a
   current address, perform a current lookup, create a current signature, or
   authorize an effect.
-### Added — candidate CORE v0.3 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7
+### Added — candidate CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7
 
 - **Atomic Purchase and Completion Works** (CORE §5.2; DACS-3 §8.6.1;
   DACS-4 §§9.5.10/9.7.3; DACS-5 §10.4.2; Demos mapping §A.6; #320) — adds an
@@ -1307,6 +1307,21 @@ The format used per release:
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is
   qualified like every other successful payment.
+
+### Changed
+
+These general handler requirements bind every profile.
+
+- **Session-pinned rail authority** (DACS-4 §9.4, PA-2/PA-3) — both finalized
+  receipt timestamps and authenticated `governance.acceptedAt` MUST be no later
+  than the authenticated session `startedAt`, and a later index or definition
+  MUST NOT rewrite an existing session's rail authority.
+- **Payment input-arm selection** (DACS-4 §9.5.1 PC-1) — every pay-* handler
+  MUST select `PaymentPhaseInput` or `AtomicPaymentPhaseInputV1` before
+  interpreting fields and MUST NOT coerce either arm into the other.
+- **Amendment target verification** (DACS-4 §9.7.1 AMEND-1) — amendment
+  consumers MUST verify the target discriminator and signature domain before
+  applying amendment semantics.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

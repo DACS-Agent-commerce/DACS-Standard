@@ -1,6 +1,6 @@
 # DACS — Demos production mapping (§A)
 
-> Part of **DACS v0.1**. Companion reference to [CORE](CORE.md) — moved out of the Core document to keep the normative reading surface compact. Original section numbering is retained, so existing citations (e.g. §A.x) remain stable.
+> Part of the **unreleased coordinated DACS candidate** (complete module tuple in [PROFILE](PROFILE.md)). Companion reference to [CORE](CORE.md) — moved out of the Core document to keep the normative reading surface compact. Original section numbering is retained, so existing citations (e.g. §A.x) remain stable.
 
 Which Demos substrate primitives are live today, what the Demos team adds for v0.1, and which dependencies are third-party — for each substrate capability SR-1..SR-5.
 

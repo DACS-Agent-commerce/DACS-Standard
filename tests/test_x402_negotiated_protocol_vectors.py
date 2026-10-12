@@ -1351,6 +1351,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-recorded-malformed-transaction-is-error",
             "retry-authorization-identity-eip55-reconciles",
             "retry-authorization-identity-not-20-bytes",
+            "retry-solana-authorization-identity-case-changed",
         )
         for name in names:
             with self.subTest(vector=name):

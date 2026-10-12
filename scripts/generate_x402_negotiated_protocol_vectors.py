@@ -1621,6 +1621,22 @@ def build_vectors() -> list[dict]:
              retry_identical_malformed_authorization_identity, operation="retry",
              authorization_submitted=True, reason="address-form")
 
+    # XN-5 leaves Solana exact at the retry site too: the unchanged retained
+    # state reconciles, so one changed letter case is the only difference.
+    def retry_solana_authorization_identity_case_changed(v):
+        solana_exact(v)
+        v["ledger"]["available"] = False
+        v["runtime"]["reconciliationState"].update({
+            "requirementHash": digest(v["agreement"]["terms"]["rail"]),
+            "authorizationIdentity": SOLANA_BUYER.replace("k", "K", 1),
+            "settlementTransaction": SOLANA_TX,
+        })
+    add_case(vectors, "retry-solana-authorization-identity-case-changed", "fail", "XN-11/XN-5",
+             "base58 is case-sensitive, so a retained Solana authorization identity with one "
+             "changed letter case names a different payer",
+             retry_solana_authorization_identity_case_changed, operation="retry",
+             authorization_submitted=True, reason="reconciliation-binding")
+
     return vectors
 
 

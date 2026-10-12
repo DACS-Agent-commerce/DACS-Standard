@@ -376,8 +376,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertEqual(finding(accepted), ("verified", "DRV-7"))
         job = generator.LIFECYCLE_JOBS["release"]
         for locator in (
-            # The form docs/flow-trace.md uses for a DACS-4 delivery artifact:
-            # 64 hex digits, so a logical address, not a native one.
+            # A 64-hex logical `stor-` form, not a native address.
             "stor-" + hashlib.sha256(("dacs4:deliverable:" + job).encode("ascii")).hexdigest(),
             "stor-" + hashlib.sha256(f"{job}-bundle-buyer".encode("ascii")).hexdigest(),
             "stor-" + hashlib.sha256(f"{generator.JOB_B}-bundle-seller".encode("ascii")).hexdigest(),

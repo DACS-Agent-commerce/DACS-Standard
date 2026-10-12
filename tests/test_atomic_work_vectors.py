@@ -9,6 +9,7 @@ import copy
 import inspect
 import io
 import json
+import re
 import subprocess
 import sys
 import textwrap
@@ -23,6 +24,22 @@ if str(ROOT / "scripts") not in sys.path:
 import atomic_work_reference as ref  # noqa: E402
 import generate_atomic_work_vectors as generator  # noqa: E402
 import validate_atomic_work_vectors as validator  # noqa: E402
+
+
+def coverage_overclaims(text):
+    """Return the sentences of ``text`` that claim complete coverage.
+
+    A sentence pairing a completeness word (complete, full, exhaustive and
+    their -ly forms) with a coverage word (cover, exercise) is an overclaim
+    unless it negates it ("not") or keeps it open ("remains open").
+    """
+    return [
+        sentence
+        for sentence in re.split(r"(?<=[.!?])\s+", text)
+        if re.search(r"(?i)\b(complete(ly|ness)?|full(y)?|exhaustive(ly)?)\b", sentence)
+        and re.search(r"(?i)\b(cover(s|ed|age|ing)?|exercis(e|es|ed|ing))\b", sentence)
+        and not re.search(r"(?i)\bnot\b|\bremains open\b", sentence)
+    ]
 
 
 class AtomicWorkVectorTests(unittest.TestCase):
@@ -254,7 +271,6 @@ class AtomicWorkVectorTests(unittest.TestCase):
         # note must say so, and must keep the CONFORMANCE-PLAN §14.8
         # semantically meaningful fixture requirement open, not claim it met.
         # The validator's summary line claims only rule references.
-        overclaim = r"(?i)\b(complete|full|fully)\b[^.]*\bcover(age|ed)\b"
         self.assertTrue(validator.coverage_report()["completeApplicablePolarity"])
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         entry = changelog.split("- **Atomic Purchase and Completion Works**", 1)[1]
@@ -275,7 +291,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         for name, text in documents:
             with self.subTest(document=name):
                 self.assertNotRegex(text, r"(?i)coverage[^.]*\bblocker\b")
-                self.assertNotRegex(text, overclaim)
+                self.assertEqual(coverage_overclaims(text), [])
                 self.assertNotIn("actually exercised", text)
                 self.assertRegex(text, r"rule-referenced fixture of the (matching|right)")
                 self.assertRegex(text, r"non-applicable cell\w* (carries|with) an explicit rationale")
@@ -299,7 +315,32 @@ class AtomicWorkVectorTests(unittest.TestCase):
         summary = output.getvalue().splitlines()[0]
         with self.subTest(document="validator summary"):
             self.assertIn("rules with every applicable P/N/B cell rule-referenced;", summary)
-            self.assertNotRegex(summary, overclaim)
+            self.assertEqual(coverage_overclaims(summary), [])
+        # The note is generated: one text for all six sets.
+        self.assertEqual(
+            len({data["coverage"]["note"] for data in self.sets}), 1,
+            "the six generated coverage notes differ",
+        )
+
+    def test_coverage_overclaim_guard_cases(self):
+        for sentence, overclaims in (
+            ("This is full P/N/B coverage.", True),
+            ("The six sets give full coverage.", True),
+            ("Every rule is fully covered.", True),
+            ("Every rule ID is completely covered.", True),
+            ("Coverage of every rule is exhaustive.", True),
+            ("Every rule is fully exercised by its fixtures.", True),
+            ("It does not claim full semantic coverage.", False),
+            ("Full semantic coverage under §14.8 remains open.", False),
+            ("This gate counts rule references by class; it does not show "
+             "that each fixture exercises its rule.", False),
+            ("The generator and the strict validator both refuse any gap.", False),
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(
+                    coverage_overclaims("Some prefix. " + sentence),
+                    [sentence] if overclaims else [],
+                )
 
     def test_boundary_attribution_is_rule_specific(self):
         for data in self.sets:

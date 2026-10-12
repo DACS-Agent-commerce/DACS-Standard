@@ -795,13 +795,15 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertEqual(str(reason), expected_reason)
 
         # These keep the pay-dem admission exact in hash, phase key and
-        # logical address: only its non-pass AWS result, or an unknown member
-        # outside the closed admission shape, can refuse it.  The stored
-        # corpus authority is exactly the passing one with that one change.
+        # logical address: only its non-pass AWS result, a case-variant of
+        # the exact lowercase "pass", or an unknown member outside the closed
+        # admission shape, can refuse it.  The stored corpus authority is
+        # exactly the passing one with that one change.
         expected_reason = "Atomic Work settlement admission is malformed or mismatched"
         for corpus_name, field, value in (
             ("atomic-non-passing-admission", "disposition", "fail"),
             ("atomic-extra-member-admission", "valid", True),
+            ("atomic-case-folded-admission", "disposition", "PASS"),
         ):
             authority = copy.deepcopy(base)
             authority["atomicEvidenceAdmissionByCanonicalRef"][pay_key][field] = value
@@ -820,6 +822,21 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 )
                 self.assertEqual(disposition, "fail", reason)
                 self.assertEqual(str(reason), expected_reason)
+
+        # Only an exact AWS "pass" admits the member.  The other AWS results
+        # never yield SEB "pass"; which non-pass class they map to is not
+        # pinned here.
+        for value in ("error", "indeterminate"):
+            authority = copy.deepcopy(base)
+            authority["atomicEvidenceAdmissionByCanonicalRef"][pay_key][
+                "disposition"
+            ] = value
+            with self.subTest(admission=f"disposition={value!r}"):
+                disposition, reason, phase_keys = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertNotEqual(disposition, "pass", reason)
+                self.assertIsNone(phase_keys)
 
     def test_atomic_payment_is_laa_qualified_like_every_payment(self):
         authority = copy.deepcopy(

@@ -82,7 +82,10 @@ unavailable or inconsistent RPC data `indeterminate`, as for an unavailable
 cases, so they keep the fixture label `DRV-2`: an unsupported §9 step-1
 artifact discriminator (a phase kind, an overlay, resolver-evidence or
 deployment-manifest version, or a capability profile), and a resolver status
-whose applicability contradicts the lifecycle. Only `accept` with
+whose applicability contradicts the lifecycle. The step-1 label is pending
+#371's named §9 step-1 rule. An unsupported `deliver-*` kind as the one
+delivery is not one of them: DRP-3 requires a supported delivery step, so it
+is `rejected` under DRP-3. Only `accept` with
 `release-to-provider` and `reject` with `refund-to-client` can authorize a
 terminal action. A release decision needs delivery evidence (DRD-3), and a
 decision without delivery evidence must rest on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read

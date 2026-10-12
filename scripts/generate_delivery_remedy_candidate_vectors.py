@@ -1265,7 +1265,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pipeline-actions-reversed", "release", "rejected", "DRP-2", "escrow phases must be fund then terminal", [{"op": "replace", "path": ["pipeline", 1, "parameters", "action"], "value": "terminal"}]),
         vector("pipeline-second-delivery", "second-delivery-phase", "rejected", "DRP-3", "only one delivery step may occur between the escrow phases"),
         vector("pipeline-extra-payment", "release", "rejected", "DRP-4", "ordinary payment phases cannot accompany the pair", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "pay-x402"}}]),
-        vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "notify"}}]),
+        vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names yet; the DRV-2 label is pending #371's named step-1 rule", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "notify"}}]),
+        vector("pipeline-unsupported-delivery-kind", "release", "rejected", "DRP-3", "DRP-3: the one delivery between the escrow steps must be a supported deliver-* kind", [{"op": "replace", "path": ["pipeline", 2, "kind"], "value": "deliver-unsupported"}]),
         vector("pipeline-rail-divergence", "release", "rejected", "DRP-5", "both escrow invocations must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("drp-5-escrow-phase-rails", "release", "rejected", "DRP-5", "both escrow phases must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 1, "parameters", "rail"], "value": "pay-evm-erc8183:other"}, {"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("pipeline-delivery-before-final-funding", "release", "rejected", "DRP-6", "delivery cannot begin before the funding result is finalized", [{"op": "replace", "path": ["executionContext", "fundingFinalizedBeforeDelivery"], "value": False}]),
@@ -1595,6 +1596,8 @@ FOLLOW_ON_FINDINGS = {
     "decision-artifact-unavailable": ("rejected", "DRT-3"),
     # An overlay delivery index on a non-delivery step names no delivery step.
     "pipeline-phase-index-divergence": ("rejected", "DRE-2"),
+    # An unsupported deliver-* kind is also an unsupported §9 step-1 phase kind.
+    "pipeline-unsupported-delivery-kind": ("error", "DRV-2"),
     # The evaluation's subject is that same delivery reference.
     "delivery-reference-mismatch": ("rejected", "DRE-3"),
 }

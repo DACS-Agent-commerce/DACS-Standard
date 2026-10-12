@@ -282,6 +282,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         self.assertIn("reports malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding rule", readme)
         self.assertIn("The candidate names no rule for two other `error` cases, so they keep the fixture label `DRV-2`", readme)
+        self.assertIn("The step-1 label is pending #371's named §9 step-1 rule.", readme)
+        self.assertIn("so it is `rejected` under DRP-3", readme)
         self.assertNotIn("malformed input under rule `DRV-2`", readme)
         self.assertNotIn("is malformed input (`error`, DRV-2)", readme)
 

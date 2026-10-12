@@ -5,8 +5,8 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "dc59d935df9a26a5adde7b9257171a58c36433fa441640efce1bf5dc26676d94",
-  "count": 235,
+  "hash": "549e97bcaf10bddd80d9b1ac2c1c10aa739e132f4f0b55c9d1d8d8d9bc5ee5fe",
+  "count": 236,
   "fixtures": {
     "release": {
       "candidateProfile": "delivery-or-remedy-v1",
@@ -74774,7 +74774,7 @@
       "rules": [
         "DRV-2"
       ],
-      "note": "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names",
+      "note": "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names yet; the DRV-2 label is pending #371's named step-1 rule",
       "patch": [
         {
           "op": "add",
@@ -74785,6 +74785,27 @@
           "value": {
             "kind": "notify"
           }
+        }
+      ]
+    },
+    {
+      "name": "pipeline-unsupported-delivery-kind",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRP-3",
+      "rules": [
+        "DRP-3"
+      ],
+      "note": "DRP-3: the one delivery between the escrow steps must be a supported deliver-* kind",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "pipeline",
+            2,
+            "kind"
+          ],
+          "value": "deliver-unsupported"
         }
       ]
     },

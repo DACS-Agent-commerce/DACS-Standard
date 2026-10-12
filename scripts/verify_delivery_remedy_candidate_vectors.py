@@ -326,8 +326,10 @@ def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
 # results cite DRV-3.  The candidate names no rule for §9 step 1, an unsupported
 # artifact discriminator (phase kind, overlay, resolver-evidence or manifest
 # version, capability profile), or for a resolver status that contradicts the
-# lifecycle's applicability; those keep the fixture label DRV-2.  Otherwise
-# DRV-2 is unavailable RPC data, which stays `indeterminate`.
+# lifecycle's applicability; those keep the fixture label DRV-2, pending a
+# named §9 step-1 rule in #371.  An unsupported deliver-* kind is the DRP-3
+# exception: DRP-3 requires a supported one.  Otherwise DRV-2 is unavailable
+# RPC data, which stays `indeterminate`.
 def result(verdict: str, rule: str, detail: str) -> dict[str, str]:
     return {"result": verdict, "rule": rule, "detail": detail}
 
@@ -505,17 +507,24 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     delivery_indexes = [i for i, step in enumerate(pipeline) if step["kind"].startswith("deliver-")]
     if len(delivery_indexes) != 1 or not (fund_index < delivery_indexes[0] < terminal_index):
         return result("rejected", "DRP-3", "exactly one delivery must occur between escrow steps")
+    supported_deliveries = {
+        "deliver-storage-program",
+        "deliver-entitlement",
+        "deliver-attested-payload",
+    }
+    # DRP-3 names the delivery's kind: it must be a supported deliver-* step.
+    if pipeline[delivery_indexes[0]]["kind"] not in supported_deliveries:
+        return result("rejected", "DRP-3", "the delivery between escrow steps is not a supported deliver-* kind")
     if any(step["kind"].startswith("pay-") for step in pipeline):
         return result("rejected", "DRP-4", "ordinary payment phases cannot accompany the escrow pair")
     supported_kinds = {
         "commit-delivery-or-remedy-agreement",
         "job-escrow",
-        "deliver-storage-program",
-        "deliver-entitlement",
-        "deliver-attested-payload",
+        *supported_deliveries,
         "rate",
     }
-    # Payment phases are DRP-4 findings above, not unsupported kinds.
+    # Payment phases are DRP-4 findings above, and an unsupported delivery a
+    # DRP-3 finding, not unsupported kinds.
     if any(
         step["kind"] not in supported_kinds and not step["kind"].startswith("pay-")
         for step in pipeline

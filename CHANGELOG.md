@@ -84,7 +84,8 @@ The format used per release:
   U+007E) and no `\`, its host must not contain `%`, and an internationalized
   host must be signed in A-label form. Userinfo and a fragment are refused even
   when empty, a non-empty port must be decimal and at most 65535, and every
-  `xn--` host label must be an RFC 5890 A-label. Any other spelling is
+  host label that begins with `xn--` in any letter case must be an RFC 5890
+  A-label. Any other spelling is
   malformed and yields `error` before any request. This removes spellings that
   URL parsers resolve to different hosts: UTS-46 maps or drops non-ASCII code
   points, and WHATWG strips tab, LF and CR, ends an `https` authority at `\`,

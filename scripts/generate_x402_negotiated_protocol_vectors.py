@@ -940,6 +940,8 @@ def build_vectors() -> list[dict]:
          "an xn-- label with no Punycode content is not an RFC 5890 A-label"),
         ("fake-a-label-localhost", "error", "https://xn--localhost-/pay",
          "xn--localhost- decodes to the ASCII label localhost, so it is not an A-label"),
+        ("fake-a-label-upper-case", "error", "https://XN--LOCALHOST-.example/pay",
+         "the ACE prefix is case-insensitive, so XN--LOCALHOST- must also be a real A-label"),
         ("over-long-a-label", "error",
          f"https://xn--{('ü' * 60).encode('punycode').decode('ascii')}.example/pay",
          "a 66-character xn-- label exceeds the 63-octet DNS limit, so it is not an A-label"),

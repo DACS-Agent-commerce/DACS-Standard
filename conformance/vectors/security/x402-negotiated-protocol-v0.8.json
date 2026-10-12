@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 161,
-  "hash": "1ae114663d5edd17d1639744d7f2df95b655d90f7ac1bd8f05c328a900ef1319",
+  "count": 162,
+  "hash": "ce93aec1efa71a9992a507dff4c4eaa0c9a92d4ba99dfe18fb3221ab5ca8cf97",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -8628,6 +8628,128 @@
             "url"
           ],
           "value": "https://xn--localhost-/pay"
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
+      "name": "request-url-fake-a-label-upper-case",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "the ACE prefix is case-insensitive, so XN--LOCALHOST- must also be a real A-label",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "8puYyMgkwSUBg4KpjJ3rQ3MGvWEYYIYHKuOh7Vu2AfVxyqF5ZaIBKgejUpafcB5gL048QQbAq4-9d1BXGWE-AA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "cru2SGl44Fi7xg51JyIpTe-0STXJFh4BunxhnvTKKl4fe35ciGyT12KW36tRX_3cWXDWuwyKEsOtg3orYPQ0DQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "47bd74b274b39abec62b689ce34d0db50722c1fe7b7ba9028858ec24c75f293e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "RRV23mK0Rm8YRJN6oWnhng0iW64qKLPlccCBl-3cprp6gfgOudRKQ3YdlFg-jF9W8f6aG87t0Hed1C-GwDktDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "6TmFcHVmJnNnulEk4Cslj8ywN7VX39o2EIYkVSttB6w6Vh9xLWPb7JEPbXVolc2QTvj7147L_XJvG6ZNcO_gDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
         }
       ],
       "expectedReason": "rail-ref-shape"

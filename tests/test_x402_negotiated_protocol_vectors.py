@@ -1206,6 +1206,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "request-url-port-out-of-range",
             "request-url-empty-a-label",
             "request-url-fake-a-label-localhost",
+            "request-url-fake-a-label-upper-case",
             "request-url-over-long-a-label",
             "request-url-a-label-tangut-joiner",
             "request-url-backslash-in-path",
@@ -1414,7 +1415,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         global request_url_syntax_ok, public_http_target
         names = [name for name, vector in self.by_name.items()
                  if name.startswith("request-url-") and vector["expected"] == "error"]
-        self.assertEqual(len(names), 22)
+        self.assertEqual(len(names), 23)
         for name in names:
             with self.subTest(vector=name):
                 self.assertEqual(self.by_name[name].get("expectedReason"), "rail-ref-shape")
@@ -1522,7 +1523,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "MUST NOT rewrite",
             "Its host MUST NOT contain `%`.",
             "internationalized host MUST be signed in A-label form",
-            "every host label that begins with `xn--` MUST be an RFC 5890 A-label",
+            "every host label that begins with `xn--` in any letter case MUST be an RFC 5890 A-label",
             "no userinfo or fragment, even an empty one.",
             "A non-empty port MUST be decimal digits with a value of at most 65535.",
             "It MUST also compare it with the authenticated ledger",
@@ -1530,6 +1531,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "It derives that form for both the retained and the recorded value before comparing them.",
         ):
             self.assertIn(text, spec)
+        # Notes are hard-wrapped blockquotes: compare without wrapping or markers.
+        flat = " ".join(spec.split()).replace(" > ", " ")
+        self.assertIn("Which code points an A-label may contain follows the implementer's "
+                      "IDNA2008 tables and their Unicode version.", flat)
 
     def test_listing_admission_rule_precedes_registry_checks_and_is_cross_referenced(self):
         """XN-2's listing rule needs no registry: APR-1 carries it, not APR-2, and LRR-4 points to it."""

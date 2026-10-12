@@ -2267,6 +2267,12 @@ def build_vectors() -> list[dict]:
              "a challenge that repeats amount is refused by CF-5, not matched on its last value",
              raw_challenge(duplicate_amount), refresh=True, reason="payment-required-json")
 
+    # XN-2: the RFC 2765 IPv4-translated form embeds an IPv4 address too.
+    add_case(vectors, "bounded-fetch-ipv4-translated-loopback-target", "fail", "XN-2/DACS-1-6.3.6",
+             "an IPv4-translated address carrying 127.0.0.1 is loopback",
+             literal_target("https://[::ffff:0:7f00:1]/pay"), refresh=True,
+             reason="non-public-request-target")
+
     return vectors
 
 

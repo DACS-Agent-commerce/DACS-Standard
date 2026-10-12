@@ -459,6 +459,7 @@ def _non_public_class(address):
 # address it carries. Teredo carries two: the server, and the client with
 # every bit inverted.
 _IPV4_MAPPED = ipaddress.ip_network("::ffff:0:0/96")
+_IPV4_TRANSLATED = ipaddress.ip_network("::ffff:0:0:0/96")   # RFC 2765 SIIT
 _IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
 _NAT64_LOCAL_USE = ipaddress.ip_network("64:ff9b:1::/48")
@@ -474,6 +475,8 @@ def _embedded_ipv4(address):
     low = ipaddress.IPv4Address(value & 0xFFFFFFFF)
     if address in _IPV4_MAPPED:
         return "ipv4-mapped", (low,)
+    if address in _IPV4_TRANSLATED:
+        return "ipv4-translated", (low,)
     if address in _NAT64:
         return "nat64", (low,)
     # :: and ::1 are the unspecified and loopback addresses, not IPv4-compatible.
@@ -549,6 +552,8 @@ NON_PUBLIC_CLASS_CASES = (
 EMBEDDED_IPV4_CASES = (
     ("::ffff:127.0.0.1", "ipv4-mapped:loopback"),
     ("::ffff:8.8.8.8", None),
+    ("::ffff:0:7f00:1", "ipv4-translated:loopback"),
+    ("::ffff:0:808:808", None),
     ("::127.0.0.1", "ipv4-compatible:loopback"),
     ("::8.8.8.8", None),
     ("::", "unspecified"),

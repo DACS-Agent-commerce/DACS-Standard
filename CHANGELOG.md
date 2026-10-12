@@ -163,7 +163,8 @@ The format used per release:
 - **Localhost names and embedded IPv4 addresses** (DACS-4 §9.5.7 XN-2) —
   `localhost.localdomain` and every name under `.localhost` are never public,
   like `localhost`. An IPv6 address that embeds an IPv4 address is not public
-  when an address it carries is not: IPv4-mapped, IPv4-compatible, NAT64
+  when an address it carries is not: IPv4-mapped, IPv4-translated,
+  IPv4-compatible, NAT64
   `64:ff9b::/96`, 6to4, and Teredo (server and inverted client). The
   local-use NAT64 prefix `64:ff9b:1::/48` is never public. The reference
   evaluator unwraps each form by explicit prefix instead of relying on the

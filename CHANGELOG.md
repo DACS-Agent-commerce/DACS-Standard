@@ -126,6 +126,12 @@ The format used per release:
   authorized, the result is `indeterminate`, and the request may be retried
   with no party at fault. Only a definite non-payment answer (2xx, 3xx, or
   another 4xx) rejects before authorization.
+- **No new session on `x402:default` in other vector sets** (DACS-4 §9.5.7
+  XN-10) — the alternative-payment set and the identity-bound replacement
+  scenario selected `x402:default` for new and replacement sessions, which
+  XN-10 forbids; their static x402 alternative now carries its own test
+  `railId` (`x402:alternative-test`, `x402:replacement-test`), as the
+  rail-availability set already does. Verdicts are unchanged.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

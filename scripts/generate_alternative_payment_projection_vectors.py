@@ -37,8 +37,10 @@ CLAIMS = {
     "orchestrator": ORCHESTRATOR,
 }
 DEM_REF = {"railId": "demos-native:DEM", "railVersion": 1}
+# XN-10: no new or replacement session may use x402:default, so this static
+# x402 alternative carries a test railId of its own.
 X402_REF = {
-    "railId": "x402:default",
+    "railId": "x402:alternative-test",
     "railVersion": 1,
     "parameters": {"resource": "https://seller.example/pay/340"},
 }

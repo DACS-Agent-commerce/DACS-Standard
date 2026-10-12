@@ -1028,7 +1028,13 @@ rejected before any power of ten is computed, under a memory limit.
 
 The literal-target cases explicitly reject loopback, private, link-local,
 shared-address, multicast, reserved, and IPv4-mapped IPv6 spellings before the
-single instrumented wallet-call site. A host whose last label is a number is
+single instrumented wallet-call site. `localhost.localdomain` and names under
+`.localhost` are rejected like `localhost`. Every IPv6 form that embeds an IPv4
+address (IPv4-compatible, NAT64, 6to4, and Teredo's server and inverted
+client, as well as IPv4-mapped) is rejected when the address it carries is
+non-public, and the local-use NAT64 prefix always is; the reference evaluator
+unwraps each form by explicit prefix rather than through the host language's
+address tables, and an IPv4-mapped public address passes. A host whose last label is a number is
 classified as an IPv4 literal, as the WHATWG IPv4 parser does, so shorthand,
 single-number, hexadecimal, octal, and trailing-dot spellings reach the verdict
 of their dotted form, and a numeric host that is not a valid IPv4 literal is
@@ -1090,7 +1096,9 @@ mixed-case, and `0X` upper-case responses over that ledger pass, and so does a
 second `0x` prefix in `settlementTransaction` is `error` with reason
 `settlement-transaction-form`. The two
 `noncanonical-native-event-key*` cases change only the DACS-produced
-`settlementEvent`, keep the response unchanged, and stay `error`.
+`settlementEvent`, keep the response unchanged, and stay `error`. The key is
+signed evidence, so it is checked before the ledger is read: with the ledger
+unavailable or not final it is still `error`.
 
 After the wallet call only the authenticated ledger decides (XN-11). A
 settlement response that is not received under the version's header, reports
@@ -1151,6 +1159,16 @@ An unpaid request answered with 200 or 404 is `fail` (`not-payment-required`).
 No answer, a 500, 503, 504, 408, or 429 is `indeterminate` with reason
 `unpaid-request-transient`: nothing was authorized, so the request is retried
 and no party is at fault.
+
+Every evaluator check has a case that reaches it alone with its
+`expectedReason` pinned, and the challenge substitutions refresh the received
+hashes, so an evaluator that skips a comparison reaches `pass`. Among them are
+the ledger asset, network, scheme, decimals and transaction; the evidence
+`httpResource`, `settlementNetwork` and `x402Version`; the PC-5 currency; the
+runtime payee; each agreement party exactly once; the buyer bundle's hash pin,
+session nonce, presenter and signatures; the request body against the signed
+`bodyHash`; the challenge `x402Version`; omitted versus empty extensions in
+both directions; and the legacy in-flight-only continuation.
 
 Negative cases reject global provider or asset policy, a
 `consumerFinalityProfile` on the closed protocol arm (RD-7), first-`railId` lookup,

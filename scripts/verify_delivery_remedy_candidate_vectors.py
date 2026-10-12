@@ -55,10 +55,16 @@ MAX_TOKEN_DECIMALS = 255
 # CORE §B.2 numeric safe-magnitude constraint: every JSON number is finite and
 # at most 2^53 - 1 in magnitude.
 SAFE_INTEGER_MAX = 2 ** 53 - 1
+# The deepest array/object nesting a lifecycle may have.  The pack's deepest
+# lifecycle nests 7 levels.  JCS canonicalisation, `json.dumps` and
+# `copy.deepcopy` recurse once or more per level, and a lifecycle a few hundred
+# levels deep exhausts CPython's default 1,000-frame recursion limit; 64 leaves
+# room for producer extensions and stays far inside that limit.
+MAX_JSON_DEPTH = 64
 # What a malformed value can raise while a check reads it.  Each lifecycle in a
 # batch that raises one is its own `error`; the guard audit sets this to ().
 MALFORMED_INPUT_ERRORS: tuple[type[Exception], ...] = (
-    AttributeError, IndexError, KeyError, TypeError, ValueError,
+    AttributeError, IndexError, KeyError, TypeError, ValueError, RecursionError,
 )
 
 DOMAINS = {
@@ -193,6 +199,19 @@ EVENT_INPUT_FIELDS = {
     "eventName",
     "arguments",
 }
+
+
+def nesting_within(value: Any, limit: int) -> bool:
+    """Whether ``value`` nests arrays and objects at most ``limit`` deep, checked iteratively."""
+    pending = [(value, 1)]
+    while pending:
+        current, depth = pending.pop()
+        if isinstance(current, (dict, list)):
+            if depth > limit:
+                return False
+            children = current.values() if isinstance(current, dict) else current
+            pending.extend((child, depth + 1) for child in children)
+    return True
 
 
 def number_profile_valid(value: Any) -> bool:
@@ -1971,7 +1990,10 @@ def _lifecycle_check(value: Any) -> dict[str, str] | None:
     """Apply every check before the replay comparison to one lifecycle."""
     if not isinstance(value, dict):
         return result("error", "DRV-3", "vector input must be an object")
-    # Candidate §9 step 2 before any stage hashes or compares a number.
+    # Candidate §9 step 2 before any stage hashes or compares a number.  The
+    # depth bound keeps the recursive hashing from exhausting the stack.
+    if not nesting_within(value, MAX_JSON_DEPTH):
+        return result("error", "DRV-3", f"input nests deeper than {MAX_JSON_DEPTH} arrays and objects")
     if not number_profile_valid(value):
         return result("error", "DRV-3", "a number is non-finite or outside the CORE §B.2 safe-integer range")
     required = {
@@ -2467,11 +2489,11 @@ def _reject_constant(text: str) -> Any:
 
 def load_json(path: Path) -> Any:
     """Parse JSON in the CORE §B.2 number profile: no NaN, no Infinity, no unsafe integer."""
-    return json.loads(
-        path.read_text(encoding="utf-8"),
-        parse_int=_parse_safe_int,
-        parse_constant=_reject_constant,
-    )
+    text = path.read_text(encoding="utf-8")
+    try:
+        return json.loads(text, parse_int=_parse_safe_int, parse_constant=_reject_constant)
+    except RecursionError:
+        raise ValueError("arrays and objects nest too deeply to parse") from None
 
 
 def _display_path(path: Path) -> str:
@@ -2502,7 +2524,11 @@ def main(argv: list[str] | None = None) -> int:
             errors.append(f"{path}: invalid JSON: {exc}")
             continue
         packs.append(pack)
-        errors.extend(f"{_display_path(path)}: {message}" for message in verifier(pack))
+        try:
+            messages = verifier(pack)
+        except RecursionError:  # copying or hashing a pack nested past the stack
+            messages = ["arrays and objects nest too deeply to verify"]
+        errors.extend(f"{_display_path(path)}: {message}" for message in messages)
     if errors:
         print("delivery-or-remedy candidate verification failed:", file=sys.stderr)
         for error in errors:

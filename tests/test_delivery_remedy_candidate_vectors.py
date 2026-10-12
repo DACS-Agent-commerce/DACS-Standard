@@ -85,6 +85,14 @@ def _hooked(**hooks):
     return lambda _pack: make_base("release", hooks=hooks)
 
 
+def _nested(levels):
+    """An object nested ``levels`` objects deep, built without recursion."""
+    value = {}
+    for _ in range(levels - 1):
+        value = {"k": value}
+    return value
+
+
 def _without_reproduction_inputs(value):
     value["reproductionInputs"] = []
     value["resolverEvidence"]["eventObservationsHash"] = content_hash(None)
@@ -96,6 +104,7 @@ def _without_reproduction_inputs(value):
 # outcome of the case.
 GUARD_CASES = {
     "input-not-an-object": (lambda _pack: [], ("error", "DRV-3", "vector input must be an object")),
+    "nesting-too-deep": (_release(put("native", "deep", _nested(verifier.MAX_JSON_DEPTH))), ("error", "DRV-3", f"input nests deeper than {verifier.MAX_JSON_DEPTH} arrays and objects")),
     "number-outside-profile": (_release(put("native", "fundedAtSec", float("nan"))), ("error", "DRV-3", "a number is non-finite or outside the CORE §B.2 safe-integer range")),
     "input-missing-field":(_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
     "object-field-malformed": (_release(put("native", [])), ("error", "DRV-3", "candidate object fields are malformed")),
@@ -1672,6 +1681,53 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         manifest["capabilities"]["platformFeeBP"] = float("nan")
         self.assertEqual(evaluate_deployment(manifest)["result"], "error")
 
+    def test_deep_input_stays_in_the_four_results(self):
+        """Nesting past MAX_JSON_DEPTH is `error` before any stage hashes; a RecursionError is contained."""
+        limit = verifier.MAX_JSON_DEPTH
+        self.assertTrue(verifier.nesting_within(_nested(limit), limit))
+        self.assertFalse(verifier.nesting_within(_nested(limit + 1), limit))
+        self.assertFalse(verifier.nesting_within([[[]]], 2))
+        self.assertTrue(verifier.nesting_within({"a": [1, {"b": "c"}]}, 3))
+        # The bilateral agreement is three levels down, so an extra member
+        # nested `limit - 3` deep is within the bound and is hashed.
+        for levels, outcome in (
+            (limit - 3, ("rejected", "DRA-1")),
+            (limit - 2, ("error", "DRV-3")),
+            (900, ("error", "DRV-3")),
+            (100_000, ("error", "DRV-3")),
+        ):
+            with self.subTest(levels=levels):
+                value = self._fixture("release")
+                value["artifacts"]["bilateralAgreement"]["extra"] = _nested(levels)
+                self.assertEqual(finding(value), outcome)
+        # One deep lifecycle in a batch is its own `error`; the others keep
+        # their verdicts.
+        deep, deeper = self._fixture("rejected-refund"), self._fixture("release")
+        deep["artifacts"]["bilateralAgreement"]["extra"] = _nested(900)
+        deeper["reproductionInputs"]["nativeEventInputs"][0]["arguments"]["extra"] = _nested(100_000)
+        batch = evaluate_lifecycles(
+            [self._fixture("release"), deep, deeper, self._fixture("expired-pre")], DecisionLedger()
+        )
+        self.assertEqual([verdict(item) for item in batch], [
+            ("verified", "DRV-7"), ("error", "DRV-3"), ("error", "DRV-3"), ("verified", "DRV-7"),
+        ])
+        # A RecursionError that no bound decides is contained per lifecycle.
+        original = verifier._lifecycle_check
+        try:
+            def raising(value):
+                if value.get("recurse"):
+                    raise RecursionError("maximum recursion depth exceeded")
+                return original(value)
+            verifier._lifecycle_check = raising
+            batch = evaluate_lifecycles([{"recurse": True}, self._fixture("release")], DecisionLedger())
+        finally:
+            verifier._lifecycle_check = original
+        self.assertEqual(
+            (batch[0]["result"], batch[0]["rule"], batch[0]["detail"]),
+            ("error", "DRV-3", "malformed input could not be read (RecursionError)"),
+        )
+        self.assertEqual(verdict(batch[1]), ("verified", "DRV-7"))
+
     def test_cli_paths_and_unparseable_packs_are_listed_errors(self):
         """A relative path works; malformed JSON or numbers outside CORE §B.2 are listed, not raised."""
         scratch = Path(tempfile.mkdtemp(prefix="drr-cli-"))
@@ -1683,6 +1739,13 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             (scratch / "nan.json").write_text(text.replace('"fundedAtSec": 1799990000', '"fundedAtSec": NaN', 1), encoding="utf-8")
             (scratch / "huge.json").write_text(text.replace('"fundedAtSec": 1799990000', '"fundedAtSec": 9007199254740992', 1), encoding="utf-8")
             (scratch / "broken.json").write_text("{", encoding="utf-8")
+            # Too deep for the parser, and parseable but too deep to copy.
+            (scratch / "deep.json").write_text("[" * 100_000 + "]" * 100_000, encoding="utf-8")
+            nested = '{"k":' * 2000 + "0" + "}" * 2000
+            (scratch / "deep-member.json").write_text(
+                text.replace('"fundedAtSec": 1799990000', f'"deep": {nested}, "fundedAtSec": 1799990000', 1),
+                encoding="utf-8",
+            )
             relative = Path("conformance/fixtures/delivery-remedy/candidate-vectors-v0.1.json")
             for args, returncode, needle in (
                 (["--vectors", str(relative)], 0, "no rail registered"),
@@ -1690,6 +1753,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 (["--vectors", str(scratch / "nan.json")], 1, "invalid JSON: NaN is not a JSON number"),
                 (["--vectors", str(scratch / "huge.json")], 1, "invalid JSON: integer 9007199254740992 is outside"),
                 (["--vectors", str(scratch / "broken.json")], 1, "invalid JSON"),
+                (["--vectors", str(scratch / "deep.json")], 1, "invalid JSON: arrays and objects nest too deeply to parse"),
+                (["--vectors", str(scratch / "deep-member.json")], 1, "deep-member.json: arrays and objects nest too deeply to verify"),
                 (["--vectors", str(scratch)], 1, "cannot read"),
                 (["--vectors", str(scratch / "absent.json")], 1, "file not found"),
             ):

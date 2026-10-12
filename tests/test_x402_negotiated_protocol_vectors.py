@@ -452,6 +452,66 @@ def _non_public_class(address):
     return None
 
 
+# XN-2: IPv6 forms that embed an IPv4 address, by explicit prefix. CPython's
+# is_private / is_reserved tables cover some of these prefixes and differ
+# between releases, so each form is unwrapped here and judged by the IPv4
+# address it carries. Teredo carries two: the server, and the client with
+# every bit inverted.
+_IPV4_MAPPED = ipaddress.ip_network("::ffff:0:0/96")
+_IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_NAT64_LOCAL_USE = ipaddress.ip_network("64:ff9b:1::/48")
+_SIX_TO_FOUR = ipaddress.ip_network("2002::/16")
+_TEREDO = ipaddress.ip_network("2001::/32")
+
+
+def _embedded_ipv4(address):
+    """The form name and IPv4 addresses an IPv6 address embeds, or None."""
+    if address.version != 6:
+        return None
+    value = int(address)
+    low = ipaddress.IPv4Address(value & 0xFFFFFFFF)
+    if address in _IPV4_MAPPED:
+        return "ipv4-mapped", (low,)
+    if address in _NAT64:
+        return "nat64", (low,)
+    # :: and ::1 are the unspecified and loopback addresses, not IPv4-compatible.
+    if address in _IPV4_COMPATIBLE and value > 1:
+        return "ipv4-compatible", (low,)
+    if address in _SIX_TO_FOUR:
+        return "6to4", (ipaddress.IPv4Address((value >> 80) & 0xFFFFFFFF),)
+    if address in _TEREDO:
+        server = ipaddress.IPv4Address((value >> 64) & 0xFFFFFFFF)
+        return "teredo", (server, ipaddress.IPv4Address(~value & 0xFFFFFFFF))
+    return None
+
+
+def _target_class(address):
+    """Name of the non-public class of a literal target, or None if it is public.
+
+    An embedded-IPv4 form is not public when any IPv4 address it carries is
+    not, and is reported as `<form>:<class>`. The local-use NAT64 prefix does
+    not fix where the IPv4 address sits, and it is never public.
+    """
+    if address.version == 6 and address in _NAT64_LOCAL_USE:
+        return "nat64-local-use"
+    embedded = _embedded_ipv4(address)
+    if embedded is None:
+        return _non_public_class(address)
+    form, carried = embedded
+    for ipv4 in carried:
+        named = _non_public_class(ipv4)
+        if named is not None:
+            return f"{form}:{named}"
+    return None
+
+
+def _is_localhost_name(hostname):
+    """`localhost`, any name under `.localhost` (RFC 6761), or `localhost.localdomain`."""
+    name = hostname.lower().rstrip(".")
+    return name in ("localhost", "localhost.localdomain") or name.endswith(".localhost")
+
+
 # At least one representative for every named class — representative samples, not exhaustive
 # coverage of each class's address space. Asserted on the CLASS NAME rather than on the
 # rejection boolean, because rejection alone is not deletion-sensitive: 127.0.0.1,
@@ -480,6 +540,26 @@ NON_PUBLIC_CLASS_CASES = (
     ("fc00::1", "private"),
     ("8.8.8.8", None),
     ("2606:4700::1111", None),
+)
+
+# Every embedded-IPv4 form with a non-public and a public carried address. The
+# public rows are what make each unwrapping branch deletion-sensitive: without
+# it, CPython 3.12 calls all of these prefixes private or reserved.
+EMBEDDED_IPV4_CASES = (
+    ("::ffff:127.0.0.1", "ipv4-mapped:loopback"),
+    ("::ffff:8.8.8.8", None),
+    ("::127.0.0.1", "ipv4-compatible:loopback"),
+    ("::8.8.8.8", None),
+    ("::", "unspecified"),
+    ("::1", "loopback"),
+    ("64:ff9b::a9fe:a9fe", "nat64:cloud-metadata"),
+    ("64:ff9b::808:808", None),
+    ("64:ff9b:1::808:808", "nat64-local-use"),
+    ("2002:7f00:1::1", "6to4:loopback"),
+    ("2002:808:808::1", None),
+    ("2001:0:7f00:1::f7f7:f7f7", "teredo:loopback"),
+    ("2001:0:808:808::f5ff:fffe", "teredo:private"),
+    ("2001:0:808:808::f7f7:f7f7", None),
 )
 
 
@@ -606,18 +686,16 @@ def public_http_target(url):
         return False
     try:
         hostname = urlsplit(url).hostname
-        if hostname is None or hostname.lower().rstrip(".") == "localhost":
+        if hostname is None or _is_localhost_name(hostname):
             return False
         address = _host_literal(hostname)
     except (UnicodeError, ValueError):
         return False
     if address is None:
         return True
-    # An IPv4-mapped IPv6 spelling must reach the same verdict as its IPv4 form.
-    mapped = getattr(address, "ipv4_mapped", None)
-    if mapped is not None:
-        address = mapped
-    return _non_public_class(address) is None
+    # An IPv4-mapped spelling reaches the same verdict as its IPv4 form; every
+    # other embedded-IPv4 form is judged by what it carries, too.
+    return _target_class(address) is None
 
 
 def record_wallet_authorization(effects):
@@ -1696,6 +1774,39 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 address = ipaddress.ip_address(literal)
                 self.assertEqual(_non_public_class(address), expected)
 
+    def test_embedded_ipv4_forms_are_judged_by_the_address_they_carry(self):
+        """XN-2: each embedded-IPv4 IPv6 form is unwrapped explicitly, not by CPython's tables.
+
+        The class names show which branch decided, and the unwrapped addresses
+        agree with CPython's own ipv4_mapped, sixtofour and teredo readings.
+        """
+        for literal, expected in EMBEDDED_IPV4_CASES:
+            with self.subTest(address=literal):
+                address = ipaddress.ip_address(literal)
+                self.assertEqual(_target_class(address), expected)
+                self.assertEqual(public_http_target(f"https://[{literal}]/pay"), expected is None)
+                embedded = _embedded_ipv4(address)
+                if address.ipv4_mapped is not None:
+                    self.assertEqual(embedded, ("ipv4-mapped", (address.ipv4_mapped,)))
+                if address.sixtofour is not None:
+                    self.assertEqual(embedded, ("6to4", (address.sixtofour,)))
+                if address.teredo is not None:
+                    self.assertEqual(embedded, ("teredo", address.teredo))
+        for literal, expected in NON_PUBLIC_CLASS_CASES:
+            with self.subTest(address=literal, form="not embedded"):
+                self.assertEqual(_target_class(ipaddress.ip_address(literal)), expected)
+
+    def test_localhost_names_are_never_public(self):
+        """XN-2: `localhost`, every `.localhost` name (RFC 6761) and `localhost.localdomain`."""
+        for host in ("localhost", "LOCALHOST.", "api.localhost", "a.b.localhost.",
+                     "localhost.localdomain", "LOCALHOST.LOCALDOMAIN."):
+            with self.subTest(host=host):
+                self.assertFalse(public_http_target(f"https://{host}/pay"))
+        for host in ("localhost.example", "notlocalhost", "localhost-api.example",
+                     "localdomain", "api.localhost.example"):
+            with self.subTest(host=host):
+                self.assertTrue(public_http_target(f"https://{host}/pay"))
+
     def test_wireserver_is_rejected_as_hardening_not_conformance(self):
         """Azure WireServer is rejected, but that is our choice — not a §6.3.6 obligation.
 
@@ -1885,6 +1996,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             '`availability: "disabled"`',
             "MUST NOT rewrite",
             "Its host MUST NOT contain `%`.",
+            "every name under `.localhost` are never public.",
+            "An IPv6 address that embeds an IPv4 address is not public when an address it carries is not.",
+            "The local-use NAT64 prefix `64:ff9b:1::/48` is never public.",
             "No answer, a 5xx, 408, or 429 is transient: nothing is authorized, the result is "
             "`indeterminate`, and the unpaid request may be retried.",
             "internationalized host MUST be signed in A-label form",

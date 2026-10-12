@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 270,
-  "hash": "42c16b0c733f34c71e28edd11345baadb41821309c56348125f885a63c50d688",
+  "count": 280,
+  "hash": "6ae56dcd74f8fb662d3ffc43b71c8b6c9721dc354326a0ccecc230a1906ddbe9",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -25134,6 +25134,1233 @@
         }
       ],
       "expectedReason": "reconciliation-binding"
+    },
+    {
+      "name": "bounded-fetch-localhost-subdomain-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a name under .localhost is a loopback name (RFC 6761)",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "2amhmxtpZL1nWs4RcZyQP4QcWDHNpH6E0r0tOfS21-5VDL59xg9-1ANeYcQ-fv73Ts3yjTcKAVH9h1YbM7-IBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "wGmPkFAHg-R0ONORlB3UJFFYlVxBvXI30kvOOuk-1c-RVrRcPOMcOGKpwEt2iARoxYTH9qHHJ148zpE7CfarDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "acd1553c55e8a7afa3f1d51e65ef5530969f53fc54a36b266711d36191826311"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "9wUkMEDfkVKUim4d-g11xCIehZY6VJ5udyKl18_naOJIbQNf9xGGvqE-9psYcW3-R31bnYMhOkm3-uuUxCp_CQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "4HCiaqGh54FEOMGg-O1QsU6JNQRfv49OlpPmSxv-srwSRpolg97WVD4OE87m8DaWf-wMhBJqO5IJbW1ygngsCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://api.localhost/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-localhost-subdomain-upper-case-root-dot-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a .localhost name in any letter case and with a root dot is a loopback name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Usgtkp6XH1uea8ejSUso026wTmCjdEYT_jh5qzqeBiZg9pkH0gvN74Pco1XBY857ZG8RWvidzIuGJopdBwfsAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "iwunmiRADdvqpAi85o9ISVhPUp53GNTSfWbW7WHnGg_AqNvycp3lg9Gluwsj0lX-_Tot2js7HB-L1fq-7-K9Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "54fb3114b175d81cd744a49626429dc1bcd9c532c1b7445b5bc078f4e53808f7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "IAOq0Nrja3ulTiVSOqryX1-NytlR2IKUZqZCEwGaDuhe76RWkNC9SUMtXA7xwwbqI44_gkTcQQP1d59DCmpUAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "8Mr3es4QLTDQTBoHjtZELj0DiV7kJoTo4IhiHxLvsxJxBHJYDzOOTf9q9Z0lbz7a-wHedtUWPPtUesBUgKLGBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-localhost-localdomain-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "localhost.localdomain is a loopback name",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "NvGX8NvVMNXEmaykC4lXdT7MbNWe8iIK_Y96rL1H9Io93Mn9U8snkfAGbEGLZxZoihEveHotyhVw9Ftk0g_KDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "csURiGZHkCrREvXmzNSLCVMtg7cUSn597wUHpy156wUk2eMXZ3zqYb3zq0IHoqly9ebLnMjQya3pd6HJ3nSGCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b7b25e68c845a296af912b8b0783dfbef416b76a971e286b590cf2355faa3454"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "LYqsTzL70LN8u4oBfhF3NOGlRBNk7L71xsRARgGwF2Syjp3eo1rUUS8xQxYYntU4IGnkJM7bLT0bzjk1q1nBAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "IfwK-e-go643N5-ucJF2ueK7O9eOKJ81D4Arjij8eAxQKnfOIXhtw2egjPsrrXkzELLj8c1Ev7ascF_h-xVeBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-ipv4-compatible-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "an IPv4-compatible address carrying 127.0.0.1 is loopback",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "6Yrvzs2WSccKhdThV6Bt7zGqQZwcMtDtRcOrEe9KHZjZrOOtQrQYZoK5p6WwkeRwJbiXv2JIr1ENY3CS_mnLAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "1Y_l5tmYqDg8APF9K1isS9x0pdxqIvsBYdELJgESSZWPFP-rjX_h8E93E5kTkMVEjpX1mkrxJo7nHbKG-ax7Bg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "7d2a612e6b9bff26b93624028b3dd92aa3d567efcb46968ae8fd1879b150ad84"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "jlTioNERNCDmJacBRGtRzSVo__E50-NxzOAC_GZYlHW97kONvhoO5ZkGkFDV03jLLk61mLnXcDEzFRqvkwdtBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "ov3YSjBc1MMiN4hNVKN0h1Dtvm3g5v0wDmASt8Wwj-FMXwV9jgHzhrzyELNT7cFH5B6x4Fudlft9FqRnr_AABw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-nat64-metadata-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a NAT64 address carrying 169.254.169.254 reaches the metadata endpoint",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "lAIaLokJ5xzaO_8xQ4WiGXNwdkvpgwCcZLP4n0BVdni9RZJ1Jxjz6W330OnJtRnP03bZpVA3-UE27rkLmXISDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Dhzizs-LYJSEpOKuwpD4XkvBmDz-dSsXSzD1mD-g74pVbtm59HDpJbibzaPeJPhfUMJkYp64d3dVtRkfM9FjCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a056e466d6cee2442ca579e46dc80a14ebde050b251df9fc47d1a0a54ea2377d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "mruakFloL-MNtjCTOX81QpmktyUurNRbZZZyyNzuXjHq2TPzkLcIxpcr1Rfhuh1BdWVN_N-I6SZNg93RvZBqCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "-rSOBYuTAKEPyznphDNt2FhKsJYqcpQUTzyKlanOFJAd19sZNe5v7cJ1Qrvnemv8nPjuFEG_JXMswFBIWZAJDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-nat64-local-use-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "the local-use NAT64 prefix does not fix where the IPv4 address sits",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "a6R87U4ZHb01alWeZTWqORjAxNYx0gNuQRHieeH2GiCXJnrpmN11mJZDj9PCKRWNozJN81KD0T2akrNHUKrbCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "ooNcgaTH7tGzCaxu_4pWVFzYC3i822GWkTO9mjN8iv9gewrmuk0TfoGQWSYSpeG7ZZ4tUorOsqROwBZDztnQDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "12b6af3a7e119229fc92308f59fa287a4649f96e00e1d65dd07a62aac4535385"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "jKUjhQQAEtpJyz5B8J4vdBixiTlEgO62c3RgQF0sR-38n-vzbrsaKQqWOPeGvIX5m9TMl0BE76MzDNcwjpGnAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "I7n_4sNqum_u4VAkGq4VKXOkZ8zrbyCYtlO_4uExBUwfGs4r-TNEtYQFqj0YOA2M6SI_vEg_UZAm5rDaXe9hAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-6to4-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a 6to4 address carrying 127.0.0.1 is loopback",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "T1dcy5jIEeifT4voGGpzI6Ke9HEEteHVQ_58bgBST_CMy4blU83-A52HTVrRMhpIGMJKc-R-wvLtuWwgN_Y0AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "KE44M3TyWy06udtMuHsj1neixmlGi-mzMlkjMpuUtmBFoAovTEsFyldZoFudVLYLjdk_OV23QdsTBLumRZYBBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "779be5a17e77aac07cbc0f45d3a5ddd937e6571a95577caa32929990dbb2ab9f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "SWFD3iGo8vXgaEi3DCczV0KNCWs62IHFHeaDq-WH06TL101QBO2yauqWljHs6tkse4vE1GEvjSVtNhllALFDCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "7caVaJWSsP8BckGtPfu4Ma3oXaq5QoXH3lOvMr_5W4maVSZT3EVq0GLpfPeExrjFD3zhA5X02P3HuvMbkCakDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-teredo-server-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a Teredo address whose server is 127.0.0.1 is loopback",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "f4imDZg3Sk6--ymlia6FYxb2TPgPODKTKMahxkm-dLVgTbBTyD_YwU8ClOd-lcj0v_oushIAG-qUyIeunTXRCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "6tQaJHUJcJJVruz6lFu6SspCxW6_GRnLLgpWp5v5Nt-aZ4rrmY7gp9K-Azb_FgT3cEFq5YTnAW-3XhGSnNjLDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "7314762ac6f48d3934ab333ed447a484444c5f6b3d928ea52ebf163ae54876e3"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "XI6Mq7YHNhoVZUQrVeuPcfNBIBs8Uj9jRP4TL14InYDNCYiIhphkLTgC5ghfGXdeDH10O-Qdj__mN1V_b1TcBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "mmSeMF4p0X5lszB-rKLpy1OeVsDhGciFJrnUk3G4Bi4FDoXqurPNIZmbGB6njVE1FFGRfDC58_jbT3TAfYqZDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-teredo-client-private-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a Teredo address whose inverted client is 10.0.0.1 is private",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "5pSHJ53UnKTYPWAu0aZUvPM9y8NUiLM0RfQlq3Uy_2f8gY0qSLBveM52keg0sNI89Ymx03MUzb16DaDI7sETAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "ziv67lG3ch_wkSNeo6mIL7LPVfOgYtySaqBe4CklmTzVh-zFJwj6RROhODoWZ9XGtLYTakmSr5Ao_fdLeCMFBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d41ef399c0cd769ca333c2c67996331ab8b2d045d25b9d97f1ab0d82326448c1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "xJ3DgfdSkiq2i6uURBnNZmlPfiQiBbC6yWCGkSApyXI8KtORuKDiiU8Dct9JBAHbC5nyaY58uHdolaRiwwFsDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "tUrhA0WpTpLZSpT8vlEnCM0PFR0Rso97diDv0IrIh8P_EZ04H6yTdLw6-OhCTQ1e4MsoY1yBDbrYNXJbxjS8CQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "request-target-ipv4-mapped-public-address",
+      "expected": "pass",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "an IPv4-mapped spelling of a public address reaches the IPv4 verdict",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "zaMFZKjK6Le9gnwnUvUqBdJk8918Gl8kQHk5Spea6clvPzoE7VmNCp9kUNE7bu14d1t7LlwOFXXOcfblcpxiAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qSE3PYgHyeU_FV49icMxKvNGXrosYxbyAaM_tn8KfSxR4m4wJ_7pmOrI_jmOUfkw5bna_WZrpTV5aywJZMM3CA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "9d178c39a28abff5e31d4b68563956d6d4902733934be0c8c9ad35094884a44e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "eMVpUzm2_5v_7BFkiXoaAcJHOxsKMvFqKNg6sDRDRa3HUlsCplx4R6--Tgsn01qdWqCrm8qM-w3aFRqCmcqOBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "2_p-4XDeZX2KR4FHnM5VooG3qGQ2DJyvd0LZDqOb0bV4nWEpfR7zcWG3U8yJxHdVkNI3tjoQuLd5jiiETJFxAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        }
+      ]
     }
   ]
 }

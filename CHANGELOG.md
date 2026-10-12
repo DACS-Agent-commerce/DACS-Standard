@@ -160,6 +160,14 @@ The format used per release:
   points, and WHATWG strips tab, LF and CR, ends an `https` authority at `\`,
   and percent-decodes the host.
   The DACS-1 §6.3.6 per-connection checks still apply to every admitted URL.
+- **Localhost names and embedded IPv4 addresses** (DACS-4 §9.5.7 XN-2) —
+  `localhost.localdomain` and every name under `.localhost` are never public,
+  like `localhost`. An IPv6 address that embeds an IPv4 address is not public
+  when an address it carries is not: IPv4-mapped, IPv4-compatible, NAT64
+  `64:ff9b::/96`, 6to4, and Teredo (server and inverted client). The
+  local-use NAT64 prefix `64:ff9b:1::/48` is never public. The reference
+  evaluator unwraps each form by explicit prefix instead of relying on the
+  host language's address tables, which differ between releases.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

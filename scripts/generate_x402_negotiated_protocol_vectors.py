@@ -2150,6 +2150,46 @@ def build_vectors() -> list[dict]:
              retained_state(lambda state: {**state, "nonce": "fresh"}), operation="retry",
              authorization_submitted=True, reason="reconciliation-binding")
 
+    # XN-2: RFC 6761 localhost names are never public, and an IPv6 form that
+    # embeds an IPv4 address is judged by the address it carries, explicitly
+    # rather than through the host language's address tables. Like the
+    # bounded-fetch rows above, each refreshes the received-object hashes.
+    def literal_target(target):
+        def mutate(v):
+            request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
+            request["url"] = target
+            v["listing"]["acceptedRails"][0] = copy.deepcopy(v["agreement"]["terms"]["rail"])
+            v["runtime"]["selectedRailRef"] = copy.deepcopy(v["agreement"]["terms"]["rail"])
+            v["runtime"]["effectiveUrl"] = target
+            v["http"]["paymentRequired"]["resource"]["url"] = target
+            v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
+        return mutate
+    for name, unsafe_url, note in (
+        ("localhost-subdomain", "https://api.localhost/pay",
+         "a name under .localhost is a loopback name (RFC 6761)"),
+        ("localhost-subdomain-upper-case-root-dot", "https://API.LOCALHOST./pay",
+         "a .localhost name in any letter case and with a root dot is a loopback name"),
+        ("localhost-localdomain", "https://localhost.localdomain/pay",
+         "localhost.localdomain is a loopback name"),
+        ("ipv4-compatible-loopback", "https://[::127.0.0.1]/pay",
+         "an IPv4-compatible address carrying 127.0.0.1 is loopback"),
+        ("nat64-metadata", "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/",
+         "a NAT64 address carrying 169.254.169.254 reaches the metadata endpoint"),
+        ("nat64-local-use", "https://[64:ff9b:1::808:808]/pay",
+         "the local-use NAT64 prefix does not fix where the IPv4 address sits"),
+        ("6to4-loopback", "https://[2002:7f00:1::1]/pay",
+         "a 6to4 address carrying 127.0.0.1 is loopback"),
+        ("teredo-server-loopback", "https://[2001:0:7f00:1::f7f7:f7f7]/pay",
+         "a Teredo address whose server is 127.0.0.1 is loopback"),
+        ("teredo-client-private", "https://[2001:0:808:808::f5ff:fffe]/pay",
+         "a Teredo address whose inverted client is 10.0.0.1 is private"),
+    ):
+        add_case(vectors, f"bounded-fetch-{name}-target", "fail", "XN-2/DACS-1-6.3.6", note,
+                 literal_target(unsafe_url), refresh=True, reason="non-public-request-target")
+    add_case(vectors, "request-target-ipv4-mapped-public-address", "pass", "XN-2/DACS-1-6.3.6",
+             "an IPv4-mapped spelling of a public address reaches the IPv4 verdict",
+             literal_target("https://[::ffff:8.8.8.8]/pay"), refresh=True)
+
     return vectors
 
 

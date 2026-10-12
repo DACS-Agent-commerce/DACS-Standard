@@ -345,7 +345,8 @@ def make_base(
         "jobId": job_id,
         "buyer": BUYER,
         "seller": SELLER,
-        "price": {"amount": "1000000", "currency": "USDC"},
+        # 1 USDC at the rail's 6 decimals is the 1000000 base-unit budget (DRA-10).
+        "price": {"amount": "1", "currency": "USDC"},
     })
     rail = hook("rail", {
         "railVersion": 1,
@@ -357,6 +358,7 @@ def make_base(
         "contractAddress": CONTRACT,
         "runtimeBytecodeHash": RUNTIME_HASH,
         "paymentToken": TOKEN,
+        "paymentTokenSymbol": "USDC",
         "tokenDecimals": 6,
         "profileParameters": {
             "minimumEvaluationWindowSec": 3600,
@@ -913,6 +915,12 @@ def build_vector_pack() -> dict[str, Any]:
             "inputs": put("vetRecords", "evaluator", "validUntilSec", 1799980000),
         }),
         "nonminimal-budget": make_base("release", hooks={"agreement": put("budgetBaseUnits", "01000000")}),
+        # DRA-10: the budget is the agreed price converted with the pinned
+        # token decimals.  Each edit is signed and every binding follows it.
+        "dra-10-price-amount": make_base("release", hooks={"bilateral": put("price", "amount", "2")}),
+        "dra-10-price-currency": make_base("release", hooks={"bilateral": put("price", "currency", "DAI")}),
+        "dra-10-token-decimals": make_base("release", hooks={"rail": put("tokenDecimals", 18)}),
+        "dra-10-zero-budget": make_base("release", hooks={"agreement": put("budgetBaseUnits", "0")}),
         "rail-reference-mismatch": make_base("release", hooks={"agreement": put("railDefinitionRef", "contentHash", "04" * 32)}),
         "unsupported-disclosure-policy": make_base("release", hooks={"agreement": put("disclosurePolicy", "encrypted-transcript")}),
         "transcript-in-delivered-artifact": make_base("release", hooks={"inputs": put("deliveredArtifact", "transcriptExcerpt", "forbidden")}),
@@ -1285,6 +1293,10 @@ def build_vector_pack() -> dict[str, Any]:
         vector("evaluator-vet-requirement-mismatch", "evaluator-vet-requirement-mismatch", "rejected", "DRA-8", "the evaluator Vet record must use the bound requirement"),
         vector("evaluator-vet-not-fresh-at-funding", "evaluator-vet-expired-at-funding", "rejected", "DRA-9", "the evaluator Vet pass must be fresh at the authenticated funding time"),
         vector("nonminimal-budget-base-units", "nonminimal-budget", "error", "DRA-10", "the signed budget uses minimal unsigned decimal text"),
+        vector("dra-10-budget-not-agreed-amount", "dra-10-price-amount", "rejected", "DRA-10", "the budget is not the agreed 2 USDC converted at the rail's 6 decimals"),
+        vector("dra-10-price-currency-not-rail-token", "dra-10-price-currency", "rejected", "DRA-10", "the agreed price currency must be the pinned payment token"),
+        vector("dra-10-budget-uses-other-decimals", "dra-10-token-decimals", "rejected", "DRA-10", "the agreed 1 USDC at the rail's pinned 18 decimals is not 1000000 base units"),
+        vector("dra-10-zero-budget-for-nonzero-price", "dra-10-zero-budget", "rejected", "DRA-10", "a zero budget is not the non-zero agreed price"),
         vector("rail-definition-reference-mismatch", "rail-reference-mismatch", "rejected", "DRA-12", "the selected rail definition must resolve exactly"),
         vector("evaluator-added-as-bundle-party", "release", "rejected", "DRA-13", "the evaluator overlay signature does not create a third bundle party", [{"op": "add", "path": ["bundleRequiredSigners", 2], "value": EVALUATOR}]),
         vector("unsupported-disclosure-policy", "unsupported-disclosure-policy", "rejected", "DRQ-1", "the first profile accepts only its two signed disclosure policies"),
@@ -1602,6 +1614,8 @@ FOLLOW_ON_FINDINGS = {
     "pipeline-unsupported-delivery-kind": ("error", "DRV-2"),
     # The evaluation's subject is that same delivery reference.
     "delivery-reference-mismatch": ("rejected", "DRE-3"),
+    # Non-minimal budget text is not the converted agreement price either.
+    "nonminimal-budget-base-units": ("rejected", "DRA-10"),
 }
 # Structural negatives: their deciding guard is what keeps the verifier from
 # reading a structure that the negative removes, so without that guard the

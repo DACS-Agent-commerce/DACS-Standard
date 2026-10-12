@@ -105,7 +105,8 @@ GUARD_CASES = {
     "execution-context-not-object": (_release(put("executionContext", [])), ("error", "DRV-3", "executionContext must be an object")),
     "role-binding-not-object": (_release(put("artifacts", "agreement", "buyer", "buyer")), ("error", "DRV-3", "agreement role bindings must be objects")),
     "primary-claim-not-text": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", 7)), ("error", "DRV-3", "agreement primary claims must be strings")),
-    "orchestrator-claim-missing": (_release(put("orchestratorClaim", None)), ("error", "DRV-3", "orchestratorClaim is required")),
+    "agreement-price-malformed": (_hooked(bilateral=put("price", "amount", "1.0")), ("error", "DRV-3", "agreement price or pinned token decimals are malformed")),
+    "orchestrator-claim-missing":(_release(put("orchestratorClaim", None)), ("error", "DRV-3", "orchestratorClaim is required")),
     "resolver-shape": (_release(drop("resolverEvidence", "statuses")), ("error", "DRV-3", "resolver evidence shape is not exact")),
     "resolver-version": (_release(put("resolverEvidence", "resolverEvidenceVersion", "2")), ("error", "DRV-2", "unsupported resolver evidence version")),
     "resolver-call-record-shape": (_signed_by_resolver(drop("resolverEvidence", "terminalCall", "outerSubmitter")), ("error", "DRV-3", "resolver terminal call record is malformed")),
@@ -1420,6 +1421,51 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertEqual(
             set(verifier.SETTLEMENT_AUTHORIZATIONS), verifier.EVALUATION_RESULTS - {"indeterminate"}
         )
+
+    def test_dra_10_budget_is_the_converted_agreement_price(self):
+        """DACS-4 §9.5.2 steps 2-3: the currency is the rail asset; amount × 10^decimals is exact."""
+        self.assertIn(
+            "3. Compute on-chain `amount = amount.amount × 10^rail.asset.decimals` "
+            "(string-decimal multiplication, no float).",
+            SETTLE_SPEC.read_text(encoding="utf-8"),
+        )
+        for amount, decimals, expected in (
+            ("1", 6, "1000000"), ("0.5", 6, "500000"), ("12.345678", 6, "12345678"),
+            ("0", 6, "0"), ("7", 0, "7"), ("1.0000001", 6, None), ("0.1", 0, None),
+        ):
+            with self.subTest(amount=amount, decimals=decimals):
+                self.assertEqual(verifier.price_base_units(amount, decimals), expected)
+        release = self._fixture("release")["artifacts"]
+        self.assertEqual(release["bilateralAgreement"]["price"], {"amount": "1", "currency": "USDC"})
+        self.assertEqual(
+            (release["railDefinition"]["paymentTokenSymbol"], release["railDefinition"]["tokenDecimals"]),
+            ("USDC", 6),
+        )
+        self.assertEqual(release["agreement"]["budgetBaseUnits"], "1000000")
+        cases = {
+            "fractional price": ({"bilateral": put("price", "amount", "0.5"), "agreement": put("budgetBaseUnits", "500000")}, ("verified", "DRV-7")),
+            "18 decimals": ({"rail": put("tokenDecimals", 18), "agreement": put("budgetBaseUnits", "1" + "0" * 18)}, ("verified", "DRV-7")),
+            "zero price and budget": ({"bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0")}, ("verified", "DRV-7")),
+            "excess precision": ({"bilateral": put("price", "amount", "1.0000001")}, ("rejected", "DRA-10")),
+            "wrong amount": ({"bilateral": put("price", "amount", "2")}, ("rejected", "DRA-10")),
+            "wrong currency": ({"bilateral": put("price", "currency", "DAI")}, ("rejected", "DRA-10")),
+            "wrong decimals": ({"rail": put("tokenDecimals", 18)}, ("rejected", "DRA-10")),
+            "zero budget": ({"agreement": put("budgetBaseUnits", "0")}, ("rejected", "DRA-10")),
+            "budget one base unit short": ({"agreement": put("budgetBaseUnits", "999999")}, ("rejected", "DRA-10")),
+            "amount not CD-1": ({"bilateral": put("price", "amount", "01")}, ("error", "DRV-3")),
+            "amount a number": ({"bilateral": put("price", "amount", 1)}, ("error", "DRV-3")),
+            "amount with exponent": ({"bilateral": put("price", "amount", "1e0")}, ("error", "DRV-3")),
+            "currency not text": ({"bilateral": put("price", "currency", 5)}, ("error", "DRV-3")),
+            "price extra member": ({"bilateral": put("price", "decimals", 6)}, ("error", "DRV-3")),
+            "decimals text": ({"rail": put("tokenDecimals", "6")}, ("error", "DRV-3")),
+            "decimals boolean": ({"rail": put("tokenDecimals", True)}, ("error", "DRV-3")),
+            "decimals negative": ({"rail": put("tokenDecimals", -1)}, ("error", "DRV-3")),
+            "decimals beyond uint8": ({"rail": put("tokenDecimals", 256)}, ("error", "DRV-3")),
+            "symbol missing": ({"rail": drop("paymentTokenSymbol")}, ("error", "DRV-3")),
+        }
+        for name, (hooks, expected) in cases.items():
+            with self.subTest(case=name):
+                self.assertEqual(finding(make_base("release", hooks=hooks)), expected)
 
     def test_drp_5_drj_2_drj_5_selected_rail(self):
         expected = {

@@ -47,6 +47,10 @@ EVM_TX_RE = re.compile(r"^0x[0-9a-f]{64}$")
 # walkthrough emits.  A 64-digit `stor-` value is a logical address there, and
 # DACS-4 §9.6.1 gives the deliverable no logical address in that form.
 NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-[0-9a-f]{40}$")
+# A CORE CD-1 canonical decimal `PriceTerm.amount`.
+CANONICAL_DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?")
+# ERC-20 `decimals()` is a uint8.
+MAX_TOKEN_DECIMALS = 255
 
 DOMAINS = {
     "agreement": "dacs-x-delivery-remedy-agreement:v1:",
@@ -310,6 +314,19 @@ def _finality_check(
     if observed_at < observation["blockTimestampSec"] * 1000:
         return result("rejected", rule, f"{label} finality predates its event block")
     return None
+
+
+def price_base_units(amount: str, decimals: int) -> str | None:
+    """Convert a CD-1 amount to token base units (DACS-4 §9.5.2 step 3).
+
+    `amount × 10^decimals` in exact decimal arithmetic, as minimal unsigned
+    decimal text.  None when the amount has more fractional digits than the
+    token carries: no base-unit amount equals it exactly.
+    """
+    whole, _, fraction = amount.partition(".")
+    if len(fraction) > decimals:
+        return None
+    return str(int(whole + fraction.ljust(decimals, "0")))
 
 
 def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
@@ -669,6 +686,29 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("rejected", "DRA-1", "bilateral agreement is for another job")
     if not attestation_ref_valid(agreement.get("railDefinitionRef"), rail):
         return result("rejected", "DRA-12", "rail definition reference does not resolve exactly")
+    # DRA-10: the budget is the agreed price converted with the pinned token
+    # decimals, as DACS-4 §9.5.2 steps 2 and 3 convert a PriceTerm: the
+    # currency is the rail asset's symbol, and amount × 10^decimals is exact.
+    price = bilateral.get("price")
+    decimals = rail.get("tokenDecimals")
+    if (
+        not isinstance(price, dict)
+        or set(price) != {"amount", "currency"}
+        or not isinstance(price["amount"], str)
+        or CANONICAL_DECIMAL_RE.fullmatch(price["amount"]) is None
+        or not isinstance(price["currency"], str)
+        or not isinstance(rail.get("paymentTokenSymbol"), str)
+        or type(decimals) is not int
+        or not 0 <= decimals <= MAX_TOKEN_DECIMALS
+    ):
+        return result("error", "DRV-3", "agreement price or pinned token decimals are malformed")
+    if price["currency"] != rail["paymentTokenSymbol"]:
+        return result("rejected", "DRA-10", "agreement price currency is not the pinned payment token")
+    if price_base_units(price["amount"], decimals) != agreement["budgetBaseUnits"]:
+        return result(
+            "rejected", "DRA-10",
+            "budgetBaseUnits is not the agreement price converted with the pinned token decimals",
+        )
 
     role_bindings = {role: agreement.get(role) for role in ("buyer", "seller", "evaluator")}
     if not all(isinstance(binding, dict) for binding in role_bindings.values()):

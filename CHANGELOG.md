@@ -74,7 +74,9 @@ The format used per release:
   form; any other response spelling is `error`. The upstream `0x` spelling
   therefore verifies, while DACS-produced event keys stay strictly canonical.
   XN-11 reconciliation compares a known `settlementTransaction` in the same
-  adapter form, and the retained value stays verbatim.
+  adapter form, and the retained value stays verbatim. Both the retained and
+  the recorded value are taken to that form first, so a value with none is
+  `error` even when the two spellings are identical.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

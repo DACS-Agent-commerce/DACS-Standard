@@ -615,24 +615,26 @@ def reconciliation_matches(retained, v):
 
     The retained settlementTransaction stays verbatim, as XN-7 keeps it; only the
     comparison uses the XN-7 adapter form, so the same hash spelled with another
-    prefix or case still reconciles.
+    prefix or case still reconciles. Both forms are derived before comparing, so
+    a value with no adapter form is malformed (ValueError) even when the retained
+    and recorded spellings are identical.
     """
     identity = reconciliation_identity(v)
     if identity is None or not isinstance(retained, dict) or set(retained) != set(identity):
         return False
-    if any(retained[field] != value for field, value in identity.items()
-           if field != "settlementTransaction"):
-        return False
-    kept, recorded = retained["settlementTransaction"], identity["settlementTransaction"]
-    if kept == recorded:
-        return True
     parameters = v["agreement"]["terms"]["rail"].get("parameters")
     selection = parameters.get("selection") if isinstance(parameters, dict) else None
     network = selection.get("network") if isinstance(selection, dict) else None
-    if not isinstance(network, str):
+    forms = [
+        adapter_canonical_transaction(network, transaction) if isinstance(network, str) else None
+        for transaction in (retained["settlementTransaction"], identity["settlementTransaction"])
+    ]
+    if None in forms:
+        raise ValueError("settlementTransaction has no XN-7 adapter form")
+    if any(retained[field] != value for field, value in identity.items()
+           if field != "settlementTransaction"):
         return False
-    kept_form = adapter_canonical_transaction(network, kept)
-    return kept_form is not None and kept_form == adapter_canonical_transaction(network, recorded)
+    return forms[0] == forms[1]
 
 
 def exact_atomic(amount, decimals, ceiling):
@@ -804,7 +806,11 @@ def evaluate(v, effects=None):
     if operation == "retry":
         if not verify_artifact_signatures(v):
             return "fail", "signature"
-        if not reconciliation_matches(v.get("runtime", {}).get("reconciliationState"), v):
+        try:
+            matches = reconciliation_matches(v.get("runtime", {}).get("reconciliationState"), v)
+        except ValueError:
+            return "error", "settlement-transaction-form"
+        if not matches:
             return "fail", "reconciliation-binding"
         return "pass", "reconciliation-pending"
 
@@ -1252,6 +1258,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-authorization-binding-mismatch",
             "retry-transaction-binding-mismatch",
             "retry-retained-transaction-spelling-reconciles",
+            "retry-identical-malformed-transaction-is-error",
         )
         for name in names:
             with self.subTest(vector=name):
@@ -1485,6 +1492,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "A non-empty port MUST be decimal digits with a value of at most 65535.",
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
+            "It derives that form for both the retained and the recorded value before comparing them.",
         ):
             self.assertIn(text, spec)
 

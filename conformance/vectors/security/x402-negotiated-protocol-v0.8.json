@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 153,
-  "hash": "b8e77ed920dab1e5e8e15682de48f93511a052b2d40f5a7cf86fbf3387829d8c",
+  "count": 154,
+  "hash": "cc504ffa10049b786ccf940e5db29a67e122b10db83114c858c94a6182b6f494",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -14126,6 +14126,61 @@
         }
       ],
       "expectedReason": "reconciliation-pending"
+    },
+    {
+      "name": "retry-identical-malformed-transaction-is-error",
+      "expected": "error",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "identical retained and recorded spellings still need an XN-7 adapter form; a value with none is a malformed coordinate",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "not-a-hash"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "U4XD7tIaZs3yEmFB5v47DqriFoqKbMOyxrZzeQ-oiqslp5U4CYPyoQYjPlA6bCVOYgeM1wVtykjs6Oacd-1dCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ],
+          "value": "not-a-hash"
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
     }
   ]
 }

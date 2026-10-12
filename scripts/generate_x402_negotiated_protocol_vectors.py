@@ -1392,6 +1392,16 @@ def build_vectors() -> list[dict]:
              retry_retained_transaction_spelling, operation="retry",
              authorization_submitted=True, reason="reconciliation-pending")
 
+    def retry_identical_malformed_transaction(v):
+        v["ledger"]["available"] = False
+        v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = "not-a-hash"
+        v["runtime"]["reconciliationState"]["settlementTransaction"] = "not-a-hash"
+    add_case(vectors, "retry-identical-malformed-transaction-is-error", "error", "XN-11/XN-7",
+             "identical retained and recorded spellings still need an XN-7 adapter form; "
+             "a value with none is a malformed coordinate",
+             retry_identical_malformed_transaction, operation="retry",
+             authorization_submitted=True, reason="settlement-transaction-form")
+
     return vectors
 
 

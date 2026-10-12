@@ -162,6 +162,7 @@ GUARD_CASES = {
     "observations-empty": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", [])), ("error", "DRV-3", "native event inputs must be a non-empty array")),
     "observation-shape": (_signed_by_resolver(drop("reproductionInputs", "nativeEventInputs", 0, "confirmations")), ("error", "DRV-3", "native event input is malformed")),
     "observation-field-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "blockNumber", "19999900")), ("error", "DRV-3", "native event observation is malformed")),
+    "observation-identity-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 1, "eventRef", "logIndex", True)), ("error", "DRV-3", "native event input identity is malformed")),
     "submission-reference-malformed": (_release(put("deliveryBinding", "nativeSubmissionEvent", "submit")), ("error", "DRV-3", "submission event reference is malformed")),
     "submission-reference-not-canonical": (_release(put("deliveryBinding", "nativeSubmissionEvent", "chainId", 10)), ("rejected", "DRP-9", "submission event identity is not canonical")),
     "rail-finality-depth": (_hooked(rail=put("profileParameters", "finalityBlocks", 0)), ("error", "DRV-3", "rail finality depth must be a positive integer")),
@@ -1694,6 +1695,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("fixture", ("reproductionInputs", "nativeEventInputs", 0, "arguments", "submissionCutoffSec")),
             ("fixture", ("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt")),
             ("rail", ("chainId",)), ("job", ("chainId",)),
+            # An event identity is a lookup key: `false` and `true` would
+            # find the events at log index 0 (JobCreated) and 1 (JobFunded).
+            ("fixture", ("reproductionInputs", "nativeEventInputs", 0, "eventRef", "logIndex")),
+            ("fixture", ("reproductionInputs", "nativeEventInputs", 1, "eventRef", "logIndex")),
         ):
             for kind, lifecycle in itertools.product((float, bool), ("release", "expired-pre")):
                 with self.subTest(lifecycle=lifecycle, hook=hook, path=path, kind=kind.__name__):

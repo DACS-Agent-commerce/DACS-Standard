@@ -339,7 +339,8 @@ def _event_identity(ref_value: Any) -> tuple[Any, Any, Any, Any] | None:
         ref_value.get("txHash"),
         ref_value.get("logIndex"),
     )
-    if not all(isinstance(part, (str, int)) for part in identity):
+    # Used as a lookup key, where Python would take `false` for log index 0.
+    if not all(isinstance(part, str) or type(part) is int for part in identity):
         return None
     return identity
 
@@ -1374,7 +1375,10 @@ def _native_event_input_check(
     for event_input_value in event_inputs:
         if not isinstance(event_input_value, dict) or set(event_input_value) != EVENT_INPUT_FIELDS:
             return {}, result("error", "DRV-3", "native event input is malformed")
-        by_identity[_event_identity(event_input_value["eventRef"])] = event_input_value
+        identity = _event_identity(event_input_value["eventRef"])
+        if identity is None:
+            return {}, result("error", "DRV-3", "native event input identity is malformed")
+        by_identity[identity] = event_input_value
     roles = {_event_identity(item[1]): item for item in expected}
     if (
         len(roles) != len(expected)

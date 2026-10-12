@@ -1678,15 +1678,15 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 value = self._fixture("release")
                 value["executionContext"]["dacs5PurchaseCount"] = count
                 self.assertEqual(finding(value), ("rejected", "DRP-8"))
-        # An integral float where an integer is read is malformed, though
-        # Python's `==` would take it for the integer.  Each edit is signed
-        # and bound as built.
-        def floated(*path):
+        # An integral float or a boolean where an integer is read is
+        # malformed, though Python's `==` would take either for the integer.
+        # Each edit is signed and bound as built.
+        def retyped(kind, *path):
             def apply(body):
                 target = body
                 for key in path[:-1]:
                     target = target[key]
-                target[path[-1]] = float(target[path[-1]])
+                target[path[-1]] = kind(target[path[-1]])
             return apply
         for hook, path in (
             ("fixture", ("native", "chainId")), ("fixture", ("native", "fundedAtSec")),
@@ -1695,10 +1695,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("fixture", ("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt")),
             ("rail", ("chainId",)), ("job", ("chainId",)),
         ):
-            for lifecycle in ("release", "expired-pre"):
-                with self.subTest(lifecycle=lifecycle, hook=hook, path=path):
+            for kind, lifecycle in itertools.product((float, bool), ("release", "expired-pre")):
+                with self.subTest(lifecycle=lifecycle, hook=hook, path=path, kind=kind.__name__):
                     self.assertEqual(
-                        finding(make_base(lifecycle, hooks={hook: floated(*path)})), ("error", "DRV-3")
+                        finding(make_base(lifecycle, hooks={hook: retyped(kind, *path)})), ("error", "DRV-3")
                     )
         # The rail's token and contract are only compared for equality later,
         # so a malformed one is refused by shape, signed and bound as built.

@@ -43,8 +43,12 @@ ATOMIC_AMOUNT_MAX = {"eip155": 2**256 - 1, "solana": 2**64 - 1}
 SOLANA_EVENT = re.compile(
     r"^solana:(mainnet|devnet|testnet):([1-9A-HJ-NP-Za-km-z]+):(0|[1-9][0-9]*)$"
 )
+# A CAIP-2 Solana reference is the cluster's genesis-hash prefix; the cluster
+# names are DACS-4 §9.3's `mainnet | devnet | testnet`.
 SOLANA_NETWORK_CLUSTERS = {
+    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "mainnet",
     "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "devnet",
+    "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z": "testnet",
 }
 PROTOCOL_REQUIRED = {
     "railVersion", "railId", "railType", "phaseHandler", "resolution",
@@ -1354,6 +1358,30 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ref = vector["evidence"]["paymentTxRefs"][0]
         self.assertRegex(ref["settlementEvent"], SOLANA_EVENT)
         self.assertEqual(ref["settlementEvent"], vector["ledger"]["settlementEvent"])
+        self.assertEqual(evaluate(vector), ("pass", None))
+
+    def test_solana_event_key_names_the_cluster_of_each_caip2_network(self):
+        """The reference evaluator maps every DACS-4 Solana cluster, not only devnet."""
+        signature = "1" * 64
+        clusters = {
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "mainnet",
+            "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "devnet",
+            "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z": "testnet",
+        }
+        self.assertEqual(SOLANA_NETWORK_CLUSTERS, clusters)
+        for network, cluster in clusters.items():
+            for other in ("mainnet", "devnet", "testnet"):
+                with self.subTest(network=network, event_cluster=other):
+                    self.assertEqual(
+                        native_event_matches(f"solana:{other}:{signature}:4", network, signature),
+                        other == cluster,
+                    )
+        self.assertFalse(native_event_matches(
+            f"solana:mainnet:{signature}:4", "solana:" + "1" * 32, signature))
+        vector = self.by_name["protocol-v2-solana-mainnet-exact-success"]
+        ref = vector["evidence"]["paymentTxRefs"][0]
+        self.assertEqual(ref["settlementNetwork"], "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp")
+        self.assertTrue(ref["settlementEvent"].startswith("solana:mainnet:"))
         self.assertEqual(evaluate(vector), ("pass", None))
 
     def test_each_named_class_is_reported_by_its_own_branch(self):

@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 171,
-  "hash": "ab6f966b80c62ce76043f3b804c2fbf41ce6f252e9cdb617c1bb16e17d724fff",
+  "count": 172,
+  "hash": "e708c2a1e30767970a5043d8781068c1c9851b28bd40f5d25a37219d0d67b10e",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -1519,6 +1519,686 @@
             "network"
           ],
           "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ]
+    },
+    {
+      "name": "protocol-v2-solana-mainnet-exact-success",
+      "expected": "pass",
+      "rule": "XN-3/XN-8/XN-9/SB-1",
+      "operation": "execute",
+      "note": "Solana mainnet-beta's CAIP-2 genesis reference maps to the mainnet event-key cluster",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "85cfab419a3579b0862fe2503a2689501e4c40d6f1c15b0a97846069a62d4b99"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "ogRTbC0-E0yyMs7JcWvodgtDkgnKsTRqJawughgEkKpzeFTPkPVjiRynZM0vxXadEzzSWBxsVTpoxqnao9TPBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qLyflnKAZjA-s7vM4KVfMrVgjFJMM9Q2oAPvOp9QELJCt02PKjYV5x2Gm0j8zgbPu27D-QcfkqNjHuKyKUZADg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "SlnEi_C8TR96e6r1tDxnQt0w-y6SEt2_rEvtvyVITv18rnW9fn5wloJDyV3McRlhWUaB8dTsO5fhiulWBkaCBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "YZ4YrPVDncf5kdebpP0S2fvr5TSQZkLPwX3gaU8XlZjCqF-tpI2o4OCX2N0Pq4mg81vzKUkd1COtOA0SZK2BAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "34e26533828ef525fd595a81d5d021ae1b9802b368f307d7ff37b55553b86014"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "e755e5e3767d171797e3e1b09976c1e3656d757ab44319897832626d78f6b8df"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:mainnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "xIa9lJxgDp8u3_wB9WS0JRsyg0qRbAS6TaZ9K-wQHF0R8dUcQQVdAJfnUWLzEPBQFTUE0qdGoLV5-OFyTtJ7Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTo1ZXlrdDRVc0Z2OFA4TkpkVFJFcFkxdnpxS3FaS3ZkcCIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBound"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:mainnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "oMAfreUE6cyQfgsAqpJ-p6KkHND6nwJgadkjRIVGbKesvt-7sK_kDZfju4CLX8Zah0OSMhyZoKo5VxEXrZ9vDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "85cfab419a3579b0862fe2503a2689501e4c40d6f1c15b0a97846069a62d4b99"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
         }
       ]
     },

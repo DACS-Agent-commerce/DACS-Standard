@@ -553,7 +553,7 @@ def build_vectors() -> list[dict]:
              "a second seller endpoint needs no provider-specific global rail entry",
              second_provider, refresh=True)
 
-    def solana_exact(v):
+    def solana_exact(v, network=SOLANA_NETWORK, cluster="devnet"):
         extra = {"feePayer": "seller", "mint": SOLANA_ASSET}
         for ref in (
             v["listing"]["acceptedRails"][0],
@@ -562,25 +562,25 @@ def build_vectors() -> list[dict]:
         ):
             selection = ref["parameters"]["selection"]
             selection.update({
-                "network": SOLANA_NETWORK,
+                "network": network,
                 "asset": SOLANA_ASSET,
                 "extra": copy.deepcopy(extra),
             })
         binding = v["agreement"]["terms"]["payoutBindings"][0]
         binding["payeeAddress"] = SOLANA_SELLER
-        bundle = buyer_bundle(SOLANA_NETWORK, SOLANA_BUYER)
+        bundle = buyer_bundle(network, SOLANA_BUYER)
         bundle_hash = digest(unsigned(bundle, "presentation"))
         v["buyerBundle"] = bundle
         v["agreement"]["parties"][0]["bundleHash"] = bundle_hash
         v["runtime"]["payer"].update({
             "bundleHash": bundle_hash,
-            "payingKey": payment_claim(SOLANA_NETWORK, SOLANA_BUYER),
+            "payingKey": payment_claim(network, SOLANA_BUYER),
             "paymentAddress": SOLANA_BUYER,
         })
         v["runtime"]["payee"]["payeeAddress"] = SOLANA_SELLER
         requirement_value = v["http"]["paymentRequired"]["accepts"][0]
         requirement_value.update({
-            "network": SOLANA_NETWORK,
+            "network": network,
             "asset": SOLANA_ASSET,
             "payTo": SOLANA_SELLER,
             "extra": copy.deepcopy(extra),
@@ -589,18 +589,18 @@ def build_vectors() -> list[dict]:
         response.update({
             "payer": SOLANA_BUYER,
             "transaction": SOLANA_TX,
-            "network": SOLANA_NETWORK,
+            "network": network,
         })
         v["http"]["responseHeader"] = encoded_header(response, 2)
-        v["capability"]["supportedTuples"] = [[2, "exact", SOLANA_NETWORK]]
+        v["capability"]["supportedTuples"] = [[2, "exact", network]]
         v["capability"]["assetMetadata"] = {
-            "network": SOLANA_NETWORK,
+            "network": network,
             "asset": SOLANA_ASSET,
             "decimals": 6,
         }
-        event = f"solana:devnet:{SOLANA_TX}:4"
+        event = f"solana:{cluster}:{SOLANA_TX}:4"
         v["ledger"].update({
-            "network": SOLANA_NETWORK,
+            "network": network,
             "transaction": SOLANA_TX,
             "settlementEvent": event,
             "asset": SOLANA_ASSET,
@@ -611,14 +611,18 @@ def build_vectors() -> list[dict]:
         })
         evidence_ref = v["evidence"]["paymentTxRefs"][0]
         evidence_ref.update({
-            "settlementNetwork": SOLANA_NETWORK,
+            "settlementNetwork": network,
             "settlementTransaction": SOLANA_TX,
             "settlementEvent": event,
         })
-        v["evidence"]["settlementFinality"]["schemeNetworkFinality"]["network"] = SOLANA_NETWORK
+        v["evidence"]["settlementFinality"]["schemeNetworkFinality"]["network"] = network
     add_case(vectors, "protocol-v2-solana-exact-success", "pass", "XN-3/XN-8/XN-9/SB-1",
              "a non-EVM CAIP-2 network succeeds through its local exact adapter without a registry addition",
              solana_exact, refresh=True)
+    add_case(vectors, "protocol-v2-solana-mainnet-exact-success", "pass", "XN-3/XN-8/XN-9/SB-1",
+             "Solana mainnet-beta's CAIP-2 genesis reference maps to the mainnet event-key cluster",
+             lambda v: solana_exact(v, "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "mainnet"),
+             refresh=True)
 
     add_case(vectors, "definition-hybrid-static-asset", "error", "XN-1",
              "protocol arm cannot carry a static asset",

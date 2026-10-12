@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 171 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 172 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1011,7 +1011,9 @@ conversion beyond any fixed arithmetic precision, request-body and extension
 commitments, challenge/receipt hashes over decomposed (non-NFC) strings after
 the CF-1 pass, local capability separation, and the
 independent scheme/network finality floor, including an EVM-to-direct-rail key
-alias and a non-EVM Solana exact settlement. The upstream wire shapes are pinned
+alias and a non-EVM Solana exact settlement on devnet and on mainnet-beta (the
+reference evaluator maps the mainnet, devnet and testnet CAIP-2 genesis
+references to their event-key clusters). The upstream wire shapes are pinned
 to `x402-foundation/x402@230e6a9a7eebce22c911a0687d6f4e6d1ac019f7`
 (`typescript/packages/core/src/types/payments.ts` and
 `typescript/packages/core/src/types/v1/index.ts`) rather than a mutable SDK

@@ -284,6 +284,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertIn("so those `error` cases keep the fixture label `DRV-2`", readme)
         self.assertIn("is `rejected` under DRV-6: the pinned resolver's authenticated record", readme)
         self.assertNotIn("names no rule for two other `error` cases", readme)
+        # DRV-3 closed-set cases must not echo §9 step 1's "unsupported discriminators".
+        self.assertIn("A value outside the closed value set", readme)
+        self.assertNotIn("closed discriminators", readme)
         self.assertIn("The step-1 label is pending #371's named §9 step-1 rule.", readme)
         self.assertIn("so it is `rejected` under DRP-3", readme)
         self.assertNotIn("malformed input under rule `DRV-2`", readme)
@@ -300,6 +303,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         labelled = re.findall(r'result\("error", "DRV-2", "([^"]*)"\)', source)
         self.assertEqual(sorted(labelled), sorted(no_rule))
         self.assertGreaterEqual(source.count('result("error", "DRV-3", '), 50)
+        self.assertNotIn("is not a supported discriminator", source)
+        self.assertEqual(source.count('is outside the closed value set")'), 3)
         for vector in self.vector_pack["vectors"]:
             if vector["expected"] == "error":
                 with self.subTest(vector=vector["name"]):

@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "9c01ddf031e6ded3435722ca3418fcf1ecdd837b2b08f16a51ac77227d140e63",
+  "hash": "953d425b2fc367edca3e3a936e9ca60d650d45749a0ba2670bda272fecf2049d",
   "count": 236,
   "fixtures": {
     "release": {
@@ -77913,7 +77913,7 @@
       "rules": [
         "DRV-3"
       ],
-      "note": "a signed terminal whose terminalState is a string outside the closed discriminator set is malformed input",
+      "note": "a signed terminal whose terminalState is a string outside the closed value set is malformed input",
       "patch": []
     },
     {

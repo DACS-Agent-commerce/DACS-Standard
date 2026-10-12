@@ -609,15 +609,15 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         elif sequence != 0:
             return result("rejected", "DRAA-6", "first evaluation sequence is not zero")
     if evaluation is not None and evaluation.get("result") not in tuple(EVALUATION_RESULTS):
-        return result("error", "DRV-3", "evaluation result is not a supported discriminator")
+        return result("error", "DRV-3", "evaluation result is outside the closed value set")
     decision = artifacts.get("decision")
     if decision is not None and decision.get("disposition") not in tuple(DECISION_DISPOSITIONS):
-        return result("error", "DRV-3", "decision disposition is not a supported discriminator")
+        return result("error", "DRV-3", "decision disposition is outside the closed value set")
     # Checked here, before any stage uses it as a lookup key: an array or
     # object would otherwise escape the four results as a TypeError.
     terminal_state = artifacts["terminal"].get("terminalState")
     if not isinstance(terminal_state, str) or terminal_state not in TERMINAL_STATES:
-        return result("error", "DRV-3", "terminal state is not a supported discriminator")
+        return result("error", "DRV-3", "terminal state is outside the closed value set")
     if dispute is not None:
         if type(dispute.get("revision")) is not int or dispute["revision"] < 0:
             return result("error", "DRAA-2", "dispute revision is not minimal unsigned integer form")

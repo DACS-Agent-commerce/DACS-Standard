@@ -991,7 +991,7 @@ def build_vector_pack() -> dict[str, Any]:
         "dre-2-deliverable-anchor-native-locator-uppercase": make_base("release", hooks={
             "delivery": put("deliverableAnchor", "locator", "stor-" + NATIVE_DELIVERABLE_LOCATOR[5:].upper()),
         }),
-        # DRV-3: terminalState is a closed string discriminator; an array or
+        # DRV-3: terminalState has a closed string value set; an array or
         # object in a re-signed terminal is malformed input, not a crash.
         "drv-3-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
         "drv-3-terminal-state-object": make_base("release", hooks={"terminal": put("terminalState", {})}),
@@ -1403,7 +1403,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("terminal-delivery-reference-mismatch", "terminal-delivery-reference-mismatch", "rejected", "DRT-12", "post-submission terminal evidence must reference the exact delivery"),
         vector("drv-3-terminal-state-array", "drv-3-terminal-state-array", "error", "DRV-3", "a signed terminal whose terminalState is an array is malformed input"),
         vector("drv-3-terminal-state-object", "drv-3-terminal-state-object", "error", "DRV-3", "a signed terminal whose terminalState is an object is malformed input"),
-        vector("drv-3-terminal-state-unknown-string", "drv-3-terminal-state-unknown-string", "error", "DRV-3", "a signed terminal whose terminalState is a string outside the closed discriminator set is malformed input"),
+        vector("drv-3-terminal-state-unknown-string", "drv-3-terminal-state-unknown-string", "error", "DRV-3", "a signed terminal whose terminalState is a string outside the closed value set is malformed input"),
         vector("native-terminal-state-divergence", "release", "rejected", "DRT-4", "the native terminal state must equal the signed terminal state", [{"op": "replace", "path": ["native", "terminalState"], "value": "rejected-refund"}]),
         vector("funding-job-reference-mismatch", "funding-job-mismatch", "rejected", "DRF-1", "funding evidence must reference the exact escrow job"),
         vector("funding-phase-index-mismatch", "funding-phase-index-mismatch", "rejected", "DRF-1", "funding evidence must bind the agreement's fund phase index"),

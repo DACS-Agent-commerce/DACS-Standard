@@ -72,9 +72,9 @@ The verifier reads these facts only from the signed record.
 
 The escrow job, both escrow phases, and the native target follow the
 agreement-selected rail. Evaluation results, decision dispositions, and the
-terminal evidence's `terminalState` are closed discriminators; any other
-value, including an array, an object, or an unknown string, is malformed
-input and returns `error` before any stage reads it. The verifier reports
+terminal evidence's `terminalState` each have a closed value set. A value
+outside the closed value set, including an array, an object, or an unknown
+string, is malformed input and returns `error` before any stage reads it. The verifier reports
 malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding
 rule: nothing is repaired before hashing or comparison. DRV-2 keeps
 unavailable or inconsistent RPC data `indeterminate`, as for an unavailable

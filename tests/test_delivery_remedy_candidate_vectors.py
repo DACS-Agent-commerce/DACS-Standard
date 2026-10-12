@@ -313,6 +313,48 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     if observed["rule"] == "DRV-2":
                         self.assertIn(observed["detail"], no_rule)
 
+    def test_step_one_discriminators_keep_the_pending_drv2_label(self):
+        """The five candidate §9 step-1 cases give `error`/DRV-2 end to end, pending #371.
+
+        `manifestVersion: "2"` must reach the unsupported-version branch, not the
+        DRV-3 branch for a manifest that is missing a required member.
+        """
+        def lifecycle(path, new):
+            value = make_base("release")
+            target = value
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = new
+            return evaluate(value)
+
+        def deployment(field, new):
+            manifest = copy.deepcopy(self.deployment_pack["manifests"]["synthetic-control"])
+            if new is None:
+                del manifest[field]
+            else:
+                manifest[field] = new
+            return evaluate_deployment(manifest)
+
+        notify = make_base("release")
+        notify["pipeline"].insert(4, {"kind": "notify"})
+        observed = {
+            "pipeline contains an unsupported phase kind": evaluate(notify),
+            "unsupported agreement overlay version": lifecycle(
+                ("artifacts", "agreement", "deliveryOrRemedyAgreementVersion"), "2"),
+            "unsupported resolver evidence version": lifecycle(
+                ("resolverEvidence", "resolverEvidenceVersion"), "2"),
+            "unsupported deployment manifest version": deployment("manifestVersion", "2"),
+            "unsupported deployment capability profile": deployment(
+                "candidateProfile", "dacs-delivery-gate-v2"),
+        }
+        for detail, outcome in observed.items():
+            with self.subTest(case=detail):
+                self.assertEqual(
+                    (outcome["result"], outcome["rule"], outcome["detail"]), ("error", "DRV-2", detail))
+        missing = deployment("manifestVersion", None)
+        self.assertEqual((missing["result"], missing["rule"], missing["detail"]),
+                         ("error", "DRV-3", "malformed deployment manifest"))
+
     def test_readme_calls_the_logical_locator_a_fixture_choice(self):
         """§9.6.1 elides the locator; the README must not present one form as required."""
         readme = " ".join(

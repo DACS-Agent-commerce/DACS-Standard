@@ -116,6 +116,14 @@ DELIVERY_EVIDENCE_FIELDS = {
     "deliverableAnchor", "observedAt", "signature",
 }
 DELIVERABLE_FIELDS = {"deliverableContentHash", "deliverableAnchor"}
+# The deliver-* kinds DACS-4 defines, and the one this pack models.  The
+# fixture SettlementEvidence has no `attestationRef` (DACS-4 DPA-6) and no
+# entitlement binding, so attested-payload and entitlement deliveries are not
+# supported here (DRP-3) and never verify.
+DACS4_DELIVERY_KINDS = {
+    "deliver-storage-program", "deliver-entitlement", "deliver-attested-payload",
+}
+MODELLED_DELIVERY_KINDS = {"deliver-storage-program"}
 DELIVERY_OUTCOMES = {"success", "failure"}
 EVALUATION_RESULTS = {"accept", "reject", "indeterminate"}
 DECISION_DISPOSITIONS = {"release-to-provider", "refund-to-client"}
@@ -523,20 +531,18 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     delivery_indexes = [i for i, step in enumerate(pipeline) if step["kind"].startswith("deliver-")]
     if len(delivery_indexes) != 1 or not (fund_index < delivery_indexes[0] < terminal_index):
         return result("rejected", "DRP-3", "exactly one delivery must occur between escrow steps")
-    supported_deliveries = {
-        "deliver-storage-program",
-        "deliver-entitlement",
-        "deliver-attested-payload",
-    }
-    # DRP-3 names the delivery's kind: it must be a supported deliver-* step.
-    if pipeline[delivery_indexes[0]]["kind"] not in supported_deliveries:
-        return result("rejected", "DRP-3", "the delivery between escrow steps is not a supported deliver-* kind")
+    # DRP-3 names the delivery's kind: it must be a supported deliver-* step,
+    # and this pack supports only the kind it models.  The signed delivery
+    # evidence must name this step's kind (DRE-2), so relabelling the step
+    # cannot select other checks.
+    if pipeline[delivery_indexes[0]]["kind"] not in MODELLED_DELIVERY_KINDS:
+        return result("rejected", "DRP-3", "the delivery between escrow steps is not a deliver-* kind this pack supports")
     if any(step["kind"].startswith("pay-") for step in pipeline):
         return result("rejected", "DRP-4", "ordinary payment phases cannot accompany the escrow pair")
     supported_kinds = {
         "commit-delivery-or-remedy-agreement",
         "job-escrow",
-        *supported_deliveries,
+        *DACS4_DELIVERY_KINDS,
         "rate",
     }
     # Payment phases are DRP-4 findings above, and an unsupported delivery a
@@ -1070,7 +1076,9 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     # which must be this job's, or a native Storage Program address (`stor-` and
     # 40 lower-case hex digits), whose syntax alone is checked.  Neither is resolved, and the logical-to-native
     # binding of a native locator is not proven (README, synthetic proof limits).
-    if delivery["phase"] == "deliver-storage-program" and "deliverableAnchor" in delivery:
+    # The pipeline stage admitted only the storage-program delivery, so every
+    # anchor is checked whatever kind a producer names.
+    if "deliverableAnchor" in delivery:
         logical = "dacs4:deliverable:" + value["artifacts"]["agreement"]["jobId"]
         if anchor["kind"] != "storage-program" or not (
             anchor["locator"] == logical or NATIVE_STORAGE_LOCATOR_RE.fullmatch(anchor["locator"])

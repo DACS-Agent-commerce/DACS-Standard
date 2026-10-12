@@ -84,7 +84,9 @@ resolver-evidence or deployment-manifest version, or a capability profile),
 so those `error` cases keep the fixture label `DRV-2`. The step-1 label is
 pending #371's named §9 step-1 rule. An unsupported `deliver-*` kind as the
 one delivery is not such a case: DRP-3 requires a supported delivery step,
-so it is `rejected` under DRP-3. A resolver status whose applicability
+so it is `rejected` under DRP-3. The pack supports only the
+`deliver-storage-program` kind it models, so a `deliver-entitlement` or
+`deliver-attested-payload` step is rejected under DRP-3 too. A resolver status whose applicability
 contradicts the lifecycle is `rejected` under DRV-6: the pinned resolver's
 authenticated record contradicts the signed terminal and delivery evidence.
 That holds for an applicable status marked `not-applicable` and for an
@@ -119,8 +121,12 @@ members a storage-program delivery carries: `evidenceVersion`, `jobId`,
 content hash and anchor (DACS-4 §9.6.1). A failure may omit either or both,
 since §9.7 makes them optional; a failure without a content hash binds no
 delivered-artifact input. Any other member is malformed input. That fixture
-shape has no `attestationRef`, so attested-payload delivery evidence (DACS-4
-DPA-6) is not modeled and fails closed. §9.7 has no phase-index member, and DACS-4 defines no logical address
+shape has no `attestationRef` (DACS-4 DPA-6) and no entitlement binding, so
+the pack models only storage-program delivery. An attested-payload or
+entitlement delivery never verifies: its step is rejected under DRP-3, and
+the signed evidence must name the agreed step's kind (DRE-2), so relabelling
+a step cannot skip the anchor checks. Every anchor is checked whatever kind
+a producer names. §9.7 has no phase-index member, and DACS-4 defines no logical address
 for delivery evidence. The record is bound to its phase through the session
 instead: the pipeline has exactly one delivery step, at the overlay's
 `deliveryPhaseIndex` (DRP-3, DRA-11), and the record's `jobId` and `phase`

@@ -965,6 +965,24 @@ def build_vector_pack() -> dict[str, Any]:
         }),
         # DRE-2, DRP-7: the delivery SettlementEvidence of the agreed phase.
         "dre-2-delivery-phase-kind": make_base("release", hooks={"delivery": put("phase", "deliver-entitlement")}),
+        # DRP-3: a delivery kind this pack does not model never verifies, even
+        # when the step and its signed evidence agree on it.  A success that
+        # omits the DPA-6 attestationRef, or names no entitlement binding,
+        # carries an arbitrary anchor here.
+        "drp-3-attested-payload-delivery": make_base("release", hooks={
+            "delivery": each(
+                put("phase", "deliver-attested-payload"),
+                put("deliverableAnchor", {"kind": "payload-attestation", "locator": "fixture:any-anchor"}),
+            ),
+            "fixture": put("pipeline", 2, {"kind": "deliver-attested-payload"}),
+        }),
+        "drp-3-entitlement-delivery": make_base("release", hooks={
+            "delivery": each(
+                put("phase", "deliver-entitlement"),
+                put("deliverableAnchor", {"kind": "entitlement", "locator": "fixture:any-anchor"}),
+            ),
+            "fixture": put("pipeline", 2, {"kind": "deliver-entitlement"}),
+        }),
         # DRE-2: a storage-program success anchors the deliverable at the
         # DACS-4 §9.6.1 Storage Program dacs4:deliverable:{jobId}.  Each control
         # changes one axis and is re-signed and re-bound downstream.
@@ -1274,6 +1292,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pipeline-second-delivery", "second-delivery-phase", "rejected", "DRP-3", "only one delivery step may occur between the escrow phases"),
         vector("pipeline-extra-payment", "release", "rejected", "DRP-4", "ordinary payment phases cannot accompany the pair", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "pay-x402"}}]),
         vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names yet; the DRV-2 label is pending #371's named step-1 rule", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "notify"}}]),
+        vector("drp-3-attested-payload-delivery-unmodelled", "drp-3-attested-payload-delivery", "rejected", "DRP-3", "DRP-3: this pack does not model attested-payload delivery, so a success without a DPA-6 attestationRef and with an arbitrary anchor never verifies", rules=["DRE-2", "DRP-3"]),
+        vector("drp-3-entitlement-delivery-unmodelled", "drp-3-entitlement-delivery", "rejected", "DRP-3", "DRP-3: this pack does not model entitlement delivery, so a success with an arbitrary anchor never verifies", rules=["DRE-2", "DRP-3"]),
         vector("pipeline-unsupported-delivery-kind", "release", "rejected", "DRP-3", "DRP-3: the one delivery between the escrow steps must be a supported deliver-* kind", [{"op": "replace", "path": ["pipeline", 2, "kind"], "value": "deliver-unsupported"}]),
         vector("pipeline-rail-divergence", "release", "rejected", "DRP-5", "both escrow invocations must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("drp-5-escrow-phase-rails", "release", "rejected", "DRP-5", "both escrow phases must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 1, "parameters", "rail"], "value": "pay-evm-erc8183:other"}, {"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
@@ -1612,6 +1632,9 @@ FOLLOW_ON_FINDINGS = {
     "pipeline-phase-index-divergence": ("rejected", "DRE-2"),
     # An unsupported deliver-* kind is also an unsupported §9 step-1 phase kind.
     "pipeline-unsupported-delivery-kind": ("error", "DRV-2"),
+    # An unmodelled delivery's arbitrary anchor is not a storage-program anchor.
+    "drp-3-attested-payload-delivery-unmodelled": ("rejected", "DRE-2"),
+    "drp-3-entitlement-delivery-unmodelled": ("rejected", "DRE-2"),
     # The evaluation's subject is that same delivery reference.
     "delivery-reference-mismatch": ("rejected", "DRE-3"),
     # Non-minimal budget text is not the converted agreement price either.

@@ -630,6 +630,40 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 value = make_base("rejected-refund", hooks={"delivery": each_hook(failed, edit)})
                 self.assertEqual(finding(value), ("error", "DRV-3"))
 
+    def test_unmodelled_delivery_kinds_never_verify(self):
+        """Only storage-program delivery is modelled; no kind label selects which checks run."""
+        self.assertEqual(verifier.MODELLED_DELIVERY_KINDS, {"deliver-storage-program"})
+        for name in ("drp-3-attested-payload-delivery-unmodelled", "drp-3-entitlement-delivery-unmodelled"):
+            with self.subTest(vector=name):
+                value = self._vector(name)
+                self._assert_isolated(value)
+                self.assertEqual(finding(value), ("rejected", "DRP-3"))
+        kinds = sorted(verifier.DACS4_DELIVERY_KINDS - verifier.MODELLED_DELIVERY_KINDS) + ["deliver-other"]
+        anchors = (
+            {"kind": "storage-program", "locator": "dacs4:deliverable:" + generator.JOB_A},
+            {"kind": "payload-attestation", "locator": "fixture:any-anchor"},
+            None,
+        )
+        failed = each_hook(put("outcome", "failure"), put("reason", "fixture-output-missing"))
+        for kind, anchor, lifecycle in itertools.product(kinds, anchors, ("release", "rejected-refund")):
+            delivery_edits = [put("phase", kind)]
+            delivery_edits.append(drop("deliverableAnchor") if anchor is None else put("deliverableAnchor", anchor))
+            if lifecycle == "rejected-refund":
+                delivery_edits.append(failed)
+            for relabel_step in (True, False):
+                with self.subTest(kind=kind, anchor=anchor, lifecycle=lifecycle, relabel_step=relabel_step):
+                    hooks = {"delivery": each_hook(*delivery_edits)}
+                    if relabel_step:
+                        hooks["fixture"] = put("pipeline", 2, {"kind": kind})
+                    observed = finding(make_base(lifecycle, hooks=hooks))
+                    self.assertNotEqual(observed[0], "verified")
+                    self.assertIn(observed, {("rejected", "DRP-3"), ("rejected", "DRE-2"), ("error", "DRV-3"), ("error", "DRV-2")})
+        # A deliveryless lifecycle cannot name an unmodelled delivery step either.
+        for lifecycle in ("expired-pre", "pre-submission-rejected-refund"):
+            with self.subTest(deliveryless=lifecycle):
+                value = make_base(lifecycle, hooks={"fixture": put("pipeline", 2, {"kind": "deliver-entitlement"})})
+                self.assertEqual(finding(value), ("rejected", "DRP-3"))
+
     def test_every_artifact_describes_the_overlay_job(self):
         for name, rule in (
             ("drd-8-evaluation-job-reference", "DRD-8"),

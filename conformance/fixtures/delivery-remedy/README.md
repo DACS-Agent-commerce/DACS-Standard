@@ -265,6 +265,17 @@ derived from the observations and embedded records, not from the status. The
 pack exercises unavailable and contradictory outcomes but does not claim to
 implement those external resolvers.
 
+A record that a signed artifact references but the caller did not supply is
+`indeterminate` (candidate §9 step 5, §11.3 case 5), even when every resolver
+status is available. That covers delivery evidence the terminal references
+for an authenticated native submission (DRE-5), a decision an evaluator
+terminal references (DRD-4), and the evaluation or DisputeOutcome a decision
+rests on (DRD-2). A record that something present contradicts is still
+rejected. Examples are a released terminal with no decision reference, a
+decision reference on an expiry refund (DRD-7), delivery evidence on a
+lifecycle with no native submission (DRT-12), and a resolver record that
+marks the evidence not applicable (DRV-6).
+
 The fixture resolver key is synthetic and its seed is
 derived in the public generator. The pack therefore demonstrates verifier
 behavior, not a live resolver. Promotion still requires real authenticated

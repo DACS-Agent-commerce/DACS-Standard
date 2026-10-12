@@ -506,6 +506,33 @@ def materialize_vector(pack: dict[str, Any], vector: dict[str, Any]) -> dict[str
     return value
 
 
+def _delivery_expected(value: dict[str, Any]) -> bool:
+    """Whether the lifecycle has delivery evidence, supplied or not.
+
+    It has when the record is supplied, or when the signed terminal evidence
+    references one and the lifecycle names its native submission event.  A
+    referenced record the caller did not supply is then `indeterminate`
+    (candidate §9 step 5, §11.3 case 5), not absent.
+    """
+    artifacts = value["artifacts"]
+    return artifacts.get("delivery") is not None or (
+        "deliveryEvidenceRef" in artifacts["terminal"] and value.get("deliveryBinding") is not None
+    )
+
+
+def _decision_expected(artifacts: dict[str, Any]) -> bool:
+    """Whether the lifecycle has an EscrowDecision, supplied or not.
+
+    It has when the record is supplied, or when a signed evaluator terminal
+    references one.  An expiry refund that references a decision
+    manufactures it (DRD-7), so that reference does not make one expected.
+    """
+    terminal = artifacts["terminal"]
+    return artifacts.get("decision") is not None or (
+        "decisionRef" in terminal and terminal.get("terminalState") != "expired-refund"
+    )
+
+
 def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     pipeline = value.get("pipeline")
     agreement = value["artifacts"]["agreement"]
@@ -576,10 +603,10 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("rejected", "DRP-8", "the escrow pair was counted as more than one purchase")
     expected_gate = (
         "delivery-returned"
-        if value["artifacts"].get("delivery") is not None
+        if _delivery_expected(value)
         else (
             "pre-submission-decision"
-            if value["artifacts"].get("decision") is not None
+            if _decision_expected(value["artifacts"])
             else "submission-cutoff"
         )
     )
@@ -997,30 +1024,35 @@ def _reference_check(value: dict[str, Any]) -> dict[str, str] | None:
                 return result("rejected", "DRD-3", f"{name} does not bind the exact delivery")
         if a["terminal"].get("deliveryEvidenceRef") != delivery_ref:
             return result("rejected", "DRT-12", "terminal delivery reference mismatch")
-    elif a.get("decision") is not None:
+    elif a.get("decision") is not None and not _delivery_expected(value):
         # Without delivery there is nothing to release (DRD-3), and only a
         # DisputeOutcome can authorize the pre-submission refund (DRD-9).
+        # Delivery evidence that is referenced but not supplied is decided
+        # later as `indeterminate`.
         decision = a["decision"]
         basis = decision.get("basisRef")
         if decision.get("disposition") == "release-to-provider":
             return result("rejected", "DRD-3", "a release decision has no delivery evidence to bind")
         elif not isinstance(basis, dict) or basis.get("kind") != "dispute-outcome":
             return result("rejected", "DRD-9", "a decision without delivery evidence must rest on a DisputeOutcome")
+    # A decision that a signed terminal references but the caller did not
+    # supply is decided later as `indeterminate`; with no such reference, a
+    # basis that no decision rests on is rejected.
+    decision = a.get("decision")
+    unsupplied_decision = decision is None and _decision_expected(a)
     if a.get("evaluation") is not None:
         if not attestation_ref_valid(a.get("evaluationRef"), a["evaluation"]):
             return result("rejected", "DRE-7", "evaluation reference mismatch")
-        decision = a.get("decision")
-        if decision is None or decision.get("basisRef") != {
+        if not unsupplied_decision and (decision is None or decision.get("basisRef") != {
             "kind": "execution-evaluation", "ref": a["evaluationRef"]
-        }:
+        }):
             return result("rejected", "DRD-2", "decision basis does not resolve to the evaluation")
     elif a.get("dispute") is not None:
         if not attestation_ref_valid(a.get("disputeRef"), a["dispute"]):
             return result("rejected", "DRX-2", "dispute outcome reference mismatch")
-        decision = a.get("decision")
-        if decision is None or decision.get("basisRef") != {
+        if not unsupplied_decision and (decision is None or decision.get("basisRef") != {
             "kind": "dispute-outcome", "ref": a["disputeRef"]
-        }:
+        }):
             return result("rejected", "DRD-2", "decision basis does not resolve to the dispute outcome")
     if a.get("decision") is not None:
         if not attestation_ref_valid(a.get("decisionRef"), a["decision"]):
@@ -1139,7 +1171,7 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     decision_applicable = artifacts["terminal"].get("terminalState") != "expired-refund"
     applicable = dict.fromkeys(EXTERNAL_EVIDENCE_FIELDS, True)
     applicable.update({
-        "deliveryFinality": artifacts.get("delivery") is not None,
+        "deliveryFinality": _delivery_expected(value),
         "decisionFinality": decision_applicable,
         "decisionOrdering": decision_applicable,
     })
@@ -1172,15 +1204,38 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     return None
 
 
+def _missing_record_check(value: dict[str, Any]) -> dict[str, str] | None:
+    """Keep a referenced record that the caller did not supply `indeterminate`.
+
+    Candidate §9 step 5 and §11.3 case 5: a missing delivery, evaluation, or
+    decision artifact with no contradictory fact established is
+    `indeterminate`, not `rejected`.  Earlier stages reject a reference that
+    something present contradicts: a released or rejected terminal without a
+    decision reference (DRT-1, DRT-2, DRD-2), delivery evidence on a lifecycle
+    with no native submission (DRT-12), or a resolver record that marks the
+    evidence not applicable (DRV-6).
+    """
+    a = value["artifacts"]
+    if a.get("delivery") is None and _delivery_expected(value):
+        return result("indeterminate", "DRE-5", "the delivery evidence the terminal references was not supplied")
+    decision = a.get("decision")
+    if decision is None and _decision_expected(a):
+        return result("indeterminate", "DRD-4", "the decision the terminal references was not supplied")
+    basis = decision.get("basisRef") if decision is not None else None
+    supplied = {"execution-evaluation": a.get("evaluation"), "dispute-outcome": a.get("dispute")}
+    if isinstance(basis, dict) and basis.get("kind") in supplied and supplied[basis["kind"]] is None:
+        return result("indeterminate", "DRD-2", "the evaluation or DisputeOutcome the decision rests on was not supplied")
+    return None
+
+
 def _delivery_binding_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Check the locator of the native submission event for a delivered lifecycle.
 
     The binding carries no ordering conclusion.  DRP-9 ordering comes from
     the resolver-authenticated submission observation and digest anchor.
     """
-    delivery = value["artifacts"].get("delivery")
     binding = value.get("deliveryBinding")
-    if delivery is None:
+    if not _delivery_expected(value):
         if binding is not None or value["resolverEvidence"]["deliveryDigestAnchor"] is not None:
             return result("rejected", "DRP-9", "deliveryless path carries a native submission binding or digest anchor")
         return None
@@ -1853,6 +1908,7 @@ def _protocol_stages(
         ("canonical-records", lambda: _canonical_record_check(value)),
         ("delivery-binding", lambda: _delivery_binding_check(value)),
         ("resolver-statuses", lambda: _external_evidence_check(value)),
+        ("missing-records", lambda: _missing_record_check(value)),
         ("reproduction-inputs", lambda: _reproduction_input_check(value)),
         ("native-and-terminal", lambda: _native_and_terminal_check(value)),
         ("subject-evidence", lambda: _subject_evidence_check(value)),

@@ -630,6 +630,53 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 value = make_base("rejected-refund", hooks={"delivery": each_hook(failed, edit)})
                 self.assertEqual(finding(value), ("error", "DRV-3"))
 
+    def test_records_not_supplied_are_indeterminate_unless_contradicted(self):
+        """Candidate §9 step 5 and §11.3 case 5, with every resolver status as for a full lifecycle."""
+        spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+        self.assertIn("5. missing delivery/evaluation/decision artifact when no contradictory fact is established;", spec)
+        for name, outcome in (
+            ("decision-record-not-supplied", ("indeterminate", "DRD-4")),
+            ("evaluation-and-decision-records-not-supplied", ("indeterminate", "DRD-4")),
+            ("pre-submission-decision-record-not-supplied", ("indeterminate", "DRD-4")),
+            ("decision-without-authenticated-basis", ("indeterminate", "DRD-2")),
+            ("rejection-evaluation-record-not-supplied", ("indeterminate", "DRD-2")),
+            ("dispute-outcome-record-not-supplied", ("indeterminate", "DRD-2")),
+            ("delivery-record-not-supplied", ("indeterminate", "DRE-5")),
+            ("rejection-delivery-record-not-supplied", ("indeterminate", "DRE-5")),
+            ("expiry-delivery-record-not-supplied", ("indeterminate", "DRE-5")),
+            # Something present contradicts the record: still rejected.
+            ("released-terminal-without-decision-reference", ("rejected", "DRD-2")),
+            ("decision-basis-kind-unsupported", ("rejected", "DRE-4")),
+            ("expiry-invented-decision", ("rejected", "DRD-7")),
+            ("pre-submission-expiry-delivery-ref", ("rejected", "DRT-12")),
+            ("release-decision-without-delivery", ("rejected", "DRD-3")),
+        ):
+            with self.subTest(vector=name):
+                value = self._vector(name)
+                self.assertNotIn("unavailable", value["resolverEvidence"]["statuses"].values())
+                self._assert_isolated(value)
+                self.assertEqual(finding(value), outcome)
+        # An authenticated resolver record that says the missing evidence does
+        # not exist, or contradicts it, is a contradiction (DRV-6); one that
+        # says it is unavailable keeps it indeterminate under its own rule.
+        for base, status, state, outcome in (
+            ("delivery-record-not-supplied", "deliveryFinality", "not-applicable", ("rejected", "DRV-6")),
+            ("delivery-record-not-supplied", "deliveryFinality", "contradictory", ("rejected", "DRV-6")),
+            ("delivery-record-not-supplied", "deliveryFinality", "unavailable", ("indeterminate", "DRE-5")),
+            ("decision-record-not-supplied", "decisionFinality", "contradictory", ("rejected", "DRV-6")),
+            ("decision-record-not-supplied", "decisionOrdering", "unavailable", ("indeterminate", "DRD-10")),
+        ):
+            with self.subTest(base=base, status=status, state=state):
+                value = self._fixture(base)
+                value["resolverEvidence"]["statuses"][status] = state
+                generator.resign_resolver(value)
+                self.assertEqual(finding(value), outcome)
+        # A delivery the terminal references without a native submission is
+        # not missing: the authenticated lifecycle shows none was submitted.
+        value = self._fixture("delivery-record-not-supplied")
+        value["deliveryBinding"] = None
+        self.assertEqual(finding(value)[0], "rejected")
+
     def test_unmodelled_delivery_kinds_never_verify(self):
         """Only storage-program delivery is modelled; no kind label selects which checks run."""
         self.assertEqual(verifier.MODELLED_DELIVERY_KINDS, {"deliver-storage-program"})
@@ -978,7 +1025,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             with self.subTest(fixture=name):
                 binding = fixture["deliveryBinding"]
                 anchor = fixture["resolverEvidence"]["deliveryDigestAnchor"]
-                if "delivery" in fixture["artifacts"]:
+                # A delivery record the caller did not supply keeps its
+                # authenticated native submission (§11.3 case 5).
+                if "delivery" in fixture["artifacts"] or name.endswith("delivery-record-not-supplied"):
                     self.assertEqual(set(binding), {"nativeSubmissionEvent"})
                     if name != "drp-9-digest-anchor-unavailable":
                         self.assertEqual(set(anchor), verifier.DIGEST_ANCHOR_FIELDS)

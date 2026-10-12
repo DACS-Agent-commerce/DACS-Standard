@@ -1121,6 +1121,48 @@ def build_vector_pack() -> dict[str, Any]:
                 put("resolverEvidence", "statuses", "decisionOrdering", "unavailable"),
             ),
         }),
+        # Candidate §9 step 5 and §11.3 case 5: a record the signed artifacts
+        # reference but the caller did not supply, with no resolver status
+        # changed and nothing present contradicting it.
+        "decision-record-not-supplied": make_base("release", hooks={"fixture": each(
+            drop("artifacts", "decision"), drop("artifacts", "decisionRef"), drop("mappingSources", "decisionHash"),
+        )}),
+        "evaluation-and-decision-records-not-supplied": make_base("release", hooks={"fixture": each(
+            drop("artifacts", "evaluation"), drop("artifacts", "evaluationRef"),
+            drop("artifacts", "decision"), drop("artifacts", "decisionRef"), drop("mappingSources", "decisionHash"),
+        )}),
+        "pre-submission-decision-record-not-supplied": make_base("pre-submission-rejected-refund", hooks={"fixture": each(
+            drop("artifacts", "decision"), drop("artifacts", "decisionRef"), drop("mappingSources", "decisionHash"),
+        )}),
+        "rejection-evaluation-record-not-supplied": make_base("rejected-refund", hooks={"fixture": each(
+            drop("artifacts", "evaluation"), drop("artifacts", "evaluationRef"),
+        )}),
+        "dispute-outcome-record-not-supplied": make_base("pre-submission-rejected-refund", hooks={"fixture": each(
+            drop("artifacts", "dispute"), drop("artifacts", "disputeRef"),
+        )}),
+        "delivery-record-not-supplied": make_base("release", hooks={"fixture": each(
+            drop("artifacts", "delivery"), drop("artifacts", "deliveryRef"), drop("mappingSources", "deliveryHash"),
+        )}),
+        "rejection-delivery-record-not-supplied": make_base("rejected-refund", hooks={"fixture": each(
+            drop("artifacts", "delivery"), drop("artifacts", "deliveryRef"), drop("mappingSources", "deliveryHash"),
+        )}),
+        "expiry-delivery-record-not-supplied": make_base("expired-post", hooks={"fixture": each(
+            drop("artifacts", "delivery"), drop("artifacts", "deliveryRef"), drop("mappingSources", "deliveryHash"),
+        )}),
+        # A released terminal that references no decision contradicts the
+        # evaluation it would rest on: rejected, not missing.
+        "released-terminal-without-decision-reference": make_base("release", hooks={
+            "terminal": drop("decisionRef"),
+            "fixture": each(
+                drop("artifacts", "decision"), drop("artifacts", "decisionRef"), drop("mappingSources", "decisionHash"),
+            ),
+        }),
+        # A decision basis kind outside the candidate's two names neither
+        # artifact, so nothing is missing and nothing authorizes the decision.
+        "decision-basis-kind-unsupported": make_base("release", hooks={
+            "decision": put("basisRef", "kind", "self-assessment"),
+            "fixture": each(drop("artifacts", "evaluation"), drop("artifacts", "evaluationRef")),
+        }),
         # Identity, job, and rail negatives.
         "noncanonical-job-id": make_base("release", "job-356"),
         "nonminimal-native-job-id": make_base("release", hooks={"job": put("nativeJobId", "01")}),
@@ -1419,7 +1461,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("refund-without-delivery-needs-dispute-basis", "evaluation-refund-without-delivery", "rejected", "DRD-9", "DRD-9: a refund decided before delivery uses a DisputeOutcome basis"),
         vector("dispute-decision-after-submission", "post-submission-dispute-refund", "rejected", "DRD-12", "a DisputeOutcome-based decision is a pre-submission path only"),
         vector("dispute-outcome-recommends-other-disposition", "dispute-recommends-release", "rejected", "DRD-12", "the DisputeOutcome must recommend the refund the decision makes"),
-        vector("decision-without-authenticated-basis", "decision-without-basis-artifact", "rejected", "DRE-4", "a decision needs an authenticated evaluation or DisputeOutcome basis"),
+        vector("decision-without-authenticated-basis", "decision-without-basis-artifact", "indeterminate", "DRD-2", "an evaluation the decision rests on but the caller did not supply stays indeterminate (candidate §9 step 5, §11.3 case 5)"),
+        vector("decision-basis-kind-unsupported", "decision-basis-kind-unsupported", "rejected", "DRE-4", "a decision basis that is neither an evaluation nor a DisputeOutcome authorizes no terminal action"),
         vector("indeterminate-evaluation-authorizes-terminal", "indeterminate-evaluation", "rejected", "DRE-4", "an indeterminate evaluation cannot authorize settlement"),
         vector("reject-evaluation-release-action", "reject-then-release", "rejected", "DRD-2", "rejection cannot authorize release"),
         vector("accept-evaluation-refund-action", "accept-then-refund", "rejected", "DRD-2", "acceptance cannot authorize refund"),
@@ -1487,6 +1530,16 @@ def build_vector_pack() -> dict[str, Any]:
         vector("self-reported-time-cannot-order", "release", "indeterminate", "DRD-10", "a self-reported decidedAt value cannot replace authenticated ordering", authenticated("release", [{"op": "add", "path": ["native", "reportedDecidedAt"], "value": 1799999999}, *status("decisionOrdering", "unavailable")])),
         vector("decision-finalized-after-terminal", "release", "rejected", "DRV-6", "authenticated after-terminal decision finality is contradictory", authenticated("release", status("decisionOrdering", "contradictory"))),
         vector("decision-artifact-unavailable", "missing-decision", "indeterminate", "DRD-10", "missing decision evidence without contradiction remains indeterminate"),
+        # §11.3 case 5 with every resolver status as for a complete lifecycle.
+        vector("decision-record-not-supplied", "decision-record-not-supplied", "indeterminate", "DRD-4", "a decision the signed terminal references but the caller did not supply stays indeterminate", rules=["DRD-4", "DRE-5"]),
+        vector("evaluation-and-decision-records-not-supplied", "evaluation-and-decision-records-not-supplied", "indeterminate", "DRD-4", "a missing decision and evaluation without a contradiction stay indeterminate, with no resolver status changed", rules=["DRD-4", "DRE-5"]),
+        vector("pre-submission-decision-record-not-supplied", "pre-submission-decision-record-not-supplied", "indeterminate", "DRD-4", "a pre-submission refund's decision that the caller did not supply stays indeterminate", rules=["DRD-4", "DRE-5"]),
+        vector("rejection-evaluation-record-not-supplied", "rejection-evaluation-record-not-supplied", "indeterminate", "DRD-2", "a refund decision's evaluation that the caller did not supply stays indeterminate, not a projection contradiction", rules=["DRD-2", "DRE-5"]),
+        vector("dispute-outcome-record-not-supplied", "dispute-outcome-record-not-supplied", "indeterminate", "DRD-2", "a pre-submission decision's DisputeOutcome that the caller did not supply stays indeterminate", rules=["DRD-2", "DRE-5"]),
+        vector("delivery-record-not-supplied", "delivery-record-not-supplied", "indeterminate", "DRE-5", "delivery evidence the signed terminal references for an authenticated submission, but that the caller did not supply, stays indeterminate"),
+        vector("rejection-delivery-record-not-supplied", "rejection-delivery-record-not-supplied", "indeterminate", "DRE-5", "a post-submission refund's delivery evidence that the caller did not supply stays indeterminate"),
+        vector("expiry-delivery-record-not-supplied", "expiry-delivery-record-not-supplied", "indeterminate", "DRE-5", "a post-submission expiry's delivery evidence that the caller did not supply stays indeterminate"),
+        vector("released-terminal-without-decision-reference", "released-terminal-without-decision-reference", "rejected", "DRD-2", "a released terminal that references no decision contradicts the evaluation; the decision is not merely missing"),
         vector("authenticated-native-contradiction", "release", "rejected", "DRV-6", "authenticated contradictory chain evidence rejects", authenticated("release", status("codeResolution", "contradictory"))),
         vector("resolver-status-applicability-mismatch", "release", "rejected", "DRV-6", "DRV-6: an authenticated resolver record that marks delivery finality not applicable contradicts the signed delivery evidence", authenticated("release", status("deliveryFinality", "not-applicable"))),
         vector("resolver-status-applicability-verified-without-delivery", "expired-pre", "rejected", "DRV-6", "DRV-6: an authenticated resolver record that vouches for delivery finality contradicts a pre-submission expiry that has no delivery", authenticated("expired-pre", status("deliveryFinality", "verified"))),
@@ -1626,8 +1679,21 @@ FOLLOW_ON_FINDINGS = {
     "drv-3-decision-disposition": ("rejected", "DRD-2"),
     # A terminal state outside the closed set matches no terminal event.
     "drv-3-terminal-state-unknown-string": ("rejected", "DRT-4"),
-    # A release whose decision is missing has no authorizing decision.
-    "decision-artifact-unavailable": ("rejected", "DRT-3"),
+    # A release whose decision was not supplied is indeterminate under §9
+    # step 5 even when the resolver reports every status available.
+    "decision-artifact-unavailable": ("indeterminate", "DRD-4"),
+    # Records not supplied: without the step-5 guard, each later check that
+    # needs the record finds the lifecycle inconsistent instead.
+    "decision-record-not-supplied": ("rejected", "DRT-3"),
+    "evaluation-and-decision-records-not-supplied": ("rejected", "DRT-3"),
+    "pre-submission-decision-record-not-supplied": ("rejected", "DRT-3"),
+    "decision-without-authenticated-basis": ("rejected", "DRE-4"),
+    "rejection-evaluation-record-not-supplied": ("rejected", "DRT-14"),
+    "dispute-outcome-record-not-supplied": ("rejected", "DRX-2"),
+    "delivery-record-not-supplied": ("rejected", "DRT-4"),
+    "rejection-delivery-record-not-supplied": ("rejected", "DRT-4"),
+    "expiry-delivery-record-not-supplied": ("rejected", "DRT-4"),
+    "released-terminal-without-decision-reference": ("rejected", "DRT-3"),
     # An overlay delivery index on a non-delivery step names no delivery step.
     "pipeline-phase-index-divergence": ("rejected", "DRE-2"),
     # An unsupported deliver-* kind is also an unsupported §9 step-1 phase kind.

@@ -86,7 +86,10 @@ A batch gives one malformed lifecycle its own `error` and still judges the
 others. The command line lists a pack it cannot parse as an error, and a pack
 file nested more than 64 deep too. It checks that bound on the parsed value,
 so the error is the same whether or not the interpreter's JSON parser refuses
-a deep text itself (Python 3.12 does; 3.13 and later can parse it).
+a deep text itself (Python 3.12 does; 3.13 and later can parse it). Called
+directly, `verify_vector_pack` and `verify_deployment_pack` check the same
+bound on the whole pack before they copy or hash it, and return a pack that
+exceeds it as a pack error; they do not judge its lifecycles one by one.
 The verifier reports malformed input (candidate §9 step 2) under DRV-3, the
 malformed-encoding rule: nothing is repaired before hashing or comparison.
 DRV-2 keeps unavailable or inconsistent RPC data `indeterminate`, as for an

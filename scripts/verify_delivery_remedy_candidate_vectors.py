@@ -2354,6 +2354,9 @@ def _pack_hash(pack: dict[str, Any], fields: tuple[str, ...]) -> str:
 
 
 def verify_vector_pack(pack: Any) -> list[str]:
+    # Before anything copies or hashes the pack, as `load_json` checks a file.
+    if not nesting_within(pack, MAX_JSON_DEPTH):
+        return [f"candidate vector pack: {TOO_DEEP}"]
     if not isinstance(pack, dict):
         return ["candidate vector pack must be an object"]
     required = {
@@ -2434,6 +2437,8 @@ def verify_vector_pack(pack: Any) -> list[str]:
 
 
 def verify_deployment_pack(pack: Any) -> list[str]:
+    if not nesting_within(pack, MAX_JSON_DEPTH):
+        return [f"deployment capability pack: {TOO_DEEP}"]
     if not isinstance(pack, dict):
         return ["deployment capability pack must be an object"]
     required = {"kind", "status", "spec", "sourcePins", "hash", "count", "manifests", "cases"}

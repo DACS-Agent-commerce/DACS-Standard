@@ -1797,6 +1797,25 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         self.assertEqual(verdict(batch[1]), ("verified", "DRV-7"))
 
+    def test_pack_verifiers_bound_depth_before_hashing(self):
+        """Called directly, a pack nested past MAX_JSON_DEPTH is a pack error, not a RecursionError."""
+        limit = verifier.MAX_JSON_DEPTH
+        too_deep = f"arrays and objects nest deeper than {limit} levels"
+        release = self._fixture("release")
+        release["artifacts"]["bilateralAgreement"]["extra"] = _nested(900)
+        pack = dict(self.vector_pack, fixtures=dict(self.vector_pack["fixtures"], release=release))
+        self.assertEqual(verify_vector_pack(pack), [f"candidate vector pack: {too_deep}"])
+        manifests = dict(self.deployment_pack["manifests"], deep=_nested(1200))
+        self.assertEqual(
+            verify_deployment_pack(dict(self.deployment_pack, manifests=manifests)),
+            [f"deployment capability pack: {too_deep}"],
+        )
+        # The bound is inclusive and comes before the shape checks.
+        for check, label in ((verify_vector_pack, "candidate vector pack"), (verify_deployment_pack, "deployment capability pack")):
+            with self.subTest(pack=label):
+                self.assertEqual(check({"deep": _nested(limit)}), [f"{label}: {too_deep}"])
+                self.assertEqual(check({"deep": _nested(limit - 1)}), [f"{label} is missing required top-level fields"])
+
     def test_cli_paths_and_unparseable_packs_are_listed_errors(self):
         """A relative path works; malformed JSON or numbers outside CORE §B.2 are listed, not raised."""
         scratch = Path(tempfile.mkdtemp(prefix="drr-cli-"))

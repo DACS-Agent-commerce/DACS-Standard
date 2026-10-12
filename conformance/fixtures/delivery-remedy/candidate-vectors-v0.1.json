@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "ceeb0fa2b2b26ed573b68b94c040250cee784978a6a85460726eefe0b3cc3371",
+  "hash": "dc59d935df9a26a5adde7b9257171a58c36433fa441640efce1bf5dc26676d94",
   "count": 235,
   "fixtures": {
     "release": {
@@ -20567,7 +20567,7 @@
         }
       }
     },
-    "drv-2-terminal-state-array": {
+    "drv-3-terminal-state-array": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -21240,7 +21240,7 @@
         }
       }
     },
-    "drv-2-terminal-state-object": {
+    "drv-3-terminal-state-object": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -21913,7 +21913,7 @@
         }
       }
     },
-    "drv-2-terminal-state-unknown-string": {
+    "drv-3-terminal-state-unknown-string": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -22586,7 +22586,7 @@
         }
       }
     },
-    "drv-2-delivery-evidence-shape": {
+    "drv-3-delivery-evidence-shape": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -29309,7 +29309,7 @@
         }
       }
     },
-    "drv-2-evaluation-subject-refs": {
+    "drv-3-evaluation-subject-refs": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -51025,7 +51025,7 @@
         }
       }
     },
-    "drv-2-evaluation-result": {
+    "drv-3-evaluation-result": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -51698,7 +51698,7 @@
         }
       }
     },
-    "drv-2-decision-disposition": {
+    "drv-3-decision-disposition": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
       "pipeline": [
@@ -74774,7 +74774,7 @@
       "rules": [
         "DRV-2"
       ],
-      "note": "an unsupported phase kind is malformed input",
+      "note": "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names",
       "patch": [
         {
           "op": "add",
@@ -75480,9 +75480,9 @@
       "name": "delivery-binding-carries-conclusions",
       "base": "release",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "the delivery binding names the submission event and nothing else",
       "patch": [
@@ -75814,9 +75814,9 @@
       "name": "malformed-native-reason",
       "base": "release",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "malformed native reason bytes are not repaired",
       "patch": [
@@ -77488,13 +77488,13 @@
       "patch": []
     },
     {
-      "name": "drv-2-delivery-evidence-shape",
-      "base": "drv-2-delivery-evidence-shape",
+      "name": "drv-3-delivery-evidence-shape",
+      "base": "drv-3-delivery-evidence-shape",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
         "DRE-2",
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "delivery evidence keeps the exact delivery SettlementEvidence shape",
       "patch": []
@@ -77580,13 +77580,13 @@
       "patch": []
     },
     {
-      "name": "drv-2-evaluation-subject-refs",
-      "base": "drv-2-evaluation-subject-refs",
+      "name": "drv-3-evaluation-subject-refs",
+      "base": "drv-3-evaluation-subject-refs",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
         "DRE-3",
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "evaluation subject references are an array of exact references",
       "patch": []
@@ -77746,23 +77746,23 @@
       "patch": []
     },
     {
-      "name": "drv-2-evaluation-result",
-      "base": "drv-2-evaluation-result",
+      "name": "drv-3-evaluation-result",
+      "base": "drv-3-evaluation-result",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed evaluation result outside the closed set cannot authorize settlement",
       "patch": []
     },
     {
-      "name": "drv-2-decision-disposition",
-      "base": "drv-2-decision-disposition",
+      "name": "drv-3-decision-disposition",
+      "base": "drv-3-decision-disposition",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed decision disposition outside the closed set cannot map to a native action",
       "patch": []
@@ -77863,34 +77863,34 @@
       "patch": []
     },
     {
-      "name": "drv-2-terminal-state-array",
-      "base": "drv-2-terminal-state-array",
+      "name": "drv-3-terminal-state-array",
+      "base": "drv-3-terminal-state-array",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed terminal whose terminalState is an array is malformed input",
       "patch": []
     },
     {
-      "name": "drv-2-terminal-state-object",
-      "base": "drv-2-terminal-state-object",
+      "name": "drv-3-terminal-state-object",
+      "base": "drv-3-terminal-state-object",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed terminal whose terminalState is an object is malformed input",
       "patch": []
     },
     {
-      "name": "drv-2-terminal-state-unknown-string",
-      "base": "drv-2-terminal-state-unknown-string",
+      "name": "drv-3-terminal-state-unknown-string",
+      "base": "drv-3-terminal-state-unknown-string",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed terminal whose terminalState is a string outside the closed discriminator set is malformed input",
       "patch": []
@@ -78391,9 +78391,9 @@
       "name": "funding-finality-unregistered-member",
       "base": "funding-finality-unregistered-member",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed funding finality record keeps the exact DACS-4 shape",
       "patch": []
@@ -78424,9 +78424,9 @@
       "name": "terminal-finality-unregistered-member",
       "base": "terminal-finality-unregistered-member",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "a signed terminal finality record keeps the exact DACS-4 shape",
       "patch": []
@@ -81152,9 +81152,9 @@
       "name": "malformed-native-bytes32",
       "base": "release",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-3",
       "rules": [
-        "DRV-2"
+        "DRV-3"
       ],
       "note": "malformed native bytes are not repaired",
       "patch": [

@@ -75,13 +75,17 @@ agreement-selected rail. Evaluation results, decision dispositions, and the
 terminal evidence's `terminalState` are closed discriminators; any other
 value, including an array, an object, or an unknown string, is malformed
 input and returns `error` before any stage reads it. The verifier reports
-malformed input under rule `DRV-2`; that label is a fixture convention. In the
-candidate profile, DRV-3 is the malformed-encoding rule (no repair before
-hashing or comparison), and DRV-2 keeps unavailable or inconsistent RPC data
-`indeterminate`. Only `accept` with `release-to-provider` and `reject`
-with `refund-to-client` can authorize a terminal action. A release decision
-needs delivery evidence (DRD-3), and a decision without delivery evidence must
-rest on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read
+malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding
+rule: nothing is repaired before hashing or comparison. DRV-2 keeps
+unavailable or inconsistent RPC data `indeterminate`, as for an unavailable
+`agreementResolution`. The candidate names no rule for two other `error`
+cases, so they keep the fixture label `DRV-2`: an unsupported §9 step-1
+artifact discriminator (a phase kind, an overlay, resolver-evidence or
+deployment-manifest version, or a capability profile), and a resolver status
+whose applicability contradicts the lifecycle. Only `accept` with
+`release-to-provider` and `reject` with `refund-to-client` can authorize a
+terminal action. A release decision needs delivery evidence (DRD-3), and a
+decision without delivery evidence must rest on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read
 from the authenticated creation event.
 
 Every artifact describes the overlay's job. The bilateral agreement must be

@@ -255,7 +255,7 @@ def _event_ref_check(
     if not isinstance(ref_value, dict) or set(ref_value) != {
         "kind", "chainId", "txHash", "logIndex"
     }:
-        return result("error", "DRV-2", f"{label} event reference is malformed")
+        return result("error", "DRV-3", f"{label} event reference is malformed")
     tx_hash = ref_value.get("txHash")
     log_index = ref_value.get("logIndex")
     if (
@@ -295,7 +295,7 @@ def _finality_check(
     if not isinstance(finality, dict) or set(finality) != {
         "model", "finalityBlocks", "finalityObservedAt"
     }:
-        return result("error", "DRV-2", f"{label} finality is not an exact DACS-4 block-depth record")
+        return result("error", "DRV-3", f"{label} finality is not an exact DACS-4 block-depth record")
     finality_blocks = finality.get("finalityBlocks")
     observed_at = finality.get("finalityObservedAt")
     if (
@@ -304,7 +304,7 @@ def _finality_check(
         or type(observed_at) is not int
         or observed_at < 0
     ):
-        return result("error", "DRV-2", f"{label} finality record is malformed")
+        return result("error", "DRV-3", f"{label} finality record is malformed")
     if finality.get("model") != "block-depth" or finality_blocks != minimum_confirmations:
         return result("rejected", rule, f"{label} finality does not match the rail profile")
     if observed_at < observation["blockTimestampSec"] * 1000:
@@ -321,6 +321,13 @@ def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
     return int(match.group(1)), match.group(2)
 
 
+# Rule labels for `error`.  Candidate §9 step 2 makes a malformed input
+# `error`; DRV-3, the malformed-encoding rule, forbids repairing it, so those
+# results cite DRV-3.  The candidate names no rule for §9 step 1, an unsupported
+# artifact discriminator (phase kind, overlay, resolver-evidence or manifest
+# version, capability profile), or for a resolver status that contradicts the
+# lifecycle's applicability; those keep the fixture label DRV-2.  Otherwise
+# DRV-2 is unavailable RPC data, which stays `indeterminate`.
 def result(verdict: str, rule: str, detail: str) -> dict[str, str]:
     return {"result": verdict, "rule": rule, "detail": detail}
 
@@ -477,9 +484,9 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     pipeline = value.get("pipeline")
     agreement = value["artifacts"]["agreement"]
     if not isinstance(pipeline, list) or not pipeline:
-        return result("error", "DRV-2", "pipeline must be a non-empty array")
+        return result("error", "DRV-3", "pipeline must be a non-empty array")
     if not all(isinstance(step, dict) and isinstance(step.get("kind"), str) for step in pipeline):
-        return result("error", "DRV-2", "every pipeline step must have a kind")
+        return result("error", "DRV-3", "every pipeline step must have a kind")
 
     escrow_indexes = [i for i, step in enumerate(pipeline) if step["kind"] == "job-escrow"]
     if len(escrow_indexes) != 2:
@@ -489,7 +496,7 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     terminal = pipeline[terminal_index]
     for step in (fund, terminal):
         if not isinstance(step.get("parameters"), dict):
-            return result("error", "DRV-2", "job-escrow parameters must be an object")
+            return result("error", "DRV-3", "job-escrow parameters must be an object")
     # Escrow indexes ascend, so the actions alone fix the fund-then-terminal
     # order.  Both phases' rails are bound to the selected rail later (DRP-5).
     if fund["parameters"].get("action") != "fund" or terminal["parameters"].get("action") != "terminal":
@@ -522,7 +529,7 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("rejected", "DRA-11", "agreement phase indexes do not match the pipeline")
     execution = value.get("executionContext")
     if not isinstance(execution, dict):
-        return result("error", "DRV-2", "executionContext must be an object")
+        return result("error", "DRV-3", "executionContext must be an object")
     if execution.get("acceptedRails") != [agreement.get("railDefinitionRef")]:
         return result("rejected", "DRP-10", "job escrow is not selected through acceptedRails")
     commitment = execution.get("commitmentReceipt")
@@ -556,9 +563,9 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
 def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     required = {"bilateralAgreement", "railDefinition", "agreement", "job", "funding", "terminal"}
     if not required.issubset(artifacts):
-        return result("error", "DRV-2", "required candidate artifacts are missing")
+        return result("error", "DRV-3", "required candidate artifacts are missing")
     if not all(isinstance(artifacts[name], dict) for name in required):
-        return result("error", "DRV-2", "candidate artifacts must be objects")
+        return result("error", "DRV-3", "candidate artifacts must be objects")
     agreement = artifacts["agreement"]
     job_id = agreement.get("jobId")
     if not isinstance(job_id, str) or JID_RE.fullmatch(job_id) is None:
@@ -594,15 +601,15 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         elif sequence != 0:
             return result("rejected", "DRAA-6", "first evaluation sequence is not zero")
     if evaluation is not None and evaluation.get("result") not in tuple(EVALUATION_RESULTS):
-        return result("error", "DRV-2", "evaluation result is not a supported discriminator")
+        return result("error", "DRV-3", "evaluation result is not a supported discriminator")
     decision = artifacts.get("decision")
     if decision is not None and decision.get("disposition") not in tuple(DECISION_DISPOSITIONS):
-        return result("error", "DRV-2", "decision disposition is not a supported discriminator")
+        return result("error", "DRV-3", "decision disposition is not a supported discriminator")
     # Checked here, before any stage uses it as a lookup key: an array or
     # object would otherwise escape the four results as a TypeError.
     terminal_state = artifacts["terminal"].get("terminalState")
     if not isinstance(terminal_state, str) or terminal_state not in TERMINAL_STATES:
-        return result("error", "DRV-2", "terminal state is not a supported discriminator")
+        return result("error", "DRV-3", "terminal state is not a supported discriminator")
     if dispute is not None:
         if type(dispute.get("revision")) is not int or dispute["revision"] < 0:
             return result("error", "DRAA-2", "dispute revision is not minimal unsigned integer form")
@@ -619,12 +626,12 @@ def _canonical_record_check(value: dict[str, Any]) -> dict[str, str] | None:
         if artifacts.get(name) is not None
     }
     if set(records) != expected_names:
-        return result("error", "DRV-2", "canonical record set does not match the lifecycle")
+        return result("error", "DRV-3", "canonical record set does not match the lifecycle")
     for name in expected_names:
         record = records.get(name)
         artifact = artifacts[name]
         if not isinstance(record, dict):
-            return result("error", "DRV-2", f"{name} canonical record must be an object")
+            return result("error", "DRV-3", f"{name} canonical record must be an object")
         encoded = jcs_canonicalize(unsigned_artifact(artifact)).encode("utf-8")
         digest = hashlib.sha256(encoded).hexdigest()
         expected_native = (
@@ -657,10 +664,10 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
 
     role_bindings = {role: agreement.get(role) for role in ("buyer", "seller", "evaluator")}
     if not all(isinstance(binding, dict) for binding in role_bindings.values()):
-        return result("error", "DRV-2", "agreement role bindings must be objects")
+        return result("error", "DRV-3", "agreement role bindings must be objects")
     claims = {role: binding.get("primaryClaim") for role, binding in role_bindings.items()}
     if not all(isinstance(claim, str) and claim for claim in claims.values()):
-        return result("error", "DRV-2", "agreement primary claims must be strings")
+        return result("error", "DRV-3", "agreement primary claims must be strings")
     # The overlay adds an evaluator to the existing commercial agreement; it
     # keeps that agreement's buyer and seller in their roles.
     if (bilateral.get("buyer"), bilateral.get("seller")) != (claims["buyer"], claims["seller"]):
@@ -724,7 +731,7 @@ def _component_signature_check(value: dict[str, Any]) -> dict[str, str] | None:
     }
     orchestrator = value.get("orchestratorClaim")
     if not isinstance(orchestrator, str):
-        return result("error", "DRV-2", "orchestratorClaim is required")
+        return result("error", "DRV-3", "orchestratorClaim is required")
     signers = {
         "job": orchestrator,
         "funding": orchestrator,
@@ -778,7 +785,7 @@ def _resolver_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Authenticate the pinned resolver record and its binding to this job."""
     resolver = value.get("resolverEvidence")
     if not isinstance(resolver, dict) or set(resolver) != RESOLVER_EVIDENCE_FIELDS:
-        return result("error", "DRV-2", "resolver evidence shape is not exact")
+        return result("error", "DRV-3", "resolver evidence shape is not exact")
     if resolver.get("resolverEvidenceVersion") != "1":
         return result("error", "DRV-2", "unsupported resolver evidence version")
     signer = resolver.get("resolver")
@@ -803,19 +810,19 @@ def _resolver_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
 
     call = resolver.get("terminalCall")
     if not isinstance(call, dict) or set(call) != TERMINAL_CALL_FIELDS:
-        return result("error", "DRV-2", "resolver terminal call record is malformed")
+        return result("error", "DRV-3", "resolver terminal call record is malformed")
     history = resolver.get("priorTerminals")
     if not isinstance(history, list) or not all(_prior_terminal_valid(item) for item in history):
-        return result("error", "DRV-2", "resolver terminal history is malformed")
+        return result("error", "DRV-3", "resolver terminal history is malformed")
     if not _native_state_valid(resolver.get("nativeState")):
-        return result("error", "DRV-2", "resolver native state is malformed")
+        return result("error", "DRV-3", "resolver native state is malformed")
     if not _digest_anchor_valid(resolver.get("deliveryDigestAnchor")):
-        return result("error", "DRV-2", "resolver delivery-digest anchor is malformed")
+        return result("error", "DRV-3", "resolver delivery-digest anchor is malformed")
     statuses = resolver.get("statuses")
     if not isinstance(statuses, dict) or set(statuses) != EXTERNAL_EVIDENCE_FIELDS:
-        return result("error", "DRV-2", "resolver status set is incomplete")
+        return result("error", "DRV-3", "resolver status set is incomplete")
     if any(not isinstance(state, str) or state not in EXTERNAL_STATES for state in statuses.values()):
-        return result("error", "DRV-2", "unknown resolver status")
+        return result("error", "DRV-3", "unknown resolver status")
     return None
 
 
@@ -890,7 +897,7 @@ def _finding_check(value: dict[str, Any]) -> dict[str, str] | None:
             continue
         finding = artifact.get("finding")
         if not isinstance(finding, dict):
-            return result("error", "DRV-2", f"{name} finding must be an object")
+            return result("error", "DRV-3", f"{name} finding must be an object")
         classification = finding.get("classification")
         faulted_party = finding.get("faultedParty")
         if isinstance(classification, str) and classification in parties:
@@ -1006,7 +1013,7 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         or type(delivery["observedAt"]) is not int
         or delivery["observedAt"] < 0
     ):
-        return result("error", "DRV-2", "delivery evidence is not an exact delivery SettlementEvidence")
+        return result("error", "DRV-3", "delivery evidence is not an exact delivery SettlementEvidence")
     if delivery["phase"] != value["pipeline"][phase_index]["kind"]:
         return result("rejected", "DRE-2", "delivery evidence phase is not the agreed delivery step")
     # DACS-4 §9.6.1 writes the deliverable as a Storage Program at
@@ -1043,7 +1050,7 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         return None
     refs = evaluation.get("subjectEvidenceRefs")
     if not isinstance(refs, list) or not all(attestation_ref_shape_valid(ref) for ref in refs):
-        return result("error", "DRV-2", "evaluation subject evidence references are malformed")
+        return result("error", "DRV-3", "evaluation subject evidence references are malformed")
     # Each source reference was resolved exactly by an earlier stage.
     published = {
         ref_value["locator"]: (ref_value["kind"], artifact)
@@ -1111,7 +1118,7 @@ def _delivery_binding_check(value: dict[str, Any]) -> dict[str, str] | None:
             return result("rejected", "DRP-9", "deliveryless path carries a native submission binding or digest anchor")
         return None
     if not isinstance(binding, dict) or set(binding) != {"nativeSubmissionEvent"}:
-        return result("error", "DRV-2", "deliveryBinding must name only the native submission event")
+        return result("error", "DRV-3", "deliveryBinding must name only the native submission event")
     return None
 
 
@@ -1127,7 +1134,7 @@ def _native_event_input_check(
     inputs = value["reproductionInputs"]
     event_inputs = inputs.get("nativeEventInputs")
     if not isinstance(event_inputs, list) or not event_inputs:
-        return {}, result("error", "DRV-2", "native event inputs must be a non-empty array")
+        return {}, result("error", "DRV-3", "native event inputs must be a non-empty array")
 
     artifacts = value["artifacts"]
     chain_id = artifacts["railDefinition"].get("chainId")
@@ -1162,7 +1169,7 @@ def _native_event_input_check(
     by_identity: dict[tuple[Any, Any, Any, Any], dict[str, Any]] = {}
     for event_input_value in event_inputs:
         if not isinstance(event_input_value, dict) or set(event_input_value) != EVENT_INPUT_FIELDS:
-            return {}, result("error", "DRV-2", "native event input is malformed")
+            return {}, result("error", "DRV-3", "native event input is malformed")
         by_identity[_event_identity(event_input_value["eventRef"])] = event_input_value
     roles = {_event_identity(item[1]): item for item in expected}
     if (
@@ -1177,7 +1184,7 @@ def _native_event_input_check(
         rail_profile.get("finalityBlocks") if isinstance(rail_profile, dict) else None
     )
     if type(minimum_confirmations) is not int or minimum_confirmations <= 0:
-        return {}, result("error", "DRV-2", "rail finality depth must be a positive integer")
+        return {}, result("error", "DRV-3", "rail finality depth must be a positive integer")
     records: dict[str, dict[str, Any]] = {}
     for identity, event_input_value in by_identity.items():
         label, ref_value, name, reference_rule, block_rule, _depth_rule = roles[identity]
@@ -1199,7 +1206,7 @@ def _native_event_input_check(
             or not isinstance(event_input_value["eventName"], str)
             or not isinstance(event_input_value["arguments"], dict)
         ):
-            return {}, result("error", "DRV-2", "native event observation is malformed")
+            return {}, result("error", "DRV-3", "native event observation is malformed")
         if ref_value["txHash"] != "0x" + hashlib.sha256(tx_preimage.encode("utf-8")).hexdigest():
             return {}, result("rejected", reference_rule, "native event transaction preimage does not match")
         expected_block_preimage = (
@@ -1228,7 +1235,7 @@ def _native_event_input_check(
     cutoff = artifacts["agreement"].get("submissionCutoffSec")
     deadline = artifacts["agreement"].get("evaluationDeadlineSec")
     if type(cutoff) is not int or type(deadline) is not int:
-        return {}, result("error", "DRV-2", "signed cutoff and deadline must be integers")
+        return {}, result("error", "DRV-3", "signed cutoff and deadline must be integers")
     if (
         terminal_name == "JobExpired"
         and records["terminal"]["blockTimestampSec"] < deadline
@@ -1294,7 +1301,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Validate every committed preimage needed to reconstruct fixture claims."""
     inputs = value.get("reproductionInputs")
     if not isinstance(inputs, dict):
-        return result("error", "DRV-2", "reproductionInputs must be an object")
+        return result("error", "DRV-3", "reproductionInputs must be an object")
     required = {
         "publicTestSeedHex",
         "roleBundles",
@@ -1306,7 +1313,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
         "nativeEventInputs",
     }
     if set(inputs) != required:
-        return result("error", "DRV-2", "reproduction input set is incomplete")
+        return result("error", "DRV-3", "reproduction input set is incomplete")
     pending = [inputs]
     while pending:
         current = pending.pop()
@@ -1323,7 +1330,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
 
     seeds = inputs["publicTestSeedHex"]
     if not isinstance(seeds, dict) or set(seeds) != set(value["publicKeys"]):
-        return result("error", "DRV-2", "public test seed set is incomplete")
+        return result("error", "DRV-3", "public test seed set is incomplete")
     for claim, seed_hex in seeds.items():
         try:
             seed = bytes.fromhex(seed_hex)
@@ -1332,7 +1339,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
                 format=serialization.PublicFormat.Raw,
             )
         except (TypeError, ValueError):
-            return result("error", "DRV-2", "public test seed is malformed")
+            return result("error", "DRV-3", "public test seed is malformed")
         if base64.urlsafe_b64encode(derived).decode("ascii").rstrip("=") != value["publicKeys"][claim]:
             return result("rejected", "DRV-4", "public key does not derive from the committed test seed")
 
@@ -1340,7 +1347,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
     bundles = inputs["roleBundles"]
     vet_records = inputs["vetRecords"]
     if not isinstance(bundles, dict) or not isinstance(vet_records, dict):
-        return result("error", "DRV-2", "role source inputs must be objects")
+        return result("error", "DRV-3", "role source inputs must be objects")
     funding_ref = value["artifacts"]["funding"]["fundingEventRefs"][0]
     funded_at = event_inputs[_event_identity(funding_ref)]["blockTimestampSec"]
     for role in ("buyer", "seller", "evaluator"):
@@ -1390,10 +1397,10 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
 
     runtime = inputs["runtimeBytecode"]
     if not isinstance(runtime, dict) or runtime.get("encoding") != "utf-8":
-        return result("error", "DRV-2", "runtime-bytecode preimage is malformed")
+        return result("error", "DRV-3", "runtime-bytecode preimage is malformed")
     runtime_value = runtime.get("value")
     if not isinstance(runtime_value, str):
-        return result("error", "DRV-2", "runtime-bytecode preimage must be text")
+        return result("error", "DRV-3", "runtime-bytecode preimage must be text")
     runtime_hash = hashlib.sha256(runtime_value.encode("utf-8")).hexdigest()
     if runtime.get("sha256") != runtime_hash or artifacts["job"].get("runtimeBytecodeHash") != runtime_hash:
         return result("rejected", "DRJ-5", "runtime-bytecode preimage does not match the job")
@@ -1472,7 +1479,7 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     terminal_state = terminal.get("terminalState")
     history = native.get("portableStateHistory")
     if not isinstance(history, list) or not history:
-        return result("error", "DRV-2", "portable state history must be a non-empty array")
+        return result("error", "DRV-3", "portable state history must be a non-empty array")
     # A release is reachable only from `submitted`; the references stage has
     # already required delivery evidence for every release decision.
     submitted = terminal_state == "released" or value.get("submittedBeforeCutoff") is True
@@ -1496,7 +1503,7 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     if a.get("decision") is not None:
         expected_sources["decisionHash"] = artifact_hash(a["decision"])
     if set(mapping_sources) != set(expected_sources):
-        return result("error", "DRV-2", "mapping source set does not match the lifecycle")
+        return result("error", "DRV-3", "mapping source set does not match the lifecycle")
     for name, expected_hash in expected_sources.items():
         declared_hash = mapping_sources[name]
         if declared_hash != expected_hash:
@@ -1522,7 +1529,7 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     if value["profileParameters"] != profile:
         return result("rejected", "DRP-5", "detached profile projection differs from the authenticated rail")
     if not isinstance(profile, dict) or set(profile) != PROFILE_FIELDS:
-        return result("error", "DRV-2", "candidate rail profile shape is not exact")
+        return result("error", "DRV-3", "candidate rail profile shape is not exact")
     minimum = profile["minimumEvaluationWindowSec"]
     if type(minimum) is not int:
         return result("error", "DREB-14", "minimum evaluation window must be an integer")
@@ -1544,7 +1551,7 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         provided = native.get("deliverable")
         if provided != expected_deliverable:
             if not isinstance(provided, str) or BYTES32_RE.fullmatch(provided) is None:
-                return result("error", "DRV-2", "native deliverable is not canonical bytes32 text")
+                return result("error", "DRV-3", "native deliverable is not canonical bytes32 text")
             elif provided == ZERO_BYTES32:
                 return result("rejected", "DREB-5", "zero deliverable is forbidden")
             else:
@@ -1605,7 +1612,7 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     if not isinstance(projection, dict) or set(projection) != {
         "buyerFault", "sellerFault", "releaseAloneEstablishesNonFinancialCompletion"
     } or any(type(projection.get(field)) is not bool for field in projection):
-        return result("error", "DRV-2", "reputation projection is malformed")
+        return result("error", "DRV-3", "reputation projection is malformed")
     finding_artifact = evaluation if evaluation is not None else dispute
     classification = (
         finding_artifact.get("finding", {}).get("classification")
@@ -1627,7 +1634,7 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         provided_reason = native.get("reason")
         if provided_reason != expected_reason:
             if not isinstance(provided_reason, str) or BYTES32_RE.fullmatch(provided_reason) is None:
-                return result("error", "DRV-2", "native decision reason is not canonical bytes32 text")
+                return result("error", "DRV-3", "native decision reason is not canonical bytes32 text")
             elif provided_reason == ZERO_BYTES32:
                 return result("rejected", "DREB-5", "zero decision reason is forbidden")
             else:
@@ -1788,7 +1795,7 @@ def _protocol_stages(
 def _lifecycle_check(value: Any) -> dict[str, str] | None:
     """Apply every check before the replay comparison to one lifecycle."""
     if not isinstance(value, dict):
-        return result("error", "DRV-2", "vector input must be an object")
+        return result("error", "DRV-3", "vector input must be an object")
     required = {
         "candidateProfile", "fixtureOnly", "pipeline", "artifacts", "publicKeys",
         "orchestratorClaim", "evaluatorVetResult", "profileParameters", "native",
@@ -1798,7 +1805,7 @@ def _lifecycle_check(value: Any) -> dict[str, str] | None:
         "executionContext",
     }
     if not required.issubset(value):
-        return result("error", "DRV-2", "vector input is missing required fields")
+        return result("error", "DRV-3", "vector input is missing required fields")
     if value.get("candidateProfile") != "delivery-or-remedy-v1" or value.get("fixtureOnly") is not True:
         return result("error", "DRV-1", "only offline candidate-profile fixtures are accepted")
     object_fields = (
@@ -1806,7 +1813,7 @@ def _lifecycle_check(value: Any) -> dict[str, str] | None:
         "canonicalRecords", "native", "resolverEvidence",
     )
     if not all(isinstance(value.get(field), dict) for field in object_fields):
-        return result("error", "DRV-2", "candidate object fields are malformed")
+        return result("error", "DRV-3", "candidate object fields are malformed")
 
     for _name, stage in _protocol_stages(value):
         issue = stage()
@@ -2043,7 +2050,7 @@ def deployment_rule_statuses(manifest: Any) -> dict[str, str] | None:
 def evaluate_deployment(manifest: Any) -> dict[str, Any]:
     if not isinstance(manifest, dict):
         return {
-            **result("error", "DRV-2", "deployment manifest must be an object"),
+            **result("error", "DRV-3", "deployment manifest must be an object"),
             "ruleStatuses": {},
             "registrationEligible": False,
         }
@@ -2051,9 +2058,15 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
         "manifestVersion", "candidateProfile", "fixtureOnly", "registrationStatus",
         "implementation", "capabilities", "evidence",
     }
-    if not required.issubset(manifest) or manifest.get("manifestVersion") != "1":
+    if not required.issubset(manifest):
         return {
-            **result("error", "DRV-2", "malformed deployment manifest"),
+            **result("error", "DRV-3", "malformed deployment manifest"),
+            "ruleStatuses": {},
+            "registrationEligible": False,
+        }
+    if manifest.get("manifestVersion") != "1":
+        return {
+            **result("error", "DRV-2", "unsupported deployment manifest version"),
             "ruleStatuses": {},
             "registrationEligible": False,
         }
@@ -2065,14 +2078,14 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
         }
     if type(manifest.get("fixtureOnly")) is not bool:
         return {
-            **result("error", "DRV-2", "fixtureOnly must be boolean"),
+            **result("error", "DRV-3", "fixtureOnly must be boolean"),
             "ruleStatuses": {},
             "registrationEligible": False,
         }
     statuses = deployment_rule_statuses(manifest)
     if statuses is None or set(statuses) != DRC_RULES:
         return {
-            **result("error", "DRV-2", "could not derive every DRC rule"),
+            **result("error", "DRV-3", "could not derive every DRC rule"),
             "ruleStatuses": {},
             "registrationEligible": False,
         }

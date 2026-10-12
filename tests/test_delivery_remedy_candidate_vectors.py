@@ -93,50 +93,50 @@ def _without_reproduction_inputs(value):
 # one guard and pins its full finding, so removing that guard changes the
 # outcome of the case.
 GUARD_CASES = {
-    "input-not-an-object": (lambda _pack: [], ("error", "DRV-2", "vector input must be an object")),
-    "input-missing-field": (_release(drop("native")), ("error", "DRV-2", "vector input is missing required fields")),
-    "object-field-malformed": (_release(put("native", [])), ("error", "DRV-2", "candidate object fields are malformed")),
-    "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-2", "required candidate artifacts are missing")),
-    "artifact-not-object": (_release(put("artifacts", "railDefinition", [])), ("error", "DRV-2", "candidate artifacts must be objects")),
+    "input-not-an-object": (lambda _pack: [], ("error", "DRV-3", "vector input must be an object")),
+    "input-missing-field": (_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
+    "object-field-malformed": (_release(put("native", [])), ("error", "DRV-3", "candidate object fields are malformed")),
+    "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-3", "required candidate artifacts are missing")),
+    "artifact-not-object": (_release(put("artifacts", "railDefinition", [])), ("error", "DRV-3", "candidate artifacts must be objects")),
     "overlay-version": (_release(put("artifacts", "agreement", "deliveryOrRemedyAgreementVersion", "2")), ("error", "DRV-2", "unsupported agreement overlay version")),
-    "pipeline-not-array": (_release(put("pipeline", {})), ("error", "DRV-2", "pipeline must be a non-empty array")),
-    "pipeline-step-without-kind": (_release(put("pipeline", 4, {"name": "rate"})), ("error", "DRV-2", "every pipeline step must have a kind")),
-    "escrow-parameters-not-object": (_release(put("pipeline", 1, "parameters", [])), ("error", "DRV-2", "job-escrow parameters must be an object")),
-    "execution-context-not-object": (_release(put("executionContext", [])), ("error", "DRV-2", "executionContext must be an object")),
-    "role-binding-not-object": (_release(put("artifacts", "agreement", "buyer", "buyer")), ("error", "DRV-2", "agreement role bindings must be objects")),
-    "primary-claim-not-text": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", 7)), ("error", "DRV-2", "agreement primary claims must be strings")),
-    "orchestrator-claim-missing": (_release(put("orchestratorClaim", None)), ("error", "DRV-2", "orchestratorClaim is required")),
-    "resolver-shape": (_release(drop("resolverEvidence", "statuses")), ("error", "DRV-2", "resolver evidence shape is not exact")),
+    "pipeline-not-array": (_release(put("pipeline", {})), ("error", "DRV-3", "pipeline must be a non-empty array")),
+    "pipeline-step-without-kind": (_release(put("pipeline", 4, {"name": "rate"})), ("error", "DRV-3", "every pipeline step must have a kind")),
+    "escrow-parameters-not-object": (_release(put("pipeline", 1, "parameters", [])), ("error", "DRV-3", "job-escrow parameters must be an object")),
+    "execution-context-not-object": (_release(put("executionContext", [])), ("error", "DRV-3", "executionContext must be an object")),
+    "role-binding-not-object": (_release(put("artifacts", "agreement", "buyer", "buyer")), ("error", "DRV-3", "agreement role bindings must be objects")),
+    "primary-claim-not-text": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", 7)), ("error", "DRV-3", "agreement primary claims must be strings")),
+    "orchestrator-claim-missing": (_release(put("orchestratorClaim", None)), ("error", "DRV-3", "orchestratorClaim is required")),
+    "resolver-shape": (_release(drop("resolverEvidence", "statuses")), ("error", "DRV-3", "resolver evidence shape is not exact")),
     "resolver-version": (_release(put("resolverEvidence", "resolverEvidenceVersion", "2")), ("error", "DRV-2", "unsupported resolver evidence version")),
-    "resolver-call-record-shape": (_signed_by_resolver(drop("resolverEvidence", "terminalCall", "outerSubmitter")), ("error", "DRV-2", "resolver terminal call record is malformed")),
-    "resolver-history-shape": (_signed_by_resolver(put("resolverEvidence", "priorTerminals", ["earlier"])), ("error", "DRV-2", "resolver terminal history is malformed")),
-    "resolver-native-state-shape": (_signed_by_resolver(drop("resolverEvidence", "nativeState", "evaluatorAdapter")), ("error", "DRV-2", "resolver native state is malformed")),
-    "resolver-digest-anchor-shape": (_signed_by_resolver(put("resolverEvidence", "deliveryDigestAnchor", "blockNumber", "20000040")), ("error", "DRV-2", "resolver delivery-digest anchor is malformed")),
-    "resolver-status-set": (_signed_by_resolver(drop("resolverEvidence", "statuses", "railResolution")), ("error", "DRV-2", "resolver status set is incomplete")),
-    "resolver-status-value": (_signed_by_resolver(put("resolverEvidence", "statuses", "railResolution", "pending")), ("error", "DRV-2", "unknown resolver status")),
-    "finding-not-object": (_hooked(evaluation=put("finding", "seller-fulfilled")), ("error", "DRV-2", "evaluation finding must be an object")),
-    "canonical-record-set": (_release(drop("canonicalRecords", "delivery")), ("error", "DRV-2", "canonical record set does not match the lifecycle")),
-    "canonical-record-not-object": (_release(put("canonicalRecords", "delivery", [])), ("error", "DRV-2", "delivery canonical record must be an object")),
-    "reproduction-inputs-not-object": (_release(_without_reproduction_inputs), ("error", "DRV-2", "reproductionInputs must be an object")),
-    "reproduction-input-set": (_release(drop("reproductionInputs", "evaluationRule")), ("error", "DRV-2", "reproduction input set is incomplete")),
-    "observations-empty": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", [])), ("error", "DRV-2", "native event inputs must be a non-empty array")),
-    "observation-shape": (_signed_by_resolver(drop("reproductionInputs", "nativeEventInputs", 0, "confirmations")), ("error", "DRV-2", "native event input is malformed")),
-    "observation-field-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "blockNumber", "19999900")), ("error", "DRV-2", "native event observation is malformed")),
-    "submission-reference-malformed": (_release(put("deliveryBinding", "nativeSubmissionEvent", "submit")), ("error", "DRV-2", "submission event reference is malformed")),
+    "resolver-call-record-shape": (_signed_by_resolver(drop("resolverEvidence", "terminalCall", "outerSubmitter")), ("error", "DRV-3", "resolver terminal call record is malformed")),
+    "resolver-history-shape": (_signed_by_resolver(put("resolverEvidence", "priorTerminals", ["earlier"])), ("error", "DRV-3", "resolver terminal history is malformed")),
+    "resolver-native-state-shape": (_signed_by_resolver(drop("resolverEvidence", "nativeState", "evaluatorAdapter")), ("error", "DRV-3", "resolver native state is malformed")),
+    "resolver-digest-anchor-shape": (_signed_by_resolver(put("resolverEvidence", "deliveryDigestAnchor", "blockNumber", "20000040")), ("error", "DRV-3", "resolver delivery-digest anchor is malformed")),
+    "resolver-status-set": (_signed_by_resolver(drop("resolverEvidence", "statuses", "railResolution")), ("error", "DRV-3", "resolver status set is incomplete")),
+    "resolver-status-value": (_signed_by_resolver(put("resolverEvidence", "statuses", "railResolution", "pending")), ("error", "DRV-3", "unknown resolver status")),
+    "finding-not-object": (_hooked(evaluation=put("finding", "seller-fulfilled")), ("error", "DRV-3", "evaluation finding must be an object")),
+    "canonical-record-set": (_release(drop("canonicalRecords", "delivery")), ("error", "DRV-3", "canonical record set does not match the lifecycle")),
+    "canonical-record-not-object": (_release(put("canonicalRecords", "delivery", [])), ("error", "DRV-3", "delivery canonical record must be an object")),
+    "reproduction-inputs-not-object": (_release(_without_reproduction_inputs), ("error", "DRV-3", "reproductionInputs must be an object")),
+    "reproduction-input-set": (_release(drop("reproductionInputs", "evaluationRule")), ("error", "DRV-3", "reproduction input set is incomplete")),
+    "observations-empty": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", [])), ("error", "DRV-3", "native event inputs must be a non-empty array")),
+    "observation-shape": (_signed_by_resolver(drop("reproductionInputs", "nativeEventInputs", 0, "confirmations")), ("error", "DRV-3", "native event input is malformed")),
+    "observation-field-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "blockNumber", "19999900")), ("error", "DRV-3", "native event observation is malformed")),
+    "submission-reference-malformed": (_release(put("deliveryBinding", "nativeSubmissionEvent", "submit")), ("error", "DRV-3", "submission event reference is malformed")),
     "submission-reference-not-canonical": (_release(put("deliveryBinding", "nativeSubmissionEvent", "chainId", 10)), ("rejected", "DRP-9", "submission event identity is not canonical")),
-    "rail-finality-depth": (_hooked(rail=put("profileParameters", "finalityBlocks", 0)), ("error", "DRV-2", "rail finality depth must be a positive integer")),
-    "signed-cutoff-type": (_hooked(agreement=put("submissionCutoffSec", "1800000000")), ("error", "DRV-2", "signed cutoff and deadline must be integers")),
-    "seed-set": (_release(drop("reproductionInputs", "publicTestSeedHex", generator.ORCHESTRATOR)), ("error", "DRV-2", "public test seed set is incomplete")),
-    "seed-malformed": (_release(put("reproductionInputs", "publicTestSeedHex", generator.BUYER, "zz")), ("error", "DRV-2", "public test seed is malformed")),
-    "role-inputs-not-objects": (_release(put("reproductionInputs", "roleBundles", [])), ("error", "DRV-2", "role source inputs must be objects")),
-    "runtime-encoding": (_release(put("reproductionInputs", "runtimeBytecode", "encoding", "latin-1")), ("error", "DRV-2", "runtime-bytecode preimage is malformed")),
-    "runtime-value-type": (_release(put("reproductionInputs", "runtimeBytecode", "value", 7)), ("error", "DRV-2", "runtime-bytecode preimage must be text")),
-    "funding-finality-record-type": (_hooked(funding=put("finality", "finalityBlocks", "64")), ("error", "DRV-2", "funding finality record is malformed")),
-    "portable-history-empty": (_release(put("native", "portableStateHistory", [])), ("error", "DRV-2", "portable state history must be a non-empty array")),
-    "mapping-source-set": (_release(drop("mappingSources", "deliveryHash")), ("error", "DRV-2", "mapping source set does not match the lifecycle")),
-    "rail-profile-shape": (_hooked(rail=put("profileParameters", "hookMode", "absent")), ("error", "DRV-2", "candidate rail profile shape is not exact")),
+    "rail-finality-depth": (_hooked(rail=put("profileParameters", "finalityBlocks", 0)), ("error", "DRV-3", "rail finality depth must be a positive integer")),
+    "signed-cutoff-type": (_hooked(agreement=put("submissionCutoffSec", "1800000000")), ("error", "DRV-3", "signed cutoff and deadline must be integers")),
+    "seed-set": (_release(drop("reproductionInputs", "publicTestSeedHex", generator.ORCHESTRATOR)), ("error", "DRV-3", "public test seed set is incomplete")),
+    "seed-malformed": (_release(put("reproductionInputs", "publicTestSeedHex", generator.BUYER, "zz")), ("error", "DRV-3", "public test seed is malformed")),
+    "role-inputs-not-objects": (_release(put("reproductionInputs", "roleBundles", [])), ("error", "DRV-3", "role source inputs must be objects")),
+    "runtime-encoding": (_release(put("reproductionInputs", "runtimeBytecode", "encoding", "latin-1")), ("error", "DRV-3", "runtime-bytecode preimage is malformed")),
+    "runtime-value-type": (_release(put("reproductionInputs", "runtimeBytecode", "value", 7)), ("error", "DRV-3", "runtime-bytecode preimage must be text")),
+    "funding-finality-record-type": (_hooked(funding=put("finality", "finalityBlocks", "64")), ("error", "DRV-3", "funding finality record is malformed")),
+    "portable-history-empty": (_release(put("native", "portableStateHistory", [])), ("error", "DRV-3", "portable state history must be a non-empty array")),
+    "mapping-source-set": (_release(drop("mappingSources", "deliveryHash")), ("error", "DRV-3", "mapping source set does not match the lifecycle")),
+    "rail-profile-shape": (_hooked(rail=put("profileParameters", "hookMode", "absent")), ("error", "DRV-3", "candidate rail profile shape is not exact")),
     "evaluation-window-type": (_hooked(rail=put("profileParameters", "minimumEvaluationWindowSec", "3600")), ("error", "DREB-14", "minimum evaluation window must be an integer")),
-    "reputation-projection-shape": (_release(put("reputationProjection", {})), ("error", "DRV-2", "reputation projection is malformed")),
+    "reputation-projection-shape": (_release(put("reputationProjection", {})), ("error", "DRV-3", "reputation projection is malformed")),
 }
 
 
@@ -275,14 +275,35 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
 
-    def test_readme_calls_the_drv2_malformed_input_label_a_fixture_convention(self):
+    def test_readme_cites_drv3_for_malformed_input(self):
         """The candidate's malformed-encoding rule is DRV-3; DRV-2 is RPC availability."""
         readme = " ".join(
             (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8").split()
         )
-        self.assertIn("malformed input under rule `DRV-2`; that label is a fixture convention", readme)
-        self.assertIn("DRV-3 is the malformed-encoding rule", readme)
+        self.assertIn("reports malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding rule", readme)
+        self.assertIn("The candidate names no rule for two other `error` cases, so they keep the fixture label `DRV-2`", readme)
+        self.assertNotIn("malformed input under rule `DRV-2`", readme)
         self.assertNotIn("is malformed input (`error`, DRV-2)", readme)
+
+    def test_error_results_cite_drv3_unless_the_candidate_names_no_rule(self):
+        """Malformed input is DRV-3; DRV-2 is left only where the candidate names no rule."""
+        no_rule = {
+            "pipeline contains an unsupported phase kind", "unsupported agreement overlay version",
+            "unsupported resolver evidence version", "unsupported deployment manifest version",
+            "unsupported deployment capability profile",
+            "resolver status applicability does not match the lifecycle",
+        }
+        source = (ROOT / "scripts/verify_delivery_remedy_candidate_vectors.py").read_text(encoding="utf-8")
+        labelled = re.findall(r'result\("error", "DRV-2", "([^"]*)"\)', source)
+        self.assertEqual(sorted(labelled), sorted(no_rule))
+        self.assertGreaterEqual(source.count('result("error", "DRV-3", '), 50)
+        for vector in self.vector_pack["vectors"]:
+            if vector["expected"] == "error":
+                with self.subTest(vector=vector["name"]):
+                    observed = evaluate(materialize_vector(self.vector_pack, vector))
+                    self.assertEqual(observed["rule"], vector["expectedRule"])
+                    if observed["rule"] == "DRV-2":
+                        self.assertIn(observed["detail"], no_rule)
 
     def test_readme_calls_the_logical_locator_a_fixture_choice(self):
         """§9.6.1 elides the locator; the README must not present one form as required."""
@@ -501,7 +522,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         for name, outcome in (
             ("dre-2-delivery-phase-kind", ("rejected", "DRE-2")),
-            ("drv-2-delivery-evidence-shape", ("error", "DRV-2")),
+            ("drv-3-delivery-evidence-shape", ("error", "DRV-3")),
             ("delivered-artifact-input-mismatch", ("rejected", "DRE-2")),
         ):
             with self.subTest(vector=name):
@@ -522,14 +543,14 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             put("deliverableAnchor", "locator", ""),
         ):
             with self.subTest(edit=edit):
-                self.assertEqual(finding(make_base("release", hooks={"delivery": edit})), ("error", "DRV-2"))
+                self.assertEqual(finding(make_base("release", hooks={"delivery": edit})), ("error", "DRV-3"))
         # The delivery outcome does not choose the disposition; the evaluation
         # under the bound rule does.
         failed = each_hook(put("outcome", "failure"), put("reason", "fixture-output-missing"))
         self.assertEqual(finding(make_base("rejected-refund", hooks={"delivery": failed})), ("verified", "DRV-7"))
         self.assertEqual(
             finding(make_base("rejected-refund", hooks={"delivery": put("outcome", "failure")})),
-            ("error", "DRV-2"),
+            ("error", "DRV-3"),
         )
         # §9.7 makes the deliverable members optional: a failure may omit
         # either or both, and then binds no delivered-artifact input.
@@ -554,7 +575,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         for edit in (put("deliverableContentHash", "0xab"), put("deliverableAnchor", {"kind": "storage-program"})):
             with self.subTest(failed_edit=edit):
                 value = make_base("rejected-refund", hooks={"delivery": each_hook(failed, edit)})
-                self.assertEqual(finding(value), ("error", "DRV-2"))
+                self.assertEqual(finding(value), ("error", "DRV-3"))
 
     def test_every_artifact_describes_the_overlay_job(self):
         for name, rule in (
@@ -581,7 +602,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         for name, outcome in (
             ("dre-5-evaluation-subject-unresolved", ("indeterminate", "DRE-5")),
             ("dre-3-evaluation-subject-contradiction", ("rejected", "DRE-3")),
-            ("drv-2-evaluation-subject-refs", ("error", "DRV-2")),
+            ("drv-3-evaluation-subject-refs", ("error", "DRV-3")),
         ):
             with self.subTest(vector=name):
                 value = self._vector(name)
@@ -596,7 +617,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         for refs in ([{"kind": "storage-program", "locator": "x"}], ["subject"], {}):
             with self.subTest(refs=refs):
                 value = make_base("release", hooks={"evaluation": put("subjectEvidenceRefs", refs)})
-                self.assertEqual(finding(value), ("error", "DRV-2"))
+                self.assertEqual(finding(value), ("error", "DRV-3"))
 
     def test_drd_8_drl_4_drt_4_terminal_ledger(self):
         release = self._vector("release-complete-budget")
@@ -909,7 +930,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # An ordering conclusion supplied beside the locator is malformed input.
         labelled = self._fixture("release")
         labelled["deliveryBinding"]["containsNativeSubmissionObservation"] = False
-        self.assertEqual(finding(labelled), ("error", "DRV-2"))
+        self.assertEqual(finding(labelled), ("error", "DRV-3"))
 
     def test_native_capability_facts_come_only_from_the_resolver(self):
         for name, fixture in self.vector_pack["fixtures"].items():
@@ -1089,10 +1110,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "funding-events-empty": ("rejected", "DRF-3"),
             "terminal-finality-pending": ("indeterminate", "DRT-8"),
             "terminal-events-empty": ("rejected", "DRT-4"),
-            "funding-finality-unregistered-member": ("error", "DRV-2"),
+            "funding-finality-unregistered-member": ("error", "DRV-3"),
             "funding-finality-depth-below-rail-profile": ("rejected", "DRF-6"),
             "funding-finality-predates-event-block": ("rejected", "DRF-6"),
-            "terminal-finality-unregistered-member": ("error", "DRV-2"),
+            "terminal-finality-unregistered-member": ("error", "DRV-3"),
             "terminal-finality-depth-below-rail-profile": ("rejected", "DRT-8"),
         }
         for name, outcome in expected.items():
@@ -1288,7 +1309,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertEqual(finding(value), ("rejected", "DREB-15"))
         self.assertEqual(self.vectors["dreb-15-recovery-after-deadline"]["expected"], "verified")
 
-    def test_drv_2_closed_evaluation_discriminators(self):
+    def test_drv_3_closed_evaluation_discriminators(self):
         for evaluation_result in ("deferred", "accepted", "", "ACCEPT", ["accept"]):
             for disposition in ("release-to-provider", "refund-to-client"):
                 with self.subTest(result=evaluation_result, disposition=disposition):
@@ -1297,7 +1318,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                         "decision": put("disposition", disposition),
                     })
                     self._assert_isolated(value)
-                    self.assertEqual(finding(value), ("error", "DRV-2"))
+                    self.assertEqual(finding(value), ("error", "DRV-3"))
                     if isinstance(evaluation_result, str):
                         # Behind the discriminator stage, the settlement
                         # mapping itself still refuses any result it does not list.

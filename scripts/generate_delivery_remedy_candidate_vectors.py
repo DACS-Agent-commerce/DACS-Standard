@@ -991,13 +991,13 @@ def build_vector_pack() -> dict[str, Any]:
         "dre-2-deliverable-anchor-native-locator-uppercase": make_base("release", hooks={
             "delivery": put("deliverableAnchor", "locator", "stor-" + NATIVE_DELIVERABLE_LOCATOR[5:].upper()),
         }),
-        # DRV-2: terminalState is a closed string discriminator; an array or
+        # DRV-3: terminalState is a closed string discriminator; an array or
         # object in a re-signed terminal is malformed input, not a crash.
-        "drv-2-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
-        "drv-2-terminal-state-object": make_base("release", hooks={"terminal": put("terminalState", {})}),
+        "drv-3-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
+        "drv-3-terminal-state-object": make_base("release", hooks={"terminal": put("terminalState", {})}),
         # A string outside the closed set is malformed too, not a DRT-4 mismatch.
-        "drv-2-terminal-state-unknown-string": make_base("release", hooks={"terminal": put("terminalState", "bogus")}),
-        "drv-2-delivery-evidence-shape": make_base("release", hooks={"delivery": put("paymentTxRefs", [])}),
+        "drv-3-terminal-state-unknown-string": make_base("release", hooks={"terminal": put("terminalState", "bogus")}),
+        "drv-3-delivery-evidence-shape": make_base("release", hooks={"delivery": put("paymentTxRefs", [])}),
         # A §9.7 failure may omit the deliverable members it has no value for.
         "dre-2-failed-delivery-without-deliverable": make_base("rejected-refund", FAILED_DELIVERY_JOB, hooks={
             "inputs": put("deliveredArtifact", None),
@@ -1028,7 +1028,7 @@ def build_vector_pack() -> dict[str, Any]:
                 "contentHash": "13" * 32,
             }]),
         }),
-        "drv-2-evaluation-subject-refs": make_base("release", hooks={"evaluation": put("subjectEvidenceRefs", None)}),
+        "drv-3-evaluation-subject-refs": make_base("release", hooks={"evaluation": put("subjectEvidenceRefs", None)}),
         "evaluator-claim-is-buyer": make_base("release", evaluator_claim=BUYER),
         "evaluator-account-is-seller": make_base("release", hooks={
             "agreement": put("evaluator", "evmAccountClaim", f"cci-xm:evm:{CHAIN_ID}:{SELLER_ACCOUNT}"),
@@ -1069,8 +1069,8 @@ def build_vector_pack() -> dict[str, Any]:
         "reject-then-release": make_base("release", hooks={"evaluation": put("result", "reject")}),
         "accept-then-refund": make_base("rejected-refund", hooks={"evaluation": put("result", "accept")}),
         "indeterminate-evaluation": make_base("release", hooks={"evaluation": put("result", "indeterminate")}),
-        "drv-2-evaluation-result": make_base("release", hooks={"evaluation": put("result", "deferred")}),
-        "drv-2-decision-disposition": make_base("release", hooks={"decision": put("disposition", "partial-release")}),
+        "drv-3-evaluation-result": make_base("release", hooks={"evaluation": put("result", "deferred")}),
+        "drv-3-decision-disposition": make_base("release", hooks={"decision": put("disposition", "partial-release")}),
         "evaluation-sequence-text": make_base("release", hooks={"evaluation": put("evaluationSeq", "0")}),
         "evaluation-sequence-one": make_base("release", hooks={"evaluation": put("evaluationSeq", 1)}),
         "wrong-faulted-party": make_base("rejected-refund", hooks={"evaluation": put("finding", "faultedParty", BUYER)}),
@@ -1265,7 +1265,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pipeline-actions-reversed", "release", "rejected", "DRP-2", "escrow phases must be fund then terminal", [{"op": "replace", "path": ["pipeline", 1, "parameters", "action"], "value": "terminal"}]),
         vector("pipeline-second-delivery", "second-delivery-phase", "rejected", "DRP-3", "only one delivery step may occur between the escrow phases"),
         vector("pipeline-extra-payment", "release", "rejected", "DRP-4", "ordinary payment phases cannot accompany the pair", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "pay-x402"}}]),
-        vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is malformed input", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "notify"}}]),
+        vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "notify"}}]),
         vector("pipeline-rail-divergence", "release", "rejected", "DRP-5", "both escrow invocations must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("drp-5-escrow-phase-rails", "release", "rejected", "DRP-5", "both escrow phases must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 1, "parameters", "rail"], "value": "pay-evm-erc8183:other"}, {"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("pipeline-delivery-before-final-funding", "release", "rejected", "DRP-6", "delivery cannot begin before the funding result is finalized", [{"op": "replace", "path": ["executionContext", "fundingFinalizedBeforeDelivery"], "value": False}]),
@@ -1304,7 +1304,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("native-submission-at-cutoff", "release", "rejected", "DRP-9", "a native submission at the cutoff is late", authenticated("release", retime("release", "JobSubmitted", cutoff)) + [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
         vector("submission-event-deliverable-mismatch", "release", "rejected", "DRP-9", "the native submission event must carry the delivery digest", authenticated("release", observation(2, "arguments", "deliverable", value="0x" + rehash_delivery))),
         vector("deliveryless-lifecycle-carries-submission-binding", "expired-pre", "rejected", "DRP-9", "a lifecycle without delivery has no native submission to bind", [{"op": "replace", "path": ["deliveryBinding"], "value": {}}]),
-        vector("delivery-binding-carries-conclusions", "release", "error", "DRV-2", "the delivery binding names the submission event and nothing else", [{"op": "add", "path": ["deliveryBinding", "status"], "value": "verified"}]),
+        vector("delivery-binding-carries-conclusions", "release", "error", "DRV-3", "the delivery binding names the submission event and nothing else", [{"op": "add", "path": ["deliveryBinding", "status"], "value": "verified"}]),
         # DREB: exact ERC field mapping.
         vector("description-prefix-substitution", "release", "rejected", "DREB-1", "the exact ASCII description prefix is bound", authenticated("release", observation(0, "arguments", "description", value="dacs-delivery:v1:" + release_hashes["agreementHash"]))),
         vector("description-sha256-prefix", "release", "rejected", "DREB-1", "a sha256: textual prefix is not inserted", authenticated("release", observation(0, "arguments", "description", value="dacs-delivery-remedy:v1:sha256:" + release_hashes["agreementHash"]))),
@@ -1316,7 +1316,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("zero-deliverable", "release", "rejected", "DREB-5", "zero cannot stand in for delivery evidence", [{"op": "replace", "path": ["native", "deliverable"], "value": "0x" + "00" * 32}]),
         vector("decision-hash-text-rehash", "release", "rejected", "DREB-4", "reason is raw decoded decision hash bytes", [{"op": "replace", "path": ["native", "reason"], "value": "0x" + rehash_reason}]),
         vector("zero-decision-reason", "release", "rejected", "DREB-5", "zero cannot stand in for an evaluator decision", [{"op": "replace", "path": ["native", "reason"], "value": "0x" + "00" * 32}]),
-        vector("malformed-native-reason", "release", "error", "DRV-2", "malformed native reason bytes are not repaired", [{"op": "replace", "path": ["native", "reason"], "value": "0x12"}]),
+        vector("malformed-native-reason", "release", "error", "DRV-3", "malformed native reason bytes are not repaired", [{"op": "replace", "path": ["native", "reason"], "value": "0x12"}]),
         vector("decision-hash-substitution", "release", "rejected", "DREB-2", "declared decision hash must be independently recomputed", [{"op": "replace", "path": ["mappingSources", "decisionHash"], "value": "99" * 32}]),
         vector("canonical-record-stale", "release", "rejected", "DREB-2", "pinned canonical bytes and mapped values are recomputed", [{"op": "replace", "path": ["canonicalRecords", "delivery", "mappedNativeValue"], "value": "0x" + "99" * 32}]),
         vector("native-client-mismatch", "release", "rejected", "DREB-7", "native client must equal the buyer-controlled account", [{"op": "replace", "path": ["native", "client"], "value": "0x" + "66" * 20}]),
@@ -1368,14 +1368,14 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dre-2-deliverable-anchor-native-locator-malformed", "dre-2-deliverable-anchor-native-locator-malformed", "rejected", "DRE-2", "a stor- locator outside the native address syntax is neither locator form", rules=["DRE-2", "DRP-7"]),
         vector("dre-2-deliverable-anchor-native-locator-64-hex", "dre-2-deliverable-anchor-native-locator-64-hex", "rejected", "DRE-2", "a 64-digit stor- value is a DACS-5 §10.4.2 logical address, here another job's buyer bundle, not a 40-digit native deliverable address", rules=["DRE-2", "DRP-7"]),
         vector("dre-2-deliverable-anchor-native-locator-uppercase", "dre-2-deliverable-anchor-native-locator-uppercase", "rejected", "DRE-2", "a native stor- address carries lower-case hex digits", rules=["DRE-2", "DRP-7"]),
-        vector("drv-2-delivery-evidence-shape", "drv-2-delivery-evidence-shape", "error", "DRV-2", "delivery evidence keeps the exact delivery SettlementEvidence shape", rules=["DRE-2", "DRV-2"]),
+        vector("drv-3-delivery-evidence-shape", "drv-3-delivery-evidence-shape", "error", "DRV-3", "delivery evidence keeps the exact delivery SettlementEvidence shape", rules=["DRE-2", "DRV-3"]),
         vector("dre-2-failed-delivery-without-deliverable", "dre-2-failed-delivery-without-deliverable", "verified", "DRV-7", "a failed delivery's SettlementEvidence may omit the deliverable content hash and anchor", rules=["DRE-2", "DRP-7", "DRV-7"]),
         vector("dre-2-failed-delivery-carries-artifact-input", "dre-2-failed-delivery-without-deliverable", "rejected", "DRE-2", "delivery evidence that names no deliverable resolves no delivered-artifact input", [{"op": "replace", "path": ["reproductionInputs", "deliveredArtifact"], "value": {"kind": "delivered-artifact-input"}}]),
         vector("drd-8-evaluation-job-reference", "drd-8-evaluation-job-reference", "rejected", "DRD-8", "the evaluation must reference this escrow job"),
         vector("drd-8-decision-job-reference", "drd-8-decision-job-reference", "rejected", "DRD-8", "the decision must reference this escrow job"),
         vector("dre-5-evaluation-subject-unresolved", "dre-5-evaluation-subject-unresolved", "indeterminate", "DRE-5", "subject evidence that does not resolve to authenticated evidence stays indeterminate", rules=["DRE-3", "DRE-5"]),
         vector("dre-3-evaluation-subject-contradiction", "dre-3-evaluation-subject-contradiction", "rejected", "DRE-3", "a subject reference must hash-bind the authenticated record it names"),
-        vector("drv-2-evaluation-subject-refs", "drv-2-evaluation-subject-refs", "error", "DRV-2", "evaluation subject references are an array of exact references", rules=["DRE-3", "DRV-2"]),
+        vector("drv-3-evaluation-subject-refs", "drv-3-evaluation-subject-refs", "error", "DRV-3", "evaluation subject references are an array of exact references", rules=["DRE-3", "DRV-3"]),
         vector("evaluation-reference-mismatch", "evaluation-reference-mismatch", "rejected", "DRE-7", "the evaluation reference must resolve exactly"),
         vector("decision-delivery-reference-mismatch", "decision-delivery-mismatch", "rejected", "DRD-3", "the decision must bind the exact delivery evidence"),
         vector("release-decision-without-delivery", "release-without-delivery", "rejected", "DRD-3", "DRD-3: a release decision needs the delivery evidence it releases against"),
@@ -1390,8 +1390,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("indeterminate-evaluation-authorizes-terminal", "indeterminate-evaluation", "rejected", "DRE-4", "an indeterminate evaluation cannot authorize settlement"),
         vector("reject-evaluation-release-action", "reject-then-release", "rejected", "DRD-2", "rejection cannot authorize release"),
         vector("accept-evaluation-refund-action", "accept-then-refund", "rejected", "DRD-2", "acceptance cannot authorize refund"),
-        vector("drv-2-evaluation-result", "drv-2-evaluation-result", "error", "DRV-2", "a signed evaluation result outside the closed set cannot authorize settlement"),
-        vector("drv-2-decision-disposition", "drv-2-decision-disposition", "error", "DRV-2", "a signed decision disposition outside the closed set cannot map to a native action"),
+        vector("drv-3-evaluation-result", "drv-3-evaluation-result", "error", "DRV-3", "a signed evaluation result outside the closed set cannot authorize settlement"),
+        vector("drv-3-decision-disposition", "drv-3-decision-disposition", "error", "DRV-3", "a signed decision disposition outside the closed set cannot map to a native action"),
         vector("release-decision-native-reject", "release", "rejected", "DRD-5", "a release decision maps only to native complete", [{"op": "replace", "path": ["native", "terminalAction"], "value": "reject"}]),
         vector("refund-decision-native-complete", "rejected-refund", "rejected", "DRD-6", "a refund decision maps only to native reject", [{"op": "replace", "path": ["native", "terminalAction"], "value": "complete"}]),
         # DRT: terminal evidence.
@@ -1400,9 +1400,9 @@ def build_vector_pack() -> dict[str, Any]:
         vector("terminal-funding-reference-mismatch", "terminal-funding-mismatch", "rejected", "DRT-11", "terminal evidence must reference the exact finalized funding record"),
         vector("terminal-job-reference-mismatch", "terminal-job-reference-mismatch", "rejected", "DRT-4", "terminal evidence must reference the exact escrow job"),
         vector("terminal-delivery-reference-mismatch", "terminal-delivery-reference-mismatch", "rejected", "DRT-12", "post-submission terminal evidence must reference the exact delivery"),
-        vector("drv-2-terminal-state-array", "drv-2-terminal-state-array", "error", "DRV-2", "a signed terminal whose terminalState is an array is malformed input"),
-        vector("drv-2-terminal-state-object", "drv-2-terminal-state-object", "error", "DRV-2", "a signed terminal whose terminalState is an object is malformed input"),
-        vector("drv-2-terminal-state-unknown-string", "drv-2-terminal-state-unknown-string", "error", "DRV-2", "a signed terminal whose terminalState is a string outside the closed discriminator set is malformed input"),
+        vector("drv-3-terminal-state-array", "drv-3-terminal-state-array", "error", "DRV-3", "a signed terminal whose terminalState is an array is malformed input"),
+        vector("drv-3-terminal-state-object", "drv-3-terminal-state-object", "error", "DRV-3", "a signed terminal whose terminalState is an object is malformed input"),
+        vector("drv-3-terminal-state-unknown-string", "drv-3-terminal-state-unknown-string", "error", "DRV-3", "a signed terminal whose terminalState is a string outside the closed discriminator set is malformed input"),
         vector("native-terminal-state-divergence", "release", "rejected", "DRT-4", "the native terminal state must equal the signed terminal state", [{"op": "replace", "path": ["native", "terminalState"], "value": "rejected-refund"}]),
         vector("funding-job-reference-mismatch", "funding-job-mismatch", "rejected", "DRF-1", "funding evidence must reference the exact escrow job"),
         vector("funding-phase-index-mismatch", "funding-phase-index-mismatch", "rejected", "DRF-1", "funding evidence must bind the agreement's fund phase index"),
@@ -1422,10 +1422,10 @@ def build_vector_pack() -> dict[str, Any]:
         vector("funding-events-empty", "funding-events-empty", "rejected", "DRF-3", "funding requires exactly one authenticated funding event"),
         vector("terminal-finality-pending", "terminal-finality-pending", "indeterminate", "DRT-8", "under-confirmed terminal-event evidence cannot establish disposition"),
         vector("terminal-events-empty", "terminal-events-empty", "rejected", "DRT-4", "terminal disposition requires exactly one terminal event"),
-        vector("funding-finality-unregistered-member", "funding-finality-unregistered-member", "error", "DRV-2", "a signed funding finality record keeps the exact DACS-4 shape"),
+        vector("funding-finality-unregistered-member", "funding-finality-unregistered-member", "error", "DRV-3", "a signed funding finality record keeps the exact DACS-4 shape"),
         vector("funding-finality-depth-below-rail-profile", "funding-finality-depth-below-profile", "rejected", "DRF-6", "a signed funding finality record must use the rail finality depth"),
         vector("funding-finality-predates-event-block", "funding-finality-predates-event", "rejected", "DRF-6", "funding finality cannot be observed before its event block"),
-        vector("terminal-finality-unregistered-member", "terminal-finality-unregistered-member", "error", "DRV-2", "a signed terminal finality record keeps the exact DACS-4 shape"),
+        vector("terminal-finality-unregistered-member", "terminal-finality-unregistered-member", "error", "DRV-3", "a signed terminal finality record keeps the exact DACS-4 shape"),
         vector("terminal-finality-depth-below-rail-profile", "terminal-finality-depth-below-profile", "rejected", "DRT-8", "a signed terminal finality record must use the rail finality depth"),
         vector("portable-state-missing-funded", "release", "rejected", "DRL-4", "the portable lifecycle cannot skip the funded state", [{"op": "remove", "path": ["native", "portableStateHistory", 1]}]),
         vector("portable-state-unknown", "release", "rejected", "DRL-2", "additional native states require a deterministic portable mapping", [{"op": "replace", "path": ["native", "portableStateHistory", 1], "value": "claim-pending"}]),
@@ -1501,7 +1501,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dra-1-bilateral-parties", "dra-1-bilateral-parties", "rejected", "DRA-1", "the bilateral agreement's buyer and seller keep their overlay roles"),
         vector("native-contract-projection-mismatch", "release", "rejected", "DRJ-2", "the native contract projection must be the escrow job's contract", [{"op": "replace", "path": ["native", "contractAddress"], "value": "0x" + "82" * 20}]),
         vector("native-runtime-projection-mismatch", "release", "rejected", "DRJ-5", "the native runtime projection must be the escrow job's code", [{"op": "replace", "path": ["native", "runtimeBytecodeHash"], "value": "ab" * 32}]),
-        vector("malformed-native-bytes32", "release", "error", "DRV-2", "malformed native bytes are not repaired", [{"op": "replace", "path": ["native", "deliverable"], "value": "0x1234"}]),
+        vector("malformed-native-bytes32", "release", "error", "DRV-3", "malformed native bytes are not repaired", [{"op": "replace", "path": ["native", "deliverable"], "value": "0x1234"}]),
         vector("unsupported-profile-discriminator", "release", "error", "DRV-1", "unsupported profiles fail before action", [{"op": "replace", "path": ["candidateProfile"], "value": "delivery-or-remedy-v2"}]),
     ]
     promotion_blocked_rules = {
@@ -1587,10 +1587,10 @@ def build_vector_pack() -> dict[str, Any]:
 # With the deciding guard removed, exactly this finding must remain.
 FOLLOW_ON_FINDINGS = {
     # An unsupported evaluation result or disposition authorizes no settlement.
-    "drv-2-evaluation-result": ("rejected", "DRD-2"),
-    "drv-2-decision-disposition": ("rejected", "DRD-2"),
+    "drv-3-evaluation-result": ("rejected", "DRD-2"),
+    "drv-3-decision-disposition": ("rejected", "DRD-2"),
     # A terminal state outside the closed set matches no terminal event.
-    "drv-2-terminal-state-unknown-string": ("rejected", "DRT-4"),
+    "drv-3-terminal-state-unknown-string": ("rejected", "DRT-4"),
     # A release whose decision is missing has no authorizing decision.
     "decision-artifact-unavailable": ("rejected", "DRT-3"),
     # An overlay delivery index on a non-delivery step names no delivery step.
@@ -1611,9 +1611,9 @@ STRUCTURAL_NEGATIVES = {
     "native-event-chain-substitution": "the terminal event has no matching observation",
     "native-event-selector-substitution": "the creation observation has no lifecycle selector",
     "drp-9-digest-anchor-unavailable": "the resolver record has no digest anchor to read",
-    "drv-2-evaluation-subject-refs": "the evaluation has no subject reference array to read",
-    "drv-2-terminal-state-array": "an array terminal state cannot key the terminal-event lookup",
-    "drv-2-terminal-state-object": "an object terminal state cannot key the terminal-event lookup",
+    "drv-3-evaluation-subject-refs": "the evaluation has no subject reference array to read",
+    "drv-3-terminal-state-array": "an array terminal state cannot key the terminal-event lookup",
+    "drv-3-terminal-state-object": "an object terminal state cannot key the terminal-event lookup",
 }
 # Pack runner and deployment-capability code are outside the lifecycle audit.
 _UNAUDITED_FUNCTIONS = {

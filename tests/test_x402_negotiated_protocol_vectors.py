@@ -15,6 +15,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+import idna
 from scripts.evm_crypto import evm_address
 from scripts.jcs import canonicalize as jcs_canonicalize
 
@@ -305,7 +306,7 @@ def validate_ref(ref):
         parsed = urlsplit(request.get("url"))
     except (TypeError, ValueError):
         return "error"
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+    if parsed.scheme != "https" or not parsed.hostname:
         return "error"
     if "bodyHash" in request and not (
         isinstance(request["bodyHash"], str) and HEX_32.fullmatch(request["bodyHash"])
@@ -478,23 +479,47 @@ def _ipv4_number(part):
     return int(digits, radix)
 
 
+def _is_a_label(label):
+    """RFC 5890: an `xn--` label is an A-label only if it decodes to a U-label.
+
+    The U-label must contain a non-ASCII code point and encode back to the same
+    label, so `xn--`, `xn--localhost-` and other non-canonical Punycode are not
+    A-labels whichever `idna` release is installed.
+    """
+    try:
+        decoded = idna.ulabel(label)
+        return not decoded.isascii() and idna.alabel(decoded).decode("ascii") == label
+    except idna.IDNAError:
+        return False
+
+
 def request_url_syntax_ok(url):
     """XN-2 signed URL syntax: printable ASCII only, no `\\`, no `%` in the host.
 
     URL parsers disagree outside this syntax: UTS-46 drops default-ignorable code
     points, WHATWG ends an https authority at `\\`, and WHATWG percent-decodes the
     host, so `urlsplit` can see a DNS name where a fetch client connects to
-    127.0.0.1. An internationalized host passes only in A-label form. `%` is
-    checked over the whole netloc; userinfo is malformed anyway and a port has none.
+    127.0.0.1. An internationalized host passes only in A-label form, and every
+    `xn--` label must be a real one. `%` is checked over the whole netloc, since a
+    port has none. Userinfo and a fragment are refused by presence (`@` in the
+    netloc, any `#`), so an empty one is malformed too; a port must be decimal
+    and at most 65535.
     """
     if not isinstance(url, str) or not url:
         return False
     if any(not "\x21" <= char <= "\x7e" for char in url) or "\\" in url:
         return False
+    if "#" in url:
+        return False
     try:
-        return "%" not in urlsplit(url).netloc
+        parsed = urlsplit(url)
+        parsed.port
     except ValueError:
         return False
+    if "%" in parsed.netloc or "@" in parsed.netloc:
+        return False
+    labels = (parsed.hostname or "").split(".")
+    return all(_is_a_label(label) for label in labels if label.startswith("xn--"))
 
 
 def _host_literal(hostname):
@@ -1157,6 +1182,16 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "request-url-full-width-localhost",
             "request-url-idn-u-label-host",
             "request-url-percent-encoded-ipv4-loopback",
+            "request-url-empty-userinfo",
+            "request-url-empty-userinfo-password",
+            "request-url-empty-fragment",
+            "request-url-port-not-decimal",
+            "request-url-port-out-of-range",
+            "request-url-empty-a-label",
+            "request-url-fake-a-label-localhost",
+            "request-url-backslash-in-path",
+            "request-url-non-ascii-path",
+            "request-url-del",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",
@@ -1358,7 +1393,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         global request_url_syntax_ok, public_http_target
         names = [name for name, vector in self.by_name.items()
                  if name.startswith("request-url-") and vector["expected"] == "error"]
-        self.assertEqual(len(names), 10)
+        self.assertEqual(len(names), 20)
         for name in names:
             with self.subTest(vector=name):
                 self.assertEqual(self.by_name[name].get("expectedReason"), "rail-ref-shape")
@@ -1397,8 +1432,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "https://ｌｏｃａｌｈｏｓｔ/pay",
             "https://127.0.0\t.1/pay",
             "https://seller.example /pay",
+            "https://127.0.0.xn--1-/pay",
+            "https://169.254.169.xn--254-/pay",
+            "https://XN--LOCALHOST-/pay",
+            "https://@127.0.0.1/pay",
+            "https://seller.example/pay?q=#",
         ]
-        self.assertEqual(len(urls), 4 * (7 * 2 * 2 + 2) + 6)
+        self.assertEqual(len(urls), 4 * (7 * 2 * 2 + 2) + 11)
         base = self.by_name["protocol-v2-exact-success"]["agreement"]["terms"]["rail"]
         self.assertEqual(validate_ref(base), "pass")
         for url in urls:
@@ -1408,7 +1448,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertEqual(validate_ref(ref), "error")
                 self.assertFalse(public_http_target(url))
         for url in ("https://xn--bcher-kva.example/pay", "https://seller.example/p%C3%A9",
-                    "https://seller.example/pay?q=%5C"):
+                    "https://seller.example/pay?q=%5C", "https://XN--BCHER-KVA.example/pay",
+                    "https://xn--bcher-kva.example./pay", "https://seller.example:443/pay",
+                    "https://seller.example:8443/pay", "https://seller.example/a@b"):
             with self.subTest(url=url):
                 ref = copy.deepcopy(base)
                 ref["parameters"]["request"]["url"] = url
@@ -1438,6 +1480,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "MUST NOT rewrite",
             "Its host MUST NOT contain `%`.",
             "internationalized host MUST be signed in A-label form",
+            "every host label that begins with `xn--` MUST be an RFC 5890 A-label",
+            "no userinfo or fragment, even an empty one.",
+            "A non-empty port MUST be decimal digits with a value of at most 65535.",
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
         ):

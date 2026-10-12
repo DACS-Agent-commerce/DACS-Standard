@@ -878,7 +878,8 @@ def build_vectors() -> list[dict]:
             refresh=True,
             reason="non-public-request-target",
         )
-    # XN-2 URL syntax: printable ASCII only, no `\`, no `%` in the host, and an
+    # XN-2 URL syntax: printable ASCII only, no `\`, no `%` in the host, no
+    # userinfo or fragment even when empty, a decimal port of at most 65535, and an
     # internationalized host in A-label form. Outside it, parsers disagree on the
     # host: UTS-46 drops default-ignorable code points, WHATWG ends an https
     # authority at `\` and percent-decodes the host. Each error row would reach a
@@ -910,10 +911,32 @@ def build_vectors() -> list[dict]:
          "an internationalized host must be signed in A-label form"),
         ("percent-encoded-ipv4-loopback", "error", "https://%31%32%37.0.0.1/pay",
          "a percent-encoded IPv4 host puts % in the host"),
+        ("empty-userinfo", "error", "https://@seller.example/pay",
+         "an @ in the authority is userinfo even when the userinfo is empty"),
+        ("empty-userinfo-password", "error", "https://:@seller.example/pay",
+         "an empty user and password are still userinfo"),
+        ("empty-fragment", "error", "https://seller.example/pay#",
+         "a # starts a fragment even when nothing follows it"),
+        ("port-not-decimal", "error", "https://seller.example:abc/pay",
+         "a port must be decimal digits"),
+        ("port-out-of-range", "error", "https://seller.example:99999/pay",
+         "a port must be at most 65535"),
+        ("empty-a-label", "error", "https://xn--.example/pay",
+         "an xn-- label with no Punycode content is not an RFC 5890 A-label"),
+        ("fake-a-label-localhost", "error", "https://xn--localhost-/pay",
+         "xn--localhost- decodes to the ASCII label localhost, so it is not an A-label"),
+        ("backslash-in-path", "error", "https://seller.example/pay\\x",
+         "a backslash is malformed anywhere in the URL, not only in the authority"),
+        ("non-ascii-path", "error", "https://seller.example/pé",
+         "a non-ASCII code point is malformed anywhere in the URL, not only in the host"),
+        ("del", "error", "https://seller.example/pay\x7f",
+         "U+007F is outside printable ASCII"),
         ("idn-a-label-host", "pass", "https://xn--bcher-kva.example/pay",
          "the A-label form of an internationalized host is admitted"),
         ("percent-in-path", "pass", "https://seller.example/p%C3%A9",
          "percent-encoding outside the host is admitted"),
+        ("explicit-port", "pass", "https://seller.example:8443/pay",
+         "a decimal port of at most 65535 is admitted"),
     ):
         def request_url_spelling(v, target=request_url):
             request = v["agreement"]["terms"]["rail"]["parameters"]["request"]

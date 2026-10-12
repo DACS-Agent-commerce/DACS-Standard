@@ -78,10 +78,13 @@ The format used per release:
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized
-  host must be signed in A-label form. Any other spelling is malformed and
-  yields `error` before any request. This removes spellings that URL parsers
-  resolve to different hosts: UTS-46 drops default-ignorable code points,
-  WHATWG ends an `https` authority at `\`, and WHATWG percent-decodes the host.
+  host must be signed in A-label form. Userinfo and a fragment are refused even
+  when empty, a non-empty port must be decimal and at most 65535, and every
+  `xn--` host label must be an RFC 5890 A-label. Any other spelling is
+  malformed and yields `error` before any request. This removes spellings that
+  URL parsers resolve to different hosts: UTS-46 maps or drops non-ASCII code
+  points, and WHATWG strips tab, LF and CR, ends an `https` authority at `\`,
+  and percent-decodes the host.
   The DACS-1 §6.3.6 per-connection checks still apply to every admitted URL.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)

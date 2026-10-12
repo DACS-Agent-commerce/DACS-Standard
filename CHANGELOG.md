@@ -13,7 +13,7 @@ The format used per release:
 
 ## [Unreleased]
 
-### Added — negotiated x402 rail (DACS-3 v0.6 / DACS-4 v0.8 candidate)
+### Added — negotiated x402 rail (DACS-1 v0.8 / DACS-3 v0.6 / DACS-4 v0.8 candidate)
 
 - **Provider-neutral negotiated x402 rail** (DACS-3 §8.5.2; DACS-4 §9.3,
   §9.4.3, §9.5.1, §9.5.7 XN-1..XN-11, §9.5.8; #274) — replaces the
@@ -49,7 +49,7 @@ The format used per release:
   reconciliation retry make zero authorization calls.
   This addition is part of the existing unreleased coordinated candidate
   (DACS-3 v0.6 / DACS-4 v0.8); it does not create another module-version bump.
-- **Listing-time agreement type for `x402:protocol`** (DACS-1 §6.3.4 LRR-4;
+- **Listing-time agreement type for `x402:protocol`** (DACS-1 §6.3.4 LRR-4/LRR-5;
   DACS-3 §8.5.2; DACS-4 §9.5.7 XN-2, §9.9.1 APR-1) — a new listing-admission
   rule for DACS-1 listing readers: a Listing that offers an `x402:protocol`
   reference, directly or as a `pay-alternative` member, must use
@@ -57,9 +57,11 @@ The format used per release:
   payee or sealed-selection commitment phase is rejected at listing admission
   instead of being admitted and never committing. The rejection needs no
   registry and is returned before registry-dependent checks; APR-1 states it
-  for an alternative slot and DACS-1 LRR-4 points to it. This addition is part
-  of the unreleased DACS-1 v0.8 candidate. Widening the rail to all three
-  payout-bearing agreement types is left to a later compatible extension.
+  for an alternative slot and DACS-1 LRR-4 points to it. LRR-5 names it and the
+  APR-1 malformations as `rejected` even when registry authority cannot be
+  authenticated. This addition is part of the unreleased DACS-1 v0.8
+  candidate. Widening the rail to all three payout-bearing agreement types is
+  left to a later compatible extension.
 - **Amount ceiling and decimals bound** (DACS-4 §9.3, §9.5.7 XN-2/XN-5) —
   `selection.assetDecimals` is bounded to 0..255 (`uint8`) and checked before
   any power of ten. XN-5's overflow rejection is measured against the

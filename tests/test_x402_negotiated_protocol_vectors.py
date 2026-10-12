@@ -1523,6 +1523,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         lrr = (ROOT / "spec/DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
         lrr4 = next(line for line in lrr.splitlines() if line.startswith("- (LRR-4) "))
         self.assertIn("DACS-4 XN-2 commitment-phase rule", lrr4)
+        # LRR-5 must agree with LRR-4 when the registry is unavailable.
+        lrr5 = next(line for line in lrr.splitlines() if line.startswith("- (LRR-5) "))
+        pre_registry, _, rest = lrr5.partition("Otherwise, failure to authenticate")
+        self.assertIn("DACS-4 APR-1 malformation and an LRR-4 `x402:protocol` "
+                      "commitment-phase violation need no registry", pre_registry)
+        self.assertIn("even when registry authority cannot be authenticated", pre_registry)
+        self.assertIn("returns `indeterminate`", rest)
 
     def test_pay_alternative_members_must_be_objects(self):
         """A non-object alternative, or fewer than two, is APR-1 `rejected` (`fail`), not offered."""

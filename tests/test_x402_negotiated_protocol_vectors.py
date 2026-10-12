@@ -1194,6 +1194,13 @@ def evaluate(v, effects=None):
                 return "error", "address-form"
     if len(matches) != 1:
         return "fail", "challenge-match"
+    # XN-6 scope: which extension or `extra` member can influence authorization,
+    # request execution, settlement, destination, fees, or follow-on actions has
+    # no closed list. The fixture declares that set (`actionBearingExtensions`),
+    # so this gate pins only that every declared member is understood locally.
+    # Classifying a member remains an executable adapter obligation; JSON
+    # vectors cannot prove it. The complete `extensions` object itself is bound
+    # above by JCS equality with the signed `paymentRequiredExtensions`.
     action_bearing = set(http.get("actionBearingExtensions", []))
     understood = set(capability.get("understoodActionExtensions", []))
     if not action_bearing.issubset(understood):

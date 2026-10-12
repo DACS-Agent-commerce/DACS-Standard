@@ -135,7 +135,7 @@ type ConsensusProxyMethodInput = {
 - (b) A single validator fetching the response and the rest signing the resulting hash is operationally indistinguishable from a full-fanout fetch under current SR-3 specs; recipes used for high-stakes verification SHOULD set multi-method alternatives (see §7.12).
 - (c) The TLS connection between substrate validators and the authority is the trust floor for response authenticity at fetch time; an attacker who can MITM the authority’s TLS endpoint can cause all validators to commit to forged content.
 
-A declared alternative under caveat (b) only makes another method available. A listing avoids relying on SR-3 for a claim by selecting a substrate-independent method with `ClaimRequirement.parameters.verificationMethod` (§7.12).
+A declared alternative under caveat (b) only makes another method available; declaring it alone does not exclude consensus-backed-proxy (§7.12). A listing avoids relying on SR-3 for a claim by selecting a substrate-independent method with `ClaimRequirement.parameters.verificationMethod` (§7.12).
 
 **v0.2 strengthening (planned).** A future minor version is expected to specify a "validator-body-signed" mode in which each validator independently signs the response body bytes and the aggregate signature is anchored. When this mode ships, recipes for high-stakes schemes (lei, finra-crd, ofac-clear, sam-uei) SHOULD migrate to require it. v0.1 recipes that already declare alternatives are forward-compatible.
 

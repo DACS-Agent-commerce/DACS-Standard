@@ -74,28 +74,29 @@ The escrow job, both escrow phases, and the native target follow the
 agreement-selected rail. Evaluation results, decision dispositions, and the
 terminal evidence's `terminalState` each have a closed value set. A value
 outside the closed value set, including an array, an object, or an unknown
-string, is malformed input and returns `error` before any stage reads it. The verifier reports
-malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding
-rule: nothing is repaired before hashing or comparison. DRV-2 keeps
-unavailable or inconsistent RPC data `indeterminate`, as for an unavailable
-`agreementResolution`. The candidate names no rule for an unsupported §9
-step-1 artifact discriminator (a phase kind, an overlay, resolver-evidence or
-deployment-manifest version, or a capability profile), so those `error` cases
-keep the fixture label `DRV-2`. The step-1 label is pending #371's named §9
-step-1 rule. A resolver status whose applicability contradicts the lifecycle
-is `rejected` under DRV-6: the pinned resolver's authenticated record
-contradicts the signed terminal and delivery evidence. That holds for an
-applicable status marked `not-applicable` and for an inapplicable one marked
-`verified` or `contradictory`. An inapplicable `unavailable` is not a
-contradiction: it asserts nothing, and candidate §9 step 5 makes only
-required evidence `indeterminate`. The candidate's DRP-7, DRT-3 and DRT-12
-make delivery evidence and `decisionRef` absent, but they do not govern the
-resolver record. So the applicable checks decide the verdict (DRV-7). An unsupported `deliver-*` kind as the one
-delivery is not one of them: DRP-3 requires a supported delivery step, so it
-is `rejected` under DRP-3. Only `accept` with
-`release-to-provider` and `reject` with `refund-to-client` can authorize a
-terminal action. A release decision needs delivery evidence (DRD-3), and a
-decision without delivery evidence must rest on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read
+string, is malformed input and returns `error` before any stage reads it.
+The verifier reports malformed input (candidate §9 step 2) under DRV-3, the
+malformed-encoding rule: nothing is repaired before hashing or comparison.
+DRV-2 keeps unavailable or inconsistent RPC data `indeterminate`, as for an
+unavailable `agreementResolution`. The candidate names no rule for an
+unsupported §9 step-1 artifact discriminator (a phase kind, an overlay,
+resolver-evidence or deployment-manifest version, or a capability profile),
+so those `error` cases keep the fixture label `DRV-2`. The step-1 label is
+pending #371's named §9 step-1 rule. An unsupported `deliver-*` kind as the
+one delivery is not such a case: DRP-3 requires a supported delivery step,
+so it is `rejected` under DRP-3. A resolver status whose applicability
+contradicts the lifecycle is `rejected` under DRV-6: the pinned resolver's
+authenticated record contradicts the signed terminal and delivery evidence.
+That holds for an applicable status marked `not-applicable` and for an
+inapplicable one marked `verified` or `contradictory`. An inapplicable
+`unavailable` is not a contradiction: it asserts nothing, and candidate §9
+step 5 makes only required evidence `indeterminate`. The candidate's DRP-7,
+DRT-3 and DRT-12 make delivery evidence and `decisionRef` absent, but they
+do not govern the resolver record. So the applicable checks decide the
+verdict (DRV-7). Only `accept` with `release-to-provider` and `reject` with
+`refund-to-client` can authorize a terminal action. A release decision needs
+delivery evidence (DRD-3), and a decision without delivery evidence must rest
+on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read
 from the authenticated creation event.
 
 Every artifact describes the overlay's job. The bilateral agreement must be

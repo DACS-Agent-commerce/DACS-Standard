@@ -27,18 +27,22 @@ import validate_atomic_work_vectors as validator  # noqa: E402
 
 
 def coverage_overclaims(text):
-    """Return the sentences of ``text`` that claim complete coverage.
+    """Find selected lexical overclaims; this is not a semantic prose oracle.
 
-    A sentence pairing a completeness word (complete, full, exhaustive and
-    their -ly forms) with a coverage word (cover, exercise) is an overclaim
-    unless it negates it ("not") or keeps it open ("remains open").
+    Qualifiers apply only within segments separated by selected punctuation
+    and conjunctions; these delimiters do not recognize every clause.
     """
     return [
         sentence
         for sentence in re.split(r"(?<=[.!?])\s+", text)
-        if re.search(r"(?i)\b(complete(ly|ness)?|full(y)?|exhaustive(ly)?)\b", sentence)
-        and re.search(r"(?i)\b(cover(s|ed|age|ing)?|exercis(e|es|ed|ing))\b", sentence)
-        and not re.search(r"(?i)\bnot\b|\bremains open\b", sentence)
+        if any(
+            re.search(r"(?i)\b(complete(ly|ness)?|full(y)?|exhaustive(ly)?)\b", clause)
+            and re.search(r"(?i)\b(cover(s|ed|age|ing)?|exercis(e|es|ed|ing))\b", clause)
+            and not re.search(r"(?i)\bnot\b|\bremains open\b", clause)
+            for clause in re.split(
+                r"(?i)[;,]|\b(?:although|though|but|however)\b", sentence
+            )
+        )
     ]
 
 
@@ -341,6 +345,21 @@ class AtomicWorkVectorTests(unittest.TestCase):
                     coverage_overclaims("Some prefix. " + sentence),
                     [sentence] if overclaims else [],
                 )
+
+    def test_coverage_overclaim_guard_does_not_borrow_adjacent_negation(self):
+        for sentence in (
+            "Every rule is fully covered, although production execution is not established.",
+            "Production execution is not established, but every rule is fully covered.",
+            "Semantic coverage remains open; every rule is fully covered.",
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(coverage_overclaims(sentence), [sentence])
+        for sentence in (
+            "It does not claim full semantic coverage, although references are counted.",
+            "Full semantic coverage remains open; the generator refuses reference gaps.",
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(coverage_overclaims(sentence), [])
 
     def test_boundary_attribution_is_rule_specific(self):
         for data in self.sets:

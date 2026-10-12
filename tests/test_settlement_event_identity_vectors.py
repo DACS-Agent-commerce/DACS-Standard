@@ -565,7 +565,8 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
                 self.assertTrue(key.startswith(("evm:", "solana:")))
 
     def test_spec_pins_signed_projection_and_legacy_rule(self):
-        spec = SPEC.read_text(encoding="utf-8")
+        # Whitespace-normalised, so re-wrapping a paragraph cannot break a pinned phrase.
+        spec = " ".join(SPEC.read_text(encoding="utf-8").split())
         for text in (
             'kind: "evm-event"; chainId: number; txHash: string; logIndex: number',
             'kind: "solana-instruction"; cluster:',
@@ -575,7 +576,7 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
             "MUST NOT strip or substitute the discriminator",
             "MUST compare the complete PC-2 logical-address tuple",
         ):
-            self.assertIn(text, spec)
+            self.assertIn(" ".join(text.split()), spec)
 
 
 if __name__ == "__main__":

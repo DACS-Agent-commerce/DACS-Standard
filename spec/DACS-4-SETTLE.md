@@ -1312,9 +1312,8 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
   signed `settlementEvent` is the complete adapter-canonical native SB-1 event
   identifier required by XN-8/XN-9. The distinct `kind` values are additive type
   boundaries. A reader that does not implement one rejects it as unsupported
-  before acting, and a current reader
-  MUST NOT strip or substitute the discriminator and retry verification as
-  another arm.
+  before acting, and a current reader MUST NOT strip or substitute the
+  discriminator and retry verification as another arm.
 
   Before accepting the evidence, a verifier MUST resolve independently authenticated ledger data at the referenced transaction and establish that the signed `logIndex` or `instructionIndex` selects the transfer committed by the evidence and agreement: the selected asset/program or token contract, payer, agreement-authorized payee destination (PB-1 when applicable), and exact `paymentAmount` MUST match. For legacy static x402, X402-1..X402-4 MUST additionally bind the same transaction and network to the signed receipt. For `x402:protocol`, XN-2..XN-9 MUST bind the signed selection, challenge, response, complete `settlementEvent`, and independently verified finality. A missing ledger result is `indeterminate`; a resolved index/event whose transfer does not match is `fail`; a missing or malformed signed coordinate/event identifier is `error`. An event index or identifier supplied outside the signed evidence is never authority and MUST NOT repair a current arm.
 

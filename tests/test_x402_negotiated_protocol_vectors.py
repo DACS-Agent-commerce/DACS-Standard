@@ -1528,7 +1528,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "A non-empty port MUST be decimal digits with a value of at most 65535.",
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
-            "It derives that form for both the retained and the recorded value before comparing them.",
+            "It MUST derive that form for both the retained and the recorded value before comparing them.",
         ):
             self.assertIn(text, spec)
         # Notes are hard-wrapped blockquotes: compare without wrapping or markers.

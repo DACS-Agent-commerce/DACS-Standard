@@ -213,7 +213,14 @@ def buyer_payment_control(v, buyer, selection):
             return False
     except (TypeError, ValueError):
         return False
-    return claimed_address == derived_address == payer.get("paymentAddress")
+    # XN-5: the claimed, derived and authorization payer compare in the adapter
+    # form. All three are taken to it first, so a malformed one raises
+    # ValueError (the caller's `error`) whatever the others hold.
+    claimed, derived, authorization = (
+        adapter_address(network, address)
+        for address in (claimed_address, derived_address, payer.get("paymentAddress"))
+    )
+    return claimed == derived == authorization
 
 
 def verify_artifact_signatures(v):
@@ -882,7 +889,11 @@ def evaluate(v, effects=None):
     runtime = v.get("runtime", {})
     if runtime.get("payer", {}).get("primaryClaim") != buyer[0].get("primaryClaim"):
         return "fail", "payer-party"
-    if not buyer_payment_control(v, buyer[0], ref["parameters"]["selection"]):
+    try:
+        controlled = buyer_payment_control(v, buyer[0], ref["parameters"]["selection"])
+    except ValueError:
+        return "error", "address-form"
+    if not controlled:
         return "fail", "payer-control"
     if runtime.get("payee", {}).get("primaryClaim") != seller[0].get("primaryClaim"):
         return "fail", "payee-party"
@@ -891,7 +902,17 @@ def evaluate(v, effects=None):
         item.get("railId") == "x402:protocol"
         and item.get("phaseIndex") == runtime.get("phaseIndex")
     )]
-    if len(binding) != 1 or binding[0].get("payeeAddress") != runtime.get("payee", {}).get("payeeAddress"):
+    if len(binding) != 1:
+        return "fail", "payout-binding"
+    # XN-5/PB-1: the signed binding and the runtime payee compare in the adapter
+    # form; a malformed form on either side is `error`, not a mismatch.
+    network = ref["parameters"]["selection"]["network"]
+    try:
+        pay_to = adapter_address(network, binding[0].get("payeeAddress"))
+        runtime_pay_to = adapter_address(network, runtime.get("payee", {}).get("payeeAddress"))
+    except ValueError:
+        return "error", "address-form"
+    if runtime_pay_to != pay_to:
         return "fail", "payout-binding"
 
     if runtime.get("operatorConfigSource") != "local-operator-policy":
@@ -967,11 +988,6 @@ def evaluate(v, effects=None):
         )
     except (TypeError, ValueError):
         return "fail", "exact-amount"
-    network = selection["network"]
-    try:
-        pay_to = adapter_address(network, binding[0]["payeeAddress"])
-    except ValueError:
-        return "error", "address-form"
     matches = []
     for candidate in accepts:
         if not isinstance(candidate, dict):
@@ -1283,6 +1299,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "challenge-payto-substitution-mixed-case",
             "challenge-payto-not-20-bytes",
             "payout-binding-not-20-bytes",
+            "payout-binding-not-20-bytes-runtime-payee-valid",
             "upto-has-no-dacs-success-profile",
             "legacy-default-new-session-disabled",
             "legacy-default-pinned-live-new-session",
@@ -1597,7 +1614,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
             "It MUST derive that form for both the retained and the recorded value before comparing them.",
-            "and the authenticated event's payer and payee as 20-byte values.",
+            "the adapter MUST compare the following addresses as 20-byte values.",
+            "They are `payTo`, the PB-1 payout binding and `PaymentPhaseInput.payee.payeeAddress`; "
+            "the `payingKey` address component, the derived payer and the authorization payer; "
+            "the response `payer`; and the authenticated event's payer and payee.",
             "the EIP-55 checksum is neither required nor checked.",
             "Other networks compare these addresses as exact strings.",
         ):
@@ -1827,6 +1847,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("challenge-payto-not-20-bytes", ("error", "address-form"), 0),
             ("response-payer-not-20-bytes", ("error", "address-form"), 1),
             ("payout-binding-not-20-bytes", ("error", "address-form"), 0),
+            ("paying-key-claim-eip55-derived-payer-lower-case", ("pass", None), 1),
+            ("runtime-payee-eip55-binding-lower-case", ("pass", None), 1),
+            ("payout-binding-not-20-bytes-runtime-payee-valid", ("error", "address-form"), 0),
             ("ledger-payer-mixed-case", ("pass", None), 1),
             ("solana-ledger-payer-case-changed", ("fail", "ledger-event"), 1),
         ):
@@ -1848,6 +1871,25 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         vector = copy.deepcopy(self.by_name["protocol-v2-exact-success"])
         vector["ledger"]["payer"] = vector["ledger"]["payer"][2:]
         self.assertEqual(evaluate(vector), ("error", "address-form"))
+
+        # The unsigned runtime copies at the payer-control and PB-1 gates: a
+        # checksum spelling matches, and a malformed copy is `error` beside a
+        # well-formed signed value, before any wallet call.
+        payer = "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        self.assertEqual(
+            self.by_name["protocol-v2-exact-success"]["runtime"]["payer"]["paymentAddress"], payer
+        )
+        for path, spelling, want, calls in (
+            (("payer", "paymentAddress"), "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf", ("pass", None), 1),
+            (("payer", "paymentAddress"), payer[:-2], ("error", "address-form"), 0),
+            (("payee", "payeeAddress"), lower[:-2], ("error", "address-form"), 0),
+        ):
+            with self.subTest(runtime=path, spelling=spelling):
+                vector = copy.deepcopy(self.by_name["runtime-payee-eip55-binding-lower-case"])
+                vector["runtime"][path[0]][path[1]] = spelling
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), want)
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), calls)
 
     def test_ledger_transaction_is_compared_in_the_collapsed_form(self):
         """XN-7: the ledger side is collapsed too, in both spelling directions."""

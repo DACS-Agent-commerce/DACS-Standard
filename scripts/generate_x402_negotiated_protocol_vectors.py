@@ -1225,6 +1225,36 @@ def build_vectors() -> list[dict]:
              "a signed EIP-155 payout binding that is not 0x plus 40 hex digits is malformed "
              "before authorization, even beside a well-formed payTo",
              malformed_payout_binding, refresh=True, reason="address-form")
+
+    # The two earlier XN-5 gates: payer control and the PB-1 runtime payee.
+    def eip55_paying_key_claim(v):
+        bundle = buyer_bundle("eip155:8453", eip55(BUYER_ADDRESS))
+        bundle_hash = digest(unsigned(bundle, "presentation"))
+        v["buyerBundle"] = bundle
+        v["agreement"]["parties"][0]["bundleHash"] = bundle_hash
+        v["runtime"]["payer"].update({
+            "bundleHash": bundle_hash,
+            "payingKey": payment_claim("eip155:8453", eip55(BUYER_ADDRESS)),
+        })
+    add_case(vectors, "paying-key-claim-eip55-derived-payer-lower-case", "pass", "XN-5",
+             "an EIP-55 paying-key claim address is the same 20-byte payer as the lower-case "
+             "address derived from its key and the authorization payer",
+             eip55_paying_key_claim)
+    def eip55_runtime_payee(v):
+        lettered_seller(LETTERED_SELLER)(v)
+        v["runtime"]["payee"]["payeeAddress"] = eip55(LETTERED_SELLER)
+    add_case(vectors, "runtime-payee-eip55-binding-lower-case", "pass", "XN-5/PB-1",
+             "an EIP-55 runtime payee is the same 20-byte destination as the lower-case "
+             "signed payout binding",
+             eip55_runtime_payee, refresh=True)
+
+    def malformed_binding_runtime_payee_valid(v):
+        lettered_seller(LETTERED_SELLER)(v)
+        v["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"] = LETTERED_SELLER[:-2]
+    add_case(vectors, "payout-binding-not-20-bytes-runtime-payee-valid", "error", "XN-5/PB-1",
+             "a malformed signed EIP-155 payout binding is malformed before authorization "
+             "even when the runtime payee is well formed",
+             malformed_binding_runtime_payee_valid, refresh=True, reason="address-form")
     add_case(vectors, "ledger-payer-mixed-case", "pass", "XN-5/XN-8",
              "an EIP-55 mixed-case authenticated ledger payer is the same 20-byte payer",
              lambda v: v["ledger"].update({"payer": eip55(BUYER_ADDRESS)}))

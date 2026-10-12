@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 172 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 175 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1084,14 +1084,18 @@ second `0x` prefix is `error` with reason `settlement-transaction-form`. The two
 `noncanonical-native-event-key*` cases change only the DACS-produced
 `settlementEvent`, keep the response unchanged, and stay `error`.
 
-Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding,
-the response `payer`, and the ledger payer and payee compare as 20-byte values.
-Letter case is ignored and the EIP-55 checksum is not checked. An EIP-55
-checksummed `payTo` against a lower-case binding, an upper-case ledger `payTo`,
-and a mixed-case response `payer` pass. A different address in mixed case is
-still `fail` (`challenge-match`). A value that is not `0x` plus 40 hexadecimal
-digits is `error` with reason `address-form`, before authorization for `payTo`
-and the payout binding. The lettered seller address is EIP-55's own first
+Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding
+and the runtime payee, the paying-key claim address, the derived and
+authorization payer, the response `payer`, and the ledger payer and payee
+compare as 20-byte values. Letter case is ignored and the EIP-55 checksum is
+not checked. An EIP-55 checksummed `payTo` against a lower-case binding, an
+upper-case ledger `payTo`, and a mixed-case response `payer` pass. So do the
+two earlier gates: an EIP-55 paying-key claim against the lower-case derived
+payer, and an EIP-55 runtime payee against a lower-case binding. A different
+address in mixed case is still `fail` (`challenge-match`). A value that is not
+`0x` plus 40 hexadecimal digits is `error` with reason `address-form`, before
+authorization for `payTo` and the payout binding, even when the runtime payee
+is well formed. The lettered seller address is EIP-55's own first
 example, so its checksum spelling can be checked against the EIP. Solana
 addresses compare exactly: one changed letter case in the ledger payer is
 `fail`.

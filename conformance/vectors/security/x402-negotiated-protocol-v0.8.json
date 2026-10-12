@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 172,
-  "hash": "e708c2a1e30767970a5043d8781068c1c9851b28bd40f5d25a37219d0d67b10e",
+  "count": 175,
+  "hash": "24f09f8acb340d13ad0ec88211f4709244d206c9f45c295fea17537b4b5008d2",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -13979,6 +13979,300 @@
             "payeeAddress"
           ],
           "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1bea"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "paying-key-claim-eip55-derived-payer-lower-case",
+      "expected": "pass",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "an EIP-55 paying-key claim address is the same 20-byte payer as the lower-case address derived from its key and the authorization payer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "77af209df7decfd99b345f4267a8725a650c70d78235d889070e83b562303058"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "bdeXnKoFa5RzAsPlzKz1MweX-Gzcj6hZmq-v8Mlg0cF7dkYXSdWAXqYwOovYJHZdtlKVYf9TKY6JJdUmBw1vBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "_qehEancc2cSxyow0S-dkGLZq5co4GMCtcRlz0W4VaNdUWZA8ol3ZvGw0rlnPNVVR6rhZ4G4Ha58RYT3i-WrCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:evm:8453:0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "v1XziSXWuIMVnrwe9yUwGK9aeCTxCwB_7h4FSeUvwxrJl7srnw7bYmpdgoVpt6xZZoNZdzIajmTtGKlHdgRUAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:evm:8453:0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "MEUCIQCcDSlW8TYY7ao7C0_AbfXJgIT7EsBxvLsoGFzPwHKM8QIgX_v5mNUSDo_ZmlTJpafUJdYtwuQq--Fvx3Hxc8hgK0I"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "77af209df7decfd99b345f4267a8725a650c70d78235d889070e83b562303058"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:evm:8453:0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
+        }
+      ]
+    },
+    {
+      "name": "runtime-payee-eip55-binding-lower-case",
+      "expected": "pass",
+      "rule": "XN-5/PB-1",
+      "operation": "execute",
+      "note": "an EIP-55 runtime payee is the same 20-byte destination as the lower-case signed payout binding",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "h9p95geERLMQ9o-kqQ7I-d0r6WSOQ4k9IcPqayWQKfE20yygInKKOy3ONHJX65PjwvA2tB6npPb5ylJi0Q-qDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "3OSs54U0NNpWE0lQcLn9u6-HKEWSETyCGktaOmYZBKLEv9kqjnf2aGU0Mg38newShdoPUQiiADyy0u098wOKBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "e61d969ebdb161ff56e49ce685f319226f48be2bda30b8cf494a3afc05cf7809"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "URwCY6z0-tVKUPTWh7NjfRQyIiITkjLUPY_ncVIIHRpRwoIGj47Qt-JTmvjqtLotWkB8zEOvxXNswTdvrO-0Bw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+        }
+      ]
+    },
+    {
+      "name": "payout-binding-not-20-bytes-runtime-payee-valid",
+      "expected": "error",
+      "rule": "XN-5/PB-1",
+      "operation": "execute",
+      "note": "a malformed signed EIP-155 payout binding is malformed before authorization even when the runtime payee is well formed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "gbFamstg_0C0aFzrEgz9mo6xbMPJ66TgarDfxk1S1eoXwKjhLT9XMqs_QAa3B1-Eqm_IIBDH4Hf0FIADcdpUBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "aPmhaMULjwzMeEv7K3qXSIfpwCL01LDe57uztNQ9NLpR9LIhu96xN9s7ZTiqgHcrdFMBJRQS1UUhMPUiXlisCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1bea"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "e61d969ebdb161ff56e49ce685f319226f48be2bda30b8cf494a3afc05cf7809"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "URwCY6z0-tVKUPTWh7NjfRQyIiITkjLUPY_ncVIIHRpRwoIGj47Qt-JTmvjqtLotWkB8zEOvxXNswTdvrO-0Bw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
         }
       ],
       "expectedReason": "address-form"

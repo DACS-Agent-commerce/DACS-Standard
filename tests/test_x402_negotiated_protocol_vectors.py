@@ -1667,7 +1667,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "the `payingKey` address component, the derived payer and the authorization payer; "
             "the response `payer`; and the authenticated event's payer and payee.",
             "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
-            "An adapter MUST NOT require or check the EIP-55 checksum.",
+            "An adapter MUST accept such an address whatever its EIP-55 checksum.",
             "Any other value is a malformed coordinate and yields `error`.",
             "Other networks compare these addresses as exact strings.",
         ):

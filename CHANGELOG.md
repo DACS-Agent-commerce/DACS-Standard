@@ -84,9 +84,9 @@ The format used per release:
   `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,
   the derived payer and the authorization payer, the response `payer`, and the
   authenticated event's payer and payee compare as 20-byte values: `0x` plus 40
-  hexadecimal digits, letter case ignored. An adapter must not require or check
-  the EIP-55 checksum, so a checksummed upstream address matches a lower-case
-  binding. Any other spelling is a malformed coordinate and yields `error`,
+  hexadecimal digits, letter case ignored. An adapter must accept such an
+  address whatever its EIP-55 checksum, so a checksummed upstream address
+  matches a lower-case binding. Any other spelling is a malformed coordinate and yields `error`,
   even when the value it is compared with is well formed. XN-11 reconciliation
   compares an address in the authorization identity the same way, so a
   malformed one is `error` even when the retained and session spellings are

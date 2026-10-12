@@ -1091,8 +1091,8 @@ second `0x` prefix is `error` with reason `settlement-transaction-form`. The two
 Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding
 and the runtime payee, the paying-key claim address, the derived and
 authorization payer, the response `payer`, and the ledger payer and payee
-compare as 20-byte values. Letter case is ignored and the EIP-55 checksum is
-not checked. An EIP-55 checksummed `payTo` against a lower-case binding, a
+compare as 20-byte values. Letter case is ignored and any EIP-55 checksum is
+accepted. An EIP-55 checksummed `payTo` against a lower-case binding, a
 mixed-case `payTo` whose checksum is wrong, an upper-case ledger `payTo`, and
 a mixed-case response `payer` pass. So do the
 two earlier gates: an EIP-55 paying-key claim against the lower-case derived

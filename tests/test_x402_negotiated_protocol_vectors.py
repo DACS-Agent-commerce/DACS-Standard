@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 import idna
 from scripts.evm_crypto import evm_address
 from scripts.jcs import canonicalize as jcs_canonicalize
+from scripts.raw_json_profile import RawJsonProfileError, loads as admit_raw_json
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -800,7 +801,10 @@ def decode_response_header(header, version):
     if not isinstance(header.get("value"), str):
         raise ValueError("response header has no value")
     raw = base64.b64decode(header["value"], validate=True)
-    response = json.loads(raw.decode("utf-8"))
+    # CORE CF-5: the exact received bytes are admitted before any use, so NaN,
+    # an out-of-profile number, a lone surrogate or a duplicate member is
+    # refused, never an exception or a last-wins reading (RawJsonProfileError).
+    response = admit_raw_json(raw)
     if not isinstance(response, dict):
         raise ValueError("response is not object")
     return response
@@ -812,12 +816,14 @@ def read_settlement_response(header, version, network, payer):
     The response is the payee's unsigned acknowledgement, so a defect here is
     the seller's protocol fault and never the outcome. Returns the complete
     decoded object (None when no version-selected object decodes) and None or
-    the defect: `response-header`, `response-not-success`, `response-network`
-    or `response-payer`. Its transaction is compared later, with the one the
+    the defect: `response-json` (refused by CORE CF-5), `response-header`,
+    `response-not-success`, `response-network` or `response-payer`. Its transaction is compared later, with the one the
     reconciliation establishes (`response-transaction`).
     """
     try:
         response = decode_response_header(header, version)
+    except RawJsonProfileError:
+        return None, "response-json"
     except ValueError:
         return None, "response-header"
     if response.get("success") is not True:
@@ -1100,7 +1106,22 @@ def evaluate(v, effects=None):
         return "indeterminate", "unpaid-request-transient"
     if status != 402:
         return "fail", "not-payment-required"
-    required = http.get("paymentRequired")
+    # CORE CF-5: a challenge received as raw bytes is admitted before any use,
+    # and an object one is checked against the same profile, so neither a
+    # non-finite or out-of-profile number nor a lone surrogate can raise later.
+    if "paymentRequiredRaw" in http:
+        try:
+            if "paymentRequired" in http:
+                raise ValueError("two received challenges")
+            required = admit_raw_json(base64.b64decode(http["paymentRequiredRaw"], validate=True))
+        except (TypeError, ValueError):
+            return "error", "payment-required-json"
+    else:
+        required = http.get("paymentRequired")
+    try:
+        digest(required)
+    except (TypeError, ValueError):
+        return "error", "payment-required-json"
     if not isinstance(required, dict) or required.get("x402Version") != selection["x402Version"]:
         return "error", "payment-required-version"
     version = selection["x402Version"]
@@ -1525,6 +1546,32 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 bundle_hash = digest(buyer_bundle_scope(vector["buyerBundle"]))
                 buyer["bundleHash"] = vector["runtime"]["payer"]["bundleHash"] = bundle_hash
                 self.assertFalse(buyer_payment_control(vector, buyer, selection))
+
+    def test_received_challenge_objects_follow_the_cf5_profile(self):
+        """XN-7/CF-5: a challenge passed as an object is held to the same profile.
+
+        Values JSON text cannot carry (NaN, infinity, an integer beyond 2^53-1, a
+        lone surrogate) are `error` before authorization, never an exception from
+        a later hash; so are a raw and an object challenge received together.
+        """
+        base = self.by_name["protocol-v2-exact-success"]
+        for label, place in (
+            ("nan in extra", lambda r: r["accepts"][0]["extra"].update({"fee": float("nan")})),
+            ("infinity in extensions", lambda r: r["extensions"].update({"fee": float("inf")})),
+            ("2^53 in extra", lambda r: r["accepts"][0]["extra"].update({"fee": 2**53})),
+            ("lone surrogate in extensions", lambda r: r["extensions"].update({"memo": "\ud800"})),
+            ("lone surrogate in a member name", lambda r: r["extensions"].update({"\udfff": 1})),
+        ):
+            with self.subTest(case=label):
+                vector = copy.deepcopy(base)
+                place(vector["http"]["paymentRequired"])
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), ("error", "payment-required-json"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        both = copy.deepcopy(self.by_name["challenge-raw-json-admitted"])
+        self.assertEqual(evaluate(copy.deepcopy(both)), ("pass", None))
+        both["http"]["paymentRequired"] = copy.deepcopy(base["http"]["paymentRequired"])
+        self.assertEqual(evaluate(both), ("error", "payment-required-json"))
 
     def test_authorization_counter_distinguishes_pre_and_post_authorization(self):
         for name, want in (
@@ -2001,6 +2048,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "every name under `.localhost` are never public.",
             "An IPv6 address that embeds an IPv4 address is not public when an address it carries is not.",
             "The local-use NAT64 prefix `64:ff9b:1::/48` is never public.",
+            "Each received object MUST first pass CORE §B.2 CF-5 raw JSON admission over its exact received bytes",
+            "A challenge that CF-5 refuses is malformed and yields `error` before authorization.",
             "needs no ledger data, so it is `error` even while that data is unavailable or not final.",
             "No answer, a 5xx, 408, or 429 is transient: nothing is authorized, the result is "
             "`indeterminate`, and the unpaid request may be retried.",

@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 282 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 295 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1102,6 +1102,16 @@ defect (`response-header`, `response-not-success`, `response-network`,
 without ledger data, which stays `indeterminate`; the response alone never
 makes the session fail. The receipt hash commits to the response as received,
 and to JSON `null` when no version-selected object decodes.
+
+Received x402 objects pass CORE CF-5 raw JSON admission over their exact bytes.
+A settlement response with `NaN`, `1e400`, a lone surrogate, or a repeated
+`success` member does not decode: it is the response defect `response-json`,
+so over the base ledger the case is `pass` and its `-no-settlement` twin
+`indeterminate`. A challenge may be carried as raw bytes in
+`http.paymentRequiredRaw` instead of the `paymentRequired` object; the same
+four refusals, a repeated `amount` among them, are `error` with reason
+`payment-required-json` before authorization, and a well-formed raw challenge
+passes.
 
 Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding
 and the runtime payee, the paying-key claim address, the derived and

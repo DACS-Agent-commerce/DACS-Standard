@@ -173,6 +173,15 @@ The format used per release:
   that is not adapter-canonical, needs no ledger data, so it is `error` even
   while that data is unavailable or not final, not `indeterminate` until the
   ledger answers.
+- **Raw JSON admission of received x402 objects** (DACS-4 §9.5.7 XN-7; CORE
+  §B.2 CF-5) — the challenge and the settlement response are admitted from
+  their exact received bytes, so `NaN`, a number outside the profile, a lone
+  surrogate, or a duplicate member is refused instead of raising an exception
+  or being read last-wins (`{"success":false,"success":true}` no longer reads
+  as success). A refused challenge is `error` before authorization; a refused
+  response does not decode, which is a response defect, so the ledger still
+  decides. Vectors may carry the challenge as raw bytes
+  (`http.paymentRequiredRaw`).
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

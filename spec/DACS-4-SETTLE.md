@@ -1243,6 +1243,7 @@ XN-10.
   paymentReceiptHash  = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))
   ```
 
+  - Each received object MUST first pass CORE §B.2 CF-5 raw JSON admission over its exact received bytes, so `NaN`, a number outside the profile, a lone surrogate, or a duplicate member is refused, never read by a host parser's rules. A challenge that CF-5 refuses is malformed and yields `error` before authorization. A settlement response that CF-5 refuses does not decode, which is a response defect.
   - Both values MUST be exactly 64 lower-case hexadecimal digits without `0x`. The preimages are the complete version-shaped decoded objects, including extensions and unrecognised members—not base64/header text, a normalized cross-version projection, a subset of fields, a transaction receipt, or the transaction identifier alone. The settlement-response preimage is the object as received, even when it reports failure or contradicts the payment. When no version-selected object decodes, that preimage is the JSON value `null`.
   - Numeric `x402Version` in the `x402-protocol` reference MUST equal the signed selection and the received `PaymentRequired.x402Version`; the settlement response is selected by that version's exact header/schema and does not acquire a synthetic version member.
   - `httpResource` MUST equal the exact signed URL and `settlementNetwork` the selected network. `settlementTransaction` MUST name the transaction that the XN-8 ledger reconciliation establishes. With a sound response, that is the response's `transaction`, kept verbatim.

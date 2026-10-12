@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 282,
-  "hash": "72cb2cea5bf7011c99cd018d954203b6fc436cb3693d2105907326a097b1884e",
+  "count": 295,
+  "hash": "6cd5eff93bda7ae1256a52427574a64741255db6e8d16532fc8aa2d290fb276a",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -26469,6 +26469,543 @@
         }
       ],
       "expectedReason": "native-event-key"
+    },
+    {
+      "name": "response-raw-json-nan",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose bytes CF-5 refuses (NaN is not a JSON number) decodes to no object; the exact finalized settlement stands and the defect is the seller's recorded protocol fault",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJmZWUiOk5hTn0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-json"
+    },
+    {
+      "name": "response-raw-json-nan-no-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose bytes CF-5 refuses (NaN is not a JSON number) decodes to no object; with no matching settlement reconciliation stays pending, never a permanent failure from the response alone",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJmZWUiOk5hTn0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "response-raw-json-number-overflow",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose bytes CF-5 refuses (1e400 is outside binary64) decodes to no object; the exact finalized settlement stands and the defect is the seller's recorded protocol fault",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJmZWUiOjFlNDAwfQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-json"
+    },
+    {
+      "name": "response-raw-json-number-overflow-no-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose bytes CF-5 refuses (1e400 is outside binary64) decodes to no object; with no matching settlement reconciliation stays pending, never a permanent failure from the response alone",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJmZWUiOjFlNDAwfQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "response-raw-json-lone-surrogate",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose bytes CF-5 refuses (a lone UTF-16 surrogate is not Unicode text) decodes to no object; the exact finalized settlement stands and the defect is the seller's recorded protocol fault",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJtZW1vIjoiXHVkODAwIn0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-json"
+    },
+    {
+      "name": "response-raw-json-lone-surrogate-no-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose bytes CF-5 refuses (a lone UTF-16 surrogate is not Unicode text) decodes to no object; with no matching settlement reconciliation stays pending, never a permanent failure from the response alone",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9LCJtZW1vIjoiXHVkODAwIn0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "response-raw-json-duplicate-success",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response that repeats success is refused by CF-5, not read as its last value; the exact finalized settlement stands and the defect is the seller's recorded protocol fault",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjpmYWxzZSwic3VjY2VzcyI6dHJ1ZSwicGF5ZXIiOiIweDdlNWY0NTUyMDkxYTY5MTI1ZDVkZmNiN2I4YzI2NTkwMjkzOTViZGYiLCJ0cmFuc2FjdGlvbiI6IjB4YWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-json"
+    },
+    {
+      "name": "response-raw-json-duplicate-success-no-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response that repeats success is refused by CF-5, not read as its last value; with no matching settlement reconciliation stays pending, never a permanent failure from the response alone",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjpmYWxzZSwic3VjY2VzcyI6dHJ1ZSwicGF5ZXIiOiIweDdlNWY0NTUyMDkxYTY5MTI1ZDVkZmNiN2I4YzI2NTkwMjkzOTViZGYiLCJ0cmFuc2FjdGlvbiI6IjB4YWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "challenge-raw-json-admitted",
+      "expected": "pass",
+      "rule": "XN-4/XN-7/CF-5",
+      "operation": "execute",
+      "note": "a challenge received as raw bytes is admitted under CF-5 and hashed as decoded",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequiredRaw"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7Im5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NiJ9LCJhbW91bnQiOiIxMjUwMDAwIn1dLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJyZXF1aXJlZCI6dHJ1ZX19fQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "challenge-raw-json-nan",
+      "expected": "error",
+      "rule": "XN-4/XN-7/CF-5",
+      "operation": "execute",
+      "note": "a challenge whose bytes CF-5 refuses (NaN is not a JSON number) is malformed before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequiredRaw"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7Im5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NiJ9LCJhbW91bnQiOiIxMjUwMDAwIn1dLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJyZXF1aXJlZCI6dHJ1ZX19LCJmZWUiOk5hTn0="
+        }
+      ],
+      "expectedReason": "payment-required-json"
+    },
+    {
+      "name": "challenge-raw-json-number-overflow",
+      "expected": "error",
+      "rule": "XN-4/XN-7/CF-5",
+      "operation": "execute",
+      "note": "a challenge whose bytes CF-5 refuses (1e400 is outside binary64) is malformed before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequiredRaw"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7Im5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NiJ9LCJhbW91bnQiOiIxMjUwMDAwIn1dLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJyZXF1aXJlZCI6dHJ1ZX19LCJmZWUiOjFlNDAwfQ=="
+        }
+      ],
+      "expectedReason": "payment-required-json"
+    },
+    {
+      "name": "challenge-raw-json-lone-surrogate",
+      "expected": "error",
+      "rule": "XN-4/XN-7/CF-5",
+      "operation": "execute",
+      "note": "a challenge whose bytes CF-5 refuses (a lone UTF-16 surrogate is not Unicode text) is malformed before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequiredRaw"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7Im5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NiJ9LCJhbW91bnQiOiIxMjUwMDAwIn1dLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJyZXF1aXJlZCI6dHJ1ZX19LCJtZW1vIjoiXHVkODAwIn0="
+        }
+      ],
+      "expectedReason": "payment-required-json"
+    },
+    {
+      "name": "challenge-raw-json-duplicate-amount",
+      "expected": "error",
+      "rule": "XN-4/XN-7/CF-5",
+      "operation": "execute",
+      "note": "a challenge that repeats amount is refused by CF-5, not matched on its last value",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequiredRaw"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7Im5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NiJ9LCJhbW91bnQiOiI5OTk5OTk5IiwiYW1vdW50IjoiMTI1MDAwMCJ9XSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsicmVxdWlyZWQiOnRydWV9fX0="
+        }
+      ],
+      "expectedReason": "payment-required-json"
     }
   ]
 }

@@ -12,6 +12,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
+from raw_json_profile import loads as admit_raw_json
 from evm_crypto import (
     deterministic_ecdsa_sha256,
     evm_address,
@@ -486,14 +487,26 @@ def received_response(value: dict) -> dict | None:
     if not isinstance(header, dict) or wanted is None or header.get("name") != wanted:
         return None
     try:
-        response = json.loads(base64.b64decode(header["value"], validate=True).decode("utf-8"))
+        # CORE CF-5 admission: bytes it refuses decode to no object.
+        response = admit_raw_json(base64.b64decode(header["value"], validate=True))
     except Exception:
         return None
     return response if isinstance(response, dict) else None
 
 
+def received_challenge(value: dict) -> object:
+    """The received PaymentRequired: the raw form after CF-5 admission, else the object."""
+    http = value.get("http", {})
+    if "paymentRequiredRaw" not in http:
+        return http.get("paymentRequired")
+    try:
+        return admit_raw_json(base64.b64decode(http["paymentRequiredRaw"], validate=True))
+    except Exception:
+        return None
+
+
 def refresh_received_hashes(value: dict) -> None:
-    required = value.get("http", {}).get("paymentRequired")
+    required = received_challenge(value)
     evidence = value.get("evidence", {})
     refs = evidence.get("paymentTxRefs", [])
     if not refs or refs[0].get("kind") != "x402-protocol":
@@ -2203,6 +2216,56 @@ def build_vectors() -> list[dict]:
             v["ledger"].update(state)
         add_case(vectors, name, "error", "XN-8/SB-1", note, malformed_event_key,
                  authorization_submitted=True, reason="native-event-key")
+
+    # XN-7 / CORE CF-5: received x402 objects are admitted from their exact
+    # bytes. NaN, a number outside binary64, a lone surrogate and a duplicate
+    # member are refused, never an exception or a last-wins reading. A refused
+    # settlement response is a response defect, so the ledger still decides.
+    def compact(value):
+        return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    response_text = compact(settlement_response(2))
+    challenge_text = compact(payment_required(2))
+    refused = (
+        ("nan", "NaN is not a JSON number", ',"fee":NaN}'),
+        ("number-overflow", "1e400 is outside binary64", ',"fee":1e400}'),
+        ("lone-surrogate", "a lone UTF-16 surrogate is not Unicode text", ',"memo":"\\ud800"}'),
+    )
+    for suffix, why, member in refused:
+        def raw_response(v, text=response_text[:-1] + member):
+            v["http"]["responseHeader"]["value"] = base64.b64encode(
+                text.encode("utf-8")).decode("ascii")
+        response_defect(f"response-raw-json-{suffix}",
+                        f"a settlement response whose bytes CF-5 refuses ({why}) decodes to "
+                        "no object", raw_response, "response-json")
+
+    # {"success":false,"success":true,...}: a last-wins parser reads success.
+    def duplicate_success(v):
+        text = '{"success":false,' + response_text[1:]
+        v["http"]["responseHeader"]["value"] = base64.b64encode(
+            text.encode("utf-8")).decode("ascii")
+    response_defect("response-raw-json-duplicate-success",
+                    "a settlement response that repeats success is refused by CF-5, "
+                    "not read as its last value", duplicate_success, "response-json")
+
+    def raw_challenge(text):
+        def mutate(v):
+            v["http"].pop("paymentRequired")
+            v["http"]["paymentRequiredRaw"] = base64.b64encode(text.encode("utf-8")).decode("ascii")
+        return mutate
+    add_case(vectors, "challenge-raw-json-admitted", "pass", "XN-4/XN-7/CF-5",
+             "a challenge received as raw bytes is admitted under CF-5 and hashed as decoded",
+             raw_challenge(challenge_text), refresh=True)
+    for suffix, why, member in refused:
+        add_case(vectors, f"challenge-raw-json-{suffix}", "error", "XN-4/XN-7/CF-5",
+                 f"a challenge whose bytes CF-5 refuses ({why}) is malformed before authorization",
+                 raw_challenge(challenge_text[:-1] + member), refresh=True,
+                 reason="payment-required-json")
+    duplicate_amount = challenge_text.replace('"amount":"1250000"',
+                                              '"amount":"9999999","amount":"1250000"')
+    assert duplicate_amount != challenge_text
+    add_case(vectors, "challenge-raw-json-duplicate-amount", "error", "XN-4/XN-7/CF-5",
+             "a challenge that repeats amount is refused by CF-5, not matched on its last value",
+             raw_challenge(duplicate_amount), refresh=True, reason="payment-required-json")
 
     return vectors
 

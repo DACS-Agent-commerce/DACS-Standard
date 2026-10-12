@@ -146,8 +146,11 @@ The format used per release:
   `x402Version`; omitted versus empty extensions in both directions; the v1
   extensions and per-member resource boundaries; artifact signatures; and
   the legacy in-flight-only continuation. Removing any single check turns at
-  least one vector or test red; the two paying-key algorithm checks, which
-  the bundle presentation check already enforces, are pinned by unit tests.
+  least one vector or test red. Unit tests alone pin three kinds of check:
+  the two paying-key algorithm checks, which the bundle presentation check
+  already enforces; an object-form challenge outside the CF-5 profile, which
+  JSON vectors cannot carry; and the embedded-IPv4 unwrapping, whose vectors
+  CPython 3.12's own address tables also refuse.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

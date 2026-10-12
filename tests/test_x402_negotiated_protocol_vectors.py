@@ -1237,14 +1237,16 @@ def evaluate(v, effects=None):
     ):
         return "fail", "finality-profile"
 
+    # The signed event key is checked before the ledger is read, so a malformed
+    # key is `error` even while the ledger is unavailable or not final.
+    event = evidence_ref.get("settlementEvent")
+    if not native_event_matches(event, selection["network"], transaction):
+        return "error", "native-event-key"
     ledger = v.get("ledger")
     if not isinstance(ledger, dict) or ledger.get("available") is not True:
         return "indeterminate", "independent-settlement-unavailable"
     if ledger.get("finalized") is not True:
         return "indeterminate", "settlement-not-final"
-    event = evidence_ref.get("settlementEvent")
-    if not native_event_matches(event, selection["network"], transaction):
-        return "error", "native-event-key"
     try:
         ledger_payer = adapter_address(network, ledger.get("payer"))
         ledger_pay_to = adapter_address(network, ledger.get("payTo"))
@@ -1999,6 +2001,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "every name under `.localhost` are never public.",
             "An IPv6 address that embeds an IPv4 address is not public when an address it carries is not.",
             "The local-use NAT64 prefix `64:ff9b:1::/48` is never public.",
+            "needs no ledger data, so it is `error` even while that data is unavailable or not final.",
             "No answer, a 5xx, 408, or 429 is transient: nothing is authorized, the result is "
             "`indeterminate`, and the unpaid request may be retried.",
             "internationalized host MUST be signed in A-label form",

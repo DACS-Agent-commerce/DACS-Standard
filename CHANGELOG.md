@@ -168,6 +168,11 @@ The format used per release:
   local-use NAT64 prefix `64:ff9b:1::/48` is never public. The reference
   evaluator unwraps each form by explicit prefix instead of relying on the
   host language's address tables, which differ between releases.
+- **Malformed event key before the ledger read** (DACS-4 §9.5.7 XN-8) — a
+  malformed coordinate in the signed evidence, such as a `settlementEvent`
+  that is not adapter-canonical, needs no ledger data, so it is `error` even
+  while that data is unavailable or not final, not `indeterminate` until the
+  ledger answers.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

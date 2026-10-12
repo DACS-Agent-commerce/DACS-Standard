@@ -2190,6 +2190,20 @@ def build_vectors() -> list[dict]:
              "an IPv4-mapped spelling of a public address reaches the IPv4 verdict",
              literal_target("https://[::ffff:8.8.8.8]/pay"), refresh=True)
 
+    # XN-8/SB-1: the signed event key's form needs no ledger data, so a malformed
+    # key is a permanent `error` even while the ledger is unavailable or not final.
+    for name, ledger_state, note in (
+        ("noncanonical-native-event-key-ledger-unavailable", {"available": False},
+         "a malformed signed event key is error even while the ledger is unavailable"),
+        ("noncanonical-native-event-key-ledger-not-final", {"finalized": False},
+         "a malformed signed event key is error even while the settlement is not final"),
+    ):
+        def malformed_event_key(v, state=ledger_state):
+            noncanonical_event(v)
+            v["ledger"].update(state)
+        add_case(vectors, name, "error", "XN-8/SB-1", note, malformed_event_key,
+                 authorization_submitted=True, reason="native-event-key")
+
     return vectors
 
 

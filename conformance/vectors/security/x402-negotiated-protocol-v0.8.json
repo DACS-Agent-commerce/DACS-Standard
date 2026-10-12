@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 280,
-  "hash": "6ae56dcd74f8fb662d3ffc43b71c8b6c9721dc354326a0ccecc230a1906ddbe9",
+  "count": 282,
+  "hash": "72cb2cea5bf7011c99cd018d954203b6fc436cb3693d2105907326a097b1884e",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -26361,6 +26361,114 @@
           "value": "https://[::ffff:8.8.8.8]/pay"
         }
       ]
+    },
+    {
+      "name": "noncanonical-native-event-key-ledger-unavailable",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "a malformed signed event key is error even while the ledger is unavailable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "DhPZLryZ2E4FCy--czBN3zfBsqeujLBWllhs8WvKxevBp-Q_X2-BB-XMPbAj65jfT62bQ1bER0YtiPRwn6w_DQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "native-event-key"
+    },
+    {
+      "name": "noncanonical-native-event-key-ledger-not-final",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "a malformed signed event key is error even while the settlement is not final",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "DhPZLryZ2E4FCy--czBN3zfBsqeujLBWllhs8WvKxevBp-Q_X2-BB-XMPbAj65jfT62bQ1bER0YtiPRwn6w_DQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "finalized"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "native-event-key"
     }
   ]
 }

@@ -291,9 +291,11 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative becomes
 `verified` once the guard that decides it is removed. Any other outcome,
 including an exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists five negatives whose single defect also breaks a
-second rule, each with that exact finding. `STRUCTURAL_NEGATIVES` lists eleven
-negatives that remove or malform a structure the verifier reads. Without their guard the
+`FOLLOW_ON_FINDINGS` lists 20 negatives whose single defect reaches one exact
+second finding once its guard is removed. Some of those defects break a
+second rule. For a record that was not supplied, a later check finds the
+lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 12 negatives that
+remove or malform a structure the verifier reads. Without their guard the
 verifier raises, so isolation is not claimed for them.
 
 The unit suite also requires every verifier guard to be decided by a vector
@@ -319,7 +321,10 @@ It holds DRP-9, whose digest anchor is a fixture boundary, and DRE-2 and
 DRP-7, whose delivery evidence is bound to its phase through the session
 because DACS-4 defines no logical address for delivery evidence. It also holds
 DRP-6, DRP-8, DRP-10, DRP-11, and DRP-12, whose `executionContext` inputs are
-orchestrator statements rather than authenticated evidence.
+orchestrator statements rather than authenticated evidence. Finally, it holds
+DRA-14. The pack checks the bound values fixed at creation and funding, but
+it models no later replacement, so no vector shows a mutable replacement
+preventing progression.
 
 ### Synthetic proof limits
 
@@ -332,6 +337,13 @@ the fixture itself. The vectors depend on them and do not prove them:
   terminal the resolver omits is detected only if it is evaluated in the same
   ledger. No normative completeness proof, such as an authenticated range or
   index proof, is defined or checked.
+- **Native event-set completeness** (DRT-12). The verifier derives the
+  pre/post-submission classification from the resolver's event set. It treats
+  a lifecycle with no submission event as never submitted, so it assumes the
+  resolver-attested `nativeEventInputs` include every submission event for the
+  native job. A submission the resolver omits makes a post-submission refund
+  look pre-submission. No completeness proof for the event set is defined or
+  checked.
 - **Block-scoped log index** (DRD-8, DRL-4, DRT-4). Conflicting terminals are
   ordered by authenticated block number, then log index. This assumes the log
   index is block-scoped, as EVM receipts report it. A transaction-scoped index,

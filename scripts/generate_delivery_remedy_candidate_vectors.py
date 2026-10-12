@@ -1649,6 +1649,12 @@ def build_vector_pack() -> dict[str, Any]:
     # Rules whose vectors run against a synthetic evidence shape that does
     # not yet define the normative proof.
     promotion_blocked_proofs = {
+        "DRA-14": (
+            "requires authenticated native evidence of every later mutation of the bound "
+            "client, provider, evaluator, token, budget, payout receiver, policy, and "
+            "deadlines; the pack checks the values fixed at creation and funding but models "
+            "no later replacement, so no vector shows one preventing progression"
+        ),
         "DRE-2": (
             "requires a normative logical address for delivery SettlementEvidence, which "
             "DACS-4 does not define; the pack binds the record to the single agreement-bound "

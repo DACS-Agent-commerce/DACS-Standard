@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "a4f8ad09bc2ea3d909ee863e191a783b8a37bea2bb116a5f10e7b370a678323f",
+  "hash": "e91ffee5d97a3db2bde3eb35849ad6489b8595cd1323ed8d12d6714cbadc4519",
   "count": 264,
   "fixtures": {
     "release": {
@@ -96541,6 +96541,7 @@
     "DRX-4": "requires a post-terminal dispute revision and authenticated observation of the fixed disposition"
   },
   "promotionBlockedProofs": {
+    "DRA-14": "requires authenticated native evidence of every later mutation of the bound client, provider, evaluator, token, budget, payout receiver, policy, and deadlines; the pack checks the values fixed at creation and funding but models no later replacement, so no vector shows one preventing progression",
     "DRE-2": "requires a normative logical address for delivery SettlementEvidence, which DACS-4 does not define; the pack binds the record to the single agreement-bound delivery step and models its resolution with the synthetic resolver",
     "DRP-7": "requires authenticated resolution of the delivery SettlementEvidence produced by the intervening step; the pack binds the record to the single agreement-bound delivery step, as for DRE-2",
     "DRP-9": "requires a normative proof shape showing that the exact delivery digest was fixed before the native submission; the pack models it with a synthetic resolver-attested digest anchor",

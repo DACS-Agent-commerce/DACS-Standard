@@ -254,9 +254,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         proofs = self.vector_pack["promotionBlockedProofs"]
         # DRP-6/8/10/11/12 predicates read orchestrator-stated executionContext
         # values that are checked but not proven, so they are proof-blocked too.
+        # DRA-14's later mutable replacement has no evidence shape or check.
         self.assertEqual(
             set(proofs),
-            {"DRE-2", "DRP-6", "DRP-7", "DRP-8", "DRP-9", "DRP-10", "DRP-11", "DRP-12"},
+            {"DRA-14", "DRE-2", "DRP-6", "DRP-7", "DRP-8", "DRP-9", "DRP-10", "DRP-11", "DRP-12"},
         )
         self.assertLessEqual(set(proofs), tagged)
         self.assertTrue(all(proofs.values()))
@@ -271,6 +272,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertIn(rule, limits)
         for assumption in (
             "**`priorTerminals` completeness** (DRD-8, DRL-4, DRT-4)",
+            "**Native event-set completeness** (DRT-12)",
             "**Block-scoped log index** (DRD-8, DRL-4, DRT-4)",
             "**Deliverable anchor locator** (DRE-2, DRP-7)",
             "**Native locator binding** (DRE-2, DRP-7)",
@@ -278,6 +280,13 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         ):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
+
+    def test_readme_counts_the_listed_isolation_exceptions(self):
+        readme = " ".join(
+            (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8").split()
+        )
+        self.assertIn(f"`FOLLOW_ON_FINDINGS` lists {len(generator.FOLLOW_ON_FINDINGS)} negatives", readme)
+        self.assertIn(f"`STRUCTURAL_NEGATIVES` lists {len(generator.STRUCTURAL_NEGATIVES)} negatives", readme)
 
     def test_readme_cites_drv3_for_malformed_input(self):
         """The candidate's malformed-encoding rule is DRV-3; DRV-2 is RPC availability."""

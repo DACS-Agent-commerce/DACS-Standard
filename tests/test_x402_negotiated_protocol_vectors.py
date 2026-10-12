@@ -1200,6 +1200,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "request-url-port-out-of-range",
             "request-url-empty-a-label",
             "request-url-fake-a-label-localhost",
+            "request-url-over-long-a-label",
             "request-url-backslash-in-path",
             "request-url-non-ascii-path",
             "request-url-del",
@@ -1264,6 +1265,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-transaction-binding-mismatch",
             "retry-retained-transaction-spelling-reconciles",
             "retry-identical-malformed-transaction-is-error",
+            "retry-recorded-malformed-transaction-is-error",
         )
         for name in names:
             with self.subTest(vector=name):
@@ -1405,7 +1407,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         global request_url_syntax_ok, public_http_target
         names = [name for name, vector in self.by_name.items()
                  if name.startswith("request-url-") and vector["expected"] == "error"]
-        self.assertEqual(len(names), 20)
+        self.assertEqual(len(names), 21)
         for name in names:
             with self.subTest(vector=name):
                 self.assertEqual(self.by_name[name].get("expectedReason"), "rail-ref-shape")

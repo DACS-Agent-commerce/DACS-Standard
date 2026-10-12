@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 158 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 160 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1046,8 +1046,9 @@ or full-width `localhost`; a percent-encoded IPv4 host; and an IDN U-label.
 Further error cases cover the rest of the rule. Userinfo or a fragment is
 malformed even when empty (`https://@…`, `https://:@…`, a trailing `#`). So
 is a port that is not decimal or exceeds 65535, and an `xn--` label that is not
-an RFC 5890 A-label (`xn--`, `xn--localhost-`). The whole-URL halves are pinned
-too: a `\`, a non-ASCII code point, or U+007F in the path is `error`.
+an RFC 5890 A-label (`xn--`, `xn--localhost-`, or one longer than 63 octets).
+The whole-URL halves are pinned too: a `\`, a non-ASCII code point, or U+007F
+in the path is `error`.
 An A-label host, percent-encoding in the path, and an explicit port pass. Each
 error case refreshes the received-object hashes, so an evaluator without the
 syntax rule (and with the address gate open) reaches `pass`. The unit suite also
@@ -1060,9 +1061,9 @@ transaction, and execute with zero additional wallet calls even when a caller
 asks to reauthorize or one retained binding is changed. The retained
 transaction is kept verbatim and compared in the XN-7 adapter form, so a
 retained spelling that differs from the record only by prefix and case still
-reconciles. Both values are taken to that form before comparison, so identical
-retained and recorded spellings with no adapter form are `error` with reason
-`settlement-transaction-form`. DNS answer validation,
+reconciles. Both values are taken to that form before comparison, so a retained or
+recorded value with no adapter form is `error` with reason
+`settlement-transaction-form`, even when the two spellings are identical. DNS answer validation,
 rebinding, redirect connections, timeouts, and response-size enforcement remain
 adapter-level obligations because a URL-only corpus cannot execute a network
 stack.

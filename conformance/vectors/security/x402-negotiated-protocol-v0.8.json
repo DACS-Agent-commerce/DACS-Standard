@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 158,
-  "hash": "92107b053c69a1effecfffc9d7a3d2bc3448d50e248d994d2d709d4439cf8552",
+  "count": 160,
+  "hash": "146be9b55501d350968719a3c399df9f1d1dd70686f0d67151d30f55671926ed",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -8633,6 +8633,128 @@
       "expectedReason": "rail-ref-shape"
     },
     {
+      "name": "request-url-over-long-a-label",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "a 66-character xn-- label exceeds the 63-octet DNS limit, so it is not an A-label",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Y-rIvp1qR29bJVOqm4jx74lmHU352osvqfjavruqgePTKKOQg4pSP046S7K7v-wtyUwXuhhlkvKhuFBl9i00Dg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "zFvmlXqj5dmC2DqeOIlfqV4vuFXjsiahLOdKhNUOY730JcApSMdgymHBpWlx1iOV2lQDuulS7J8rmESEoi4gBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "c070c29c3e3766349711c43e7f9f01b9c11bb45561ce880c5abe30f3c9f91e73"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ZrfUhOFYmlrBiOcK9HJxNT0yKSjfgLeujmK5A2nndThK5QBariAQXQ2qTwaaF-N_wD7UYrVCbbdPXBjXZrvpBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "H8tl481u0ruIK3m7yBmacBgmSONvEAPxr7l2fo9Pr32KtlJvJnBVs6zyu0ZDzniIEWrdvZ84WB2tu_L6saZBBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
       "name": "request-url-backslash-in-path",
       "expected": "error",
       "rule": "XN-2",
@@ -14552,6 +14674,52 @@
             "settlementTransaction"
           ],
           "value": "not-a-hash"
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
+    },
+    {
+      "name": "retry-recorded-malformed-transaction-is-error",
+      "expected": "error",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "a recorded transaction with no XN-7 adapter form is malformed even beside a well-formed retained value",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "not-a-hash"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "U4XD7tIaZs3yEmFB5v47DqriFoqKbMOyxrZzeQ-oiqslp5U4CYPyoQYjPlA6bCVOYgeM1wVtykjs6Oacd-1dCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
         }
       ],
       "expectedReason": "settlement-transaction-form"

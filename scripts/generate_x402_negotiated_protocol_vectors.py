@@ -940,6 +940,9 @@ def build_vectors() -> list[dict]:
          "an xn-- label with no Punycode content is not an RFC 5890 A-label"),
         ("fake-a-label-localhost", "error", "https://xn--localhost-/pay",
          "xn--localhost- decodes to the ASCII label localhost, so it is not an A-label"),
+        ("over-long-a-label", "error",
+         f"https://xn--{('ü' * 60).encode('punycode').decode('ascii')}.example/pay",
+         "a 66-character xn-- label exceeds the 63-octet DNS limit, so it is not an A-label"),
         ("backslash-in-path", "error", "https://seller.example/pay\\x",
          "a backslash is malformed anywhere in the URL, not only in the authority"),
         ("non-ascii-path", "error", "https://seller.example/pé",
@@ -1415,6 +1418,15 @@ def build_vectors() -> list[dict]:
              "identical retained and recorded spellings still need an XN-7 adapter form; "
              "a value with none is a malformed coordinate",
              retry_identical_malformed_transaction, operation="retry",
+             authorization_submitted=True, reason="settlement-transaction-form")
+
+    def retry_recorded_malformed_transaction(v):
+        v["ledger"]["available"] = False
+        v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = "not-a-hash"
+    add_case(vectors, "retry-recorded-malformed-transaction-is-error", "error", "XN-11/XN-7",
+             "a recorded transaction with no XN-7 adapter form is malformed even beside a "
+             "well-formed retained value",
+             retry_recorded_malformed_transaction, operation="retry",
              authorization_submitted=True, reason="settlement-transaction-form")
 
     return vectors

@@ -246,6 +246,33 @@ class AtomicWorkVectorTests(unittest.TestCase):
         self.assertTrue(report["notApplicable"]["B"])
         self.assertIn("X", "".join(report["byRule"].values()))
 
+    def test_changelog_atomic_coverage_agrees_with_strict_gate(self):
+        self.assertTrue(validator.coverage_report()["completeApplicablePolarity"])
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        entry = changelog.split("- **Atomic Purchase and Completion Works**", 1)[1]
+        entry = " ".join(entry.split("\n- **", 1)[0].split())
+        self.assertNotRegex(entry, r"(?i)coverage[^.]*\bblocker\b")
+        self.assertIn(
+            "every new rule ID has complete applicable positive/negative/boundary coverage",
+            entry,
+        )
+        self.assertIn("non-applicable cells carry explicit rationales", entry)
+        self.assertIn(
+            "generator and strict validator reject any uncovered applicable polarity",
+            entry,
+        )
+        readme = (ROOT / "conformance" / "vectors" / "security" / "README.md").read_text(
+            encoding="utf-8"
+        )
+        atomic = readme.split("## Atomic Work candidate test profile", 1)[1]
+        atomic = " ".join(atomic.split("\n## ", 1)[0].split())
+        self.assertIn("jointly gate complete **applicable** P/N/B coverage", atomic)
+        self.assertIn("non-applicable cell with an explicit rationale", atomic)
+        self.assertIn(
+            "generator and strict validator both reject any uncovered applicable polarity",
+            atomic,
+        )
+
     def test_boundary_attribution_is_rule_specific(self):
         for data in self.sets:
             for vector in data["vectors"]:

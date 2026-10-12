@@ -4,8 +4,10 @@ import itertools
 import json
 import random
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -94,7 +96,8 @@ def _without_reproduction_inputs(value):
 # outcome of the case.
 GUARD_CASES = {
     "input-not-an-object": (lambda _pack: [], ("error", "DRV-3", "vector input must be an object")),
-    "input-missing-field": (_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
+    "number-outside-profile": (_release(put("native", "fundedAtSec", float("nan"))), ("error", "DRV-3", "a number is non-finite or outside the CORE §B.2 safe-integer range")),
+    "input-missing-field":(_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
     "object-field-malformed": (_release(put("native", [])), ("error", "DRV-3", "candidate object fields are malformed")),
     "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-3", "required candidate artifacts are missing")),
     "artifact-not-object": (_release(put("artifacts", "railDefinition", [])), ("error", "DRV-3", "candidate artifacts must be objects")),
@@ -1549,6 +1552,131 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         for name, (hooks, expected) in cases.items():
             with self.subTest(case=name):
                 self.assertEqual(finding(make_base("release", hooks=hooks)), expected)
+
+    def test_malformed_input_stays_in_the_four_results(self):
+        """Candidate §9 step 2 and CORE §B.2: malformed input is `error`, one lifecycle at a time."""
+        safe = 2 ** 53 - 1
+        for number, outcome in (
+            (float("nan"), ("error", "DRV-3")), (float("inf"), ("error", "DRV-3")),
+            (float("-inf"), ("error", "DRV-3")), (safe + 1, ("error", "DRV-3")),
+            (-(safe + 1), ("error", "DRV-3")), (float(safe + 1), ("error", "DRV-3")),
+        ):
+            for place in (("native", "fundedAtSec"), ("reproductionInputs", "nativeEventInputs", 0, "confirmations"),
+                          ("artifacts", "agreement", "submissionCutoffSec")):
+                with self.subTest(number=number, place=place):
+                    value = self._fixture("release")
+                    target = value
+                    for key in place[:-1]:
+                        target = target[key]
+                    target[place[-1]] = number
+                    self.assertEqual(finding(value), outcome)
+        # An in-range number is not caught by the profile scan.
+        value = self._fixture("release")
+        value["native"]["fundedAtSec"] = safe
+        self.assertEqual(finding(value), ("rejected", "DRA-9"))
+        for name, outcome in (
+            ("drv-3-evaluation-not-object", ("error", "DRV-3")),
+            ("drv-3-purchase-count-boolean", ("error", "DRV-3")),
+            ("drv-3-purchase-count-float", ("error", "DRV-3")),
+            ("drv-3-agreement-phase-index-boolean", ("error", "DRV-3")),
+            ("drv-3-funding-phase-index-boolean", ("error", "DRV-3")),
+            ("drv-3-rail-fee-boolean", ("error", "DRV-3")),
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(finding(self._vector(name)), outcome)
+        for name in ("job", "funding", "delivery", "evaluation", "dispute", "decision", "terminal"):
+            for malformed in ([], "x", 7):
+                with self.subTest(artifact=name, malformed=malformed):
+                    value = self._fixture("release")
+                    value["artifacts"][name] = malformed
+                    self.assertEqual(finding(value), ("error", "DRV-3"))
+        for count in (True, False, 1.0, 2.0, "1", None, [], {}, [1]):
+            with self.subTest(dacs5PurchaseCount=count):
+                value = self._fixture("release")
+                value["executionContext"]["dacs5PurchaseCount"] = count
+                self.assertEqual(finding(value), ("error", "DRV-3"))
+        for count in (0, 2, -1):
+            with self.subTest(dacs5PurchaseCount=count):
+                value = self._fixture("release")
+                value["executionContext"]["dacs5PurchaseCount"] = count
+                self.assertEqual(finding(value), ("rejected", "DRP-8"))
+        detached = self._fixture("release")
+        detached["profileParameters"]["platformFeeBP"] = False
+        self.assertEqual(finding(detached), ("rejected", "DRP-5"))
+        # One malformed lifecycle in a batch is its own `error`; the others keep
+        # their verdicts.  The containment covers values no shape stage decides.
+        release, expiry = self._fixture("release"), self._fixture("expired-pre")
+        nan = self._fixture("rejected-refund")
+        nan["native"]["fundedAtSec"] = float("nan")
+        batch = evaluate_lifecycles([release, nan, [], expiry], DecisionLedger())
+        self.assertEqual([verdict(item) for item in batch], [
+            ("verified", "DRV-7"), ("error", "DRV-3"), ("error", "DRV-3"), ("verified", "DRV-7"),
+        ])
+        original = verifier._lifecycle_check
+        try:
+            def raising(value):
+                if value.get("raise"):
+                    raise KeyError("unread member")
+                return original(value)
+            verifier._lifecycle_check = raising
+            batch = evaluate_lifecycles([self._fixture("release"), {"raise": True}], DecisionLedger())
+        finally:
+            verifier._lifecycle_check = original
+        self.assertEqual(verdict(batch[0]), ("verified", "DRV-7"))
+        self.assertEqual(
+            (batch[1]["result"], batch[1]["rule"], batch[1]["detail"]),
+            ("error", "DRV-3", "malformed input could not be read (KeyError)"),
+        )
+        # A deployment capability of the wrong type fails its rule, as every
+        # other capability predicate does; it never raises.
+        for hook_mode in ([], {}, 7, True):
+            with self.subTest(hook_mode=hook_mode):
+                manifest = copy.deepcopy(self.deployment_pack["manifests"]["synthetic-control"])
+                manifest["capabilities"]["hookMode"] = hook_mode
+                observed = evaluate_deployment(manifest)
+                self.assertEqual((observed["result"], observed["ruleStatuses"]["DRC-7"]), ("rejected", "fail"))
+                self.assertFalse(observed["registrationEligible"])
+        manifest = copy.deepcopy(self.deployment_pack["manifests"]["synthetic-control"])
+        manifest["capabilities"]["platformFeeBP"] = float("nan")
+        self.assertEqual(evaluate_deployment(manifest)["result"], "error")
+
+    def test_cli_paths_and_unparseable_packs_are_listed_errors(self):
+        """A relative path works; malformed JSON or numbers outside CORE §B.2 are listed, not raised."""
+        scratch = Path(tempfile.mkdtemp(prefix="drr-cli-"))
+        try:
+            good = json.loads(VECTOR_PACK.read_text(encoding="utf-8"))
+            stale = dict(good, count=1)
+            (scratch / "stale.json").write_text(json.dumps(stale), encoding="utf-8")
+            text = VECTOR_PACK.read_text(encoding="utf-8")
+            (scratch / "nan.json").write_text(text.replace('"fundedAtSec": 1799990000', '"fundedAtSec": NaN', 1), encoding="utf-8")
+            (scratch / "huge.json").write_text(text.replace('"fundedAtSec": 1799990000', '"fundedAtSec": 9007199254740992', 1), encoding="utf-8")
+            (scratch / "broken.json").write_text("{", encoding="utf-8")
+            relative = Path("conformance/fixtures/delivery-remedy/candidate-vectors-v0.1.json")
+            for args, returncode, needle in (
+                (["--vectors", str(relative)], 0, "no rail registered"),
+                (["--vectors", str(scratch / "stale.json")], 1, "candidate vector count is stale"),
+                (["--vectors", str(scratch / "nan.json")], 1, "invalid JSON: NaN is not a JSON number"),
+                (["--vectors", str(scratch / "huge.json")], 1, "invalid JSON: integer 9007199254740992 is outside"),
+                (["--vectors", str(scratch / "broken.json")], 1, "invalid JSON"),
+                (["--vectors", str(scratch)], 1, "cannot read"),
+                (["--vectors", str(scratch / "absent.json")], 1, "file not found"),
+            ):
+                with self.subTest(args=args):
+                    proc = subprocess.run(
+                        [sys.executable, str(VERIFIER), *args], cwd=ROOT, capture_output=True, text=True,
+                    )
+                    self.assertEqual(proc.returncode, returncode, proc.stdout + proc.stderr)
+                    self.assertIn(needle, proc.stdout + proc.stderr)
+                    self.assertNotIn("Traceback", proc.stderr)
+            # A relative path from another directory is reported as given.
+            proc = subprocess.run(
+                [sys.executable, str(VERIFIER), "--vectors", "stale.json"], cwd=scratch, capture_output=True, text=True,
+            )
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("- stale.json: candidate vector count is stale", proc.stderr)
+            self.assertNotIn("Traceback", proc.stderr)
+        finally:
+            shutil.rmtree(scratch)
 
     def test_drp_5_drj_2_drj_5_selected_rail(self):
         expected = {

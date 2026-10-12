@@ -1163,6 +1163,14 @@ def build_vector_pack() -> dict[str, Any]:
             "decision": put("basisRef", "kind", "self-assessment"),
             "fixture": each(drop("artifacts", "evaluation"), drop("artifacts", "evaluationRef")),
         }),
+        # DRV-3: a boolean where an integer is read is malformed, though
+        # Python compares `true` equal to 1 and `false` equal to 0.
+        "drv-3-agreement-phase-index-boolean": make_base("release", hooks={"agreement": put("fundPhaseIndex", True)}),
+        "drv-3-funding-phase-index-boolean": make_base("release", hooks={"funding": put("fundPhaseIndex", True)}),
+        "drv-3-rail-fee-boolean": make_base("release", hooks={
+            "rail": put("profileParameters", "platformFeeBP", False),
+            "fixture": put("resolverEvidence", "nativeState", "platformFeeBP", 0),
+        }),
         # Identity, job, and rail negatives.
         "noncanonical-job-id": make_base("release", "job-356"),
         "nonminimal-native-job-id": make_base("release", hooks={"job": put("nativeJobId", "01")}),
@@ -1340,6 +1348,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pipeline-rail-divergence", "release", "rejected", "DRP-5", "both escrow invocations must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("drp-5-escrow-phase-rails", "release", "rejected", "DRP-5", "both escrow phases must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 1, "parameters", "rail"], "value": "pay-evm-erc8183:other"}, {"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("pipeline-delivery-before-final-funding", "release", "rejected", "DRP-6", "delivery cannot begin before the funding result is finalized", [{"op": "replace", "path": ["executionContext", "fundingFinalizedBeforeDelivery"], "value": False}]),
+        vector("drv-3-purchase-count-boolean", "release", "error", "DRV-3", "a boolean purchase count is malformed input, not the count 1", [{"op": "replace", "path": ["executionContext", "dacs5PurchaseCount"], "value": True}], rules=["DRP-8", "DRV-3"]),
+        vector("drv-3-purchase-count-float", "release", "error", "DRV-3", "a float purchase count is malformed input, not the integer count 1", [{"op": "replace", "path": ["executionContext", "dacs5PurchaseCount"], "value": 1.0}], rules=["DRP-8", "DRV-3"]),
         vector("pipeline-double-counted-purchase", "release", "rejected", "DRP-8", "the paired escrow lifecycle counts as one purchase", [{"op": "replace", "path": ["executionContext", "dacs5PurchaseCount"], "value": 2}]),
         vector("pipeline-escrow-rail-not-accepted", "release", "rejected", "DRP-10", "job escrow participates in the acceptedRails selection gate", [{"op": "replace", "path": ["executionContext", "acceptedRails"], "value": []}]),
         vector("pipeline-funding-before-final-commitment", "release", "rejected", "DRP-11", "the finalized DACS-3 commitment gates value locking", [{"op": "replace", "path": ["executionContext", "commitmentReceipt", "status"], "value": "included"}]),
@@ -1466,6 +1476,10 @@ def build_vector_pack() -> dict[str, Any]:
         vector("indeterminate-evaluation-authorizes-terminal", "indeterminate-evaluation", "rejected", "DRE-4", "an indeterminate evaluation cannot authorize settlement"),
         vector("reject-evaluation-release-action", "reject-then-release", "rejected", "DRD-2", "rejection cannot authorize release"),
         vector("accept-evaluation-refund-action", "accept-then-refund", "rejected", "DRD-2", "acceptance cannot authorize refund"),
+        vector("drv-3-evaluation-not-object", "release", "error", "DRV-3", "an evaluation that is not an object is malformed input, not another job's", [{"op": "replace", "path": ["artifacts", "evaluation"], "value": []}]),
+        vector("drv-3-agreement-phase-index-boolean", "drv-3-agreement-phase-index-boolean", "error", "DRV-3", "a signed boolean phase index is malformed input, not index 1", rules=["DRA-11", "DRV-3"]),
+        vector("drv-3-funding-phase-index-boolean", "drv-3-funding-phase-index-boolean", "error", "DRV-3", "a signed boolean funding phase index is malformed input, not index 1", rules=["DRF-1", "DRV-3"]),
+        vector("drv-3-rail-fee-boolean", "drv-3-rail-fee-boolean", "error", "DRV-3", "a signed boolean rail fee is malformed input, not a zero fee", rules=["DRT-7", "DRV-3"]),
         vector("drv-3-evaluation-result", "drv-3-evaluation-result", "error", "DRV-3", "a signed evaluation result outside the closed set cannot authorize settlement"),
         vector("drv-3-decision-disposition", "drv-3-decision-disposition", "error", "DRV-3", "a signed decision disposition outside the closed set cannot map to a native action"),
         vector("release-decision-native-reject", "release", "rejected", "DRD-5", "a release decision maps only to native complete", [{"op": "replace", "path": ["native", "terminalAction"], "value": "reject"}]),
@@ -1722,11 +1736,14 @@ STRUCTURAL_NEGATIVES = {
     "drv-3-evaluation-subject-refs": "the evaluation has no subject reference array to read",
     "drv-3-terminal-state-array": "an array terminal state cannot key the terminal-event lookup",
     "drv-3-terminal-state-object": "an object terminal state cannot key the terminal-event lookup",
+    "drv-3-evaluation-not-object": "an array evaluation has no jobId to read",
 }
 # Pack runner and deployment-capability code are outside the lifecycle audit.
+# `_contained_lifecycle_check` is the batch's safety net for a malformed value
+# that no shape stage decides; the audit disables it, and a unit test drives it.
 _UNAUDITED_FUNCTIONS = {
     "_status", "deployment_rule_statuses", "evaluate_deployment", "verify_vector_pack",
-    "verify_deployment_pack", "main", "load_json", "_pack_hash",
+    "verify_deployment_pack", "main", "load_json", "_pack_hash", "_contained_lifecycle_check",
 }
 
 
@@ -1788,6 +1805,9 @@ class GuardedVerifier:
         module.__file__ = str(VERIFIER_PATH)
         module.__dict__["_guard_fires"] = self._guard_fires
         exec(compile(tree, str(VERIFIER_PATH), "exec"), module.__dict__)
+        # A removed guard must surface as the exception it lets through, not
+        # as the batch's contained `error`.
+        module.MALFORMED_INPUT_ERRORS = ()
         self.module = module
 
     def _guard_fires(self, site: int) -> bool:

@@ -12,6 +12,7 @@ import base64
 import copy
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -51,6 +52,14 @@ NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-[0-9a-f]{40}$")
 CANONICAL_DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?")
 # ERC-20 `decimals()` is a uint8.
 MAX_TOKEN_DECIMALS = 255
+# CORE §B.2 numeric safe-magnitude constraint: every JSON number is finite and
+# at most 2^53 - 1 in magnitude.
+SAFE_INTEGER_MAX = 2 ** 53 - 1
+# What a malformed value can raise while a check reads it.  Each lifecycle in a
+# batch that raises one is its own `error`; the guard audit sets this to ().
+MALFORMED_INPUT_ERRORS: tuple[type[Exception], ...] = (
+    AttributeError, IndexError, KeyError, TypeError, ValueError,
+)
 
 DOMAINS = {
     "agreement": "dacs-x-delivery-remedy-agreement:v1:",
@@ -184,6 +193,24 @@ EVENT_INPUT_FIELDS = {
     "eventName",
     "arguments",
 }
+
+
+def number_profile_valid(value: Any) -> bool:
+    """Whether every number in ``value`` is in the CORE §B.2 JSON number profile."""
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, dict):
+            pending.extend(current.values())
+        elif isinstance(current, list):
+            pending.extend(current)
+        elif isinstance(current, float) and not (
+            math.isfinite(current) and abs(current) <= SAFE_INTEGER_MAX
+        ):
+            return False
+        elif isinstance(current, int) and not isinstance(current, bool) and abs(current) > SAFE_INTEGER_MAX:
+            return False
+    return True
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -599,7 +626,11 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("rejected", "DRP-11", "funding is not gated by the finalized commitment")
     if execution.get("fundingFinalizedBeforeDelivery") is not True:
         return result("rejected", "DRP-6", "delivery began before finalized funding evidence")
-    if execution.get("dacs5PurchaseCount") != 1:
+    # A boolean or a float is not an integer count, though Python compares
+    # `true` and `1.0` equal to 1.
+    if type(execution.get("dacs5PurchaseCount")) is not int:
+        return result("error", "DRV-3", "dacs5PurchaseCount must be an integer")
+    if execution["dacs5PurchaseCount"] != 1:
         return result("rejected", "DRP-8", "the escrow pair was counted as more than one purchase")
     expected_gate = (
         "delivery-returned"
@@ -634,11 +665,17 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         r"(?:0|[1-9][0-9]*)", agreement["budgetBaseUnits"]
     ) is None:
         return result("error", "DRA-10", "budgetBaseUnits is not minimal unsigned decimal")
+    # Compared with `==` later, where Python would take `true` for 1.
+    if any(
+        type(agreement.get(name)) is not int
+        for name in ("fundPhaseIndex", "deliveryPhaseIndex", "terminalPhaseIndex")
+    ) or type(artifacts["funding"].get("fundPhaseIndex")) is not int:
+        return result("error", "DRV-3", "phase indexes must be integers")
     for name in ("job", "funding", "delivery", "evaluation", "dispute", "decision", "terminal"):
         artifact = artifacts.get(name)
-        if artifact is not None and (
-            not isinstance(artifact, dict) or artifact.get("jobId") != job_id
-        ):
+        if artifact is not None and not isinstance(artifact, dict):
+            return result("error", "DRV-3", f"{name} must be an object")
+        if artifact is not None and artifact.get("jobId") != job_id:
             return result("rejected", "DRD-8", f"{name} is bound to another job")
     dispute = artifacts.get("dispute")
     if dispute is not None and (
@@ -1648,10 +1685,13 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     cutoff = agreement["submissionCutoffSec"]
     deadline = agreement["evaluationDeadlineSec"]
     profile = rail.get("profileParameters")
-    if value["profileParameters"] != profile:
+    # Exact bytes: Python's `==` would take `false` for 0.
+    if canonical_bytes(value["profileParameters"]) != canonical_bytes(profile):
         return result("rejected", "DRP-5", "detached profile projection differs from the authenticated rail")
     if not isinstance(profile, dict) or set(profile) != PROFILE_FIELDS:
         return result("error", "DRV-3", "candidate rail profile shape is not exact")
+    if any(type(profile[name]) is not int for name in ("platformFeeBP", "evaluatorFeeBP")):
+        return result("error", "DRV-3", "rail profile fees must be integers")
     minimum = profile["minimumEvaluationWindowSec"]
     if type(minimum) is not int:
         return result("error", "DREB-14", "minimum evaluation window must be an integer")
@@ -1919,6 +1959,9 @@ def _lifecycle_check(value: Any) -> dict[str, str] | None:
     """Apply every check before the replay comparison to one lifecycle."""
     if not isinstance(value, dict):
         return result("error", "DRV-3", "vector input must be an object")
+    # Candidate §9 step 2 before any stage hashes or compares a number.
+    if not number_profile_valid(value):
+        return result("error", "DRV-3", "a number is non-finite or outside the CORE §B.2 safe-integer range")
     required = {
         "candidateProfile", "fixtureOnly", "pipeline", "artifacts", "publicKeys",
         "orchestratorClaim", "evaluatorVetResult", "profileParameters", "native",
@@ -1943,6 +1986,19 @@ def _lifecycle_check(value: Any) -> dict[str, str] | None:
         if issue:
             return issue
     return None
+
+
+def _contained_lifecycle_check(value: Any) -> dict[str, str] | None:
+    """Apply `_lifecycle_check`, keeping a malformed value that raises its own `error`.
+
+    The shape stages decide every known malformed input first.  This keeps
+    any value they miss inside the four results, and keeps it from failing
+    the other lifecycles of a batch.
+    """
+    try:
+        return _lifecycle_check(value)
+    except MALFORMED_INPUT_ERRORS as exc:
+        return result("error", "DRV-3", f"malformed input could not be read ({type(exc).__name__})")
 
 
 def _replay_verdict(terminal: TerminalRecord, ledger: DecisionLedger) -> dict[str, str]:
@@ -1992,7 +2048,7 @@ def evaluate_lifecycles(values: list[Any], ledger: DecisionLedger) -> list[dict[
     """
     if not isinstance(ledger, DecisionLedger):
         raise TypeError("evaluate_lifecycles requires a verifier-owned DecisionLedger")
-    issues = [_lifecycle_check(value) for value in values]
+    issues = [_contained_lifecycle_check(value) for value in values]
     terminals = [
         None if issue else _terminal_record(value) for value, issue in zip(values, issues)
     ]
@@ -2090,7 +2146,7 @@ def deployment_rule_statuses(manifest: Any) -> dict[str, str] | None:
 
     hook_mode = capabilities.get("hookMode")
     statuses["DRC-7"] = "unknown" if hook_mode is None else (
-        "pass" if hook_mode in {"absent", "immutable-nonblocking"} else "fail"
+        "pass" if isinstance(hook_mode, str) and hook_mode in {"absent", "immutable-nonblocking"} else "fail"
     )
 
     token = capabilities.get("paymentTokenSemantics")
@@ -2181,7 +2237,7 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
         "manifestVersion", "candidateProfile", "fixtureOnly", "registrationStatus",
         "implementation", "capabilities", "evidence",
     }
-    if not required.issubset(manifest):
+    if not required.issubset(manifest) or not number_profile_valid(manifest):
         return {
             **result("error", "DRV-3", "malformed deployment manifest"),
             "ruleStatuses": {},
@@ -2386,8 +2442,29 @@ def verify_deployment_pack(pack: Any) -> list[str]:
     return errors
 
 
+def _parse_safe_int(text: str) -> int:
+    number = int(text)
+    if abs(number) > SAFE_INTEGER_MAX:
+        raise ValueError(f"integer {text} is outside the CORE §B.2 safe-integer range")
+    return number
+
+
+def _reject_constant(text: str) -> Any:
+    raise ValueError(f"{text} is not a JSON number (CORE §B.2)")
+
+
 def load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    """Parse JSON in the CORE §B.2 number profile: no NaN, no Infinity, no unsafe integer."""
+    return json.loads(
+        path.read_text(encoding="utf-8"),
+        parse_int=_parse_safe_int,
+        parse_constant=_reject_constant,
+    )
+
+
+def _display_path(path: Path) -> str:
+    resolved = path.resolve()
+    return str(resolved.relative_to(ROOT)) if resolved.is_relative_to(ROOT) else str(path)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2396,23 +2473,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--deployments", type=Path, default=DEFAULT_DEPLOYMENT_PACK)
     args = parser.parse_args(argv)
     errors: list[str] = []
+    packs: list[Any] = []
     for path, verifier in (
         (args.vectors, verify_vector_pack),
         (args.deployments, verify_deployment_pack),
     ):
         try:
-            errors.extend(f"{path.relative_to(ROOT)}: {message}" for message in verifier(load_json(path)))
+            pack = load_json(path)
         except FileNotFoundError:
             errors.append(f"{path}: file not found")
-        except json.JSONDecodeError as exc:
+            continue
+        except (OSError, UnicodeDecodeError) as exc:
+            errors.append(f"{path}: cannot read: {exc}")
+            continue
+        except ValueError as exc:  # json.JSONDecodeError, or outside the number profile
             errors.append(f"{path}: invalid JSON: {exc}")
+            continue
+        packs.append(pack)
+        errors.extend(f"{_display_path(path)}: {message}" for message in verifier(pack))
     if errors:
         print("delivery-or-remedy candidate verification failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    vector_pack = load_json(args.vectors)
-    deployment_pack = load_json(args.deployments)
+    vector_pack, deployment_pack = packs
     print(
         "verified delivery-or-remedy candidate packs: "
         f"{vector_pack['count']} lifecycle/mapping case(s), "

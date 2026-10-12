@@ -75,6 +75,11 @@ agreement-selected rail. Evaluation results, decision dispositions, and the
 terminal evidence's `terminalState` each have a closed value set. A value
 outside the closed value set, including an array, an object, or an unknown
 string, is malformed input and returns `error` before any stage reads it.
+A number outside the CORE §B.2 profile (NaN, an infinity, or an integer
+beyond 2^53 − 1) is malformed too, as is a boolean or float where an integer
+is read. A batch gives one malformed lifecycle its own `error` and still
+judges the others, and the command line lists a pack it cannot parse as an
+error.
 The verifier reports malformed input (candidate §9 step 2) under DRV-3, the
 malformed-encoding rule: nothing is repaired before hashing or comparison.
 DRV-2 keeps unavailable or inconsistent RPC data `indeterminate`, as for an

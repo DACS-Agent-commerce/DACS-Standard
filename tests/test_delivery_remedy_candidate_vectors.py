@@ -292,6 +292,32 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertIn("The logical form is a fixture choice, not a DACS-4 §9.6.1 requirement", readme)
         self.assertIn("native Storage Program address", readme)
         self.assertNotIn("must name the DACS-4 §9.6.1 anchor for this job", readme)
+        self.assertIn("`stor-` followed by exactly 40 lower-case hexadecimal digits (DACS-5 §10.4.2)", readme)
+        self.assertNotIn("40 or 64", readme)
+
+    def test_native_locator_is_exactly_40_lower_case_hex(self):
+        """DACS-5 §10.4.2: a native stor- address has 40 hex digits; 64 is a logical address."""
+        native = generator.NATIVE_DELIVERABLE_LOCATOR
+        self.assertRegex(native, r"^stor-[0-9a-f]{40}$")
+        accepted = make_base("release", generator.NATIVE_LOCATOR_JOB, hooks={
+            "delivery": put("deliverableAnchor", "locator", native),
+        })
+        self.assertEqual(finding(accepted), ("verified", "DRV-7"))
+        job = generator.LIFECYCLE_JOBS["release"]
+        for locator in (
+            "stor-" + hashlib.sha256(f"{job}-bundle-buyer".encode("ascii")).hexdigest(),
+            "stor-" + hashlib.sha256(f"{generator.JOB_B}-bundle-seller".encode("ascii")).hexdigest(),
+            "stor-" + "ab" * 32,
+            "stor-" + native[5:].upper(),
+            "stor-A" + native[6:],
+            native[:-1],
+            native + "0",
+        ):
+            with self.subTest(locator=locator):
+                value = make_base("release", hooks={
+                    "delivery": put("deliverableAnchor", "locator", locator),
+                })
+                self.assertEqual(finding(value), ("rejected", "DRE-2"))
 
     def test_no_finding_reports_a_promotion_blocked_rule(self):
         blocked = set(self.vector_pack["promotionBlockedRules"])

@@ -42,9 +42,11 @@ JID_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 BYTES32_RE = re.compile(r"^0x[0-9a-f]{64}$")
 EVM_TX_RE = re.compile(r"^0x[0-9a-f]{64}$")
-# A Demos Storage Program native address: `stor-` and a lower-case SHA-256
-# digest (DEMOS-MAPPING), whole or cut to 40 hex digits as the walkthrough emits.
-NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+# A Demos Storage Program native address: `stor-` and the first 40 lower-case
+# hex digits of a SHA-256 digest (DACS-5 §10.4.2, DACS-1 §6.3.4), as the
+# walkthrough emits.  A 64-digit `stor-` value is a logical address there, and
+# DACS-4 §9.6.1 gives the deliverable no logical address in that form.
+NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-[0-9a-f]{40}$")
 
 DOMAINS = {
     "agreement": "dacs-x-delivery-remedy-agreement:v1:",
@@ -1010,8 +1012,8 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     # DACS-4 §9.6.1 writes the deliverable as a Storage Program at
     # dacs4:deliverable:{jobId}; its step 5 elides the anchor locator.  A
     # storage-program success names that kind and either the logical address,
-    # which must be this job's, or a native Storage Program address, whose
-    # syntax alone is checked.  Neither is resolved, and the logical-to-native
+    # which must be this job's, or a native Storage Program address (`stor-` and
+    # 40 lower-case hex digits), whose syntax alone is checked.  Neither is resolved, and the logical-to-native
     # binding of a native locator is not proven (README, synthetic proof limits).
     if delivery["phase"] == "deliver-storage-program" and "deliverableAnchor" in delivery:
         logical = "dacs4:deliverable:" + value["artifacts"]["agreement"]["jobId"]

@@ -110,10 +110,13 @@ input. DACS-4 §9.6.1 writes the deliverable as a Storage Program at
 success must carry `kind: "storage-program"` and one of two locator forms.
 The logical form `dacs4:deliverable:{jobId}` must name the overlay's `jobId`.
 The logical form is a fixture choice, not a DACS-4 §9.6.1 requirement. A
-native Storage Program address, `stor-` followed by 40 or 64 lower-case
-hexadecimal digits, is the form the lifecycle walkthrough emits; the verifier
-checks only its kind and syntax. Another kind, another job's logical address,
-or a locator in neither form is rejected (DRE-2). The verifier resolves
+native Storage Program address, `stor-` followed by exactly 40 lower-case
+hexadecimal digits (DACS-5 §10.4.2), is the form the lifecycle walkthrough
+emits; the verifier checks only its kind and syntax. DACS-5 §10.4.2 tells the
+two `stor-` forms apart by length: 64 digits is a logical address, such as a
+role bundle's, and DACS-4 §9.6.1 gives the deliverable no logical address in
+that form. Another kind, another job's logical address, a 64-digit or
+upper-case `stor-` value, or a locator in neither form is rejected (DRE-2). The verifier resolves
 neither form, so it does not prove that a Storage Program exists at the
 address or holds the content-hashed payload. It also cannot tell whether a
 native address is this job's Storage Program, because the fixture models no

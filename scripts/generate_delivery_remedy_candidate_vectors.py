@@ -980,6 +980,17 @@ def build_vector_pack() -> dict[str, Any]:
         "dre-2-deliverable-anchor-native-locator-malformed": make_base("release", hooks={
             "delivery": put("deliverableAnchor", "locator", "stor-" + "Z" * 40),
         }),
+        # DACS-5 §10.4.2: a native address carries 40 hex digits and a logical
+        # stor- address 64, so another job's logical buyer-bundle address is not
+        # a native deliverable locator.  Native hex is lower-case.
+        "dre-2-deliverable-anchor-native-locator-64-hex": make_base("release", hooks={
+            "delivery": put("deliverableAnchor", "locator", "stor-" + hashlib.sha256(
+                f"{JOB_B}-bundle-buyer".encode("ascii")
+            ).hexdigest()),
+        }),
+        "dre-2-deliverable-anchor-native-locator-uppercase": make_base("release", hooks={
+            "delivery": put("deliverableAnchor", "locator", "stor-" + NATIVE_DELIVERABLE_LOCATOR[5:].upper()),
+        }),
         # DRV-2: terminalState is a closed string discriminator; an array or
         # object in a re-signed terminal is malformed input, not a crash.
         "drv-2-terminal-state-array": make_base("release", hooks={"terminal": put("terminalState", [])}),
@@ -1355,6 +1366,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dre-2-deliverable-anchor-native-locator", "dre-2-deliverable-anchor-native-locator", "verified", "DRV-7", "a native stor- Storage Program locator is accepted on kind and syntax; its logical-to-native binding is not proven", rules=["DRE-2", "DRP-7", "DRV-7"]),
         vector("dre-2-deliverable-anchor-native-locator-kind", "dre-2-deliverable-anchor-native-locator-kind", "rejected", "DRE-2", "a native locator still needs the storage-program anchor kind", rules=["DRE-2", "DRP-7"]),
         vector("dre-2-deliverable-anchor-native-locator-malformed", "dre-2-deliverable-anchor-native-locator-malformed", "rejected", "DRE-2", "a stor- locator outside the native address syntax is neither locator form", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-native-locator-64-hex", "dre-2-deliverable-anchor-native-locator-64-hex", "rejected", "DRE-2", "a 64-digit stor- value is a DACS-5 §10.4.2 logical address, here another job's buyer bundle, not a 40-digit native deliverable address", rules=["DRE-2", "DRP-7"]),
+        vector("dre-2-deliverable-anchor-native-locator-uppercase", "dre-2-deliverable-anchor-native-locator-uppercase", "rejected", "DRE-2", "a native stor- address carries lower-case hex digits", rules=["DRE-2", "DRP-7"]),
         vector("drv-2-delivery-evidence-shape", "drv-2-delivery-evidence-shape", "error", "DRV-2", "delivery evidence keeps the exact delivery SettlementEvidence shape", rules=["DRE-2", "DRV-2"]),
         vector("dre-2-failed-delivery-without-deliverable", "dre-2-failed-delivery-without-deliverable", "verified", "DRV-7", "a failed delivery's SettlementEvidence may omit the deliverable content hash and anchor", rules=["DRE-2", "DRP-7", "DRV-7"]),
         vector("dre-2-failed-delivery-carries-artifact-input", "dre-2-failed-delivery-without-deliverable", "rejected", "DRE-2", "delivery evidence that names no deliverable resolves no delivered-artifact input", [{"op": "replace", "path": ["reproductionInputs", "deliveredArtifact"], "value": {"kind": "delivered-artifact-input"}}]),

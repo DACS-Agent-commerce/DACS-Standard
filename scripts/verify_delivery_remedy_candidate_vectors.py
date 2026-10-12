@@ -325,8 +325,7 @@ def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
 # `error`; DRV-3, the malformed-encoding rule, forbids repairing it, so those
 # results cite DRV-3.  The candidate names no rule for §9 step 1, an unsupported
 # artifact discriminator (phase kind, overlay, resolver-evidence or manifest
-# version, capability profile), or for a resolver status that contradicts the
-# lifecycle's applicability; those keep the fixture label DRV-2, pending a
+# version, capability profile); those keep the fixture label DRV-2, pending a
 # named §9 step-1 rule in #371.  An unsupported deliver-* kind is the DRP-3
 # exception: DRP-3 requires a supported one.  Otherwise DRV-2 is unavailable
 # RPC data, which stays `indeterminate`.
@@ -1100,7 +1099,9 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         (external[name] == "not-applicable") is needed
         for name, needed in applicable.items()
     ):
-        return result("error", "DRV-2", "resolver status applicability does not match the lifecycle")
+        # The statuses are the pinned resolver's authenticated output; the
+        # applicable set comes from the signed terminal and delivery evidence.
+        return result("rejected", "DRV-6", "authenticated resolver status applicability contradicts the lifecycle")
     contradictory = sorted(name for name, state in external.items() if state == "contradictory")
     if contradictory:
         return result("rejected", "DRV-6", "authenticated evidence contradicts: " + ", ".join(contradictory))

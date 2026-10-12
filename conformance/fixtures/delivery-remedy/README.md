@@ -78,12 +78,13 @@ input and returns `error` before any stage reads it. The verifier reports
 malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding
 rule: nothing is repaired before hashing or comparison. DRV-2 keeps
 unavailable or inconsistent RPC data `indeterminate`, as for an unavailable
-`agreementResolution`. The candidate names no rule for two other `error`
-cases, so they keep the fixture label `DRV-2`: an unsupported §9 step-1
-artifact discriminator (a phase kind, an overlay, resolver-evidence or
-deployment-manifest version, or a capability profile), and a resolver status
-whose applicability contradicts the lifecycle. The step-1 label is pending
-#371's named §9 step-1 rule. An unsupported `deliver-*` kind as the one
+`agreementResolution`. The candidate names no rule for an unsupported §9
+step-1 artifact discriminator (a phase kind, an overlay, resolver-evidence or
+deployment-manifest version, or a capability profile), so those `error` cases
+keep the fixture label `DRV-2`. The step-1 label is pending #371's named §9
+step-1 rule. A resolver status whose applicability contradicts the lifecycle
+is `rejected` under DRV-6: the pinned resolver's authenticated record
+contradicts the signed terminal and delivery evidence. An unsupported `deliver-*` kind as the one
 delivery is not one of them: DRP-3 requires a supported delivery step, so it
 is `rejected` under DRP-3. Only `accept` with
 `release-to-provider` and `reject` with `refund-to-client` can authorize a
@@ -236,7 +237,8 @@ registry availability, cross-substrate ordering, native capability facts, and
 delivery-digest fixation. The anchor is synthetic and non-normative: it
 demonstrates the verdicts that such evidence supports, not its normative
 proof shape. Each status has to
-match the lifecycle's applicability. Funding and terminal finality are still
+match the lifecycle's applicability; an authenticated status that does not is
+a DRV-6 contradiction. Funding and terminal finality are still
 derived from the observations and embedded records, not from the status. The
 pack exercises unavailable and contradictory outcomes but does not claim to
 implement those external resolvers.

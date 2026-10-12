@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "549e97bcaf10bddd80d9b1ac2c1c10aa739e132f4f0b55c9d1d8d8d9bc5ee5fe",
+  "hash": "9c01ddf031e6ded3435722ca3418fcf1ecdd837b2b08f16a51ac77227d140e63",
   "count": 236,
   "fixtures": {
     "release": {
@@ -79487,12 +79487,12 @@
     {
       "name": "resolver-status-applicability-mismatch",
       "base": "release",
-      "expected": "error",
-      "expectedRule": "DRV-2",
+      "expected": "rejected",
+      "expectedRule": "DRV-6",
       "rules": [
-        "DRV-2"
+        "DRV-6"
       ],
-      "note": "a resolver cannot mark applicable delivery finality as not applicable",
+      "note": "DRV-6: an authenticated resolver record that marks delivery finality not applicable contradicts the signed delivery evidence",
       "patch": [
         {
           "op": "replace",

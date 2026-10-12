@@ -281,7 +281,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8").split()
         )
         self.assertIn("reports malformed input (candidate §9 step 2) under DRV-3, the malformed-encoding rule", readme)
-        self.assertIn("The candidate names no rule for two other `error` cases, so they keep the fixture label `DRV-2`", readme)
+        self.assertIn("so those `error` cases keep the fixture label `DRV-2`", readme)
+        self.assertIn("is `rejected` under DRV-6: the pinned resolver's authenticated record", readme)
+        self.assertNotIn("names no rule for two other `error` cases", readme)
         self.assertIn("The step-1 label is pending #371's named §9 step-1 rule.", readme)
         self.assertIn("so it is `rejected` under DRP-3", readme)
         self.assertNotIn("malformed input under rule `DRV-2`", readme)
@@ -293,7 +295,6 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "pipeline contains an unsupported phase kind", "unsupported agreement overlay version",
             "unsupported resolver evidence version", "unsupported deployment manifest version",
             "unsupported deployment capability profile",
-            "resolver status applicability does not match the lifecycle",
         }
         source = (ROOT / "scripts/verify_delivery_remedy_candidate_vectors.py").read_text(encoding="utf-8")
         labelled = re.findall(r'result\("error", "DRV-2", "([^"]*)"\)', source)

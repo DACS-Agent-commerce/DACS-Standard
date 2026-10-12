@@ -316,6 +316,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "**Native locator binding** (DRE-2, DRP-7)",
             "**Replay ledger durability**",
             "**Currency binding through `paymentTokenSymbol`** (DRA-10)",
+            "**`PriceTerm.unit`** (DRA-10)",
         ):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
@@ -1631,7 +1632,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "amount with exponent": ({"bilateral": put("price", "amount", "1e0")}, ("error", "DRV-3")),
             "currency not text": ({"bilateral": put("price", "currency", 5)}, ("error", "DRV-3")),
             "price extra member": ({"bilateral": put("price", "decimals", 6)}, ("error", "DRV-3")),
-            # DACS-4's optional `unit` makes the amount a rate, not the total.
+            # The fixture does not read DACS-4's optional `unit`; it fails
+            # closed (README, synthetic proof limits).
             "price unit qualifier": ({"bilateral": put("price", "unit", "per-call")}, ("error", "DRV-3")),
             "decimals text": ({"rail": put("tokenDecimals", "6")}, ("error", "DRV-3")),
             "decimals boolean": ({"rail": put("tokenDecimals", True)}, ("error", "DRV-3")),

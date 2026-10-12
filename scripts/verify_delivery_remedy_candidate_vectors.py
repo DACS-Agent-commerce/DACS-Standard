@@ -807,8 +807,8 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
     # DRA-10: the budget is the agreed price converted with the pinned token
     # decimals, as DACS-4 §9.5.2 steps 2 and 3 convert a PriceTerm: the
     # currency is the rail asset's symbol, and amount × 10^decimals is exact.
-    # DACS-4's optional `unit` qualifier makes the amount a rate, so a price
-    # carrying it is not read as the total.
+    # A price with DACS-4's optional `unit` is not read: a fixture limitation
+    # that fails closed (README, synthetic proof limits), not a candidate rule.
     price = bilateral.get("price")
     decimals = rail.get("tokenDecimals")
     if (

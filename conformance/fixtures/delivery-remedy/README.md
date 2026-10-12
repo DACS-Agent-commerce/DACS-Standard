@@ -141,10 +141,9 @@ zero price (DACS-4 §9.3 requires an agreed `PriceTerm.amount` strictly greater
 than zero), is rejected under DRA-10. A price with more fractional digits than
 the token carries is an `error` under DRV-3: DACS-4 §9.13 makes excess
 precision an error, and no base-unit budget equals it. A price carrying
-DACS-4's optional `unit` qualifier is an `error` too. A qualifier such as
-`per-call` makes `amount` a rate per unit rather than the agreed total, and
-neither DACS-4 §9.5.2 nor DRA-10 defines how a rate converts to one escrow
-budget, so the verifier does not read such a price as the budget's amount.
+DACS-4's optional `unit` qualifier is an `error` too. That is a limitation of
+this fixture, not a candidate rule; see **`PriceTerm.unit`** under the
+synthetic proof limits below.
 
 Delivery evidence is a DACS-4 §9.7 delivery `SettlementEvidence` with the
 members a storage-program delivery carries: `evidenceVersion`, `jobId`,
@@ -392,6 +391,15 @@ the fixture itself. The vectors depend on them and do not prove them:
   this pack's assumption, so a rail definition without it is `error`. Whether
   the candidate rail pins a symbol, or binds the price currency some other way
   (for example to `paymentToken` itself), is for #371 to settle.
+- **`PriceTerm.unit`** (DRA-10). The pack reads an agreement price only when
+  its members are exactly `amount` and `currency`. DACS-4's `PriceTerm` may
+  also carry an optional `unit` qualifier, and DRA-10, which converts "the
+  exact agreement price", does not exclude it. The pack still returns `error`
+  (DRV-3) for such a price rather than convert it. This is the fixture's
+  limitation, not a candidate rule, and it fails closed: no price with `unit`
+  verifies. Whether such a price states the agreed total (a metered
+  agreement's `terms.price` is the computed total, DACS-3 MTR-4) or a rate,
+  and so whether DRA-10 converts its `amount`, is for #371 to settle.
 - **Replay ledger durability**. The `DecisionLedger` is in-memory and
   single-process, as described above; durable or cross-process one-use
   enforcement is not claimed.

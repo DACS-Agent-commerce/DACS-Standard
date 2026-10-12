@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 180,
-  "hash": "df9910bd13c773ae40466ec0253340241cf61bb3eb85e47d27d09464df7c95e4",
+  "count": 182,
+  "hash": "a1bc229b20852fbc3dad93236f2e0adee66f70c9f7e108310297b8e99875d4aa",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -20011,6 +20011,96 @@
         }
       ],
       "expectedReason": "settlement-transaction-form"
+    },
+    {
+      "name": "retry-authorization-identity-eip55-reconciles",
+      "expected": "pass",
+      "rule": "XN-11/XN-5",
+      "operation": "retry",
+      "note": "a retained EIP-55 authorization identity reconciles with the same payer in upper-case hex, since both compare as 20-byte values",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "0x7E5F4552091A69125D5DFCB7B8C2659029395BDF"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "authorizationIdentity"
+          ],
+          "value": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
+        }
+      ],
+      "expectedReason": "reconciliation-pending"
+    },
+    {
+      "name": "retry-authorization-identity-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-11/XN-5",
+      "operation": "retry",
+      "note": "identical retained and session authorization identities that are not 0x plus 40 hex digits are a malformed coordinate",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "0x7e5f4552091a69125d5dfcb7b8c2659029395b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "authorizationIdentity"
+          ],
+          "value": "0x7e5f4552091a69125d5dfcb7b8c2659029395b"
+        }
+      ],
+      "expectedReason": "address-form"
     }
   ]
 }

@@ -636,7 +636,9 @@ def reconciliation_matches(retained, v):
     comparison uses the XN-7 adapter form, so the same hash spelled with another
     prefix or case still reconciles. Both forms are derived before comparing, so
     a value with no adapter form is malformed (ValueError) even when the retained
-    and recorded spellings are identical.
+    and recorded spellings are identical. The authorization identity is the
+    authorization payer, so it compares in the XN-5 adapter form the same way
+    (AddressFormError).
     """
     identity = reconciliation_identity(v)
     if identity is None or not isinstance(retained, dict) or set(retained) != set(identity):
@@ -650,10 +652,15 @@ def reconciliation_matches(retained, v):
     ]
     if None in forms:
         raise ValueError("settlementTransaction has no XN-7 adapter form")
+    try:
+        payers = [adapter_address(network, payer) for payer in (
+            retained["authorizationIdentity"], identity["authorizationIdentity"])]
+    except ValueError as malformed:
+        raise AddressFormError("authorizationIdentity has no XN-5 adapter form") from malformed
     if any(retained[field] != value for field, value in identity.items()
-           if field != "settlementTransaction"):
+           if field not in {"authorizationIdentity", "settlementTransaction"}):
         return False
-    return forms[0] == forms[1]
+    return payers[0] == payers[1] and forms[0] == forms[1]
 
 
 def exact_atomic(amount, decimals, ceiling):
@@ -723,6 +730,10 @@ def adapter_address(network, address):
             raise ValueError("EVM address is not 0x plus 40 hexadecimal digits")
         return address.lower()
     return address
+
+
+class AddressFormError(ValueError):
+    """XN-5: an address with no adapter form, where ValueError would name another coordinate."""
 
 
 def listing_agreement_type_violation(listing):
@@ -848,6 +859,8 @@ def evaluate(v, effects=None):
             return "fail", "signature"
         try:
             matches = reconciliation_matches(v.get("runtime", {}).get("reconciliationState"), v)
+        except AddressFormError:
+            return "error", "address-form"
         except ValueError:
             return "error", "settlement-transaction-form"
         if not matches:
@@ -1334,12 +1347,42 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-retained-transaction-spelling-reconciles",
             "retry-identical-malformed-transaction-is-error",
             "retry-recorded-malformed-transaction-is-error",
+            "retry-authorization-identity-eip55-reconciles",
+            "retry-authorization-identity-not-20-bytes",
         )
         for name in names:
             with self.subTest(vector=name):
                 effects = {"walletAuthorizationCalls": 0}
                 evaluate(self.by_name[name], effects)
                 self.assertEqual(effects["walletAuthorizationCalls"], 0)
+
+    def test_retry_authorization_identity_compares_as_an_xn5_address(self):
+        """XN-11/XN-5: both sides of the authorization identity take the adapter form first."""
+        payer = "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        checksum = "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
+        for runtime_payer, retained, want in (
+            (checksum, payer, ("pass", "reconciliation-pending")),
+            (payer, "0x" + payer[2:].upper(), ("pass", "reconciliation-pending")),
+            ("0x" + "99" * 20, payer, ("fail", "reconciliation-binding")),
+            (payer[:-2], payer, ("error", "address-form")),
+            (payer, payer[:-2], ("error", "address-form")),
+            ("0X" + payer[2:], "0X" + payer[2:], ("error", "address-form")),
+        ):
+            with self.subTest(runtime_payer=runtime_payer, retained=retained):
+                vector = copy.deepcopy(self.by_name["retry-indeterminate-remains-pending"])
+                vector["runtime"]["payer"]["paymentAddress"] = runtime_payer
+                vector["runtime"]["reconciliationState"]["authorizationIdentity"] = retained
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), want)
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        # Solana stays exact: one changed letter case is another authorization identity.
+        vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
+        vector["operation"] = "retry"
+        vector["runtime"]["reconciliationState"] = reconciliation_identity(vector)
+        self.assertEqual(evaluate(copy.deepcopy(vector)), ("pass", "reconciliation-pending"))
+        state = vector["runtime"]["reconciliationState"]
+        state["authorizationIdentity"] = state["authorizationIdentity"].swapcase()
+        self.assertEqual(evaluate(vector), ("fail", "reconciliation-binding"))
 
     def test_literal_public_target_classes_are_explicit(self):
         rejected = (
@@ -1615,6 +1658,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
             "It MUST derive that form for both the retained and the recorded value before comparing them.",
+            "An address in the authorization identity compares under XN-5, so a malformed one "
+            "yields `error` even when both spellings are identical.",
             "the adapter MUST compare the following addresses as 20-byte values.",
             "They are `payTo`, the PB-1 payout binding and `PaymentPhaseInput.payee.payeeAddress`; "
             "the `payingKey` address component, the derived payer and the authorization payer; "

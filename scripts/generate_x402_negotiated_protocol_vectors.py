@@ -1584,6 +1584,28 @@ def build_vectors() -> list[dict]:
              retry_recorded_malformed_transaction, operation="retry",
              authorization_submitted=True, reason="settlement-transaction-form")
 
+    # The authorization identity is the authorization payer, an XN-5 address.
+    # Neither side is in the lower-case form, so the adapter must convert both.
+    def retry_authorization_identity_spelling(v):
+        v["ledger"]["available"] = False
+        v["runtime"]["payer"]["paymentAddress"] = "0x" + BUYER_ADDRESS[2:].upper()
+        v["runtime"]["reconciliationState"]["authorizationIdentity"] = eip55(BUYER_ADDRESS)
+    add_case(vectors, "retry-authorization-identity-eip55-reconciles", "pass", "XN-11/XN-5",
+             "a retained EIP-55 authorization identity reconciles with the same payer in "
+             "upper-case hex, since both compare as 20-byte values",
+             retry_authorization_identity_spelling, operation="retry",
+             authorization_submitted=True, reason="reconciliation-pending")
+
+    def retry_identical_malformed_authorization_identity(v):
+        v["ledger"]["available"] = False
+        v["runtime"]["payer"]["paymentAddress"] = BUYER_ADDRESS[:-2]
+        v["runtime"]["reconciliationState"]["authorizationIdentity"] = BUYER_ADDRESS[:-2]
+    add_case(vectors, "retry-authorization-identity-not-20-bytes", "error", "XN-11/XN-5",
+             "identical retained and session authorization identities that are not 0x plus "
+             "40 hex digits are a malformed coordinate",
+             retry_identical_malformed_authorization_identity, operation="retry",
+             authorization_submitted=True, reason="address-form")
+
     return vectors
 
 

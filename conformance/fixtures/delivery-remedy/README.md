@@ -129,7 +129,14 @@ steps 2 and 3 convert a `PriceTerm`. The price currency must be the rail's
 the CD-1 decimal text as string arithmetic: the fraction is padded to
 `tokenDecimals` digits, leading zeros are stripped, and the result is compared
 with `budgetBaseUnits` as minimal decimal text, with no integer or float
-conversion and no length limit. A wrong amount, currency, or decimals, or a
+conversion, so a price of any length converts exactly. The budget itself is
+at most 2^256 − 1. The candidate rail escrows an ERC-20 `paymentToken` (§8.4),
+whose amounts are uint256 as its `decimals()` is a uint8, and every native
+amount must equal the budget (DREB-11, DRF-2, DRT-5, DRT-6). A larger budget
+is an `error` under DRV-3, and so is a larger pre-terminal provider payout in
+the resolver's native state, the one native amount not compared with the
+budget. Any other native amount above the bound differs from the budget, so
+the rule that compares it rejects it. A wrong amount, currency, or decimals, or a
 zero price (DACS-4 §9.3 requires an agreed `PriceTerm.amount` strictly greater
 than zero), is rejected under DRA-10. A price with more fractional digits than
 the token carries is an `error` under DRV-3: DACS-4 §9.13 makes excess

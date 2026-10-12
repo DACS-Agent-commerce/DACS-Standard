@@ -52,6 +52,9 @@ NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-[0-9a-f]{40}$")
 CANONICAL_DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?")
 # ERC-20 `decimals()` is a uint8.
 MAX_TOKEN_DECIMALS = 255
+# An ERC-20 amount is a uint256, so the candidate rail's `paymentToken` can
+# neither escrow nor transfer a budget above 2^256 - 1 (78 decimal digits).
+UINT256_MAX_TEXT = str(2 ** 256 - 1)
 # CORE §B.2 numeric safe-magnitude constraint: every JSON number is finite and
 # at most 2^53 - 1 in magnitude.
 SAFE_INTEGER_MAX = 2 ** 53 - 1
@@ -373,6 +376,13 @@ def _finality_check(
     return None
 
 
+def within_uint256(digits: str) -> bool:
+    """Whether minimal unsigned decimal text is at most 2^256 - 1, compared as text."""
+    return len(digits) < len(UINT256_MAX_TEXT) or (
+        len(digits) == len(UINT256_MAX_TEXT) and digits <= UINT256_MAX_TEXT
+    )
+
+
 def price_base_units(amount: str, decimals: int) -> str | None:
     """Convert a CD-1 amount to token base units (DACS-4 §9.5.2 step 3).
 
@@ -689,6 +699,10 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         r"(?:0|[1-9][0-9]*)", agreement["budgetBaseUnits"]
     ) is None:
         return result("error", "DRA-10", "budgetBaseUnits is not minimal unsigned decimal")
+    # Every native amount must equal the budget (DREB-11, DRF-2, DRT-5, DRT-6),
+    # so this bounds them too.
+    if not within_uint256(agreement["budgetBaseUnits"]):
+        return result("error", "DRV-3", "budgetBaseUnits exceeds the uint256 range of a token amount")
     # Compared with `==` later, where Python would take `true` for 1.
     if any(
         type(agreement.get(name)) is not int
@@ -1022,6 +1036,7 @@ def _native_state_valid(state: Any) -> bool:
         and state["expiryRecoveryAtSec"] >= 0
         and isinstance(payout, str)
         and re.fullmatch(r"(?:0|[1-9][0-9]*)", payout) is not None
+        and within_uint256(payout)
         and all(
             type(state[name]) is int and state[name] >= 0
             for name in ("platformFeeBP", "evaluatorFeeBP")

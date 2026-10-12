@@ -145,6 +145,7 @@ GUARD_CASES = {
     "role-binding-not-object": (_release(put("artifacts", "agreement", "buyer", "buyer")), ("error", "DRV-3", "agreement role bindings must be objects")),
     "primary-claim-not-text": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", 7)), ("error", "DRV-3", "agreement primary claims must be strings")),
     "agreement-price-malformed": (_hooked(bilateral=put("price", "amount", "1.0")), ("error", "DRV-3", "agreement price or pinned token decimals are malformed")),
+    "budget-beyond-uint256": (_hooked(bilateral=put("price", "amount", str(2 ** 256)), rail=put("tokenDecimals", 0), agreement=put("budgetBaseUnits", str(2 ** 256))), ("error", "DRV-3", "budgetBaseUnits exceeds the uint256 range of a token amount")),
     "orchestrator-claim-missing":(_release(put("orchestratorClaim", None)), ("error", "DRV-3", "orchestratorClaim is required")),
     "resolver-shape": (_release(drop("resolverEvidence", "statuses")), ("error", "DRV-3", "resolver evidence shape is not exact")),
     "resolver-version": (_release(put("resolverEvidence", "resolverEvidenceVersion", "2")), ("error", "DRV-2", "unsupported resolver evidence version")),
@@ -1568,6 +1569,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # String arithmetic, so an amount longer than Python's int-string limit
         # (4,300 digits) converts exactly too.
         long_amount = "9" * 4301
+        uint256_max = str(2 ** 256 - 1)
         for amount, decimals, expected in (
             ("1", 6, "1000000"), ("0.5", 6, "500000"), ("12.345678", 6, "12345678"),
             ("0", 6, "0"), ("7", 0, "7"), ("1.0000001", 6, None), ("0.1", 0, None),
@@ -1589,14 +1591,30 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "18 decimals": ({"rail": put("tokenDecimals", 18), "agreement": put("budgetBaseUnits", "1" + "0" * 18)}, ("verified", "DRV-7")),
             "zero price and budget": ({"bilateral": put("price", "amount", "0"), "agreement": put("budgetBaseUnits", "0")}, ("rejected", "DRA-10")),
             "zero price": ({"bilateral": put("price", "amount", "0")}, ("rejected", "DRA-10")),
-            # A valid canonical amount of 4,301 digits is compared exactly.
+            # An ERC-20 amount is a uint256, so the budget is at most 2^256 - 1;
+            # a budget, and so a native amount, of any greater length is an
+            # error, read without an int conversion.
+            "budget at the uint256 maximum": ({
+                "bilateral": put("price", "amount", uint256_max), "rail": put("tokenDecimals", 0),
+                "agreement": put("budgetBaseUnits", uint256_max),
+            }, ("verified", "DRV-7")),
+            "budget at the uint256 maximum, 18 decimals": ({
+                "bilateral": put("price", "amount", uint256_max[:-18] + "." + uint256_max[-18:]),
+                "rail": put("tokenDecimals", 18), "agreement": put("budgetBaseUnits", uint256_max),
+            }, ("verified", "DRV-7")),
+            "budget one above the uint256 maximum": ({
+                "bilateral": put("price", "amount", str(2 ** 256)), "rail": put("tokenDecimals", 0),
+                "agreement": put("budgetBaseUnits", str(2 ** 256)),
+            }, ("error", "DRV-3")),
             "4,301-digit price and budget": ({
                 "bilateral": put("price", "amount", long_amount), "rail": put("tokenDecimals", 0),
                 "agreement": put("budgetBaseUnits", long_amount),
-            }, ("verified", "DRV-7")),
-            "4,301-digit price, budget one unit short": ({
+            }, ("error", "DRV-3")),
+            # A price of any length still converts exactly, and a long one
+            # matches no budget within the bound.
+            "4,301-digit price, budget at the uint256 maximum": ({
                 "bilateral": put("price", "amount", long_amount), "rail": put("tokenDecimals", 0),
-                "agreement": put("budgetBaseUnits", "9" * 4300 + "8"),
+                "agreement": put("budgetBaseUnits", uint256_max),
             }, ("rejected", "DRA-10")),
             # DACS-4 §9.13: excess precision is an error, decided before the
             # budget comparison whatever the budget is.
@@ -1624,6 +1642,14 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         for name, (hooks, expected) in cases.items():
             with self.subTest(case=name):
                 self.assertEqual(finding(make_base("release", hooks=hooks)), expected)
+        # The resolver's pre-terminal provider payout is a native amount the
+        # verifier reads without comparing it with the budget.
+        for payout, expected in ((uint256_max, ("rejected", "DRL-7")), (str(2 ** 256), ("error", "DRV-3"))):
+            with self.subTest(payout=payout):
+                value = _signed_by_resolver(
+                    put("resolverEvidence", "nativeState", "preterminalProviderPayoutBaseUnits", payout)
+                )(self.vector_pack)
+                self.assertEqual(finding(value), expected)
 
     def test_malformed_input_stays_in_the_four_results(self):
         """Candidate §9 step 2 and CORE §B.2: malformed input is `error`, one lifecycle at a time."""

@@ -79,7 +79,10 @@ The format used per release:
   XN-11 reconciliation compares a known `settlementTransaction` in the same
   adapter form, and the retained value stays verbatim. Both the retained and
   the recorded value are taken to that form first, so a value with none is
-  `error` even when the two spellings are identical.
+  `error` even when the two spellings are identical. A transaction is compared
+  only when both sides know one: after a lost response the retained value is
+  absent or `null` and no signed evidence exists, and reconciliation stays
+  pending on the other identity values.
 - **EVM address comparison** (DACS-4 §9.5.7 XN-5, XN-11) — on an EIP-155
   network, `payTo`, the PB-1 payout binding and
   `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,

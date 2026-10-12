@@ -1671,6 +1671,30 @@ def build_vectors() -> list[dict]:
              retry_identical_malformed_authorization_identity, operation="retry",
              authorization_submitted=True, reason="address-form")
 
+    # XN-11 response loss: the wallet authorized, the response was lost, and no
+    # transaction is known. Nothing signed records one yet, so there is no
+    # evidence, and the retained state has no transaction (absent or null).
+    def retry_response_lost(keep_null):
+        def mutate(v):
+            v["ledger"]["available"] = False
+            v.pop("evidence")
+            state = v["runtime"]["reconciliationState"]
+            if keep_null:
+                state["settlementTransaction"] = None
+            else:
+                del state["settlementTransaction"]
+        return mutate
+    add_case(vectors, "retry-response-lost-no-transaction-known", "pass", "XN-11",
+             "after a lost response no transaction is known and no evidence exists; "
+             "reconciliation stays pending on the other identity values",
+             retry_response_lost(False), operation="retry",
+             authorization_submitted=True, reason="reconciliation-pending")
+    add_case(vectors, "retry-response-lost-transaction-null", "pass", "XN-11",
+             "a retained null settlementTransaction means none is known, not a malformed one; "
+             "reconciliation stays pending",
+             retry_response_lost(True), operation="retry",
+             authorization_submitted=True, reason="reconciliation-pending")
+
     # XN-5 leaves Solana exact at the retry site too: the unchanged retained
     # state reconciles, so one changed letter case is the only difference.
     def retry_solana_authorization_identity_case_changed(v):

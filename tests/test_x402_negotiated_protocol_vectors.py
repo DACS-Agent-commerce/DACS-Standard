@@ -259,7 +259,12 @@ def verify_artifact_signatures(v):
         ):
             return False
 
-    evidence = v.get("evidence", {})
+    # Evidence may not exist yet (XN-11 response loss); when present it is signed.
+    if "evidence" not in v:
+        return True
+    evidence = v["evidence"]
+    if not isinstance(evidence, dict):
+        return False
     signature = evidence.get("signature", {})
     if not verify_signature(
         keys.get("orchestrator"), "dacs-evidence:v1:",
@@ -614,19 +619,29 @@ def record_wallet_authorization(effects):
 
 
 def reconciliation_identity(v):
+    """XN-11: this session's identity, from the agreement, runtime and any evidence.
+
+    Signed evidence may not exist yet: after a lost response nothing records a
+    transaction, so `settlementTransaction` is present only when the one
+    evidence reference names it.
+    """
     agreement = v.get("agreement", {})
     runtime = v.get("runtime", {})
-    refs = v.get("evidence", {}).get("paymentTxRefs", [])
     selected = agreement.get("terms", {}).get("rail")
-    if not isinstance(selected, dict) or len(refs) != 1 or not isinstance(refs[0], dict):
+    if not isinstance(selected, dict):
         return None
-    return {
+    identity = {
         "jobId": agreement.get("jobId"),
         "phaseIndex": runtime.get("phaseIndex"),
         "requirementHash": digest(selected),
         "authorizationIdentity": runtime.get("payer", {}).get("paymentAddress"),
-        "settlementTransaction": refs[0].get("settlementTransaction"),
     }
+    if "evidence" in v:
+        refs = v["evidence"].get("paymentTxRefs", [])
+        if len(refs) != 1 or not isinstance(refs[0], dict):
+            return None
+        identity["settlementTransaction"] = refs[0].get("settlementTransaction")
+    return identity
 
 
 def reconciliation_matches(retained, v):
@@ -634,21 +649,29 @@ def reconciliation_matches(retained, v):
 
     The retained settlementTransaction stays verbatim, as XN-7 keeps it; only the
     comparison uses the XN-7 adapter form, so the same hash spelled with another
-    prefix or case still reconciles. Both forms are derived before comparing, so
-    a value with no adapter form is malformed (ValueError) even when the retained
-    and recorded spellings are identical. The authorization identity is the
-    authorization payer, so it compares in the XN-5 adapter form the same way
-    (AddressFormError).
+    prefix or case still reconciles. Every known value takes that form before
+    comparing, so one with none is malformed (ValueError) even when the retained
+    and recorded spellings are identical. A transaction is compared only when
+    both sides know one: after response loss the retained value is absent or
+    null. The authorization identity is the authorization payer, so it compares
+    in the XN-5 adapter form the same way (AddressFormError).
     """
     identity = reconciliation_identity(v)
-    if identity is None or not isinstance(retained, dict) or set(retained) != set(identity):
+    if identity is None or not isinstance(retained, dict):
+        return False
+    known = {name for name in identity if name != "settlementTransaction"}
+    if set(retained) - {"settlementTransaction"} != known:
         return False
     parameters = v["agreement"]["terms"]["rail"].get("parameters")
     selection = parameters.get("selection") if isinstance(parameters, dict) else None
     network = selection.get("network") if isinstance(selection, dict) else None
+    transactions = [retained["settlementTransaction"]] if retained.get(
+        "settlementTransaction") is not None else []
+    if "settlementTransaction" in identity:
+        transactions.append(identity["settlementTransaction"])
     forms = [
         adapter_canonical_transaction(network, transaction) if isinstance(network, str) else None
-        for transaction in (retained["settlementTransaction"], identity["settlementTransaction"])
+        for transaction in transactions
     ]
     if None in forms:
         raise ValueError("settlementTransaction has no XN-7 adapter form")
@@ -660,7 +683,7 @@ def reconciliation_matches(retained, v):
     if any(retained[field] != value for field, value in identity.items()
            if field not in {"authorizationIdentity", "settlementTransaction"}):
         return False
-    return payers[0] == payers[1] and forms[0] == forms[1]
+    return payers[0] == payers[1] and len(set(forms)) <= 1
 
 
 def exact_atomic(amount, decimals, ceiling):
@@ -1384,12 +1407,50 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-authorization-identity-eip55-reconciles",
             "retry-authorization-identity-not-20-bytes",
             "retry-solana-authorization-identity-case-changed",
+            "retry-response-lost-no-transaction-known",
+            "retry-response-lost-transaction-null",
         )
         for name in names:
             with self.subTest(vector=name):
                 effects = {"walletAuthorizationCalls": 0}
                 evaluate(self.by_name[name], effects)
                 self.assertEqual(effects["walletAuthorizationCalls"], 0)
+
+    def test_retry_after_response_loss_needs_no_known_transaction(self):
+        """XN-11: "any known" transaction; an unknown one (absent or null) keeps the session pending."""
+        for name in ("retry-response-lost-no-transaction-known",
+                     "retry-response-lost-transaction-null"):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                self.assertNotIn("evidence", vector)
+                self.assertIsNone(vector["runtime"]["reconciliationState"].get("settlementTransaction"))
+                self.assertEqual(evaluate(copy.deepcopy(vector)), ("pass", "reconciliation-pending"))
+        base = self.by_name["retry-indeterminate-remains-pending"]
+        lost = self.by_name["retry-response-lost-no-transaction-known"]
+        for label, source, retained_tx, want in (
+            # Evidence records a transaction; the retained state knows none.
+            ("recorded only", base, "<absent>", ("pass", "reconciliation-pending")),
+            ("recorded only, retained null", base, None, ("pass", "reconciliation-pending")),
+            # The retained state knows one; nothing is recorded yet.
+            ("retained only", lost, "0x" + "ab" * 32, ("pass", "reconciliation-pending")),
+            # A known value still needs an adapter form.
+            ("retained only, malformed", lost, "not-a-hash", ("error", "settlement-transaction-form")),
+            ("retained empty string", lost, "", ("error", "settlement-transaction-form")),
+        ):
+            with self.subTest(case=label):
+                vector = copy.deepcopy(source)
+                state = vector["runtime"]["reconciliationState"]
+                if retained_tx == "<absent>":
+                    state.pop("settlementTransaction", None)
+                else:
+                    state["settlementTransaction"] = retained_tx
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), want)
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        # Another identity value still has to match without a transaction.
+        vector = copy.deepcopy(lost)
+        vector["runtime"]["reconciliationState"]["phaseIndex"] = 4
+        self.assertEqual(evaluate(vector), ("fail", "reconciliation-binding"))
 
     def test_response_defects_never_decide_the_outcome(self):
         """XN-11: after authorization the ledger decides; a response defect is the recorded fault."""
@@ -1722,6 +1783,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "A non-empty port MUST be decimal digits with a value of at most 65535.",
             "It MUST also compare it with the authenticated ledger",
             "It MUST compare a known `settlementTransaction`",
+            "The retained state then records `settlementTransaction` as absent or `null`, and a "
+            "transaction is compared only when both sides know one.",
             "It MUST derive that form for both the retained and the recorded value before comparing them.",
             "An address in the authorization identity compares under XN-5, so a malformed one "
             "yields `error` even when both spellings are identical.",

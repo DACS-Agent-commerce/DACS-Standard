@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 192,
-  "hash": "576aab5e5875e159bdca97e0eaef7b58d6579c2bb1387bd15f9e0bc84670aadd",
+  "count": 194,
+  "hash": "a6e9c52a00c375d0002f1037046db5cb9ad79b3d1789cf91760cfbcdac24fcfc",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -20503,6 +20503,89 @@
         }
       ],
       "expectedReason": "address-form"
+    },
+    {
+      "name": "retry-response-lost-no-transaction-known",
+      "expected": "pass",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "after a lost response no transaction is known and no evidence exists; reconciliation stays pending on the other identity values",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "reconciliation-pending"
+    },
+    {
+      "name": "retry-response-lost-transaction-null",
+      "expected": "pass",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "a retained null settlementTransaction means none is known, not a malformed one; reconciliation stays pending",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ],
+          "value": null
+        }
+      ],
+      "expectedReason": "reconciliation-pending"
     },
     {
       "name": "retry-solana-authorization-identity-case-changed",

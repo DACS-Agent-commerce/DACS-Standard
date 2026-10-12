@@ -84,7 +84,13 @@ deployment-manifest version, or a capability profile), so those `error` cases
 keep the fixture label `DRV-2`. The step-1 label is pending #371's named §9
 step-1 rule. A resolver status whose applicability contradicts the lifecycle
 is `rejected` under DRV-6: the pinned resolver's authenticated record
-contradicts the signed terminal and delivery evidence. An unsupported `deliver-*` kind as the one
+contradicts the signed terminal and delivery evidence. That holds for an
+applicable status marked `not-applicable` and for an inapplicable one marked
+`verified` or `contradictory`. An inapplicable `unavailable` is not a
+contradiction: it asserts nothing, and candidate §9 step 5 makes only
+required evidence `indeterminate`. The candidate's DRP-7, DRT-3 and DRT-12
+make delivery evidence and `decisionRef` absent, but they do not govern the
+resolver record. So the applicable checks decide the verdict (DRV-7). An unsupported `deliver-*` kind as the one
 delivery is not one of them: DRP-3 requires a supported delivery step, so it
 is `rejected` under DRP-3. Only `accept` with
 `release-to-provider` and `reject` with `refund-to-client` can authorize a
@@ -237,8 +243,10 @@ registry availability, cross-substrate ordering, native capability facts, and
 delivery-digest fixation. The anchor is synthetic and non-normative: it
 demonstrates the verdicts that such evidence supports, not its normative
 proof shape. Each status has to
-match the lifecycle's applicability; an authenticated status that does not is
-a DRV-6 contradiction. Funding and terminal finality are still
+match the lifecycle's applicability: an applicable status is never
+`not-applicable`, and an inapplicable one is `not-applicable` or
+`unavailable`. An authenticated status that does not match is a DRV-6
+contradiction. Funding and terminal finality are still
 derived from the observations and embedded records, not from the status. The
 pack exercises unavailable and contradictory outcomes but does not claim to
 implement those external resolvers.

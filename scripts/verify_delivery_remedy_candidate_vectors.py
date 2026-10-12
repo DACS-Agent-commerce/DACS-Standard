@@ -1095,8 +1095,14 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         "decisionFinality": decision_applicable,
         "decisionOrdering": decision_applicable,
     })
+    # An applicable status must not be `not-applicable`. An inapplicable one
+    # must not vouch for or contradict evidence that does not exist. Its
+    # `unavailable` asserts nothing, so it is not a DRV-6 contradiction, and
+    # it withholds no required evidence (candidate §9 step 5): DRV-7 counts
+    # only applicable checks.
     if any(
-        (external[name] == "not-applicable") is needed
+        external[name] == "not-applicable" if needed
+        else external[name] not in {"not-applicable", "unavailable"}
         for name, needed in applicable.items()
     ):
         # The statuses are the pinned resolver's authenticated output; the
@@ -1105,7 +1111,10 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     contradictory = sorted(name for name, state in external.items() if state == "contradictory")
     if contradictory:
         return result("rejected", "DRV-6", "authenticated evidence contradicts: " + ", ".join(contradictory))
-    unavailable = [name for name in UNAVAILABLE_STATUS_RULES if external[name] == "unavailable"]
+    unavailable = [
+        name for name in UNAVAILABLE_STATUS_RULES
+        if applicable[name] and external[name] == "unavailable"
+    ]
     if unavailable:
         return result(
             "indeterminate",

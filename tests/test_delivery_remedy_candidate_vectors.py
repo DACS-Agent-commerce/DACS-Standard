@@ -1336,6 +1336,47 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     ("indeterminate", verifier.UNAVAILABLE_STATUS_RULES[name]),
                 )
 
+    def test_resolver_status_applicability_in_both_directions(self):
+        """Statuses must match what the signed terminal and delivery evidence make applicable.
+
+        An applicable status may not be `not-applicable`, and an inapplicable
+        one may not be `verified` or `contradictory`. An inapplicable
+        `unavailable` asserts nothing and withholds no required evidence, so
+        the applicable checks decide the verdict (candidate §9 step 5, DRV-7).
+        """
+        rejected, verified = ("rejected", "DRV-6"), ("verified", "DRV-7")
+        expected = {
+            (True, "verified"): verified,
+            (True, "not-applicable"): rejected,
+            (True, "contradictory"): rejected,
+            (False, "verified"): rejected,
+            (False, "not-applicable"): verified,
+            (False, "unavailable"): verified,
+            (False, "contradictory"): rejected,
+        }
+        # base: (delivery applicable, decision applicable)
+        for base, (delivery, decision) in {
+            "release": (True, True),
+            "pre-submission-rejected-refund": (False, True),
+            "expired-post": (True, False),
+            "expired-pre": (False, False),
+        }.items():
+            for name, applicable in (
+                ("deliveryFinality", delivery),
+                ("decisionFinality", decision),
+                ("decisionOrdering", decision),
+            ):
+                for state in sorted(verifier.EXTERNAL_STATES):
+                    with self.subTest(base=base, status=name, state=state):
+                        value = self._fixture(base)
+                        value["resolverEvidence"]["statuses"][name] = state
+                        generator.resign_resolver(value)
+                        want = expected.get(
+                            (applicable, state),
+                            ("indeterminate", verifier.UNAVAILABLE_STATUS_RULES[name]),
+                        )
+                        self.assertEqual(finding(value), want)
+
     def test_dreb_15_expiry_recovery_time(self):
         for base in ("expired-pre", "expired-post"):
             fixture = self._fixture(base)

@@ -289,6 +289,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "**Deliverable anchor locator** (DRE-2, DRP-7)",
             "**Native locator binding** (DRE-2, DRP-7)",
             "**Replay ledger durability**",
+            "**Currency binding through `paymentTokenSymbol`** (DRA-10)",
         ):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
@@ -1587,6 +1588,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "amount with exponent": ({"bilateral": put("price", "amount", "1e0")}, ("error", "DRV-3")),
             "currency not text": ({"bilateral": put("price", "currency", 5)}, ("error", "DRV-3")),
             "price extra member": ({"bilateral": put("price", "decimals", 6)}, ("error", "DRV-3")),
+            # DACS-4's optional `unit` makes the amount a rate, not the total.
+            "price unit qualifier": ({"bilateral": put("price", "unit", "per-call")}, ("error", "DRV-3")),
             "decimals text": ({"rail": put("tokenDecimals", "6")}, ("error", "DRV-3")),
             "decimals boolean": ({"rail": put("tokenDecimals", True)}, ("error", "DRV-3")),
             "decimals negative": ({"rail": put("tokenDecimals", -1)}, ("error", "DRV-3")),

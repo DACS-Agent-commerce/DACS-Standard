@@ -126,7 +126,11 @@ conversion and no length limit. A wrong amount, currency, or decimals, or a
 zero price (DACS-4 §9.3 requires an agreed `PriceTerm.amount` strictly greater
 than zero), is rejected under DRA-10. A price with more fractional digits than
 the token carries is an `error` under DRV-3: DACS-4 §9.13 makes excess
-precision an error, and no base-unit budget equals it.
+precision an error, and no base-unit budget equals it. A price carrying
+DACS-4's optional `unit` qualifier is an `error` too. A qualifier such as
+`per-call` makes `amount` a rate per unit rather than the agreed total, and
+neither DACS-4 §9.5.2 nor DRA-10 defines how a rate converts to one escrow
+budget, so the verifier does not read such a price as the budget's amount.
 
 Delivery evidence is a DACS-4 §9.7 delivery `SettlementEvidence` with the
 members a storage-program delivery carries: `evidenceVersion`, `jobId`,
@@ -366,6 +370,14 @@ the fixture itself. The vectors depend on them and do not prove them:
   `dacs4:deliverable:{jobId}` to that native address is not modelled, so a
   native address of another job's Storage Program would be accepted. Proving it
   needs a published logical-to-native binding and a resolver.
+- **Currency binding through `paymentTokenSymbol`** (DRA-10). Candidate §8.4
+  pins `paymentToken` and `tokenDecimals` but no token symbol, and DRA-10
+  says nothing about currency. The pack takes the currency check from DACS-4
+  §9.5.2 step 2, which matches `amount.currency` against `rail.asset.symbol`,
+  and gives the fixture rail a `paymentTokenSymbol` field for it. That field is
+  this pack's assumption, so a rail definition without it is `error`. Whether
+  the candidate rail pins a symbol, or binds the price currency some other way
+  (for example to `paymentToken` itself), is for #371 to settle.
 - **Replay ledger durability**. The `DecisionLedger` is in-memory and
   single-process, as described above; durable or cross-process one-use
   enforcement is not claimed.

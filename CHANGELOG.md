@@ -1247,7 +1247,7 @@ The format used per release:
   only through an explicitly selected legacy-replay path that cannot derive a
   current address, perform a current lookup, create a current signature, or
   authorize an effect.
-### Added — candidate CORE v0.3 / DACS-3 v0.5 / DACS-4 v0.7 / DACS-5 v0.5
+### Added — candidate CORE v0.3 / DACS-3 v0.6 / DACS-4 v0.8 / DACS-5 v0.7
 
 - **Atomic Purchase and Completion Works** (CORE §5.2; DACS-3 §8.6.1;
   DACS-4 §§9.5.10/9.7.3; DACS-5 §10.4.2; Demos mapping §A.6; #320) — adds an

@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / "spec" / "PROFILE.md"
+CHANGELOG = ROOT / "CHANGELOG.md"
 ROW = re.compile(r"^\| \[([A-Z0-9-]+)\]\([A-Z0-9-]+\.md\) \| ([0-9.]+) \| (.+) \|$")
 # Documents the Atomic candidate amends; their rows append an Atomic note to
 # the live status.  Every other row reports the live status verbatim.
@@ -38,6 +39,27 @@ class AtomicProfileCompositionTests(unittest.TestCase):
         self.assertEqual(
             {name: version for name, (version, _) in self.atomic.items()},
             {name: version for name, (version, _) in self.live.items()},
+        )
+
+    def test_changelog_atomic_heading_pins_the_composition_versions(self):
+        headings = re.findall(
+            r"^### Added — candidate ([^\n]+)\n\n"
+            r"- \*\*Atomic Purchase and Completion Works\*\*",
+            CHANGELOG.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+        self.assertEqual(len(headings), 1, "Expected one Atomic CHANGELOG heading")
+        versions = []
+        for identifier in headings[0].split(" / "):
+            match = re.fullmatch(r"(CORE|DACS-[1-5]) v([0-9.]+)", identifier)
+            self.assertIsNotNone(match, identifier)
+            versions.append(match.groups())
+        self.assertEqual(
+            sorted(versions),
+            sorted(
+                (name.rsplit("-", 1)[0], self.atomic[name][0])
+                for name in ATOMIC_AMENDED
+            ),
         )
 
     def test_vet_row_reports_live_corrective_candidate_status(self):

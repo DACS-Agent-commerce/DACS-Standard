@@ -572,6 +572,13 @@ def make_atomic_authority(variant="pass"):
         )
     if variant == "foreign-receipt-address":
         receipts[pay_key]["logicalAddress"] = receipts[delivery_key]["logicalAddress"]
+    # These keep the pay-dem admission exact in hash, phase key and logical
+    # address: only its non-pass AWS result, or an unknown member outside the
+    # closed admission shape, can refuse it.
+    if variant == "non-passing-admission":
+        admissions[pay_key]["disposition"] = "fail"
+    if variant == "extra-member-admission":
+        admissions[pay_key]["valid"] = True
 
     agreement_ref = {
         "anchor": {
@@ -1661,6 +1668,12 @@ def generate(source):
         "atomic-foreign-receipt-address": make_atomic_authority(
             "foreign-receipt-address"
         ),
+        "atomic-non-passing-admission": make_atomic_authority(
+            "non-passing-admission"
+        ),
+        "atomic-extra-member-admission": make_atomic_authority(
+            "extra-member-admission"
+        ),
     })
     atomic_vector_specs = (
         (
@@ -1699,6 +1712,16 @@ def generate(source):
         (
             "bundle-settlement-bijection-atomic-foreign-receipt-address-reject",
             "atomic-foreign-receipt-address", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-non-passing-admission-reject",
+            "atomic-non-passing-admission", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-extra-member-admission-reject",
+            "atomic-extra-member-admission", "fail", "rejected",
             "execution-authority",
         ),
     )

@@ -736,9 +736,10 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_atomic_admission_binds_exact_hash_phase_and_logical_address(self):
         # SEB-3: Atomic evidence enters only through an exact passing AWS
         # admission for its complete bytes, phase, and Atomic logical address;
-        # substituted or cross-phase authority rejects admission.  Each case
-        # keeps every artifact exact and moves one binding of the pay-dem
-        # member to the (itself valid) delivery member's value.
+        # malformed, substituted, cross-phase, or non-passing authority
+        # rejects admission.  Each case keeps every artifact exact and moves
+        # one binding of the pay-dem member to the (itself valid) delivery
+        # member's value.
         base = self.data["executionAuthorities"]["atomic-current-completed"]
         disposition, reason, _ = derive_phase_disposition(
             copy.deepcopy(base), self.pubkeys
@@ -789,6 +790,33 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             with self.subTest(corpus=corpus_name):
                 disposition, reason, _ = derive_phase_disposition(
                     self.data["executionAuthorities"][corpus_name], self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+
+        # These keep the pay-dem admission exact in hash, phase key and
+        # logical address: only its non-pass AWS result, or an unknown member
+        # outside the closed admission shape, can refuse it.  The stored
+        # corpus authority is exactly the passing one with that one change.
+        expected_reason = "Atomic Work settlement admission is malformed or mismatched"
+        for corpus_name, field, value in (
+            ("atomic-non-passing-admission", "disposition", "fail"),
+            ("atomic-extra-member-admission", "valid", True),
+        ):
+            authority = copy.deepcopy(base)
+            authority["atomicEvidenceAdmissionByCanonicalRef"][pay_key][field] = value
+            with self.subTest(admission=f"{field}={value!r}"):
+                disposition, reason, phase_keys = derive_phase_disposition(
+                    copy.deepcopy(authority), self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+                self.assertIsNone(phase_keys)
+            with self.subTest(corpus=corpus_name):
+                stored = self.data["executionAuthorities"][corpus_name]
+                self.assertEqual(stored, authority)
+                disposition, reason, _ = derive_phase_disposition(
+                    stored, self.pubkeys
                 )
                 self.assertEqual(disposition, "fail", reason)
                 self.assertEqual(str(reason), expected_reason)

@@ -47,7 +47,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 68 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
-| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 62 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 64 | `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
@@ -127,8 +127,8 @@ applicable cell has at least one rule-referenced fixture of the right class.
 quantitative, lifecycle, discriminator, proof-availability, or profile-scope
 edge, and `X` is a machine-readable non-applicable cell with an explicit
 rationale. A dash is an error, not an informational gap. Multi-rule cases use
-`boundaryRuleRefs` to name only the rule edges actually exercised; ordinary
-signature or hash pass/fail cases are not mislabeled as boundaries. The
+`boundaryRuleRefs` to name which of their rules a boundary is attributed to;
+ordinary signature or hash pass/fail cases are not mislabeled as boundaries. The
 generator and strict validator both refuse any uncovered applicable cell.
 
 The gate counts rule references by verdict class; it does not establish that
@@ -676,7 +676,7 @@ assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
 
 ### `bundle-settlement-evidence-bijection-v0.4.json` — §10.4.3 SEB-1..SEB-6
 
-46 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
+64 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
 `settlementEvidence[]` array to the
 phase keys derived from a signature-verified DACS-1 listing pipeline and the
 domain-verified EBFAB `phaseSummary`; no caller-supplied expected set is trusted.

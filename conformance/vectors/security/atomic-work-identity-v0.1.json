@@ -31,7 +31,7 @@
     "acceptanceRuleCount": 31,
     "rejectionRuleCount": 35,
     "boundaryRuleCount": 3,
-    "note": "Across the generated corpus, every applicable rule polarity has a fixture; non-applicable cells require an explicit rationale, and boundaryRuleRefs attribute only the rule edges actually exercised."
+    "note": "Across the generated corpus, every applicable positive/negative/boundary cell of every rule ID has a rule-referenced fixture of the matching verdict class, and every non-applicable cell carries an explicit rationale; the generator and the strict validator both refuse a gap. Boundary cells count only boundaryRuleRefs. This gate counts rule references by class; it does not show that each fixture exercises its rule. Some cells are currently decided by self-reported or caller-supplied values, and strengthening them to the semantically meaningful fixtures CONFORMANCE-PLAN §14.8 requires remains open for this candidate."
   },
   "vectors": [
     {

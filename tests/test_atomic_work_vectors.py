@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import __future__
 import ast
+import contextlib
 import copy
 import inspect
+import io
 import json
 import subprocess
 import sys
@@ -248,8 +250,11 @@ class AtomicWorkVectorTests(unittest.TestCase):
 
     def test_changelog_atomic_coverage_agrees_with_strict_gate(self):
         # The gate is mechanical: it counts rule references by verdict class.
-        # The prose must say so, and must keep the CONFORMANCE-PLAN §14.8
+        # The CHANGELOG, the security README and every generated coverage
+        # note must say so, and must keep the CONFORMANCE-PLAN §14.8
         # semantically meaningful fixture requirement open, not claim it met.
+        # The validator's summary line claims only rule references.
+        overclaim = r"(?i)\b(complete|full|fully)\b[^.]*\bcover(age|ed)\b"
         self.assertTrue(validator.coverage_report()["completeApplicablePolarity"])
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         entry = changelog.split("- **Atomic Purchase and Completion Works**", 1)[1]
@@ -259,12 +264,19 @@ class AtomicWorkVectorTests(unittest.TestCase):
         )
         atomic = readme.split("## Atomic Work candidate test profile", 1)[1]
         atomic = " ".join(atomic.split("\n## ", 1)[0].split())
-        for name, text in (("CHANGELOG", entry), ("README", atomic)):
+        documents = [("CHANGELOG", entry), ("README", atomic)]
+        for data in self.sets:
+            # The machine classification stays; only its prose is qualified.
+            self.assertEqual(
+                data["coverage"]["classification"],
+                "candidate-complete-applicable-polarity",
+            )
+            documents.append((f"{data['set']} coverage note", data["coverage"]["note"]))
+        for name, text in documents:
             with self.subTest(document=name):
                 self.assertNotRegex(text, r"(?i)coverage[^.]*\bblocker\b")
-                self.assertNotRegex(
-                    text, r"(?i)\bcomplete\W+(\*\*)?applicable\b[^.]*\bcoverage\b"
-                )
+                self.assertNotRegex(text, overclaim)
+                self.assertNotIn("actually exercised", text)
                 self.assertRegex(text, r"rule-referenced fixture of the (matching|right)")
                 self.assertRegex(text, r"non-applicable cell\w* (carries|with) an explicit rationale")
                 self.assertRegex(text, r"generator and (the )?strict validator both refuse")
@@ -280,6 +292,14 @@ class AtomicWorkVectorTests(unittest.TestCase):
                     text,
                 )
                 self.assertNotRegex(text, r"\b(AWS?|AWP|AWB)-[0-9]+\b[^.]*self-reported")
+        output = io.StringIO()
+        with mock.patch.object(validator, "validate_all", return_value=([], 6, 315)):
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(validator.main(), 0)
+        summary = output.getvalue().splitlines()[0]
+        with self.subTest(document="validator summary"):
+            self.assertIn("rules with every applicable P/N/B cell rule-referenced;", summary)
+            self.assertNotRegex(summary, overclaim)
 
     def test_boundary_attribution_is_rule_specific(self):
         for data in self.sets:
@@ -824,6 +844,20 @@ class AtomicWorkVectorTests(unittest.TestCase):
                 ref.ed25519_public_key(seed), message, off_curve + signature[32:]
             )
         )
+
+    def test_ed25519_refuses_x_zero_with_the_sign_bit_set(self):
+        # RFC 8032 §5.1.3 step 4: decoding fails when x = 0 and the sign bit
+        # is 1.  y = 1 and y = p - 1 are the two curve points with x = 0, so
+        # the on-curve check accepts them and only the canonical re-encoding
+        # refuses the sign-bit twin.
+        for name, clear, signed in (
+            ("y = 1", "01" + "00" * 31, "01" + "00" * 30 + "80"),
+            ("y = p - 1", "ec" + "ff" * 30 + "7f", "ec" + "ff" * 31),
+        ):
+            with self.subTest(point=name):
+                self.assertEqual(ref._decode_point(bytes.fromhex(clear))[0], 0)
+                with self.assertRaisesRegex(ref.Invalid, "non-canonical Ed25519 encoding"):
+                    ref._decode_point(bytes.fromhex(signed))
 
     def test_ed25519_refuses_non_reduced_s(self):
         # RFC 8032 §5.1.7: s MUST be < L.  s + L is the classic malleated

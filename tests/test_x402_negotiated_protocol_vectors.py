@@ -711,10 +711,8 @@ def exact_atomic(amount, decimals, ceiling):
         raise ValueError("not exactly representable")
     if atomic > ceiling:
         raise ValueError("overflows the binding amount type")
-    value = str(atomic)
-    if not re.fullmatch(r"[1-9][0-9]*", value):
-        raise ValueError("non-canonical atomic amount")
-    return value
+    # A positive int, so its decimal string is already canonical.
+    return str(atomic)
 
 
 def decode_response_header(header, version):
@@ -939,17 +937,20 @@ def evaluate(v, effects=None):
         return ref_result, "rail-ref-shape"
     canonical_ref = jcs_canonicalize(ref)
     listed = v.get("listing", {}).get("acceptedRails")
-    if not isinstance(listed, list) or not listed:
+    if not isinstance(listed, list):
         return "fail", "listing-membership"
-    try:
-        canonical_listed = [jcs_canonicalize(item) for item in listed]
-    except (TypeError, ValueError):
-        return "error", "listing-ref-shape"
+    # The Listing signature verified, so every listed ref canonicalizes.
+    canonical_listed = [jcs_canonicalize(item) for item in listed]
     if len(canonical_listed) != len(set(canonical_listed)):
         return "fail", "duplicate-listing-ref"
     if canonical_listed.count(canonical_ref) != 1:
         return "fail", "listing-membership"
-    if jcs_canonicalize(v.get("runtime", {}).get("selectedRailRef")) != canonical_ref:
+    # The runtime copy is unsigned: one that cannot canonicalize is not the ref.
+    try:
+        runtime_ref = jcs_canonicalize(v.get("runtime", {}).get("selectedRailRef"))
+    except (TypeError, ValueError):
+        runtime_ref = None
+    if runtime_ref != canonical_ref:
         return "fail", "runtime-selection"
 
     parties = agreement.get("parties", [])
@@ -1043,7 +1044,8 @@ def evaluate(v, effects=None):
             return "fail", "extensions"
     elif version == 1:
         resource_url = None
-        if "extensions" in required or "paymentRequiredExtensions" in ref["parameters"]:
+        # validate_ref already refuses paymentRequiredExtensions in a v1 selection.
+        if "extensions" in required:
             return "fail", "legacy-extension-boundary"
     else:
         return "error", "unsupported-version"
@@ -1409,6 +1411,40 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 effects = {"walletAuthorizationCalls": 0}
                 evaluate(self.by_name[name], effects)
                 self.assertEqual(effects["walletAuthorizationCalls"], 0)
+
+    def test_every_execute_vector_calls_the_wallet_only_past_the_gates(self):
+        """Every execute vector, including ones added later, makes exactly the calls it declares.
+
+        `authorizationSubmitted` is the generator's declaration; the count comes
+        from the evaluator's one instrumented wallet-call site.
+        """
+        for vector in self.vectors:
+            if vector["operation"] != "execute":
+                continue
+            with self.subTest(vector=vector["name"]):
+                effects = {}
+                evaluate(copy.deepcopy(vector), effects)
+                want = 1 if vector["runtime"]["authorizationSubmitted"] else 0
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), want)
+
+    def test_paying_key_proof_uses_the_network_native_algorithm(self):
+        """XN-5: an EVM payer is proven by secp256k1 and a Solana payer by Ed25519.
+
+        The presentation check already ties each claim to its declared algorithm,
+        so this calls buyer_payment_control directly with a claim that names the
+        other algorithm over the right key bytes.
+        """
+        for name, wrong in (("protocol-v2-exact-success", "ed25519"),
+                            ("protocol-v2-solana-exact-success", "ecdsa-secp256k1")):
+            with self.subTest(vector=name):
+                vector = copy.deepcopy(self.by_name[name])
+                buyer = next(p for p in vector["agreement"]["parties"] if p["role"] == "buyer")
+                selection = vector["agreement"]["terms"]["rail"]["parameters"]["selection"]
+                self.assertTrue(buyer_payment_control(vector, buyer, selection))
+                vector["buyerBundle"]["claims"][1]["metadata"]["algorithm"] = wrong
+                bundle_hash = digest(buyer_bundle_scope(vector["buyerBundle"]))
+                buyer["bundleHash"] = vector["runtime"]["payer"]["bundleHash"] = bundle_hash
+                self.assertFalse(buyer_payment_control(vector, buyer, selection))
 
     def test_authorization_counter_distinguishes_pre_and_post_authorization(self):
         for name, want in (

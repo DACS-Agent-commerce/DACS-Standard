@@ -39,7 +39,8 @@ The format used per release:
   its static definition, string `protocolVersion`, and signed evidence bytes
   remain unchanged for already-pinned continuation and historical replay.
   Adds deterministic executable vectors for definition discrimination,
-  selection ambiguity, every pre-authorization substitution surface,
+  selection ambiguity, every pre-authorization substitution surface the
+  reference evaluator checks,
   bounded public-fetch literal classes (including legacy numeric IPv4 host
   spellings), v1/v2 hashing/version boundaries, local
   capability, exact decimal conversion, party binding, independent-assurance
@@ -132,6 +133,21 @@ The format used per release:
   XN-10 forbids; their static x402 alternative now carries its own test
   `railId` (`x402:alternative-test`, `x402:replacement-test`), as the
   rail-availability set already does. Verdicts are unchanged.
+- **Every evaluator check pinned by a vector** (DACS-4 §9.5.7 XN-1..XN-11) —
+  each check of the reference evaluator that a vector can reach now has one
+  that reaches it alone, with its result reason pinned; pre-authorization challenge
+  substitutions carry evidence that would otherwise pass, so skipping a
+  comparison changes the verdict, not only the reason. The cases cover,
+  among others, the ledger asset, network, scheme, decimals and
+  transaction; the evidence `httpResource`, `settlementNetwork` and
+  `x402Version`; a non-success response; the PC-5 currency; payee identity;
+  buyer and seller each exactly once; the buyer-bundle hash pin and session
+  nonce; request body bytes against the signed `bodyHash`; the challenge
+  `x402Version`; omitted versus empty extensions in both directions; the v1
+  extensions and per-member resource boundaries; artifact signatures; and
+  the legacy in-flight-only continuation. Removing any single check turns at
+  least one vector or test red; the two paying-key algorithm checks, which
+  the bundle presentation check already enforces, are pinned by unit tests.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

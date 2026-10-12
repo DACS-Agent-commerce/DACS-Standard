@@ -74,6 +74,11 @@ def b64u(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
+def flip_first(signature: str) -> str:
+    """The same base64url signature with its first character changed."""
+    return ("A" if signature[0] != "A" else "B") + signature[1:]
+
+
 def base58(raw: bytes) -> str:
     alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     number = int.from_bytes(raw, "big")
@@ -135,7 +140,14 @@ def payment_claim(network: str, address: str) -> str:
     return f"cci-xm:{'evm' if family == 'eip155' else family}:{subchain}:{address}"
 
 
-def buyer_bundle(network: str, address: str) -> dict:
+def buyer_bundle(network: str, address: str, *, presented_by_payment_key: bool = False,
+                 duplicate_payment_claim: bool = False) -> dict:
+    """The buyer's presented DACS-1 bundle with one payment claim for `address`.
+
+    The keyword variants stay correctly signed: one is presented by the payment
+    claim instead of the buyer's primary claim (the buyer's Ed25519 key signs
+    both entries), the other lists the payment claim twice.
+    """
     claim = payment_claim(network, address)
     if network.startswith("eip155:"):
         payment_metadata = {
@@ -149,18 +161,26 @@ def buyer_bundle(network: str, address: str) -> dict:
         }
     else:
         raise ValueError(f"no payment-key fixture for {network}")
+    buyer_metadata = {"testRole": "buyer"}
+    if presented_by_payment_key:
+        buyer_metadata = {"algorithm": "ed25519", "publicKey": public_key("buyer")}
+    claims = [
+        {"ref": BUYER_CLAIM, "metadata": buyer_metadata},
+        {"ref": claim, "metadata": payment_metadata},
+    ]
+    if duplicate_payment_claim:
+        claims.append(copy.deepcopy(claims[1]))
     body = {
         "bundleVersion": "1",
-        "presentedBy": BUYER_CLAIM,
+        "presentedBy": claim if presented_by_payment_key else BUYER_CLAIM,
         "presentedAt": 1787443199000,
         "sessionNonce": BUYER_SESSION_NONCE,
-        "claims": [
-            {"ref": BUYER_CLAIM, "metadata": {"testRole": "buyer"}},
-            {"ref": claim, "metadata": payment_metadata},
-        ],
+        "claims": claims,
     }
     payload = ("dacs-bundle-presentation:v1:" + digest(body)).encode("ascii")
-    if network.startswith("eip155:"):
+    if presented_by_payment_key:
+        payment_signature = key("buyer").sign(payload)
+    elif network.startswith("eip155:"):
         payment_signature = deterministic_ecdsa_sha256(
             EVM_BUYER_PRIVATE_SCALAR, payload
         )
@@ -525,7 +545,7 @@ def sign_all(value: dict) -> None:
 def add_case(vectors: list, name: str, expected: str, rule: str, note: str,
              mutate=None, *, version: int = 2, operation: str = "execute",
              refresh: bool = False, reason: str | None = None,
-             authorization_submitted: bool | None = None) -> None:
+             authorization_submitted: bool | None = None, tamper=None) -> None:
     value = make_base(version)
     if mutate:
         mutate(value)
@@ -537,6 +557,9 @@ def add_case(vectors: list, name: str, expected: str, rule: str, note: str,
     if refresh:
         refresh_received_hashes(value)
     sign_all(value)
+    if tamper:
+        # Changes signed bytes after signing, so a signature no longer verifies.
+        tamper(value)
     case = {
         "name": name,
         "expected": expected,
@@ -679,10 +702,15 @@ def build_vectors() -> list[dict]:
              "produce FinalityBoundSettlementEvidence",
              consumer_finality_profile, operation="validate-definition")
 
+    # The duplicated ref is not the selected one, so the selected ref still
+    # occurs once and only the duplicate check can reject the Listing.
     def duplicate_ref(v):
-        v["listing"]["acceptedRails"].append(copy.deepcopy(v["listing"]["acceptedRails"][0]))
+        other = copy.deepcopy(v["listing"]["acceptedRails"][0])
+        other["parameters"]["selection"]["network"] = "eip155:1"
+        v["listing"]["acceptedRails"] += [other, copy.deepcopy(other)]
     add_case(vectors, "listing-duplicate-canonical-ref", "fail", "XN-2/LRR-1",
-             "duplicate full-canonical refs reject", duplicate_ref)
+             "duplicate full-canonical refs reject even when neither is the selected ref",
+             duplicate_ref, reason="duplicate-listing-ref")
 
     def multi_accepts_right_selection(v):
         wrong = copy.deepcopy(v["agreement"]["terms"]["rail"])
@@ -696,19 +724,22 @@ def build_vectors() -> list[dict]:
         multi_accepts_right_selection(v)
         v["runtime"]["selectedRailRef"] = copy.deepcopy(v["listing"]["acceptedRails"][0])
     add_case(vectors, "runtime-first-matching-railid", "fail", "XN-2",
-             "runtime selection of the first same-ID ref is non-conforming", first_id_runtime)
+             "runtime selection of the first same-ID ref is non-conforming", first_id_runtime,
+             reason="runtime-selection")
 
     def agreement_ref_not_listed(v):
         v["agreement"]["terms"]["rail"]["parameters"]["selection"]["maxTimeoutSeconds"] = 61
         v["runtime"]["selectedRailRef"] = copy.deepcopy(v["agreement"]["terms"]["rail"])
     add_case(vectors, "agreement-ref-not-full-jcs-member", "fail", "XN-2",
-             "a co-signed partial/changed ref not in the Listing rejects", agreement_ref_not_listed)
+             "a co-signed partial/changed ref not in the Listing rejects", agreement_ref_not_listed,
+             reason="listing-membership")
 
     def legacy_agreement(v):
         v["agreement"].pop("payeeBoundAgreementVersion")
         v["agreement"]["agreementVersion"] = "1"
     add_case(vectors, "protocol-legacy-agreement-artifact", "fail", "XN-2",
-             "x402:protocol requires PayeeBoundAgreementDocument", legacy_agreement)
+             "x402:protocol requires PayeeBoundAgreementDocument", legacy_agreement,
+             reason="signature")
 
     # XN-2 listing admission. The signed Listing's commitment phase fixes the
     # agreement type (DACS-3 §8.5.2 check 9), so an x402:protocol offer beside
@@ -820,13 +851,16 @@ def build_vectors() -> list[dict]:
                  reason="listing-shape")
     add_case(vectors, "unsigned-runtime-url-override", "fail", "XN-2/XN-6",
              "a runtime URL beside the signed rail ref cannot override it",
-             lambda v: v["runtime"].update({"effectiveUrl": "https://attacker.example/pay"}))
+             lambda v: v["runtime"].update({"effectiveUrl": "https://attacker.example/pay"}),
+             reason="effective-request")
     add_case(vectors, "lowercase-request-method", "error", "XN-2",
              "method must be the canonical uppercase token",
-             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["request"].update({"method": "get"}))
+             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["request"].update({"method": "get"}),
+             reason="rail-ref-shape")
     add_case(vectors, "non-https-request-url", "error", "XN-2",
              "payable target must be absolute HTTPS",
-             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["request"].update({"url": "http://seller.example/pay"}))
+             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["request"].update({"url": "http://seller.example/pay"}),
+             reason="rail-ref-shape")
     # NB the address-class rule cited here lives in DACS-1 §6.3.6 on the `next` branch, which
     # is this PR's base; it is not yet present on `main`. Anyone checking the citation against
     # `main` will not find it — that is a branch difference, not a bad citation.
@@ -1024,13 +1058,16 @@ def build_vectors() -> list[dict]:
         )
     add_case(vectors, "bare-network-label", "error", "XN-2/XN-4",
              "a bare network label is not CAIP-2",
-             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"network": "base"}))
+             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"network": "base"}),
+             reason="rail-ref-shape")
     add_case(vectors, "numeric-version-replaced-by-string", "error", "XN-2/XN-7",
              "new evidence and selection use a number, never protocolVersion-style text",
-             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"x402Version": "2"}))
+             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"x402Version": "2"}),
+             reason="rail-ref-shape")
     add_case(vectors, "negative-asset-decimals", "error", "XN-2/XN-5",
              "assetDecimals is a non-negative safe integer",
-             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"assetDecimals": -1}))
+             lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"assetDecimals": -1}),
+             reason="rail-ref-shape")
 
     def unsupported_tuple(v):
         v["capability"]["supportedTuples"] = []
@@ -1039,14 +1076,16 @@ def build_vectors() -> list[dict]:
              reason="x402-capability-unsupported")
     add_case(vectors, "counterparty-operator-config", "error", "XN-3",
              "operator configuration must come from trusted local policy",
-             lambda v: v["runtime"].update({"operatorConfigSource": "payment-required-extension"}))
+             lambda v: v["runtime"].update({"operatorConfigSource": "payment-required-extension"}),
+             reason="operator-config-source")
     add_case(vectors, "operator-routing-change-preserves-rail-identity", "pass", "XN-3",
              "changing local facilitator/RPC routing does not change the signed rail identity",
              lambda v: v["runtime"].update({"facilitator": "https://facilitator-b.example", "rpc": "https://rpc-b.example"}))
 
     add_case(vectors, "non-402-response-before-authorization", "fail", "XN-4",
              "a normal 200 response is not an x402 challenge",
-             lambda v: v["http"].update({"status": 200}))
+             lambda v: v["http"].update({"status": 200}),
+             reason="not-payment-required")
     # XN-4: only a definite non-payment answer fails. No answer, a server error,
     # a timeout or a rate limit is transient: nothing was authorized, so the
     # unpaid request is retried and no party is at fault.
@@ -1071,7 +1110,8 @@ def build_vectors() -> list[dict]:
                  reason="not-payment-required" if expected == "fail" else "unpaid-request-transient")
     add_case(vectors, "challenge-resource-substitution", "fail", "XN-4",
              "resource URL substitution rejects before signing",
-             lambda v: v["http"]["paymentRequired"]["resource"].update({"url": "https://attacker.example/pay"}))
+             lambda v: v["http"]["paymentRequired"]["resource"].update({"url": "https://attacker.example/pay"}),
+             refresh=True, reason="challenge-match")
 
     def first_accept_wrong_then_exact(v):
         wrong = copy.deepcopy(v["http"]["paymentRequired"]["accepts"][0])
@@ -1085,7 +1125,8 @@ def build_vectors() -> list[dict]:
         v["http"]["paymentRequired"]["accepts"].append(
             copy.deepcopy(v["http"]["paymentRequired"]["accepts"][0]))
     add_case(vectors, "challenge-duplicate-exact-accepts", "fail", "XN-4",
-             "multiple exact matches are ambiguous", duplicate_accept, refresh=True)
+             "multiple exact matches are ambiguous", duplicate_accept, refresh=True,
+             reason="challenge-match")
     for name, field, replacement in (
         ("challenge-network-substitution", "network", "eip155:1"),
         ("challenge-asset-substitution", "asset", "0x" + "99" * 20),
@@ -1095,16 +1136,36 @@ def build_vectors() -> list[dict]:
     ):
         add_case(vectors, name, "fail", "XN-4/XN-5",
                  f"{field} substitution rejects before authorization",
-                 lambda v, f=field, r=replacement: v["http"]["paymentRequired"]["accepts"][0].update({f: r}))
+                 lambda v, f=field, r=replacement: v["http"]["paymentRequired"]["accepts"][0].update({f: r}),
+                 refresh=True, reason="challenge-match")
     add_case(vectors, "challenge-extra-substitution", "fail", "XN-4/XN-6",
              "the complete PaymentRequirements.extra object is bound",
-             lambda v: v["http"]["paymentRequired"]["accepts"][0]["extra"].update({"spender": "attacker"}))
+             lambda v: v["http"]["paymentRequired"]["accepts"][0]["extra"].update({"spender": "attacker"}),
+             refresh=True, reason="challenge-match")
     add_case(vectors, "challenge-extension-substitution", "fail", "XN-4/XN-6",
              "the complete top-level extensions object is bound",
-             lambda v: v["http"]["paymentRequired"]["extensions"]["payment-identifier"].update({"required": False}))
+             lambda v: v["http"]["paymentRequired"]["extensions"]["payment-identifier"].update({"required": False}),
+             refresh=True, reason="extensions")
+    # XN-4: omitted and `{}` are distinct, in both directions.
+    def signed_extensions(value):
+        def mutate(v, value=value):
+            for ref in (v["listing"]["acceptedRails"][0], v["agreement"]["terms"]["rail"],
+                        v["runtime"]["selectedRailRef"]):
+                if value is absent:
+                    ref["parameters"].pop("paymentRequiredExtensions")
+                else:
+                    ref["parameters"]["paymentRequiredExtensions"] = value
+            if value is absent:
+                v["http"]["paymentRequired"]["extensions"] = {}
+            else:
+                v["http"]["paymentRequired"].pop("extensions")
+        return mutate
     add_case(vectors, "challenge-extension-absent-vs-empty", "fail", "XN-4/XN-6",
-             "omitted and empty extensions are distinct",
-             lambda v: v["http"]["paymentRequired"].update({"extensions": {}}))
+             "a challenge that omits extensions does not match a signed empty object",
+             signed_extensions({}), refresh=True, reason="extension-presence")
+    add_case(vectors, "challenge-extension-empty-vs-absent", "fail", "XN-4/XN-6",
+             "a challenge with empty extensions does not match a selection that omits them",
+             signed_extensions(absent), refresh=True, reason="extension-presence")
     add_case(vectors, "payment-required-unknown-member-preserved", "pass", "XN-6/XN-7",
              "an unrecognised descriptive member remains in the complete challenge commitment",
              lambda v: v["http"]["paymentRequired"].update({"futureDescription": {"label": "v3-readable"}}),
@@ -1123,15 +1184,18 @@ def build_vectors() -> list[dict]:
              non_nfc_received_objects, refresh=True)
     add_case(vectors, "unsupported-action-bearing-extension", "fail", "XN-6",
              "an action-bearing extension the adapter cannot validate rejects before signing",
-             lambda v: v["capability"].update({"understoodActionExtensions": []}))
+             lambda v: v["capability"].update({"understoodActionExtensions": []}),
+             reason="unsupported-action-extension")
     add_case(vectors, "redirected-payable-resource", "fail", "XN-6",
              "redirect following cannot change the signed payable target",
-             lambda v: v["runtime"].update({"redirected": True, "effectiveUrl": "https://cdn.example/pay"}))
+             lambda v: v["runtime"].update({"redirected": True, "effectiveUrl": "https://cdn.example/pay"}),
+             reason="effective-request")
 
     def add_body_without_hash(v):
         v["runtime"]["requestBodyBase64"] = base64.b64encode(b"{} ").decode("ascii")
     add_case(vectors, "body-sent-without-signed-hash", "fail", "XN-6",
-             "an absent bodyHash requires no request body", add_body_without_hash)
+             "an absent bodyHash requires no request body", add_body_without_hash,
+             reason="unsigned-request-body")
 
     def valid_body(v):
         body = b'{"job":"274"}'
@@ -1145,10 +1209,12 @@ def build_vectors() -> list[dict]:
     def wrong_decimals(v):
         v["capability"]["assetMetadata"]["decimals"] = 18
     add_case(vectors, "asset-decimals-adapter-mismatch", "fail", "XN-5",
-             "signed decimals must match independent asset metadata", wrong_decimals)
+             "signed decimals must match independent asset metadata", wrong_decimals,
+             reason="asset-metadata")
     add_case(vectors, "agreement-price-excess-precision", "fail", "XN-5",
              "exact conversion never rounds excess fractional precision",
-             lambda v: v["agreement"]["terms"]["price"].update({"amount": "1.0000001"}))
+             lambda v: v["agreement"]["terms"]["price"].update({"amount": "1.0000001"}),
+             reason="exact-amount")
 
     # Exact shifting must not depend on an arithmetic context: a 28-digit
     # decimal context would round both prices below and accept the second.
@@ -1217,24 +1283,30 @@ def build_vectors() -> list[dict]:
              reason="rail-ref-shape")
     add_case(vectors, "runtime-payer-not-agreement-buyer", "fail", "XN-5",
              "runtime payer must resolve to the signed buyer",
-             lambda v: v["runtime"]["payer"].update({"primaryClaim": "did:demos:agent:" + "99" * 32}))
+             lambda v: v["runtime"]["payer"].update({"primaryClaim": "did:demos:agent:" + "99" * 32}),
+             reason="payer-party")
     add_case(vectors, "runtime-paying-key-not-buyer-controlled", "fail", "XN-5",
              "the payment authorization key must be controlled by the signed buyer",
-             lambda v: v["runtime"]["payer"].update({"payingKey": "did:demos:agent:" + "99" * 32}))
+             lambda v: v["runtime"]["payer"].update({"payingKey": "did:demos:agent:" + "99" * 32}),
+             reason="payer-control")
     add_case(vectors, "runtime-payer-address-not-derived-from-paying-key", "fail", "XN-5",
              "an attacker address cannot replace the address independently derived from the signed bundle payment key",
-             lambda v: v["runtime"]["payer"].update({"paymentAddress": "0x" + "99" * 20}))
+             lambda v: v["runtime"]["payer"].update({"paymentAddress": "0x" + "99" * 20}),
+             reason="payer-control")
     add_case(vectors, "runtime-payee-not-signed-destination", "fail", "XN-5",
              "an unsigned runtime payee cannot replace the payout binding",
-             lambda v: v["runtime"]["payee"].update({"payeeAddress": "0x" + "99" * 20}))
+             lambda v: v["runtime"]["payee"].update({"payeeAddress": "0x" + "99" * 20}),
+             reason="payout-binding")
     add_case(vectors, "ledger-payer-substitution", "fail", "XN-5/XN-8",
              "authenticated event payer must be the buyer-controlled authorization payer",
              lambda v: v["ledger"].update({"payer": "0x" + "99" * 20}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="ledger-event")
     add_case(vectors, "ledger-payee-substitution", "fail", "XN-5/XN-8",
              "authenticated event destination must be the signed payout binding",
              lambda v: v["ledger"].update({"payTo": "0x" + "99" * 20}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="ledger-event")
 
     # XN-5: an EIP-155 address compares as a 20-byte value, letter case ignored;
     # the EIP-55 checksum is neither required nor checked. The seller here is
@@ -1384,11 +1456,13 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "payment-required-hash-substitution", "fail", "XN-7",
              "stored challenge hash must recompute from the complete object",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentRequiredHash": "00" * 32}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="payment-required-hash")
     add_case(vectors, "payment-receipt-hash-substitution", "fail", "XN-7",
              "stored receipt hash must recompute from the complete response",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentReceiptHash": "00" * 32}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="payment-receipt-hash")
     # XN-11: after authorization only the authenticated ledger decides. Each
     # response defect below sits over the base ledger, an exact finalized
     # settlement, so the payment settled and the defect is the reason: the
@@ -1489,22 +1563,26 @@ def build_vectors() -> list[dict]:
         ref["protocolVersion"] = str(ref.pop("x402Version"))
     add_case(vectors, "new-evidence-uses-legacy-protocolversion", "error", "XN-7/XN-10",
              "x402-protocol evidence cannot emit legacy protocolVersion", protocol_version_field,
-             authorization_submitted=True)
+             authorization_submitted=True, reason="evidence-ref-shape")
     add_case(vectors, "ledger-unavailable-after-submission", "indeterminate", "XN-8/XN-11",
              "receipt acknowledgement without authenticated ledger data is not success",
              lambda v: v["ledger"].update({"available": False}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="independent-settlement-unavailable")
     add_case(vectors, "acknowledgement-only-no-transaction", "indeterminate", "XN-8",
              "a signed/hashed server acknowledgement alone cannot produce success",
-             lambda v: v.pop("ledger"), authorization_submitted=True)
+             lambda v: v.pop("ledger"), authorization_submitted=True,
+             reason="independent-settlement-unavailable")
     add_case(vectors, "ledger-event-amount-mismatch", "fail", "XN-5/XN-8",
              "the authenticated event amount must be exact",
              lambda v: v["ledger"].update({"amount": "1249999"}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="ledger-event")
     add_case(vectors, "ledger-not-final", "indeterminate", "XN-8",
              "included but non-final settlement is not success",
              lambda v: v["ledger"].update({"finalized": False}),
-             authorization_submitted=True)
+             authorization_submitted=True,
+             reason="settlement-not-final")
 
     def noncanonical_event(v):
         value = f"evm:8453:0x{SAFE_TX}:7"
@@ -1525,17 +1603,20 @@ def build_vectors() -> list[dict]:
              "a different signed event coordinate cannot match authenticated ledger data",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({
                  "settlementEvent": f"evm:8453:{SAFE_TX}:8"
-             }), authorization_submitted=True)
+             }), authorization_submitted=True,
+             reason="ledger-event")
     add_case(vectors, "finality-profile-network-substitution", "fail", "XN-8",
              "the signed finality profile must repeat the selected scheme and network",
              lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
                  "network": "eip155:1"
-             }), authorization_submitted=True)
+             }), authorization_submitted=True,
+             reason="finality-profile")
     add_case(vectors, "finality-binding-profile-substitution", "fail", "XN-8",
              "the finality binding profile must name the exact v0.8 DACS semantics",
              lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
                  "bindingProfile": "counterparty-profile:v1"
-             }), authorization_submitted=True)
+             }), authorization_submitted=True,
+             reason="finality-profile")
     add_case(vectors, "event-key-cross-rail-alias", "pass", "XN-8/SB-1",
              "EIP-155 x402 evidence emits the same evm event key as the direct rail")
 
@@ -1599,14 +1680,16 @@ def build_vectors() -> list[dict]:
         v["runtime"]["sessionState"] = "new"
     add_case(vectors, "legacy-default-new-session-disabled", "fail", "XN-10/RAV-R2",
              "x402:default cannot start a new session", disabled_default,
-             operation="new-session")
+             operation="new-session",
+             reason="legacy-default-new-session")
 
     def pinned_live_default(v):
         v["railDefinition"] = legacy_live_rail()
         v["runtime"]["sessionState"] = "new"
     add_case(vectors, "legacy-default-pinned-live-new-session", "fail", "XN-10",
              "pinning the historical live revision cannot bypass the new-session prohibition",
-             pinned_live_default, operation="new-session")
+             pinned_live_default, operation="new-session",
+             reason="legacy-default-new-session")
 
     def legacy_replay(v):
         v["railDefinition"] = legacy_live_rail()
@@ -1769,6 +1852,302 @@ def build_vectors() -> list[dict]:
              "base58 is case-sensitive, so a retained Solana authorization identity with one "
              "changed letter case names a different payer",
              retry_solana_authorization_identity_case_changed, operation="retry",
+             authorization_submitted=True, reason="reconciliation-binding")
+
+    # Every evaluator check has a case that reaches it alone: each input differs
+    # from a passing fixture only in what that check reads, and the reason is
+    # pinned, so deleting the check changes the verdict or the reason.
+    def signed_selection_refs(v):
+        return (v["listing"]["acceptedRails"][0], v["agreement"]["terms"]["rail"],
+                v["runtime"]["selectedRailRef"])
+
+    # Before authorization: definition, listing, parties and payer control.
+    add_case(vectors, "execute-with-hybrid-definition", "error", "XN-1",
+             "the execute path re-validates the pinned protocol definition",
+             lambda v: v["railDefinition"].update({"asset": {"kind": "erc20"}}),
+             reason="definition")
+    add_case(vectors, "listing-accepted-rails-empty", "fail", "XN-2",
+             "a Listing with no accepted rails cannot contain the selected ref",
+             lambda v: v["listing"].update({"acceptedRails": []}), reason="listing-membership")
+    add_case(vectors, "listing-accepted-rails-absent", "fail", "XN-2",
+             "a Listing without acceptedRails cannot contain the selected ref",
+             lambda v: v["listing"].pop("acceptedRails"), reason="listing-membership")
+    add_case(vectors, "runtime-selected-ref-out-of-profile-number", "fail", "XN-2",
+             "an unsigned runtime ref whose railVersion is outside the CORE number profile "
+             "is not the selected ref, never an exception",
+             lambda v: v["runtime"]["selectedRailRef"].update({"railVersion": 2**53}),
+             reason="runtime-selection")
+    add_case(vectors, "rail-ref-extra-member", "error", "XN-2",
+             "a selected ref with a member outside railId, railVersion and parameters is malformed",
+             lambda v: v["agreement"]["terms"]["rail"].update({"provider": "facilitator.example"}),
+             reason="rail-ref-shape")
+
+    def body_hash_upper_case(v):
+        valid_body(v)
+        for ref in signed_selection_refs(v):
+            request = ref["parameters"]["request"]
+            request["bodyHash"] = request["bodyHash"].upper()
+    add_case(vectors, "request-body-hash-upper-case", "error", "XN-2",
+             "a signed bodyHash is exactly 64 lower-case hexadecimal digits",
+             body_hash_upper_case, reason="rail-ref-shape")
+    add_case(vectors, "payout-binding-duplicated", "fail", "XN-5/PB-1",
+             "exactly one payout binding may name (x402:protocol, phaseIndex)",
+             lambda v: v["agreement"]["terms"]["payoutBindings"].append(
+                 copy.deepcopy(v["agreement"]["terms"]["payoutBindings"][0])),
+             reason="payout-binding")
+    add_case(vectors, "challenge-scheme-substitution", "fail", "XN-4",
+             "scheme substitution rejects before authorization",
+             lambda v: v["http"]["paymentRequired"]["accepts"][0].update({"scheme": "upto"}),
+             reason="challenge-match")
+
+    # Artifact signatures: each case changes signed bytes after signing.
+    for name, tamper, note in (
+        ("definition-signature-invalid",
+         lambda v: v["railDefinition"].update({"railVersion": 2}),
+         "the pinned protocol definition must carry the steward's valid signature"),
+        ("listing-signature-invalid",
+         lambda v: v["listing"].update({"listingVersion": 2}),
+         "the Listing must carry the seller's valid signature"),
+        ("agreement-signature-invalid",
+         lambda v: v["agreement"]["terms"]["price"].update({"amount": "1.26"}),
+         "the agreement must carry both parties' valid signatures"),
+        ("buyer-bundle-presentation-signature-invalid",
+         lambda v: v["buyerBundle"]["presentation"]["signatures"][1].update(
+             {"signature": flip_first(v["buyerBundle"]["presentation"]["signatures"][1]["signature"])}),
+         "the buyer bundle's per-claim presentation signatures must verify"),
+        ("evidence-signature-invalid",
+         lambda v: v["evidence"].update({"observedAt": 1787443202000}),
+         "settlement evidence must carry the orchestrator's valid signature"),
+    ):
+        add_case(vectors, name, "fail", "SIG-2", note, tamper=tamper, reason="signature")
+
+    # Payer control over the presented bundle.
+    def presented_bundle(**variant):
+        def mutate(v):
+            bundle = buyer_bundle("eip155:8453", BUYER_ADDRESS, **variant)
+            bundle_hash = digest(unsigned(bundle, "presentation"))
+            v["buyerBundle"] = bundle
+            v["agreement"]["parties"][0]["bundleHash"] = bundle_hash
+            v["runtime"]["payer"]["bundleHash"] = bundle_hash
+        return mutate
+    add_case(vectors, "buyer-bundle-presented-by-paying-key", "fail", "XN-5",
+             "a validly signed bundle presented by its payment claim is not the buyer's "
+             "presentation, which the agreement's buyer primary claim makes",
+             presented_bundle(presented_by_payment_key=True), reason="payer-control")
+    add_case(vectors, "buyer-bundle-duplicate-paying-key-claim", "fail", "XN-5",
+             "payingKey must identify exactly one claim in the bundle",
+             presented_bundle(duplicate_payment_claim=True), reason="payer-control")
+
+    def claim_address_not_derived(v):
+        attacker = "0x" + "99" * 20
+        bundle = buyer_bundle("eip155:8453", attacker)
+        bundle_hash = digest(unsigned(bundle, "presentation"))
+        v["buyerBundle"] = bundle
+        v["agreement"]["parties"][0]["bundleHash"] = bundle_hash
+        v["runtime"]["payer"].update({
+            "bundleHash": bundle_hash,
+            "payingKey": payment_claim("eip155:8453", attacker),
+        })
+    add_case(vectors, "paying-key-claim-address-not-derived-from-key", "fail", "XN-5",
+             "a signed paying-key claim naming an address its key does not derive proves no "
+             "payer, even though the authorization payer is the derived address",
+             claim_address_not_derived, reason="payer-control")
+
+    # XN-7: a sound response's transaction is kept verbatim in the evidence.
+    add_case(vectors, "evidence-transaction-respelled", "fail", "XN-7",
+             "evidence that respells the sound response's transaction contradicts it, "
+             "though both name the same transaction",
+             lambda v: v["evidence"]["paymentTxRefs"][0].update({"settlementTransaction": SAFE_TX}),
+             authorization_submitted=True, reason="evidence-response-binding")
+    for role in ("buyer", "seller"):
+        add_case(vectors, f"agreement-{role}-listed-twice", "fail", "XN-2",
+                 f"the agreement {role} must occur exactly once in parties",
+                 lambda v, r=role: v["agreement"]["parties"].append(copy.deepcopy(next(
+                     party for party in v["agreement"]["parties"] if party["role"] == r))),
+                 reason="party-cardinality")
+    add_case(vectors, "runtime-payee-not-agreement-seller", "fail", "XN-5",
+             "the runtime payee must resolve to the signed seller",
+             lambda v: v["runtime"]["payee"].update({"primaryClaim": "did:demos:agent:" + "99" * 32}),
+             reason="payee-party")
+    add_case(vectors, "agreement-buyer-bundle-hash-not-presented-bundle", "fail", "XN-5",
+             "the signed buyer bundleHash must pin the presented bundle",
+             lambda v: v["agreement"]["parties"][0].update({"bundleHash": "cc" * 32}),
+             reason="payer-control")
+    add_case(vectors, "runtime-payer-bundle-hash-not-presented-bundle", "fail", "XN-5",
+             "the runtime payer's bundleHash must pin the presented bundle",
+             lambda v: v["runtime"]["payer"].update({"bundleHash": "cc" * 32}),
+             reason="payer-control")
+    add_case(vectors, "buyer-bundle-session-nonce-not-issued", "fail", "XN-5",
+             "the presented bundle must carry the session nonce issued for this session",
+             lambda v: v["runtime"].update({"issuedBuyerSessionNonce": "00" * 16}),
+             reason="payer-control")
+    add_case(vectors, "runtime-paying-key-is-identity-claim", "fail", "XN-5",
+             "a paying key that is the buyer's identity claim, not a payment claim, proves no payer",
+             lambda v: v["runtime"]["payer"].update({"payingKey": BUYER_CLAIM}),
+             reason="payer-control")
+
+    # Before authorization: capability, currency, request and challenge.
+    add_case(vectors, "exact-binding-profile-unsupported-locally", "fail", "XN-3",
+             "a supported exact tuple without the local dacs-x402-exact:v1 binding is refused",
+             lambda v: v["capability"].update({"bindingProfiles": []}),
+             reason="x402-capability-unsupported")
+    add_case(vectors, "price-currency-not-selection-currency", "fail", "PC-5/XN-5",
+             "the agreement price currency must equal the signed selection currency",
+             lambda v: v["agreement"]["terms"]["price"].update({"currency": "USDT"}),
+             reason="currency")
+    add_case(vectors, "asset-metadata-network-mismatch", "fail", "XN-5",
+             "independent asset metadata must be for the signed network",
+             lambda v: v["capability"]["assetMetadata"].update({"network": "eip155:1"}),
+             reason="asset-metadata")
+    add_case(vectors, "asset-metadata-asset-mismatch", "fail", "XN-5",
+             "independent asset metadata must be for the signed asset",
+             lambda v: v["capability"]["assetMetadata"].update({"asset": "0x" + "99" * 20}),
+             reason="asset-metadata")
+    add_case(vectors, "redirect-followed-to-same-url", "fail", "XN-6",
+             "a followed redirect rejects even when it lands on the signed URL",
+             lambda v: v["runtime"].update({"redirected": True}), reason="effective-request")
+    add_case(vectors, "request-body-not-base64", "error", "XN-6",
+             "a request body that is not base64 is malformed",
+             lambda v: v["runtime"].update({"requestBodyBase64": "%%%"}), reason="request-body")
+
+    def body_not_signed(v):
+        valid_body(v)
+        v["runtime"]["requestBodyBase64"] = base64.b64encode(b'{"job":"275"}').decode("ascii")
+    add_case(vectors, "request-body-not-signed-body-hash", "fail", "XN-6",
+             "request body bytes must hash to the signed bodyHash",
+             body_not_signed, reason="request-body-hash")
+    add_case(vectors, "payment-required-not-object", "error", "XN-4",
+             "a PaymentRequired that is not an object is malformed",
+             lambda v: v["http"].update({"paymentRequired": []}), reason="payment-required-version")
+    add_case(vectors, "challenge-version-not-selection", "error", "XN-4",
+             "PaymentRequired.x402Version must equal the signed selection",
+             lambda v: v["http"]["paymentRequired"].update({"x402Version": 1}),
+             reason="payment-required-version")
+    add_case(vectors, "challenge-accepts-not-array", "error", "XN-4",
+             "accepts must be an array",
+             lambda v: v["http"]["paymentRequired"].update({"accepts": {}}),
+             reason="payment-required-shape")
+    add_case(vectors, "challenge-resource-not-object", "error", "XN-4",
+             "a v2 resource must be an object",
+             lambda v: v["http"]["paymentRequired"].update({"resource": URL}),
+             reason="payment-required-shape")
+    add_case(vectors, "challenge-accepts-member-not-object", "error", "XN-4",
+             "every accepts member must be an object",
+             lambda v: v["http"]["paymentRequired"]["accepts"].append("exact"),
+             reason="accepts-shape")
+    add_case(vectors, "challenge-accepts-extra-absent", "fail", "XN-4/XN-6",
+             "an accepts member without extra cannot match the signed extra object",
+             lambda v: v["http"]["paymentRequired"]["accepts"][0].pop("extra"),
+             refresh=True, reason="challenge-match")
+    add_case(vectors, "v1-challenge-carries-extensions", "fail", "XN-4",
+             "a v1 challenge carries no top-level extensions",
+             lambda v: v["http"]["paymentRequired"].update(
+                 {"extensions": {"payment-identifier": {"required": True}}}),
+             version=1, refresh=True, reason="legacy-extension-boundary")
+    add_case(vectors, "v1-challenge-resource-substitution", "fail", "XN-4",
+             "a v1 accepts member's resource must be the signed URL",
+             lambda v: v["http"]["paymentRequired"]["accepts"][0].update(
+                 {"resource": "https://attacker.example/pay"}),
+             version=1, refresh=True, reason="challenge-match")
+
+    def version_three(v):
+        for ref in signed_selection_refs(v):
+            ref["parameters"]["selection"]["x402Version"] = 3
+        v["http"]["paymentRequired"]["x402Version"] = 3
+        v["capability"]["supportedTuples"] = [[3, "exact", "eip155:8453"]]
+    add_case(vectors, "x402-version-without-known-shapes", "error", "XN-4/XN-7",
+             "a version whose PaymentRequired and response shapes the adapter does not define "
+             "is refused before authorization",
+             version_three, reason="unsupported-version")
+
+    # After authorization: evidence and ledger.
+    for name, change, note, verdict, reason in (
+        ("evidence-two-references", lambda ref, refs: refs.append(copy.deepcopy(ref)),
+         "success evidence carries exactly one x402-protocol reference", "error",
+         "evidence-ref-count"),
+        ("evidence-kind-not-protocol", lambda ref, _: ref.update({"kind": "x402-event"}),
+         "x402:protocol evidence uses the x402-protocol arm", "error", "evidence-version"),
+        ("evidence-x402-version-string", lambda ref, _: ref.update({"x402Version": "2"}),
+         "the evidence x402Version is a number", "error", "evidence-version"),
+        ("evidence-x402-version-substitution", lambda ref, _: ref.update({"x402Version": 1}),
+         "the evidence x402Version must equal the signed selection", "fail", "evidence-version"),
+        ("evidence-receipt-hash-upper-case",
+         lambda ref, _: ref.update({"paymentReceiptHash": ref["paymentReceiptHash"].upper()}),
+         "a stored hash is exactly 64 lower-case hex digits", "error", "evidence-hash-shape"),
+        ("evidence-http-resource-substitution",
+         lambda ref, _: ref.update({"httpResource": "https://other-seller.example/pay"}),
+         "httpResource must equal the signed URL", "fail", "evidence-binding"),
+        ("evidence-settlement-network-substitution",
+         lambda ref, _: ref.update({"settlementNetwork": "eip155:1"}),
+         "settlementNetwork must equal the signed network", "fail", "evidence-binding"),
+    ):
+        add_case(vectors, name, verdict, "XN-7/XN-8", note,
+                 lambda v, c=change: c(v["evidence"]["paymentTxRefs"][0],
+                                       v["evidence"]["paymentTxRefs"]),
+                 authorization_submitted=True, reason=reason)
+    add_case(vectors, "finality-model-substitution", "fail", "XN-8",
+             "the finality record must use the scheme-network-finality model",
+             lambda v: v["evidence"]["settlementFinality"].update({"model": "block-depth"}),
+             authorization_submitted=True, reason="finality-profile")
+    for name, field, value, note in (
+        ("ledger-asset-substitution", "asset", "0x" + "99" * 20,
+         "the authenticated event must move the signed asset, not another token for the same amount"),
+        ("ledger-network-substitution", "network", "eip155:1",
+         "the authenticated event must be on the signed network"),
+        ("ledger-scheme-substitution", "scheme", "upto",
+         "the authenticated event must settle the exact scheme"),
+        ("ledger-asset-decimals-substitution", "assetDecimals", 18,
+         "the authenticated asset decimals must equal the signed decimals"),
+        ("ledger-transaction-substitution", "transaction", "0x" + "cd" * 32,
+         "the authenticated event must belong to the recorded transaction"),
+    ):
+        add_case(vectors, name, "fail", "XN-5/XN-8", note,
+                 lambda v, f=field, x=value: v["ledger"].update({f: x}),
+                 authorization_submitted=True, reason="ledger-event")
+
+    # Legacy x402:default replay and continuation boundaries.
+    def legacy_variant(change):
+        def mutate(v):
+            legacy_replay(v)
+            change(v)
+        return mutate
+    add_case(vectors, "legacy-default-continuation-not-in-flight", "fail", "XN-10",
+             "only an already pinned in-flight session may continue on x402:default",
+             legacy_variant(lambda v: v["runtime"].update({"sessionState": "new"})),
+             operation="legacy-continuation", authorization_submitted=True,
+             reason="not-in-flight")
+    for name, change, note, reason in (
+        ("legacy-replay-two-references",
+         lambda v: v["evidence"]["paymentTxRefs"].append(copy.deepcopy(v["evidence"]["paymentTxRefs"][0])),
+         "legacy replay evidence carries exactly one reference", "shape"),
+        ("legacy-replay-protocol-rail", lambda v: v.update({"railDefinition": protocol_rail()}),
+         "legacy replay is only for the x402:default rail", "legacy-boundary"),
+        ("legacy-replay-protocol-arm",
+         lambda v: v["evidence"]["paymentTxRefs"][0].update({"kind": "x402-protocol"}),
+         "legacy replay keeps the frozen x402-event arm", "legacy-boundary"),
+        ("legacy-replay-numeric-protocol-version",
+         lambda v: v["evidence"]["paymentTxRefs"][0].update({"protocolVersion": 2}),
+         "legacy protocolVersion stays a string", "legacy-boundary"),
+        ("legacy-replay-ref-carries-x402-version",
+         lambda v: v["evidence"]["paymentTxRefs"][0].update({"x402Version": 2}),
+         "a legacy reference never acquires the numeric x402Version", "legacy-boundary"),
+    ):
+        add_case(vectors, name, "error", "XN-10", note, legacy_variant(change),
+                 operation="legacy-replay", authorization_submitted=True, reason=reason)
+
+    # Retry: the retained state's shape.
+    def retained_state(value):
+        def mutate(v):
+            v["ledger"]["available"] = False
+            v["runtime"]["reconciliationState"] = value(v["runtime"]["reconciliationState"])
+        return mutate
+    add_case(vectors, "retry-retained-state-not-object", "fail", "XN-11",
+             "a retained state that is not an object names no identity",
+             retained_state(lambda _: None), operation="retry", authorization_submitted=True,
+             reason="reconciliation-binding")
+    add_case(vectors, "retry-retained-state-extra-field", "fail", "XN-11",
+             "a retained state with a field outside the identity is not this session's",
+             retained_state(lambda state: {**state, "nonce": "fresh"}), operation="retry",
              authorization_submitted=True, reason="reconciliation-binding")
 
     return vectors

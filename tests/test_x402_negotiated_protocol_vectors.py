@@ -9,6 +9,7 @@ import sys
 import unicodedata
 import unittest
 from pathlib import Path
+from unittest import mock
 from urllib.parse import quote, unquote, urlsplit
 
 from cryptography.exceptions import InvalidSignature
@@ -484,12 +485,17 @@ def _is_a_label(label):
 
     The U-label must contain a non-ASCII code point and encode back to the same
     label, so `xn--`, `xn--localhost-` and other non-canonical Punycode are not
-    A-labels whichever `idna` release is installed.
+    A-labels. Those structural checks (round trip, non-ASCII decoding, length)
+    do not depend on the `idna` release. Which code points are allowed does: it
+    follows the installed IDNA2008 tables and their Unicode version, so CI pins
+    `idna`. Any conversion failure means "not an A-label". `idna` 3.6 raises a
+    bare ValueError from `unicodedata.name` for an unassigned code point after
+    a joiner, and `IDNAError` is a `UnicodeError`, which is a `ValueError`.
     """
     try:
         decoded = idna.ulabel(label)
         return not decoded.isascii() and idna.alabel(decoded).decode("ascii") == label
-    except idna.IDNAError:
+    except (idna.IDNAError, UnicodeError, ValueError):
         return False
 
 
@@ -1201,6 +1207,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "request-url-empty-a-label",
             "request-url-fake-a-label-localhost",
             "request-url-over-long-a-label",
+            "request-url-a-label-tangut-joiner",
             "request-url-backslash-in-path",
             "request-url-non-ascii-path",
             "request-url-del",
@@ -1407,7 +1414,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         global request_url_syntax_ok, public_http_target
         names = [name for name, vector in self.by_name.items()
                  if name.startswith("request-url-") and vector["expected"] == "error"]
-        self.assertEqual(len(names), 21)
+        self.assertEqual(len(names), 22)
         for name in names:
             with self.subTest(vector=name):
                 self.assertEqual(self.by_name[name].get("expectedReason"), "rail-ref-shape")
@@ -1470,6 +1477,27 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 ref["parameters"]["request"]["url"] = url
                 self.assertEqual(validate_ref(ref), "pass")
                 self.assertTrue(public_http_target(url))
+
+    def test_a_label_conversion_failure_is_malformed_not_an_exception(self):
+        """XN-2: every `idna` conversion failure means "not an A-label", never an exception.
+
+        `idna` 3.6 raises a bare ValueError on the Tangut/ZWNJ label; other
+        releases raise IDNAError. Each class is forced here, so the result does
+        not depend on which release is installed.
+        """
+        url = "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        self.assertFalse(_is_a_label("xn--ukba655qaaaa14431eeaaba"))
+        self.assertFalse(request_url_syntax_ok(url))
+        vector = self.by_name["request-url-a-label-tangut-joiner"]
+        self.assertEqual(vector["agreement"]["terms"]["rail"]["parameters"]["request"]["url"], url)
+        effects = {}
+        self.assertEqual(evaluate(copy.deepcopy(vector), effects), ("error", "rail-ref-shape"))
+        self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        for exc in (idna.IDNAError("x"), UnicodeError("x"), ValueError("no such name")):
+            with self.subTest(raised=type(exc).__name__), \
+                    mock.patch.object(idna, "ulabel", side_effect=exc):
+                self.assertFalse(_is_a_label("xn--bcher-kva"))
+                self.assertFalse(request_url_syntax_ok("https://xn--bcher-kva.example/pay"))
 
     def test_ipv4_mapped_spellings_match_their_ipv4_verdict(self):
         """§6.3.6 requires equivalent IPv4-mapped IPv6 spellings to reach the same verdict."""

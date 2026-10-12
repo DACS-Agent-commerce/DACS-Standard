@@ -943,6 +943,9 @@ def build_vectors() -> list[dict]:
         ("over-long-a-label", "error",
          f"https://xn--{('ü' * 60).encode('punycode').decode('ascii')}.example/pay",
          "a 66-character xn-- label exceeds the 63-octet DNS limit, so it is not an A-label"),
+        ("a-label-tangut-joiner", "error", "https://xn--ukba655qaaaa14431eeaaba.c/pay",
+         "a ZWNJ between Tangut ideographs fails CONTEXTJ, so this is not an A-label; "
+         "idna 3.6 raises ValueError instead of IDNAError on it"),
         ("backslash-in-path", "error", "https://seller.example/pay\\x",
          "a backslash is malformed anywhere in the URL, not only in the authority"),
         ("non-ascii-path", "error", "https://seller.example/pé",

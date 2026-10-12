@@ -674,8 +674,8 @@
       }
     }
   },
-  "count": 160,
-  "hash": "146be9b55501d350968719a3c399df9f1d1dd70686f0d67151d30f55671926ed",
+  "count": 161,
+  "hash": "1ae114663d5edd17d1639744d7f2df95b655d90f7ac1bd8f05c328a900ef1319",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -8750,6 +8750,128 @@
             "url"
           ],
           "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
+      "name": "request-url-a-label-tangut-joiner",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "a ZWNJ between Tangut ideographs fails CONTEXTJ, so this is not an A-label; idna 3.6 raises ValueError instead of IDNAError on it",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "xRhYQUj5RNuCA_UchLjHI2P52E3i-UInPUxEU9GoUIYAufPzs25vRc_KzFxpG0LaXMyNScEkVwuSnMjjvWCBDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "2vUhLTVMoha3r_6et1CSr4LjUpfqjLyB_007EPzCAOwvLNWK876Ae3Ax6leaA7Q5zHn3bC50Xkg6WorjLQJIAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "587d86ecfbe5500d39ae21cbcf49e36df81aaeaa3b2603a83025a0397a0adaa3"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "CErdE-GdaFX8wnc84828hQl3xw8D81MX_98A72sV3-5NbTnxulzHmEmjrxd_9LrTDZZMyUAa1NON9-VUAakyBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "yMrDRrm1050atoEgJ85XSoTNJmetnH2z2hUdRUKmHzCeJS0KRtkpNWtUEhtIPR7RYuPuhMHr8j0OE3GLnwKpBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
         }
       ],
       "expectedReason": "rail-ref-shape"

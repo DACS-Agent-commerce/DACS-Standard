@@ -109,6 +109,7 @@ GUARD_CASES = {
     "native-integer-field": (_release(put("native", "fundedAtSec", 1799990000.0)), ("error", "DRV-3", "native chain ID and times must be integers")),
     "chain-id-not-integer": (_hooked(rail=put("chainId", 8453.0), fixture=put("native", "chainId", 8453)),("error", "DRV-3", "rail and job chain IDs must be integers")),
     "creation-deadline-not-integer": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt", 1800007200.0)), ("error", "DRV-3", "creation event deadlines must be integers")),
+    "rail-address-malformed": (_hooked(rail=put("paymentToken", "")), ("error", "DRV-3", "rail payment token and contract must be lower-case EVM addresses")),
     "input-missing-field":(_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
     "object-field-malformed": (_release(put("native", [])), ("error", "DRV-3", "candidate object fields are malformed")),
     "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-3", "required candidate artifacts are missing")),
@@ -671,7 +672,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("expiry-delivery-record-not-supplied", ("indeterminate", "DRE-5")),
             # Something present contradicts the record: still rejected.
             ("released-terminal-without-decision-reference", ("rejected", "DRD-2")),
-            ("decision-basis-kind-unsupported", ("rejected", "DRE-4")),
+            ("decision-basis-kind-unsupported", ("rejected", "DRD-2")),
             ("expiry-invented-decision", ("rejected", "DRD-7")),
             ("pre-submission-expiry-delivery-ref", ("rejected", "DRT-12")),
             ("release-decision-without-delivery", ("rejected", "DRD-3")),
@@ -1617,6 +1618,13 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                         target = target[key]
                     target[place[-1]] = number
                     self.assertEqual(finding(value), outcome)
+        # The bound is inclusive for an integer and a float alike.
+        for number, in_profile in (
+            (safe, True), (-safe, True), (float(safe), True), (-float(safe), True), (0.5, True),
+            (safe + 1, False), (float(safe + 1), False), (-float(safe + 1), False),
+        ):
+            with self.subTest(number=number):
+                self.assertIs(verifier.number_profile_valid({"n": [number]}), in_profile)
         # An in-range number is not caught by the profile scan.
         value = self._fixture("release")
         value["native"]["fundedAtSec"] = safe
@@ -1669,6 +1677,16 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     self.assertEqual(
                         finding(make_base(lifecycle, hooks={hook: floated(*path)})), ("error", "DRV-3")
                     )
+        # The rail's token and contract are only compared for equality later,
+        # so a malformed one is refused by shape, signed and bound as built.
+        for field, malformed in itertools.chain(
+            itertools.product(["paymentToken"], [None, [], {}, True, 1.5, "", "0x" + "AB" * 20, "0x" + "ab" * 19]),
+            itertools.product(["contractAddress"], [None, "", "x", "0x" + "81" * 21]),
+        ):
+            with self.subTest(field=field, malformed=malformed):
+                self.assertEqual(
+                    finding(make_base("release", hooks={"rail": put(field, malformed)})), ("error", "DRV-3")
+                )
         detached = self._fixture("release")
         detached["profileParameters"]["platformFeeBP"] = False
         self.assertEqual(finding(detached), ("rejected", "DRP-5"))

@@ -695,6 +695,13 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     # Compared with `==` later, where Python would take 8453.0 for 8453.
     if type(artifacts["railDefinition"].get("chainId")) is not int or type(artifacts["job"].get("chainId")) is not int:
         return result("error", "DRV-3", "rail and job chain IDs must be integers")
+    # Every token and contract address is later compared with these two.
+    rail = artifacts["railDefinition"]
+    if not all(
+        isinstance(rail.get(name), str) and re.fullmatch(r"0x[0-9a-f]{40}", rail[name]) is not None
+        for name in ("paymentToken", "contractAddress")
+    ):
+        return result("error", "DRV-3", "rail payment token and contract must be lower-case EVM addresses")
     for name in ("job", "funding", "delivery", "evaluation", "dispute", "decision", "terminal"):
         artifact = artifacts.get(name)
         if artifact is not None and not isinstance(artifact, dict):
@@ -1869,7 +1876,8 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
             elif dispute.get("recommendedDisposition") != disposition or disposition != "refund-to-client":
                 return result("rejected", "DRD-12", "dispute outcome does not authorize the refund")
         else:
-            return result("rejected", "DRE-4", "decision has no authenticated evaluation or dispute basis")
+            # DRD-2: a basis naming neither artifact resolves to nothing.
+            return result("rejected", "DRD-2", "decision has no authenticated evaluation or dispute basis")
         # The shape stage closed the disposition set to these two values.
         if disposition == "release-to-provider":
             if terminal_state != "released" or action != "complete":

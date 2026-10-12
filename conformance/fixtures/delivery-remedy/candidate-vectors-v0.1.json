@@ -5,7 +5,7 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "4823a31094c31787e1297c82e29e7f17667df8a0f4dacfe5b2ee8c7741f6bf99",
+  "hash": "6625ae32b2de1fed9f99e262ff38da5ecf31fcd806debc259cf45577758055a0",
   "count": 266,
   "fixtures": {
     "release": {
@@ -94111,9 +94111,9 @@
       "name": "decision-basis-kind-unsupported",
       "base": "decision-basis-kind-unsupported",
       "expected": "rejected",
-      "expectedRule": "DRE-4",
+      "expectedRule": "DRD-2",
       "rules": [
-        "DRE-4"
+        "DRD-2"
       ],
       "note": "a decision basis that is neither an evaluation nor a DisputeOutcome authorizes no terminal action",
       "patch": []

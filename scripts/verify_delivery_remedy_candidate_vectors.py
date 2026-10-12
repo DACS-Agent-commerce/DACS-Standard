@@ -692,6 +692,9 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         for name in ("fundPhaseIndex", "deliveryPhaseIndex", "terminalPhaseIndex")
     ) or type(artifacts["funding"].get("fundPhaseIndex")) is not int:
         return result("error", "DRV-3", "phase indexes must be integers")
+    # Compared with `==` later, where Python would take 8453.0 for 8453.
+    if type(artifacts["railDefinition"].get("chainId")) is not int or type(artifacts["job"].get("chainId")) is not int:
+        return result("error", "DRV-3", "rail and job chain IDs must be integers")
     for name in ("job", "funding", "delivery", "evaluation", "dispute", "decision", "terminal"):
         artifact = artifacts.get(name)
         if artifact is not None and not isinstance(artifact, dict):
@@ -1615,6 +1618,9 @@ def _native_event_semantics_check(value: dict[str, Any]) -> dict[str, str] | Non
     created = dict(records["JobCreated"]["arguments"])
     if created.pop("description", None) != "dacs-delivery-remedy:v1:" + artifact_hash(agreement):
         return result("rejected", "DREB-1", "native job description does not contain the exact overlay hash")
+    # Compared with `!=` below, where Python would take a float deadline for an int.
+    if any(type(created.get(name)) is not int for name in ("submissionCutoffSec", "expiredAt")):
+        return result("error", "DRV-3", "creation event deadlines must be integers")
     accounts = {
         role: parse_canonical_evm_claim(agreement[role]["evmAccountClaim"])[1]
         for role in ("buyer", "seller", "evaluator")
@@ -2014,6 +2020,12 @@ def _lifecycle_check(value: Any) -> dict[str, str] | None:
     )
     if not all(isinstance(value.get(field), dict) for field in object_fields):
         return result("error", "DRV-3", "candidate object fields are malformed")
+    # Compared with `==` later, where Python would take 8453.0 for 8453.
+    if any(
+        type(value["native"].get(name)) is not int
+        for name in ("chainId", "fundedAtSec", "submissionCutoffSec", "expiredAt")
+    ):
+        return result("error", "DRV-3", "native chain ID and times must be integers")
 
     for _name, stage in _protocol_stages(value):
         issue = stage()

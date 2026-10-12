@@ -106,6 +106,9 @@ GUARD_CASES = {
     "input-not-an-object": (lambda _pack: [], ("error", "DRV-3", "vector input must be an object")),
     "nesting-too-deep": (_release(put("native", "deep", _nested(verifier.MAX_JSON_DEPTH))), ("error", "DRV-3", f"input nests deeper than {verifier.MAX_JSON_DEPTH} arrays and objects")),
     "number-outside-profile": (_release(put("native", "fundedAtSec", float("nan"))), ("error", "DRV-3", "a number is non-finite or outside the CORE §B.2 safe-integer range")),
+    "native-integer-field": (_release(put("native", "fundedAtSec", 1799990000.0)), ("error", "DRV-3", "native chain ID and times must be integers")),
+    "chain-id-not-integer": (_hooked(rail=put("chainId", 8453.0), fixture=put("native", "chainId", 8453)),("error", "DRV-3", "rail and job chain IDs must be integers")),
+    "creation-deadline-not-integer": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt", 1800007200.0)), ("error", "DRV-3", "creation event deadlines must be integers")),
     "input-missing-field":(_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
     "object-field-malformed": (_release(put("native", [])), ("error", "DRV-3", "candidate object fields are malformed")),
     "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-3", "required candidate artifacts are missing")),
@@ -138,7 +141,7 @@ GUARD_CASES = {
     "submission-reference-malformed": (_release(put("deliveryBinding", "nativeSubmissionEvent", "submit")), ("error", "DRV-3", "submission event reference is malformed")),
     "submission-reference-not-canonical": (_release(put("deliveryBinding", "nativeSubmissionEvent", "chainId", 10)), ("rejected", "DRP-9", "submission event identity is not canonical")),
     "rail-finality-depth": (_hooked(rail=put("profileParameters", "finalityBlocks", 0)), ("error", "DRV-3", "rail finality depth must be a positive integer")),
-    "signed-cutoff-type": (_hooked(agreement=put("submissionCutoffSec", "1800000000")), ("error", "DRV-3", "signed cutoff and deadline must be integers")),
+    "signed-cutoff-type": (_hooked(agreement=put("submissionCutoffSec", "1800000000"), fixture=put("native", "submissionCutoffSec", 1800000000)),("error", "DRV-3", "signed cutoff and deadline must be integers")),
     "seed-set": (_release(drop("reproductionInputs", "publicTestSeedHex", generator.ORCHESTRATOR)), ("error", "DRV-3", "public test seed set is incomplete")),
     "seed-malformed": (_release(put("reproductionInputs", "publicTestSeedHex", generator.BUYER, "zz")), ("error", "DRV-3", "public test seed is malformed")),
     "role-inputs-not-objects": (_release(put("reproductionInputs", "roleBundles", [])), ("error", "DRV-3", "role source inputs must be objects")),
@@ -1641,6 +1644,28 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 value = self._fixture("release")
                 value["executionContext"]["dacs5PurchaseCount"] = count
                 self.assertEqual(finding(value), ("rejected", "DRP-8"))
+        # An integral float where an integer is read is malformed, though
+        # Python's `==` would take it for the integer.  Each edit is signed
+        # and bound as built.
+        def floated(*path):
+            def apply(body):
+                target = body
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = float(target[path[-1]])
+            return apply
+        for hook, path in (
+            ("fixture", ("native", "chainId")), ("fixture", ("native", "fundedAtSec")),
+            ("fixture", ("native", "submissionCutoffSec")), ("fixture", ("native", "expiredAt")),
+            ("fixture", ("reproductionInputs", "nativeEventInputs", 0, "arguments", "submissionCutoffSec")),
+            ("fixture", ("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt")),
+            ("rail", ("chainId",)), ("job", ("chainId",)),
+        ):
+            for lifecycle in ("release", "expired-pre"):
+                with self.subTest(lifecycle=lifecycle, hook=hook, path=path):
+                    self.assertEqual(
+                        finding(make_base(lifecycle, hooks={hook: floated(*path)})), ("error", "DRV-3")
+                    )
         detached = self._fixture("release")
         detached["profileParameters"]["platformFeeBP"] = False
         self.assertEqual(finding(detached), ("rejected", "DRP-5"))

@@ -78,13 +78,12 @@ The format used per release:
   form; a `settlementTransaction` with no such form is `error`. The upstream
   `0x` spelling therefore verifies, while DACS-produced event keys stay
   strictly canonical.
-  XN-11 reconciliation compares a known `settlementTransaction` in the same
-  adapter form, and the retained value stays verbatim. Both the retained and
-  the recorded value are taken to that form first, so a value with none is
-  `error` even when the two spellings are identical. A transaction is compared
-  only when both sides know one: after a lost response the retained value is
-  absent or `null` and no signed evidence exists, and the identity reconciles
-  on its other values.
+  On retry, XN-11 compares a known retained `settlementTransaction`, kept
+  verbatim, with the reconciled transaction in the same adapter form. The
+  retained value is the response's, so one with no such form or naming another
+  transaction is a recorded response defect, never `error` or `fail`. After a
+  lost response the retained value is absent or `null`, no signed evidence
+  exists, and the identity reconciles without it.
 - **EVM address comparison** (DACS-4 §9.5.7 XN-5, XN-11) — on an EIP-155
   network, `payTo`, the PB-1 payout binding and
   `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,
@@ -121,9 +120,12 @@ The format used per release:
   under the version's header, reports `success: false`, or names another
   network, payer or transaction is a response defect, recorded as the seller's
   protocol fault; a transaction that only the response names is never a ledger
-  contradiction. A stored record that does not verify, a stale receipt or
-  challenge hash included, is rejected and rebuilt and never ends the payment
-  phase. Retry takes its disposition from the same reconciliation. The
+  contradiction. A stored record that does not verify (a stale receipt or
+  challenge hash, an invalid signature, another reference count, or another or
+  a malformed transaction) is rejected and rebuilt and never ends the payment
+  phase. A retry takes its disposition from the same reconciliation: the stored
+  record is no part of its retained identity, and is checked only after the
+  ledger has decided, so its defect is at most the recorded reason. The
   receipt hash commits to the response as received,
   or to JSON `null` when no version-selected object decodes. The vectors gain a
   `verify-evidence` operation that keeps the XN-7/XN-8 verifier's verdict on a
@@ -174,7 +176,8 @@ The format used per release:
   JSON vectors cannot carry; the embedded-IPv4 unwrapping, whose vectors
   CPython 3.12's own address tables also refuse; and the retry's derivation of
   the signed terms, which a signed agreement that passed the execute gates
-  never fails.
+  never fails. Vectors with no expected reason do not pin the absence of a
+  recorded defect, so unit tests pin `pass` with no reason where that matters.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized

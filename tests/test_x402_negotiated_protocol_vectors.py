@@ -743,71 +743,51 @@ def record_wallet_authorization(effects):
 
 
 def reconciliation_identity(v):
-    """XN-11: this session's identity, from the agreement, runtime and any evidence.
+    """XN-11: this session's identity, from the signed agreement and the runtime.
 
-    Signed evidence may not exist yet: after a lost response nothing records a
-    transaction, so `settlementTransaction` is present only when the one
-    evidence reference names it.
+    A stored record is never part of it: the record is judged only after the
+    ledger reconciliation, and only for the recorded reason.
     """
     agreement = v.get("agreement", {})
     runtime = v.get("runtime", {})
     selected = agreement.get("terms", {}).get("rail")
     if not isinstance(selected, dict):
         return None
-    identity = {
+    return {
         "jobId": agreement.get("jobId"),
         "phaseIndex": runtime.get("phaseIndex"),
         "requirementHash": digest(selected),
         "authorizationIdentity": runtime.get("payer", {}).get("paymentAddress"),
     }
-    if "evidence" in v:
-        refs = v["evidence"].get("paymentTxRefs", [])
-        if len(refs) != 1 or not isinstance(refs[0], dict):
-            return None
-        identity["settlementTransaction"] = refs[0].get("settlementTransaction")
-    return identity
 
 
 def reconciliation_matches(retained, v):
     """XN-11: the retained state names this session's identity.
 
-    The retained settlementTransaction stays verbatim, as XN-7 keeps it; only the
-    comparison uses the XN-7 adapter form, so the same hash spelled with another
-    prefix or case still reconciles. Every known value takes that form before
-    comparing, so one with none is malformed (ValueError) even when the retained
-    and recorded spellings are identical. A transaction is compared only when
-    both sides know one: after response loss the retained value is absent or
-    null. The authorization identity is the authorization payer, so it compares
-    in the XN-5 adapter form the same way (AddressFormError).
+    The retained state may also hold the known settlementTransaction (absent or
+    null after response loss). It is the response's transaction, so it is
+    compared with the reconciled one only after the ledger decides, as a
+    recorded defect. The authorization identity is the authorization payer, so
+    it compares in the XN-5 adapter form, and a malformed one on either side is
+    AddressFormError even when both spellings are identical.
     """
     identity = reconciliation_identity(v)
     if identity is None or not isinstance(retained, dict):
         return False
-    known = {name for name in identity if name != "settlementTransaction"}
-    if set(retained) - {"settlementTransaction"} != known:
+    if set(retained) - {"settlementTransaction"} != set(identity):
         return False
     parameters = v["agreement"]["terms"]["rail"].get("parameters")
     selection = parameters.get("selection") if isinstance(parameters, dict) else None
     network = selection.get("network") if isinstance(selection, dict) else None
-    transactions = [retained["settlementTransaction"]] if retained.get(
-        "settlementTransaction") is not None else []
-    if "settlementTransaction" in identity:
-        transactions.append(identity["settlementTransaction"])
-    forms = [
-        adapter_canonical_transaction(network, transaction) if isinstance(network, str) else None
-        for transaction in transactions
-    ]
-    if None in forms:
-        raise ValueError("settlementTransaction has no XN-7 adapter form")
     try:
         payers = [adapter_address(network, payer) for payer in (
             retained["authorizationIdentity"], identity["authorizationIdentity"])]
-    except ValueError as malformed:
+    except (AttributeError, ValueError) as malformed:
         raise AddressFormError("authorizationIdentity has no XN-5 adapter form") from malformed
     if any(retained[field] != value for field, value in identity.items()
-           if field not in {"authorizationIdentity", "settlementTransaction"}):
+           if field != "authorizationIdentity"):
         return False
-    return payers[0] == payers[1] and len(set(forms)) <= 1
+    return payers[0] == payers[1]
 
 
 def exact_atomic(amount, decimals, ceiling):
@@ -1178,6 +1158,23 @@ def build_evidence(effects, event, transaction):
         }
 
 
+def received_challenge(http):
+    """CORE CF-5: the received PaymentRequired, with raw bytes admitted before any use.
+
+    An object challenge is checked against the same profile by hashing it.
+    TypeError or ValueError means it is not admissible, as is a challenge
+    received both as raw bytes and as an object.
+    """
+    if "paymentRequiredRaw" in http:
+        if "paymentRequired" in http:
+            raise ValueError("two received challenges")
+        required = admit_raw_json(base64.b64decode(http["paymentRequiredRaw"], validate=True))
+    else:
+        required = http.get("paymentRequired")
+    digest(required)
+    return required
+
+
 def materialize_vector(data, vector):
     value = copy.deepcopy(data["fixtures"][vector["base"]])
     for patch in vector.get("patch", []):
@@ -1245,27 +1242,53 @@ def evaluate(v, effects=None):
         return "error", "legacy-boundary"
 
     if operation == "retry":
-        if not verify_artifact_signatures(v):
+        # As in execute, a stored record is judged only after the ledger has
+        # decided, so its own signature is not a gate here.
+        if not verify_artifact_signatures({name: item for name, item in v.items() if name != "evidence"}):
             return "fail", "signature"
+        retained = v.get("runtime", {}).get("reconciliationState")
         try:
-            matches = reconciliation_matches(v.get("runtime", {}).get("reconciliationState"), v)
+            matches = reconciliation_matches(retained, v)
         except AddressFormError:
             return "error", "address-form"
-        except ValueError:
-            return "error", "settlement-transaction-form"
         if not matches:
             return "fail", "reconciliation-binding"
         # XN-11: the retained identity is this session's. The payment
         # disposition comes from the same ledger reconciliation as after the
         # execute path's wallet call; no settlement evidence is needed.
         try:
-            terms = reconciliation_terms(v)
+            selection, amount, payer, pay_to = reconciliation_terms(v)
         except (AttributeError, KeyError, TypeError, ValueError):
             return "error", "reconciliation-terms"
-        verdict, reason, event = reconcile_settlement(v.get("ledger"), *terms)
-        if verdict == "pass":
+        verdict, reason, event = reconcile_settlement(v.get("ledger"), selection, amount, payer, pay_to)
+        if verdict != "pass":
+            return verdict, reason
+        network = selection["network"]
+        # The retained transaction is the response's, kept verbatim (XN-7). One
+        # with no adapter form, or naming another transaction than the
+        # reconciled one, is a recorded response defect.
+        known = retained.get("settlementTransaction")
+        if known is not None and adapter_canonical_transaction(network, known) != event["transaction"]:
             build_evidence(effects, event, None)
-        return verdict, reason
+            return "pass", "response-transaction"
+        build_evidence(effects, event, known)
+        # A stored record is checked as in execute, against the retained
+        # challenge and response and the reconciled event; its defect is the
+        # recorded reason, never the outcome.
+        if "evidence" in v:
+            http = v.get("http", {})
+            try:
+                required = received_challenge(http)
+            except (TypeError, ValueError):
+                required = None
+            response, response_fault = read_settlement_response(
+                http.get("responseHeader"), selection["x402Version"], network, payer
+            )
+            request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
+            defect = stored_record_defect(v, required, response, response_fault, selection, request, event)
+            if defect is not None:
+                return "pass", defect[1]
+        return "pass", None
 
     # `execute` runs the handler; `verify-evidence` is a verifier judging a
     # stored success record (XN-7/XN-8) and never authorizes. Both apply the
@@ -1369,17 +1392,8 @@ def evaluate(v, effects=None):
     # CORE CF-5: a challenge received as raw bytes is admitted before any use,
     # and an object one is checked against the same profile, so neither a
     # non-finite or out-of-profile number nor a lone surrogate can raise later.
-    if "paymentRequiredRaw" in http:
-        try:
-            if "paymentRequired" in http:
-                raise ValueError("two received challenges")
-            required = admit_raw_json(base64.b64decode(http["paymentRequiredRaw"], validate=True))
-        except (TypeError, ValueError):
-            return "error", "payment-required-json"
-    else:
-        required = http.get("paymentRequired")
     try:
-        digest(required)
+        required = received_challenge(http)
     except (TypeError, ValueError):
         return "error", "payment-required-json"
     if not isinstance(required, dict) or required.get("x402Version") != selection["x402Version"]:
@@ -1821,10 +1835,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-phase-binding-mismatch",
             "retry-requirement-binding-mismatch",
             "retry-authorization-binding-mismatch",
-            "retry-transaction-binding-mismatch",
+            "retry-record-transaction-substitution-settled",
             "retry-retained-transaction-spelling-reconciles",
-            "retry-identical-malformed-transaction-is-error",
-            "retry-recorded-malformed-transaction-is-error",
+            "retry-identical-malformed-transaction-settled",
+            "retry-record-malformed-transaction-ledger-unavailable",
             "retry-authorization-identity-eip55-reconciles",
             "retry-authorization-identity-not-20-bytes",
             "retry-solana-authorization-identity-case-changed",
@@ -1835,6 +1849,14 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-ledger-event-contradicts-authorization",
             "retry-retained-state-not-object",
             "retry-retained-state-extra-field",
+            "retry-record-signature-invalid-settled",
+            "retry-record-signature-invalid-ledger-unavailable",
+            "retry-record-two-references-settled",
+            "retry-record-no-reference-settled",
+            "retry-record-names-another-transaction-settled",
+            "retry-record-transaction-not-32-bytes-settled",
+            "retry-record-receipt-hash-not-recomputing-settled",
+            "retry-retained-transaction-not-reconciled-settled",
             "retry-response-lost-ledger-transaction-missing",
             "retry-response-lost-ledger-transaction-null",
             "retry-response-lost-ledger-transaction-not-32-bytes",
@@ -1861,26 +1883,35 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertEqual(evaluate(copy.deepcopy(vector)), pending)
         base = self.by_name["retry-indeterminate-remains-pending"]
         lost = self.by_name["retry-response-lost-no-transaction-known"]
-        for label, source, retained_tx, want in (
+        defect = ("pass", "response-transaction")
+        for label, source, retained_tx, want, settled in (
             # Evidence records a transaction; the retained state knows none.
-            ("recorded only", base, "<absent>", pending),
-            ("recorded only, retained null", base, None, pending),
+            ("recorded only", base, "<absent>", pending, ("pass", None)),
+            ("recorded only, retained null", base, None, pending, ("pass", None)),
             # The retained state knows one; nothing is recorded yet.
-            ("retained only", lost, "0x" + "ab" * 32, pending),
-            # A known value still needs an adapter form.
-            ("retained only, malformed", lost, "not-a-hash", ("error", "settlement-transaction-form")),
-            ("retained empty string", lost, "", ("error", "settlement-transaction-form")),
+            ("retained only", lost, "0x" + "ab" * 32, pending, ("pass", None)),
+            ("retained only, other spelling", lost, "AB" * 32, pending, ("pass", None)),
+            # A known value is the response's: with no adapter form, or naming
+            # another transaction, it is a recorded defect and never decides.
+            ("retained only, malformed", lost, "not-a-hash", pending, defect),
+            ("retained empty string", lost, "", pending, defect),
+            ("retained not a string", lost, 7, pending, defect),
+            ("retained other transaction", lost, "0x" + "cd" * 32, pending, defect),
         ):
-            with self.subTest(case=label):
-                vector = copy.deepcopy(source)
-                state = vector["runtime"]["reconciliationState"]
-                if retained_tx == "<absent>":
-                    state.pop("settlementTransaction", None)
-                else:
-                    state["settlementTransaction"] = retained_tx
-                effects = {}
-                self.assertEqual(evaluate(vector, effects), want)
-                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+            for available, expected in ((False, want), (True, settled)):
+                with self.subTest(case=label, ledger_available=available):
+                    vector = copy.deepcopy(source)
+                    vector["ledger"]["available"] = available
+                    state = vector["runtime"]["reconciliationState"]
+                    if retained_tx == "<absent>":
+                        state.pop("settlementTransaction", None)
+                    else:
+                        state["settlementTransaction"] = retained_tx
+                    effects = {}
+                    self.assertEqual(evaluate(vector, effects), expected)
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        self.assertEqual(evaluate(copy.deepcopy(
+            self.by_name["retry-retained-transaction-spelling-reconciles"])), ("pass", None))
         # Another identity value still has to match without a transaction.
         vector = copy.deepcopy(lost)
         vector["runtime"]["reconciliationState"]["phaseIndex"] = 4
@@ -2012,16 +2043,38 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                     self.assertEqual(evaluate(changed, effects)[0], verdict)
                     self.assertEqual(effects["walletAuthorizationCalls"], 1)
         self.assertGreaterEqual(reached, 75)
-        # Every stored-record verdict a verifier gives leaves the payment to the ledger.
+        # A retry is judged the same way: neither the stored record, nor the
+        # retained response, nor the retained transaction changes its verdict.
+        retries = [v for v in self.vectors if v["operation"] == "retry"]
+        self.assertGreaterEqual(len(retries), 34)
+        for vector in retries:
+            verdict = evaluate(copy.deepcopy(vector))[0]
+            for label, strip in (("no record", ("evidence",)),
+                                 ("no response", ("http", "responseHeader")),
+                                 ("no retained transaction",
+                                  ("runtime", "reconciliationState", "settlementTransaction"))):
+                with self.subTest(vector=vector["name"], change=label):
+                    changed = copy.deepcopy(vector)
+                    target = changed
+                    for segment in strip[:-1]:
+                        target = target[segment] if isinstance(target, dict) else {}
+                    if isinstance(target, dict):
+                        target.pop(strip[-1], None)
+                    effects = {}
+                    self.assertEqual(evaluate(changed, effects)[0], verdict)
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        # Every stored-record verdict a verifier gives leaves the payment to the
+        # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
         self.assertEqual(len(records), 24)
         for vector in records:
-            with self.subTest(record=vector["name"]):
-                as_execute = copy.deepcopy(vector)
-                as_execute["operation"] = "execute"
-                bare = copy.deepcopy(as_execute)
-                bare.pop("evidence")
-                self.assertEqual(evaluate(as_execute)[0], evaluate(bare)[0])
+            for operation in ("execute", "retry"):
+                with self.subTest(record=vector["name"], operation=operation):
+                    judged = copy.deepcopy(vector)
+                    judged["operation"] = operation
+                    bare = copy.deepcopy(judged)
+                    bare.pop("evidence")
+                    self.assertEqual(evaluate(judged)[0], evaluate(bare)[0])
 
     def test_response_loss_reconciles_against_the_ledger(self):
         """XN-11: with no response and no evidence, execute and retry both read the ledger."""
@@ -2082,6 +2135,40 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         response = decode_response_header(changed["http"]["responseHeader"], 2)
         self.assertNotEqual(ref["paymentReceiptHash"], digest(response))
         self.assertEqual(changed["ledger"], self.by_name["protocol-v2-exact-success"]["ledger"])
+
+    def test_retry_judges_a_stored_record_like_execute(self):
+        """XN-11: on retry a record that does not verify is the reason, never the disposition."""
+        for name, want in (
+            ("retry-record-signature-invalid-settled", ("pass", "signature")),
+            ("retry-record-signature-invalid-ledger-unavailable",
+             ("indeterminate", "independent-settlement-unavailable")),
+            ("retry-record-two-references-settled", ("pass", "evidence-ref-count")),
+            ("retry-record-no-reference-settled", ("pass", "evidence-ref-count")),
+            ("retry-record-names-another-transaction-settled", ("pass", "ledger-event")),
+            ("retry-record-transaction-substitution-settled", ("pass", "native-event-key")),
+            ("retry-record-transaction-not-32-bytes-settled", ("pass", "settlement-transaction-form")),
+            ("retry-record-receipt-hash-not-recomputing-settled", ("pass", "payment-receipt-hash")),
+            ("retry-record-malformed-transaction-ledger-unavailable",
+             ("indeterminate", "independent-settlement-unavailable")),
+        ):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                self.assertIn("evidence", vector)
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(vector), effects), want)
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+                # After the wallet call the same record gets the same result,
+                as_execute = copy.deepcopy(vector)
+                as_execute["operation"] = "execute"
+                self.assertEqual(evaluate(as_execute), want)
+                # and a verifier still rejects it.
+                as_verifier = copy.deepcopy(vector)
+                as_verifier["operation"] = "verify-evidence"
+                self.assertIn(evaluate(as_verifier)[0], ("fail", "error"))
+        # A record that names the reconciled event is no defect on retry.
+        sound = copy.deepcopy(self.by_name["retry-indeterminate-remains-pending"])
+        sound["ledger"]["available"] = True
+        self.assertEqual(evaluate(sound), ("pass", None))
 
     def test_ledger_coordinates_are_judged_before_success(self):
         """XN-8/XN-11: the resolved event's transaction and key must identify it before `pass`."""
@@ -2174,6 +2261,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         for name, transaction in (
             ("response-transaction-0X-uppercase", "0X" + "AB" * 32),
             ("response-transaction-substitution", "ab" * 32),
+            ("retry-record-names-another-transaction-settled", "0x" + "ab" * 32),
+            ("retry-retained-transaction-spelling-reconciles", "AB" * 32),
+            ("retry-retained-transaction-not-reconciled-settled", "ab" * 32),
             ("retry-response-lost-ledger-settled", "ab" * 32),
         ):
             with self.subTest(rebuilt=name):
@@ -2594,15 +2684,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "no userinfo or fragment, even an empty one.",
             "A non-empty port MUST be decimal digits with a value of at most 65535.",
             "It MUST also compare it with the authenticated ledger",
-            "It MUST compare a known `settlementTransaction`",
-            "The retained state then records `settlementTransaction` as absent or `null`, and a "
-            "transaction is compared only when both sides know one.",
-            "It MUST derive that form for both the retained and the recorded value before comparing them.",
+            "The retained state then records `settlementTransaction` as absent or `null`, and the "
+            "identity reconciles without it.",
+            "The handler MUST compare it with the reconciled transaction in the XN-7 adapter form, "
+            "so the same transaction in another prefix or hexadecimal case matches.",
+            "A retained value with no such form, or one that names another transaction, is a "
+            "recorded response defect.",
+            "A retry takes it the same way as the first attempt; a stored record is never part of "
+            "the retained identity.",
             "The event that the authorization identity resolves to is identified by its transaction "
             "and its `settlementEvent`, and a missing one is `indeterminate`.",
             "A transaction with no XN-7 adapter form, or a `settlementEvent` that is not "
             "adapter-canonical or does not name that transaction on the selected network, is a "
             "malformed coordinate and yields `error`.",
+            "That holds whatever the record's defect, such as an invalid signature, another "
+            "reference count, or another or a malformed transaction.",
+            "A transaction that only the settlement response, its retained copy, or a stored record "
+            "names is not resolved by that identity.",
             "An address in the authorization identity compares under XN-5, so a malformed one "
             "yields `error` even when both spellings are identical.",
             "the adapter MUST compare the following addresses as 20-byte values.",

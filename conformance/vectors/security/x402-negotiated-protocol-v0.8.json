@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 355,
-  "hash": "79f6329bca9e765a44f8366f7856e4e579aaab27130e9057dbced9d0ec88c7b9",
+  "count": 363,
+  "hash": "f8cd3171334f23ff8d78ce8cef5f9d34595f32b3fa64b8f8e251b5821b5dc1bd",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -21191,11 +21191,11 @@
       "expectedReason": "reconciliation-binding"
     },
     {
-      "name": "retry-transaction-binding-mismatch",
-      "expected": "fail",
-      "rule": "XN-11",
+      "name": "retry-record-transaction-substitution-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-8",
       "operation": "retry",
-      "note": "reconciliation is bound to the retained transaction identity",
+      "note": "a re-signed record naming another transaction, while its event key still names the reconciled one, does not verify; the retry rebuilds it and the ledger decides",
       "base": "v2",
       "patch": [
         {
@@ -21226,24 +21226,16 @@
           "value": true
         }
       ],
-      "expectedReason": "reconciliation-binding"
+      "expectedReason": "native-event-key"
     },
     {
       "name": "retry-retained-transaction-spelling-reconciles",
-      "expected": "indeterminate",
+      "expected": "pass",
       "rule": "XN-11/XN-7",
       "operation": "retry",
-      "note": "a retained transaction that differs from the record only by prefix and case reconciles in the XN-7 adapter form; the unavailable ledger keeps it pending",
+      "note": "a retained transaction that differs from the reconciled one only by prefix and case names it in the XN-7 adapter form, so it is no response defect",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "ledger",
-            "available"
-          ],
-          "value": false
-        },
         {
           "op": "replace",
           "path": [
@@ -21261,15 +21253,14 @@
           ],
           "value": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB"
         }
-      ],
-      "expectedReason": "independent-settlement-unavailable"
+      ]
     },
     {
-      "name": "retry-identical-malformed-transaction-is-error",
-      "expected": "error",
+      "name": "retry-identical-malformed-transaction-settled",
+      "expected": "pass",
       "rule": "XN-11/XN-7",
       "operation": "retry",
-      "note": "identical retained and recorded spellings still need an XN-7 adapter form; a value with none is a malformed coordinate",
+      "note": "identical retained and recorded transactions with no XN-7 adapter form never decide; the retained one is the response's, so it is the recorded defect",
       "base": "v2",
       "patch": [
         {
@@ -21290,14 +21281,6 @@
             "value"
           ],
           "value": "U4XD7tIaZs3yEmFB5v47DqriFoqKbMOyxrZzeQ-oiqslp5U4CYPyoQYjPlA6bCVOYgeM1wVtykjs6Oacd-1dCA"
-        },
-        {
-          "op": "replace",
-          "path": [
-            "ledger",
-            "available"
-          ],
-          "value": false
         },
         {
           "op": "replace",
@@ -21317,14 +21300,14 @@
           "value": "not-a-hash"
         }
       ],
-      "expectedReason": "settlement-transaction-form"
+      "expectedReason": "response-transaction"
     },
     {
-      "name": "retry-recorded-malformed-transaction-is-error",
-      "expected": "error",
+      "name": "retry-record-malformed-transaction-ledger-unavailable",
+      "expected": "indeterminate",
       "rule": "XN-11/XN-7",
       "operation": "retry",
-      "note": "a recorded transaction with no XN-7 adapter form is malformed even beside a well-formed retained value",
+      "note": "a recorded transaction with no XN-7 adapter form is a verifier's error, but it never decides the retry: the unavailable ledger keeps it pending",
       "base": "v2",
       "patch": [
         {
@@ -21363,7 +21346,7 @@
           "value": true
         }
       ],
-      "expectedReason": "settlement-transaction-form"
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "retry-authorization-identity-eip55-reconciles",
@@ -30720,6 +30703,315 @@
         }
       ],
       "expectedReason": "ledger-event-key"
+    },
+    {
+      "name": "retry-record-signature-invalid-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "a stored record whose signature does not verify is rebuilt; the ledger proves the settlement, so the retry succeeds with the record's defect as the reason",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "AT1pi3Wfh5PnA0OTcMhclZZ4FPDEygCzlbRBn9isoPGMTz_vG8i0kvvdAk0DV5oqNk4C0bsxSbTvs5RGm2-MAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "retry-record-signature-invalid-ledger-unavailable",
+      "expected": "indeterminate",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "the same record over an unavailable ledger leaves the session reconciliation-pending",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "AT1pi3Wfh5PnA0OTcMhclZZ4FPDEygCzlbRBn9isoPGMTz_vG8i0kvvdAk0DV5oqNk4C0bsxSbTvs5RGm2-MAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "retry-record-two-references-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-8",
+      "operation": "retry",
+      "note": "a re-signed record with two references is rebuilt; the ledger decides",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs"
+          ],
+          "value": [
+            {
+              "kind": "x402-protocol",
+              "httpResource": "https://seller.example/dacs/resource?job=274",
+              "paymentRequiredHash": "66fc4a4b33fc50defdf940aa93518668d2db8bf261820824794f5ddbd75b0c51",
+              "paymentReceiptHash": "c16614f3b39d1fb6e0fc0c6ae356a67591c485166a4dae4b63cf8d649b3d780d",
+              "x402Version": 2,
+              "settlementNetwork": "eip155:8453",
+              "settlementTransaction": "0xabababababababababababababababababababababababababababababababab",
+              "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7"
+            },
+            {
+              "kind": "x402-protocol",
+              "httpResource": "https://seller.example/dacs/resource?job=274",
+              "paymentRequiredHash": "66fc4a4b33fc50defdf940aa93518668d2db8bf261820824794f5ddbd75b0c51",
+              "paymentReceiptHash": "c16614f3b39d1fb6e0fc0c6ae356a67591c485166a4dae4b63cf8d649b3d780d",
+              "x402Version": 2,
+              "settlementNetwork": "eip155:8453",
+              "settlementTransaction": "0xabababababababababababababababababababababababababababababababab",
+              "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "Jx3cv6V7C8hgafDwCkjEWpTHmTwgySyOOfmQYwKhIAd2ORqenIKlSbb0HfQGz_wixJSik-slmKEMlQfIda4RDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-ref-count"
+    },
+    {
+      "name": "retry-record-no-reference-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-8",
+      "operation": "retry",
+      "note": "a re-signed record with no reference is rebuilt; the ledger decides",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs"
+          ],
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "LS8nql9JiF0F2XyVQDonRDYS6JL4pKAODlZjc22U-Azdz8GW77paaZgcNGDpY3dgrEeEEG6PtGlEJceLJZc3BA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-ref-count"
+    },
+    {
+      "name": "retry-record-names-another-transaction-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-8",
+      "operation": "retry",
+      "note": "a re-signed record naming another transaction and event than the one the authorization identity resolves to is rebuilt from that event",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "a5I9iq7bODsZUHqBvqk13dt4FoDKvO-Uqbx8DZ5zjb8WP-MkJT-N4VnqswD_Mezlxp47eCTWp7DgA9y016z6CQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event"
+    },
+    {
+      "name": "retry-record-transaction-not-32-bytes-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "a re-signed record whose transaction has 63 hexadecimal digits is a verifier's error, but the retry rebuilds it and the ledger decides",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0xabababababababababababababababababababababababababababababababa"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "fDsjbCTZ0NoPkKG-RBJsppiYnCrXHInhF9U12QGxzoK4xIXP_SakgXwcI3MrQ91iWOuL8etsgbNbO1WHmZI4Cw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
+    },
+    {
+      "name": "retry-record-receipt-hash-not-recomputing-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "a re-signed record whose receipt hash does not recompute over the retained response is rebuilt, as after the wallet call",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "SZG4KijTNvWRvT_U491_nxpgxSwEX_VJhgGRzsGmiRIFPjB22AgoQbl1f6UEVTJGa_AyQ8KUsp5v1TL_A0KkCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "payment-receipt-hash"
+    },
+    {
+      "name": "retry-retained-transaction-not-reconciled-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-7",
+      "operation": "retry",
+      "note": "the retained transaction is the response's and names another transaction than the event the identity resolves to, which the record names: the ledger decides, and the response's transaction is the recorded defect",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ],
+          "value": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        }
+      ],
+      "expectedReason": "response-transaction"
     }
   ]
 }

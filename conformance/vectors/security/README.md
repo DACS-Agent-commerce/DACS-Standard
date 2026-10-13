@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 355 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 363 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1072,28 +1072,34 @@ sweeps seven default-ignorable code points, raw and percent-encoded, over four
 non-public hosts.
 
 Retry cases carry retained reconciliation
-identity over job, phase, complete requirement, authorization identity, and
-transaction, and execute with zero additional wallet calls even when a caller
-asks to reauthorize or one retained binding is changed. The retained
-transaction is kept verbatim and compared in the XN-7 adapter form, so a
-retained spelling that differs from the record only by prefix and case still
-reconciles. Both values are taken to that form before comparison, so a retained or
-recorded value with no adapter form is `error` with reason
-`settlement-transaction-form`, even when the two spellings are identical. The
-authorization identity is the authorization payer, so it compares as an XN-5
-address the same way: a retained EIP-55 spelling reconciles with the same payer
-in upper-case hex, and identical spellings that are not `0x` plus 40
-hexadecimal digits are `error` with reason `address-form`. After a lost
-response no transaction is known and no evidence exists: a retained
-`settlementTransaction` that is absent or `null` still reconciles, since XN-11
-compares only a known transaction. Once the retained identity is this
-session's, a retry takes the payment disposition from the same ledger
-reconciliation as `execute` after its wallet call: unavailable ledger data is
-`indeterminate` (`independent-settlement-unavailable`), an exact finalized
-settlement `pass`, a cancelled authorization `fail`
-(`terminal-non-settlement`), and an event that contradicts the authorization
-`fail` (`ledger-event`). Changing only the ledger's availability changes the
-result. A signed term the retry cannot derive is `error`
+identity over job, phase, complete requirement, and authorization identity,
+and execute with zero additional wallet calls even when a caller asks to
+reauthorize or one retained binding is changed. The authorization identity is
+the authorization payer, so it compares as an XN-5 address: a retained EIP-55
+spelling reconciles with the same payer in upper-case hex, and identical
+spellings that are not `0x` plus 40 hexadecimal digits are `error` with reason
+`address-form`. Once the retained identity is this session's, a retry takes the
+payment disposition from the same ledger reconciliation as `execute` after its
+wallet call: unavailable ledger data is `indeterminate`
+(`independent-settlement-unavailable`), an exact finalized settlement `pass`, a
+cancelled authorization `fail` (`terminal-non-settlement`), and an event that
+contradicts the authorization `fail` (`ledger-event`). Changing only the
+ledger's availability changes the result. A stored record is no part of the
+retained identity: as in `execute`, it is checked only after the ledger has
+decided, and its defect is the reason beside the ledger's verdict. Over a
+settled ledger, a record whose signature does not verify is `pass` with
+`signature`, one with two references or none `evidence-ref-count`, one naming
+another transaction and event `ledger-event`, one naming another transaction
+under its own event key `native-event-key`, one whose transaction has 63
+hexadecimal digits `settlement-transaction-form`, and one whose receipt hash
+does not recompute `payment-receipt-hash`; over an unavailable ledger such a
+record stays `indeterminate`. The retained transaction is the response's, kept
+verbatim, and is compared with the reconciled one in the XN-7 adapter form, so
+a retained spelling that differs only by prefix and case is no defect, while
+one with no adapter form or naming another transaction is `pass` with
+`response-transaction`. After a lost response no transaction is known and no
+evidence exists: a retained `settlementTransaction` that is absent or `null`
+still reconciles. A signed term the retry cannot derive is `error`
 (`reconciliation-terms`), which unit tests pin. DNS answer validation,
 rebinding, redirect connections, timeouts, and response-size enforcement remain
 adapter-level obligations because a URL-only corpus cannot execute a network
@@ -1163,14 +1169,17 @@ transaction, and a reference-shape, version, binding, finality-profile or
 event-key defect. So do an invalid record signature and a record naming another
 transaction than the ledger's. A record over a response that was never received
 commits to JSON `null` and verifies (`pass` with `response-header`). In
-`execute` the same record never decides: it is
-rejected and rebuilt, and its defect is at most the reason beside the ledger's
-verdict. A response changed after the record was built is `pass` with reason
-`payment-receipt-hash`, and so is a stored challenge hash that does not
-recompute, with `payment-required-hash`. A record with a malformed event key is
-`indeterminate` while the ledger is unavailable. The unit suite checks that
-removing the stored record or the response from any `execute` case that reaches
-the wallet call never changes its verdict.
+`execute` and `retry` the same record never decides: it is
+rejected and rebuilt from the reconciled event, and its defect is at most the
+reason beside the ledger's verdict. A response changed after the record was
+built is `pass` with reason `payment-receipt-hash`, and so is a stored
+challenge hash that does not recompute, with `payment-required-hash`. A record
+with a malformed event key is `indeterminate` while the ledger is unavailable. The
+unit suite checks that removing the stored record or the response from any
+`execute` case that reaches the wallet call never changes its verdict, nor
+does removing the record, the retained response or the retained transaction
+from any `retry` case. Each `verify-evidence` record run as `execute` or as
+`retry` gets the same verdict with and without it.
 
 Received x402 objects pass CORE CF-5 raw JSON admission over their exact bytes.
 A settlement response with `NaN`, `1e400`, a lone surrogate, or a repeated

@@ -1814,41 +1814,44 @@ def build_vectors() -> list[dict]:
              retry_authorization_mismatch, operation="retry", authorization_submitted=True,
              reason="reconciliation-binding")
 
+    # A stored record is never part of the retained identity: on retry, as
+    # after the wallet call, it is judged only once the ledger has decided, and
+    # its defect is the recorded reason (XN-11).
     def retry_transaction_mismatch(v):
         v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = "cd" * 32
-    add_case(vectors, "retry-transaction-binding-mismatch", "fail", "XN-11",
-             "reconciliation is bound to the retained transaction identity",
+    add_case(vectors, "retry-record-transaction-substitution-settled", "pass", "XN-11/XN-8",
+             "a re-signed record naming another transaction, while its event key still names "
+             "the reconciled one, does not verify; the retry rebuilds it and the ledger decides",
              retry_transaction_mismatch, operation="retry", authorization_submitted=True,
-             reason="reconciliation-binding")
+             reason="native-event-key")
 
     def retry_retained_transaction_spelling(v):
-        v["ledger"]["available"] = False
         v["runtime"]["reconciliationState"]["settlementTransaction"] = SAFE_TX.upper()
-    add_case(vectors, "retry-retained-transaction-spelling-reconciles", "indeterminate",
+    add_case(vectors, "retry-retained-transaction-spelling-reconciles", "pass",
              "XN-11/XN-7",
-             "a retained transaction that differs from the record only by prefix and case "
-             "reconciles in the XN-7 adapter form; the unavailable ledger keeps it pending",
+             "a retained transaction that differs from the reconciled one only by prefix and "
+             "case names it in the XN-7 adapter form, so it is no response defect",
              retry_retained_transaction_spelling, operation="retry",
-             authorization_submitted=True, reason=pending)
+             authorization_submitted=True)
 
     def retry_identical_malformed_transaction(v):
-        v["ledger"]["available"] = False
         v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = "not-a-hash"
         v["runtime"]["reconciliationState"]["settlementTransaction"] = "not-a-hash"
-    add_case(vectors, "retry-identical-malformed-transaction-is-error", "error", "XN-11/XN-7",
-             "identical retained and recorded spellings still need an XN-7 adapter form; "
-             "a value with none is a malformed coordinate",
+    add_case(vectors, "retry-identical-malformed-transaction-settled", "pass", "XN-11/XN-7",
+             "identical retained and recorded transactions with no XN-7 adapter form never "
+             "decide; the retained one is the response's, so it is the recorded defect",
              retry_identical_malformed_transaction, operation="retry",
-             authorization_submitted=True, reason="settlement-transaction-form")
+             authorization_submitted=True, reason="response-transaction")
 
     def retry_recorded_malformed_transaction(v):
         v["ledger"]["available"] = False
         v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = "not-a-hash"
-    add_case(vectors, "retry-recorded-malformed-transaction-is-error", "error", "XN-11/XN-7",
-             "a recorded transaction with no XN-7 adapter form is malformed even beside a "
-             "well-formed retained value",
+    add_case(vectors, "retry-record-malformed-transaction-ledger-unavailable", "indeterminate",
+             "XN-11/XN-7",
+             "a recorded transaction with no XN-7 adapter form is a verifier's error, but it "
+             "never decides the retry: the unavailable ledger keeps it pending",
              retry_recorded_malformed_transaction, operation="retry",
-             authorization_submitted=True, reason="settlement-transaction-form")
+             authorization_submitted=True, reason=pending)
 
     # The authorization identity is the authorization payer, an XN-5 address.
     # Neither side is in the lower-case form, so the adapter must convert both.
@@ -2589,6 +2592,61 @@ def build_vectors() -> list[dict]:
         add_case(vectors, f"ledger-event-key-{suffix}", "error", "XN-8/SB-1", note,
                  ledger_coordinate("settlementEvent", key), authorization_submitted=True,
                  reason="ledger-event-key")
+
+    # XN-11: a retry takes its disposition from the ledger as execute does. A
+    # stored record that does not verify is rejected and rebuilt from the
+    # reconciled event; its defect is the reason beside the ledger's verdict.
+    def record_signature_broken(v):
+        v["evidence"]["signature"]["value"] = flip_first(v["evidence"]["signature"]["value"])
+    add_case(vectors, "retry-record-signature-invalid-settled", "pass", "XN-11/XN-7",
+             "a stored record whose signature does not verify is rebuilt; the ledger proves the "
+             "settlement, so the retry succeeds with the record's defect as the reason",
+             operation="retry", authorization_submitted=True, tamper=record_signature_broken,
+             reason="signature")
+    add_case(vectors, "retry-record-signature-invalid-ledger-unavailable", "indeterminate",
+             "XN-11/XN-7",
+             "the same record over an unavailable ledger leaves the session reconciliation-pending",
+             lambda v: v["ledger"].update({"available": False}), operation="retry",
+             authorization_submitted=True, tamper=record_signature_broken, reason=pending)
+    for name, refs, note in (
+        ("retry-record-two-references-settled", lambda ref: [ref, copy.deepcopy(ref)],
+         "a re-signed record with two references is rebuilt; the ledger decides"),
+        ("retry-record-no-reference-settled", lambda ref: [],
+         "a re-signed record with no reference is rebuilt; the ledger decides"),
+    ):
+        add_case(vectors, name, "pass", "XN-11/XN-8", note,
+                 lambda v, r=refs: v["evidence"].update(
+                     {"paymentTxRefs": r(v["evidence"]["paymentTxRefs"][0])}),
+                 operation="retry", authorization_submitted=True, reason="evidence-ref-count")
+
+    def record_names_other_transaction(v):
+        v["evidence"]["paymentTxRefs"][0].update({
+            "settlementTransaction": "0x" + "cd" * 32,
+            "settlementEvent": "evm:8453:" + "cd" * 32 + ":7",
+        })
+    add_case(vectors, "retry-record-names-another-transaction-settled", "pass", "XN-11/XN-8",
+             "a re-signed record naming another transaction and event than the one the "
+             "authorization identity resolves to is rebuilt from that event",
+             record_names_other_transaction, operation="retry", authorization_submitted=True,
+             reason="ledger-event")
+    add_case(vectors, "retry-record-transaction-not-32-bytes-settled", "pass", "XN-11/XN-7",
+             "a re-signed record whose transaction has 63 hexadecimal digits is a verifier's "
+             "error, but the retry rebuilds it and the ledger decides",
+             lambda v: v["evidence"]["paymentTxRefs"][0].update(
+                 {"settlementTransaction": "0x" + SAFE_TX[:63]}),
+             operation="retry", authorization_submitted=True, reason="settlement-transaction-form")
+    add_case(vectors, "retry-record-receipt-hash-not-recomputing-settled", "pass", "XN-11/XN-7",
+             "a re-signed record whose receipt hash does not recompute over the retained "
+             "response is rebuilt, as after the wallet call",
+             lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentReceiptHash": "00" * 32}),
+             operation="retry", authorization_submitted=True, reason="payment-receipt-hash")
+    add_case(vectors, "retry-retained-transaction-not-reconciled-settled", "pass", "XN-11/XN-7",
+             "the retained transaction is the response's and names another transaction than "
+             "the event the identity resolves to, which the record names: the ledger decides, "
+             "and the response's transaction is the recorded defect",
+             lambda v: v["runtime"]["reconciliationState"].update(
+                 {"settlementTransaction": "0x" + "cd" * 32}),
+             operation="retry", authorization_submitted=True, reason="response-transaction")
 
     return vectors
 

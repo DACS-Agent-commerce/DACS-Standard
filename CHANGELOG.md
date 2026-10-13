@@ -229,6 +229,15 @@ The format used per release:
   URL and body of the request derived from the agreement and of the unpaid and
   paid requests as sent, and the reference evaluator checks each one before
   authorization.
+- **Challenge-member classification** (DACS-4 §9.5.7 XN-6) — the handler
+  classifies every member of the matched requirement's `extra` and of
+  `PaymentRequired.extensions` itself, from the selected adapter's
+  definitions. A member the adapter does not define is unclassified and
+  rejected before signing, and a list of action-bearing members supplied
+  beside the challenge is not a classification. The vectors therefore no
+  longer carry `http.actionBearingExtensions`, and
+  `unsupported-action-bearing-extension` keeps its result on the received
+  `payment-identifier` alone.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

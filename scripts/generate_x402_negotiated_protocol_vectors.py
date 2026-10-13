@@ -433,7 +433,6 @@ def make_base(version: int = 2) -> dict:
             "status": 402,
             "paymentRequired": payment_required(version),
             "responseHeader": encoded_header(response, version),
-            "actionBearingExtensions": ["payment-identifier"] if version == 2 else [],
         },
         "ledger": {
             "available": True,
@@ -2725,6 +2724,61 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "paid-request-body-substitution", "fail", "XN-6",
              "the paid request repeats the signed body bytes of the unpaid request",
              paid_body_changed, reason="effective-request-body")
+
+    # XN-6: the selected adapter classifies every member of the matched `extra`
+    # and of `extensions` itself. Each member below is signed and received, so
+    # only that classification rejects it; a list supplied beside the
+    # challenge classifies nothing.
+    def omitted_from_claim(v):
+        v["capability"]["understoodActionExtensions"] = []
+        v["http"]["actionBearingExtensions"] = []
+    add_case(vectors, "action-bearing-extension-omitted-from-claim", "fail", "XN-6",
+             "a supplied list that omits the received payment-identifier does not classify it, "
+             "so it is still action-bearing and unsupported locally",
+             omitted_from_claim, reason="unsupported-action-extension")
+
+    def signed_and_received(extra=None, extensions=None):
+        def mutate(v):
+            required = v["http"]["paymentRequired"]
+            for ref in signed_selection_refs(v):
+                ref["parameters"]["selection"]["extra"].update(copy.deepcopy(extra or {}))
+                if extensions:
+                    ref["parameters"]["paymentRequiredExtensions"].update(copy.deepcopy(extensions))
+            required["accepts"][0]["extra"].update(copy.deepcopy(extra or {}))
+            if extensions:
+                required["extensions"].update(copy.deepcopy(extensions))
+        return mutate
+    future_extra = {"future-action": {"spender": "0x" + "99" * 20}}
+    future_extension = {"future-action": {"target": "https://other.example/next"}}
+    add_case(vectors, "unclassified-payment-requirements-extra", "fail", "XN-6",
+             "a signed and received extra member that the EIP-155 exact adapter does not define "
+             "is unclassified",
+             signed_and_received(extra=future_extra), refresh=True,
+             reason="unclassified-extra-member")
+    add_case(vectors, "v1-unclassified-payment-requirements-extra", "fail", "XN-6",
+             "a v1 extra member is classified like a v2 one",
+             signed_and_received(extra=future_extra), version=1, refresh=True,
+             reason="unclassified-extra-member")
+    add_case(vectors, "unclassified-top-level-extension", "fail", "XN-6",
+             "a signed and received extension that the adapter does not define is unclassified",
+             signed_and_received(extensions=future_extension), refresh=True,
+             reason="unclassified-extension")
+
+    def listed_as_understood(v):
+        signed_and_received(extensions=future_extension)(v)
+        v["capability"]["understoodActionExtensions"].append("future-action")
+    add_case(vectors, "unclassified-extension-listed-as-understood", "fail", "XN-6",
+             "the local capability can withdraw support for a defined extension but cannot "
+             "classify an undefined one",
+             listed_as_understood, refresh=True, reason="unclassified-extension")
+
+    def solana_extra_with_evm_member(v):
+        solana_exact(v)
+        signed_and_received(extra={"verifyingContract": "0x" + "66" * 20})(v)
+    add_case(vectors, "solana-extra-carries-verifying-contract", "fail", "XN-6",
+             "the members are the selected adapter's: the Solana exact adapter does not define "
+             "the EIP-155 verifyingContract",
+             solana_extra_with_evm_member, refresh=True, reason="unclassified-extra-member")
 
     return vectors
 

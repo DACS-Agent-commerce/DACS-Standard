@@ -42,6 +42,16 @@ ASSET_DECIMALS_MAX = 255
 # XN-5 overflow ceiling per exact binding, keyed by CAIP-2 namespace: EIP-3009
 # value and ERC-20 amounts are uint256; SPL Token amounts are u64.
 ATOMIC_AMOUNT_MAX = {"eip155": 2**256 - 1, "solana": 2**64 - 1}
+# XN-6: the members the reference exact adapters define, all action-bearing,
+# keyed like the ceiling. An EIP-155 `extra` names the EIP-712 domain the
+# authorization signs; a Solana `extra` names the fee payer and the mint; the
+# v2 `payment-identifier` extension asks the payer to identify the payment in
+# the paid request. A received member these tables do not name is unclassified.
+ACTION_BEARING_EXTRA_MEMBERS = {
+    "eip155": frozenset({"name", "version", "verifyingContract"}),
+    "solana": frozenset({"feePayer", "mint"}),
+}
+ACTION_BEARING_EXTENSIONS = frozenset({"payment-identifier"})
 SOLANA_EVENT = re.compile(
     r"^solana:(mainnet|devnet|testnet):([1-9A-HJ-NP-Za-km-z]+):(0|[1-9][0-9]*)$"
 )
@@ -930,6 +940,24 @@ class AddressFormError(ValueError):
     """XN-5: an address with no adapter form, where ValueError would name another coordinate."""
 
 
+def challenge_member_defect(network, extra, extensions, capability):
+    """XN-6: the reason a member of the matched `extra` or of `extensions` rejects, if any.
+
+    Each received member is classified from the selected adapter's own tables,
+    never from a list supplied beside the challenge. A member they do not name
+    is unclassified and rejects like an unsupported action-bearing member. The
+    local capability can withdraw support for a defined extension, but it
+    cannot classify another one.
+    """
+    if not set(extra) <= ACTION_BEARING_EXTRA_MEMBERS.get(network.split(":", 1)[0], frozenset()):
+        return "fail", "unclassified-extra-member"
+    if not set(extensions) <= ACTION_BEARING_EXTENSIONS:
+        return "fail", "unclassified-extension"
+    if not set(extensions) <= set(capability.get("understoodActionExtensions", [])):
+        return "fail", "unsupported-action-extension"
+    return None
+
+
 def payout_bindings(agreement, phase_index):
     """PB-1: the agreement's payout bindings for (x402:protocol, phaseIndex)."""
     return [item for item in agreement.get("terms", {}).get("payoutBindings", []) if (
@@ -1491,17 +1519,14 @@ def evaluate(v, effects=None):
                 return "error", "address-form"
     if len(matches) != 1:
         return "fail", "challenge-match"
-    # XN-6 scope: which extension or `extra` member can influence authorization,
-    # request execution, settlement, destination, fees, or follow-on actions has
-    # no closed list. The fixture declares that set (`actionBearingExtensions`),
-    # so this gate pins only that every declared member is understood locally.
-    # Classifying a member remains an executable adapter obligation; JSON
-    # vectors cannot prove it. The complete `extensions` object itself is bound
-    # above by JCS equality with the signed `paymentRequiredExtensions`.
-    action_bearing = set(http.get("actionBearingExtensions", []))
-    understood = set(capability.get("understoodActionExtensions", []))
-    if not action_bearing.issubset(understood):
-        return "fail", "unsupported-action-extension"
+    # XN-6: every member of the matched `extra` and of `extensions` is
+    # classified before signing. The complete `extensions` object itself is
+    # bound above by JCS equality with the signed `paymentRequiredExtensions`.
+    defect = challenge_member_defect(
+        network, matches[0]["extra"], required.get("extensions", {}), capability
+    )
+    if defect is not None:
+        return defect
 
     # This is the sole authorization site in the executable reference path.
     # Every gate above is therefore mechanically pre-authorization; retry
@@ -1778,6 +1803,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "paid-request-url-substitution",
             "unpaid-request-body-substitution",
             "paid-request-body-substitution",
+            "action-bearing-extension-omitted-from-claim",
+            "unclassified-payment-requirements-extra",
+            "v1-unclassified-payment-requirements-extra",
+            "unclassified-top-level-extension",
+            "unclassified-extension-listed-as-understood",
+            "solana-extra-carries-verifying-contract",
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
@@ -2681,6 +2712,81 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertEqual(evaluate(vector, effects), want)
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
 
+    def test_every_member_classification_vector_depends_on_its_check(self):
+        """Each vector the XN-6 member check rejects would otherwise pass.
+
+        With the check removed, every vector pinned to one of its reasons
+        reaches `pass`: each member is signed and received, so only the
+        classification rejects it.
+        """
+        global challenge_member_defect
+        reasons = {
+            "unclassified-extra-member", "unclassified-extension", "unsupported-action-extension",
+        }
+        names = [name for name, vector in self.by_name.items()
+                 if vector.get("expectedReason") in reasons]
+        self.assertEqual(len(names), 7)
+        check = challenge_member_defect
+        challenge_member_defect = lambda *_args: None  # noqa: E731
+        try:
+            for name in names:
+                with self.subTest(vector=name, mutant="member check removed"):
+                    self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), ("pass", None))
+        finally:
+            challenge_member_defect = check
+
+    def test_challenge_members_are_classified_by_the_selected_adapter(self):
+        """XN-6: each received member is classified from the selected adapter's own table.
+
+        The tables are keyed by CAIP-2 namespace, so one adapter's member is
+        unclassified under another, and a namespace without a table defines
+        none. The local capability withdraws support for a defined extension;
+        it cannot classify an undefined one.
+        """
+        supported = {"understoodActionExtensions": ["payment-identifier"]}
+        extension = {"payment-identifier": {"required": True}}
+        defined = {
+            "eip155:8453": {"name": "USDC", "version": "2", "verifyingContract": "0x" + "66" * 20},
+            "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {"feePayer": "seller", "mint": "3" * 44},
+        }
+        for network, extra in defined.items():
+            with self.subTest(network=network):
+                self.assertIsNone(challenge_member_defect(network, extra, extension, supported))
+                self.assertIsNone(challenge_member_defect(network, {}, {}, {}))
+                for other in defined.values():
+                    for member in set(other) - set(extra):
+                        self.assertEqual(
+                            challenge_member_defect(
+                                network, {**extra, member: other[member]}, extension, supported),
+                            ("fail", "unclassified-extra-member"))
+        self.assertEqual(
+            challenge_member_defect("cosmos:cosmoshub-4", {"name": "USDC"}, {}, supported),
+            ("fail", "unclassified-extra-member"))
+        self.assertEqual(
+            challenge_member_defect("eip155:8453", {}, {"future-action": {}},
+                                    {"understoodActionExtensions": ["future-action"]}),
+            ("fail", "unclassified-extension"))
+        for capability in ({"understoodActionExtensions": []}, {}):
+            with self.subTest(capability=capability):
+                self.assertEqual(challenge_member_defect("eip155:8453", {}, extension, capability),
+                                 ("fail", "unsupported-action-extension"))
+
+    def test_a_supplied_classification_list_never_changes_a_result(self):
+        """XN-6: a list of action-bearing members beside the challenge is not a classification.
+
+        Adding one that omits, names or invents members leaves every execute
+        and verify-evidence result unchanged.
+        """
+        for vector in self.vectors:
+            if vector["operation"] not in {"execute", "verify-evidence"}:
+                continue
+            want = evaluate(copy.deepcopy(vector))
+            for supplied in ([], ["payment-identifier"], ["future-action"]):
+                with self.subTest(vector=vector["name"], supplied=supplied):
+                    changed = copy.deepcopy(vector)
+                    changed["http"]["actionBearingExtensions"] = supplied
+                    self.assertEqual(evaluate(changed), want)
+
     def test_parser_dependent_url_spellings_are_malformed_and_not_public(self):
         """Spellings that WHATWG/UTS-46 parsers resolve to a non-public host are XN-2 `error`.
 
@@ -2852,6 +2958,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "its SB-3 job binding is always mandatory there.",
             "A verifier MUST take this binding policy from the pinned definition and the signed "
             "selection, never from the observed ledger event,",
+            "The handler MUST itself classify each member of the matched requirement's `extra` "
+            "and of `PaymentRequired.extensions` from the selected adapter's definition of that "
+            "member.",
+            "A list of action-bearing members supplied beside the challenge is not that "
+            "classification.",
+            "A member that the selected adapter does not define is unclassified and MUST reject "
+            "before signing, like an unsupported action-bearing member.",
             "The unpaid and the paid request MUST each use the signed `request.method` and "
             "`request.url` exactly.",
         ):

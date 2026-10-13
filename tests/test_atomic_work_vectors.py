@@ -93,7 +93,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 350)
+        self.assertEqual(vector_count, 355)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -1114,6 +1114,42 @@ class AtomicWorkVectorTests(unittest.TestCase):
         ambiguous["claims"].append(distinct)
         with self.assertRaisesRegex(ref.Invalid, "multiple distinct claims"):
             ref._verify_identity_bundle(signed(ambiguous), generator.PUBLIC_KEYS)
+
+    def test_native_account_claim_collapses_identical_repeats(self):
+        # DACS-1 exact presented-claim resolution also governs the claim a
+        # native account is read from: identical repeats collapse, distinct
+        # matches stay ambiguous.
+        bundle = generator.identity_bundle("seller")
+        seller = generator.CLAIMS["seller"]
+        self.assertEqual(
+            ref._bundle_native_account(bundle, seller, "payee"), "dem-test-seller"
+        )
+        repeated = copy.deepcopy(bundle)
+        repeated["claims"].append(copy.deepcopy(repeated["claims"][0]))
+        self.assertEqual(
+            ref._bundle_native_account(repeated, seller, "payee"), "dem-test-seller"
+        )
+        ambiguous = copy.deepcopy(bundle)
+        ambiguous["claims"].append(
+            {"ref": seller, "metadata": {"nativeAccount": "dem-test-other"}}
+        )
+        with self.assertRaisesRegex(ref.Unknown, "unique authenticated payee native-account"):
+            ref._bundle_native_account(ambiguous, seller, "payee")
+        purchase = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-purchase-completion-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in purchase["vectors"]}
+        for name in (
+            "awp-purchase-presenter-identical-duplicate",
+            "awp-purchase-payee-presenter-identical-duplicate",
+            "awp-purchase-listing-seller-presenter-identical-duplicate",
+            "awp-completion-payee-presenter-identical-duplicate",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(
+                    ref.evaluate_vector(by_name[name]), ("pass", "predicate accepted")
+                )
 
     def test_malformed_bundle_claim_is_a_structural_error(self):
         bundle = generator.identity_bundle("buyer", [generator.CLAIMS["payer"]])

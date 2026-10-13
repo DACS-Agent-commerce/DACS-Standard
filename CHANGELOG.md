@@ -1301,10 +1301,13 @@ The format used per release:
   whole-profile historical-authority rejection; an admission that carries no
   Vet authorization result is missing authority and stays `indeterminate`.
   Whole-profile vectors re-sign every bound artifact around an ambiguous
-  payer, payee, Listing seller, or Completion payer presenter (rejected), a
-  repeated identical presenter claim (accepted), and a non-object claim
-  (`error`); a pinned witness shows that removing the authority context's
-  presenter resolution fails those vectors, not only the helper test.
+  payer, payee, Listing seller, or Completion payer presenter (rejected); an
+  exact repeat of the payer, payee, or Listing seller presenter claim in a
+  Purchase, or of the payee's in a Completion (each accepted: canonically
+  identical repeats collapse to one candidate, also where the payee's native
+  account is read from that claim); and a non-object claim (`error`); a pinned
+  witness shows that removing the authority context's presenter resolution
+  fails those vectors, not only the helper test.
 - **Atomic attempt fencing and slot admission from authenticated ledger
   evidence** (CORE §5.2 AW-44; DACS-4 §9.5.10 AWS-4/AWS-14) — a correctness
   hardening of the reference verifier. Composed Purchase and Completion
@@ -1372,12 +1375,24 @@ The format used per release:
   (`indeterminate` / `execution-authority-indeterminate`) and `error`
   (`error` / `execution-authority-error`, a new reason code). The 65 earlier
   vectors and their authorities are byte-identical and keep their results.
+- **Atomic operation proof profile and Ed25519 scalar vectors** (DACS-4
+  §9.5.10 AWS-19; CORE §5.2 AW-33) — AWS-19 now states that
+  `operationProof.proofProfile` MUST equal the authenticated capability's
+  `proofProfile` (a different value is `fail`), which the reference already
+  enforced; a re-signed evidence vector pins it. A Listing signature whose
+  scalar is replaced by s + L is pinned as `fail` (RFC 8032 §5.1.7 requires
+  s < L), so the reference's scalar bound is checked by a vector as well as by
+  the unit test.
 - **Atomic evidence under the LAA qualification** (DACS-5 §10.4.3 SEB-3) —
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is
   qualified like every other successful payment.
 
-### Changed — candidate DACS-4 v0.8 rules that bind every profile
+### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)
+
+These are general normative changes, not Atomic-only rules: they bind every
+rail consumer, pay-* handler, and amendment consumer whether or not
+`AtomicWorkCapabilityV1` is ever enabled.
 
 - **Rail resolution** (DACS-4 §9.4.3) — for PA-2 or PA-3, both finalized
   receipt timestamps and the definition's authenticated `governance.acceptedAt`

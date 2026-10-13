@@ -2057,15 +2057,17 @@ def _bundle_native_account(
     bundle: dict[str, Any], claim: str, account_role: str,
 ) -> str:
     """Resolve one authenticated native-account mapping without caller inference."""
-    matches = [
-        candidate for candidate in bundle.get("claims", [])
+    # DACS-1 exact presented-claim resolution: canonically identical repeats
+    # collapse to one candidate; canonical-distinct matches stay ambiguous.
+    matches = {
+        jcs_bytes(candidate): candidate for candidate in bundle.get("claims", [])
         if isinstance(candidate, dict) and claim_equal(candidate.get("ref"), claim)
-    ]
+    }
     if len(matches) != 1:
         raise Unknown(
             f"unique authenticated {account_role} native-account claim unavailable"
         )
-    account = matches[0].get("metadata", {}).get("nativeAccount")
+    account = next(iter(matches.values())).get("metadata", {}).get("nativeAccount")
     if not isinstance(account, str) or not account:
         raise Unknown(f"authenticated {account_role} native account unavailable")
     return account

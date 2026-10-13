@@ -1916,6 +1916,16 @@ def authorization_vectors() -> list[dict[str, Any]]:
     extended_atomic_payer["authority"]["paymentPhaseInput"]["payer"][
         "runtimeSigner"
     ] = "not-portable"
+    # RFC 8032 \u00a75.1.7: a signature scalar s must be below the group order L.
+    # The Listing signature's s is replaced by s + L, which an unreduced
+    # verifier would still accept.
+    unreduced_listing_signature = copy.deepcopy(base)
+    listing_signature = unreduced_listing_signature["authority"]["listing"]["signature"]
+    raw_signature = ref.b64u_decode(listing_signature["value"])
+    unreduced_s = int.from_bytes(raw_signature[32:], "little") + ref._L
+    listing_signature["value"] = ref.b64u(
+        raw_signature[:32] + unreduced_s.to_bytes(32, "little")
+    )
     non_nfc_authorizations = copy.deepcopy(auths)
     non_nfc_authorizations[0]["unknown"] = "e\u0301"
     non_nfc_authorizations[0] = sign_authorization_unchecked(
@@ -1924,6 +1934,7 @@ def authorization_vectors() -> list[dict[str, Any]]:
     return [
         vector("aw-auth-complete-envelope", ["AW-30", "AW-31", "AW-32", "AW-33", "AW-34", "AW-35", "AW-36", "AW-38"], "authorization", base, "pass", "Each required role, including the independently authorized payer rather than a Vet signer, signs the unmodified full envelope for this exact Work and context."),
         vector("aw-auth-mutation-invalidates", ["AW-30", "AW-35"], "authorization", {**base, "authorizations": tampered}, "fail", "Mutating a signed envelope member invalidates both binding and signature."),
+        vector("aw-auth-listing-signature-scalar-unreduced", ["AW-33"], "authorization", unreduced_listing_signature, "fail", "A Listing signature whose scalar is not reduced below the Ed25519 group order (s + L) is invalid under RFC 8032, so the pinned Listing cannot authenticate the seller authority the authorizations are matched against."),
         vector("aw-auth-operation-index-binding", ["AW-32"], "authorization", {**base, "authorizations": wrong_index}, "fail", "ID, index and kind must identify the same signed operation."),
         vector("aw-auth-work-replay", ["AW-31", "AW-36"], "authorization", {**base, "authorizations": other_work}, "fail", "Authorization cannot be replayed to another Work."),
         vector("aw-auth-required-role-missing", ["AW-34"], "authorization", {**base, "authorizations": missing}, "fail", "Every operation role needs its own authorization."),
@@ -2756,6 +2767,20 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     duplicate_payer = presenter_variant_admission(
         "session", "buyer", [{"ref": CLAIMS["buyer"]}]
     )
+    # The same collapse applies where the payee's native account is read from
+    # its presenter claim, and to the Listing seller.
+    identical_seller_claim = {
+        "ref": CLAIMS["seller"], "metadata": {"nativeAccount": "dem-test-seller"},
+    }
+    duplicate_payee = presenter_variant_admission(
+        "session", "seller", [identical_seller_claim]
+    )
+    duplicate_listing_seller = presenter_variant_admission(
+        "listing", "seller", [identical_seller_claim]
+    )
+    duplicate_completion_payee = presenter_variant_admission(
+        "session", "seller", [identical_seller_claim], completion=True
+    )
     malformed_payer_claim = presenter_variant_admission(
         "session", "buyer", [CLAIMS["buyer"]]
     )
@@ -2790,6 +2815,9 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-purchase-payee-presenter-ambiguous", ["AWP-4", "AWP-7"], "purchase-admission", ambiguous_payee, "fail", "A re-signed payee IdentityBundle with two canonical-distinct claims for its presentedBy identity resolves no presenter, so whole-profile admission rejects although every bound hash and signature is valid."),
         vector("awp-purchase-listing-seller-presenter-ambiguous", ["AWP-4", "AWP-7"], "purchase-admission", ambiguous_listing_seller, "fail", "A re-signed Listing whose seller IdentityBundle has two canonical-distinct claims for its presentedBy identity resolves no Listing publisher."),
         vector("awp-purchase-presenter-identical-duplicate", ["AWP-4", "AWP-7"], "purchase-admission", duplicate_payer, "pass", "A repeated, canonically identical presentedBy claim collapses to one candidate; array order and repetition do not make the presenter ambiguous."),
+        vector("awp-purchase-payee-presenter-identical-duplicate", ["AWP-4", "AWP-7"], "purchase-admission", duplicate_payee, "pass", "A repeated, canonically identical payee presentedBy claim collapses to one candidate, including where the payee's native account is read from that claim."),
+        vector("awp-purchase-listing-seller-presenter-identical-duplicate", ["AWP-4", "AWP-7"], "purchase-admission", duplicate_listing_seller, "pass", "A repeated, canonically identical Listing seller presentedBy claim collapses to one candidate and still identifies the Listing publisher."),
+        vector("awp-completion-payee-presenter-identical-duplicate", ["AWP-4", "AWP-7", "AWP-13"], "completion-admission", duplicate_completion_payee, "pass", "Completion consumes the same collapse of a repeated, canonically identical payee presentedBy claim in the verified Purchase."),
         vector("awp-purchase-payer-bundle-claim-malformed", ["AWP-4", "AWP-7"], "purchase-admission", malformed_payer_claim, "error", "A non-object BundleClaim is an earlier structural error; presented-claim resolution does not skip it or reclassify it as an identity non-match."),
         vector("awp-completion-payer-presenter-ambiguous", ["AWP-4", "AWP-7", "AWP-13"], "completion-admission", ambiguous_completion_payer, "fail", "Completion consumes the same exact presented-claim resolution for the verified Purchase payer bundle."),
         vector("awp-purchase-legacy-agreement-not-current-authority", ["AWP-4", "AWP-7"], "purchase-admission", legacy_composed_admission, "indeterminate", "A historically readable AgreementDocument and commit-agreement phase do not authorize execution under the current Atomic tuple."),
@@ -3536,6 +3564,14 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         extra_selector["evidence"][selector] = "1"
         extra_selector["evidence"] = resign_atomic_evidence(extra_selector["evidence"])
         extra_selector_inputs[selector] = extra_selector
+    # AWS-19: operationProof.proofProfile equals the capability's proofProfile.
+    operation_proof_profile_mismatch = copy.deepcopy(settle_input)
+    operation_proof_profile_mismatch["evidence"]["operationProof"][
+        "proofProfile"
+    ] = "demos-bft-proof/test-0"
+    operation_proof_profile_mismatch["evidence"] = resign_atomic_evidence(
+        operation_proof_profile_mismatch["evidence"]
+    )
     wrong_pc2 = mutate(
         settle_input, ["pc2Address"],
         f"dacs4:payment:{intent['jobId']}:x402-usdc:{intent['phaseIndex']}",
@@ -3726,6 +3762,7 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         vector("aws-atomic-and-delivery-evidence-discriminators", ["AWS-17"], "settlement", extra_selector_inputs["deliveryEvidenceVersion"], "fail", "The exclusive Atomic discriminator cannot coexist with the DeliveryEvidence selector, even in otherwise valid, re-signed Atomic evidence."),
         vector("aws-atomic-and-finality-bound-evidence-discriminators", ["AWS-17"], "settlement", extra_selector_inputs["finalityBoundEvidenceVersion"], "fail", "The exclusive Atomic discriminator cannot coexist with the FinalityBoundSettlementEvidence selector, even in otherwise valid, re-signed Atomic evidence."),
         vector("aws-atomic-and-legacy-transition-evidence-discriminators", ["AWS-17"], "settlement", extra_selector_inputs["legacyTransitionEvidenceVersion"], "fail", "The exclusive Atomic discriminator cannot coexist with the LegacyTransitionSettlementEvidence selector, even in otherwise valid, re-signed Atomic evidence."),
+        vector("aws-operation-proof-profile-mismatch", ["AWS-19"], "settlement", operation_proof_profile_mismatch, "fail", "An operationProof whose proofProfile differs from the authenticated capability's proofProfile is not verified under the selected proof algorithm, even in otherwise valid, re-signed evidence."),
         vector("aws-phase-orchestrator-signature", ["AWS-27"], "settlement", {**settle_input, "evidence": payer_evidence}, "fail", "A payer signature cannot substitute for the authenticated phase orchestrator signature."),
         vector("aws-legacy-txref-not-reinterpreted", ["AWS-16", "AWS-17"], "settlement", legacy, "fail", "demos:{txHash} is not reinterpreted as a Work operation."),
         vector("aws-final-work-receipt-bound", ["AWS-18", "AWS-19", "AWS-20", "AWS-24"], "settlement", settle_input, "pass", "Final receipt, committed operation leaf, operation kind, and settlement payload are verified together.", boundary_rules=["AWS-24"]),

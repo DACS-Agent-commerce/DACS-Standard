@@ -2765,7 +2765,9 @@ ordinary PC-2 tuple remains independently recoverable and verifiable.
   operation-receipt root, and verify `operationProof` against the exact
   structured `subject` before accepting an operation result.
   `operationProof.subject.receiptContentHash` MUST equal
-  `workReceiptRef.contentHash`.
+  `workReceiptRef.contentHash`, and `operationProof.proofProfile` MUST equal
+  the `proofProfile` of the authenticated CORE §5.2 capability that selects the
+  proof's encoding and verification algorithm; a different value is `fail`.
 - (AWS-20) `operationRef` and `operationProof.subject` MUST match each other
   component-wise and identify the winning receipt's operation at the same
   index, ID, and kind. Success evidence MUST select a `committed` leaf. Failure

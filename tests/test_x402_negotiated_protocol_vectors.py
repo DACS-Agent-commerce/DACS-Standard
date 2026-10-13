@@ -2453,9 +2453,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "the adapter MUST compare the following addresses as 20-byte values.",
             "They are `payTo`, the PB-1 payout binding and `PaymentPhaseInput.payee.payeeAddress`; "
             "the `payingKey` address component, the derived payer and the authorization payer; "
-            "the response `payer`; the selection `asset`, against the adapter's asset metadata, "
-            "the challenge, and the authenticated event; the `extra.verifyingContract` member "
-            "inside the XN-4 `extra` comparison; and the authenticated event's payer and payee.",
+            "the response `payer`; and the authenticated event's payer and payee.",
+            "So are the selection `asset`, against the adapter's asset metadata, the challenge, "
+            "and the authenticated event, and the `extra.verifyingContract` member inside the "
+            "XN-4 `extra` comparison.",
             "On an EIP-155 network the `asset` and an `extra.verifyingContract` compare as XN-5 "
             "addresses, so letter case alone is not a mismatch.",
             "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
@@ -2485,8 +2486,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "- finalized ledger event resolved for the authorization identity that contradicts the "
             "authorization (another amount, payee, or asset) → `permanent` from the ledger (XN-8)",
             "| `counterparty` | AP2 mandate revoked, x402 server refused before authorization |",
-            "and ISATAP, whose interface identifier `0:5efe` or `200:5efe` carries an IPv4 address "
-            "after any prefix.",
+            "The ISATAP interface identifier `0:5efe` or `200:5efe` carries an IPv4 address after "
+            "any prefix.",
             "The handler MUST treat each NAT64 prefix its own network uses, whether discovered "
             "under RFC 7050 or configured locally, like `64:ff9b::/96`.",
             "The v0.8 EIP-155 `exact` binding authorizes only through one of those two forms, so "

@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 309 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 315 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1184,9 +1184,13 @@ unchanged spelling passes.
 SB-3 cases follow XN-9: the EIP-155 `exact` binding authorizes only through
 EIP-3009 or Permit2, so the job binding is mandatory whatever form the ledger
 event shows. The ledger's `sessionBinding` uses the `sb3-binding-required`
-set's evidence model (`{"state": …}`). A mismatch is `fail`, an absent or
-unverifiable binding `indeterminate`, and a missing, non-object, or
-unknown-state value `error`, all with reason `sb3`. An earlier plain ERC-20
+set's closed evidence model (`{"state": …}`), its state list, and its classifier
+(`scripts/sb3_binding.py`). A mismatch is `fail`, and `absent` and each
+`unavailable-*` state (RPC, pruned history, signature authority,
+reorganisation) are `indeterminate`. A missing or non-object value, an unknown
+state (a bare `unavailable` included), the `malformed` state, and an extra
+member are `error`, all with reason `sb3`. The unit suite runs every
+required-binding evidence value of that set through this evaluator. An earlier plain ERC-20
 transfer of the same amount from the buyer to the seller, cited as the
 settlement, stays `indeterminate`. Solana's `exact` binding declares no job
 binding, so its `sessionBinding` is not consulted.

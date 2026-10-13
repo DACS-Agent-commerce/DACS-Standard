@@ -123,10 +123,13 @@ The format used per release:
   SB-3) — the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009 or
   Permit2, so the SB-3 job binding is always mandatory there. A verifier takes
   that policy from the pinned definition and the signed selection, never from
-  the observed ledger event, and resolves it under SB-3's four branches: a
-  mismatch is `fail`, an absent or unverifiable binding `indeterminate`, and
-  malformed binding evidence `error`. An earlier plain transfer of the same
-  amount therefore cannot stand in for the bound authorization.
+  the observed ledger event, and resolves it under SB-3's four branches with
+  the `sb3-binding-required` set's closed `{"state"}` model, state list and
+  classifier: a mismatch is `fail`; `absent` and every `unavailable-*` state
+  (RPC, pruned history, signature authority, reorganisation) are
+  `indeterminate`; and malformed binding evidence, an unknown state or an extra
+  member is `error`. An earlier plain transfer of the same amount therefore
+  cannot stand in for the bound authorization.
 - **Unbound schemes end before authorization** (DACS-4 §9.5.7 XN-3, XN-9) —
   every locally supported scheme without a DACS success binding, `upto` and
   `batch-settlement` alike, is a pre-authorization `fail` / permanent handler

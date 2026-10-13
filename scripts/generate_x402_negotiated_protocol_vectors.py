@@ -1639,7 +1639,9 @@ def build_vectors() -> list[dict]:
 
     # XN-9/SB-3: the EIP-155 exact binding always requires the SB-3 job
     # binding, so its four branches apply whatever form the event shows. The
-    # ledger matches the evidence in every case; only the binding differs.
+    # ledger matches the evidence in every case; only the binding differs. The
+    # evidence uses the sb3-binding-required set's closed `{"state"}` model and
+    # state list, so every `unavailable-*` state is unresolved, never malformed.
     def session_binding(binding, authorization="eip-3009"):
         def mutate(v):
             v["ledger"]["authorization"] = authorization
@@ -1653,14 +1655,28 @@ def build_vectors() -> list[dict]:
          "a verified EIP-3009 nonce derived for another job or phase rejects the evidence"),
         ("sb3-binding-absent", "indeterminate", {"state": "absent"},
          "an EIP-3009 transfer without the derived job nonce is non-countable, never unbound success"),
-        ("sb3-binding-unverifiable", "indeterminate", {"state": "unavailable"},
-         "binding evidence that cannot be verified now keeps the settlement non-countable"),
+        ("sb3-binding-unverifiable", "indeterminate", {"state": "unavailable-rpc"},
+         "binding evidence that the RPC cannot serve now keeps the settlement non-countable"),
+        ("sb3-binding-unavailable-pruned-history", "indeterminate",
+         {"state": "unavailable-pruned-history"},
+         "pruned history leaves the binding unverifiable, so the settlement stays non-countable"),
+        ("sb3-binding-unavailable-signature-authority", "indeterminate",
+         {"state": "unavailable-signature-authority"},
+         "an unresolved ERC-1271 isValidSignature leaves the binding unverifiable"),
+        ("sb3-binding-unavailable-reorged", "indeterminate", {"state": "unavailable-reorged"},
+         "a reorganisation that removed the binding observation is unresolved, never malformed"),
         ("sb3-binding-evidence-missing", "error", absent,
          "a missing binding-evidence value is malformed, not unavailable"),
         ("sb3-binding-evidence-null", "error", None,
          "a non-object binding-evidence value is malformed"),
         ("sb3-binding-unknown-state", "error", {"state": "future-state"},
          "an unknown binding state is malformed"),
+        ("sb3-binding-bare-unavailable-state", "error", {"state": "unavailable"},
+         "a bare unavailable state is not one of the sb3-binding-required states, so it is malformed"),
+        ("sb3-binding-malformed-state", "error", {"state": "malformed"},
+         "the malformed state is SB-3's malformed branch"),
+        ("sb3-binding-extra-member", "error", {"state": "match", "observedAt": 1787443201000},
+         "binding evidence is the closed {state} object, so an extra member is malformed"),
     ):
         add_case(vectors, name, expected, "XN-9/SB-3", note, session_binding(binding),
                  authorization_submitted=True, reason="sb3")

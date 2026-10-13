@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 309,
-  "hash": "f92e015ec858da6d85efc8b6d6fe88c596fde979863c0ec4d531007eb86aad38",
+  "count": 315,
+  "hash": "71ef9e43614c3e4a38d3a3637530a353dfbbda92b2f18b8dc6f6e0118834c91d",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -19813,7 +19813,7 @@
       "expected": "indeterminate",
       "rule": "XN-9/SB-3",
       "operation": "execute",
-      "note": "binding evidence that cannot be verified now keeps the settlement non-countable",
+      "note": "binding evidence that the RPC cannot serve now keeps the settlement non-countable",
       "base": "v2",
       "patch": [
         {
@@ -19823,7 +19823,91 @@
             "sessionBinding",
             "state"
           ],
-          "value": "unavailable"
+          "value": "unavailable-rpc"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-unavailable-pruned-history",
+      "expected": "indeterminate",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "pruned history leaves the binding unverifiable, so the settlement stays non-countable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "unavailable-pruned-history"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-unavailable-signature-authority",
+      "expected": "indeterminate",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "an unresolved ERC-1271 isValidSignature leaves the binding unverifiable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "unavailable-signature-authority"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-unavailable-reorged",
+      "expected": "indeterminate",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "a reorganisation that removed the binding observation is unresolved, never malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "unavailable-reorged"
         },
         {
           "op": "replace",
@@ -19905,6 +19989,90 @@
             "state"
           ],
           "value": "future-state"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-bare-unavailable-state",
+      "expected": "error",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "a bare unavailable state is not one of the sb3-binding-required states, so it is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "unavailable"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-malformed-state",
+      "expected": "error",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "the malformed state is SB-3's malformed branch",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "malformed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "sb3"
+    },
+    {
+      "name": "sb3-binding-extra-member",
+      "expected": "error",
+      "rule": "XN-9/SB-3",
+      "operation": "execute",
+      "note": "binding evidence is the closed {state} object, so an extra member is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "observedAt"
+          ],
+          "value": 1787443201000
         },
         {
           "op": "replace",

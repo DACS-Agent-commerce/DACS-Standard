@@ -20,6 +20,7 @@ import idna
 from scripts.evm_crypto import evm_address
 from scripts.jcs import canonicalize as jcs_canonicalize
 from scripts.raw_json_profile import RawJsonProfileError, loads as admit_raw_json
+from scripts.sb3_binding import binding_branch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,9 +56,8 @@ SOLANA_NETWORK_CLUSTERS = {
 # authorizes an EIP-155 payment only through EIP-3009 or Permit2. Both declare
 # an SB-3 job binding, so it is mandatory on those networks whatever the
 # observed event's `authorization` says. Binding evidence uses the
-# sb3-binding-required set's model: {"state": "match" | "mismatch" | ...}.
+# sb3-binding-required set's closed model and classifier (scripts/sb3_binding).
 SB3_BINDING_NAMESPACES = frozenset({"eip155"})
-SB3_UNRESOLVED_STATES = frozenset({"absent", "unavailable"})
 # XN-11: with no payment event for the authorization identity, the states the
 # scheme profile proves can never settle: for EIP-3009 a cancelled nonce, or a
 # `validBefore` that passed with the nonce unused.
@@ -984,13 +984,12 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
         return "error", "address-form"
     # SB-3: a mandatory binding is resolved before the transfer checks.
     if network.split(":", 1)[0] in SB3_BINDING_NAMESPACES:
-        binding = ledger.get("sessionBinding")
-        state = binding.get("state") if isinstance(binding, dict) else None
-        if state == "mismatch":
+        branch = binding_branch(ledger.get("sessionBinding"))
+        if branch == "mismatch":
             return "fail", "sb3"
-        if state in SB3_UNRESOLVED_STATES:
+        if branch in ("absent", "unavailable"):
             return "indeterminate", "sb3"
-        if state != "match":
+        if branch != "match":
             return "error", "sb3"
     if (
         ledger.get("network") != network
@@ -1839,7 +1838,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 ({"state": "match"}, ("pass", None)),
                 ({"state": "mismatch"}, ("fail", "sb3")),
                 ({"state": "absent"}, ("indeterminate", "sb3")),
-                ({"state": "unavailable"}, ("indeterminate", "sb3")),
+                ({"state": "unavailable-rpc"}, ("indeterminate", "sb3")),
+                ({"state": "unavailable-pruned-history"}, ("indeterminate", "sb3")),
+                ({"state": "unavailable-signature-authority"}, ("indeterminate", "sb3")),
+                ({"state": "unavailable-reorged"}, ("indeterminate", "sb3")),
+                ({"state": "unavailable"}, ("error", "sb3")),
+                ({"state": "malformed"}, ("error", "sb3")),
+                ({"state": "match", "observedAt": 1}, ("error", "sb3")),
                 ({"state": 7}, ("error", "sb3")),
                 ({}, ("error", "sb3")),
                 ("match", ("error", "sb3")),
@@ -1853,6 +1858,32 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
         vector["ledger"].pop("sessionBinding")
         self.assertEqual(evaluate(vector), ("pass", None))
+
+    def test_sb3_states_follow_the_binding_required_set(self):
+        """Every required-binding evidence value of the SB-3 set reaches the same branch here."""
+        corpus = json.loads((ROOT / "conformance/vectors/security/sb3-binding-required-v0.8.json")
+                            .read_text(encoding="utf-8"))
+        base = self.by_name["protocol-v2-exact-success"]
+        checked = 0
+        for case in corpus["vectors"]:
+            inputs = case["protocolInput"]
+            if (case["trustedContext"].get("resolvedRailProfile") != "x402-eip3009-binding-v0.8"
+                    or inputs.get("unboundTransferChecks") != "match"
+                    or case["want"]["usedUnboundPosture"]):
+                continue
+            with self.subTest(sb3_vector=case["name"]):
+                vector = copy.deepcopy(base)
+                if "bindingEvidence" in inputs:
+                    vector["ledger"]["sessionBinding"] = copy.deepcopy(inputs["bindingEvidence"])
+                else:
+                    vector["ledger"].pop("sessionBinding")
+                effects = {}
+                verdict, reason = evaluate(vector, effects)
+                self.assertEqual(verdict, case["expected"])
+                self.assertEqual(reason, None if verdict == "pass" else "sb3")
+                self.assertEqual(effects["walletAuthorizationCalls"], 1)
+                checked += 1
+        self.assertGreaterEqual(checked, 12)
 
     def test_payment_disposition_never_comes_from_a_record_or_the_response(self):
         """XN-11: after the wallet call the verdict is the ledger reconciliation's alone.

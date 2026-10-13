@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import generate_sb3_binding_required_vectors as generator  # noqa: E402
+from sb3_binding import binding_branch  # noqa: E402
 
 
 VECTORS = ROOT / "conformance/vectors/security/sb3-binding-required-v0.8.json"
@@ -64,33 +65,19 @@ def evaluate(vector: dict) -> tuple[str, dict]:
     protocol_input = vector["protocolInput"]
 
     if binding_policy == "required":
-        evidence = protocol_input.get("bindingEvidence")
-        known_states = {
-            "match",
-            "mismatch",
-            "absent",
-            "malformed",
-            "unavailable-rpc",
-            "unavailable-pruned-history",
-            "unavailable-signature-authority",
-            "unavailable-reorged",
-        }
-        if not isinstance(evidence, dict) or set(evidence) != {"state"}:
+        # The negotiated x402 evaluator classifies its SB-3 evidence the same way.
+        branch = binding_branch(protocol_input.get("bindingEvidence"))
+        if branch == "malformed":
             return result("error", "malformed", "malformed-binding-evidence")
-        state = evidence.get("state")
-        if not isinstance(state, str) or state not in known_states:
-            return result("error", "malformed", "malformed-binding-evidence")
-        if state == "malformed":
-            return result("error", "malformed", "malformed-binding-evidence")
-        if state == "mismatch":
+        if branch == "mismatch":
             return result("fail", "rejected", "binding-mismatch")
-        if state != "match":
+        if branch != "match":
             return result(
                 "indeterminate",
                 "unresolved",
                 (
                     "required-binding-absent"
-                    if state == "absent"
+                    if branch == "absent"
                     else "binding-authority-unavailable"
                 ),
             )

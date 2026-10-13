@@ -2656,7 +2656,7 @@ The normative machine-readable schema is
 
 ```
 type AtomicSettlementEvidenceV1 = {
-  atomicEvidenceVersion: "1"          // exclusive discriminator; MUST NOT carry evidenceVersion or another *EvidenceVersion
+  atomicEvidenceVersion: "1"          // exclusive discriminator; MUST NOT carry evidenceVersion or another recognized DACS-4 evidence selector (AWS-17)
   networkId: string
   jobId: string
   railId: string

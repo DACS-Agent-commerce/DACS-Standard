@@ -175,7 +175,11 @@ receipt is presented, and otherwise the block of the authenticated lifecycle
 evidence that resolves the Work; with no such block the inventory is
 unavailable. Admission is therefore evaluated as of that block: fencing an
 effect in a later block remains the ledger's AW-44 guarantee, which the
-verifier does not observe. For
+verifier does not observe. Without a receipt the rule is reached only on the
+focused `attempts` surface (composed admission always requires the finalized
+receipt), and there it is only an as-of check over the presented authenticated
+evidence at the block that evidence names: it does not assert that the result
+is current or that the presented evidence is complete. For
 a committed Purchase, a later attempt cannot reach payment: it carries the
 same signed `payment-slot-cas` expectation (AW-39), whose `vacant` or
 `rolled-back` state cannot match the terminal `settled` slot the receipt

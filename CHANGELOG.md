@@ -1304,8 +1304,9 @@ The format used per release:
   payer, payee, Listing seller, or Completion payer presenter (rejected); an
   exact repeat of the payer, payee, or Listing seller presenter claim in a
   Purchase, or of the payee's in a Completion (each accepted: canonically
-  identical repeats collapse to one candidate, also where the payee's native
-  account is read from that claim); and a non-object claim (`error`); a pinned
+  identical repeats collapse to one candidate, also where the payer's or
+  payee's native account is read from a claim, including the payer's
+  paying-key claim); and a non-object claim (`error`); a pinned
   witness shows that removing the authority context's presenter resolution
   fails those vectors, not only the helper test.
 - **Atomic attempt fencing and slot admission from authenticated ledger
@@ -1323,7 +1324,12 @@ The format used per release:
   no authenticated block binds, or an unsigned one (signature absent or null),
   is unavailable (`indeterminate`). Admission is evaluated as of that block;
   fencing an effect in a later block remains the ledger's AW-44 guarantee,
-  outside the verifier. For a committed Purchase, a later attempt cannot reach
+  outside the verifier. Without a receipt the rule is reached only on the
+  focused `attempts` surface (composed admission always requires the finalized
+  receipt), and there it is only an as-of check over the presented
+  authenticated evidence at the block that evidence names: it does not assert
+  that the result is current or that the presented evidence is complete. For a
+  committed Purchase, a later attempt cannot reach
   payment: it carries the same signed `payment-slot-cas` expectation (AW-39),
   whose `vacant` or `rolled-back` state cannot match the terminal `settled`
   slot the receipt proves (AW-46); that CAS precedes any payment (AWS-6), and
@@ -1347,8 +1353,10 @@ The format used per release:
   tests and a wrong-implementation witness, which removes twenty-one inventory
   and slot guards in turn and asserts the exact result each committed vector
   moves to, are in the pre-review gate. No normative text changes for this
-  item. The 315 earlier Atomic vectors keep their names, order, verdicts,
-  diagnostics and rules; 269 of them carry changed inputs, because the
+  item. The 315 earlier Atomic vectors keep their names, order, verdicts and
+  rules, and all but one keep their diagnostics
+  (`aws-both-evidence-discriminators` still fails at the schema, whose message
+  now quotes the widened `not`); 269 of them carry changed inputs, because the
   inventory replaces the caller list and the synthetic proof-byte fixture
   limit grows to cover the inventory witness.
 - **Exclusive Atomic evidence discriminator** (DACS-4 §9.5.10 AWS-17) —

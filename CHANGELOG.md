@@ -1359,6 +1359,19 @@ The format used per release:
   already did. Adds one re-signed negative vector per added selector, three
   schema boundary checks (44 → 47), and a test that pins the schema and the
   reference check separately and checks agreement with the DACS-5 reference.
+- **Atomic AWS results keep their state at SEB-3** (DACS-5 §10.4.3 SEB-3;
+  DACS-4 §9.5.10 AWS-23) — only a deterministic AWS `fail` rejects an Atomic
+  member. When well-formed authority for the exact evidence bytes carries an
+  AWS `indeterminate` (AWS-23 unavailable proof, finalized state, or
+  authenticated context) or `error`, SEB-3's result for the member is that
+  exact state, as SEB-3 already propagates LAA results; only an exact `pass`
+  admits it. The DACS-5 reference carries such a result to the end of EBFAB
+  validation like other deferred authority, so a deterministic contradiction
+  still rejects. Adds two bijection vectors through the generator (65 → 67):
+  copies of `atomic-non-passing-admission` whose AWS result is `indeterminate`
+  (`indeterminate` / `execution-authority-indeterminate`) and `error`
+  (`error` / `execution-authority-error`, a new reason code). The 65 earlier
+  vectors and their authorities are byte-identical and keep their results.
 - **Atomic evidence under the LAA qualification** (DACS-5 §10.4.3 SEB-3) —
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is

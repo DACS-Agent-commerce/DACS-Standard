@@ -47,7 +47,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 71 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
-| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 65 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 67 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
@@ -702,7 +702,7 @@ assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
 
 ### `bundle-settlement-evidence-bijection-v0.4.json` — §10.4.3 SEB-1..SEB-6
 
-65 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
+67 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
 `settlementEvidence[]` array to the
 phase keys derived from a signature-verified DACS-1 listing pipeline and the
 domain-verified EBFAB `phaseSummary`; no caller-supplied expected set is trusted.
@@ -725,8 +725,12 @@ and an unfinalized or unresolvable completed EBFAB reject. Inputs keep raw
 full-canonical reference keys, independently resolved phase keys, present optional
 pointers, SR-2 lifecycle overrides, ST-8 record classes/supersession edges, and
 unrelated authority disposition separate. Stable
-outputs use `verified`, `rejected`, or `indeterminate` plus one normative
-`reasonCode`; `reasonPrecedence` fixes cross-run code selection. The evaluator
+outputs use `verified`, `rejected`, `indeterminate`, or `error` plus one
+normative `reasonCode`; `reasonPrecedence` fixes cross-run code selection. An
+Atomic member's AWS result propagates as SEB-3 requires: only an exact `pass`
+admits it, a deterministic `fail` rejects it, and an `indeterminate` or `error`
+result for its exact bytes is that same state (`execution-authority-indeterminate`
+or `execution-authority-error`). The evaluator
 derives `P` from those authenticated artifacts and tests the exact SR-2 vocabulary:
 completed evidence is `finalized` and independently resolvable; failed/aborted
 evidence is `included` or `finalized` without importing that stricter ST-11

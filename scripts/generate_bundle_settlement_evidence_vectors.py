@@ -582,6 +582,12 @@ def make_atomic_authority(variant="pass"):
         admissions[pay_key]["valid"] = True
     if variant == "case-folded-admission":
         admissions[pay_key]["disposition"] = "PASS"
+    # SEB-3: an AWS indeterminate or error result for these exact bytes is
+    # that exact state, not a rejection.
+    if variant == "indeterminate-admission":
+        admissions[pay_key]["disposition"] = "indeterminate"
+    if variant == "error-admission":
+        admissions[pay_key]["disposition"] = "error"
 
     agreement_ref = {
         "anchor": {
@@ -1030,6 +1036,12 @@ def generate(source):
         data["reasonCodes"].append("execution-authority-indeterminate")
     if "execution-authority-indeterminate" not in data["reasonPrecedence"]:
         data["reasonPrecedence"].insert(1, "execution-authority-indeterminate")
+    # SEB-3 keeps a malformed-input execution authority (an AWS error) as
+    # error rather than folding it into rejection.
+    if "execution-authority-error" not in data["reasonCodes"]:
+        data["reasonCodes"].append("execution-authority-error")
+    if "execution-authority-error" not in data["reasonPrecedence"]:
+        data["reasonPrecedence"].insert(1, "execution-authority-error")
     definitions = semantic_definitions(data)
     for definition in definitions.values():
         if definition.get("legacyDeliveryEvidence") is True:
@@ -1680,6 +1692,10 @@ def generate(source):
         "atomic-case-folded-admission": make_atomic_authority(
             "case-folded-admission"
         ),
+        "atomic-indeterminate-admission": make_atomic_authority(
+            "indeterminate-admission"
+        ),
+        "atomic-error-admission": make_atomic_authority("error-admission"),
     })
     atomic_vector_specs = (
         (
@@ -1734,6 +1750,16 @@ def generate(source):
             "bundle-settlement-bijection-atomic-case-folded-admission-reject",
             "atomic-case-folded-admission", "fail", "rejected",
             "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-indeterminate-admission-indeterminate",
+            "atomic-indeterminate-admission", "indeterminate", "indeterminate",
+            "execution-authority-indeterminate",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-error-admission-error",
+            "atomic-error-admission", "error", "error",
+            "execution-authority-error",
         ),
     )
     known_vector_names = {vector["name"] for vector in data["vectors"]}

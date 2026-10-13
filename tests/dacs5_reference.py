@@ -14610,6 +14610,9 @@ def _validate_ebfab_boolean(
     pending_closure_result = (
         authority_preflight if authority_preflight[0] == "indeterminate" else None
     )
+    # SEB-3: a present AWS indeterminate or error result for exact Atomic
+    # evidence propagates as that exact state, deferred like the results above.
+    atomic_admission_results = []
     delivery_dependency_owners = {}
     legacy_agreement_eligibility = {}
     for ref, resolution in zip(actual_refs, exact_resolutions):
@@ -14722,12 +14725,23 @@ def _validate_ebfab_boolean(
                 or set(atomic_admission) != {
                     "disposition", "evidenceHash", "phaseKey", "logicalAddress"
                 }
-                or atomic_admission.get("disposition") != "pass"
+                or atomic_admission.get("disposition") not in (
+                    "pass", "indeterminate", "error"
+                )
                 or atomic_admission.get("evidenceHash") != evidence_hash
                 or not _nonempty_jcs_string(atomic_admission.get("phaseKey"))
                 or not _nonempty_jcs_string(atomic_admission.get("logicalAddress"))
             ):
                 return (False, "Atomic Work settlement admission is malformed or mismatched", None)
+            # Only a deterministic AWS fail rejects (above).  An AWS
+            # indeterminate or error is that exact state, never failure
+            # evidence; a later deterministic contradiction still rejects.
+            if atomic_admission["disposition"] != "pass":
+                atomic_admission_results.append((
+                    atomic_admission["disposition"],
+                    "exact Atomic Work settlement admission is "
+                    + atomic_admission["disposition"],
+                ))
         binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
             ref,
             record,
@@ -15107,7 +15121,10 @@ def _validate_ebfab_boolean(
     ):
         return (False, "failed or aborted EBFAB is not included or finalized", None)
     final_closure_result = _combine_closure_results([
-        result for result in (pending_closure_result, agreement_closure_result)
+        result for result in (
+            pending_closure_result, agreement_closure_result,
+            *atomic_admission_results,
+        )
         if result is not None
     ])
     if final_closure_result[0] != "pass":

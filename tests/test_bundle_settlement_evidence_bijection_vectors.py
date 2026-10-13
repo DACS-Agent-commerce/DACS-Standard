@@ -537,6 +537,8 @@ def evaluate(vector_data, authorities, pubkeys):
     authority_disposition, _, expected = derive_phase_disposition(authority, pubkeys)
     if authority_disposition == "indeterminate":
         return "indeterminate", "execution-authority-indeterminate"
+    if authority_disposition == "error":
+        return "error", "execution-authority-error"
     if authority_disposition != "pass":
         return "rejected", "execution-authority"
 
@@ -660,6 +662,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             "verified": "pass",
             "rejected": "fail",
             "indeterminate": "indeterminate",
+            "error": "error",
         }
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
@@ -736,7 +739,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_atomic_admission_binds_exact_hash_phase_and_logical_address(self):
         # SEB-3: Atomic evidence enters only through an exact passing AWS
         # admission for its complete bytes, phase, and Atomic logical address;
-        # malformed, substituted, cross-phase, or non-passing authority
+        # malformed, substituted, or cross-phase authority, or an AWS fail,
         # rejects admission.  Each case keeps every artifact exact and moves
         # one binding of the pay-dem member to the (itself valid) delivery
         # member's value.
@@ -823,20 +826,59 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertEqual(disposition, "fail", reason)
                 self.assertEqual(str(reason), expected_reason)
 
-        # Only an exact AWS "pass" admits the member.  The other AWS results
-        # never yield SEB "pass"; which non-pass class they map to is not
-        # pinned here.
-        for value in ("error", "indeterminate"):
+        # Only an exact AWS "pass" admits the member, and only a deterministic
+        # AWS "fail" rejects it.  SEB-3 propagates an AWS "indeterminate" or
+        # "error" for these exact bytes as that exact state, like an LAA
+        # result; the stored corpus authority is the passing one with that
+        # one change.
+        for corpus_name, value in (
+            ("atomic-indeterminate-admission", "indeterminate"),
+            ("atomic-error-admission", "error"),
+        ):
             authority = copy.deepcopy(base)
             authority["atomicEvidenceAdmissionByCanonicalRef"][pay_key][
                 "disposition"
             ] = value
+            expected = (value, f"exact Atomic Work settlement admission is {value}")
             with self.subTest(admission=f"disposition={value!r}"):
                 disposition, reason, phase_keys = derive_phase_disposition(
-                    authority, self.pubkeys
+                    copy.deepcopy(authority), self.pubkeys
                 )
-                self.assertNotEqual(disposition, "pass", reason)
+                self.assertEqual((disposition, str(reason)), expected)
                 self.assertIsNone(phase_keys)
+            with self.subTest(corpus=corpus_name):
+                stored = self.data["executionAuthorities"][corpus_name]
+                self.assertEqual(stored, authority)
+                disposition, reason, _ = derive_phase_disposition(
+                    stored, self.pubkeys
+                )
+                self.assertEqual((disposition, str(reason)), expected)
+            # A deterministic contradiction in the same admission still
+            # rejects: the AWS result does not mask a foreign phase key.
+            foreign = copy.deepcopy(authority)
+            admissions = foreign["atomicEvidenceAdmissionByCanonicalRef"]
+            admissions[pay_key]["phaseKey"] = admissions[delivery_key]["phaseKey"]
+            with self.subTest(admission=f"disposition={value!r}, foreign phase key"):
+                disposition, reason, _ = derive_phase_disposition(
+                    foreign, self.pubkeys
+                )
+                self.assertEqual(
+                    (disposition, str(reason)),
+                    ("fail", "Atomic Work admission resolves to another phase"),
+                )
+
+    def test_seb3_states_atomic_aws_result_propagation(self):
+        text = " ".join(SPEC.read_text(encoding="utf-8").split())
+        start = text.index("current Atomic Work evidence family")
+        paragraph = text[start:start + 2500]
+        for phrase in (
+            "Only a deterministic AWS `fail` is a non-passing result that rejects",
+            "that exact state propagates as SEB-3's result for the member",
+            "therefore stays `indeterminate` and an AWS `error` stays `error`",
+            "only an exact AWS `pass` admits the member",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, paragraph)
 
     def test_atomic_payment_is_laa_qualified_like_every_payment(self):
         authority = copy.deepcopy(

@@ -1133,7 +1133,14 @@ under `dacs-atomic-evidence:v1:`. The verifier MUST require the exclusive
 AWS-29 for the exact complete evidence bytes, Work receipt/proof closure,
 `jobId`, phase kind/index, orchestrator, and Atomic evidence logical address.
 Missing Atomic verification authority is indeterminate; malformed, stale,
-substituted, cross-phase, or non-passing authority rejects admission. Both the
+substituted, or cross-phase authority, or a deterministic AWS `fail`, rejects
+admission. Only a deterministic AWS `fail` is a non-passing result that
+rejects: when well-formed authority for these exact evidence bytes carries an
+AWS `indeterminate` or `error` result, that exact state propagates as SEB-3's
+result for the member, as SEB-3 propagates an LAA result. An AWS-23
+`indeterminate` (unavailable proof, finalized state, or authenticated context)
+therefore stays `indeterminate` and an AWS `error` stays `error`; neither is
+failure evidence, and only an exact AWS `pass` admits the member. Both the
 `pay-dem` result and `deliver-storage-program` result enter the SEB-4 exact set,
 ST-11 lifecycle checks, and a reputation deriver's EBFAB copy validation through
 this branch. Admission here does not make the job current-use eligible: CUR-4

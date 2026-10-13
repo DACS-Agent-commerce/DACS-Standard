@@ -1801,6 +1801,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "paid-request-method-substitution",
             "unpaid-request-url-substitution",
             "paid-request-url-substitution",
+            "unsigned-runtime-body-override",
             "unpaid-request-body-substitution",
             "paid-request-body-substitution",
             "action-bearing-extension-omitted-from-claim",
@@ -2667,7 +2668,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         }
         names = [name for name, vector in self.by_name.items()
                  if vector.get("expectedReason") in reasons]
-        self.assertEqual(len(names), 14)
+        self.assertEqual(len(names), 15)
         check = request_trace_defect
         request_trace_defect = lambda _runtime, _request: None  # noqa: E731
         try:

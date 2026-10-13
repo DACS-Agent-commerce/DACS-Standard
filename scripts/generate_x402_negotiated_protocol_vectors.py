@@ -2712,6 +2712,11 @@ def build_vectors() -> list[dict]:
              "the paid request goes to the signed URL",
              lambda v: v["runtime"].update({"paidUrl": "https://other.example/pay"}),
              reason="effective-request")
+    add_case(vectors, "unsigned-runtime-body-override", "fail", "XN-6",
+             "a runtime body beside the signed rail ref is not the body the requests carry",
+             lambda v: v["runtime"].update(
+                 {"requestBodyBase64": base64.b64encode(b"{}").decode("ascii")}),
+             reason="effective-request-body")
     add_case(vectors, "unpaid-request-body-substitution", "fail", "XN-6",
              "with no bodyHash, the unpaid request carries a body that the derived request does not",
              lambda v: v["runtime"].update(

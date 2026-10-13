@@ -688,8 +688,8 @@
       }
     }
   },
-  "count": 379,
-  "hash": "d2a50da67b313246362cdfe58368e3fdefabfdc1574b410b565d951648a9565d",
+  "count": 380,
+  "hash": "268c649a186979ca425b2342fc308c1fca6c51c560edbd50e9583202ab9704dd",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -32362,6 +32362,25 @@
         }
       ],
       "expectedReason": "effective-request"
+    },
+    {
+      "name": "unsigned-runtime-body-override",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "a runtime body beside the signed rail ref is not the body the requests carry",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "requestBodyBase64"
+          ],
+          "value": "e30="
+        }
+      ],
+      "expectedReason": "effective-request-body"
     },
     {
       "name": "unpaid-request-body-substitution",

@@ -201,6 +201,11 @@ The format used per release:
   verdict on that record is `error` even while that data is unavailable or not
   final, not `indeterminate` until the ledger answers. The handler's payment
   disposition still comes from the ledger.
+- **Current use of a negotiated x402 payment** (DACS-4 §9.4.3 RD-7) — an
+  `X402ProtocolRailDefinition` has no `consumerFinalityProfile`, so a job paid
+  through `x402:protocol` cannot be represented by the finality-bound bundle
+  that DACS-5 CUR-4 requires, and under CUR-2 a current-use request that
+  includes that job emits no derivation. RD-7 now says so.
 - **Raw JSON admission of received x402 objects** (DACS-4 §9.5.7 XN-7; CORE
   §B.2 CF-5) — the challenge and the settlement response are admitted from
   their exact received bytes, so `NaN`, a number outside the profile, a lone

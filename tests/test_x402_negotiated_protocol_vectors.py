@@ -2497,6 +2497,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         flat = " ".join(spec.split()).replace(" > ", " ")
         self.assertIn("Which code points an A-label may contain follows the implementer's "
                       "IDNA2008 tables and their Unicode version.", flat)
+        # RD-7 states the current-use consequence of having no finality profile.
+        self.assertIn("A job paid through `x402:protocol` therefore cannot be represented by the "
+                      "finality-bound bundle that DACS-5 CUR-4 requires for a current successful "
+                      "payment, and under CUR-2 a current-use request that includes that job "
+                      "emits no derivation.", flat)
 
     def test_listing_admission_rule_precedes_registry_checks_and_is_cross_referenced(self):
         """XN-2's listing rule needs no registry: APR-1 carries it, not APR-2, and LRR-4 points to it."""

@@ -405,7 +405,10 @@ A conforming rail author MUST:
   revisions without a profile remain resolvable for audit but cannot support a
   current finality-bound success claim. An `X402ProtocolRailDefinition` has no
   `consumerFinalityProfile` member, so it cannot produce
-  `FinalityBoundSettlementEvidence`.
+  `FinalityBoundSettlementEvidence`. A job paid through `x402:protocol`
+  therefore cannot be represented by the finality-bound bundle that DACS-5
+  CUR-4 requires for a current successful payment, and under CUR-2 a
+  current-use request that includes that job emits no derivation.
 
 - (XN-1) **Provider-neutral protocol definition.** The canonical
   `x402:protocol` entry MUST be an `X402ProtocolRailDefinition`. It MUST NOT

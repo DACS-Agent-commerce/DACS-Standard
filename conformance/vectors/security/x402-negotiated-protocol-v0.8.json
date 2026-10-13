@@ -690,8 +690,8 @@
       }
     }
   },
-  "count": 420,
-  "hash": "387d81c49f4c3a3126e944e36c1d73d709a4b77dca12f6250392417dae23ba3b",
+  "count": 421,
+  "hash": "1c3ffa671dd77006cbe0a6ebcd04739acfbe357e14421c891d541b1cafde0856",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -38379,6 +38379,32 @@
         }
       ],
       "expectedReason": "payer-control"
+    },
+    {
+      "name": "stored-record-not-an-object-settled",
+      "expected": "pass",
+      "rule": "XN-11/XN-7",
+      "operation": "execute",
+      "note": "a stored record that is not an object does not verify; it is rebuilt, and the ledger's settlement is the disposition",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "signature"
     }
   ]
 }

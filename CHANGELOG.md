@@ -259,8 +259,8 @@ The format used per release:
   agreement signature encoding, a broken signature on every operation, a
   verifier over unavailable ledger data, a legacy `railId` in the reference, a
   numeric selection `currency`, a non-CD-1 price, an array settlement response,
-  a Listing without an `x402:protocol` offer, and each buyer-bundle
-  presentation rule.
+  a Listing without an `x402:protocol` offer, each buyer-bundle presentation
+  rule, and a stored record that is not an object.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

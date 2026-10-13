@@ -3042,6 +3042,10 @@ def build_vectors() -> list[dict]:
          "key, even when its key derives the payer", "payer-control"),
     ):
         add_case(vectors, name, "fail", "XN-5", note, mutate, reason=reason)
+    add_case(vectors, "stored-record-not-an-object-settled", "pass", "XN-11/XN-7",
+             "a stored record that is not an object does not verify; it is rebuilt, and the "
+             "ledger's settlement is the disposition", lambda v: v.update({"evidence": None}),
+             authorization_submitted=True, reason="signature")
 
     return vectors
 

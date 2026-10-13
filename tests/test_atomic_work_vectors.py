@@ -93,7 +93,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 340)
+        self.assertEqual(vector_count, 347)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -800,9 +800,16 @@ class AtomicWorkVectorTests(unittest.TestCase):
              ("fail", "synthetic Work-ledger effect inventory shape mismatch")),
             ("awp-composed-effect-inventory-entry-unknown-member",
              ("fail", "Work-ledger effect inventory entry malformed")),
+            ("awp-composed-effect-inventory-version-unsupported",
+             ("fail", "synthetic Work-ledger effect inventory shape mismatch")),
+            ("awp-completion-composed-effect-inventory-late-attempt",
+             ("fail", "late/competing attempt was not fenced")),
         ):
             with self.subTest(name=name):
                 self.assertEqual(ref.evaluate_vector(by_name[name]), expected)
+        self.assertEqual(
+            ref.evaluate_vector(by_name["awp-completion-composed-admission"])[0], "pass"
+        )
 
         control = by_name["awp-purchase-composed-admission"]
         control_inventory = control["input"]["ledgerInventory"]
@@ -817,6 +824,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ("awp-composed-effect-inventory-repeated-attempt", "network"),
             ("awp-composed-effect-inventory-unknown-member", "network"),
             ("awp-composed-effect-inventory-entry-unknown-member", "network"),
+            ("awp-composed-effect-inventory-version-unsupported", "network"),
         ):
             with self.subTest(name=name):
                 inventory = by_name[name]["input"]["ledgerInventory"]
@@ -884,6 +892,109 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ref.evaluate_vector(recorded),
             ("fail", "business effect recorded without a ledger-selected winner"),
         )
+
+    def _execution_vectors(self):
+        execution = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-execution-recovery-v0.1"
+        )
+        return {vector["name"]: vector for vector in execution["vectors"]}
+
+    def test_rolled_back_winner_records_no_business_effect(self):
+        # DACS-4 §9.5.10: a rolled-back Work claims no committed business
+        # effect, so the inventory lists no attempt, the winner included.
+        by_name = self._execution_vectors()
+        clean = by_name["aw-rolled-back-winner-records-no-business-effect"]
+        recorded = by_name["aw-rolled-back-winner-business-effect-recorded"]
+        self.assertEqual(clean["input"]["receipt"]["outcome"], "rolled-back")
+        self.assertEqual(
+            clean["input"]["attempts"][0]["lifecycleEvidence"]["state"],
+            "included-rolled-back",
+        )
+        self.assertEqual(clean["input"]["ledgerInventory"]["effectAttempts"], [])
+        self.assertEqual(
+            [entry["attemptId"] for entry in recorded["input"]["ledgerInventory"]["effectAttempts"]],
+            [clean["input"]["winningAttemptId"]],
+        )
+        self.assertEqual(
+            {k: v for k, v in recorded["input"].items() if k != "ledgerInventory"},
+            {k: v for k, v in clean["input"].items() if k != "ledgerInventory"},
+        )
+        self.assertEqual(ref.evaluate_vector(clean), ("pass", "predicate accepted"))
+        self.assertEqual(
+            ref.evaluate_vector(recorded),
+            ("fail", "Work-ledger effect inventory records a business effect for a rolled-back winner"),
+        )
+        # The committed receipt beside a rolled-back winner still fails for
+        # the outcome mismatch, with the inventory the ledger would sign.
+        mismatch = by_name["aw-receipt-ledger-outcome-mismatch"]
+        self.assertEqual(mismatch["input"]["ledgerInventory"]["effectAttempts"], [])
+        self.assertEqual(
+            ref.evaluate_vector(mismatch),
+            ("fail", "receipt outcome differs from authenticated winner lifecycle state"),
+        )
+
+    def test_inventory_block_is_bound_on_every_path(self):
+        by_name = self._execution_vectors()
+        # Without a receipt, the inventory is taken at the block of the
+        # authenticated lifecycle evidence that resolves the Work.
+        for name in (
+            "aw-attempt-byte-identity", "aw-single-ledger-winner",
+            "aw-exact-replay-returns-winner", "aw-replacement-with-noninclusion",
+        ):
+            with self.subTest(name=name):
+                vector = by_name[name]
+                self.assertNotIn("receipt", vector["input"])
+                blocks = {
+                    attempt["lifecycleEvidence"]["blockId"]
+                    for attempt in vector["input"]["attempts"]
+                    if "lifecycleEvidence" in attempt
+                    and (
+                        vector["input"]["winningAttemptId"] is None
+                        or attempt["attemptId"] == vector["input"]["winningAttemptId"]
+                    )
+                }
+                self.assertEqual(
+                    {vector["input"]["ledgerInventory"]["blockId"]}, blocks
+                )
+                self.assertEqual(ref.evaluate_vector(vector), ("pass", "predicate accepted"))
+        stale = by_name["aw-effect-inventory-stale-without-receipt"]
+        control = by_name["aw-replacement-with-noninclusion"]
+        self.assertEqual(
+            {k: v for k, v in stale["input"].items() if k != "ledgerInventory"},
+            {k: v for k, v in control["input"].items() if k != "ledgerInventory"},
+        )
+        self.assertEqual(
+            ref.evaluate_vector(stale),
+            ("fail", "Work-ledger effect inventory is not taken at the authenticated lifecycle-evidence block"),
+        )
+        unbound = by_name["aw-effect-inventory-unbound-without-receipt"]
+        self.assertFalse(any(
+            "lifecycleEvidence" in attempt for attempt in unbound["input"]["attempts"]
+        ))
+        self.assertEqual(
+            ref.evaluate_vector(unbound),
+            ("indeterminate", "authenticated ledger block for the Work-ledger effect inventory unavailable"),
+        )
+
+    def test_composed_retry_ignores_caller_attempt_observation(self):
+        # Composed admission consumes only authenticated slot evidence, so a
+        # derived retry from a held slot fails whatever a caller observed.
+        vector = self._purchase_vectors()["awp-composed-slot-retry-caller-observation-ignored"]
+        slot_admission = vector["input"]["slotAdmission"]
+        self.assertEqual(slot_admission["ledgerProof"]["state"]["state"], "in-flight")
+        self.assertEqual(slot_admission["attemptObservation"], "indeterminate")
+        for observation in ("indeterminate", "not-found", "timeout", None):
+            with self.subTest(observation=observation):
+                variant = copy.deepcopy(vector)
+                if observation is None:
+                    del variant["input"]["slotAdmission"]["attemptObservation"]
+                else:
+                    variant["input"]["slotAdmission"]["attemptObservation"] = observation
+                variant["input"] = generator.add_composed_limit_evidence(variant["input"])
+                self.assertEqual(
+                    ref.evaluate_vector(variant), ("fail", "retry without terminal rollback")
+                )
 
     def test_unsigned_effect_inventory_has_one_classification(self):
         control = self._purchase_vectors()["awp-purchase-composed-admission"]
@@ -1297,7 +1408,16 @@ def _without_guard(function, reason: str, operand: int | None = None):
 
 
 class AtomicEffectInventoryGuardWitnessTests(unittest.TestCase):
-    """Seventeen AW-44 inventory and AWS-4 slot guards, each caught by a committed vector."""
+    """Twenty-one AW-44 inventory and AWS-4 slot guards, each caught by a committed vector.
+
+    Equivalent mutants, which no vector can distinguish and which are
+    therefore not rows: the ``_composed_slot_action`` raise for a signed CAS
+    naming neither ``vacant`` nor ``rolled-back`` (its ``None`` action fails
+    as an unknown slot transition), and the retry extension of the
+    slot-before-payment order check in ``evaluate_slot`` (``_profile_shape``
+    already requires that order on every admission path).  The repeated-entry
+    and observation guards are pinned by the reason their vectors move to.
+    """
 
     PASS = ("pass", "predicate accepted")
     # (function, wrong implementation, (vector, exact result without the
@@ -1324,6 +1444,11 @@ class AtomicEffectInventoryGuardWitnessTests(unittest.TestCase):
         ("_verify_effect_inventory",
          ("guard", "synthetic Work-ledger effect inventory shape mismatch", None), (
             ("awp-composed-effect-inventory-unknown-member", PASS),
+            ("awp-composed-effect-inventory-version-unsupported", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "synthetic Work-ledger effect inventory shape mismatch", 1), (
+            ("awp-composed-effect-inventory-version-unsupported", PASS),
         )),
         ("_verify_effect_inventory",
          ("guard", "Work-ledger effect inventory names another Work", None), (
@@ -1340,6 +1465,15 @@ class AtomicEffectInventoryGuardWitnessTests(unittest.TestCase):
         ("_verify_effect_inventory",
          ("guard", "Work-ledger effect inventory is not taken at the finalized receipt block", None), (
             ("awp-composed-effect-inventory-other-block", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "authenticated ledger block for the Work-ledger effect inventory unavailable", None), (
+            ("aw-effect-inventory-unbound-without-receipt",
+             ("fail", "Work-ledger effect inventory is not taken at the authenticated lifecycle-evidence block")),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory is not taken at the authenticated lifecycle-evidence block", None), (
+            ("aw-effect-inventory-stale-without-receipt", PASS),
         )),
         ("_verify_effect_inventory",
          ("guard", "Work-ledger effect inventory entry malformed", None), (
@@ -1363,12 +1497,17 @@ class AtomicEffectInventoryGuardWitnessTests(unittest.TestCase):
             ("aw-replacement-effect-without-winner", PASS),
         )),
         ("evaluate_attempts",
+         ("guard", "Work-ledger effect inventory records a business effect for a rolled-back winner", None), (
+            ("aw-rolled-back-winner-business-effect-recorded", PASS),
+        )),
+        ("evaluate_attempts",
          ("guard", "Work-ledger effect inventory omits the ledger-selected winner", None), (
             ("awp-composed-effect-inventory-other-attempt", PASS),
         )),
         ("evaluate_attempts",
          ("guard", "late/competing attempt was not fenced", None), (
             ("awp-composed-effect-inventory-late-attempt", PASS),
+            ("awp-completion-composed-effect-inventory-late-attempt", PASS),
         )),
         ("evaluate_attempts",
          ("guard", "Work-ledger effect inventory winner reference mismatch", None), (

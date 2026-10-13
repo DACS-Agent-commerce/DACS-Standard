@@ -980,6 +980,21 @@
       "id": "pr336-atomic-effect-inventory-guard-witness",
       "file": "tests/test_atomic_work_vectors.py",
       "test": "AtomicEffectInventoryGuardWitnessTests.test_each_effect_inventory_and_slot_guard_is_load_bearing"
+    },
+    {
+      "id": "pr336-atomic-rolled-back-winner-no-business-effect",
+      "file": "tests/test_atomic_work_vectors.py",
+      "test": "AtomicWorkVectorTests.test_rolled_back_winner_records_no_business_effect"
+    },
+    {
+      "id": "pr336-atomic-effect-inventory-block-bound",
+      "file": "tests/test_atomic_work_vectors.py",
+      "test": "AtomicWorkVectorTests.test_inventory_block_is_bound_on_every_path"
+    },
+    {
+      "id": "pr336-atomic-composed-retry-authenticated-slot-only",
+      "file": "tests/test_atomic_work_vectors.py",
+      "test": "AtomicWorkVectorTests.test_composed_retry_ignores_caller_attempt_observation"
     }
   ],
   "independentReviewEvidence": [

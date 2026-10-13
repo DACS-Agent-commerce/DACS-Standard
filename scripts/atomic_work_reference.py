@@ -1177,21 +1177,24 @@ def _verify_ledger_evidence(
 def _verify_effect_inventory(
     inventory: Any, public_keys: dict[str, str], expected_signer: str,
     work_id_value: str, expected_proof_profile: str,
-    expected_validator_set_id: str, receipt: Any,
+    expected_validator_set_id: str, receipt: Any, ledger_block: str | None,
 ) -> list[dict[str, Any]]:
     """Return the Work ledger's business-effect attempt inventory at one block.
 
-    AW-44/AWS-14: the attempts that reached a business effect are ledger
-    facts.  Only the network-signed inventory for this exact Work, proof
-    profile, and validator set, taken at the finalized receipt block when a
-    receipt is presented, can establish them.  Admission is therefore
-    evaluated as of that block; fencing an effect in a later block remains
-    the ledger's AW-44 guarantee, which this verifier does not observe.  For
-    a committed Purchase, a later attempt cannot reach payment: it carries
-    the same signed ``payment-slot-cas`` expectation (AW-39), whose
-    ``vacant`` or ``rolled-back`` state cannot match the terminal ``settled``
-    slot the receipt proves (AW-46); that CAS precedes any payment (AWS-6),
-    and the Work rolls back with every other critical write (AWP-10).
+    AW-44/AWS-14: the attempts whose business effect committed are ledger
+    facts; a rolled-back Work records none (DACS-4 §9.5.10).  Only the
+    network-signed inventory for this exact Work, proof profile, and
+    validator set, taken at an authenticated block, can establish them: the
+    finalized receipt block when a receipt is presented, and otherwise
+    ``ledger_block``, the block of the authenticated lifecycle evidence that
+    resolves the Work.  Admission is therefore evaluated as of that block;
+    fencing an effect in a later block remains the ledger's AW-44 guarantee,
+    which this verifier does not observe.  For a committed Purchase, a later
+    attempt cannot reach payment: it carries the same signed
+    ``payment-slot-cas`` expectation (AW-39), whose ``vacant`` or
+    ``rolled-back`` state cannot match the terminal ``settled`` slot the
+    receipt proves (AW-46); that CAS precedes any payment (AWS-6), and the
+    Work rolls back with every other critical write (AWP-10).
     """
     if not isinstance(inventory, dict):
         raise Unknown("authenticated Work-ledger effect inventory unavailable")
@@ -1217,10 +1220,14 @@ def _verify_effect_inventory(
         or inventory.get("validatorSetId") != expected_validator_set_id
     ):
         raise Invalid("Work-ledger effect inventory proof-profile binding mismatch")
-    if isinstance(receipt, dict) and inventory["blockId"] != receipt.get(
-        "blockRef", {}
-    ).get("id"):
-        raise Invalid("Work-ledger effect inventory is not taken at the finalized receipt block")
+    if isinstance(receipt, dict):
+        if inventory["blockId"] != receipt.get("blockRef", {}).get("id"):
+            raise Invalid("Work-ledger effect inventory is not taken at the finalized receipt block")
+    else:
+        if ledger_block is None:
+            raise Unknown("authenticated ledger block for the Work-ledger effect inventory unavailable")
+        if inventory["blockId"] != ledger_block:
+            raise Invalid("Work-ledger effect inventory is not taken at the authenticated lifecycle-evidence block")
     effects = inventory["effectAttempts"]
     seen_ids: set[str] = set()
     seen_refs: set[bytes] = set()
@@ -1335,14 +1342,31 @@ def evaluate_attempts(data: dict[str, Any]) -> dict[str, Any] | None:
         raise Invalid("winner claimed without inclusion evidence")
     if "businessEffectAttempts" in data:
         raise Invalid("a caller-supplied business-effect list is not Work-ledger authority")
+    # Without a receipt, the inventory is bound to the authenticated lifecycle
+    # evidence that resolves the Work: the ledger-selected winner's inclusion
+    # block or, with no winner, the one block all presented evidence names.
+    if included:
+        ledger_block = included[0]["lifecycleEvidence"]["blockId"]
+    else:
+        evidence_blocks = {
+            attempt["lifecycleEvidence"]["blockId"] for attempt in attempts
+            if isinstance(attempt.get("lifecycleEvidence"), dict)
+        }
+        ledger_block = evidence_blocks.pop() if len(evidence_blocks) == 1 else None
     effects = _verify_effect_inventory(
         data.get("ledgerInventory"), data["publicKeys"], network_authority, wid,
-        proof_profile, validator_set_id, data.get("receipt"),
+        proof_profile, validator_set_id, data.get("receipt"), ledger_block,
     )
     effect_ids = [effect["attemptId"] for effect in effects]
     if winner is None:
         if effect_ids:
             raise Invalid("business effect recorded without a ledger-selected winner")
+    elif included[0]["lifecycleEvidence"]["state"] == "included-rolled-back":
+        # DACS-4 §9.5.10: a rolled-back Work claims no committed payment or
+        # other business effect, so its inventory lists no attempt, the
+        # winner included.
+        if effect_ids:
+            raise Invalid("Work-ledger effect inventory records a business effect for a rolled-back winner")
     else:
         if winner not in effect_ids:
             raise Invalid("Work-ledger effect inventory omits the ledger-selected winner")
@@ -4301,8 +4325,14 @@ def _evaluate_composed_admission(
         action = _composed_slot_action(intent)
         if caller_action is not None and caller_action != action:
             raise Invalid("caller slot action differs from the signed slot transition")
+        # Composed admission consumes only finalized, authenticated slot
+        # evidence; a caller's local attempt observation is not consulted, so
+        # the authenticated prior state alone decides the derived transition.
         evaluate_slot({
-            **slot_admission,
+            **{
+                key: value for key, value in slot_admission.items()
+                if key != "attemptObservation"
+            },
             "action": action,
             "capability": capability,
             "expectedNetworkAuthority": data.get("expectedNetworkAuthority"),

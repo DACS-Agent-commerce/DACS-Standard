@@ -1031,7 +1031,8 @@ def effect_inventory(
     proof_profile: str = "demos-bft-proof/test-1",
     validator_set_id: str = "test-validator-set-1",
 ) -> dict[str, Any]:
-    """Network-signed Work-ledger inventory of every attempt with business effect."""
+    """Network-signed Work-ledger inventory of every attempt whose business
+    effect committed; a rolled-back Work records none."""
     value = {
         "inventoryVersion": "test-1",
         "workId": work_id,
@@ -1049,20 +1050,34 @@ def effect_inventory(
 
 
 def with_effect_inventory(value: dict[str, Any], effect_ids: list[str]) -> dict[str, Any]:
-    """Attach the ledger inventory naming the given presented attempts."""
+    """Attach the ledger inventory naming the given presented attempts.
+
+    The inventory is taken at the finalized receipt block or, without a
+    receipt, at the block of the lifecycle evidence that resolves the Work:
+    the included winner's, or the one block every presented evidence names.
+    """
     out = dict(value)
     refs = {
         attempt.get("attemptId"): attempt.get("nativeTransactionRef")
         for attempt in out["attempts"] if isinstance(attempt, dict)
     }
     receipt = out.get("receipt")
+    evidence = [
+        attempt["lifecycleEvidence"] for attempt in out["attempts"]
+        if isinstance(attempt, dict) and isinstance(attempt.get("lifecycleEvidence"), dict)
+    ]
+    included = [item for item in evidence if item["state"].startswith("included-")]
+    blocks = {item["blockId"] for item in (included or evidence)}
+    if isinstance(receipt, dict):
+        block_id = receipt["blockRef"]["id"]
+    elif len(blocks) == 1:
+        block_id = blocks.pop()
+    else:
+        block_id = "block-atomic-901"
     out["ledgerInventory"] = effect_inventory(
         ref.work_id(out["intent"]),
         [(attempt_id, refs[attempt_id]) for attempt_id in effect_ids],
-        block_id=(
-            receipt["blockRef"]["id"] if isinstance(receipt, dict)
-            else "block-atomic-901"
-        ),
+        block_id=block_id,
     )
     return out
 
@@ -2180,6 +2195,15 @@ def execution_vectors() -> list[dict[str, Any]]:
             "attempt-a", wid, "included-rolled-back", receipt_native_ref
         ),
     }
+    # Without a receipt, the inventory is bound to the block of the presented
+    # authenticated lifecycle evidence; with none, no block binds it.
+    stale_inventory_block = "block-899"
+    assert stale_inventory_block != nonincluded["blockId"]
+    stale_inventory = with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, [])
+    stale_inventory["ledgerInventory"] = effect_inventory(
+        wid, [], block_id=stale_inventory_block
+    )
+    unbound_inventory = with_effect_inventory({"intent": intent, "attempts": [unresolved_attempt], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, [])
     wrong_attempt_proof_profile = copy.deepcopy(receipt_attempt)
     wrong_attempt_proof_profile["lifecycleEvidence"][
         "proofProfile"
@@ -2197,6 +2221,8 @@ def execution_vectors() -> list[dict[str, Any]]:
         vector("aw-attempt-changed-bytes", ["AW-39"], "attempts", with_effect_inventory({"intent": intent, "attempts": [{**attempt_a, "canonicalWorkBytes": canonical + " "}], "winningAttemptId": "attempt-a", "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, []), "fail", "Replacement cannot alter canonical Work bytes."),
         vector("aw-replacement-with-noninclusion", ["AW-41"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, []), "pass", "Authenticated authoritative non-inclusion permits a replacement attempt under the replacement-authority rule."),
         vector("aw-replacement-effect-without-winner", ["AW-43", "AW-44"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "A Work-ledger inventory that records a business effect while the ledger selected no winning attempt shows an effect no winner fences."),
+        vector("aw-effect-inventory-stale-without-receipt", ["AW-44"], "attempts", stale_inventory, "fail", "Without a receipt, an inventory taken at a block other than the presented authenticated lifecycle evidence's does not establish the Work's business effects."),
+        vector("aw-effect-inventory-unbound-without-receipt", ["AW-44"], "attempts", unbound_inventory, "indeterminate", "Without a receipt or authenticated lifecycle evidence, no authenticated block binds the inventory, so the Work's business effects remain unavailable."),
         vector("aw-replacement-on-not-found", ["AW-41", "AW-42"], "attempts", with_effect_inventory({"intent": intent, "attempts": [unresolved_attempt, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, []), "indeterminate", "Ordinary not-found remains on the indeterminate side of the replacement-authority boundary.", boundary_rules=["AW-42"]),
         vector("aw-single-ledger-winner", ["AW-43", "AW-44"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, attempt_b], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "pass", "Exactly one included winner and business effect is the maximum valid cardinality.", boundary_rules=["AW-43", "AW-44"]),
         vector("aw-two-included-attempts", ["AW-43", "AW-44"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, {**attempt_b, "lifecycleEvidence": ledger_evidence("attempt-b", wid, "included-committed", tx_b)}], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a", "attempt-b"]), "fail", "A second included winner/effect crosses the Work-ledger cardinality boundary.", boundary_rules=["AW-43", "AW-44"]),
@@ -2211,7 +2237,9 @@ def execution_vectors() -> list[dict[str, Any]]:
         vector("aw-nonwinning-attempt-fee-rule", ["AW-39", "AW-56", "AW-57"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, nonwinning_wrong_fee], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The selected fee rule applies to every normal or replacement submission, not only the included winner."),
         vector("aw-attempt-authenticated-nonce-mismatch", ["AW-39", "AW-40", "AW-46", "AW-56"], "attempts", with_effect_inventory({"intent": intent, "attempts": [substituted_attempt_nonce], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The winning attempt nonce and fee must equal the subject authenticated by its ledger lifecycle evidence."),
         vector("aw-replacement-replay-class-confusion", ["AW-41", "AW-45", "AW-56"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, mixed_replacement_replay], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, []), "fail", "An attempt cannot be classified simultaneously as a replacement and an exact replay, and replay requires an authenticated winner."),
-        vector("aw-receipt-ledger-outcome-mismatch", ["AW-43", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "receipt": committed, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "A committed receipt cannot be paired with an authenticated included-rolled-back winner state."),
+        vector("aw-receipt-ledger-outcome-mismatch", ["AW-43", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "receipt": committed, "publicKeys": PUBLIC_KEYS}, []), "fail", "A committed receipt cannot be paired with an authenticated included-rolled-back winner state."),
+        vector("aw-rolled-back-winner-records-no-business-effect", ["AW-43", "AW-44", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "receipt": rolled, "publicKeys": PUBLIC_KEYS}, []), "pass", "A rolled-back winner claims no committed payment or other business effect, so the Work-ledger inventory at its finalized receipt block lists no attempt."),
+        vector("aw-rolled-back-winner-business-effect-recorded", ["AW-43", "AW-44", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "receipt": rolled, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "An inventory that records a business effect for a rolled-back winner contradicts its rolled-back receipt, which claims no committed payment or other business effect."),
         vector("aw-attempt-proof-profile-mismatch", ["AW-40", "AW-48"], "attempts", with_effect_inventory({"intent": intent, "attempts": [wrong_attempt_proof_profile], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "Attempt lifecycle evidence binds the capability-selected proof profile and validator set."),
         vector("aw-attempt-candidate-lifecycle-shape", ["AW-40"], "attempts", with_effect_inventory({"intent": intent, "attempts": [extended_candidate_lifecycle], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The generic schema leaves lifecycle evidence to the selected profile; this candidate accepts only its complete closed synthetic witness shape."),
         vector("aw-receipt-complete-and-final", ["AW-46", "AW-47", "AW-48", "AW-49", "AW-50", "AW-51", "AW-52", "AW-57", "AW-60", "AW-64"], "receipt", {"intent": intent, "receipt": committed, "publicKeys": PUBLIC_KEYS}, "pass", "A reconstructible complete proof closure binds ordered operations and business state while its fee/nonce effects grant no second-payment authority.", boundary_rules=["AW-49", "AW-60", "AW-64"]),
@@ -2584,6 +2612,51 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     inventory_entry_unknown_member = add_composed_limit_evidence(
         inventory_entry_unknown_member
     )
+    inventory_version_unsupported = copy.deepcopy(composed_purchase)
+    inventory_version_unsupported["ledgerInventory"] = ref.sign_embedded(
+        {**inventory_body, "inventoryVersion": "test-2"},
+        CLAIMS["network"], SEEDS["network"], ref._LEDGER_INVENTORY_TEST_DOMAIN,
+    )
+    inventory_version_unsupported = add_composed_limit_evidence(
+        inventory_version_unsupported
+    )
+    # Completion admission consumes the same Work-ledger inventory.
+    completion_receipt = composed_completion["receipt"]
+    completion_inventory_late_effect = copy.deepcopy(composed_completion)
+    completion_inventory_late_effect["ledgerInventory"] = effect_inventory(
+        ref.work_id(completion),
+        [
+            (
+                completion_receipt["winningAttempt"]["attemptId"],
+                completion_receipt["winningAttempt"]["nativeTransactionRef"],
+            ),
+            ("attempt-late", {"kind": "demos-transaction", "value": "tx-late-attempt"}),
+        ],
+        block_id=completion_receipt["blockRef"]["id"],
+    )
+    completion_inventory_late_effect = add_composed_limit_evidence(
+        completion_inventory_late_effect
+    )
+    # A derived retry is decided by the authenticated prior slot state alone: a
+    # held (in-flight) slot contradicts the signed rolled-back expectation
+    # whatever local attempt observation a caller adds.
+    retry_from_held_slot = copy.deepcopy(composed_retry)
+    held_state = {
+        key: value
+        for key, value in retry_from_held_slot["slotAdmission"]["ledgerProof"]["state"].items()
+        if key != "failureReceiptCommitment"
+    }
+    held_state["state"] = "in-flight"
+    retry_from_held_slot["slotAdmission"]["ledgerProof"]["state"] = held_state
+    retry_from_held_slot["slotAdmission"]["ledgerProof"] = resign_ledger_proof(
+        retry_from_held_slot["slotAdmission"]["ledgerProof"]
+    )
+    retry_from_held_slot["slotAdmission"]["attemptObservation"] = "indeterminate"
+    retry_from_held_slot["receipt"]["paymentSlot"]["before"] = copy.deepcopy(held_state)
+    retry_from_held_slot["receipt"] = rebind_receipt_finality(
+        retry_from_held_slot["receipt"]
+    )
+    retry_from_held_slot = add_composed_limit_evidence(retry_from_held_slot)
     commitment_evidence_null = copy.deepcopy(composed_sequential_purchase)
     commitment_evidence_null["authority"]["commitmentReceipt"]["evidence"] = None
     commitment_evidence_null = add_composed_limit_evidence(commitment_evidence_null)
@@ -2747,6 +2820,9 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-composed-effect-source-caller-empty", ["AW-44", "AWS-14"], "purchase-admission", caller_empty_effects, "fail", "An empty effect list outside the authenticated Work-ledger inventory is not ledger authority, even beside the inventory that records only the winner."),
         vector("awp-composed-effect-inventory-unknown-member", ["AW-44", "AWS-14"], "purchase-admission", inventory_unknown_member, "fail", "A network-signed inventory carrying a member outside its closed shape is malformed ledger evidence and cannot establish business effects."),
         vector("awp-composed-effect-inventory-entry-unknown-member", ["AW-44", "AWS-14"], "purchase-admission", inventory_entry_unknown_member, "fail", "An inventory entry carrying a member outside its closed attempt and native-reference shape is malformed ledger evidence, even when the inventory's network signature verifies."),
+        vector("awp-composed-effect-inventory-version-unsupported", ["AW-44", "AWS-14"], "purchase-admission", inventory_version_unsupported, "fail", "A network-signed inventory with an unsupported inventoryVersion is not the synthetic Work-ledger inventory this candidate defines and cannot establish business effects."),
+        vector("awp-completion-composed-effect-inventory-late-attempt", ["AW-44", "AWS-14", "AWP-13"], "completion-admission", completion_inventory_late_effect, "fail", "Completion admission takes business effects from the same Work-ledger inventory; a recorded effect from an attempt other than the winner shows an unfenced late or competing attempt."),
+        vector("awp-composed-slot-retry-caller-observation-ignored", ["AWS-4", "AWS-11"], "purchase-admission", retry_from_held_slot, "fail", "A derived retry whose authenticated prior slot is held rather than rolled back contradicts the signed CAS; a caller's unresolved attempt observation does not make composed admission indeterminate."),
         vector("awp-purchase-sequential-commitment-evidence-null", ["AWP-6", "AWP-12"], "purchase-admission", commitment_evidence_null, "indeterminate", "A commitment AnchorReceipt whose finality evidence is null cannot satisfy the sequential gate; the missing evidence leaves admission unavailable."),
         vector("awp-purchase-composed-retry-generation-skip", ["AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry_generation_skip, "fail", "A retry cannot skip a generation or present a slot transition that differs from its terminal receipt."),
         vector("awp-completion-composed-admission", ["AWP-13", "AWP-14", "AWP-15", "AWP-16"], "completion-admission", composed_completion, "pass", "One Completion verifier consumes the finalized Purchase and exact authority context through delivery settlement."),

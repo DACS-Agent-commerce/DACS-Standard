@@ -3563,6 +3563,9 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         extra_selector = copy.deepcopy(settle_input)
         extra_selector["evidence"][selector] = "1"
         extra_selector["evidence"] = resign_atomic_evidence(extra_selector["evidence"])
+        extra_selector["auditPublication"] = atomic_publication(
+            extra_selector["evidence"], payment_address
+        )
         extra_selector_inputs[selector] = extra_selector
     # AWS-19: operationProof.proofProfile equals the capability's proofProfile.
     operation_proof_profile_mismatch = copy.deepcopy(settle_input)
@@ -3571,6 +3574,9 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
     ] = "demos-bft-proof/test-0"
     operation_proof_profile_mismatch["evidence"] = resign_atomic_evidence(
         operation_proof_profile_mismatch["evidence"]
+    )
+    operation_proof_profile_mismatch["auditPublication"] = atomic_publication(
+        operation_proof_profile_mismatch["evidence"], payment_address
     )
     wrong_pc2 = mutate(
         settle_input, ["pc2Address"],

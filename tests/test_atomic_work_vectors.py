@@ -52,7 +52,9 @@ NEGATED_PREDICATE = re.compile(
 )
 KEPT_OPEN = re.compile(r"(?i)\bremains? open\b")
 CLAUSE_BREAK = re.compile(
-    r"[,;:()]|\s[—–-]\s|—|\s(?:and|but|while|whereas|yet|so)\s", re.IGNORECASE
+    r"[,;:()]|\s[—–-]\s|—"
+    r"|\s(?:and|but|while|whereas|yet|so|although|though|however)\s",
+    re.IGNORECASE,
 )
 
 
@@ -93,8 +95,9 @@ def coverage_overclaims(text):
     or claiming that every/each/all/any of something "is exercised", is an
     overclaim unless that same clause negates the claim or keeps it open. A
     qualifier in another clause, sentence or list item does not count: clauses
-    break at , ; : ( ) dashes and at and/but/while/whereas/yet/so. This is a
-    lexical guard for the Atomic coverage texts, not a semantic prose oracle.
+    break at , ; : ( ) dashes and at and/but/while/whereas/yet/so/although/
+    though/however, with or without a comma. This is a lexical guard for the
+    Atomic coverage texts, not a semantic prose oracle.
     """
     blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*+]|[0-9]+\.)\s)", text)
     return [
@@ -447,6 +450,18 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ("Coverage is exhaustive, not incomplete.", True),
             ("Full coverage is achieved; one separate follow-up remains open.", True),
             ("Coverage is complete with no gaps.", True),
+            # "although", "though" and "however" end a clause even without a
+            # comma, so a later negated predicate does not lend its negation.
+            ("Every rule is fully covered although production execution is "
+             "not established.", True),
+            ("Every rule is fully covered though full semantic coverage is "
+             "not shown.", True),
+            ("Every rule is fully exercised however the semantic check is "
+             "not demonstrated.", True),
+            ("Although every rule is referenced, full coverage is not "
+             "claimed.", False),
+            ("Full semantic coverage is not established though every rule "
+             "is referenced.", False),
             # Exercise claims and wider completeness wording.
             ("The fixtures fully exercise every rule.", True),
             ("Every applicable cell is exercised by a fixture of the matching class.", True),

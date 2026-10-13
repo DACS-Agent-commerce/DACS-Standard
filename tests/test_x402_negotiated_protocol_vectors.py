@@ -2628,6 +2628,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "https://0x7g.0.0.1/pay",            # bad hex part in a numeric host
             "https://0x0x08.8.8.8/",             # second 0x prefix: not a valid host
             "https://08.8.8.8/pay",              # 8 is not an octal digit
+            "https://0x/pay",                    # a bare 0x prefix is the number 0: 0.0.0.0
         )
         for url in rejected:
             with self.subTest(url=url):

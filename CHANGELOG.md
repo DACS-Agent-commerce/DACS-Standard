@@ -256,8 +256,11 @@ The format used per release:
   definition's `railId`, `railType`, `phaseHandler`, `resolution` and
   `railVersion` values, a zero `maxTimeoutSeconds`, an array
   `paymentRequiredExtensions`, an empty one in a v1 selection, a non-canonical
-  agreement signature encoding, a broken signature on every operation, and a
-  verifier over unavailable ledger data.
+  agreement signature encoding, a broken signature on every operation, a
+  verifier over unavailable ledger data, a legacy `railId` in the reference, a
+  numeric selection `currency`, a non-CD-1 price, an array settlement response,
+  a Listing without an `x402:protocol` offer, and each buyer-bundle
+  presentation rule.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

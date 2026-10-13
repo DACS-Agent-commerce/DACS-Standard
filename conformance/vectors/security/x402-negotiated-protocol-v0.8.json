@@ -690,8 +690,8 @@
       }
     }
   },
-  "count": 409,
-  "hash": "d3014a1681645883ba43d84e6db2eb545e0941bc75e1c8f33e2cae93d39f8071",
+  "count": 420,
+  "hash": "387d81c49f4c3a3126e944e36c1d73d709a4b77dca12f6250392417dae23ba3b",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -37727,6 +37727,658 @@
         }
       ],
       "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "rail-ref-legacy-default-id",
+      "expected": "error",
+      "rule": "XN-2/XN-10",
+      "operation": "execute",
+      "note": "a negotiated-shape ref whose railId is x402:default is not an X402ProtocolPaymentRailRef",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "zRJhtTdONgMUp6ugfMmk-fsCxTw7dyie_hVxDHX6HxGYocnmfW_vwrYQssaGOa7Y_DKfeC5IrbhM4bKH4NM2Dw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "lV4EwsD32s5ta58R20x5XddS0VoEnar6S3ykWDxCprJzY-BgYRy8ZVWt9Bage4CB9d6kpbAb0DhaOHK7qisfAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "jWw9y-yfU-e4ZSlkhdKT5hD-C_6DmrQRyQyr1QEFEJHv3_y0XxRel9x_10jTKC2UiWZMIdbw7wHZgPHF5i9WCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "railId"
+          ],
+          "value": "x402:default"
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
+      "name": "selection-currency-not-a-string",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "the selection currency is a non-empty string, even where the price names the same number",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "3HeKZqClYtvRcDc2-VCTR-dvFCknU55HayX29owvx4WXC7NtVXIvYWATl4yR6UEUJZTDHW9I18k6Za5UdodRBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "kQI2XO3jeIx75rXr0DJT1N23QKQPWqGdOPHivdLnrOBD6emoCzJWve1wZ-S3BUxy7t7-YKEgofYXBoXBEVMCDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "currency"
+          ],
+          "value": 840
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "currency"
+          ],
+          "value": 840
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "currency"
+          ],
+          "value": 840
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "2Q-N5X5wXxfL9kvyFXqPeqqaLJKQJTneRIZZb-2MfKKIxTzF0t6EX874o0R1K4prf3MIsoDnqx9RRrbPmmqEDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "currency"
+          ],
+          "value": 840
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
+      "name": "agreement-price-not-canonical-decimal",
+      "expected": "fail",
+      "rule": "XN-5/CD-1",
+      "operation": "execute",
+      "note": "1.250 is not the CD-1 spelling of 1.25, so no exact atomic amount is derived",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "ipeOJhdrBJsOZxOcKoMj5gqJl9VRBBWPcMlu5Tn9ETZIG66g3XQzDJ4OZmCZajxe4PkaJOl7heDAcod4MPhuBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "EvobFquKaeVujTigaQgVnqR4SXhUEbiwD5l5O-6lWz3qs4FoJX2_IC_GhtqoYl57BAAEkhVNIK_dfpQqiVVxAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "1.250"
+        }
+      ],
+      "expectedReason": "exact-amount"
+    },
+    {
+      "name": "response-header-json-array",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement response whose JSON is an array is not the version's object: a response defect, and the ledger decides",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "XNewM8pQRgalQjw72161H8klQogT9H7_k_0zB7DPF_wStFTIGMMgYMiSvvLfhb64g-wskDka0E0lYbkqD-qmAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "WzFd"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-header"
+    },
+    {
+      "name": "listing-without-protocol-offer-admitted",
+      "expected": "pass",
+      "rule": "XN-2",
+      "operation": "admit-listing",
+      "note": "the commitment-phase rule binds only a Listing that offers x402:protocol",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-identity-bound-payee-agreement"
+            },
+            {
+              "kind": "pay-dem",
+              "parameters": {
+                "rail": "demos-native:DEM"
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "railId"
+          ],
+          "value": "demos-native:DEM"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "qsdxPzOKrMBAudTd26JFg-UP5Ihv5HcqcP4UkCOjVfBbYWcyLsSJw9OrdEZ9nn6-vAQkeWYkd97ArSzNNHq5BQ"
+        }
+      ]
+    },
+    {
+      "name": "buyer-bundle-version-unknown",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "a bundle whose bundleVersion is not 1 is not a presentation this verifier reads",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "cf11e18a7f634e484b74c23946b8841e45689cc020b0d138fd7fac1f0b1ccf0f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "V7gzxvhWdm6QdO-lBoNckyQWHY1rxy0XSxgDRsKLd_dKomRXlsoKGGSh7Ce6pyOXF23wnrGI_FbJrSnuP8TLDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "S_rtKUNhNINas15iS22OAU6zS7m-a6QOsH8nZl5BWrdy_-YJfDWF045FyZlBKKpeA8aalDKrcmgcXvAFzUJBDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "bundleVersion"
+          ],
+          "value": "2"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "ZzvS1IH4cxYdYPj8CCDFk7TwlaIVvk3N2zOOeGkwR1zSqfHmJCabKUue9b-tetenTB6SkGrkVVib2wgTAFJ0BQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "MEQCIG4JT-5ZrpyTc0AQtvoXJEV0PLe4kIgB09fpdU9_yCyPAiAapQEvRgTlkCVwVW3NEMJ-EUvpWNyHLRZkmr02vkJI8Q"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "cf11e18a7f634e484b74c23946b8841e45689cc020b0d138fd7fac1f0b1ccf0f"
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "buyer-bundle-presenter-not-a-claim",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "a bundle presented by the buyer's primary claim must carry that claim and its signature, not only the payment claim's",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "bf360b2597db96cdb2b1a565e885f56a40541221d7004e0a792c5261ad050a4f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "xhXjh83uE4dekHwOvTwTZCE8sVI_QrxVIZg_nszn-7xCrcUngF8qP3G6Vrl9WVx3BX4jyv1S08GZyE8JbSnRCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "icTnUF3XqInW01WWbbGK0t9jwwoby0kW64TX3E9AlvaXYTDawWcIcdXd-CMMTUcOL2tjETtGBcgK6P8vee-BCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "metadata": {
+                "algorithm": "ecdsa-secp256k1",
+                "publicKey": "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures"
+          ],
+          "value": [
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "signature": "MEQCIGgwiqhxLoxVfP8U9tx_U2h4cBtWUiTFephZD8P255zRAiBDpn1TBKT5sLys1sgDKgiLKsU8EC1afosglpq7YgyXVg"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "bf360b2597db96cdb2b1a565e885f56a40541221d7004e0a792c5261ad050a4f"
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "buyer-bundle-presentation-kind-unknown",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "only a per-claim presentation is verified per claim",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "kind"
+          ],
+          "value": "aggregate"
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "buyer-bundle-envelope-duplicated",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "each claim has exactly one presentation signature",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "signature": "zlnxK5V5aeWdxiZmHjAqKnYbQyCBJdcMsRACzOOX4O-a-VXRzdLwAn_HVwOEjc47FHXySlbr55KBY5gehQXkAw"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "signature": "MEUCIQC2CCVf7g2JILTVDi4zjIkjkonznEbhxG6HOVU3TcU3owIgL5wjHjizhv6TFaevLq5KXTpWnLxF4WAlwD6Yy08DouA"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "signature": "MEUCIQC2CCVf7g2JILTVDi4zjIkjkonznEbhxG6HOVU3TcU3owIgL5wjHjizhv6TFaevLq5KXTpWnLxF4WAlwD6Yy08DouA"
+            }
+          ]
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "buyer-bundle-envelope-for-no-claim",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "a presentation signature names a claim of the bundle",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "signature": "zlnxK5V5aeWdxiZmHjAqKnYbQyCBJdcMsRACzOOX4O-a-VXRzdLwAn_HVwOEjc47FHXySlbr55KBY5gehQXkAw"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "signature": "MEUCIQC2CCVf7g2JILTVDi4zjIkjkonznEbhxG6HOVU3TcU3owIgL5wjHjizhv6TFaevLq5KXTpWnLxF4WAlwD6Yy08DouA"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x9999999999999999999999999999999999999999",
+              "signature": "MEUCIQC2CCVf7g2JILTVDi4zjIkjkonznEbhxG6HOVU3TcU3owIgL5wjHjizhv6TFaevLq5KXTpWnLxF4WAlwD6Yy08DouA"
+            }
+          ]
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "buyer-bundle-paying-claim-not-cci-xm",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "the paying key is a cci-xm payment claim; another claim scheme is no native payment key, even when its key derives the payer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "4eb620bec65217032e1b809c719a8187877f9242426ff510839009dcdf674a42"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "wm43tdCN1KQnde6h90ATtq9CXTFcvmGHy4sXq_YWd-jBymeczFijvkPIPGoiavb1eq19lKceFhKN_g7JUynDBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "anunlswy4DEIDBA_oOyBGYmB4jijkArw4DjWpQrym9Z0mevOA9IjUxkvNw_6xpMI2wJzgNy7p6CqlcP_8Jx6AA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xx:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "b-ngIuLGtkTu6M_Par-t_HQFohZj3wweZ-GBSnFNYlbpa_PYHkPpk30wn7DYsfzsxiAOepdxM02Mtm7-IbdVAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xx:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "MEQCICfUhDxwjlXlrq2vI6VkpKk2Zu5ryiTIV57yc5UkCZklAiA1wy9M0Gn6gCvuZDcmHuyQoqdzmLZBC6BHp9WtvesGyQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "4eb620bec65217032e1b809c719a8187877f9242426ff510839009dcdf674a42"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xx:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        }
+      ],
+      "expectedReason": "payer-control"
     }
   ]
 }

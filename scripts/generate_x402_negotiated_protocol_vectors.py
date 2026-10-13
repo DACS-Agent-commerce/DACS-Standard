@@ -221,6 +221,15 @@ def buyer_bundle(network: str, address: str, *, presented_by_payment_key: bool =
     }
 
 
+def evm_presentation_envelopes(body: dict, claim: str) -> list[dict]:
+    """Per-claim presentation signatures over `body`: the buyer's key, then the EVM payment key."""
+    payload = ("dacs-bundle-presentation:v1:" + digest(body)).encode("ascii")
+    return [
+        {"ref": BUYER_CLAIM, "signature": b64u(key("buyer").sign(payload))},
+        {"ref": claim, "signature": b64u(deterministic_ecdsa_sha256(EVM_BUYER_PRIVATE_SCALAR, payload))},
+    ]
+
+
 def payment_ref(version: int = 2) -> dict:
     ref = {
         "railId": "x402:protocol",
@@ -2956,6 +2965,83 @@ def build_vectors() -> list[dict]:
              "a sound record over unavailable authenticated ledger data cannot be verified yet",
              lambda v: v["ledger"].update({"available": False}), operation="verify-evidence",
              reason="independent-settlement-unavailable")
+    add_case(vectors, "rail-ref-legacy-default-id", "error", "XN-2/XN-10",
+             "a negotiated-shape ref whose railId is x402:default is not an "
+             "X402ProtocolPaymentRailRef",
+             lambda v: [ref.update({"railId": "x402:default"}) for ref in signed_selection_refs(v)],
+             reason="rail-ref-shape")
+
+    def currency_number(v):
+        for ref in signed_selection_refs(v):
+            ref["parameters"]["selection"]["currency"] = 840
+        v["agreement"]["terms"]["price"]["currency"] = 840
+    add_case(vectors, "selection-currency-not-a-string", "error", "XN-2",
+             "the selection currency is a non-empty string, even where the price names the same "
+             "number", currency_number, reason="rail-ref-shape")
+    add_case(vectors, "agreement-price-not-canonical-decimal", "fail", "XN-5/CD-1",
+             "1.250 is not the CD-1 spelling of 1.25, so no exact atomic amount is derived",
+             lambda v: v["agreement"]["terms"]["price"].update({"amount": "1.250"}),
+             reason="exact-amount")
+    add_case(vectors, "response-header-json-array", "pass", "XN-7/XN-11",
+             "a settlement response whose JSON is an array is not the version's object: a "
+             "response defect, and the ledger decides",
+             lambda v: v["http"]["responseHeader"].update(
+                 {"value": base64.b64encode(b"[1]").decode("ascii")}),
+             refresh=True, authorization_submitted=True, reason="response-header")
+
+    def no_protocol_offer(v):
+        v["listing"]["acceptedRails"] = [{"railId": "demos-native:DEM", "railVersion": 1}]
+        v["listing"]["pipeline"] = [
+            copy.deepcopy(fixed_price), {"kind": "commit-identity-bound-payee-agreement"},
+            {"kind": "pay-dem", "parameters": {"rail": "demos-native:DEM"}},
+            {"kind": "deliver-storage-program"},
+        ]
+    add_case(vectors, "listing-without-protocol-offer-admitted", "pass", "XN-2",
+             "the commitment-phase rule binds only a Listing that offers x402:protocol",
+             no_protocol_offer, operation="admit-listing")
+
+    # XN-5: the buyer bundle's presentation, re-signed by each claim's own key
+    # after one change, so only the presentation check can reject it.
+    def resigned_bundle(body_change=None, envelopes_change=None, kind="per-claim", paying_ref=None):
+        def mutate(v):
+            body = unsigned(buyer_bundle("eip155:8453", BUYER_ADDRESS), "presentation")
+            claim = payment_claim("eip155:8453", BUYER_ADDRESS)
+            if paying_ref:
+                body["claims"][1]["ref"] = claim = paying_ref
+            if body_change:
+                body_change(body)
+            envelopes = evm_presentation_envelopes(body, claim)
+            if envelopes_change:
+                envelopes = envelopes_change(envelopes)
+            v["buyerBundle"] = {**body, "presentation": {"kind": kind, "signatures": envelopes}}
+            bundle_hash = digest(body)
+            v["agreement"]["parties"][0]["bundleHash"] = bundle_hash
+            v["runtime"]["payer"].update({"bundleHash": bundle_hash, "payingKey": claim})
+        return mutate
+
+    def presenter_not_a_claim(body):
+        body["claims"] = body["claims"][1:]
+    for name, mutate, note, reason in (
+        ("buyer-bundle-version-unknown", resigned_bundle(lambda b: b.update({"bundleVersion": "2"})),
+         "a bundle whose bundleVersion is not 1 is not a presentation this verifier reads",
+         "signature"),
+        ("buyer-bundle-presenter-not-a-claim",
+         resigned_bundle(presenter_not_a_claim, lambda e: e[1:]),
+         "a bundle presented by the buyer's primary claim must carry that claim and its "
+         "signature, not only the payment claim's", "signature"),
+        ("buyer-bundle-presentation-kind-unknown", resigned_bundle(kind="aggregate"),
+         "only a per-claim presentation is verified per claim", "signature"),
+        ("buyer-bundle-envelope-duplicated", resigned_bundle(envelopes_change=lambda e: e + e[1:]),
+         "each claim has exactly one presentation signature", "signature"),
+        ("buyer-bundle-envelope-for-no-claim", resigned_bundle(envelopes_change=lambda e: e + [
+            {"ref": "cci-xm:evm:8453:0x" + "99" * 20, "signature": e[1]["signature"]}]),
+         "a presentation signature names a claim of the bundle", "signature"),
+        ("buyer-bundle-paying-claim-not-cci-xm",
+         resigned_bundle(paying_ref="cci-xx:evm:8453:" + BUYER_ADDRESS),
+         "the paying key is a cci-xm payment claim; another claim scheme is no native payment "
+         "key, even when its key derives the payer", "payer-control"),
+    ):
+        add_case(vectors, name, "fail", "XN-5", note, mutate, reason=reason)
 
     return vectors
 

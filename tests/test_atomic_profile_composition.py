@@ -47,6 +47,8 @@ class AtomicProfileCompositionTests(unittest.TestCase):
         )
 
     def test_changelog_atomic_heading_pins_the_composition_versions(self):
+        # The heading names every pinned row, not only the amended documents:
+        # AWP-1 and AWP-7 consume DACS-1 and DACS-2 v0.6 current authority.
         headings = re.findall(
             r"^### Added — candidate ([^\n]+)\n\n"
             r"- \*\*Atomic Purchase and Completion Works\*\*",
@@ -62,8 +64,8 @@ class AtomicProfileCompositionTests(unittest.TestCase):
         self.assertEqual(
             sorted(versions),
             sorted(
-                (name.rsplit("-", 1)[0], self.atomic[name][0])
-                for name in ATOMIC_AMENDED
+                (name if name == "CORE" else name.rsplit("-", 1)[0], version)
+                for name, (version, _) in self.atomic.items()
             ),
         )
 

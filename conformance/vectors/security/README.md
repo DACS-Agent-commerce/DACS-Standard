@@ -119,7 +119,11 @@ deterministic, public Ed25519 fixtures. Their synthetic witnesses are not Demos
 contracts or production validator proofs. The candidate verifier recognizes
 only `did:dacs:test:*` identities and canonical `domain:` A-label identifiers;
 other ClaimReference schemes remain unsupported by this test key resolver and
-fail closed.
+fail closed. A vector input's `publicKeys`, `expectedNetworkAuthority`,
+`expectedProofProfile`, and `expectedRailRegistryAuthority` are the verifier's
+trust pins, carried beside the material under test only so that each vector is
+self-contained: they are fixture configuration, not caller input, and a
+verifier takes them from its own trusted configuration.
 
 The six sets jointly gate the **applicable** P/N/B cells of every rule: each
 applicable cell has at least one rule-referenced fixture of the right class.
@@ -135,7 +139,9 @@ The gate counts rule references by verdict class; it does not establish that
 each fixture exercises its rule. Some cells are currently decided by
 self-reported or caller-supplied values. Strengthening them to the semantically
 meaningful fixtures CONFORMANCE-PLAN §14.8 requires remains open for this
-candidate.
+candidate. §14.8 requires those fixtures before `AtomicWorkCapabilityV1` may be
+advertised; this candidate does not yet meet that requirement, and the
+capability stays closed.
 
 The advertised `test-fixed-fee` rule is exact: every normal or replacement
 attempt carries a non-empty nonce and fee `"1"`, whether included or not. An

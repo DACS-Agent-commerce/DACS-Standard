@@ -359,6 +359,22 @@ def main() -> int:
         extended_replay_effects,
     )
 
+    extended_envelope_effects = deepcopy(execution["input"]["receipt"])
+    extended_envelope_effects["envelopeEffects"]["executed"] = False
+    expect_invalid(
+        "atomic-work-receipt-v1.schema.json",
+        "receipt envelope effects are exact and closed",
+        extended_envelope_effects,
+    )
+
+    extended_winner_ref = deepcopy(execution["input"]["receipt"])
+    extended_winner_ref["winningAttempt"]["nativeTransactionRef"]["action"] = "submit"
+    expect_invalid(
+        "atomic-work-receipt-v1.schema.json",
+        "receipt winner native transaction reference is closed like the attempt's",
+        extended_winner_ref,
+    )
+
     additive_settlement = deepcopy(settlement["input"]["evidence"])
     additive_settlement["operationRef"]["futureSignedMember"] = {"version": 2}
     additive_settlement["workReceiptRef"]["futureSignedMember"] = ["preserve", "me"]

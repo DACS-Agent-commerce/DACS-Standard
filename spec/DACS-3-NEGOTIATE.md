@@ -1493,7 +1493,12 @@ submission:
   `AnchorReceipt` for the same canonical signed commitment record, logical
   address, content hash, transaction, writer, nonce, and finality profile. Its
   binding-defined evidence, not its fields alone, MUST establish that finality.
-  A later Work receipt cannot retroactively satisfy this pre-sign gate.
+  A later Work receipt cannot retroactively satisfy this pre-sign gate. The
+  Purchase still carries that same complete signed record as its index-3
+  `commitment` operation under AWP-5 and AWP-6. Because the record is already
+  committed at `dacs3:commit:{jobId}`, that `create-only` put is satisfied
+  through CORE AW-77's byte-identical reconcile branch; a different existing
+  value at that address is rejected.
 
 The selected path is the signed `AtomicDacsWorkIntentV1.gateMode`. A verifier
 MUST derive the effective mode exclusively from that field. It MUST NOT default

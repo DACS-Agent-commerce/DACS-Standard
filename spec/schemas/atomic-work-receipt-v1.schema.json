@@ -37,7 +37,7 @@
       "required": ["attemptId", "nativeTransactionRef"],
       "properties": {
         "attemptId": { "type": "string", "minLength": 1 },
-        "nativeTransactionRef": { "$ref": "#/$defs/evidenceRef" }
+        "nativeTransactionRef": { "$ref": "#/$defs/nativeTransactionRef" }
       },
       "additionalProperties": true
     },
@@ -98,7 +98,7 @@
         "nonceConsumed": { "type": "boolean" },
         "feeCharged": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "receiptCommitment": { "$ref": "#/$defs/hash" },
     "finalityEvidence": { "$ref": "#/$defs/evidenceRef" }
@@ -262,6 +262,15 @@
         "value": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": true
+    },
+    "nativeTransactionRef": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
     },
     "operationResult": {
       "type": "object",

@@ -697,7 +697,11 @@ linkage.
 - (AW-9) Every JSON number in an intent MUST satisfy the §B.2 safe-integer
   constraint.
 - (AW-10) `roleRoster` MUST be ordered as buyer, seller, orchestrator, payer,
-  omitting absent roles without reordering the remaining roles.
+  omitting absent roles without reordering the remaining roles. Neither v1
+  profile has an absent role: a `dacs-purchase-v1` or `dacs-completion-v1`
+  roster MUST carry all four roles, including those that authorize none of its
+  operations (buyer and seller in a Purchase; buyer and payer in a Completion).
+  Every candidate vector intent carries all four.
 - (AW-11) Each role MUST occur at most once in `roleRoster`; one signer MAY
   hold more than one distinct role.
 - (AW-12) Each `requiredRoles` array MUST follow the same role order and MUST
@@ -853,11 +857,13 @@ Signature-value encoding follows SIG-6.
 ```
 type AtomicAttemptLifecycleEvidenceV1 = Record<string, unknown>
 
+type AtomicNativeTransactionRefV1 = { kind: string; value: string }  // closed
+
 type AtomicWorkAttemptCommonV1 = {
   attemptVersion: "1"
   workId: string
   attemptId: string
-  nativeTransactionRef: { kind: string; value: string }
+  nativeTransactionRef: AtomicNativeTransactionRefV1
   canonicalWorkBytes: string
   authorizations: AtomicWorkAuthorizationV1[]
 }
@@ -947,11 +953,11 @@ type AtomicWorkReceiptV1 = {
   workId: string
   winningAttempt: {
     attemptId: string
-    nativeTransactionRef: { kind: string; value: string }
+    nativeTransactionRef: AtomicNativeTransactionRefV1  // §5.2.5; closed
   }
   blockRef: { id: string; height?: string; timestamp: number }
   outcome: "committed" | "rolled-back"
-  failedOperationId?: string
+  failedOperationId?: string  // required when outcome is "rolled-back", absent when "committed"
   operationResults: AtomicWorkOperationReceiptLeafV1[]
   operationReceiptRoot: string
   businessState: {
@@ -967,11 +973,11 @@ type AtomicWorkReceiptV1 = {
       jobId: string
       phaseIndex: number
     }
-    before: Record<string, unknown>
-    after: Record<string, unknown>
+    before: AtomicPaymentSlotStateV1  // four-state union, DACS-4 §9.5.10
+    after: AtomicPaymentSlotStateV1
   }
   slotStateEvidence: { kind: string; value: string }
-  envelopeEffects: { nonceConsumed: boolean; feeCharged: string }
+  envelopeEffects: { nonceConsumed: boolean; feeCharged: string }  // closed
   receiptCommitment: string
   finalityEvidence: { kind: string; value: string }
 }
@@ -993,6 +999,13 @@ type AtomicWorkOperationReceiptLeafV1 = {
   errorCode?: string
 }
 ```
+
+`paymentSlot.before` and `after` are DACS-4 §9.5.10 `AtomicPaymentSlotStateV1`
+values in the arms that AW-46 requires for the profile and outcome.
+`winningAttempt.nativeTransactionRef` has the same closed shape as the
+attempt's reference, so the DACS-4 AWS-14 equality between the receipt and the
+ledger is exact. Like an attempt's `replayEffects`, `envelopeEffects` has
+exactly the two shown members.
 
 For every leaf, the portable input commitment is derived from the exact signed
 operation payload:

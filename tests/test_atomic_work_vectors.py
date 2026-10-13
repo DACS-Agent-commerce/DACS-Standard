@@ -26,19 +26,57 @@ import generate_atomic_work_vectors as generator  # noqa: E402
 import validate_atomic_work_vectors as validator  # noqa: E402
 
 
+COMPLETENESS_WORD = re.compile(
+    r"(?i)\b(complete(ly|ness)?|full(y)?|exhaustive(ly)?|comprehensive(ly)?)\b"
+)
+COVERAGE_WORD = re.compile(r"(?i)\b(cover(s|ed|age|ing)?|exercis(e|es|ed|ing))\b")
+# The gate counts rule references; it cannot show that a fixture exercises
+# its rule, so "is/are exercised" claims it even without a completeness word.
+EXERCISED_CLAIM = re.compile(r"(?i)\b(is|are|was|were|be|been|being)\s+(\w+\s+)?(exercised)\b")
+NEGATION = re.compile(r"(?i)\b(not|no|never|cannot)\b|n't\b")
+KEPT_OPEN = re.compile(r"(?i)\bremains? open\b")
+CLAUSE_BREAK = re.compile(
+    r"[,;:()]|\s[—–-]\s|—|\s(?:and|but|while|whereas|yet|so)\s", re.IGNORECASE
+)
+
+
+def unqualified_claim(clause):
+    """True when ``clause`` claims coverage and does not itself qualify it."""
+    words = [m.end() for m in COMPLETENESS_WORD.finditer(clause)]
+    covers = [m.end() for m in COVERAGE_WORD.finditer(clause)]
+    exercised = EXERCISED_CLAIM.search(clause)
+    if words and covers:
+        claim_end = max(words + covers)
+    elif exercised:
+        claim_end = exercised.end(3)
+    else:
+        return False
+    # A negation qualifies the claim only before its last claim word ("does
+    # not claim full coverage", "is not exercised"); "remains open" only after
+    # it, with the claim as its subject ("full coverage remains open").
+    negation = NEGATION.search(clause)
+    if negation and negation.start() < claim_end:
+        return False
+    kept_open = KEPT_OPEN.search(clause, claim_end)
+    return kept_open is None
+
+
 def coverage_overclaims(text):
     """Return the sentences of ``text`` that claim complete coverage.
 
-    A sentence pairing a completeness word (complete, full, exhaustive and
-    their -ly forms) with a coverage word (cover, exercise) is an overclaim
-    unless it negates it ("not") or keeps it open ("remains open").
+    A clause pairing a completeness word (complete, full, exhaustive,
+    comprehensive and their -ly forms) with a coverage word (cover, exercise),
+    or claiming that something "is exercised", is an overclaim unless that
+    same clause negates the claim or keeps it open. A qualifier in another
+    clause, sentence or list item does not count: clauses break at , ; : ( )
+    dashes and at and/but/while/whereas/yet/so.
     """
+    blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*+]|[0-9]+\.)\s)", text)
     return [
         sentence
-        for sentence in re.split(r"(?<=[.!?])\s+", text)
-        if re.search(r"(?i)\b(complete(ly|ness)?|full(y)?|exhaustive(ly)?)\b", sentence)
-        and re.search(r"(?i)\b(cover(s|ed|age|ing)?|exercis(e|es|ed|ing))\b", sentence)
-        and not re.search(r"(?i)\bnot\b|\bremains open\b", sentence)
+        for block in blocks
+        for sentence in re.split(r"(?<=[.!?])\s+", " ".join(block.split()))
+        if any(unqualified_claim(clause) for clause in CLAUSE_BREAK.split(sentence))
     ]
 
 
@@ -274,12 +312,12 @@ class AtomicWorkVectorTests(unittest.TestCase):
         self.assertTrue(validator.coverage_report()["completeApplicablePolarity"])
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         entry = changelog.split("- **Atomic Purchase and Completion Works**", 1)[1]
-        entry = " ".join(entry.split("\n- **", 1)[0].split())
+        entry = entry.split("\n- **", 1)[0]
         readme = (ROOT / "conformance" / "vectors" / "security" / "README.md").read_text(
             encoding="utf-8"
         )
         atomic = readme.split("## Atomic Work candidate test profile", 1)[1]
-        atomic = " ".join(atomic.split("\n## ", 1)[0].split())
+        atomic = atomic.split("\n## ", 1)[0]
         documents = [("CHANGELOG", entry), ("README", atomic)]
         for data in self.sets:
             # The machine classification stays; only its prose is qualified.
@@ -288,10 +326,13 @@ class AtomicWorkVectorTests(unittest.TestCase):
                 "candidate-complete-applicable-polarity",
             )
             documents.append((f"{data['set']} coverage note", data["coverage"]["note"]))
-        for name, text in documents:
+        for name, source in documents:
+            # The guard reads the source layout, so a list item cannot lend
+            # its qualifier to the next one; the phrase checks read joined text.
+            text = " ".join(source.split())
             with self.subTest(document=name):
                 self.assertNotRegex(text, r"(?i)coverage[^.]*\bblocker\b")
-                self.assertEqual(coverage_overclaims(text), [])
+                self.assertEqual(coverage_overclaims(source), [])
                 self.assertNotIn("actually exercised", text)
                 self.assertRegex(text, r"rule-referenced fixture of the (matching|right)")
                 self.assertRegex(text, r"non-applicable cell\w* (carries|with) an explicit rationale")
@@ -330,10 +371,22 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ("Every rule ID is completely covered.", True),
             ("Coverage of every rule is exhaustive.", True),
             ("Every rule is fully exercised by its fixtures.", True),
+            # A qualifier in another clause does not qualify the claim.
+            ("Every rule is fully covered, not just referenced.", True),
+            ("Every rule is fully exercised and nothing remains open.", True),
+            ("This is full semantic coverage, not merely partial coverage.", True),
+            ("Coverage is exhaustive, not incomplete.", True),
+            ("Full coverage is achieved; one separate follow-up remains open.", True),
+            ("Coverage is complete with no gaps.", True),
+            # Exercise claims and wider completeness wording.
+            ("The fixtures fully exercise every rule.", True),
+            ("Every applicable cell is exercised by a fixture of the matching class.", True),
+            ("Every rule ID is comprehensively covered.", True),
             ("It does not claim full semantic coverage.", False),
             ("Full semantic coverage under §14.8 remains open.", False),
             ("This gate counts rule references by class; it does not show "
              "that each fixture exercises its rule.", False),
+            ("It is not shown that each cell is exercised.", False),
             ("The generator and the strict validator both refuse any gap.", False),
         ):
             with self.subTest(sentence=sentence):
@@ -341,6 +394,17 @@ class AtomicWorkVectorTests(unittest.TestCase):
                     coverage_overclaims("Some prefix. " + sentence),
                     [sentence] if overclaims else [],
                 )
+        # An unpunctuated list item does not borrow the next item's qualifier.
+        self.assertEqual(
+            coverage_overclaims("- Every rule is fully covered\n- It does not claim more."),
+            ["- Every rule is fully covered"],
+        )
+        self.assertEqual(
+            coverage_overclaims(
+                "* Every rule is fully covered\n* Full semantic coverage remains open."
+            ),
+            ["* Every rule is fully covered"],
+        )
 
     def test_boundary_attribution_is_rule_specific(self):
         for data in self.sets:

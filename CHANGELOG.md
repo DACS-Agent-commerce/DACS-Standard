@@ -82,8 +82,8 @@ The format used per release:
   the recorded value are taken to that form first, so a value with none is
   `error` even when the two spellings are identical. A transaction is compared
   only when both sides know one: after a lost response the retained value is
-  absent or `null` and no signed evidence exists, and reconciliation stays
-  pending on the other identity values.
+  absent or `null` and no signed evidence exists, and the identity reconciles
+  on its other values.
 - **EVM address comparison** (DACS-4 §9.5.7 XN-5, XN-11) — on an EIP-155
   network, `payTo`, the PB-1 payout binding and
   `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,
@@ -98,17 +98,27 @@ The format used per release:
   malformed one is `error` even when the retained and session spellings are
   identical. Other networks, including Solana's case-sensitive base58, compare
   these addresses exactly.
-- **Settlement-response defects after authorization** (DACS-4 §9.5.7 XN-5,
-  XN-7, XN-11) — once the wallet call is made, only the authenticated ledger
-  decides the outcome. A response that is not received under the version's
-  header, reports `success: false`, or names another network, payer or
-  transaction is a response defect, recorded as the seller's protocol fault.
-  Beside an exact finalized settlement the payment has settled; without a
-  matching settlement the session stays reconciliation-pending
-  (`indeterminate`) and never fails on the response alone. The receipt hash
-  commits to the response as received, or to JSON `null` when no
-  version-selected object decodes, and `settlementTransaction` names the
-  transaction the reconciliation establishes.
+- **Payment disposition after authorization** (DACS-4 §9.5.7 XN-5, XN-7,
+  XN-8, XN-11) — once the wallet call may have been made, the payment
+  disposition comes only from reconciling the retained authorization identity
+  against authenticated ledger data, and no success evidence record has to
+  exist first. Unavailable, unreadable or non-final ledger data is
+  `indeterminate`. An exact finalized settlement is success, and the evidence
+  is then built or rebuilt from the retained challenge and response and the
+  reconciled event. A finalized event that the identity resolves to and that
+  contradicts the authorization is `fail`, and so is a terminal non-settlement
+  the scheme profile proves (for EIP-3009 a cancelled nonce, or one unused
+  after `validBefore`). Otherwise the session stays reconciliation-pending.
+  A settlement response that is lost, not received under the version's header,
+  reports `success: false`, or names another network, payer or transaction is
+  a response defect, recorded as the seller's protocol fault; a transaction
+  that only the response names is never a ledger contradiction. A stored record
+  that does not verify, a stale receipt or challenge hash included, is rejected
+  and rebuilt and never ends the payment phase. Retry takes its disposition from
+  the same reconciliation. The receipt hash commits to the response as received,
+  or to JSON `null` when no version-selected object decodes. The vectors gain a
+  `verify-evidence` operation that keeps the XN-7/XN-8 verifier's verdict on a
+  stored record apart from the handler's payment disposition.
 - **SB-3 job binding on the negotiated rail** (DACS-4 §9.5.7 XN-9, §9.5.8
   SB-3) — the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009 or
   Permit2, so the SB-3 job binding is always mandatory there. A verifier takes
@@ -146,11 +156,13 @@ The format used per release:
   `x402Version`; omitted versus empty extensions in both directions; the v1
   extensions and per-member resource boundaries; artifact signatures; and
   the legacy in-flight-only continuation. Removing any single check turns at
-  least one vector or test red. Unit tests alone pin three kinds of check:
+  least one vector or test red. Unit tests alone pin four kinds of check:
   the two paying-key algorithm checks, which the bundle presentation check
   already enforces; an object-form challenge outside the CF-5 profile, which
-  JSON vectors cannot carry; and the embedded-IPv4 unwrapping, whose vectors
-  CPython 3.12's own address tables also refuse.
+  JSON vectors cannot carry; the embedded-IPv4 unwrapping, whose vectors
+  CPython 3.12's own address tables also refuse; and the retry's derivation of
+  the signed terms, which a signed agreement that passed the execute gates
+  never fails.
 - **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
   `x402:protocol` request URL must contain only printable ASCII (U+0021 through
   U+007E) and no `\`, its host must not contain `%`, and an internationalized
@@ -174,9 +186,10 @@ The format used per release:
   host language's address tables, which differ between releases.
 - **Malformed event key before the ledger read** (DACS-4 §9.5.7 XN-8) — a
   malformed coordinate in the signed evidence, such as a `settlementEvent`
-  that is not adapter-canonical, needs no ledger data, so it is `error` even
-  while that data is unavailable or not final, not `indeterminate` until the
-  ledger answers.
+  that is not adapter-canonical, needs no ledger data, so the verifier's
+  verdict on that record is `error` even while that data is unavailable or not
+  final, not `indeterminate` until the ledger answers. The handler's payment
+  disposition still comes from the ledger.
 - **Raw JSON admission of received x402 objects** (DACS-4 §9.5.7 XN-7; CORE
   §B.2 CF-5) — the challenge and the settlement response are admitted from
   their exact received bytes, so `NaN`, a number outside the profile, a lone

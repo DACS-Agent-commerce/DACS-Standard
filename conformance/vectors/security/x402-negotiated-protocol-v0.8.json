@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 297,
-  "hash": "fc6708ee442daee94966829bce398331d2d9da76d11c68b6a067e01e79dfb651",
+  "count": 309,
+  "hash": "f92e015ec858da6d85efc8b6d6fe88c596fde979863c0ec4d531007eb86aad38",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -18495,7 +18495,7 @@
       "name": "payment-required-hash-substitution",
       "expected": "fail",
       "rule": "XN-7",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "stored challenge hash must recompute from the complete object",
       "base": "v2",
       "patch": [
@@ -18533,7 +18533,7 @@
       "name": "payment-receipt-hash-substitution",
       "expected": "fail",
       "rule": "XN-7",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "stored receipt hash must recompute from the complete response",
       "base": "v2",
       "patch": [
@@ -19165,7 +19165,7 @@
       "name": "response-transaction-63-hex-digits",
       "expected": "error",
       "rule": "XN-7/XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "a hash that is not exactly 32 bytes has no canonical form",
       "base": "v2",
       "patch": [
@@ -19222,7 +19222,7 @@
       "name": "response-transaction-double-0x-prefix",
       "expected": "error",
       "rule": "XN-7/XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "at most one prefix is removed, so a second 0x is malformed",
       "base": "v2",
       "patch": [
@@ -19379,7 +19379,7 @@
       "name": "new-evidence-uses-legacy-protocolversion",
       "expected": "error",
       "rule": "XN-7/XN-10",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "x402-protocol evidence cannot emit legacy protocolVersion",
       "base": "v2",
       "patch": [
@@ -19532,7 +19532,7 @@
       "name": "noncanonical-native-event-key",
       "expected": "error",
       "rule": "XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "a noncanonical event spelling cannot mint another SB-1 identity",
       "base": "v2",
       "patch": [
@@ -19578,7 +19578,7 @@
       "name": "noncanonical-native-event-key-uppercase",
       "expected": "error",
       "rule": "XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "an upper-case EVM hash cannot mint another SB-1 identity",
       "base": "v2",
       "patch": [
@@ -19624,7 +19624,7 @@
       "name": "native-event-coordinate-substitution",
       "expected": "fail",
       "rule": "XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "a different signed event coordinate cannot match authenticated ledger data",
       "base": "v2",
       "patch": [
@@ -19662,7 +19662,7 @@
       "name": "finality-profile-network-substitution",
       "expected": "fail",
       "rule": "XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "the signed finality profile must repeat the selected scheme and network",
       "base": "v2",
       "patch": [
@@ -19700,7 +19700,7 @@
       "name": "finality-binding-profile-substitution",
       "expected": "fail",
       "rule": "XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "the finality binding profile must name the exact v0.8 DACS semantics",
       "base": "v2",
       "patch": [
@@ -20763,10 +20763,10 @@
     },
     {
       "name": "retry-indeterminate-remains-pending",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "XN-11",
       "operation": "retry",
-      "note": "indeterminate observation reconciles without a second authorization",
+      "note": "indeterminate observation reconciles without a second authorization and stays pending",
       "base": "v2",
       "patch": [
         {
@@ -20785,11 +20785,12 @@
           ],
           "value": true
         }
-      ]
+      ],
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "retry-caller-reauthorization-request-is-ignored",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "XN-11",
       "operation": "retry",
       "note": "a caller request cannot make reconciliation authorize another payment",
@@ -20820,7 +20821,7 @@
           "value": true
         }
       ],
-      "expectedReason": "reconciliation-pending"
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "retry-job-binding-mismatch",
@@ -21015,10 +21016,10 @@
     },
     {
       "name": "retry-retained-transaction-spelling-reconciles",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "XN-11/XN-7",
       "operation": "retry",
-      "note": "a retained transaction that differs from the record only by prefix and case reconciles in the XN-7 adapter form",
+      "note": "a retained transaction that differs from the record only by prefix and case reconciles in the XN-7 adapter form; the unavailable ledger keeps it pending",
       "base": "v2",
       "patch": [
         {
@@ -21047,7 +21048,7 @@
           "value": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB"
         }
       ],
-      "expectedReason": "reconciliation-pending"
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "retry-identical-malformed-transaction-is-error",
@@ -21152,10 +21153,10 @@
     },
     {
       "name": "retry-authorization-identity-eip55-reconciles",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "XN-11/XN-5",
       "operation": "retry",
-      "note": "a retained EIP-55 authorization identity reconciles with the same payer in upper-case hex, since both compare as 20-byte values",
+      "note": "a retained EIP-55 authorization identity reconciles with the same payer in upper-case hex, since both compare as 20-byte values; the unavailable ledger keeps it pending",
       "base": "v2",
       "patch": [
         {
@@ -21193,7 +21194,7 @@
           "value": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf"
         }
       ],
-      "expectedReason": "reconciliation-pending"
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "retry-authorization-identity-not-20-bytes",
@@ -21242,10 +21243,10 @@
     },
     {
       "name": "retry-response-lost-no-transaction-known",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "XN-11",
       "operation": "retry",
-      "note": "after a lost response no transaction is known and no evidence exists; reconciliation stays pending on the other identity values",
+      "note": "after a lost response no transaction is known and no evidence exists; the identity reconciles on its other values and the unavailable ledger keeps it pending",
       "base": "v2",
       "patch": [
         {
@@ -21279,11 +21280,11 @@
           ]
         }
       ],
-      "expectedReason": "reconciliation-pending"
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "retry-response-lost-transaction-null",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "XN-11",
       "operation": "retry",
       "note": "a retained null settlementTransaction means none is known, not a malformed one; reconciliation stays pending",
@@ -21321,7 +21322,184 @@
           "value": null
         }
       ],
-      "expectedReason": "reconciliation-pending"
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "retry-response-lost-ledger-settled",
+      "expected": "pass",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "after a lost response, with no evidence and no known transaction, an exact finalized settlement of the authorization identity is success; the evidence is built from the retained material",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "retry-response-lost-authorization-cancelled",
+      "expected": "fail",
+      "rule": "XN-11/SB-3",
+      "operation": "retry",
+      "note": "after a lost response the ledger proves the authorization was cancelled with no transfer: a terminal non-settlement",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "authorizationState"
+          ],
+          "value": "cancelled"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "terminal-non-settlement"
+    },
+    {
+      "name": "retry-ledger-event-contradicts-authorization",
+      "expected": "fail",
+      "rule": "XN-11/XN-8",
+      "operation": "retry",
+      "note": "the event the authorization identity resolves to moves another amount: a resolved contradiction, so the retry fails from the ledger",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "1249999"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event"
     },
     {
       "name": "retry-solana-authorization-identity-case-changed",
@@ -22407,7 +22585,7 @@
       "name": "evidence-signature-invalid",
       "expected": "fail",
       "rule": "SIG-2",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "settlement evidence must carry the orchestrator's valid signature",
       "base": "v2",
       "patch": [
@@ -22418,6 +22596,14 @@
             "observedAt"
           ],
           "value": 1787443202000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
         }
       ],
       "expectedReason": "signature"
@@ -22741,7 +22927,7 @@
       "name": "evidence-transaction-respelled",
       "expected": "fail",
       "rule": "XN-7",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "evidence that respells the sound response's transaction contradicts it, though both name the same transaction",
       "base": "v2",
       "patch": [
@@ -23562,7 +23748,7 @@
       "name": "evidence-two-references",
       "expected": "error",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "success evidence carries exactly one x402-protocol reference",
       "base": "v2",
       "patch": [
@@ -23619,7 +23805,7 @@
       "name": "evidence-kind-not-protocol",
       "expected": "error",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "x402:protocol evidence uses the x402-protocol arm",
       "base": "v2",
       "patch": [
@@ -23657,7 +23843,7 @@
       "name": "evidence-x402-version-string",
       "expected": "error",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "the evidence x402Version is a number",
       "base": "v2",
       "patch": [
@@ -23695,7 +23881,7 @@
       "name": "evidence-x402-version-substitution",
       "expected": "fail",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "the evidence x402Version must equal the signed selection",
       "base": "v2",
       "patch": [
@@ -23733,7 +23919,7 @@
       "name": "evidence-receipt-hash-upper-case",
       "expected": "error",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "a stored hash is exactly 64 lower-case hex digits",
       "base": "v2",
       "patch": [
@@ -23771,7 +23957,7 @@
       "name": "evidence-http-resource-substitution",
       "expected": "fail",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "httpResource must equal the signed URL",
       "base": "v2",
       "patch": [
@@ -23809,7 +23995,7 @@
       "name": "evidence-settlement-network-substitution",
       "expected": "fail",
       "rule": "XN-7/XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "settlementNetwork must equal the signed network",
       "base": "v2",
       "patch": [
@@ -23847,7 +24033,7 @@
       "name": "finality-model-substitution",
       "expected": "fail",
       "rule": "XN-8",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "the finality record must use the scheme-network-finality model",
       "base": "v2",
       "patch": [
@@ -23991,8 +24177,8 @@
     {
       "name": "ledger-transaction-substitution",
       "expected": "fail",
-      "rule": "XN-5/XN-8",
-      "operation": "execute",
+      "rule": "XN-7/XN-8",
+      "operation": "verify-evidence",
       "note": "the authenticated event must belong to the recorded transaction",
       "base": "v2",
       "patch": [
@@ -26366,7 +26552,7 @@
       "name": "noncanonical-native-event-key-ledger-unavailable",
       "expected": "error",
       "rule": "XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "a malformed signed event key is error even while the ledger is unavailable",
       "base": "v2",
       "patch": [
@@ -26420,7 +26606,7 @@
       "name": "noncanonical-native-event-key-ledger-not-final",
       "expected": "error",
       "rule": "XN-8/SB-1",
-      "operation": "execute",
+      "operation": "verify-evidence",
       "note": "a malformed signed event key is error even while the settlement is not final",
       "base": "v2",
       "patch": [
@@ -27147,6 +27333,619 @@
         }
       ],
       "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "response-lost-no-evidence-settled",
+      "expected": "pass",
+      "rule": "XN-11",
+      "operation": "execute",
+      "note": "the response was lost and no evidence exists, but the ledger proves an exact finalized settlement: success, with the missing response as the recorded defect",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-header"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-unavailable",
+      "expected": "indeterminate",
+      "rule": "XN-11",
+      "operation": "execute",
+      "note": "the response was lost, no evidence exists and the ledger is unavailable: reconciliation-pending",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "response-lost-no-evidence-authorization-expired",
+      "expected": "fail",
+      "rule": "XN-11/SB-3",
+      "operation": "execute",
+      "note": "the response was lost and the ledger proves the authorization expired unused: a terminal non-settlement",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "authorizationState"
+          ],
+          "value": "expired"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "terminal-non-settlement"
+    },
+    {
+      "name": "response-lost-no-evidence-authorization-unused",
+      "expected": "indeterminate",
+      "rule": "XN-11",
+      "operation": "execute",
+      "note": "the response was lost and the authorization is unused but can still settle: reconciliation-pending, never a failure",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "authorizationState"
+          ],
+          "value": "unused"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "authorization-unsettled"
+    },
+    {
+      "name": "response-changed-after-record-settled",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "the response changed after the record was built, so the stored receipt hash no longer recomputes; the ledger proves the settlement, and the record is rebuilt",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NC1yZXNlbnQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "payment-receipt-hash"
+    },
+    {
+      "name": "stored-challenge-hash-not-recomputing-settled",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a stored challenge hash that does not recompute rejects the record, which is rebuilt; the ledger proves the settlement",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "4X_wFxXpL9j7Z2yGsBKuL84Fep0Z1qFxbpyLrcDH3ygb6u8FBneC3DjaKbyyFwk9ixbavBVc0xfFLUJJggDTBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "payment-required-hash"
+    },
+    {
+      "name": "stored-record-noncanonical-event-key-ledger-unavailable",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "a stored record with a malformed event key is the verifier's error, but the payment stays reconciliation-pending while the ledger is unavailable",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "DhPZLryZ2E4FCy--czBN3zfBsqeujLBWllhs8WvKxevBp-Q_X2-BB-XMPbAj65jfT62bQ1bER0YtiPRwn6w_DQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "response-transaction-substitution-ledger-event-contradicts",
+      "expected": "fail",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "the response names another transaction, and the event the authorization identity resolves to moves another amount: fail from the ledger",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "c4ae3dd9da2a7ef2e20aab9868c4322a1a8ce6d3c00a0c64ec6911b24f4232b6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "n_nXGgOuzbjwACuir2GHwy3y9tDHug_FfYq5WG0p3AWCSkoyOfNkEl0gdnhyMJIK5BCgBAeXrrlcleSiQWC9DQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "1249999"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event"
+    },
+    {
+      "name": "response-transaction-substitution-no-ledger-event",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "the response names another transaction, but no event is resolved for the authorization identity: reconciliation-pending, never a failure",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "c4ae3dd9da2a7ef2e20aab9868c4322a1a8ce6d3c00a0c64ec6911b24f4232b6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "n_nXGgOuzbjwACuir2GHwy3y9tDHug_FfYq5WG0p3AWCSkoyOfNkEl0gdnhyMJIK5BCgBAeXrrlcleSiQWC9DQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkIiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOiJwYXltZW50LTI3NCJ9fQ=="
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "authorizationState"
+          ],
+          "value": "unused"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "authorization-unsettled"
     }
   ]
 }

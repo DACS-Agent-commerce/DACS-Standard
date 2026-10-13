@@ -562,8 +562,10 @@ def add_case(vectors: list, name: str, expected: str, rule: str, note: str,
     value = make_base(version)
     if mutate:
         mutate(value)
+    # A verifier judges a stored success record, which exists only after a
+    # submission; it never authorizes itself.
     value["runtime"]["authorizationSubmitted"] = (
-        operation == "execute" and expected == "pass"
+        operation == "verify-evidence" or (operation == "execute" and expected == "pass")
         if authorization_submitted is None
         else authorization_submitted
     )
@@ -1466,16 +1468,17 @@ def build_vectors() -> list[dict]:
              response_payer(BUYER_ADDRESS + "00"), refresh=True,
              authorization_submitted=True, reason="response-payer")
 
+    # A stored success record is judged by `verify-evidence`, the XN-7/XN-8
+    # verifier: its verdict is on the record. The handler's payment disposition
+    # never comes from it (XN-11; see the stored-record execute cases below).
     add_case(vectors, "payment-required-hash-substitution", "fail", "XN-7",
              "stored challenge hash must recompute from the complete object",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentRequiredHash": "00" * 32}),
-             authorization_submitted=True,
-             reason="payment-required-hash")
+             operation="verify-evidence", reason="payment-required-hash")
     add_case(vectors, "payment-receipt-hash-substitution", "fail", "XN-7",
              "stored receipt hash must recompute from the complete response",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentReceiptHash": "00" * 32}),
-             authorization_submitted=True,
-             reason="payment-receipt-hash")
+             operation="verify-evidence", reason="payment-receipt-hash")
     # XN-11: after authorization only the authenticated ledger decides. Each
     # response defect below sits over the base ledger, an exact finalized
     # settlement, so the payment settled and the defect is the reason: the
@@ -1561,6 +1564,7 @@ def build_vectors() -> list[dict]:
         add_case(vectors, name, expected, "XN-7/XN-8/SB-1", note,
                  response_transaction_spelling(spelling), refresh=True,
                  authorization_submitted=True,
+                 operation="execute" if expected == "pass" else "verify-evidence",
                  reason=None if expected == "pass" else "settlement-transaction-form")
 
     def response_payer_mismatch(v):
@@ -1576,7 +1580,7 @@ def build_vectors() -> list[dict]:
         ref["protocolVersion"] = str(ref.pop("x402Version"))
     add_case(vectors, "new-evidence-uses-legacy-protocolversion", "error", "XN-7/XN-10",
              "x402-protocol evidence cannot emit legacy protocolVersion", protocol_version_field,
-             authorization_submitted=True, reason="evidence-ref-shape")
+             operation="verify-evidence", reason="evidence-ref-shape")
     add_case(vectors, "ledger-unavailable-after-submission", "indeterminate", "XN-8/XN-11",
              "receipt acknowledgement without authenticated ledger data is not success",
              lambda v: v["ledger"].update({"available": False}),
@@ -1603,7 +1607,7 @@ def build_vectors() -> list[dict]:
         v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
     add_case(vectors, "noncanonical-native-event-key", "error", "XN-8/SB-1",
              "a noncanonical event spelling cannot mint another SB-1 identity",
-             noncanonical_event, authorization_submitted=True, reason="native-event-key")
+             noncanonical_event, operation="verify-evidence", reason="native-event-key")
 
     def uppercase_event(v):
         value = f"evm:8453:{SAFE_TX.upper()}:7"
@@ -1611,24 +1615,24 @@ def build_vectors() -> list[dict]:
         v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
     add_case(vectors, "noncanonical-native-event-key-uppercase", "error", "XN-8/SB-1",
              "an upper-case EVM hash cannot mint another SB-1 identity",
-             uppercase_event, authorization_submitted=True, reason="native-event-key")
+             uppercase_event, operation="verify-evidence", reason="native-event-key")
     add_case(vectors, "native-event-coordinate-substitution", "fail", "XN-8/SB-1",
              "a different signed event coordinate cannot match authenticated ledger data",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({
                  "settlementEvent": f"evm:8453:{SAFE_TX}:8"
-             }), authorization_submitted=True,
+             }), operation="verify-evidence",
              reason="ledger-event")
     add_case(vectors, "finality-profile-network-substitution", "fail", "XN-8",
              "the signed finality profile must repeat the selected scheme and network",
              lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
                  "network": "eip155:1"
-             }), authorization_submitted=True,
+             }), operation="verify-evidence",
              reason="finality-profile")
     add_case(vectors, "finality-binding-profile-substitution", "fail", "XN-8",
              "the finality binding profile must name the exact v0.8 DACS semantics",
              lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
                  "bindingProfile": "counterparty-profile:v1"
-             }), authorization_submitted=True,
+             }), operation="verify-evidence",
              reason="finality-profile")
     add_case(vectors, "event-key-cross-rail-alias", "pass", "XN-8/SB-1",
              "EIP-155 x402 evidence emits the same evm event key as the direct rail")
@@ -1727,20 +1731,25 @@ def build_vectors() -> list[dict]:
              legacy_continuation, operation="legacy-continuation",
              authorization_submitted=True)
 
+    # XN-11 retry: the retained identity must be this session's, and then the
+    # payment disposition is the ledger reconciliation's, as after the execute
+    # path's wallet call. Unavailable ledger data keeps the session pending.
+    pending = "independent-settlement-unavailable"
+
     def retry_pending(v):
         v["ledger"]["available"] = False
         v["runtime"]["retryWouldAuthorize"] = False
-    add_case(vectors, "retry-indeterminate-remains-pending", "pass", "XN-11",
-             "indeterminate observation reconciles without a second authorization",
-             retry_pending, operation="retry", authorization_submitted=True)
+    add_case(vectors, "retry-indeterminate-remains-pending", "indeterminate", "XN-11",
+             "indeterminate observation reconciles without a second authorization and stays pending",
+             retry_pending, operation="retry", authorization_submitted=True, reason=pending)
 
     def retry_hostile_reauthorization_request(v):
         v["ledger"]["available"] = False
         v["runtime"]["retryWouldAuthorize"] = True
-    add_case(vectors, "retry-caller-reauthorization-request-is-ignored", "pass", "XN-11",
+    add_case(vectors, "retry-caller-reauthorization-request-is-ignored", "indeterminate", "XN-11",
              "a caller request cannot make reconciliation authorize another payment",
              retry_hostile_reauthorization_request, operation="retry",
-             authorization_submitted=True, reason="reconciliation-pending")
+             authorization_submitted=True, reason=pending)
 
     def retry_job_mismatch(v):
         v["agreement"]["jobId"] = "01M0NVBGYEANE562QQXD33C7WY"
@@ -1780,11 +1789,12 @@ def build_vectors() -> list[dict]:
     def retry_retained_transaction_spelling(v):
         v["ledger"]["available"] = False
         v["runtime"]["reconciliationState"]["settlementTransaction"] = SAFE_TX.upper()
-    add_case(vectors, "retry-retained-transaction-spelling-reconciles", "pass", "XN-11/XN-7",
+    add_case(vectors, "retry-retained-transaction-spelling-reconciles", "indeterminate",
+             "XN-11/XN-7",
              "a retained transaction that differs from the record only by prefix and case "
-             "reconciles in the XN-7 adapter form",
+             "reconciles in the XN-7 adapter form; the unavailable ledger keeps it pending",
              retry_retained_transaction_spelling, operation="retry",
-             authorization_submitted=True, reason="reconciliation-pending")
+             authorization_submitted=True, reason=pending)
 
     def retry_identical_malformed_transaction(v):
         v["ledger"]["available"] = False
@@ -1811,11 +1821,13 @@ def build_vectors() -> list[dict]:
         v["ledger"]["available"] = False
         v["runtime"]["payer"]["paymentAddress"] = "0x" + BUYER_ADDRESS[2:].upper()
         v["runtime"]["reconciliationState"]["authorizationIdentity"] = eip55(BUYER_ADDRESS)
-    add_case(vectors, "retry-authorization-identity-eip55-reconciles", "pass", "XN-11/XN-5",
+    add_case(vectors, "retry-authorization-identity-eip55-reconciles", "indeterminate",
+             "XN-11/XN-5",
              "a retained EIP-55 authorization identity reconciles with the same payer in "
-             "upper-case hex, since both compare as 20-byte values",
+             "upper-case hex, since both compare as 20-byte values; the unavailable ledger "
+             "keeps it pending",
              retry_authorization_identity_spelling, operation="retry",
-             authorization_submitted=True, reason="reconciliation-pending")
+             authorization_submitted=True, reason=pending)
 
     def retry_identical_malformed_authorization_identity(v):
         v["ledger"]["available"] = False
@@ -1829,10 +1841,14 @@ def build_vectors() -> list[dict]:
 
     # XN-11 response loss: the wallet authorized, the response was lost, and no
     # transaction is known. Nothing signed records one yet, so there is no
-    # evidence, and the retained state has no transaction (absent or null).
-    def retry_response_lost(keep_null):
+    # evidence, and the retained state has no transaction (absent or null). The
+    # ledger reconciliation of the authorization identity still decides.
+    def retry_response_lost(keep_null, ledger=None):
         def mutate(v):
-            v["ledger"]["available"] = False
+            if ledger is None:
+                v["ledger"]["available"] = False
+            else:
+                ledger(v)
             v.pop("evidence")
             state = v["runtime"]["reconciliationState"]
             if keep_null:
@@ -1840,16 +1856,37 @@ def build_vectors() -> list[dict]:
             else:
                 del state["settlementTransaction"]
         return mutate
-    add_case(vectors, "retry-response-lost-no-transaction-known", "pass", "XN-11",
-             "after a lost response no transaction is known and no evidence exists; "
-             "reconciliation stays pending on the other identity values",
+    add_case(vectors, "retry-response-lost-no-transaction-known", "indeterminate", "XN-11",
+             "after a lost response no transaction is known and no evidence exists; the "
+             "identity reconciles on its other values and the unavailable ledger keeps it pending",
              retry_response_lost(False), operation="retry",
-             authorization_submitted=True, reason="reconciliation-pending")
-    add_case(vectors, "retry-response-lost-transaction-null", "pass", "XN-11",
+             authorization_submitted=True, reason=pending)
+    add_case(vectors, "retry-response-lost-transaction-null", "indeterminate", "XN-11",
              "a retained null settlementTransaction means none is known, not a malformed one; "
              "reconciliation stays pending",
              retry_response_lost(True), operation="retry",
-             authorization_submitted=True, reason="reconciliation-pending")
+             authorization_submitted=True, reason=pending)
+    add_case(vectors, "retry-response-lost-ledger-settled", "pass", "XN-11",
+             "after a lost response, with no evidence and no known transaction, an exact "
+             "finalized settlement of the authorization identity is success; the evidence is "
+             "built from the retained material",
+             retry_response_lost(False, ledger=lambda v: None), operation="retry",
+             authorization_submitted=True)
+
+    def authorization_state(state):
+        def mutate(v):
+            v["ledger"] = {"available": True, "finalized": True, "authorizationState": state}
+        return mutate
+    add_case(vectors, "retry-response-lost-authorization-cancelled", "fail", "XN-11/SB-3",
+             "after a lost response the ledger proves the authorization was cancelled with no "
+             "transfer: a terminal non-settlement",
+             retry_response_lost(False, ledger=authorization_state("cancelled")),
+             operation="retry", authorization_submitted=True, reason="terminal-non-settlement")
+    add_case(vectors, "retry-ledger-event-contradicts-authorization", "fail", "XN-11/XN-8",
+             "the event the authorization identity resolves to moves another amount: a resolved "
+             "contradiction, so the retry fails from the ledger",
+             lambda v: v["ledger"].update({"amount": "1249999"}), operation="retry",
+             authorization_submitted=True, reason="ledger-event")
 
     # XN-5 leaves Solana exact at the retry site too: the unchanged retained
     # state reconciles, so one changed letter case is the only difference.
@@ -1914,25 +1951,26 @@ def build_vectors() -> list[dict]:
              reason="challenge-match")
 
     # Artifact signatures: each case changes signed bytes after signing.
-    for name, tamper, note in (
+    for name, tamper, note, operation in (
         ("definition-signature-invalid",
          lambda v: v["railDefinition"].update({"railVersion": 2}),
-         "the pinned protocol definition must carry the steward's valid signature"),
+         "the pinned protocol definition must carry the steward's valid signature", "execute"),
         ("listing-signature-invalid",
          lambda v: v["listing"].update({"listingVersion": 2}),
-         "the Listing must carry the seller's valid signature"),
+         "the Listing must carry the seller's valid signature", "execute"),
         ("agreement-signature-invalid",
          lambda v: v["agreement"]["terms"]["price"].update({"amount": "1.26"}),
-         "the agreement must carry both parties' valid signatures"),
+         "the agreement must carry both parties' valid signatures", "execute"),
         ("buyer-bundle-presentation-signature-invalid",
          lambda v: v["buyerBundle"]["presentation"]["signatures"][1].update(
              {"signature": flip_first(v["buyerBundle"]["presentation"]["signatures"][1]["signature"])}),
-         "the buyer bundle's per-claim presentation signatures must verify"),
+         "the buyer bundle's per-claim presentation signatures must verify", "execute"),
         ("evidence-signature-invalid",
          lambda v: v["evidence"].update({"observedAt": 1787443202000}),
-         "settlement evidence must carry the orchestrator's valid signature"),
+         "settlement evidence must carry the orchestrator's valid signature", "verify-evidence"),
     ):
-        add_case(vectors, name, "fail", "SIG-2", note, tamper=tamper, reason="signature")
+        add_case(vectors, name, "fail", "SIG-2", note, tamper=tamper, operation=operation,
+                 reason="signature")
 
     # Payer control over the presented bundle.
     def presented_bundle(**variant):
@@ -1971,7 +2009,7 @@ def build_vectors() -> list[dict]:
              "evidence that respells the sound response's transaction contradicts it, "
              "though both name the same transaction",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({"settlementTransaction": SAFE_TX}),
-             authorization_submitted=True, reason="evidence-response-binding")
+             operation="verify-evidence", reason="evidence-response-binding")
     for role in ("buyer", "seller"):
         add_case(vectors, f"agreement-{role}-listed-twice", "fail", "XN-2",
                  f"the agreement {role} must occur exactly once in parties",
@@ -2097,11 +2135,13 @@ def build_vectors() -> list[dict]:
         add_case(vectors, name, verdict, "XN-7/XN-8", note,
                  lambda v, c=change: c(v["evidence"]["paymentTxRefs"][0],
                                        v["evidence"]["paymentTxRefs"]),
-                 authorization_submitted=True, reason=reason)
+                 operation="verify-evidence", reason=reason)
     add_case(vectors, "finality-model-substitution", "fail", "XN-8",
              "the finality record must use the scheme-network-finality model",
              lambda v: v["evidence"]["settlementFinality"].update({"model": "block-depth"}),
-             authorization_submitted=True, reason="finality-profile")
+             operation="verify-evidence", reason="finality-profile")
+    # The event the authorization identity resolves to contradicts the
+    # authorization: a resolved contradiction, `fail` from the ledger (XN-8).
     for name, field, value, note in (
         ("ledger-asset-substitution", "asset", "0x" + "99" * 20,
          "the authenticated event must move the signed asset, not another token for the same amount"),
@@ -2111,12 +2151,16 @@ def build_vectors() -> list[dict]:
          "the authenticated event must settle the exact scheme"),
         ("ledger-asset-decimals-substitution", "assetDecimals", 18,
          "the authenticated asset decimals must equal the signed decimals"),
-        ("ledger-transaction-substitution", "transaction", "0x" + "cd" * 32,
-         "the authenticated event must belong to the recorded transaction"),
     ):
         add_case(vectors, name, "fail", "XN-5/XN-8", note,
                  lambda v, f=field, x=value: v["ledger"].update({f: x}),
                  authorization_submitted=True, reason="ledger-event")
+    # A record naming another transaction than the reconciled event's is a
+    # record defect: the verifier rejects that record.
+    add_case(vectors, "ledger-transaction-substitution", "fail", "XN-7/XN-8",
+             "the authenticated event must belong to the recorded transaction",
+             lambda v: v["ledger"].update({"transaction": "0x" + "cd" * 32}),
+             operation="verify-evidence", reason="ledger-event")
 
     # Legacy x402:default replay and continuation boundaries.
     def legacy_variant(change):
@@ -2203,8 +2247,9 @@ def build_vectors() -> list[dict]:
              "an IPv4-mapped spelling of a public address reaches the IPv4 verdict",
              literal_target("https://[::ffff:8.8.8.8]/pay"), refresh=True)
 
-    # XN-8/SB-1: the signed event key's form needs no ledger data, so a malformed
-    # key is a permanent `error` even while the ledger is unavailable or not final.
+    # XN-8/SB-1: the signed event key's form needs no ledger data, so the
+    # verifier's verdict on a record with a malformed key is `error` even while
+    # the ledger is unavailable or not final.
     for name, ledger_state, note in (
         ("noncanonical-native-event-key-ledger-unavailable", {"available": False},
          "a malformed signed event key is error even while the ledger is unavailable"),
@@ -2215,7 +2260,7 @@ def build_vectors() -> list[dict]:
             noncanonical_event(v)
             v["ledger"].update(state)
         add_case(vectors, name, "error", "XN-8/SB-1", note, malformed_event_key,
-                 authorization_submitted=True, reason="native-event-key")
+                 operation="verify-evidence", reason="native-event-key")
 
     # XN-7 / CORE CF-5: received x402 objects are admitted from their exact
     # bytes. NaN, a number outside binary64, a lone surrogate and a duplicate
@@ -2279,6 +2324,87 @@ def build_vectors() -> list[dict]:
              "an IPv4-translated address carrying 127.0.0.1 is loopback",
              literal_target("https://[::ffff:0:7f00:1]/pay"), refresh=True,
              reason="non-public-request-target")
+
+    # XN-11: after the wallet call the payment disposition comes only from the
+    # ledger reconciliation of the authorization identity. A lost response
+    # leaves no evidence, and none has to exist before reconciling.
+    def response_lost(ledger=None):
+        def mutate(v):
+            v["http"].pop("responseHeader")
+            v.pop("evidence")
+            if ledger is not None:
+                ledger(v)
+        return mutate
+    add_case(vectors, "response-lost-no-evidence-settled", "pass", "XN-11",
+             "the response was lost and no evidence exists, but the ledger proves an exact "
+             "finalized settlement: success, with the missing response as the recorded defect",
+             response_lost(), authorization_submitted=True, reason="response-header")
+    add_case(vectors, "response-lost-no-evidence-ledger-unavailable", "indeterminate", "XN-11",
+             "the response was lost, no evidence exists and the ledger is unavailable: "
+             "reconciliation-pending",
+             response_lost(lambda v: v["ledger"].update({"available": False})),
+             authorization_submitted=True, reason="independent-settlement-unavailable")
+    add_case(vectors, "response-lost-no-evidence-authorization-expired", "fail", "XN-11/SB-3",
+             "the response was lost and the ledger proves the authorization expired unused: a "
+             "terminal non-settlement",
+             response_lost(authorization_state("expired")), authorization_submitted=True,
+             reason="terminal-non-settlement")
+    add_case(vectors, "response-lost-no-evidence-authorization-unused", "indeterminate", "XN-11",
+             "the response was lost and the authorization is unused but can still settle: "
+             "reconciliation-pending, never a failure",
+             response_lost(authorization_state("unused")), authorization_submitted=True,
+             reason="authorization-unsettled")
+
+    # A stored record that does not verify is rejected and rebuilt from the
+    # retained material; it never ends the payment phase.
+    def response_changed_after_record(v):
+        # The record committed to the response first received; the retained
+        # response differs, though it is sound.
+        response = settlement_response(2)
+        response["extensions"] = {"payment-identifier": "payment-274-resent"}
+        v["http"]["responseHeader"] = encoded_header(response, 2)
+    add_case(vectors, "response-changed-after-record-settled", "pass", "XN-7/XN-11",
+             "the response changed after the record was built, so the stored receipt hash no "
+             "longer recomputes; the ledger proves the settlement, and the record is rebuilt",
+             response_changed_after_record, authorization_submitted=True,
+             reason="payment-receipt-hash")
+    add_case(vectors, "stored-challenge-hash-not-recomputing-settled", "pass", "XN-7/XN-11",
+             "a stored challenge hash that does not recompute rejects the record, which is "
+             "rebuilt; the ledger proves the settlement",
+             lambda v: v["evidence"]["paymentTxRefs"][0].update({"paymentRequiredHash": "00" * 32}),
+             authorization_submitted=True, reason="payment-required-hash")
+
+    def stored_record_malformed_key_ledger_unavailable(v):
+        noncanonical_event(v)
+        v["ledger"]["available"] = False
+    add_case(vectors, "stored-record-noncanonical-event-key-ledger-unavailable", "indeterminate",
+             "XN-8/XN-11",
+             "a stored record with a malformed event key is the verifier's error, but the "
+             "payment stays reconciliation-pending while the ledger is unavailable",
+             stored_record_malformed_key_ledger_unavailable, authorization_submitted=True,
+             reason="independent-settlement-unavailable")
+
+    # XN-8/XN-11: a resolved contradiction is an event the authorization
+    # identity resolves to; a transaction only the response names is a defect.
+    def other_transaction_contradicting_event(v):
+        response_transaction_mismatch(v)
+        v["ledger"]["amount"] = "1249999"
+    add_case(vectors, "response-transaction-substitution-ledger-event-contradicts", "fail",
+             "XN-8/XN-11",
+             "the response names another transaction, and the event the authorization "
+             "identity resolves to moves another amount: fail from the ledger",
+             other_transaction_contradicting_event, refresh=True,
+             authorization_submitted=True, reason="ledger-event")
+
+    def other_transaction_no_event(v):
+        response_transaction_mismatch(v)
+        authorization_state("unused")(v)
+    add_case(vectors, "response-transaction-substitution-no-ledger-event", "indeterminate",
+             "XN-8/XN-11",
+             "the response names another transaction, but no event is resolved for the "
+             "authorization identity: reconciliation-pending, never a failure",
+             other_transaction_no_event, refresh=True, authorization_submitted=True,
+             reason="authorization-unsettled")
 
     return vectors
 

@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 297 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 309 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1080,8 +1080,16 @@ address the same way: a retained EIP-55 spelling reconciles with the same payer
 in upper-case hex, and identical spellings that are not `0x` plus 40
 hexadecimal digits are `error` with reason `address-form`. After a lost
 response no transaction is known and no evidence exists: a retained
-`settlementTransaction` that is absent or `null` stays `pass` with reason
-`reconciliation-pending`, since XN-11 compares only a known transaction. DNS answer validation,
+`settlementTransaction` that is absent or `null` still reconciles, since XN-11
+compares only a known transaction. Once the retained identity is this
+session's, a retry takes the payment disposition from the same ledger
+reconciliation as `execute` after its wallet call: unavailable ledger data is
+`indeterminate` (`independent-settlement-unavailable`), an exact finalized
+settlement `pass`, a cancelled authorization `fail`
+(`terminal-non-settlement`), and an event that contradicts the authorization
+`fail` (`ledger-event`). Changing only the ledger's availability changes the
+result. A signed term the retry cannot derive is `error`
+(`reconciliation-terms`), which unit tests pin. DNS answer validation,
 rebinding, redirect connections, timeouts, and response-size enforcement remain
 adapter-level obligations because a URL-only corpus cannot execute a network
 stack.
@@ -1100,16 +1108,44 @@ second `0x` prefix in `settlementTransaction` is `error` with reason
 signed evidence, so it is checked before the ledger is read: with the ledger
 unavailable or not final it is still `error`.
 
-After the wallet call only the authenticated ledger decides (XN-11). A
-settlement response that is not received under the version's header, reports
-`success: false`, or names another network, payer or transaction is a response
-defect, the seller's protocol fault. Over the base ledger, an exact finalized
-settlement, such a case is `pass` and its `expectedReason` names the recorded
-defect (`response-header`, `response-not-success`, `response-network`,
+After the wallet call only the ledger reconciliation of the authorization
+identity decides (XN-11), and no success record has to exist first. A
+settlement response that is lost, not received under the version's header, reports `success: false`, or
+names another network, payer or transaction is a response defect, the seller's
+protocol fault. Over the base ledger, an exact finalized settlement, such a
+case is `pass` and its `expectedReason` names the recorded defect
+(`response-header`, `response-not-success`, `response-network`,
 `response-payer`, `response-transaction`). Each has a `-no-settlement` twin
 without ledger data, which stays `indeterminate`; the response alone never
-makes the session fail. The receipt hash commits to the response as received,
-and to JSON `null` when no version-selected object decodes.
+makes the session fail. With the response lost and no evidence at all, the
+matching ledger is `pass` (`response-header`), an unavailable ledger
+`indeterminate`, an authorization the ledger proves expired unused `fail`
+(`terminal-non-settlement`), and one still unused `indeterminate`
+(`authorization-unsettled`). A ledger without a `transaction` reports no event
+for the identity: its `authorizationState` `expired` or `cancelled` is a proven
+terminal non-settlement, and any other state may still settle. A resolved
+contradiction comes only from the event that the identity resolves to: a
+response naming another transaction is `fail` when that event moves another
+amount and `indeterminate` when no event is resolved. The receipt hash commits
+to the response as received, and to JSON `null` when no version-selected object
+decodes.
+
+`verify-evidence` cases give the XN-7/XN-8 verifier's verdict on a stored
+success record and never reach the wallet-call site. They apply the same gates
+as `execute`. Then come the record's own checks, which need no ledger data,
+then the ledger reconciliation, and last the record's transaction and event key
+against the reconciled event. Each of these keeps its `fail` or `error`: stored
+hashes that do not recompute, a record that respells a sound response's
+transaction, and a reference-shape, version, binding, finality-profile or
+event-key defect. So do an invalid record signature and a record naming another
+transaction than the ledger's. In `execute` the same record never decides: it is
+rejected and rebuilt, and its defect is at most the reason beside the ledger's
+verdict. A response changed after the record was built is `pass` with reason
+`payment-receipt-hash`, and so is a stored challenge hash that does not
+recompute, with `payment-required-hash`. A record with a malformed event key is
+`indeterminate` while the ledger is unavailable. The unit suite checks that
+removing the stored record or the response from any `execute` case that reaches
+the wallet call never changes its verdict.
 
 Received x402 objects pass CORE CF-5 raw JSON admission over their exact bytes.
 A settlement response with `NaN`, `1e400`, a lone surrogate, or a repeated
@@ -1168,7 +1204,8 @@ the ledger asset, network, scheme, decimals and transaction; the evidence
 runtime payee; each agreement party exactly once; the buyer bundle's hash pin,
 session nonce, presenter and signatures; the request body against the signed
 `bodyHash`; the challenge `x402Version`; omitted versus empty extensions in
-both directions; and the legacy in-flight-only continuation.
+both directions; and the legacy in-flight-only continuation. The retry's
+derivation of the signed terms is pinned by unit tests.
 
 Negative cases reject global provider or asset policy, a
 `consumerFinalityProfile` on the closed protocol arm (RD-7), first-`railId` lookup,

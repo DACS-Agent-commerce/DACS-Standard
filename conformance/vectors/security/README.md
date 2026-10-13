@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 421 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 426 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1269,10 +1269,12 @@ verifying contract and the Solana mint are the `asset`, so neither is an
 `extra` member. The base fixtures carry upstream's EIP-3009 example
 (`assetTransferMethod: "eip3009"`, `name`, `version`) and a Solana `extra`
 naming only `feePayer`. Cases cover `name` and `version` without the method,
-Permit2, `memo`, and `recentBlockhash` with `lastValidBlockHeight`, all `pass`.
+upstream's Permit2 example, `memo`, and upstream's Solana `PaymentRequirements`
+example (`memo`, `recentBlockhash`, and `lastValidBlockHeight` as a decimal
+string), all `pass`.
 An `extra.mint`, and one adapter's member under the other, are `fail`
 (`unclassified-extra-member`). The v0.8 EIP-155 binding authorizes only through
-EIP-3009 or Permit2 (XN-9), so `assetTransferMethod: "erc7710"` is `fail`
+EIP-3009 or Permit2 (XN-9), so upstream's ERC-7710 example is `fail`
 (`unsupported-transfer-method`) before authorization. Any other member of the matched `extra` or of `extensions` is
 unclassified and `fail`, even when it is signed and received and the local
 capability lists it (`unclassified-extra-member`, `unclassified-extension`).
@@ -1316,7 +1318,11 @@ re-signed buyer bundles each break one presentation rule: an unknown
 duplicated envelope, an envelope for no claim (`fail`, `signature`), and a
 paying claim outside the `cci-xm` scheme (`fail`, `payer-control`). A stored
 record that is not an object is rebuilt over a settled ledger (`pass`,
-`signature`).
+`signature`). A selection `extra` that is an array, beside the same array in
+the challenge, and a signed request URL that is not a string are `error`
+(`rail-ref-shape`). A Listing without a `pipeline`, with a null
+`acceptedRails`, or with a pipeline step that is not an object fails DACS-1
+schema conformance and is `rejected` (`fail`, `listing-shape`).
 
 The definition applied is the revision the signed reference pins (XN-1). A
 re-signed definition at `railVersion` 2 under a reference pinning 1, and the

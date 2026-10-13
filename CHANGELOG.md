@@ -244,23 +244,28 @@ The format used per release:
   Solana `feePayer`, `memo`, `recentBlockhash` and `lastValidBlockHeight`.
   `extra.verifyingContract` and `extra.mint` are not members, since the token
   contract and the mint are the `asset`, so XN-4 and XN-5 no longer compare a
-  `verifyingContract` as an address. The fixtures carry upstream's EIP-3009
-  example. A transfer method other than EIP-3009 (also when absent) or Permit2
-  rejects before signing, as XN-9 states.
+  `verifyingContract` as an address. The fixtures carry upstream's EIP-3009,
+  Permit2, ERC-7710 and Solana `PaymentRequirements` examples, with
+  `lastValidBlockHeight` as a decimal string. A transfer method other than
+  EIP-3009 (also when absent) or Permit2 rejects before signing, as XN-9
+  states.
 - **Pinned definition revision** (DACS-4 §9.4.3 XN-1) — the definition a
   handler or verifier applies must be the revision whose `railVersion` equals
   the selected reference's; another revision, even validly signed and well
   formed, is rejected before the unpaid request or before a record is judged.
-- **Single-check vectors** (DACS-4 XN-1, XN-2, XN-4; CORE SIG-2, SIG-6) — one
-  case for each MUST-backed check that no vector reached alone: the
-  definition's `railId`, `railType`, `phaseHandler`, `resolution` and
+- **Single-check vectors** (DACS-4 XN-1, XN-2, XN-4; DACS-1 LR-2; CORE SIG-2,
+  SIG-6) — one case for each MUST-backed check that no vector reached alone:
+  the definition's `railId`, `railType`, `phaseHandler`, `resolution` and
   `railVersion` values, a zero `maxTimeoutSeconds`, an array
   `paymentRequiredExtensions`, an empty one in a v1 selection, a non-canonical
   agreement signature encoding, a broken signature on every operation, a
   verifier over unavailable ledger data, a legacy `railId` in the reference, a
   numeric selection `currency`, a non-CD-1 price, an array settlement response,
   a Listing without an `x402:protocol` offer, each buyer-bundle presentation
-  rule, and a stored record that is not an object.
+  rule, a stored record that is not an object, an array selection `extra`, a
+  signed request URL that is not a string, and a Listing without a
+  `pipeline`, with a null `acceptedRails`, or with a step that is not an
+  object.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

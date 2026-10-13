@@ -2822,30 +2822,31 @@ def build_vectors() -> list[dict]:
         return mutate
 
     def permit2(v):
-        extra_is({"assetTransferMethod": "permit2"})(v)
+        extra_is({"assetTransferMethod": "permit2", "name": "USDC", "version": "2"})(v)
         v["ledger"]["authorization"] = "permit2"
     add_case(vectors, "eip3009-extra-without-transfer-method", "pass", "XN-6",
              "assetTransferMethod is optional for EIP-3009: an extra naming only the token's "
              "EIP-712 name and version selects it",
              extra_is({"name": "USDC", "version": "2"}), refresh=True)
     add_case(vectors, "permit2-transfer-method", "pass", "XN-6/XN-9",
-             "an extra selecting Permit2, the other form the v0.8 EIP-155 binding authorizes "
-             "through, reaches signing", permit2, refresh=True)
+             "upstream's Permit2 example selects the other form the v0.8 EIP-155 binding "
+             "authorizes through, and reaches signing", permit2, refresh=True)
     add_case(vectors, "erc7710-transfer-method-has-no-v08-binding", "fail", "XN-6/XN-9",
-             "the v0.8 EIP-155 exact binding authorizes only through EIP-3009 or Permit2, so an "
-             "extra selecting ERC-7710 rejects before signing",
-             extra_is({"assetTransferMethod": "erc7710"}), refresh=True,
-             reason="unsupported-transfer-method")
+             "the v0.8 EIP-155 exact binding authorizes only through EIP-3009 or Permit2, so "
+             "upstream's ERC-7710 example rejects before signing",
+             extra_is({"assetTransferMethod": "erc7710", "name": "USDC", "version": "2"}),
+             refresh=True, reason="unsupported-transfer-method")
     blockhash = base58(hashlib.sha256(b"DACS #274 recent blockhash").digest())
     add_case(vectors, "solana-extra-memo", "pass", "XN-6",
              "upstream's optional memo fixes the Memo instruction's data; the Solana adapter "
              "defines it", extra_is({"feePayer": SOLANA_FEE_PAYER, "memo": "dacs-274"}, solana=True),
              refresh=True)
     add_case(vectors, "solana-extra-recent-blockhash", "pass", "XN-6",
-             "upstream's optional recentBlockhash and lastValidBlockHeight bound the transaction; "
-             "the Solana adapter defines both",
-             extra_is({"feePayer": SOLANA_FEE_PAYER, "recentBlockhash": blockhash,
-                       "lastValidBlockHeight": 280000000}, solana=True), refresh=True)
+             "upstream's PaymentRequirements example: the optional memo, and recentBlockhash with "
+             "lastValidBlockHeight as a decimal string, beside feePayer; the Solana adapter "
+             "defines each",
+             extra_is({"feePayer": SOLANA_FEE_PAYER, "memo": "dacs-274", "recentBlockhash": blockhash,
+                       "lastValidBlockHeight": "280000000"}, solana=True), refresh=True)
     add_case(vectors, "solana-extra-carries-mint", "fail", "XN-6",
              "the mint is the asset: the pinned Solana exact definition has no extra.mint, so a "
              "signed and received one is unclassified",
@@ -3046,6 +3047,44 @@ def build_vectors() -> list[dict]:
              "a stored record that is not an object does not verify; it is rebuilt, and the "
              "ledger's settlement is the disposition", lambda v: v.update({"evidence": None}),
              authorization_submitted=True, reason="signature")
+
+    def array_extra(v):
+        for ref in signed_selection_refs(v):
+            ref["parameters"]["selection"]["extra"] = []
+        v["http"]["paymentRequired"]["accepts"][0]["extra"] = []
+    add_case(vectors, "selection-extra-array", "error", "XN-2",
+             "the selection's extra is a JSON object, so an array is malformed even where the "
+             "challenge's extra is the same array", array_extra, refresh=True,
+             reason="rail-ref-shape")
+
+    def url_in_array(v):
+        for ref in signed_selection_refs(v):
+            request = ref["parameters"]["request"]
+            request["url"] = [request["url"]]
+    add_case(vectors, "signed-request-url-not-a-string", "error", "XN-2",
+             "the signed request URL is a string; an array holding the same URL is malformed",
+             url_in_array, reason="rail-ref-shape")
+
+    # DACS-1 listing validation: a Listing that fails schema conformance is
+    # `rejected`, which this corpus scores as `fail`, before any phase rule.
+    def listing_shape(change):
+        def mutate(v):
+            listing_pipeline(fixed_price, "commit-payee-bound-agreement")(v)
+            change(v["listing"])
+        return mutate
+
+    def step_not_an_object(listing):
+        listing["pipeline"][1] = listing["pipeline"][1]["kind"]
+    for name, change, note in (
+        ("pipeline-absent", lambda listing: listing.pop("pipeline"),
+         "a Listing without a pipeline fails schema conformance"),
+        ("accepted-rails-null", lambda listing: listing.update({"acceptedRails": None}),
+         "a Listing with a pay phase carries acceptedRails as an array, not null"),
+        ("pipeline-step-not-an-object", step_not_an_object,
+         "each pipeline step is an object; a bare phase kind is not one"),
+    ):
+        add_case(vectors, f"listing-{name}", "fail", "XN-2/LR-2", note, listing_shape(change),
+                 operation="admit-listing", reason="listing-shape")
 
     return vectors
 

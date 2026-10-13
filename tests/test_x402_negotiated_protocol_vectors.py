@@ -1839,6 +1839,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "execute-definition-resolution-substituted",
             "execute-definition-rail-version-zero",
             "agreement-signature-unused-bits-set",
+            "selection-extra-array",
+            "signed-request-url-not-a-string",
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
@@ -2624,7 +2626,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "https://169.254.43518/pay",         # shorthand metadata (169.254.169.254)
             "https://localhost./pay",
             "https://1.2.3.4.5/pay",             # too many parts: not a valid host
+            "https://1.2.3.4.0/pay",             # too many parts, even ending in 0: not 1.2.3.4
+            "https://1..1/pay",                  # an empty part: not a valid host
             "https://256.0.0.1/pay",             # part out of range: not a valid host
+            "https://127.16777216/pay",          # last part past 24 bits: not a valid host
             "https://0x7g.0.0.1/pay",            # bad hex part in a numeric host
             "https://0x0x08.8.8.8/",             # second 0x prefix: not a valid host
             "https://08.8.8.8/pay",              # 8 is not an octal digit
@@ -2783,7 +2788,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "eip155:8453": {"assetTransferMethod": "eip3009", "name": "USDC", "version": "2"},
             "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {
                 "feePayer": "4" * 44, "memo": "dacs-274", "recentBlockhash": "6" * 44,
-                "lastValidBlockHeight": 280000000},
+                "lastValidBlockHeight": "280000000"},
         }
         self.assertEqual({key: set(value) for key, value in ACTION_BEARING_EXTRA_MEMBERS.items()},
                          {network.split(":")[0]: set(extra) for network, extra in defined.items()})
@@ -3128,7 +3133,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         """DACS-1 ListingValidationDisposition has no `error`; APR-1 calls these Listings `rejected`."""
         names = [name for name, vector in self.by_name.items()
                  if vector.get("expectedReason") == "listing-shape"]
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 11)
         for name in names:
             with self.subTest(vector=name):
                 self.assertEqual(self.by_name[name]["operation"], "admit-listing")

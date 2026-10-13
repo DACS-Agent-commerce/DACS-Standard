@@ -690,8 +690,8 @@
       }
     }
   },
-  "count": 421,
-  "hash": "1c3ffa671dd77006cbe0a6ebcd04739acfbe357e14421c891d541b1cafde0856",
+  "count": 426,
+  "hash": "8e748e29e7a67a932615c03fbead892c06943f9581f49169af9d244fc468e49f",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -33275,7 +33275,7 @@
       "expected": "pass",
       "rule": "XN-6/XN-9",
       "operation": "execute",
-      "note": "an extra selecting Permit2, the other form the v0.8 EIP-155 binding authorizes through, reaches signing",
+      "note": "upstream's Permit2 example selects the other form the v0.8 EIP-155 binding authorizes through, and reaches signing",
       "base": "v2",
       "patch": [
         {
@@ -33286,7 +33286,7 @@
             0,
             "value"
           ],
-          "value": "418aTw4KJamImM9lm6m3uoWySHkvWxqkPNGqKj0_DBMSxMBFzit_e-xjS7KRhg0-VTUv4wTM7SjrzeeS1FrIAQ"
+          "value": "TpTzbxoIHou-l1uN3Wsoc2HKrFy4GUFgjZ7YuQGzUFD00OkF269RP8lpijt1GQpv3yut2euJyegHJSxt9FblBQ"
         },
         {
           "op": "replace",
@@ -33296,31 +33296,7 @@
             1,
             "value"
           ],
-          "value": "iIWnygd73f_mwPHkIexw0s7-E-O09xw5b8D9PH3vod67AgmxN1l7U5A9LlKWSR9cbn99CwCMRvGWYN04n1lAAQ"
-        },
-        {
-          "op": "remove",
-          "path": [
-            "agreement",
-            "terms",
-            "rail",
-            "parameters",
-            "selection",
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "agreement",
-            "terms",
-            "rail",
-            "parameters",
-            "selection",
-            "extra",
-            "version"
-          ]
+          "value": "CzdBHoyJQ_KHUx9I3rQD2ia4k1KvNsubLag71BGbT9jYGoi_hMmEpnO7SZ-vPYjDKRwV-Y9K-WtB00N8hKLvCg"
         },
         {
           "op": "replace",
@@ -33343,7 +33319,7 @@
             0,
             "paymentRequiredHash"
           ],
-          "value": "585683120f1ce4903f574f405493fae8c6db90a0fb730af5124aca9f56e5978f"
+          "value": "305a19838e39f49481109ee8c5255ad3cb90ba45437bb91c5f2216177905fe0f"
         },
         {
           "op": "replace",
@@ -33352,29 +33328,7 @@
             "signature",
             "value"
           ],
-          "value": "LzpTQ0C8pG62Pc7AkwSBAFeahLwV1gh79ezGdfUyd5LfFLAhrHxlyxhSd98c-CUfVEDt5-l9soROPXCdi9GDAw"
-        },
-        {
-          "op": "remove",
-          "path": [
-            "http",
-            "paymentRequired",
-            "accepts",
-            0,
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "http",
-            "paymentRequired",
-            "accepts",
-            0,
-            "extra",
-            "version"
-          ]
+          "value": "J10HGgKFwDHGvroEN9bsI4lkDJCwdg0fsh4YJjypP5A1HV4HusA-mNXSwlrTPKjA59Ghut0VAGMPhkifHOT7Dg"
         },
         {
           "op": "replace",
@@ -33397,30 +33351,6 @@
           "value": "permit2"
         },
         {
-          "op": "remove",
-          "path": [
-            "listing",
-            "acceptedRails",
-            0,
-            "parameters",
-            "selection",
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "listing",
-            "acceptedRails",
-            0,
-            "parameters",
-            "selection",
-            "extra",
-            "version"
-          ]
-        },
-        {
           "op": "replace",
           "path": [
             "listing",
@@ -33440,7 +33370,7 @@
             "signature",
             "value"
           ],
-          "value": "acgwPJY-0kXQbKnp9B7wWeu-4hIYKxr7quMh0W6gaVrrip4wBcuqwQ2QosVJrJdsKUhX9-C5ZgJU99CqvPivBg"
+          "value": "Xq4l-UB9RLY3tcKRQzwwivktmwqQ6nXbKuQ2KJ4jGZyiHmPiFSZZTa6RalFLIt4yWnidW516jR3i2gQ7-M4CDQ"
         },
         {
           "op": "replace",
@@ -33449,28 +33379,6 @@
             "authorizationSubmitted"
           ],
           "value": true
-        },
-        {
-          "op": "remove",
-          "path": [
-            "runtime",
-            "selectedRailRef",
-            "parameters",
-            "selection",
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "runtime",
-            "selectedRailRef",
-            "parameters",
-            "selection",
-            "extra",
-            "version"
-          ]
         },
         {
           "op": "replace",
@@ -33491,7 +33399,7 @@
       "expected": "fail",
       "rule": "XN-6/XN-9",
       "operation": "execute",
-      "note": "the v0.8 EIP-155 exact binding authorizes only through EIP-3009 or Permit2, so an extra selecting ERC-7710 rejects before signing",
+      "note": "the v0.8 EIP-155 exact binding authorizes only through EIP-3009 or Permit2, so upstream's ERC-7710 example rejects before signing",
       "base": "v2",
       "patch": [
         {
@@ -33502,7 +33410,7 @@
             0,
             "value"
           ],
-          "value": "Th4ePE4TRatl3bSr-LGiMu4MoURlV9pgzdGdPbSRPNQEa9loWtjRhHFNQCkNs_OJ-u3v3MJCpKDzhkvHXi3vCg"
+          "value": "zs7JmAhRSszczq6VKDZwbNWERcfEXpP-YJGtUpp68uAYvrdkuh64heXw9JXrf3zO8CcU-CY69wFHeoCM259NDw"
         },
         {
           "op": "replace",
@@ -33512,31 +33420,7 @@
             1,
             "value"
           ],
-          "value": "GLkbGYYrjatN92PelU35w6VP7jNs2ohdvBpTGoOzwHrXacXqY-hcm3e3RZLibXt4JAy1wx5b7Be6CICAhqISCw"
-        },
-        {
-          "op": "remove",
-          "path": [
-            "agreement",
-            "terms",
-            "rail",
-            "parameters",
-            "selection",
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "agreement",
-            "terms",
-            "rail",
-            "parameters",
-            "selection",
-            "extra",
-            "version"
-          ]
+          "value": "fJBc2gqdE75AJLhhLIc2GWgpUPnUz1GeuupkL-RUyyPdckg04JhGOG4BtkgSm_E24G8HN_5MdXgOXNLn4ln4AA"
         },
         {
           "op": "replace",
@@ -33559,7 +33443,7 @@
             0,
             "paymentRequiredHash"
           ],
-          "value": "bbec032451e70f4cf4a2b52289fe62c3a20ba2f5510b67edea0e34974065eeed"
+          "value": "c984996182298f2e65dbb34cc6024b0f2c765d01064cb2423e060a0c576488ac"
         },
         {
           "op": "replace",
@@ -33568,29 +33452,7 @@
             "signature",
             "value"
           ],
-          "value": "46jZOg-5chnAxa2b5CgNRFFkNxrojd9PN7MQfENjn0TSyj4LOPf051JLllz-D44NXgUN7KxqdgDoMUxKk7W2Cw"
-        },
-        {
-          "op": "remove",
-          "path": [
-            "http",
-            "paymentRequired",
-            "accepts",
-            0,
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "http",
-            "paymentRequired",
-            "accepts",
-            0,
-            "extra",
-            "version"
-          ]
+          "value": "ug_ZnJMvstL8HfjDg8ZbuQmL8n_AtDB-XBUQ3a0tg4q7lm5FRRfvStj-I4oiRK1P5874iZfS5qOvVHleAORZDQ"
         },
         {
           "op": "replace",
@@ -33603,30 +33465,6 @@
             "assetTransferMethod"
           ],
           "value": "erc7710"
-        },
-        {
-          "op": "remove",
-          "path": [
-            "listing",
-            "acceptedRails",
-            0,
-            "parameters",
-            "selection",
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "listing",
-            "acceptedRails",
-            0,
-            "parameters",
-            "selection",
-            "extra",
-            "version"
-          ]
         },
         {
           "op": "replace",
@@ -33648,29 +33486,7 @@
             "signature",
             "value"
           ],
-          "value": "57HzUFvfUAaL4g4xM95x5N0WorDtdVRtiq63veHNUbDiEijtnmop5gCtsFsyq7F9oh_Xdt_zuKIjfuaTkUiWCQ"
-        },
-        {
-          "op": "remove",
-          "path": [
-            "runtime",
-            "selectedRailRef",
-            "parameters",
-            "selection",
-            "extra",
-            "name"
-          ]
-        },
-        {
-          "op": "remove",
-          "path": [
-            "runtime",
-            "selectedRailRef",
-            "parameters",
-            "selection",
-            "extra",
-            "version"
-          ]
+          "value": "vITHNEX_Qmcor7STZrutMEZOuwQCha7SlRoZQuZo71s-O0TpCvudbZFV-Q9V-KKFk0N6uUmuY5fAUF_uoJruAw"
         },
         {
           "op": "replace",
@@ -34373,7 +34189,7 @@
       "expected": "pass",
       "rule": "XN-6",
       "operation": "execute",
-      "note": "upstream's optional recentBlockhash and lastValidBlockHeight bound the transaction; the Solana adapter defines both",
+      "note": "upstream's PaymentRequirements example: the optional memo, and recentBlockhash with lastValidBlockHeight as a decimal string, beside feePayer; the Solana adapter defines each",
       "base": "v2",
       "patch": [
         {
@@ -34394,7 +34210,7 @@
             0,
             "value"
           ],
-          "value": "Q6xRaAGSjRV7IU-atJ4dQUbzevGzYHtFT6u9IYKZXKSByS_60rCyXkfHccEFOxBGje_YRMfcbDxrrOANC71VDA"
+          "value": "wXRObhjOCjaOd9PD4y4Uv3mqjoH0Ti_KUA53bJGuxD9bomB0UsuUTph0qPmVUcPKEyU2nigb7az4Z7cj1r8zBA"
         },
         {
           "op": "replace",
@@ -34404,7 +34220,7 @@
             1,
             "value"
           ],
-          "value": "0Q8YeUqkXAyj5VqAe3tcw45PQtQQb4NmMnk9kH_nqH00W2Tm5dmSsOs1ukETBwjfrNoXOAEcjXS0V0qJo6U0BA"
+          "value": "M5k1PtlmLTe0URoFk7hZ6ZJnHAsaifKaveA0_iF3hkyF1kDYkJv_uVsrh525CwIcD6yWht-Q5AXZBx8Kf5JWBQ"
         },
         {
           "op": "replace",
@@ -34489,7 +34305,20 @@
             "extra",
             "lastValidBlockHeight"
           ],
-          "value": 280000000
+          "value": "280000000"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "memo"
+          ],
+          "value": "dacs-274"
         },
         {
           "op": "add",
@@ -34627,7 +34456,7 @@
             0,
             "paymentRequiredHash"
           ],
-          "value": "a0165d2f1a8fe77e97a04b871578a04daefd326fdaa015190b5323f22ec2d8d8"
+          "value": "dc7f73ee31150e2e98d060a3b756261fd46e3c9d4bf7ba74029a29d2decb514f"
         },
         {
           "op": "replace",
@@ -34676,7 +34505,7 @@
             "signature",
             "value"
           ],
-          "value": "VQgFw113csDc0kq9rwff3tXiX1r8GdhACg788F26LypbXU8SpvWOvliTa2AwZqh-aHhE4fdRb1f9C3BjppZdCw"
+          "value": "jBRtrlTN22aigmPet3VXpxVwmtV5Fay8-alV_Bn1Ke9sn_ER-f5KpERqdaHS7cRmwpE54qBegbxoDJfbvqTfBw"
         },
         {
           "op": "replace",
@@ -34744,7 +34573,19 @@
             "extra",
             "lastValidBlockHeight"
           ],
-          "value": 280000000
+          "value": "280000000"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "memo"
+          ],
+          "value": "dacs-274"
         },
         {
           "op": "add",
@@ -34926,7 +34767,20 @@
             "extra",
             "lastValidBlockHeight"
           ],
-          "value": 280000000
+          "value": "280000000"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "memo"
+          ],
+          "value": "dacs-274"
         },
         {
           "op": "add",
@@ -34960,7 +34814,7 @@
             "signature",
             "value"
           ],
-          "value": "AiA8uA7xIVPYryQhe0rRymf7gfjS0hEpgrBpZ5okytOGEqQcfmI1sloREO5aTewyOwnAXMBl6Un9wh7ikx8oCw"
+          "value": "PqPd_2Cm-RpIDjcpseYB9e_5qXLmJ0_FLYTCo4BydG2n0wrjfmTGlZp_mu_mu-eE_NBNHGlTcS7x13DhlM9oDg"
         },
         {
           "op": "replace",
@@ -35072,7 +34926,19 @@
             "extra",
             "lastValidBlockHeight"
           ],
-          "value": 280000000
+          "value": "280000000"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "memo"
+          ],
+          "value": "dacs-274"
         },
         {
           "op": "add",
@@ -38405,6 +38271,296 @@
         }
       ],
       "expectedReason": "signature"
+    },
+    {
+      "name": "selection-extra-array",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "the selection's extra is a JSON object, so an array is malformed even where the challenge's extra is the same array",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "F5MCmYH-3boZs6CyeB5YtY0b503PPaHh_0pImjtJlqU__qCr36sTEh2mxVCJowHbY9XYn3gcIFoTSwsEyOVGDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Vz7kTQid5Pw6mPGM_bmKFF6FLqYs6NVMb4lJqZCikJEuqPLJP1OOv2xkuypJ3N2YsFe0tiMKkZ_LjURww6JrAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra"
+          ],
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "7e9870febec2d29cb507abed5b336a219a9f609134877022f2fe1885914cf36b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "391zmDEh7kuD93dGWeSpkNiyCVcQIG8ZmC-imW8HCMEeHd18uimNpa_UWr0IFCPO9BGFUVkn8LOsRT4cSRcaCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra"
+          ],
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra"
+          ],
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "JrRMHYZsCNUQcu3ttPiBmVXgeqkYmnOsjfx3u4xt2vXab8PiqixgZhL1lbdi9APq7KxUcy6IOUDVWto4WLmKCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra"
+          ],
+          "value": []
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
+      "name": "signed-request-url-not-a-string",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "the signed request URL is a string; an array holding the same URL is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "ObDThLiV77tlglpxanS02aOxBenzfsn98yRqJgqgWWJYblN3YbmC9eHUOPW0c3aU00nNWF5KYqY0O19RaILNDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "0S6gx8Sk3GYp63QlfWTURORiBItwIHkfa0g_BnmctgtRm_SFigv4ZtQLb-Ah00Re9gcLOze46zPkGYPfHrlnBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": [
+            "https://seller.example/dacs/resource?job=274"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": [
+            "https://seller.example/dacs/resource?job=274"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "uu9i9oPE3jtIHftj2imCoZ0bpByRx-lGT5ueEj5-vg_01DleZOu6hpI4N5HLR1kGuzROcRl-q_6OQJQocE7EBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": [
+            "https://seller.example/dacs/resource?job=274"
+          ]
+        }
+      ],
+      "expectedReason": "rail-ref-shape"
+    },
+    {
+      "name": "listing-pipeline-absent",
+      "expected": "fail",
+      "rule": "XN-2/LR-2",
+      "operation": "admit-listing",
+      "note": "a Listing without a pipeline fails schema conformance",
+      "base": "v2",
+      "patch": [],
+      "expectedReason": "listing-shape"
+    },
+    {
+      "name": "listing-accepted-rails-null",
+      "expected": "fail",
+      "rule": "XN-2/LR-2",
+      "operation": "admit-listing",
+      "note": "a Listing with a pay phase carries acceptedRails as an array, not null",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            {
+              "kind": "commit-payee-bound-agreement"
+            },
+            {
+              "kind": "pay-x402",
+              "parameters": {
+                "rail": "x402:protocol"
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "luABdsHDSg9lXIDLs4n-YXfdNFZLMySTfJKVnqIjoGy0YH2lIwWbF-KPZK0kDvNuhFX0hS5XpgSTV8awns7HBw"
+        }
+      ],
+      "expectedReason": "listing-shape"
+    },
+    {
+      "name": "listing-pipeline-step-not-an-object",
+      "expected": "fail",
+      "rule": "XN-2/LR-2",
+      "operation": "admit-listing",
+      "note": "each pipeline step is an object; a bare phase kind is not one",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": [
+            {
+              "kind": "negotiate-fixed-price"
+            },
+            "commit-payee-bound-agreement",
+            {
+              "kind": "pay-x402",
+              "parameters": {
+                "rail": "x402:protocol"
+              }
+            },
+            {
+              "kind": "deliver-storage-program"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "I3-EDqt6Ua3224S0g2X5a2WByprJ9wWpTDukxJpedmF464ykYb-L18-kKp-o3EvUEbeuGu1BVIHeFYvy-w-VBQ"
+        }
+      ],
+      "expectedReason": "listing-shape"
     }
   ]
 }

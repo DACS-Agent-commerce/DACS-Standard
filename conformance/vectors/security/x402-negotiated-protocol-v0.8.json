@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 331,
-  "hash": "d20532562bb9f860390e76e6ec03c3198eab1ff6029fa015267aa997fc766abe",
+  "count": 333,
+  "hash": "e32348769320a873be0da5b4d3f9c9fb1ecb1587ae6d934d0ddb2c958393056d",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -29738,6 +29738,250 @@
         }
       ],
       "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "bounded-fetch-isatap-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "an ISATAP interface identifier carrying 127.0.0.1 is loopback, whatever its prefix",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "6PJOhqdHIL-2xNgrDQy0LLkcJW5H5_PRFq9ijLntFYftqfImD_CGaBxFeN__ur7ka_x-roS7Ae84PMCId1MwAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "InKYkfRchkJjwMEpHEhkTNdoishOYdZEwhK2oLXVhzwMMqjH8ikUDbTr_QtPUpYLpziSGHRoRXOLkQyxCSUyCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "5839c75de86e2f1fb7adf2cff874ec08b1948d12143fcba1a3a778530e7da67e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "zAodakHl05y-lqrOgehi37oh-bDB4-tzUkAw4pTLARP9I7Tl9BwuQy-8eqFX4qf9sTQuI875Ghs1JVwpFcnTDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "I0uOAmprGLB0SLsHcKLYcpfA_fYPDizVCYQRqH0UVziEFhLZS0L8WYydPT_htMZF_u-tj6vx_CUEs9LwhIpbBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "bounded-fetch-isatap-universal-bit-metadata-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "an ISATAP identifier with the universal bit carrying 169.254.169.254 reaches the metadata endpoint",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "5kftoN00tFvOPwwBCcUJU-Cq86mi3wofe2JcpeL6GsLHx_o1vNhYWd_LEWvD8qr5rDWPvPOzXMMxnGW7tTnHDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "pF4tLrR4WTd7Z5GSmcEr0_zCJMkWDeiRsY6KTvidgZ_m1EfYw2fb8tUQ9D8slsfqmMj_9sSG5rN5n6agTVZMBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "0e0dd0b974c19387e506f0ac60e810586ee70be2805e87634c2d32dc7182b789"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "G0pMP7zPUryPg2lvPDbgkHBkYYiIUrp5uW9CFN4iTaau13uIqRp26u1Hb1PSmvFhUpAjKah51wk79CV30mMrBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "IUfa8GIBm_cW--KK-92uB4FpcidGPw19ljN8LQlvkkvHh5XZhVEls2T7Oq_BTRKA0JmtKMBYv3Mcq7PGrWd5BQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        }
+      ],
+      "expectedReason": "non-public-request-target"
     }
   ]
 }

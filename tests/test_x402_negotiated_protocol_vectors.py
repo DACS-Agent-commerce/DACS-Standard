@@ -472,6 +472,9 @@ _NAT64 = ipaddress.ip_network("64:ff9b::/96")
 _NAT64_LOCAL_USE = ipaddress.ip_network("64:ff9b:1::/48")
 _SIX_TO_FOUR = ipaddress.ip_network("2002::/16")
 _TEREDO = ipaddress.ip_network("2001::/32")
+# ISATAP (RFC 5214) carries an IPv4 address in the interface identifier, after
+# any /64 prefix: 0000:5efe, or 0200:5efe with the universal bit set.
+_ISATAP_IDENTIFIERS = frozenset({0x00005EFE, 0x02005EFE})
 
 
 def _embedded_ipv4(address):
@@ -497,23 +500,40 @@ def _embedded_ipv4(address):
     return None
 
 
+def _isatap_ipv4(address):
+    """("isatap", (IPv4,)) when the interface identifier is an ISATAP one, or None."""
+    if address.version != 6 or (int(address) >> 32) & 0xFFFFFFFF not in _ISATAP_IDENTIFIERS:
+        return None
+    return "isatap", (ipaddress.IPv4Address(int(address) & 0xFFFFFFFF),)
+
+
 def _target_class(address):
     """Name of the non-public class of a literal target, or None if it is public.
 
     An embedded-IPv4 form is not public when any IPv4 address it carries is
     not, and is reported as `<form>:<class>`. The local-use NAT64 prefix does
-    not fix where the IPv4 address sits, and it is never public.
+    not fix where the IPv4 address sits, and it is never public. An address in
+    no prefix form is judged as itself; an ISATAP interface identifier, which
+    can follow any prefix, adds the IPv4 address it carries.
     """
     if address.version == 6 and address in _NAT64_LOCAL_USE:
         return "nat64-local-use"
     embedded = _embedded_ipv4(address)
     if embedded is None:
-        return _non_public_class(address)
-    form, carried = embedded
-    for ipv4 in carried:
-        named = _non_public_class(ipv4)
+        named = _non_public_class(address)
         if named is not None:
-            return f"{form}:{named}"
+            return named
+        forms = []
+    else:
+        forms = [embedded]
+    isatap = _isatap_ipv4(address)
+    if isatap is not None:
+        forms.append(isatap)
+    for form, carried in forms:
+        for ipv4 in carried:
+            named = _non_public_class(ipv4)
+            if named is not None:
+                return f"{form}:{named}"
     return None
 
 
@@ -573,6 +593,12 @@ EMBEDDED_IPV4_CASES = (
     ("2001:0:7f00:1::f7f7:f7f7", "teredo:loopback"),
     ("2001:0:808:808::f5ff:fffe", "teredo:private"),
     ("2001:0:808:808::f7f7:f7f7", None),
+    # ISATAP is an interface identifier after any prefix, in both u-bit forms.
+    ("2606:4700::5efe:7f00:1", "isatap:loopback"),
+    ("2606:4700::200:5efe:a9fe:a9fe", "isatap:cloud-metadata"),
+    ("2606:4700::200:5efe:808:808", None),
+    ("2002:808:808::5efe:7f00:1", "isatap:loopback"),
+    ("fe80::5efe:808:808", "link-local"),
 )
 
 
@@ -1664,6 +1690,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "challenge-asset-not-20-bytes",
             "challenge-verifying-contract-not-20-bytes",
             "selection-verifying-contract-not-20-bytes",
+            "bounded-fetch-isatap-loopback-target",
+            "bounded-fetch-isatap-universal-bit-metadata-target",
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
@@ -2455,6 +2483,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "- finalized ledger event resolved for the authorization identity that contradicts the "
             "authorization (another amount, payee, or asset) → `permanent` from the ledger (XN-8)",
             "| `counterparty` | AP2 mandate revoked, x402 server refused before authorization |",
+            "and ISATAP, whose interface identifier `0:5efe` or `200:5efe` carries an IPv4 address "
+            "after any prefix.",
+            "The handler MUST treat each NAT64 prefix its own network uses, whether discovered "
+            "under RFC 7050 or configured locally, like `64:ff9b::/96`.",
             "The v0.8 EIP-155 `exact` binding authorizes only through one of those two forms, so "
             "its SB-3 job binding is always mandatory there.",
             "A verifier MUST take this binding policy from the pinned definition and the signed "

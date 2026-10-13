@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 331 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 333 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1029,12 +1029,17 @@ rejected before any power of ten is computed, under a memory limit.
 The literal-target cases explicitly reject loopback, private, link-local,
 shared-address, multicast, reserved, and IPv4-mapped IPv6 spellings before the
 single instrumented wallet-call site. `localhost.localdomain` and names under
-`.localhost` are rejected like `localhost`. Every IPv6 form that embeds an IPv4
-address (IPv4-translated, IPv4-compatible, NAT64, 6to4, and Teredo's server
-and inverted client, as well as IPv4-mapped) is rejected when the address it
+`.localhost` are rejected like `localhost`. Each named IPv6 form that embeds an
+IPv4 address (IPv4-translated, IPv4-compatible, NAT64, 6to4, Teredo's server
+and inverted client, and ISATAP's `0:5efe` and `200:5efe` interface identifiers
+after any prefix, as well as IPv4-mapped) is rejected when the address it
 carries is non-public, and the local-use NAT64 prefix always is; the reference
-evaluator unwraps each form by explicit prefix rather than through the host
-language's address tables, and an IPv4-mapped public address passes.
+evaluator unwraps each form by explicit prefix or identifier rather than
+through the host language's address tables, and an IPv4-mapped public address
+passes. The ISATAP cases sit under a public prefix, so only the carried address
+rejects them. Treating the host network's own NAT64 prefixes (RFC 7050 or local
+configuration) like `64:ff9b::/96` is an adapter obligation that a URL-only
+corpus cannot exercise.
 A host whose last label is a number is classified as an IPv4 literal, as the WHATWG IPv4 parser does, so shorthand,
 single-number, hexadecimal, octal, and trailing-dot spellings reach the verdict
 of their dotted form, and a numeric host that is not a valid IPv4 literal is

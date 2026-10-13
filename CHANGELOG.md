@@ -187,10 +187,14 @@ The format used per release:
   like `localhost`. An IPv6 address that embeds an IPv4 address is not public
   when an address it carries is not: IPv4-mapped, IPv4-translated,
   IPv4-compatible, NAT64
-  `64:ff9b::/96`, 6to4, and Teredo (server and inverted client). The
+  `64:ff9b::/96`, 6to4, Teredo (server and inverted client), and ISATAP's
+  `0:5efe` and `200:5efe` interface identifiers after any prefix, which is
+  judged as an address too. Each NAT64 prefix the host's own network uses
+  (RFC 7050 or local configuration) is treated like `64:ff9b::/96`. The
   local-use NAT64 prefix `64:ff9b:1::/48` is never public. The reference
-  evaluator unwraps each form by explicit prefix instead of relying on the
-  host language's address tables, which differ between releases.
+  evaluator unwraps each form by explicit prefix or identifier instead of
+  relying on the host language's address tables, which differ between
+  releases.
 - **Malformed event key before the ledger read** (DACS-4 §9.5.7 XN-8) — a
   malformed coordinate in the signed evidence, such as a `settlementEvent`
   that is not adapter-canonical, needs no ledger data, so the verifier's

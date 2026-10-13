@@ -2516,6 +2516,18 @@ def build_vectors() -> list[dict]:
                     lambda v: v["http"]["responseHeader"].update({"value": None}),
                     "response-header")
 
+    # XN-2: ISATAP (RFC 5214) carries an IPv4 address in the interface
+    # identifier after any prefix; the prefix here is public.
+    for name, unsafe_url, note in (
+        ("isatap-loopback", "https://[2606:4700::5efe:7f00:1]/pay",
+         "an ISATAP interface identifier carrying 127.0.0.1 is loopback, whatever its prefix"),
+        ("isatap-universal-bit-metadata", "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/",
+         "an ISATAP identifier with the universal bit carrying 169.254.169.254 reaches the "
+         "metadata endpoint"),
+    ):
+        add_case(vectors, f"bounded-fetch-{name}-target", "fail", "XN-2/DACS-1-6.3.6", note,
+                 literal_target(unsafe_url), refresh=True, reason="non-public-request-target")
+
     return vectors
 
 

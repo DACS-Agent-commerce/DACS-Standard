@@ -2235,6 +2235,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 vector["ledger"][field] = value
                 self.assertEqual(evaluate(vector), ("error", "ledger-event-key"))
 
+    def test_record_names_the_reconciled_transaction_and_key_each(self):
+        """XN-7/XN-8: a record is compared with both the reconciled transaction and its key.
+
+        A record whose key names its own transaction, beside a ledger key that
+        names the ledger's, already differs in the key when the transactions
+        differ; this pins each comparison on its own, as XN-7 states them.
+        """
+        tx, other = "ab" * 32, "cd" * 32
+        event = {"transaction": tx, "settlementEvent": f"evm:8453:{tx}:7"}
+        for record, want in (
+            ({"transaction": tx, "event": f"evm:8453:{tx}:7"}, None),
+            ({"transaction": other, "event": f"evm:8453:{tx}:7"}, ("fail", "ledger-event")),
+            ({"transaction": tx, "event": f"evm:8453:{tx}:8"}, ("fail", "ledger-event")),
+        ):
+            with self.subTest(record=record):
+                self.assertEqual(record_ledger_defect(record, event), want)
+
     def test_success_evidence_is_built_from_the_reconciled_event(self):
         """XN-7/XN-11: success evidence names the ledger's event, never a defective record's."""
         built = 0

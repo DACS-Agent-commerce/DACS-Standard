@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 315,
-  "hash": "71ef9e43614c3e4a38d3a3637530a353dfbbda92b2f18b8dc6f6e0118834c91d",
+  "count": 327,
+  "hash": "8fa50ba25e717743f6039333f0de38881000b4b817e25feb90a9775b1e538e5e",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -28114,6 +28114,1468 @@
         }
       ],
       "expectedReason": "authorization-unsettled"
+    },
+    {
+      "name": "challenge-asset-eip55-selection-lower-case",
+      "expected": "pass",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "an EIP-55 challenge asset is the same 20-byte asset as the lower-case selection",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Z61KtKDKU1kq_BWbDnsfwCzoZLvY9XbbLoJBgaHlj18k1hY-Vsaw_TVLuB8f-cuUuchX12_ijjo2S-TctNB-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qPyRXqmywjzWOqK8jloA6pKM6tftVYNeZhTx9-HWboSt6GxF0-o80X1Cxv_jQD3fzCuko1DDMweMOvW6575aCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a99dee18312b2bb95b5d80b54a58f35a3214664a45e95558ac5a4ee03f70c582"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "e03_bg2TIf9blgW8yFCJiOaSgJt4e9Tw20CTlUrmUp6Ffv_vA3aHM0iawFi4ogmRx4tQ259Yyd9CNmNmc3DuDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vk5iVonsxrrmJlMhlCHMmt8uwkpRAPyfP3zw0Kn0-7a8BdWNJMHBtBpT3pciH5UY3-nxNTSQBM1UqSrGMZbaAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        }
+      ]
+    },
+    {
+      "name": "selection-asset-eip55-challenge-lower-case",
+      "expected": "pass",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "an EIP-55 signed asset is the same 20-byte asset as the lower-case challenge, metadata and ledger",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "oEWjizGbH6Loi4_FMI5qLXmSRxRXzjJrM89FeJyiAFBnz8KQGGEC4M5sNR3FPEPJGUaTLVIGgMr6ud3TxJHgDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "BmXSJWufkl22ZcDt-aeJO2kmmDOTd1_dgzz3Z5Ni288cuTaBNRabQ8QtGtlSqZhknvMiAhjA6yh1-e2MA9t-CQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b4f4ff92b627cebdfc963d5e2c4e17bb73979864255af4baf8b00c052236f40d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ubs_0CKbFOiuOTeFRTMpjhrQCtIJVB6glTMt9QQDz8STnrO9Kgd365E08huBYRXrvIskJgpfAzdQnc9LaSzxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vKEncx8XZd7RgkLCnRGex2Bhf6o3j6CcnqMFMm6ke__H-vmJyPEiBdMLAGjHm0RKwVT8_t97QlImKzFxfEDECw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+        }
+      ]
+    },
+    {
+      "name": "asset-metadata-asset-eip55",
+      "expected": "pass",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "EIP-55 adapter metadata names the same 20-byte asset",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Z61KtKDKU1kq_BWbDnsfwCzoZLvY9XbbLoJBgaHlj18k1hY-Vsaw_TVLuB8f-cuUuchX12_ijjo2S-TctNB-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qPyRXqmywjzWOqK8jloA6pKM6tftVYNeZhTx9-HWboSt6GxF0-o80X1Cxv_jQD3fzCuko1DDMweMOvW6575aCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b4f4ff92b627cebdfc963d5e2c4e17bb73979864255af4baf8b00c052236f40d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ubs_0CKbFOiuOTeFRTMpjhrQCtIJVB6glTMt9QQDz8STnrO9Kgd365E08huBYRXrvIskJgpfAzdQnc9LaSzxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vk5iVonsxrrmJlMhlCHMmt8uwkpRAPyfP3zw0Kn0-7a8BdWNJMHBtBpT3pciH5UY3-nxNTSQBM1UqSrGMZbaAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        }
+      ]
+    },
+    {
+      "name": "ledger-asset-upper-case",
+      "expected": "pass",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "an upper-case authenticated ledger asset is the same 20-byte asset",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Z61KtKDKU1kq_BWbDnsfwCzoZLvY9XbbLoJBgaHlj18k1hY-Vsaw_TVLuB8f-cuUuchX12_ijjo2S-TctNB-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qPyRXqmywjzWOqK8jloA6pKM6tftVYNeZhTx9-HWboSt6GxF0-o80X1Cxv_jQD3fzCuko1DDMweMOvW6575aCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b4f4ff92b627cebdfc963d5e2c4e17bb73979864255af4baf8b00c052236f40d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ubs_0CKbFOiuOTeFRTMpjhrQCtIJVB6glTMt9QQDz8STnrO9Kgd365E08huBYRXrvIskJgpfAzdQnc9LaSzxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xDBF03B407C01E7CD3CBEA99509D93F8DDDC8C6FB"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vk5iVonsxrrmJlMhlCHMmt8uwkpRAPyfP3zw0Kn0-7a8BdWNJMHBtBpT3pciH5UY3-nxNTSQBM1UqSrGMZbaAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        }
+      ]
+    },
+    {
+      "name": "selection-asset-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "a signed EIP-155 asset that is not 0x plus 40 hex digits is malformed before authorization, even where every copy agrees",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "9wqZoEAIARju_gjfBwjpLLGO_Y2EOd7qLkn6BQmlrPgq9YeCstZa5KebkRI9vkx8RLliNt1ZFsfRr1Zq6Jg4Cw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "leGvr65yw-S7cdlT2n9z9NXDMGi8OurR8--kSQrSHhie8jvzJMDK4jNL_BR-hkN3IgC1B8XazZMqqJW2lG8CDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d5dc288499fcf58eef786445a80c161e0d2bca26d90c8a0f1340a47cf4f2fc4e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "1pUD37JE1grcuuHGqhLERcG14tb_DFBkfxS4Qj5_lhxLe4qSvcYTRJJ2o9FMRFWGQXcXEocpyPQlyF7preupBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "rKEAI4KvHJaNG3GoNWeipHEsP9mkF0HGPP9ItKNniTH2sI_QT2lYhFpxdtMsH45tgq0LgqSCm9UVxLCMZ9KqCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "asset-metadata-asset-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "adapter metadata naming an asset that is not 0x plus 40 hex digits is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Z61KtKDKU1kq_BWbDnsfwCzoZLvY9XbbLoJBgaHlj18k1hY-Vsaw_TVLuB8f-cuUuchX12_ijjo2S-TctNB-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qPyRXqmywjzWOqK8jloA6pKM6tftVYNeZhTx9-HWboSt6GxF0-o80X1Cxv_jQD3fzCuko1DDMweMOvW6575aCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b4f4ff92b627cebdfc963d5e2c4e17bb73979864255af4baf8b00c052236f40d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ubs_0CKbFOiuOTeFRTMpjhrQCtIJVB6glTMt9QQDz8STnrO9Kgd365E08huBYRXrvIskJgpfAzdQnc9LaSzxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vk5iVonsxrrmJlMhlCHMmt8uwkpRAPyfP3zw0Kn0-7a8BdWNJMHBtBpT3pciH5UY3-nxNTSQBM1UqSrGMZbaAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "challenge-asset-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "a challenge asset that is not 0x plus 40 hex digits is malformed before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Z61KtKDKU1kq_BWbDnsfwCzoZLvY9XbbLoJBgaHlj18k1hY-Vsaw_TVLuB8f-cuUuchX12_ijjo2S-TctNB-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qPyRXqmywjzWOqK8jloA6pKM6tftVYNeZhTx9-HWboSt6GxF0-o80X1Cxv_jQD3fzCuko1DDMweMOvW6575aCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d5dc288499fcf58eef786445a80c161e0d2bca26d90c8a0f1340a47cf4f2fc4e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "1pUD37JE1grcuuHGqhLERcG14tb_DFBkfxS4Qj5_lhxLe4qSvcYTRJJ2o9FMRFWGQXcXEocpyPQlyF7preupBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vk5iVonsxrrmJlMhlCHMmt8uwkpRAPyfP3zw0Kn0-7a8BdWNJMHBtBpT3pciH5UY3-nxNTSQBM1UqSrGMZbaAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "ledger-asset-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-5/XN-8",
+      "operation": "execute",
+      "note": "an authenticated ledger asset that is not 0x plus 40 hex digits is a malformed coordinate after authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Z61KtKDKU1kq_BWbDnsfwCzoZLvY9XbbLoJBgaHlj18k1hY-Vsaw_TVLuB8f-cuUuchX12_ijjo2S-TctNB-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "qPyRXqmywjzWOqK8jloA6pKM6tftVYNeZhTx9-HWboSt6GxF0-o80X1Cxv_jQD3fzCuko1DDMweMOvW6575aCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b4f4ff92b627cebdfc963d5e2c4e17bb73979864255af4baf8b00c052236f40d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ubs_0CKbFOiuOTeFRTMpjhrQCtIJVB6glTMt9QQDz8STnrO9Kgd365E08huBYRXrvIskJgpfAzdQnc9LaSzxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "vk5iVonsxrrmJlMhlCHMmt8uwkpRAPyfP3zw0Kn0-7a8BdWNJMHBtBpT3pciH5UY3-nxNTSQBM1UqSrGMZbaAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "challenge-verifying-contract-eip55-selection-lower-case",
+      "expected": "pass",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "an EIP-55 extra.verifyingContract in the challenge matches the lower-case signed extra",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "6ENycwIcoOyEcMlWAD0KICLLdmBQZMe6hM6h8MbQLgRgvcC2zUBFdeOhbwWyXToHoo0beKsHPPO2EaNft73qBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "p7RNEDlClvLi5weDp2ixsE9ePr5_CdWioRBMwBQF6r3bJ4TKF4oUwRemQaMRd3keqEPKrRl8oj44gCBAqG1kCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "b522f634b8b1ade547b538a91736b3cff5ab328e5e62af034531d29dca77e32e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "2UV4PRKZvpSKS-Zm4joDmIly2D5G4IXCopw-hgt5qPuWqZTdYsq4ogyRurzhwlLGX2sn3CaSgk9J3rTLQtViDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "_MLj3QRl2DGNJtvy4NVJv1zPedGMOKjN_3Bjq9oZjWD6dlrO4h26-mfS60QhgX5mp3CPnNFpWh3VH3ykxQtdCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        }
+      ]
+    },
+    {
+      "name": "selection-verifying-contract-eip55-challenge-lower-case",
+      "expected": "pass",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "an EIP-55 signed extra.verifyingContract matches the lower-case challenge extra",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "J5AyY29Hy8CSfPzHI9CSHJnDDcfiUxe6Rx8lZm7tSYPqKRAAtGrzE8aF8RkBGGAoxGQ06CgaAkS9qkE-gIQ-DA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "64MgjisvLN6_5LTvM1WF5CyJRiohrY0al-2cmImH5Ep6YYfIY9iS3BcgcvTyYo0JShy9IKFD8RpW5hBj9nP0Cw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "9788964d1d6306e1f44ee95d787e1e8480b386174c78b547dfa8386ebdee8188"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "mNQNVGtHa7ww9_dmuucYpaT7qsO83iSsfTTNxegwvbo4fu2Xpyn6s_QDuw4v_MjnfkTRU74IkM8qBCpREgKhBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "aIg1NJtxdiQjgrRXcfft6ap8M0iSsZR2Nb7_WGTuNG90ZGjBxrv-tuY6TYuT-LDgUD-31B9muOYnk7seYneeBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb"
+        }
+      ]
+    },
+    {
+      "name": "challenge-verifying-contract-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "a challenge extra.verifyingContract that is not 0x plus 40 hex digits is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "6ENycwIcoOyEcMlWAD0KICLLdmBQZMe6hM6h8MbQLgRgvcC2zUBFdeOhbwWyXToHoo0beKsHPPO2EaNft73qBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "p7RNEDlClvLi5weDp2ixsE9ePr5_CdWioRBMwBQF6r3bJ4TKF4oUwRemQaMRd3keqEPKrRl8oj44gCBAqG1kCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d7823bbd3ba005416a65070d46740013ada9e2fc263a441a50f5f6a4d4af205c"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ODk6ozAiDr4L3HCjfAQzTO6TuqqljEqpsYt4tSTv0h-DZaATnGKpMg8PExY_GP1e3MwL6SC_vU17crgzBkGCAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "_MLj3QRl2DGNJtvy4NVJv1zPedGMOKjN_3Bjq9oZjWD6dlrO4h26-mfS60QhgX5mp3CPnNFpWh3VH3ykxQtdCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+        }
+      ],
+      "expectedReason": "address-form"
+    },
+    {
+      "name": "selection-verifying-contract-not-20-bytes",
+      "expected": "error",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "a signed extra.verifyingContract that is not 0x plus 40 hex digits is malformed, even where the challenge agrees",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "D5Olgm1Iumtoa5SGF1q2aMBAXEHxXXATM4cs9p5GogHt0Aj8w8WBYYAJ0glZuPaemEeo3dM4xpMH3xAFhjb5Ag"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "xBr3TWJJMCCDSo3MckSWUcPyqzT5f4nmtv6whwEB8D79-Lu76_rIiU80QUHvHa0SFVt93D-q1Kge9kNpVtDEDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "d7823bbd3ba005416a65070d46740013ada9e2fc263a441a50f5f6a4d4af205c"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ODk6ozAiDr4L3HCjfAQzTO6TuqqljEqpsYt4tSTv0h-DZaATnGKpMg8PExY_GP1e3MwL6SC_vU17crgzBkGCAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "G-d68Yva0vmOjZAYUrx1_BCEQs0KzYSM1mBvUXqSnd09HkCxHTQPlYm0qVNnGdmT6HD8i8-sL9DXQshaMhUeDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ],
+          "value": "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9a"
+        }
+      ],
+      "expectedReason": "address-form"
     }
   ]
 }

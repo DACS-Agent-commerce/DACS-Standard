@@ -38,6 +38,9 @@ SELLER_ADDRESS = "0x" + "22" * 20
 # against the EIP.
 LETTERED_SELLER = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
 OTHER_LETTERED_ADDRESS = "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359"
+# The asset and verifyingContract case vectors use EIP-55's next two examples.
+LETTERED_ASSET = "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
+LETTERED_VERIFYING_CONTRACT = "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
 SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
 SOLANA_ASSET = "3" * 44
 SOLANA_SELLER = "5" * 44
@@ -2421,6 +2424,74 @@ def build_vectors() -> list[dict]:
              "authorization identity: reconciliation-pending, never a failure",
              other_transaction_no_event, refresh=True, authorization_submitted=True,
              reason="authorization-unsettled")
+
+    # XN-5: on EIP-155 the asset and extra.verifyingContract compare as 20-byte
+    # values wherever they are compared. Each case changes one spelling.
+    def lettered_asset(signed=LETTERED_ASSET, metadata=LETTERED_ASSET,
+                       challenge=LETTERED_ASSET, ledger=LETTERED_ASSET):
+        def mutate(v):
+            for ref in signed_selection_refs(v):
+                ref["parameters"]["selection"]["asset"] = signed
+            v["capability"]["assetMetadata"]["asset"] = metadata
+            v["http"]["paymentRequired"]["accepts"][0]["asset"] = challenge
+            v["ledger"]["asset"] = ledger
+        return mutate
+    upper = "0x" + LETTERED_ASSET[2:].upper()
+    short = LETTERED_ASSET[:-2]
+    for name, expected, mutate, note in (
+        ("challenge-asset-eip55-selection-lower-case", "pass",
+         lettered_asset(challenge=eip55(LETTERED_ASSET)),
+         "an EIP-55 challenge asset is the same 20-byte asset as the lower-case selection"),
+        ("selection-asset-eip55-challenge-lower-case", "pass",
+         lettered_asset(signed=eip55(LETTERED_ASSET)),
+         "an EIP-55 signed asset is the same 20-byte asset as the lower-case challenge, "
+         "metadata and ledger"),
+        ("asset-metadata-asset-eip55", "pass", lettered_asset(metadata=eip55(LETTERED_ASSET)),
+         "EIP-55 adapter metadata names the same 20-byte asset"),
+        ("ledger-asset-upper-case", "pass", lettered_asset(ledger=upper),
+         "an upper-case authenticated ledger asset is the same 20-byte asset"),
+        ("selection-asset-not-20-bytes", "error",
+         lettered_asset(signed=short, metadata=short, challenge=short, ledger=short),
+         "a signed EIP-155 asset that is not 0x plus 40 hex digits is malformed before "
+         "authorization, even where every copy agrees"),
+        ("asset-metadata-asset-not-20-bytes", "error", lettered_asset(metadata=short),
+         "adapter metadata naming an asset that is not 0x plus 40 hex digits is malformed"),
+        ("challenge-asset-not-20-bytes", "error", lettered_asset(challenge=short),
+         "a challenge asset that is not 0x plus 40 hex digits is malformed before authorization"),
+    ):
+        add_case(vectors, name, expected, "XN-4/XN-5", note, mutate, refresh=True,
+                 reason="address-form" if expected == "error" else None)
+    add_case(vectors, "ledger-asset-not-20-bytes", "error", "XN-5/XN-8",
+             "an authenticated ledger asset that is not 0x plus 40 hex digits is a malformed "
+             "coordinate after authorization",
+             lettered_asset(ledger=short), refresh=True, authorization_submitted=True,
+             reason="address-form")
+
+    def lettered_verifying_contract(signed=LETTERED_VERIFYING_CONTRACT,
+                                    challenge=LETTERED_VERIFYING_CONTRACT):
+        def mutate(v):
+            for ref in signed_selection_refs(v):
+                ref["parameters"]["selection"]["extra"]["verifyingContract"] = signed
+            v["http"]["paymentRequired"]["accepts"][0]["extra"]["verifyingContract"] = challenge
+        return mutate
+    for name, expected, mutate, note in (
+        ("challenge-verifying-contract-eip55-selection-lower-case", "pass",
+         lettered_verifying_contract(challenge=eip55(LETTERED_VERIFYING_CONTRACT)),
+         "an EIP-55 extra.verifyingContract in the challenge matches the lower-case signed extra"),
+        ("selection-verifying-contract-eip55-challenge-lower-case", "pass",
+         lettered_verifying_contract(signed=eip55(LETTERED_VERIFYING_CONTRACT)),
+         "an EIP-55 signed extra.verifyingContract matches the lower-case challenge extra"),
+        ("challenge-verifying-contract-not-20-bytes", "error",
+         lettered_verifying_contract(challenge=LETTERED_VERIFYING_CONTRACT[:-2]),
+         "a challenge extra.verifyingContract that is not 0x plus 40 hex digits is malformed"),
+        ("selection-verifying-contract-not-20-bytes", "error",
+         lettered_verifying_contract(signed=LETTERED_VERIFYING_CONTRACT[:-2],
+                                     challenge=LETTERED_VERIFYING_CONTRACT[:-2]),
+         "a signed extra.verifyingContract that is not 0x plus 40 hex digits is malformed, "
+         "even where the challenge agrees"),
+    ):
+        add_case(vectors, name, expected, "XN-4/XN-5", note, mutate, refresh=True,
+                 reason="address-form" if expected == "error" else None)
 
     return vectors
 

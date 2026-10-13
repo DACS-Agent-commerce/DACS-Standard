@@ -87,8 +87,11 @@ The format used per release:
 - **EVM address comparison** (DACS-4 §9.5.7 XN-5, XN-11) — on an EIP-155
   network, `payTo`, the PB-1 payout binding and
   `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,
-  the derived payer and the authorization payer, the response `payer`, and the
-  authenticated event's payer and payee compare as 20-byte values: `0x` plus 40
+  the derived payer and the authorization payer, the response `payer`, the
+  selection `asset` (against the adapter's asset metadata, the challenge, and
+  the authenticated event), `extra.verifyingContract` inside the `extra`
+  comparison, and the authenticated event's payer and payee compare as 20-byte
+  values: `0x` plus 40
   hexadecimal digits, letter case ignored. An adapter must accept such an
   address whatever its EIP-55 checksum, so a checksummed upstream address
   matches a lower-case binding. Any other spelling is a malformed coordinate and yields `error`,

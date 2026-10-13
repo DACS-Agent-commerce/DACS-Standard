@@ -884,6 +884,13 @@ def adapter_address(network, address):
     return address
 
 
+def adapter_extra(network, extra):
+    """XN-5: `extra` with an EIP-155 `verifyingContract` in its 20-byte comparison form."""
+    if network.startswith("eip155:") and "verifyingContract" in extra:
+        return {**extra, "verifyingContract": adapter_address(network, extra["verifyingContract"])}
+    return extra
+
+
 class AddressFormError(ValueError):
     """XN-5: an address with no adapter form, where ValueError would name another coordinate."""
 
@@ -980,6 +987,8 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
     try:
         ledger_payer = adapter_address(network, ledger.get("payer"))
         ledger_pay_to = adapter_address(network, ledger.get("payTo"))
+        ledger_asset = adapter_address(network, ledger.get("asset"))
+        asset = adapter_address(network, selection["asset"])
     except ValueError:
         return "error", "address-form"
     # SB-3: a mandatory binding is resolved before the transfer checks.
@@ -994,7 +1003,7 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
     if (
         ledger.get("network") != network
         or ledger.get("scheme") != "exact"
-        or ledger.get("asset") != selection["asset"]
+        or ledger_asset != asset
         or ledger.get("assetDecimals") != selection["assetDecimals"]
         or ledger.get("amount") != amount
         or ledger_payer != payer
@@ -1335,10 +1344,18 @@ def evaluate(v, effects=None):
     price = agreement.get("terms", {}).get("price", {})
     if selection["currency"] != price.get("currency"):
         return "fail", "currency"
+    # XN-5: on EIP-155 the asset and `extra.verifyingContract` compare as
+    # 20-byte values, like payTo, in the metadata, the challenge and the ledger.
     metadata = capability.get("assetMetadata", {})
+    try:
+        asset = adapter_address(network, selection["asset"])
+        metadata_asset = adapter_address(network, metadata.get("asset"))
+        signed_extra = jcs_canonicalize(adapter_extra(network, selection["extra"]))
+    except ValueError:
+        return "error", "address-form"
     if (
         metadata.get("network") != selection["network"]
-        or metadata.get("asset") != selection["asset"]
+        or metadata_asset != asset
         or metadata.get("decimals") != selection["assetDecimals"]
     ):
         return "fail", "asset-metadata"
@@ -1356,14 +1373,16 @@ def evaluate(v, effects=None):
             candidate_url == request["url"]
             and candidate.get("scheme") == selection["scheme"]
             and candidate.get("network") == selection["network"]
-            and candidate.get("asset") == selection["asset"]
             and candidate.get("maxTimeoutSeconds") == selection["maxTimeoutSeconds"]
             and isinstance(candidate.get("extra"), dict)
-            and jcs_canonicalize(candidate["extra"]) == jcs_canonicalize(selection["extra"])
             and candidate_amount == amount
         ):
             try:
-                if adapter_address(network, candidate.get("payTo")) == pay_to:
+                if (
+                    adapter_address(network, candidate.get("asset")) == asset
+                    and jcs_canonicalize(adapter_extra(network, candidate["extra"])) == signed_extra
+                    and adapter_address(network, candidate.get("payTo")) == pay_to
+                ):
                     matches.append(candidate)
             except ValueError:
                 return "error", "address-form"
@@ -1640,6 +1659,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "batch-commitment-is-not-financial-settlement",
             "legacy-default-new-session-disabled",
             "legacy-default-pinned-live-new-session",
+            "selection-asset-not-20-bytes",
+            "asset-metadata-asset-not-20-bytes",
+            "challenge-asset-not-20-bytes",
+            "challenge-verifying-contract-not-20-bytes",
+            "selection-verifying-contract-not-20-bytes",
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
@@ -2396,7 +2420,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "the adapter MUST compare the following addresses as 20-byte values.",
             "They are `payTo`, the PB-1 payout binding and `PaymentPhaseInput.payee.payeeAddress`; "
             "the `payingKey` address component, the derived payer and the authorization payer; "
-            "the response `payer`; and the authenticated event's payer and payee.",
+            "the response `payer`; the selection `asset`, against the adapter's asset metadata, "
+            "the challenge, and the authenticated event; the `extra.verifyingContract` member "
+            "inside the XN-4 `extra` comparison; and the authenticated event's payer and payee.",
+            "On an EIP-155 network the `asset` and an `extra.verifyingContract` compare as XN-5 "
+            "addresses, so letter case alone is not a mismatch.",
             "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
             "An adapter MUST accept such an address whatever its EIP-55 checksum.",
             "Any other value is a malformed coordinate and yields `error`.",
@@ -2667,6 +2695,19 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("solana-challenge-payto-case-changed", ("fail", "challenge-match"), 0),
             ("solana-response-payer-case-changed", ("pass", "response-payer"), 1),
             ("solana-ledger-payto-case-changed", ("fail", "ledger-event"), 1),
+            # The asset and extra.verifyingContract are 20-byte values too.
+            ("challenge-asset-eip55-selection-lower-case", ("pass", None), 1),
+            ("selection-asset-eip55-challenge-lower-case", ("pass", None), 1),
+            ("asset-metadata-asset-eip55", ("pass", None), 1),
+            ("ledger-asset-upper-case", ("pass", None), 1),
+            ("selection-asset-not-20-bytes", ("error", "address-form"), 0),
+            ("asset-metadata-asset-not-20-bytes", ("error", "address-form"), 0),
+            ("challenge-asset-not-20-bytes", ("error", "address-form"), 0),
+            ("ledger-asset-not-20-bytes", ("error", "address-form"), 1),
+            ("challenge-verifying-contract-eip55-selection-lower-case", ("pass", None), 1),
+            ("selection-verifying-contract-eip55-challenge-lower-case", ("pass", None), 1),
+            ("challenge-verifying-contract-not-20-bytes", ("error", "address-form"), 0),
+            ("selection-verifying-contract-not-20-bytes", ("error", "address-form"), 0),
         ):
             with self.subTest(vector=name):
                 effects = {}

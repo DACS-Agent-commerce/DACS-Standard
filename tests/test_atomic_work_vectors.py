@@ -31,9 +31,25 @@ COMPLETENESS_WORD = re.compile(
 )
 COVERAGE_WORD = re.compile(r"(?i)\b(cover(s|ed|age|ing)?|exercis(e|es|ed|ing))\b")
 # The gate counts rule references; it cannot show that a fixture exercises
-# its rule, so "is/are exercised" claims it even without a completeness word.
+# its rule, so "every rule is exercised" claims it even without a completeness
+# word.  The passive form claims something only of a totality subject ("the
+# test is exercised only in CI" says nothing about rules).
 EXERCISED_CLAIM = re.compile(r"(?i)\b(is|are|was|were|be|been|being)\s+(\w+\s+)?(exercised)\b")
+TOTALITY = re.compile(r"(?i)\b(every|each|all|any)\b")
 NEGATION = re.compile(r"(?i)\b(not|no|never|cannot)\b|n't\b")
+# Idioms that contain a negation word but affirm the claim ("not only fully
+# covered", "no question that", "no gaps prevent full coverage").
+AFFIRMATIVE_IDIOM = re.compile(
+    r"(?i)\bnot\s+only\b|\bno\s+(?:question|doubt)\b"
+    r"|\b(?:no\s+\w+|nothing)\s+(?:prevents?|stops?|blocks?)\b"
+)
+# A negated predicate after the claim qualifies it ("full semantic coverage
+# is not established", "full coverage is not claimed").
+NEGATED_PREDICATE = re.compile(
+    r"(?i)\b(?:(?:is|are|was|were|has|have|had)(?:\s+been)?\s+(?:not|never)"
+    r"|isn't|aren't|wasn't|weren't|hasn't|haven't)\s+(?:been\s+)?(?:yet\s+)?"
+    r"(?:established|claimed|shown|demonstrated|proven|proved|met|achieved|guaranteed)\b"
+)
 KEPT_OPEN = re.compile(r"(?i)\bremains? open\b")
 CLAUSE_BREAK = re.compile(
     r"[,;:()]|\s[—–-]\s|—|\s(?:and|but|while|whereas|yet|so)\s", re.IGNORECASE
@@ -47,15 +63,23 @@ def unqualified_claim(clause):
     exercised = EXERCISED_CLAIM.search(clause)
     if words and covers:
         claim_end = max(words + covers)
-    elif exercised:
+    elif exercised and TOTALITY.search(clause, 0, exercised.start(3)):
         claim_end = exercised.end(3)
     else:
         return False
     # A negation qualifies the claim only before its last claim word ("does
-    # not claim full coverage", "is not exercised"); "remains open" only after
-    # it, with the claim as its subject ("full coverage remains open").
-    negation = NEGATION.search(clause)
-    if negation and negation.start() < claim_end:
+    # not claim full coverage", "is not exercised") and only when it is not
+    # part of an affirmative idiom; after the claim, only a negated predicate
+    # ("is not established") does.  "remains open" qualifies only after the
+    # claim, with the claim as its subject ("full coverage remains open").
+    idioms = [m.span() for m in AFFIRMATIVE_IDIOM.finditer(clause)]
+    if any(
+        negation.start() < claim_end
+        and not any(start <= negation.start() < end for start, end in idioms)
+        for negation in NEGATION.finditer(clause)
+    ):
+        return False
+    if NEGATED_PREDICATE.search(clause, claim_end):
         return False
     kept_open = KEPT_OPEN.search(clause, claim_end)
     return kept_open is None
@@ -66,10 +90,11 @@ def coverage_overclaims(text):
 
     A clause pairing a completeness word (complete, full, exhaustive,
     comprehensive and their -ly forms) with a coverage word (cover, exercise),
-    or claiming that something "is exercised", is an overclaim unless that
-    same clause negates the claim or keeps it open. A qualifier in another
-    clause, sentence or list item does not count: clauses break at , ; : ( )
-    dashes and at and/but/while/whereas/yet/so.
+    or claiming that every/each/all/any of something "is exercised", is an
+    overclaim unless that same clause negates the claim or keeps it open. A
+    qualifier in another clause, sentence or list item does not count: clauses
+    break at , ; : ( ) dashes and at and/but/while/whereas/yet/so. This is a
+    lexical guard for the Atomic coverage texts, not a semantic prose oracle.
     """
     blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*+]|[0-9]+\.)\s)", text)
     return [
@@ -363,6 +388,50 @@ class AtomicWorkVectorTests(unittest.TestCase):
             "the six generated coverage notes differ",
         )
 
+    def test_semantic_fixture_precondition_and_general_changes_are_recorded(self):
+        # CONFORMANCE-PLAN §14.8 makes semantically meaningful fixtures a
+        # precondition for advertising AtomicWorkCapabilityV1, which this
+        # candidate does not yet meet; only that MUST is so conditioned.
+        def joined(text):
+            return " ".join(text.split())
+
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        entry = changelog.split("- **Atomic Purchase and Completion Works**", 1)[1]
+        entry = joined(entry.split("\n- **", 1)[0])
+        readme = (ROOT / "conformance" / "vectors" / "security" / "README.md").read_text(
+            encoding="utf-8"
+        )
+        atomic = joined(
+            readme.split("## Atomic Work candidate test profile", 1)[1].split("\n## ", 1)[0]
+        )
+        plan = joined((ROOT / "spec" / "CONFORMANCE-PLAN.md").read_text(encoding="utf-8"))
+        bullet = plan.split("- **Atomic DACS Work (AW-1..AW-77).**", 1)[1].split(" - **", 1)[0]
+        for name, text in (("CHANGELOG", entry), ("README", atomic), ("CONFORMANCE-PLAN", bullet)):
+            with self.subTest(document=name):
+                self.assertRegex(text, r"(?i)\bbefore `AtomicWorkCapabilityV1` may be advertised")
+                self.assertIn("does not yet meet", text)
+        self.assertIn(
+            "a non-applicable cell MUST be machine-readable and carry a non-empty "
+            "rationale. Before `AtomicWorkCapabilityV1` may be advertised for this "
+            "profile, every applicable cell MUST also have at least one semantically "
+            "meaningful fixture.",
+            bullet,
+        )
+        self.assertIn("`AtomicWorkCapabilityV1` stays closed.", bullet)
+        # The three DACS-4 rules that bind every profile are recorded as
+        # general normative changes, not as Atomic-only rules.
+        heading = "### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)"
+        self.assertIn(heading, changelog)
+        changed = joined(changelog.split(heading, 1)[1].split("\n### ", 1)[0])
+        self.assertIn("These are general normative changes, not Atomic-only rules", changed)
+        for rule in (
+            "**Rail resolution** (DACS-4 §9.4.3)",
+            "**Payment input arm** (DACS-4 §9.5.1 PC-1)",
+            "**Amendment target** (DACS-4 §9.7.1 AMEND-1)",
+        ):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, changed)
+
     def test_coverage_overclaim_guard_cases(self):
         for sentence, overclaims in (
             ("This is full P/N/B coverage.", True),
@@ -382,6 +451,19 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ("The fixtures fully exercise every rule.", True),
             ("Every applicable cell is exercised by a fixture of the matching class.", True),
             ("Every rule ID is comprehensively covered.", True),
+            # A negation word inside an affirmative idiom does not negate the
+            # claim, and "remains open" qualifies only a claim before it.
+            ("Not only is every rule fully covered, the gate refuses gaps.", True),
+            ("The corpus is not only fully covered but independently tested.", True),
+            ("There is no question that coverage is complete.", True),
+            ("No gaps prevent full semantic coverage.", True),
+            ("Nothing remains open because every rule is fully covered.", True),
+            # Accurate sentences: a negated predicate after the claim, and a
+            # passive "exercised" without a totality subject.
+            ("Full semantic coverage is not established.", False),
+            ("Rule references are counted, but full coverage is not claimed.", False),
+            ("The test is exercised only in CI.", False),
+            ("Specific canonicalization boundaries are exercised.", False),
             ("It does not claim full semantic coverage.", False),
             ("Full semantic coverage under §14.8 remains open.", False),
             ("This gate counts rule references by class; it does not show "

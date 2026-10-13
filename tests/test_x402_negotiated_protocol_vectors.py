@@ -42,16 +42,25 @@ ASSET_DECIMALS_MAX = 255
 # XN-5 overflow ceiling per exact binding, keyed by CAIP-2 namespace: EIP-3009
 # value and ERC-20 amounts are uint256; SPL Token amounts are u64.
 ATOMIC_AMOUNT_MAX = {"eip155": 2**256 - 1, "solana": 2**64 - 1}
-# XN-6: the members the reference exact adapters define, all action-bearing,
-# keyed like the ceiling. An EIP-155 `extra` names the EIP-712 domain the
-# authorization signs; a Solana `extra` names the fee payer and the mint; the
+# XN-6: the `extra` members of the pinned upstream exact scheme definitions
+# (x402-foundation/x402@230e6a9a, specs/schemes/exact/scheme_exact_evm.md and
+# scheme_exact_svm.md), all action-bearing, keyed like the ceiling. On EIP-155,
+# `assetTransferMethod` selects the authorization form, and `name` and
+# `version` are the EIP-712 domain of the token, whose verifying contract is
+# the `asset` itself. On Solana, `feePayer` pays the transaction fee, `memo`
+# fixes the Memo instruction's data, and `recentBlockhash` and
+# `lastValidBlockHeight` bound the transaction; the mint is the `asset`. The
 # v2 `payment-identifier` extension asks the payer to identify the payment in
 # the paid request. A received member these tables do not name is unclassified.
 ACTION_BEARING_EXTRA_MEMBERS = {
-    "eip155": frozenset({"name", "version", "verifyingContract"}),
-    "solana": frozenset({"feePayer", "mint"}),
+    "eip155": frozenset({"assetTransferMethod", "name", "version"}),
+    "solana": frozenset({"feePayer", "memo", "recentBlockhash", "lastValidBlockHeight"}),
 }
 ACTION_BEARING_EXTENSIONS = frozenset({"payment-identifier"})
+# XN-9: the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009 or
+# Permit2. Upstream's `assetTransferMethod` names them `eip3009`, the form an
+# absent member selects, and `permit2`; its `erc7710` has no v0.8 binding.
+EIP155_TRANSFER_METHODS = frozenset({"eip3009", "permit2"})
 SOLANA_EVENT = re.compile(
     r"^solana:(mainnet|devnet|testnet):([1-9A-HJ-NP-Za-km-z]+):(0|[1-9][0-9]*)$"
 )
@@ -929,13 +938,6 @@ def adapter_address(network, address):
     return address
 
 
-def adapter_extra(network, extra):
-    """XN-5: `extra` with an EIP-155 `verifyingContract` in its 20-byte comparison form."""
-    if network.startswith("eip155:") and "verifyingContract" in extra:
-        return {**extra, "verifyingContract": adapter_address(network, extra["verifyingContract"])}
-    return extra
-
-
 class AddressFormError(ValueError):
     """XN-5: an address with no adapter form, where ValueError would name another coordinate."""
 
@@ -947,10 +949,16 @@ def challenge_member_defect(network, extra, extensions, capability):
     never from a list supplied beside the challenge. A member they do not name
     is unclassified and rejects like an unsupported action-bearing member. The
     local capability can withdraw support for a defined extension, but it
-    cannot classify another one.
+    cannot classify another one. An EIP-155 transfer method other than the two
+    the v0.8 binding authorizes through is unsupported (XN-9).
     """
     if not set(extra) <= ACTION_BEARING_EXTRA_MEMBERS.get(network.split(":", 1)[0], frozenset()):
         return "fail", "unclassified-extra-member"
+    method = extra.get("assetTransferMethod", "eip3009")
+    if network.startswith("eip155:") and not (
+        isinstance(method, str) and method in EIP155_TRANSFER_METHODS
+    ):
+        return "fail", "unsupported-transfer-method"
     if not set(extensions) <= ACTION_BEARING_EXTENSIONS:
         return "fail", "unclassified-extension"
     if not set(extensions) <= set(capability.get("understoodActionExtensions", [])):
@@ -1363,6 +1371,10 @@ def evaluate(v, effects=None):
     ref_result = validate_ref(ref)
     if ref_result != "pass":
         return ref_result, "rail-ref-shape"
+    # XN-1: the definition applied is the revision the signed reference pins;
+    # another one, even validly signed and well formed, is not it.
+    if rail["railVersion"] != ref["railVersion"]:
+        return "fail", "rail-version"
     canonical_ref = jcs_canonicalize(ref)
     listed = v.get("listing", {}).get("acceptedRails")
     if not isinstance(listed, list):
@@ -1475,15 +1487,15 @@ def evaluate(v, effects=None):
     price = agreement.get("terms", {}).get("price", {})
     if selection["currency"] != price.get("currency"):
         return "fail", "currency"
-    # XN-5: on EIP-155 the asset and `extra.verifyingContract` compare as
-    # 20-byte values, like payTo, in the metadata, the challenge and the ledger.
+    # XN-5: on EIP-155 the asset compares as a 20-byte value, like payTo, in
+    # the metadata, the challenge and the ledger. `extra` compares by JCS.
     metadata = capability.get("assetMetadata", {})
     try:
         asset = adapter_address(network, selection["asset"])
         metadata_asset = adapter_address(network, metadata.get("asset"))
-        signed_extra = jcs_canonicalize(adapter_extra(network, selection["extra"]))
     except ValueError:
         return "error", "address-form"
+    signed_extra = jcs_canonicalize(selection["extra"])
     if (
         metadata.get("network") != selection["network"]
         or metadata_asset != asset
@@ -1511,7 +1523,7 @@ def evaluate(v, effects=None):
             try:
                 if (
                     adapter_address(network, candidate.get("asset")) == asset
-                    and jcs_canonicalize(adapter_extra(network, candidate["extra"])) == signed_extra
+                    and jcs_canonicalize(candidate["extra"]) == signed_extra
                     and adapter_address(network, candidate.get("payTo")) == pay_to
                 ):
                     matches.append(candidate)
@@ -1810,6 +1822,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "unclassified-top-level-extension",
             "unclassified-extension-listed-as-understood",
             "solana-extra-carries-verifying-contract",
+            "challenge-verifying-contract-eip55-selection-lower-case",
+            "selection-verifying-contract-eip55-challenge-lower-case",
+            "erc7710-transfer-method-has-no-v08-binding",
+            "solana-extra-carries-mint",
+            "solana-extra-carries-eip155-transfer-method",
+            "eip155-extra-carries-solana-fee-payer",
+            "definition-railversion-2-ref-pins-1",
+            "definition-railversion-1-ref-pins-2",
+            "v1-selection-carries-empty-payment-required-extensions",
+            "selection-max-timeout-seconds-zero",
+            "payment-required-extensions-array",
+            "execute-definition-rail-id-substituted",
+            "execute-definition-rail-type-substituted",
+            "execute-definition-phase-handler-substituted",
+            "execute-definition-resolution-substituted",
+            "execute-definition-rail-version-zero",
+            "agreement-signature-unused-bits-set",
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
@@ -1924,6 +1953,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-response-lost-ledger-transaction-double-0x-prefix",
             "retry-response-lost-ledger-event-key-missing",
             "retry-response-lost-ledger-event-key-garbled",
+            "retry-agreement-signature-invalid",
         )
         self.assertEqual(set(names), {v["name"] for v in self.vectors if v["operation"] == "retry"})
         for name in names:
@@ -2127,7 +2157,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 24)
+        self.assertEqual(len(records), 26)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -2723,10 +2753,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         global challenge_member_defect
         reasons = {
             "unclassified-extra-member", "unclassified-extension", "unsupported-action-extension",
+            "unsupported-transfer-method",
         }
         names = [name for name, vector in self.by_name.items()
                  if vector.get("expectedReason") in reasons]
-        self.assertEqual(len(names), 7)
+        self.assertEqual(len(names), 12)
         check = challenge_member_defect
         challenge_member_defect = lambda *_args: None  # noqa: E731
         try:
@@ -2746,20 +2777,46 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         """
         supported = {"understoodActionExtensions": ["payment-identifier"]}
         extension = {"payment-identifier": {"required": True}}
+        # Every member of the pinned upstream exact definitions, and nothing else.
         defined = {
-            "eip155:8453": {"name": "USDC", "version": "2", "verifyingContract": "0x" + "66" * 20},
-            "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {"feePayer": "seller", "mint": "3" * 44},
+            "eip155:8453": {"assetTransferMethod": "eip3009", "name": "USDC", "version": "2"},
+            "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {
+                "feePayer": "4" * 44, "memo": "dacs-274", "recentBlockhash": "6" * 44,
+                "lastValidBlockHeight": 280000000},
         }
+        self.assertEqual({key: set(value) for key, value in ACTION_BEARING_EXTRA_MEMBERS.items()},
+                         {network.split(":")[0]: set(extra) for network, extra in defined.items()})
+        self.assertEqual((self.data["upstream"]["commit"], self.data["upstream"]["exactEvmScheme"],
+                          self.data["upstream"]["exactSvmScheme"]),
+                         ("230e6a9a7eebce22c911a0687d6f4e6d1ac019f7",
+                          "specs/schemes/exact/scheme_exact_evm.md",
+                          "specs/schemes/exact/scheme_exact_svm.md"))
         for network, extra in defined.items():
             with self.subTest(network=network):
                 self.assertIsNone(challenge_member_defect(network, extra, extension, supported))
                 self.assertIsNone(challenge_member_defect(network, {}, {}, {}))
+                # The two members the pinned definitions do not have: the asset
+                # is the EIP-712 verifying contract and the mint.
+                for member in ("verifyingContract", "mint"):
+                    self.assertEqual(
+                        challenge_member_defect(network, {**extra, member: "x"}, extension, supported),
+                        ("fail", "unclassified-extra-member"))
                 for other in defined.values():
                     for member in set(other) - set(extra):
                         self.assertEqual(
                             challenge_member_defect(
                                 network, {**extra, member: other[member]}, extension, supported),
                             ("fail", "unclassified-extra-member"))
+        # XN-9: only EIP-3009 (also when the member is absent) and Permit2 are
+        # v0.8 EIP-155 forms; the value is an exact token.
+        for method, want in (("eip3009", None), ("permit2", None), ("erc7710", "unsupported"),
+                             ("EIP3009", "unsupported"), ("", "unsupported"), (None, "unsupported"),
+                             (3009, "unsupported"), (["permit2"], "unsupported"),
+                             ({"permit2": True}, "unsupported")):
+            with self.subTest(assetTransferMethod=method):
+                self.assertEqual(
+                    challenge_member_defect("eip155:8453", {"assetTransferMethod": method}, {}, {}),
+                    want and ("fail", "unsupported-transfer-method"))
         self.assertEqual(
             challenge_member_defect("cosmos:cosmoshub-4", {"name": "USDC"}, {}, supported),
             ("fail", "unclassified-extra-member"))
@@ -2787,6 +2844,38 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                     changed = copy.deepcopy(vector)
                     changed["http"]["actionBearingExtensions"] = supplied
                     self.assertEqual(evaluate(changed), want)
+
+    def test_definition_is_the_revision_the_reference_pins(self):
+        """XN-1: the definition's railVersion equals the one the signed reference pins.
+
+        Signatures are taken as verified, so only the two versions vary: any
+        unequal pair rejects before the wallet call, on execute and for a
+        verifier, and any equal pair is the success it was.
+        """
+        for operation in ("execute", "verify-evidence"):
+            base = copy.deepcopy(self.by_name["protocol-v2-exact-success"])
+            base["operation"] = operation
+            for definition, pinned in ((1, 1), (2, 2), (7, 7), (1, 2), (2, 1), (2, 3), (3, 2)):
+                with self.subTest(operation=operation, definition=definition, pinned=pinned), \
+                        mock.patch(f"{__name__}.verify_artifact_signatures", return_value=True):
+                    vector = copy.deepcopy(base)
+                    vector["railDefinition"]["railVersion"] = definition
+                    for ref in (vector["listing"]["acceptedRails"][0],
+                                vector["agreement"]["terms"]["rail"],
+                                vector["runtime"]["selectedRailRef"]):
+                        ref["railVersion"] = pinned
+                    effects = {}
+                    self.assertEqual(evaluate(vector, effects), ("pass", None) if definition == pinned
+                                     else ("fail", "rail-version"))
+                    calls = 1 if operation == "execute" and definition == pinned else 0
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), calls)
+        for name in ("definition-railversion-2-ref-pins-1", "definition-railversion-1-ref-pins-2",
+                     "verify-evidence-definition-railversion-2-ref-pins-1"):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                self.assertNotEqual(vector["railDefinition"]["railVersion"],
+                                    vector["agreement"]["terms"]["rail"]["railVersion"])
+                self.assertEqual(evaluate(copy.deepcopy(vector)), ("fail", "rail-version"))
 
     def test_parser_dependent_url_spellings_are_malformed_and_not_public(self):
         """Spellings that WHATWG/UTS-46 parsers resolve to a non-public host are XN-2 `error`.
@@ -2919,11 +3008,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "They are `payTo`, the PB-1 payout binding and `PaymentPhaseInput.payee.payeeAddress`; "
             "the `payingKey` address component, the derived payer and the authorization payer; "
             "the response `payer`; and the authenticated event's payer and payee.",
-            "So are the selection `asset`, against the adapter's asset metadata, the challenge, "
-            "and the authenticated event, and the `extra.verifyingContract` member inside the "
-            "XN-4 `extra` comparison.",
-            "On an EIP-155 network the `asset` and an `extra.verifyingContract` compare as XN-5 "
-            "addresses, so letter case alone is not a mismatch.",
+            "So is the selection `asset`, against the adapter's asset metadata, the challenge, "
+            "and the authenticated event.",
+            "On an EIP-155 network the `asset` compares as an XN-5 address, so letter case alone "
+            "is not a mismatch.",
+            "A challenge whose `extra.assetTransferMethod` names another form, such as `erc7710`, "
+            "therefore MUST reject before signing; an absent member selects EIP-3009.",
             "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
             "An adapter MUST accept such an address whatever its EIP-55 checksum.",
             "Any other value is a malformed coordinate and yields `error`.",
@@ -2974,6 +3064,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         flat = " ".join(spec.split()).replace(" > ", " ")
         self.assertIn("Which code points an A-label may contain follows the implementer's "
                       "IDNA2008 tables and their Unicode version.", flat)
+        # XN-1 is hard-wrapped too.
+        self.assertIn("The definition that a handler or verifier applies MUST be the revision "
+                      "whose `railVersion` equals the selected reference's `railVersion`. Another "
+                      "revision, even one validly signed and well formed, MUST be rejected: by the "
+                      "handler before the unpaid request, and by a verifier before it judges a "
+                      "record.", flat)
         # RD-7 states the current-use consequence of having no finality profile.
         self.assertIn("A job paid through `x402:protocol` therefore cannot be represented by the "
                       "finality-bound bundle that DACS-5 CUR-4 requires for a current successful "
@@ -3213,7 +3309,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("solana-challenge-payto-case-changed", ("fail", "challenge-match"), 0),
             ("solana-response-payer-case-changed", ("pass", "response-payer"), 1),
             ("solana-ledger-payto-case-changed", ("fail", "ledger-event"), 1),
-            # The asset and extra.verifyingContract are 20-byte values too.
+            # The asset is a 20-byte value too.
             ("challenge-asset-eip55-selection-lower-case", ("pass", None), 1),
             ("selection-asset-eip55-challenge-lower-case", ("pass", None), 1),
             ("asset-metadata-asset-eip55", ("pass", None), 1),
@@ -3222,10 +3318,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             ("asset-metadata-asset-not-20-bytes", ("error", "address-form"), 0),
             ("challenge-asset-not-20-bytes", ("error", "address-form"), 0),
             ("ledger-asset-not-20-bytes", ("error", "address-form"), 1),
-            ("challenge-verifying-contract-eip55-selection-lower-case", ("pass", None), 1),
-            ("selection-verifying-contract-eip55-challenge-lower-case", ("pass", None), 1),
-            ("challenge-verifying-contract-not-20-bytes", ("error", "address-form"), 0),
-            ("selection-verifying-contract-not-20-bytes", ("error", "address-form"), 0),
+            # The pinned EIP-155 definition has no extra.verifyingContract, so
+            # its spellings compare as JCS bytes and an agreeing one is unclassified.
+            ("challenge-verifying-contract-eip55-selection-lower-case", ("fail", "challenge-match"), 0),
+            ("selection-verifying-contract-eip55-challenge-lower-case", ("fail", "challenge-match"), 0),
+            ("challenge-verifying-contract-not-20-bytes", ("fail", "challenge-match"), 0),
+            ("selection-verifying-contract-not-20-bytes", ("fail", "unclassified-extra-member"), 0),
         ):
             with self.subTest(vector=name):
                 effects = {}

@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 380 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 409 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1196,14 +1196,18 @@ both forms, and a well-formed raw challenge passes.
 Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding
 and the runtime payee, the paying-key claim address, the derived and
 authorization payer, the response `payer`, the selection `asset` (against the
-adapter's metadata, the challenge and the ledger), `extra.verifyingContract`,
-and the ledger payer and payee compare as 20-byte values. A lettered asset and
-`verifyingContract` (EIP-55's third and fourth examples) pass in EIP-55 case in
-the signed selection, the metadata or the challenge, and an upper-case ledger
-asset passes; one that is not `0x` plus 40 hexadecimal digits is `error`
-(`address-form`), before authorization everywhere but in the ledger. Letter case is ignored and any EIP-55 checksum is
-accepted. Only `verifyingContract` inside `extra` compares as an address: a
-challenge `extra.name` in another letter case is `fail` (`challenge-match`). An EIP-55 checksummed `payTo` against a lower-case binding, a
+adapter's metadata, the challenge and the ledger), and the ledger payer and
+payee compare as 20-byte values. A lettered asset (EIP-55's third example)
+passes in EIP-55 case in the signed selection, the metadata or the challenge,
+and an upper-case ledger asset passes; one that is not `0x` plus 40
+hexadecimal digits is `error` (`address-form`), before authorization
+everywhere but in the ledger. Letter case is ignored and any EIP-55 checksum is
+accepted. No member of `extra` compares as an address: a challenge
+`extra.name` in another letter case is `fail` (`challenge-match`). The pinned
+EIP-155 definition has no `extra.verifyingContract`, so its four cases (with
+EIP-55's fourth example) now pin that: a spelling that differs from the signed
+one is `fail` (`challenge-match`), and an agreeing one is `fail`
+(`unclassified-extra-member`). An EIP-55 checksummed `payTo` against a lower-case binding, a
 mixed-case `payTo` whose checksum is wrong, an upper-case ledger `payTo`, and
 a mixed-case response `payer` pass. So do the two earlier gates: an EIP-55
 paying-key claim against the lower-case derived payer, an EIP-55 runtime payer
@@ -1255,10 +1259,21 @@ alone: `unsigned-runtime-{method,url,body}-override` for the derived request,
 and `{unpaid,paid}-request-{method,url,body}-substitution` for the two sent.
 
 XN-6 classification comes from the received challenge, never from a list beside
-it. The reference evaluator's exact adapters define three action-bearing
-members of an EIP-155 `extra` (`name`, `version` and `verifyingContract`), two
-of a Solana `extra` (`feePayer` and `mint`), and the v2 `payment-identifier`
-extension. Any other member of the matched `extra` or of `extensions` is
+it. The reference evaluator's exact adapters define the `extra` members of the
+pinned upstream scheme definitions (`specs/schemes/exact/scheme_exact_evm.md`
+and `scheme_exact_svm.md` at `x402-foundation/x402@230e6a9a`), all
+action-bearing: on EIP-155 `assetTransferMethod`, `name` and `version`, and on
+Solana `feePayer`, `memo`, `recentBlockhash` and `lastValidBlockHeight`. They
+also define the v2 `payment-identifier` extension. The EIP-712 domain's
+verifying contract and the Solana mint are the `asset`, so neither is an
+`extra` member. The base fixtures carry upstream's EIP-3009 example
+(`assetTransferMethod: "eip3009"`, `name`, `version`) and a Solana `extra`
+naming only `feePayer`. Cases cover `name` and `version` without the method,
+Permit2, `memo`, and `recentBlockhash` with `lastValidBlockHeight`, all `pass`.
+An `extra.mint`, and one adapter's member under the other, are `fail`
+(`unclassified-extra-member`). The v0.8 EIP-155 binding authorizes only through
+EIP-3009 or Permit2 (XN-9), so `assetTransferMethod: "erc7710"` is `fail`
+(`unsupported-transfer-method`) before authorization. Any other member of the matched `extra` or of `extensions` is
 unclassified and `fail`, even when it is signed and received and the local
 capability lists it (`unclassified-extra-member`, `unclassified-extension`).
 A defined extension that `capability.understoodActionExtensions` omits is
@@ -1279,7 +1294,24 @@ session nonce, presenter and signatures; the request body against the signed
 challenge `x402Version`; omitted versus empty extensions in both directions;
 the classification of each received `extra` and extension member; and the
 legacy in-flight-only continuation. The retry's derivation of the signed terms
-is pinned by unit tests.
+is pinned by unit tests. Each value check of the definition (`railId`,
+`railType`, `phaseHandler`, `resolution`, and a `railVersion` of 0) has a
+re-signed `execute-definition-*` case that adds no member, so the member-set
+check cannot reject it first (`error`, `definition`). The selection has a
+`maxTimeoutSeconds` of 0, `paymentRequiredExtensions` as an array beside an
+array `extensions`, and an empty `paymentRequiredExtensions` in a v1 selection
+(`error`, `rail-ref-shape`). An agreement signature whose last base64url
+character sets unused bits decodes to the same bytes and is still `fail`
+(`signature`, CORE SIG-6). Every operation verifies the artifact signatures:
+definition validation, listing admission, a new session, legacy replay and
+continuation, and retry each have a broken-signature case (`fail`,
+`signature`). A sound record over unavailable ledger data is `indeterminate`
+for a verifier.
+
+The definition applied is the revision the signed reference pins (XN-1). A
+re-signed definition at `railVersion` 2 under a reference pinning 1, and the
+reverse, are `fail` (`rail-version`) before authorization, and a verifier
+gives the same result. The definition and reference both at 2 pass.
 
 Negative cases reject global provider or asset policy, a
 `consumerFinalityProfile` on the closed protocol arm (RD-7), first-`railId` lookup,

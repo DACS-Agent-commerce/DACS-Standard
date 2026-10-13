@@ -89,9 +89,8 @@ The format used per release:
   `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,
   the derived payer and the authorization payer, the response `payer`, the
   selection `asset` (against the adapter's asset metadata, the challenge, and
-  the authenticated event), `extra.verifyingContract` inside the `extra`
-  comparison, and the authenticated event's payer and payee compare as 20-byte
-  values: `0x` plus 40
+  the authenticated event), and the authenticated event's payer and payee
+  compare as 20-byte values: `0x` plus 40
   hexadecimal digits, letter case ignored. An adapter must accept such an
   address whatever its EIP-55 checksum, so a checksummed upstream address
   matches a lower-case binding. Any other spelling is a malformed coordinate and yields `error`,
@@ -238,6 +237,27 @@ The format used per release:
   longer carry `http.actionBearingExtensions`, and
   `unsupported-action-bearing-extension` keeps its result on the received
   `payment-identifier` alone.
+- **Upstream `extra` members** (DACS-4 §9.5.7 XN-4..XN-6, XN-9) — the exact
+  adapters' member tables are those of the pinned upstream scheme definitions
+  (`x402-foundation/x402@230e6a9a`, `scheme_exact_evm.md` and
+  `scheme_exact_svm.md`): EIP-155 `assetTransferMethod`, `name` and `version`;
+  Solana `feePayer`, `memo`, `recentBlockhash` and `lastValidBlockHeight`.
+  `extra.verifyingContract` and `extra.mint` are not members, since the token
+  contract and the mint are the `asset`, so XN-4 and XN-5 no longer compare a
+  `verifyingContract` as an address. The fixtures carry upstream's EIP-3009
+  example. A transfer method other than EIP-3009 (also when absent) or Permit2
+  rejects before signing, as XN-9 states.
+- **Pinned definition revision** (DACS-4 §9.4.3 XN-1) — the definition a
+  handler or verifier applies must be the revision whose `railVersion` equals
+  the selected reference's; another revision, even validly signed and well
+  formed, is rejected before the unpaid request or before a record is judged.
+- **Single-check vectors** (DACS-4 XN-1, XN-2, XN-4; CORE SIG-2, SIG-6) — one
+  case for each MUST-backed check that no vector reached alone: the
+  definition's `railId`, `railType`, `phaseHandler`, `resolution` and
+  `railVersion` values, a zero `maxTimeoutSeconds`, an array
+  `paymentRequiredExtensions`, an empty one in a v1 selection, a non-canonical
+  agreement signature encoding, a broken signature on every operation, and a
+  verifier over unavailable ledger data.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

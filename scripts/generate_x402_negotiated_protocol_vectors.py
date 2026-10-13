@@ -43,6 +43,11 @@ OTHER_LETTERED_ADDRESS = "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359"
 # The asset and verifyingContract case vectors use EIP-55's next two examples.
 LETTERED_ASSET = "0xdbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"
 LETTERED_VERIFYING_CONTRACT = "0xd1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"
+# XN-6: an `extra` as the pinned upstream exact scheme definitions give it
+# (x402-foundation/x402@230e6a9a, specs/schemes/exact/scheme_exact_evm.md and
+# scheme_exact_svm.md). The EIP-155 one is upstream's EIP-3009 example; the
+# EIP-712 domain's verifying contract is the asset, so `extra` names none.
+EIP3009_EXTRA = {"assetTransferMethod": "eip3009", "name": "USDC", "version": "2"}
 SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
 SOLANA_ASSET = "3" * 44
 SOLANA_SELLER = "5" * 44
@@ -80,6 +85,13 @@ def b64u(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
+def unused_bits_set(signature: str) -> str:
+    """The same signature bytes, with the last base64url character's unused bits set (SIG-6)."""
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    assert len(signature) % 4 == 2  # 64 bytes: the last character carries 4 unused bits
+    return signature[:-1] + alphabet[alphabet.index(signature[-1]) | 1]
+
+
 def flip_first(signature: str) -> str:
     """The same base64url signature with its first character changed."""
     return ("A" if signature[0] != "A" else "B") + signature[1:]
@@ -110,6 +122,8 @@ def solana_public_key_bytes() -> bytes:
 SOLANA_BUYER = base58(solana_public_key_bytes())
 # XN-5 Solana case vectors need a seller with letters, which SOLANA_SELLER lacks.
 LETTERED_SOLANA_SELLER = base58(hashlib.sha256(b"DACS #274 lettered Solana seller").digest())
+# A Solana `extra` names the fee payer's key; the mint is the `asset`.
+SOLANA_FEE_PAYER = base58(hashlib.sha256(b"DACS #274 Solana fee payer").digest())
 
 
 def public_key(role: str) -> str:
@@ -221,11 +235,7 @@ def payment_ref(version: int = 2) -> dict:
                 "assetDecimals": 6,
                 "currency": "USDC",
                 "maxTimeoutSeconds": 60,
-                "extra": {
-                    "name": "USDC",
-                    "version": "2",
-                    "verifyingContract": "0x" + "66" * 20,
-                },
+                "extra": copy.deepcopy(EIP3009_EXTRA),
             },
         },
     }
@@ -243,11 +253,7 @@ def requirement(version: int = 2) -> dict:
         "payTo": SELLER_ADDRESS,
         "maxTimeoutSeconds": 60,
         "asset": ASSET,
-        "extra": {
-            "name": "USDC",
-            "version": "2",
-            "verifyingContract": "0x" + "66" * 20,
-        },
+        "extra": copy.deepcopy(EIP3009_EXTRA),
     }
     if version == 1:
         return {
@@ -638,8 +644,8 @@ def build_vectors() -> list[dict]:
              "a second seller endpoint needs no provider-specific global rail entry",
              second_provider, refresh=True)
 
-    def solana_exact(v, network=SOLANA_NETWORK, cluster="devnet"):
-        extra = {"feePayer": "seller", "mint": SOLANA_ASSET}
+    def solana_exact(v, network=SOLANA_NETWORK, cluster="devnet", extra=None):
+        extra = extra or {"feePayer": SOLANA_FEE_PAYER}
         for ref in (
             v["listing"]["acceptedRails"][0],
             v["agreement"]["terms"]["rail"],
@@ -2509,6 +2515,10 @@ def build_vectors() -> list[dict]:
              lettered_asset(ledger=short), refresh=True, authorization_submitted=True,
              reason="address-form")
 
+    # XN-4/XN-6: the pinned EIP-155 exact definition has no
+    # extra.verifyingContract (the EIP-712 domain's is the asset), so the
+    # member has no address form: its spellings compare as JCS bytes, and an
+    # agreeing copy is unclassified.
     def lettered_verifying_contract(signed=LETTERED_VERIFYING_CONTRACT,
                                     challenge=LETTERED_VERIFYING_CONTRACT):
         def mutate(v):
@@ -2516,24 +2526,26 @@ def build_vectors() -> list[dict]:
                 ref["parameters"]["selection"]["extra"]["verifyingContract"] = signed
             v["http"]["paymentRequired"]["accepts"][0]["extra"]["verifyingContract"] = challenge
         return mutate
-    for name, expected, mutate, note in (
-        ("challenge-verifying-contract-eip55-selection-lower-case", "pass",
+    for name, reason, mutate, note in (
+        ("challenge-verifying-contract-eip55-selection-lower-case", "challenge-match",
          lettered_verifying_contract(challenge=eip55(LETTERED_VERIFYING_CONTRACT)),
-         "an EIP-55 extra.verifyingContract in the challenge matches the lower-case signed extra"),
-        ("selection-verifying-contract-eip55-challenge-lower-case", "pass",
+         "an EIP-55 extra.verifyingContract in the challenge is other bytes than the lower-case "
+         "signed one: the EIP-155 adapter defines no such member, so nothing compares it as "
+         "an address"),
+        ("selection-verifying-contract-eip55-challenge-lower-case", "challenge-match",
          lettered_verifying_contract(signed=eip55(LETTERED_VERIFYING_CONTRACT)),
-         "an EIP-55 signed extra.verifyingContract matches the lower-case challenge extra"),
-        ("challenge-verifying-contract-not-20-bytes", "error",
+         "an EIP-55 signed extra.verifyingContract does not match the lower-case challenge "
+         "extra, since the member has no address form"),
+        ("challenge-verifying-contract-not-20-bytes", "challenge-match",
          lettered_verifying_contract(challenge=LETTERED_VERIFYING_CONTRACT[:-2]),
-         "a challenge extra.verifyingContract that is not 0x plus 40 hex digits is malformed"),
-        ("selection-verifying-contract-not-20-bytes", "error",
+         "a challenge extra.verifyingContract that differs from the signed one is a mismatch"),
+        ("selection-verifying-contract-not-20-bytes", "unclassified-extra-member",
          lettered_verifying_contract(signed=LETTERED_VERIFYING_CONTRACT[:-2],
                                      challenge=LETTERED_VERIFYING_CONTRACT[:-2]),
-         "a signed extra.verifyingContract that is not 0x plus 40 hex digits is malformed, "
-         "even where the challenge agrees"),
+         "a signed and received extra.verifyingContract, here agreeing, is a member the "
+         "EIP-155 exact adapter does not define, so it is unclassified"),
     ):
-        add_case(vectors, name, expected, "XN-4/XN-5", note, mutate, refresh=True,
-                 reason="address-form" if expected == "error" else None)
+        add_case(vectors, name, "fail", "XN-4/XN-6", note, mutate, refresh=True, reason=reason)
 
     # XN-7: a response header whose value is not a string decodes to nothing.
     response_defect("response-header-value-not-string",
@@ -2677,7 +2689,7 @@ def build_vectors() -> list[dict]:
              "and is rebuilt, and the response is not blamed",
              record_names_other_transaction, authorization_submitted=True, reason="ledger-event")
 
-    # XN-4/XN-5: only an EIP-155 extra.verifyingContract compares as an address.
+    # XN-4/XN-5: no extra member compares as an address.
     add_case(vectors, "challenge-extra-name-case-changed", "fail", "XN-4/XN-5",
              "the EIP-712 domain name is case-sensitive, so a challenge extra.name in another "
              "letter case does not match the signed extra",
@@ -2782,8 +2794,168 @@ def build_vectors() -> list[dict]:
         signed_and_received(extra={"verifyingContract": "0x" + "66" * 20})(v)
     add_case(vectors, "solana-extra-carries-verifying-contract", "fail", "XN-6",
              "the members are the selected adapter's: the Solana exact adapter does not define "
-             "the EIP-155 verifyingContract",
+             "verifyingContract",
              solana_extra_with_evm_member, refresh=True, reason="unclassified-extra-member")
+
+    # XN-6: each `extra` member of the pinned upstream exact definitions
+    # (scheme_exact_evm.md, scheme_exact_svm.md at 230e6a9a) is classified, in
+    # the form upstream gives it; a member of another adapter, or one upstream
+    # does not define, is not. The base fixtures carry upstream's EIP-3009
+    # example and a Solana extra naming only the fee payer.
+    def extra_is(extra, *, solana=False):
+        def mutate(v):
+            if solana:
+                solana_exact(v, extra=copy.deepcopy(extra))
+                return
+            for ref in signed_selection_refs(v):
+                ref["parameters"]["selection"]["extra"] = copy.deepcopy(extra)
+            v["http"]["paymentRequired"]["accepts"][0]["extra"] = copy.deepcopy(extra)
+        return mutate
+
+    def permit2(v):
+        extra_is({"assetTransferMethod": "permit2"})(v)
+        v["ledger"]["authorization"] = "permit2"
+    add_case(vectors, "eip3009-extra-without-transfer-method", "pass", "XN-6",
+             "assetTransferMethod is optional for EIP-3009: an extra naming only the token's "
+             "EIP-712 name and version selects it",
+             extra_is({"name": "USDC", "version": "2"}), refresh=True)
+    add_case(vectors, "permit2-transfer-method", "pass", "XN-6/XN-9",
+             "an extra selecting Permit2, the other form the v0.8 EIP-155 binding authorizes "
+             "through, reaches signing", permit2, refresh=True)
+    add_case(vectors, "erc7710-transfer-method-has-no-v08-binding", "fail", "XN-6/XN-9",
+             "the v0.8 EIP-155 exact binding authorizes only through EIP-3009 or Permit2, so an "
+             "extra selecting ERC-7710 rejects before signing",
+             extra_is({"assetTransferMethod": "erc7710"}), refresh=True,
+             reason="unsupported-transfer-method")
+    blockhash = base58(hashlib.sha256(b"DACS #274 recent blockhash").digest())
+    add_case(vectors, "solana-extra-memo", "pass", "XN-6",
+             "upstream's optional memo fixes the Memo instruction's data; the Solana adapter "
+             "defines it", extra_is({"feePayer": SOLANA_FEE_PAYER, "memo": "dacs-274"}, solana=True),
+             refresh=True)
+    add_case(vectors, "solana-extra-recent-blockhash", "pass", "XN-6",
+             "upstream's optional recentBlockhash and lastValidBlockHeight bound the transaction; "
+             "the Solana adapter defines both",
+             extra_is({"feePayer": SOLANA_FEE_PAYER, "recentBlockhash": blockhash,
+                       "lastValidBlockHeight": 280000000}, solana=True), refresh=True)
+    add_case(vectors, "solana-extra-carries-mint", "fail", "XN-6",
+             "the mint is the asset: the pinned Solana exact definition has no extra.mint, so a "
+             "signed and received one is unclassified",
+             extra_is({"feePayer": SOLANA_FEE_PAYER, "mint": SOLANA_ASSET}, solana=True),
+             refresh=True, reason="unclassified-extra-member")
+    add_case(vectors, "solana-extra-carries-eip155-transfer-method", "fail", "XN-6",
+             "assetTransferMethod is the EIP-155 adapter's member, not the Solana adapter's",
+             extra_is({"feePayer": SOLANA_FEE_PAYER, "assetTransferMethod": "eip3009"}, solana=True),
+             refresh=True, reason="unclassified-extra-member")
+    add_case(vectors, "eip155-extra-carries-solana-fee-payer", "fail", "XN-6",
+             "feePayer is the Solana adapter's member, not the EIP-155 adapter's",
+             signed_and_received(extra={"feePayer": SELLER_ADDRESS}), refresh=True,
+             reason="unclassified-extra-member")
+
+    # XN-1: the definition applied is the revision the signed reference pins.
+    def definition_version(version):
+        def mutate(v):
+            v["railDefinition"]["railVersion"] = version
+            v["railDefinition"]["governance"]["supersedes"] = version - 1
+        return mutate
+
+    def reference_pins(version):
+        def mutate(v):
+            for ref in signed_selection_refs(v):
+                ref["railVersion"] = version
+        return mutate
+    add_case(vectors, "definition-railversion-2-ref-pins-1", "fail", "XN-1",
+             "a validly signed, well-formed definition at railVersion 2 is not the revision 1 "
+             "that the signed reference pins", definition_version(2), reason="rail-version")
+    add_case(vectors, "definition-railversion-1-ref-pins-2", "fail", "XN-1",
+             "the signed reference pins railVersion 2, so the revision 1 definition is not the "
+             "one the session applies", reference_pins(2), reason="rail-version")
+    add_case(vectors, "definition-and-ref-railversion-2", "pass", "XN-1",
+             "the comparison is with the pinned revision, not with revision 1: a definition at "
+             "railVersion 2 under a reference pinning 2 pays",
+             lambda v: (definition_version(2)(v), reference_pins(2)(v)))
+    add_case(vectors, "verify-evidence-definition-railversion-2-ref-pins-1", "fail", "XN-1/XN-8",
+             "a verifier judges a record only against the revision the reference pins",
+             definition_version(2), operation="verify-evidence", reason="rail-version")
+
+    # Every MUST-backed check has a vector that reaches it alone, on each
+    # operation that applies it.
+    def v1_empty_extensions(v):
+        for ref in signed_selection_refs(v):
+            ref["parameters"]["paymentRequiredExtensions"] = {}
+    add_case(vectors, "v1-selection-carries-empty-payment-required-extensions", "error", "XN-4",
+             "a v1 selection omits paymentRequiredExtensions, so even an empty one is malformed",
+             v1_empty_extensions, version=1, reason="rail-ref-shape")
+
+    def zero_timeout(v):
+        for ref in signed_selection_refs(v):
+            ref["parameters"]["selection"]["maxTimeoutSeconds"] = 0
+        v["http"]["paymentRequired"]["accepts"][0]["maxTimeoutSeconds"] = 0
+    add_case(vectors, "selection-max-timeout-seconds-zero", "error", "XN-2",
+             "maxTimeoutSeconds is a positive safe integer, so 0 is malformed even where the "
+             "challenge agrees", zero_timeout, refresh=True, reason="rail-ref-shape")
+
+    def array_extensions(v):
+        for ref in signed_selection_refs(v):
+            ref["parameters"]["paymentRequiredExtensions"] = []
+        v["http"]["paymentRequired"]["extensions"] = []
+    add_case(vectors, "payment-required-extensions-array", "error", "XN-2",
+             "paymentRequiredExtensions is a JSON object, so an array is malformed even where the "
+             "challenge's extensions is the same array", array_extensions, refresh=True,
+             reason="rail-ref-shape")
+    for name, member, value, rule in (
+        ("rail-id-substituted", "railId", "x402:default", "XN-1/RD-5"),
+        ("rail-type-substituted", "railType", "evm-erc20", "XN-1/RD-5"),
+        ("phase-handler-substituted", "phaseHandler", "pay-evm-erc20", "XN-1/RD-5"),
+        ("resolution-substituted", "resolution", {"kind": "static"}, "XN-1/RD-5"),
+        ("rail-version-zero", "railVersion", 0, "XN-1/RD-3"),
+    ):
+        add_case(vectors, f"execute-definition-{name}", "error", rule,
+                 f"a re-signed definition whose {member} is {json.dumps(value)} is not the "
+                 "complete protocol arm; it adds no member",
+                 lambda v, m=member, x=value: v["railDefinition"].update({m: copy.deepcopy(x)}),
+                 reason="definition")
+    add_case(vectors, "agreement-signature-unused-bits-set", "fail", "SIG-6",
+             "an agreement signature whose last base64url character sets unused bits decodes to "
+             "the same bytes but is not the canonical encoding",
+             tamper=lambda v: v["agreement"]["signatures"][0].update(
+                 {"value": unused_bits_set(v["agreement"]["signatures"][0]["value"])}),
+             reason="signature")
+
+    def broken_signature(artifact):
+        def tamper(v):
+            target = v["agreement"]["signatures"][0] if artifact == "agreement" else v[artifact]["signature"]
+            target["value"] = flip_first(target["value"])
+        return tamper
+    add_case(vectors, "definition-protocol-arm-validates", "pass", "XN-1",
+             "the complete, steward-signed protocol arm validates", operation="validate-definition")
+    add_case(vectors, "definition-signature-invalid-at-validation", "fail", "SIG-2/XN-1",
+             "definition validation verifies the steward's signature first",
+             operation="validate-definition", tamper=broken_signature("railDefinition"),
+             reason="signature")
+    add_case(vectors, "listing-signature-invalid-at-admission", "fail", "SIG-2/XN-2",
+             "listing admission verifies the seller's signature before the commitment phase",
+             listing_pipeline(fixed_price, "commit-payee-bound-agreement"),
+             operation="admit-listing", tamper=broken_signature("listing"), reason="signature")
+    add_case(vectors, "new-session-definition-signature-invalid", "fail", "SIG-2/XN-1",
+             "a new session starts only under the steward-signed definition",
+             lambda v: v["runtime"].update({"sessionState": "new"}), operation="new-session",
+             tamper=broken_signature("railDefinition"), reason="signature")
+    add_case(vectors, "legacy-replay-definition-signature-invalid", "fail", "SIG-2/XN-10",
+             "historical replay verifies the pinned legacy definition's signature",
+             legacy_replay, operation="legacy-replay", authorization_submitted=True,
+             tamper=broken_signature("railDefinition"), reason="signature")
+    add_case(vectors, "legacy-continuation-listing-signature-invalid", "fail", "SIG-2/XN-10",
+             "an in-flight legacy session continues only under the seller's valid signature",
+             legacy_continuation, operation="legacy-continuation", authorization_submitted=True,
+             tamper=broken_signature("listing"), reason="signature")
+    add_case(vectors, "retry-agreement-signature-invalid", "fail", "SIG-2/XN-11",
+             "a retry reconciles only under both parties' valid agreement signatures, though the "
+             "ledger shows the settlement", operation="retry", authorization_submitted=True,
+             tamper=broken_signature("agreement"), reason="signature")
+    add_case(vectors, "verify-evidence-ledger-unavailable", "indeterminate", "XN-8",
+             "a sound record over unavailable authenticated ledger data cannot be verified yet",
+             lambda v: v["ledger"].update({"available": False}), operation="verify-evidence",
+             reason="independent-settlement-unavailable")
 
     return vectors
 
@@ -2852,6 +3024,8 @@ def build() -> dict:
             "commit": "230e6a9a7eebce22c911a0687d6f4e6d1ac019f7",
             "v2Types": "typescript/packages/core/src/types/payments.ts",
             "v1Types": "typescript/packages/core/src/types/v1/index.ts",
+            "exactEvmScheme": "specs/schemes/exact/scheme_exact_evm.md",
+            "exactSvmScheme": "specs/schemes/exact/scheme_exact_svm.md",
         },
         "fixtureModel": {
             "materialization": "deep-copy fixtures[vector.base], then apply vector.patch in order",

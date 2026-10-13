@@ -2261,6 +2261,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         for name, transaction in (
             ("response-transaction-0X-uppercase", "0X" + "AB" * 32),
             ("response-transaction-substitution", "ab" * 32),
+            ("stored-record-names-another-transaction-settled", "0x" + "ab" * 32),
             ("retry-record-names-another-transaction-settled", "0x" + "ab" * 32),
             ("retry-retained-transaction-spelling-reconciles", "AB" * 32),
             ("retry-retained-transaction-not-reconciled-settled", "ab" * 32),

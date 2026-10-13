@@ -2648,6 +2648,21 @@ def build_vectors() -> list[dict]:
                  {"settlementTransaction": "0x" + "cd" * 32}),
              operation="retry", authorization_submitted=True, reason="response-transaction")
 
+    # The execute twin: a sound response names the resolved event, and the
+    # record names another; the record is the defect, not the seller's response.
+    add_case(vectors, "stored-record-names-another-transaction-settled", "pass", "XN-7/XN-11",
+             "the response is sound and names the event the authorization identity resolves "
+             "to, but the stored record names another transaction: the record is the defect "
+             "and is rebuilt, and the response is not blamed",
+             record_names_other_transaction, authorization_submitted=True, reason="ledger-event")
+
+    # XN-4/XN-5: only an EIP-155 extra.verifyingContract compares as an address.
+    add_case(vectors, "challenge-extra-name-case-changed", "fail", "XN-4/XN-5",
+             "the EIP-712 domain name is case-sensitive, so a challenge extra.name in another "
+             "letter case does not match the signed extra",
+             lambda v: v["http"]["paymentRequired"]["accepts"][0]["extra"].update({"name": "usdc"}),
+             refresh=True, reason="challenge-match")
+
     return vectors
 
 

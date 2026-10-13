@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 363,
-  "hash": "f8cd3171334f23ff8d78ce8cef5f9d34595f32b3fa64b8f8e251b5821b5dc1bd",
+  "count": 365,
+  "hash": "338c7a99e0246fe418f2f11c2a720b209aebf6a928e27d07de36b182d0e4f3c6",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -31012,6 +31012,96 @@
         }
       ],
       "expectedReason": "response-transaction"
+    },
+    {
+      "name": "stored-record-names-another-transaction-settled",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "the response is sound and names the event the authorization identity resolves to, but the stored record names another transaction: the record is the defect and is rebuilt, and the response is not blamed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "a5I9iq7bODsZUHqBvqk13dt4FoDKvO-Uqbx8DZ5zjb8WP-MkJT-N4VnqswD_Mezlxp47eCTWp7DgA9y016z6CQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event"
+    },
+    {
+      "name": "challenge-extra-name-case-changed",
+      "expected": "fail",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "the EIP-712 domain name is case-sensitive, so a challenge extra.name in another letter case does not match the signed extra",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "175e510cdb8901d836a55b9a2b87d324310ab2ba72ac21659f5f49f9fb642697"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "7lH5fekxmPGiV5pGvktNPOwr2GhNd3T1n7kfmoATVPx4Bb4aGDUjL2E06oCx9lSvnx_F-0VZq-5qwDdaPhSfDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ],
+          "value": "usdc"
+        }
+      ],
+      "expectedReason": "challenge-match"
     }
   ]
 }

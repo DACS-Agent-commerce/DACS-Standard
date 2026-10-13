@@ -223,6 +223,12 @@ The format used per release:
   response does not decode, which is a response defect, so the ledger still
   decides. Vectors may carry the challenge as raw bytes
   (`http.paymentRequiredRaw`), but not in both forms.
+- **Request trace** (DACS-4 §9.5.7 XN-6) — the unpaid and the paid request
+  must each use the signed `request.method` and `request.url` exactly, and
+  carry the same body bytes. The vectors' runtime trace now names the method,
+  URL and body of the request derived from the agreement and of the unpaid and
+  paid requests as sent, and the reference evaluator checks each one before
+  authorization.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

@@ -211,8 +211,15 @@
           "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
           "payeeAddress": "0x2222222222222222222222222222222222222222"
         },
+        "effectiveMethod": "GET",
+        "unpaidMethod": "GET",
+        "paidMethod": "GET",
         "requestBodyBase64": "",
+        "unpaidBodyBase64": "",
+        "paidBodyBase64": "",
         "effectiveUrl": "https://seller.example/dacs/resource?job=274",
+        "unpaidUrl": "https://seller.example/dacs/resource?job=274",
+        "paidUrl": "https://seller.example/dacs/resource?job=274",
         "redirected": false,
         "operatorConfigSource": "local-operator-policy",
         "authorizationSubmitted": false,
@@ -544,8 +551,15 @@
           "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
           "payeeAddress": "0x2222222222222222222222222222222222222222"
         },
+        "effectiveMethod": "GET",
+        "unpaidMethod": "GET",
+        "paidMethod": "GET",
         "requestBodyBase64": "",
+        "unpaidBodyBase64": "",
+        "paidBodyBase64": "",
         "effectiveUrl": "https://seller.example/dacs/resource?job=274",
+        "unpaidUrl": "https://seller.example/dacs/resource?job=274",
+        "paidUrl": "https://seller.example/dacs/resource?job=274",
         "redirected": false,
         "operatorConfigSource": "local-operator-policy",
         "authorizationSubmitted": false,
@@ -678,8 +692,8 @@
       }
     }
   },
-  "count": 365,
-  "hash": "338c7a99e0246fe418f2f11c2a720b209aebf6a928e27d07de36b182d0e4f3c6",
+  "count": 373,
+  "hash": "029b45f9797a13933fb0a7bdd55126cc0224851097eba4c4f55dec1a4a2d75c3",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -837,10 +851,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://independent-seller.example/pay/274"
         }
@@ -4220,10 +4250,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://localhost/pay"
         }
@@ -4342,10 +4388,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.0.0.1/pay"
         }
@@ -4464,10 +4526,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://10.0.0.1/pay"
         }
@@ -4586,10 +4664,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://169.254.169.254/latest/meta-data/"
         }
@@ -4708,10 +4802,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://169.254.1.1/pay"
         }
@@ -4830,10 +4940,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::1]/pay"
         }
@@ -4952,10 +5078,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://224.0.0.1/pay"
         }
@@ -5074,10 +5216,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://239.255.255.250/pay"
         }
@@ -5196,10 +5354,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[ff02::1]/pay"
         }
@@ -5318,10 +5492,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://100.64.0.1/pay"
         }
@@ -5440,10 +5630,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://0.0.0.0/pay"
         }
@@ -5562,10 +5768,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://240.0.0.1/pay"
         }
@@ -5684,10 +5906,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://255.255.255.255/pay"
         }
@@ -5806,10 +6044,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[fd00:ec2::254]/latest/meta-data/"
         }
@@ -5928,10 +6182,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[fc00::1]/pay"
         }
@@ -6050,10 +6320,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::ffff:127.0.0.1]/pay"
         }
@@ -6172,10 +6458,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::ffff:169.254.169.254]/pay"
         }
@@ -6294,10 +6596,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::ffff:224.0.0.1]/pay"
         }
@@ -6416,10 +6734,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.1/pay"
         }
@@ -6538,10 +6872,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://2130706433/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://2130706433/pay"
         }
@@ -6660,10 +7010,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://0x7f.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://0x7f.0.0.1/pay"
         }
@@ -6782,10 +7148,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://0177.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://0177.0.0.1/pay"
         }
@@ -6904,10 +7286,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.0.0.1./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.0.0.1./pay"
         }
@@ -7026,10 +7424,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://169.254.43518/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://169.254.43518/latest/meta-data/"
         }
@@ -7148,10 +7562,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://256.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://256.0.0.1/pay"
         }
@@ -7270,10 +7700,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://0x0x08.8.8.8/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://0x0x08.8.8.8/pay"
         }
@@ -7392,10 +7838,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.0.0.1­/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.0.0.1­/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.0.0.1­/pay"
         }
@@ -7514,10 +7976,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.0.0.1​/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.0.0.1​/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.0.0.1​/pay"
         }
@@ -7636,10 +8114,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.0.0.1%C2%AD/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.0.0.1%C2%AD/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.0.0.1%C2%AD/pay"
         }
@@ -7758,10 +8252,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://169.254.169.254­/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://169.254.169.254­/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://169.254.169.254­/latest/meta-data/"
         }
@@ -7880,10 +8390,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://127.0.0.1\\.seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://127.0.0.1\\.seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://127.0.0.1\\.seller.example/pay"
         }
@@ -8002,10 +8528,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://169.254.169.254\\.seller.example/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://169.254.169.254\\.seller.example/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://169.254.169.254\\.seller.example/latest/meta-data/"
         }
@@ -8124,10 +8666,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://%6c%6fcalhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://%6c%6fcalhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://%6c%6fcalhost/pay"
         }
@@ -8246,10 +8804,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://ｌｏｃａｌｈｏｓｔ/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://ｌｏｃａｌｈｏｓｔ/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://ｌｏｃａｌｈｏｓｔ/pay"
         }
@@ -8368,10 +8942,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://bücher.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://bücher.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://bücher.example/pay"
         }
@@ -8490,10 +9080,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://%31%32%37.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://%31%32%37.0.0.1/pay"
         }
@@ -8612,10 +9218,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://@seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://@seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://@seller.example/pay"
         }
@@ -8734,10 +9356,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://:@seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://:@seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://:@seller.example/pay"
         }
@@ -8856,10 +9494,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example/pay#"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example/pay#"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example/pay#"
         }
@@ -8978,10 +9632,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example:abc/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example:abc/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example:abc/pay"
         }
@@ -9100,10 +9770,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example:99999/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example:99999/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example:99999/pay"
         }
@@ -9222,10 +9908,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://xn--.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://xn--.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://xn--.example/pay"
         }
@@ -9344,10 +10046,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://xn--localhost-/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://xn--localhost-/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://xn--localhost-/pay"
         }
@@ -9466,10 +10184,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://XN--LOCALHOST-.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://XN--LOCALHOST-.example/pay"
         }
@@ -9588,10 +10322,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://xn--tdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example/pay"
         }
@@ -9710,10 +10460,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://xn--ukba655qaaaa14431eeaaba.c/pay"
         }
@@ -9832,10 +10598,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example/pay\\x"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example/pay\\x"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example/pay\\x"
         }
@@ -9954,10 +10736,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example/pé"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example/pé"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example/pé"
         }
@@ -10076,10 +10874,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example/pay"
         }
@@ -10206,10 +11020,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://xn--bcher-kva.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://xn--bcher-kva.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://xn--bcher-kva.example/pay"
         }
@@ -10335,10 +11165,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example/p%C3%A9"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example/p%C3%A9"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example/p%C3%A9"
         }
@@ -10464,10 +11310,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://seller.example:8443/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://seller.example:8443/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://seller.example:8443/pay"
         }
@@ -11661,7 +12523,23 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidBodyBase64"
+          ],
+          "value": "e30g"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "requestBodyBase64"
+          ],
+          "value": "e30g"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidBodyBase64"
           ],
           "value": "e30g"
         }
@@ -11741,6 +12619,14 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "requestBodyBase64"
           ],
           "value": "eyJqb2IiOiIyNzQifQ=="
@@ -11755,6 +12641,14 @@
             "bodyHash"
           ],
           "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
         }
       ]
     },
@@ -22606,6 +23500,14 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "requestBodyBase64"
           ],
           "value": "eyJqb2IiOiIyNzQifQ=="
@@ -22620,6 +23522,14 @@
             "bodyHash"
           ],
           "value": "12BCE23833A114A19C8738E9C3C89B2515873DEEB13BCD06FDF5993ECBD2DBB5"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
         }
       ],
       "expectedReason": "rail-ref-shape"
@@ -23591,6 +24501,14 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzUifQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "requestBodyBase64"
           ],
           "value": "eyJqb2IiOiIyNzUifQ=="
@@ -23605,6 +24523,14 @@
             "bodyHash"
           ],
           "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzUifQ=="
         }
       ],
       "expectedReason": "request-body-hash"
@@ -25638,10 +26564,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://api.localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://api.localhost/pay"
         }
@@ -25760,10 +26702,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://API.LOCALHOST./pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://API.LOCALHOST./pay"
         }
@@ -25882,10 +26840,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://localhost.localdomain/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://localhost.localdomain/pay"
         }
@@ -26004,10 +26978,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::127.0.0.1]/pay"
         }
@@ -26126,10 +27116,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[64:ff9b::a9fe:a9fe]/latest/meta-data/"
         }
@@ -26248,10 +27254,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[64:ff9b:1::808:808]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[64:ff9b:1::808:808]/pay"
         }
@@ -26370,10 +27392,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[2002:7f00:1::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[2002:7f00:1::1]/pay"
         }
@@ -26492,10 +27530,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[2001:0:7f00:1::f7f7:f7f7]/pay"
         }
@@ -26614,10 +27668,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[2001:0:808:808::f5ff:fffe]/pay"
         }
@@ -26744,10 +27814,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::ffff:8.8.8.8]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::ffff:8.8.8.8]/pay"
         }
@@ -27513,10 +28599,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[::ffff:0:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[::ffff:0:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[::ffff:0:7f00:1]/pay"
         }
@@ -29802,10 +30904,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[2606:4700::5efe:7f00:1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[2606:4700::5efe:7f00:1]/pay"
         }
@@ -29924,10 +31042,26 @@
           "op": "replace",
           "path": [
             "runtime",
+            "paidUrl"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
             "selectedRailRef",
             "parameters",
             "request",
             "url"
+          ],
+          "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
           ],
           "value": "https://[2606:4700::200:5efe:a9fe:a9fe]/latest/meta-data/"
         }
@@ -31102,6 +32236,254 @@
         }
       ],
       "expectedReason": "challenge-match"
+    },
+    {
+      "name": "request-method-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "the derived, unpaid and paid requests all use another method than the signed one",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveMethod"
+          ],
+          "value": "DELETE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidMethod"
+          ],
+          "value": "DELETE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidMethod"
+          ],
+          "value": "DELETE"
+        }
+      ],
+      "expectedReason": "effective-request-method"
+    },
+    {
+      "name": "unsigned-runtime-method-override",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "a runtime method beside the signed rail ref cannot override it",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveMethod"
+          ],
+          "value": "POST"
+        }
+      ],
+      "expectedReason": "effective-request-method"
+    },
+    {
+      "name": "unpaid-request-method-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "the unpaid request uses the signed method",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidMethod"
+          ],
+          "value": "DELETE"
+        }
+      ],
+      "expectedReason": "effective-request-method"
+    },
+    {
+      "name": "paid-request-method-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "the paid request repeats the method of the validated unpaid request",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidMethod"
+          ],
+          "value": "PATCH"
+        }
+      ],
+      "expectedReason": "effective-request-method"
+    },
+    {
+      "name": "unpaid-request-url-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "the unpaid request goes to the signed URL",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidUrl"
+          ],
+          "value": "https://other.example/pay"
+        }
+      ],
+      "expectedReason": "effective-request"
+    },
+    {
+      "name": "paid-request-url-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "the paid request goes to the signed URL",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidUrl"
+          ],
+          "value": "https://other.example/pay"
+        }
+      ],
+      "expectedReason": "effective-request"
+    },
+    {
+      "name": "unpaid-request-body-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "with no bodyHash, the unpaid request carries a body that the derived request does not",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidBodyBase64"
+          ],
+          "value": "e30="
+        }
+      ],
+      "expectedReason": "effective-request-body"
+    },
+    {
+      "name": "paid-request-body-substitution",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "the paid request repeats the signed body bytes of the unpaid request",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "QOrWQAeLPjEZ6be8nbWg8eC9cLar0rfoSq32xc4oaL7bbB2n5tYfgLNI8kRC23iiNXUjirZyeUcZHzuCd5kvAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "QLadX9CwNzKLrtEUiNafLA61xyVRr8Vc8Cxv3xTuHQi-ARjjwJ8yo-eBLRsqzxEaG_WxYNWRo5SSLi5e76hJDQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "bodyHash"
+          ],
+          "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "bodyHash"
+          ],
+          "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "_2oi2vHFrBj5cdjj7m-8rzsbz9EOqE_GoXUERoRI2y2r2-pQzJV1FebxlyuBVJD0KSMkJyjDWwYjdZSU5pY_AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzUifQ=="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "requestBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "bodyHash"
+          ],
+          "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "unpaidBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
+        }
+      ],
+      "expectedReason": "effective-request-body"
     }
   ]
 }

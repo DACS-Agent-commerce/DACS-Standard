@@ -737,6 +737,35 @@ def public_http_target(url):
     return _target_class(address) is None
 
 
+def request_trace_defect(runtime, request):
+    """XN-6: the reason the runtime's requests are not the signed request, if any.
+
+    The trace names the request the handler derives from the agreement, then
+    the unpaid and the paid request as sent. Each uses the exact signed method
+    and URL, with no redirect followed. All three carry the same body bytes:
+    those the signed `bodyHash` covers, or none without one.
+    """
+    if any(runtime.get(name) != request["method"]
+           for name in ("effectiveMethod", "unpaidMethod", "paidMethod")):
+        return "fail", "effective-request-method"
+    if runtime.get("redirected") or any(runtime.get(name) != request["url"]
+                                        for name in ("effectiveUrl", "unpaidUrl", "paidUrl")):
+        return "fail", "effective-request"
+    try:
+        bodies = [base64.b64decode(runtime.get(name), validate=True)
+                  for name in ("requestBodyBase64", "unpaidBodyBase64", "paidBodyBase64")]
+    except Exception:
+        return "error", "request-body"
+    if bodies.count(bodies[0]) != len(bodies):
+        return "fail", "effective-request-body"
+    if "bodyHash" in request:
+        if hashlib.sha256(bodies[0]).hexdigest() != request["bodyHash"]:
+            return "fail", "request-body-hash"
+    elif bodies[0]:
+        return "fail", "unsigned-request-body"
+    return None
+
+
 def record_wallet_authorization(effects):
     if effects is not None:
         effects["walletAuthorizationCalls"] = effects.get("walletAuthorizationCalls", 0) + 1
@@ -1369,17 +1398,9 @@ def evaluate(v, effects=None):
     request = ref["parameters"]["request"]
     if not public_http_target(request["url"]):
         return "fail", "non-public-request-target"
-    if runtime.get("redirected") or runtime.get("effectiveUrl") != request["url"]:
-        return "fail", "effective-request"
-    try:
-        body = base64.b64decode(runtime.get("requestBodyBase64"), validate=True)
-    except Exception:
-        return "error", "request-body"
-    if "bodyHash" in request:
-        if hashlib.sha256(body).hexdigest() != request["bodyHash"]:
-            return "fail", "request-body-hash"
-    elif body:
-        return "fail", "unsigned-request-body"
+    defect = request_trace_defect(runtime, request)
+    if defect is not None:
+        return defect
 
     http = v.get("http", {})
     status = http.get("status")
@@ -1749,6 +1770,14 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "selection-verifying-contract-not-20-bytes",
             "bounded-fetch-isatap-loopback-target",
             "bounded-fetch-isatap-universal-bit-metadata-target",
+            "request-method-substitution",
+            "unsigned-runtime-method-override",
+            "unpaid-request-method-substitution",
+            "paid-request-method-substitution",
+            "unpaid-request-url-substitution",
+            "paid-request-url-substitution",
+            "unpaid-request-body-substitution",
+            "paid-request-body-substitution",
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
@@ -2594,6 +2623,64 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         finally:
             request_url_syntax_ok, public_http_target = syntax, gate
 
+    def test_every_request_trace_vector_depends_on_its_check(self):
+        """Each vector the XN-6 request-trace check rejects would otherwise pass.
+
+        With the check removed, every vector pinned to one of its reasons
+        reaches `pass`, so neither a stale hash nor another gate keeps it red.
+        """
+        global request_trace_defect
+        reasons = {
+            "effective-request-method", "effective-request", "effective-request-body",
+            "request-body", "request-body-hash", "unsigned-request-body",
+        }
+        names = [name for name, vector in self.by_name.items()
+                 if vector.get("expectedReason") in reasons]
+        self.assertEqual(len(names), 14)
+        check = request_trace_defect
+        request_trace_defect = lambda _runtime, _request: None  # noqa: E731
+        try:
+            for name in names:
+                with self.subTest(vector=name, mutant="request-trace check removed"):
+                    self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), ("pass", None))
+        finally:
+            request_trace_defect = check
+
+    def test_request_trace_carries_the_signed_method_url_and_body_in_each_request(self):
+        """XN-6: the derived, unpaid and paid requests each use the signed method, URL and body.
+
+        Changing one field of one request alone rejects before the wallet call.
+        A method is the exact case-sensitive token, and a trace that omits a
+        field does not name the signed request.
+        """
+        base = self.by_name["protocol-v2-exact-success"]
+        self.assertEqual(evaluate(copy.deepcopy(base)), ("pass", None))
+        url = base["agreement"]["terms"]["rail"]["parameters"]["request"]["url"]
+        method = ("fail", "effective-request-method")
+        target = ("fail", "effective-request")
+        body = ("fail", "effective-request-body")
+        malformed = ("error", "request-body")
+        for field, value, want in (
+            ("effectiveMethod", "POST", method),
+            ("unpaidMethod", "get", method),
+            ("paidMethod", None, method),
+            ("effectiveUrl", url + "&", target),
+            ("unpaidUrl", url.upper(), target),
+            ("paidUrl", None, target),
+            ("requestBodyBase64", base64.b64encode(b"{}").decode("ascii"), body),
+            ("unpaidBodyBase64", "%%%", malformed),
+            ("paidBodyBase64", None, malformed),
+        ):
+            with self.subTest(field=field, value=value):
+                vector = copy.deepcopy(base)
+                if value is None:
+                    del vector["runtime"][field]
+                else:
+                    vector["runtime"][field] = value
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), want)
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+
     def test_parser_dependent_url_spellings_are_malformed_and_not_public(self):
         """Spellings that WHATWG/UTS-46 parsers resolve to a non-public host are XN-2 `error`.
 
@@ -2765,6 +2852,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "its SB-3 job binding is always mandatory there.",
             "A verifier MUST take this binding policy from the pinned definition and the signed "
             "selection, never from the observed ledger event,",
+            "The unpaid and the paid request MUST each use the signed `request.method` and "
+            "`request.url` exactly.",
         ):
             self.assertIn(text, spec)
         # Notes are hard-wrapped blockquotes: compare without wrapping or markers.

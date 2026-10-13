@@ -396,8 +396,17 @@ def make_base(version: int = 2) -> dict:
                 "paymentAddress": BUYER_ADDRESS,
             },
             "payee": {"primaryClaim": SELLER_CLAIM, "payeeAddress": SELLER_ADDRESS},
+            # XN-6: the request derived from the agreement, then the unpaid and
+            # the paid request as sent.
+            "effectiveMethod": "GET",
+            "unpaidMethod": "GET",
+            "paidMethod": "GET",
             "requestBodyBase64": "",
+            "unpaidBodyBase64": "",
+            "paidBodyBase64": "",
             "effectiveUrl": URL,
+            "unpaidUrl": URL,
+            "paidUrl": URL,
             "redirected": False,
             "operatorConfigSource": "local-operator-policy",
             "authorizationSubmitted": False,
@@ -521,6 +530,19 @@ def refresh_received_hashes(value: dict) -> None:
     refs[0]["paymentReceiptHash"] = digest(received_response(value))
 
 
+def send_requests_to(value: dict, url: str) -> None:
+    """The derived, unpaid and paid requests of the runtime trace all go to `url`."""
+    value["runtime"].update({"effectiveUrl": url, "unpaidUrl": url, "paidUrl": url})
+
+
+def send_body(value: dict, body: bytes) -> None:
+    """The derived, unpaid and paid requests of the runtime trace all carry `body`."""
+    encoded = base64.b64encode(body).decode("ascii")
+    value["runtime"].update({
+        "requestBodyBase64": encoded, "unpaidBodyBase64": encoded, "paidBodyBase64": encoded,
+    })
+
+
 def sign_all(value: dict) -> None:
     rail = value.get("railDefinition")
     if isinstance(rail, dict):
@@ -610,7 +632,7 @@ def build_vectors() -> list[dict]:
             v["runtime"]["selectedRailRef"],
         ):
             ref["parameters"]["request"]["url"] = other_url
-        v["runtime"]["effectiveUrl"] = other_url
+        send_requests_to(v, other_url)
         v["http"]["paymentRequired"]["resource"]["url"] = other_url
         v["evidence"]["paymentTxRefs"][0]["httpResource"] = other_url
     add_case(vectors, "independent-provider-same-protocol-rules", "pass", "XN-1..XN-4",
@@ -938,7 +960,7 @@ def build_vectors() -> list[dict]:
                 v["agreement"]["terms"]["rail"])
             v["runtime"]["selectedRailRef"] = copy.deepcopy(
                 v["agreement"]["terms"]["rail"])
-            v["runtime"]["effectiveUrl"] = target
+            send_requests_to(v, target)
             v["http"]["paymentRequired"]["resource"]["url"] = target
             v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
         add_case(
@@ -975,7 +997,7 @@ def build_vectors() -> list[dict]:
                 v["agreement"]["terms"]["rail"])
             v["runtime"]["selectedRailRef"] = copy.deepcopy(
                 v["agreement"]["terms"]["rail"])
-            v["runtime"]["effectiveUrl"] = target
+            send_requests_to(v, target)
             v["http"]["paymentRequired"]["resource"]["url"] = target
             v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
         add_case(
@@ -1063,7 +1085,7 @@ def build_vectors() -> list[dict]:
                 v["agreement"]["terms"]["rail"])
             v["runtime"]["selectedRailRef"] = copy.deepcopy(
                 v["agreement"]["terms"]["rail"])
-            v["runtime"]["effectiveUrl"] = target
+            send_requests_to(v, target)
             v["http"]["paymentRequired"]["resource"]["url"] = target
             v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
         add_case(
@@ -1212,14 +1234,14 @@ def build_vectors() -> list[dict]:
              reason="effective-request")
 
     def add_body_without_hash(v):
-        v["runtime"]["requestBodyBase64"] = base64.b64encode(b"{} ").decode("ascii")
+        send_body(v, b"{} ")
     add_case(vectors, "body-sent-without-signed-hash", "fail", "XN-6",
              "an absent bodyHash requires no request body", add_body_without_hash,
              reason="unsigned-request-body")
 
     def valid_body(v):
         body = b'{"job":"274"}'
-        v["runtime"]["requestBodyBase64"] = base64.b64encode(body).decode("ascii")
+        send_body(v, body)
         v["agreement"]["terms"]["rail"]["parameters"]["request"]["bodyHash"] = hashlib.sha256(body).hexdigest()
         v["listing"]["acceptedRails"][0] = copy.deepcopy(v["agreement"]["terms"]["rail"])
         v["runtime"]["selectedRailRef"] = copy.deepcopy(v["agreement"]["terms"]["rail"])
@@ -2101,7 +2123,7 @@ def build_vectors() -> list[dict]:
 
     def body_not_signed(v):
         valid_body(v)
-        v["runtime"]["requestBodyBase64"] = base64.b64encode(b'{"job":"275"}').decode("ascii")
+        send_body(v, b'{"job":"275"}')
     add_case(vectors, "request-body-not-signed-body-hash", "fail", "XN-6",
              "request body bytes must hash to the signed bodyHash",
              body_not_signed, reason="request-body-hash")
@@ -2257,7 +2279,7 @@ def build_vectors() -> list[dict]:
             request["url"] = target
             v["listing"]["acceptedRails"][0] = copy.deepcopy(v["agreement"]["terms"]["rail"])
             v["runtime"]["selectedRailRef"] = copy.deepcopy(v["agreement"]["terms"]["rail"])
-            v["runtime"]["effectiveUrl"] = target
+            send_requests_to(v, target)
             v["http"]["paymentRequired"]["resource"]["url"] = target
             v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
         return mutate
@@ -2662,6 +2684,47 @@ def build_vectors() -> list[dict]:
              "letter case does not match the signed extra",
              lambda v: v["http"]["paymentRequired"]["accepts"][0]["extra"].update({"name": "usdc"}),
              refresh=True, reason="challenge-match")
+
+    # XN-6: the runtime trace names the request derived from the agreement and
+    # the unpaid and paid requests as sent. Each case changes one of them, or
+    # the whole exchange, and rejects before authorization.
+    add_case(vectors, "request-method-substitution", "fail", "XN-6",
+             "the derived, unpaid and paid requests all use another method than the signed one",
+             lambda v: v["runtime"].update(
+                 {"effectiveMethod": "DELETE", "unpaidMethod": "DELETE", "paidMethod": "DELETE"}),
+             reason="effective-request-method")
+    add_case(vectors, "unsigned-runtime-method-override", "fail", "XN-6",
+             "a runtime method beside the signed rail ref cannot override it",
+             lambda v: v["runtime"].update({"effectiveMethod": "POST"}),
+             reason="effective-request-method")
+    add_case(vectors, "unpaid-request-method-substitution", "fail", "XN-6",
+             "the unpaid request uses the signed method",
+             lambda v: v["runtime"].update({"unpaidMethod": "DELETE"}),
+             reason="effective-request-method")
+    add_case(vectors, "paid-request-method-substitution", "fail", "XN-6",
+             "the paid request repeats the method of the validated unpaid request",
+             lambda v: v["runtime"].update({"paidMethod": "PATCH"}),
+             reason="effective-request-method")
+    add_case(vectors, "unpaid-request-url-substitution", "fail", "XN-6",
+             "the unpaid request goes to the signed URL",
+             lambda v: v["runtime"].update({"unpaidUrl": "https://other.example/pay"}),
+             reason="effective-request")
+    add_case(vectors, "paid-request-url-substitution", "fail", "XN-6",
+             "the paid request goes to the signed URL",
+             lambda v: v["runtime"].update({"paidUrl": "https://other.example/pay"}),
+             reason="effective-request")
+    add_case(vectors, "unpaid-request-body-substitution", "fail", "XN-6",
+             "with no bodyHash, the unpaid request carries a body that the derived request does not",
+             lambda v: v["runtime"].update(
+                 {"unpaidBodyBase64": base64.b64encode(b"{}").decode("ascii")}),
+             reason="effective-request-body")
+
+    def paid_body_changed(v):
+        valid_body(v)
+        v["runtime"]["paidBodyBase64"] = base64.b64encode(b'{"job":"275"}').decode("ascii")
+    add_case(vectors, "paid-request-body-substitution", "fail", "XN-6",
+             "the paid request repeats the signed body bytes of the unpaid request",
+             paid_body_changed, reason="effective-request-body")
 
     return vectors
 

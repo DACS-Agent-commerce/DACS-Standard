@@ -29,6 +29,8 @@ SAFE_TX = "ab" * 32
 RESPONSE_TX = "0x" + SAFE_TX
 URL = "https://seller.example/dacs/resource?job=274"
 ASSET = "0x" + "33" * 20
+# Private scalar 1 (public key = the secp256k1 generator) is publicly known:
+# a conformance-fixture key only, never for real funds.
 EVM_BUYER_PRIVATE_SCALAR = 1
 EVM_BUYER_PUBLIC_KEY = uncompressed_public_key(EVM_BUYER_PRIVATE_SCALAR)
 BUYER_ADDRESS = evm_address(EVM_BUYER_PUBLIC_KEY)

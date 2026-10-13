@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 334,
-  "hash": "2cbed4d1e780dc606f696a3e1788f78982ea82f039d1c9cfc915c6f744df28f8",
+  "count": 355,
+  "hash": "79f6329bca9e765a44f8366f7856e4e579aaab27130e9057dbced9d0ec88c7b9",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -19620,14 +19620,6 @@
         {
           "op": "replace",
           "path": [
-            "ledger",
-            "settlementEvent"
-          ],
-          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
-        },
-        {
-          "op": "replace",
-          "path": [
             "runtime",
             "authorizationSubmitted"
           ],
@@ -19662,14 +19654,6 @@
             "value"
           ],
           "value": "zoVjmKeo5jMucInTenbvWIIIssUhjgSEZOyFZcxMZtnFGS0UhGQRKtb0ZwzCSU-4LF54Mu_6uKESE8naVG3oDw"
-        },
-        {
-          "op": "replace",
-          "path": [
-            "ledger",
-            "settlementEvent"
-          ],
-          "value": "evm:8453:ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB:7"
         },
         {
           "op": "replace",
@@ -24416,6 +24400,14 @@
           "op": "replace",
           "path": [
             "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
             "transaction"
           ],
           "value": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
@@ -26816,14 +26808,6 @@
         {
           "op": "replace",
           "path": [
-            "ledger",
-            "settlementEvent"
-          ],
-          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
-        },
-        {
-          "op": "replace",
-          "path": [
             "runtime",
             "authorizationSubmitted"
           ],
@@ -26866,14 +26850,6 @@
             "finalized"
           ],
           "value": false
-        },
-        {
-          "op": "replace",
-          "path": [
-            "ledger",
-            "settlementEvent"
-          ],
-          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
         },
         {
           "op": "replace",
@@ -27970,14 +27946,6 @@
             "available"
           ],
           "value": false
-        },
-        {
-          "op": "replace",
-          "path": [
-            "ledger",
-            "settlementEvent"
-          ],
-          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
         },
         {
           "op": "replace",
@@ -30029,6 +29997,729 @@
         }
       ],
       "expectedReason": "response-header"
+    },
+    {
+      "name": "ledger-transaction-missing",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "an event whose transaction is missing cannot be identified yet, whatever the response and the stored record say",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-coordinate-missing"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-transaction-missing",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "with the response lost and no evidence, an event whose transaction is missing cannot be identified yet",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-coordinate-missing"
+    },
+    {
+      "name": "retry-response-lost-ledger-transaction-missing",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "retry",
+      "note": "on retry after a lost response, an event whose transaction is missing cannot be identified yet",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "ledger-coordinate-missing"
+    },
+    {
+      "name": "ledger-transaction-null",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "a null event transaction has no XN-7 adapter form, whatever the response and the stored record say",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-transaction-null",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "with the response lost and no evidence, a null event transaction has no XN-7 adapter form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "retry-response-lost-ledger-transaction-null",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "retry",
+      "note": "on retry after a lost response, a null event transaction has no XN-7 adapter form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "ledger-transaction-not-32-bytes",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "an event transaction of 63 hexadecimal digits has no XN-7 adapter form, whatever the response and the stored record say",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "0xabababababababababababababababababababababababababababababababa"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-transaction-not-32-bytes",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "with the response lost and no evidence, an event transaction of 63 hexadecimal digits has no XN-7 adapter form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "0xabababababababababababababababababababababababababababababababa"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "retry-response-lost-ledger-transaction-not-32-bytes",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "retry",
+      "note": "on retry after a lost response, an event transaction of 63 hexadecimal digits has no XN-7 adapter form",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "0xabababababababababababababababababababababababababababababababa"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "ledger-transaction-double-0x-prefix",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "a second 0x prefix is a spelling the SB-1 collapse does not admit, whatever the response and the stored record say",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "0x0xabababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-transaction-double-0x-prefix",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "with the response lost and no evidence, a second 0x prefix is a spelling the SB-1 collapse does not admit",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "0x0xabababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "retry-response-lost-ledger-transaction-double-0x-prefix",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "retry",
+      "note": "on retry after a lost response, a second 0x prefix is a spelling the SB-1 collapse does not admit",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "0x0xabababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "ledger-transaction-form"
+    },
+    {
+      "name": "ledger-event-key-missing",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "an event whose settlementEvent is missing cannot be identified yet, whatever the response and the stored record say",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-coordinate-missing"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-event-key-missing",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "with the response lost and no evidence, an event whose settlementEvent is missing cannot be identified yet",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-coordinate-missing"
+    },
+    {
+      "name": "retry-response-lost-ledger-event-key-missing",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "retry",
+      "note": "on retry after a lost response, an event whose settlementEvent is missing cannot be identified yet",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "ledger-coordinate-missing"
+    },
+    {
+      "name": "ledger-event-key-garbled",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "an event key that is not adapter-canonical is malformed, whatever the response and the stored record say",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "not-an-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event-key"
+    },
+    {
+      "name": "response-lost-no-evidence-ledger-event-key-garbled",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "with the response lost and no evidence, an event key that is not adapter-canonical is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "not-an-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event-key"
+    },
+    {
+      "name": "retry-response-lost-ledger-event-key-garbled",
+      "expected": "error",
+      "rule": "XN-8/XN-11",
+      "operation": "retry",
+      "note": "on retry after a lost response, an event key that is not adapter-canonical is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "not-an-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "settlementTransaction"
+          ]
+        }
+      ],
+      "expectedReason": "ledger-event-key"
+    },
+    {
+      "name": "ledger-event-key-noncanonical",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "an event key spelling its hash with 0x is not adapter-canonical",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event-key"
+    },
+    {
+      "name": "ledger-event-key-names-another-transaction",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "an event key naming another transaction than the event's own does not identify it",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event-key"
+    },
+    {
+      "name": "ledger-event-key-names-another-network",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "an event key on another chain than the selected network does not identify the event",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:1:abababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "ledger-event-key"
     }
   ]
 }

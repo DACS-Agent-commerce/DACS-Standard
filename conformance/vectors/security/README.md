@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 334 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 355 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1111,10 +1111,23 @@ the recorded `settlementTransaction` is the verifier's `error` with reason
 `settlement-transaction-form` (`evidence-transaction-*`). The same 63 digits in
 the response `transaction` alone are the response defect
 `response-transaction`: `pass` over the base ledger and `indeterminate` without
-one. The two `noncanonical-native-event-key*` cases change only the
-DACS-produced `settlementEvent`, keep the response unchanged, and stay `error`.
-The key is signed evidence, so the verifier checks it before the ledger is
-read: with the ledger unavailable or not final the record is still `error`.
+one. The two `noncanonical-native-event-key*` cases change only the record's
+DACS-produced `settlementEvent`, keep the ledger's key and the response
+unchanged, and stay `error`. The key is signed evidence, so the verifier checks
+it before the ledger is read: with the ledger unavailable or not final the
+record is still `error`.
+
+The reconciled event is identified by the ledger's own `transaction` and
+`settlementEvent` before it can be `pass`, in `execute` and `retry` alike and
+whatever the response or a stored record says. A missing one is
+`indeterminate` (`ledger-coordinate-missing`). A transaction that is `null`,
+has 63 hexadecimal digits, or carries a second `0x` prefix is `error`
+(`ledger-transaction-form`), and so is a key that is garbled, spells its hash
+with `0x`, or names another transaction or chain (`ledger-event-key`). The
+`ledger-*`, `response-lost-no-evidence-ledger-*` and
+`retry-response-lost-ledger-*` cases apply each change over a full success,
+and with no response or evidence on `execute` and on `retry`. A ledger naming
+neither coordinate resolves no event, and the authorization's state decides.
 
 After the wallet call only the ledger reconciliation of the authorization
 identity decides (XN-11), and no success record has to exist first. A
@@ -1130,9 +1143,10 @@ makes the session fail. With the response lost and no evidence at all, the
 matching ledger is `pass` (`response-header`), an unavailable ledger
 `indeterminate`, an authorization the ledger proves expired unused `fail`
 (`terminal-non-settlement`), and one still unused `indeterminate`
-(`authorization-unsettled`). A ledger without a `transaction` reports no event
-for the identity: its `authorizationState` `expired` or `cancelled` is a proven
-terminal non-settlement, and any other state may still settle. A resolved
+(`authorization-unsettled`). A ledger naming neither a `transaction` nor a
+`settlementEvent` reports no event for the identity: its `authorizationState`
+`expired` or `cancelled` is a proven terminal non-settlement, and any other
+state may still settle. A resolved
 contradiction comes only from the event that the identity resolves to: a
 response naming another transaction is `fail` when that event moves another
 amount and `indeterminate` when no event is resolved. The receipt hash commits

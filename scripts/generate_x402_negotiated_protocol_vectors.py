@@ -1622,18 +1622,16 @@ def build_vectors() -> list[dict]:
              authorization_submitted=True,
              reason="settlement-not-final")
 
+    # The record's key alone is malformed: the ledger keeps its canonical key,
+    # since a malformed ledger coordinate is an error of the reconciliation.
     def noncanonical_event(v):
-        value = f"evm:8453:0x{SAFE_TX}:7"
-        v["ledger"]["settlementEvent"] = value
-        v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
+        v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = f"evm:8453:0x{SAFE_TX}:7"
     add_case(vectors, "noncanonical-native-event-key", "error", "XN-8/SB-1",
              "a noncanonical event spelling cannot mint another SB-1 identity",
              noncanonical_event, operation="verify-evidence", reason="native-event-key")
 
     def uppercase_event(v):
-        value = f"evm:8453:{SAFE_TX.upper()}:7"
-        v["ledger"]["settlementEvent"] = value
-        v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
+        v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = f"evm:8453:{SAFE_TX.upper()}:7"
     add_case(vectors, "noncanonical-native-event-key-uppercase", "error", "XN-8/SB-1",
              "an upper-case EVM hash cannot mint another SB-1 identity",
              uppercase_event, operation="verify-evidence", reason="native-event-key")
@@ -2193,10 +2191,12 @@ def build_vectors() -> list[dict]:
                  lambda v, f=field, x=value: v["ledger"].update({f: x}),
                  authorization_submitted=True, reason="ledger-event")
     # A record naming another transaction than the reconciled event's is a
-    # record defect: the verifier rejects that record.
+    # record defect: the verifier rejects that record. The ledger's event is
+    # consistent, its key naming its own transaction.
     add_case(vectors, "ledger-transaction-substitution", "fail", "XN-7/XN-8",
              "the authenticated event must belong to the recorded transaction",
-             lambda v: v["ledger"].update({"transaction": "0x" + "cd" * 32}),
+             lambda v: v["ledger"].update({"transaction": "0x" + "cd" * 32,
+                                           "settlementEvent": "evm:8453:" + "cd" * 32 + ":7"}),
              operation="verify-evidence", reason="ledger-event")
 
     # Legacy x402:default replay and continuation boundaries.
@@ -2537,6 +2537,58 @@ def build_vectors() -> list[dict]:
              "version-selected response decoded, verifies; the response defect is recorded",
              lambda v: v["http"]["responseHeader"].update({"name": "X-PAYMENT-RESPONSE"}),
              operation="verify-evidence", refresh=True, reason="response-header")
+
+    # XN-8/XN-11: the reconciled event's own coordinates are judged before it
+    # can be success: a missing transaction or settlementEvent is missing data,
+    # one with no adapter-canonical form is malformed. Each mutation runs with
+    # no response or evidence (execute and retry) and over a full success.
+    def ledger_coordinate(field, value=absent):
+        def mutate(v):
+            if value is absent:
+                v["ledger"].pop(field)
+            else:
+                v["ledger"][field] = value
+        return mutate
+    for suffix, expected, reason, mutate, note in (
+        ("ledger-transaction-missing", "indeterminate", "ledger-coordinate-missing",
+         ledger_coordinate("transaction"),
+         "an event whose transaction is missing cannot be identified yet"),
+        ("ledger-transaction-null", "error", "ledger-transaction-form",
+         ledger_coordinate("transaction", None),
+         "a null event transaction has no XN-7 adapter form"),
+        ("ledger-transaction-not-32-bytes", "error", "ledger-transaction-form",
+         ledger_coordinate("transaction", "0x" + SAFE_TX[:63]),
+         "an event transaction of 63 hexadecimal digits has no XN-7 adapter form"),
+        ("ledger-transaction-double-0x-prefix", "error", "ledger-transaction-form",
+         ledger_coordinate("transaction", "0x0x" + SAFE_TX),
+         "a second 0x prefix is a spelling the SB-1 collapse does not admit"),
+        ("ledger-event-key-missing", "indeterminate", "ledger-coordinate-missing",
+         ledger_coordinate("settlementEvent"),
+         "an event whose settlementEvent is missing cannot be identified yet"),
+        ("ledger-event-key-garbled", "error", "ledger-event-key",
+         ledger_coordinate("settlementEvent", "not-an-event"),
+         "an event key that is not adapter-canonical is malformed"),
+    ):
+        add_case(vectors, suffix, expected, "XN-8/XN-11", f"{note}, whatever the response and "
+                 "the stored record say", mutate, authorization_submitted=True, reason=reason)
+        add_case(vectors, f"response-lost-no-evidence-{suffix}", expected, "XN-8/XN-11",
+                 f"with the response lost and no evidence, {note}", response_lost(mutate),
+                 authorization_submitted=True, reason=reason)
+        add_case(vectors, f"retry-response-lost-{suffix}", expected, "XN-8/XN-11",
+                 f"on retry after a lost response, {note}",
+                 retry_response_lost(False, ledger=mutate), operation="retry",
+                 authorization_submitted=True, reason=reason)
+    for suffix, key, note in (
+        ("noncanonical", f"evm:8453:0x{SAFE_TX}:7",
+         "an event key spelling its hash with 0x is not adapter-canonical"),
+        ("names-another-transaction", "evm:8453:" + "cd" * 32 + ":7",
+         "an event key naming another transaction than the event's own does not identify it"),
+        ("names-another-network", f"evm:1:{SAFE_TX}:7",
+         "an event key on another chain than the selected network does not identify the event"),
+    ):
+        add_case(vectors, f"ledger-event-key-{suffix}", "error", "XN-8/SB-1", note,
+                 ledger_coordinate("settlementEvent", key), authorization_submitted=True,
+                 reason="ledger-event-key")
 
     return vectors
 

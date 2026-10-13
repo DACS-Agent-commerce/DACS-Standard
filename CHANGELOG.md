@@ -107,19 +107,24 @@ The format used per release:
   disposition comes only from reconciling the retained authorization identity
   against authenticated ledger data, and no success evidence record has to
   exist first. Unavailable, unreadable or non-final ledger data is
-  `indeterminate`. An exact finalized settlement is success, and the evidence
-  is then built or rebuilt from the retained challenge and response and the
-  reconciled event. A finalized event that the identity resolves to and that
-  contradicts the authorization is `fail`, and so is a terminal non-settlement
-  the scheme profile proves (for EIP-3009 a cancelled nonce, or one unused
-  after `validBefore`). Otherwise the session stays reconciliation-pending.
-  A settlement response that is lost, not received under the version's header,
-  reports `success: false`, or names another network, payer or transaction is
-  a response defect, recorded as the seller's protocol fault; a transaction
-  that only the response names is never a ledger contradiction. A stored record
-  that does not verify, a stale receipt or challenge hash included, is rejected
-  and rebuilt and never ends the payment phase. Retry takes its disposition from
-  the same reconciliation. The receipt hash commits to the response as received,
+  `indeterminate`. The event the identity resolves to must first be identified
+  by its transaction and `settlementEvent`: a missing one is `indeterminate`,
+  and a transaction with no XN-7 adapter form, or a key that is not
+  adapter-canonical or does not name that transaction on the selected network,
+  is `error`. An exact finalized settlement is success, and the evidence is
+  then built or rebuilt from the retained challenge and response and that
+  event's validated transaction and key. A finalized event that the identity
+  resolves to and that contradicts the authorization is `fail`, and so is a
+  terminal non-settlement the scheme profile proves (for EIP-3009 a cancelled
+  nonce, or one unused after `validBefore`). Otherwise the session stays
+  reconciliation-pending. A settlement response that is lost, not received
+  under the version's header, reports `success: false`, or names another
+  network, payer or transaction is a response defect, recorded as the seller's
+  protocol fault; a transaction that only the response names is never a ledger
+  contradiction. A stored record that does not verify, a stale receipt or
+  challenge hash included, is rejected and rebuilt and never ends the payment
+  phase. Retry takes its disposition from the same reconciliation. The
+  receipt hash commits to the response as received,
   or to JSON `null` when no version-selected object decodes. The vectors gain a
   `verify-evidence` operation that keeps the XN-7/XN-8 verifier's verdict on a
   stored record apart from the handler's payment disposition.

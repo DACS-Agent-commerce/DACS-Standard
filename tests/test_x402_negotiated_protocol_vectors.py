@@ -992,40 +992,55 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
     """XN-11/XN-8: the payment disposition, from authenticated ledger data alone.
 
     `ledger` is what the adapter resolves for the retained authorization
-    identity: the payment event that consumed it or, with no `transaction`,
-    the identity's state. No settlement response and no stored record is read,
-    so neither can replace this disposition. Unavailable or unreadable data and
-    a non-final observation are `indeterminate`. A terminal state proven for the
-    identity, or a resolved event that contradicts the authorization, is
-    `fail`. A malformed coordinate is `error`.
+    identity: the payment event that consumed it or, naming neither event
+    coordinate, the identity's state. No settlement response and no stored
+    record is read, so neither can replace this disposition. Unavailable or
+    unreadable data, a non-final observation and a missing coordinate are
+    `indeterminate`. A terminal state proven for the identity, or a resolved
+    event that contradicts the authorization, is `fail`. A malformed coordinate
+    is `error`. Returns (verdict, reason, event): on `pass`, event holds the
+    validated adapter-form `transaction` and canonical `settlementEvent` that
+    the success evidence is built or rebuilt from; otherwise it is None.
     """
     network = selection["network"]
     if not isinstance(ledger, dict) or ledger.get("available") is not True:
-        return "indeterminate", "independent-settlement-unavailable"
+        return "indeterminate", "independent-settlement-unavailable", None
     if ledger.get("finalized") is not True:
-        return "indeterminate", "settlement-not-final"
-    if "transaction" not in ledger:
+        return "indeterminate", "settlement-not-final", None
+    if "transaction" not in ledger and "settlementEvent" not in ledger:
         # No event: only a terminal state ends the phase; otherwise the
         # authorization can still settle and the session stays pending.
         if ledger.get("authorizationState") in TERMINAL_AUTHORIZATION_STATES:
-            return "fail", "terminal-non-settlement"
-        return "indeterminate", "authorization-unsettled"
+            return "fail", "terminal-non-settlement", None
+        return "indeterminate", "authorization-unsettled", None
+    # XN-7/XN-8: the event's transaction and settlementEvent identify it, so
+    # they are judged before anything about the transfer. A missing one is
+    # missing data. A transaction with no adapter form, or a key that is not
+    # adapter-canonical or does not name that transaction on the selected
+    # network, is malformed.
+    if "transaction" not in ledger or "settlementEvent" not in ledger:
+        return "indeterminate", "ledger-coordinate-missing", None
+    transaction = adapter_canonical_transaction(network, ledger["transaction"])
+    if transaction is None:
+        return "error", "ledger-transaction-form", None
+    if not native_event_matches(ledger["settlementEvent"], network, transaction):
+        return "error", "ledger-event-key", None
     try:
         ledger_payer = adapter_address(network, ledger.get("payer"))
         ledger_pay_to = adapter_address(network, ledger.get("payTo"))
         ledger_asset = adapter_address(network, ledger.get("asset"))
         asset = adapter_address(network, selection["asset"])
     except ValueError:
-        return "error", "address-form"
+        return "error", "address-form", None
     # SB-3: a mandatory binding is resolved before the transfer checks.
     if network.split(":", 1)[0] in SB3_BINDING_NAMESPACES:
         branch = binding_branch(ledger.get("sessionBinding"))
         if branch == "mismatch":
-            return "fail", "sb3"
+            return "fail", "sb3", None
         if branch in ("absent", "unavailable"):
-            return "indeterminate", "sb3"
+            return "indeterminate", "sb3", None
         if branch != "match":
-            return "error", "sb3"
+            return "error", "sb3", None
     if (
         ledger.get("network") != network
         or ledger.get("scheme") != "exact"
@@ -1035,8 +1050,8 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
         or ledger_payer != payer
         or ledger_pay_to != pay_to
     ):
-        return "fail", "ledger-event"
-    return "pass", None
+        return "fail", "ledger-event", None
+    return "pass", None, {"transaction": transaction, "settlementEvent": ledger["settlementEvent"]}
 
 
 def reconciliation_terms(v):
@@ -1129,14 +1144,38 @@ def check_record(v, required, response, response_fault, selection, request):
     return None, {"transaction": transaction, "event": event, "responseFault": response_fault}
 
 
-def record_ledger_defect(record, ledger, network):
+def record_ledger_defect(record, event):
     """XN-8: the record must name the reconciled event's transaction and event key."""
     if (
-        adapter_canonical_transaction(network, ledger.get("transaction")) != record["transaction"]
-        or ledger.get("settlementEvent") != record["event"]
+        event["transaction"] != record["transaction"]
+        or event["settlementEvent"] != record["event"]
     ):
         return "fail", "ledger-event"
     return None
+
+
+def stored_record_defect(v, required, response, response_fault, selection, request, event):
+    """XN-7/XN-11: the verdict a verifier gives a stored record, or None.
+
+    The handler rejects such a record and rebuilds it from the retained
+    challenge and response and the reconciled event; the defect is at most the
+    recorded reason, after the ledger has decided.
+    """
+    defect, record = check_record(v, required, response, response_fault, selection, request)
+    return defect or record_ledger_defect(record, event)
+
+
+def build_evidence(effects, event, transaction):
+    """XN-7/XN-11: the success record is built, or rebuilt, from the reconciled event.
+
+    `transaction` is the verbatim spelling of a known transaction that names
+    the reconciled one (a sound response's), or None for the adapter form.
+    """
+    if effects is not None:
+        effects["builtEvidence"] = {
+            "settlementTransaction": event["transaction"] if transaction is None else transaction,
+            "settlementEvent": event["settlementEvent"],
+        }
 
 
 def materialize_vector(data, vector):
@@ -1223,7 +1262,10 @@ def evaluate(v, effects=None):
             terms = reconciliation_terms(v)
         except (AttributeError, KeyError, TypeError, ValueError):
             return "error", "reconciliation-terms"
-        return reconcile_settlement(v.get("ledger"), *terms)
+        verdict, reason, event = reconcile_settlement(v.get("ledger"), *terms)
+        if verdict == "pass":
+            build_evidence(effects, event, None)
+        return verdict, reason
 
     # `execute` runs the handler; `verify-evidence` is a verifier judging a
     # stored success record (XN-7/XN-8) and never authorizes. Both apply the
@@ -1447,32 +1489,33 @@ def evaluate(v, effects=None):
         defect, record = check_record(v, required, response, response_fault, selection, request)
         if defect is not None:
             return defect
-        verdict, reason = reconcile_settlement(ledger, selection, amount, payer, pay_to)
+        verdict, reason, event = reconcile_settlement(ledger, selection, amount, payer, pay_to)
         if verdict != "pass":
             return verdict, reason
-        return record_ledger_defect(record, ledger, network) or ("pass", record["responseFault"])
+        return record_ledger_defect(record, event) or ("pass", record["responseFault"])
 
     # XN-11: the payment disposition comes only from reconciling the
     # authorization identity against authenticated ledger data. It needs no
     # success record, and no response material or stored record can replace it.
-    verdict, reason = reconcile_settlement(ledger, selection, amount, payer, pay_to)
+    verdict, reason, event = reconcile_settlement(ledger, selection, amount, payer, pay_to)
     if verdict != "pass":
         return verdict, reason
     # The exact finalized settlement stands. A response naming another
     # transaction than the reconciled one is a response defect (XN-7).
-    reconciled = adapter_canonical_transaction(network, ledger["transaction"])
     if response_fault is None and adapter_canonical_transaction(
         network, response.get("transaction")
-    ) != reconciled:
+    ) != event["transaction"]:
         response_fault = "response-transaction"
+    # The evidence is built from the reconciled event, keeping a sound
+    # response's transaction spelling.
+    build_evidence(effects, event, response["transaction"] if response_fault is None else None)
     if response_fault is not None:
         return "pass", response_fault
     # A stored record that a verifier would reject is rebuilt from the
     # retained challenge, response and reconciled event; its defect is the
     # recorded reason, never the outcome.
     if "evidence" in v:
-        defect, record = check_record(v, required, response, response_fault, selection, request)
-        defect = defect or record_ledger_defect(record, ledger, network)
+        defect = stored_record_defect(v, required, response, response_fault, selection, request, event)
         if defect is not None:
             return "pass", defect[1]
     return "pass", None
@@ -1792,6 +1835,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-ledger-event-contradicts-authorization",
             "retry-retained-state-not-object",
             "retry-retained-state-extra-field",
+            "retry-response-lost-ledger-transaction-missing",
+            "retry-response-lost-ledger-transaction-null",
+            "retry-response-lost-ledger-transaction-not-32-bytes",
+            "retry-response-lost-ledger-transaction-double-0x-prefix",
+            "retry-response-lost-ledger-event-key-missing",
+            "retry-response-lost-ledger-event-key-garbled",
         )
         self.assertEqual(set(names), {v["name"] for v in self.vectors if v["operation"] == "retry"})
         for name in names:
@@ -2033,6 +2082,107 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         response = decode_response_header(changed["http"]["responseHeader"], 2)
         self.assertNotEqual(ref["paymentReceiptHash"], digest(response))
         self.assertEqual(changed["ledger"], self.by_name["protocol-v2-exact-success"]["ledger"])
+
+    def test_ledger_coordinates_are_judged_before_success(self):
+        """XN-8/XN-11: the resolved event's transaction and key must identify it before `pass`."""
+        tx = "ab" * 32
+        cases = (
+            ("transaction", "<absent>", ("indeterminate", "ledger-coordinate-missing")),
+            ("settlementEvent", "<absent>", ("indeterminate", "ledger-coordinate-missing")),
+            ("transaction", None, ("error", "ledger-transaction-form")),
+            ("transaction", 7, ("error", "ledger-transaction-form")),
+            ("transaction", "", ("error", "ledger-transaction-form")),
+            ("transaction", "not-a-transaction", ("error", "ledger-transaction-form")),
+            ("transaction", "0x" + tx[:63], ("error", "ledger-transaction-form")),
+            ("transaction", "0x0x" + tx, ("error", "ledger-transaction-form")),
+            ("transaction", "0x" + "cd" * 32, ("error", "ledger-event-key")),
+            ("settlementEvent", None, ("error", "ledger-event-key")),
+            ("settlementEvent", "not-an-event", ("error", "ledger-event-key")),
+            ("settlementEvent", f"evm:8453:0x{tx}:7", ("error", "ledger-event-key")),
+            ("settlementEvent", f"evm:8453:{tx.upper()}:7", ("error", "ledger-event-key")),
+            ("settlementEvent", f"evm:8453:{tx}:07", ("error", "ledger-event-key")),
+            ("settlementEvent", f"evm:1:{tx}:7", ("error", "ledger-event-key")),
+            ("settlementEvent", "evm:8453:" + "cd" * 32 + ":7", ("error", "ledger-event-key")),
+            # Every spelling the SB-1 collapse admits names the same event.
+            ("transaction", tx.upper(), None),
+            ("transaction", "0X" + tx.upper(), None),
+        )
+        for name in ("protocol-v2-exact-success", "response-lost-no-evidence-settled",
+                     "retry-response-lost-ledger-settled"):
+            base = self.by_name[name]
+            self.assertEqual(base["ledger"]["settlementEvent"], f"evm:8453:{tx}:7")
+            baseline = evaluate(copy.deepcopy(base))
+            self.assertEqual(baseline[0], "pass")
+            calls = 1 if base["operation"] == "execute" else 0
+            for field, value, want in cases:
+                with self.subTest(vector=name, field=field, value=value):
+                    vector = copy.deepcopy(base)
+                    if value == "<absent>":
+                        vector["ledger"].pop(field)
+                    else:
+                        vector["ledger"][field] = value
+                    effects = {}
+                    self.assertEqual(evaluate(vector, effects), want or baseline)
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), calls)
+                    # A non-final observation stays pending whatever its coordinates.
+                    vector["ledger"]["finalized"] = False
+                    self.assertEqual(evaluate(vector), ("indeterminate", "settlement-not-final"))
+            # With neither coordinate no event is resolved: the identity's state decides.
+            for state, want in (("expired", ("fail", "terminal-non-settlement")),
+                                ("unused", ("indeterminate", "authorization-unsettled"))):
+                with self.subTest(vector=name, no_event=state):
+                    vector = copy.deepcopy(base)
+                    del vector["ledger"]["transaction"], vector["ledger"]["settlementEvent"]
+                    vector["ledger"]["authorizationState"] = state
+                    self.assertEqual(evaluate(vector), want)
+        # Solana: the key names the selected network's cluster and the exact signature.
+        base = self.by_name["protocol-v2-solana-exact-success"]
+        signature = base["ledger"]["transaction"]
+        self.assertEqual(base["ledger"]["settlementEvent"], f"solana:devnet:{signature}:4")
+        self.assertEqual(evaluate(copy.deepcopy(base)), ("pass", None))
+        for field, value in (("settlementEvent", f"solana:mainnet:{signature}:4"),
+                             ("settlementEvent", f"solana:devnet:{'2' * 64}:4"),
+                             ("transaction", "2" * 64)):
+            with self.subTest(solana=field, value=value):
+                vector = copy.deepcopy(base)
+                vector["ledger"][field] = value
+                self.assertEqual(evaluate(vector), ("error", "ledger-event-key"))
+
+    def test_success_evidence_is_built_from_the_reconciled_event(self):
+        """XN-7/XN-11: success evidence names the ledger's event, never a defective record's."""
+        built = 0
+        for vector in self.vectors:
+            if vector["operation"] not in ("execute", "retry"):
+                continue
+            effects = {}
+            verdict, reason = evaluate(copy.deepcopy(vector), effects)
+            with self.subTest(vector=vector["name"]):
+                if verdict != "pass":
+                    self.assertNotIn("builtEvidence", effects)
+                    continue
+                built += 1
+                network = vector["agreement"]["terms"]["rail"]["parameters"]["selection"]["network"]
+                evidence = effects["builtEvidence"]
+                self.assertEqual(evidence["settlementEvent"], vector["ledger"]["settlementEvent"])
+                self.assertEqual(
+                    adapter_canonical_transaction(network, evidence["settlementTransaction"]),
+                    adapter_canonical_transaction(network, vector["ledger"]["transaction"]),
+                )
+        self.assertGreaterEqual(built, 57)
+        # A sound response keeps its spelling; a record naming another
+        # transaction is rebuilt from the ledger's event.
+        for name, transaction in (
+            ("response-transaction-0X-uppercase", "0X" + "AB" * 32),
+            ("response-transaction-substitution", "ab" * 32),
+            ("retry-response-lost-ledger-settled", "ab" * 32),
+        ):
+            with self.subTest(rebuilt=name):
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(self.by_name[name]), effects)[0], "pass")
+                self.assertEqual(effects["builtEvidence"], {
+                    "settlementTransaction": transaction,
+                    "settlementEvent": "evm:8453:" + "ab" * 32 + ":7",
+                })
 
     def test_verify_evidence_never_calls_the_wallet(self):
         """A verifier judges a stored record; it never reaches the authorization site."""
@@ -2448,6 +2598,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "The retained state then records `settlementTransaction` as absent or `null`, and a "
             "transaction is compared only when both sides know one.",
             "It MUST derive that form for both the retained and the recorded value before comparing them.",
+            "The event that the authorization identity resolves to is identified by its transaction "
+            "and its `settlementEvent`, and a missing one is `indeterminate`.",
+            "A transaction with no XN-7 adapter form, or a `settlementEvent` that is not "
+            "adapter-canonical or does not name that transaction on the selected network, is a "
+            "malformed coordinate and yields `error`.",
             "An address in the authorization identity compares under XN-5, so a malformed one "
             "yields `error` even when both spellings are identical.",
             "the adapter MUST compare the following addresses as 20-byte values.",

@@ -1348,6 +1348,17 @@ The format used per release:
   diagnostics and rules; 269 of them carry changed inputs, because the
   inventory replaces the caller list and the synthetic proof-byte fixture
   limit grows to cover the inventory witness.
+- **Exclusive Atomic evidence discriminator** (DACS-4 §9.5.10 AWS-17) —
+  `atomicEvidenceVersion` is exclusive like the other DACS-4 evidence
+  selectors: an Atomic evidence reader rejects an artifact that lacks it or
+  that also carries `evidenceVersion`, `deliveryEvidenceVersion`,
+  `finalityBoundEvidenceVersion`, or `legacyTransitionEvidenceVersion`, and
+  the "neither discriminator" rejection is scoped to Atomic evidence readers.
+  The `AtomicSettlementEvidenceV1` schema's `not` and the reference's selector
+  check now refuse every other selector, as `tests/dacs5_reference.py`
+  already did. Adds one re-signed negative vector per added selector, three
+  schema boundary checks (44 → 47), and a test that pins the schema and the
+  reference check separately and checks agreement with the DACS-5 reference.
 - **Atomic evidence under the LAA qualification** (DACS-5 §10.4.3 SEB-3) —
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is

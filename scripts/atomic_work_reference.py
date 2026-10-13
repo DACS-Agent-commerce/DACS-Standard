@@ -67,6 +67,12 @@ WORK_RECEIPT_DOMAIN = b"dacs-atomic-work-receipt:v1:"
 SLOT_DOMAIN = b"dacs-atomic-payment-slot:v1:"
 SETTLEMENT_ID_DOMAIN = b"dacs-atomic-settlement-id:v1:"
 EVIDENCE_DOMAIN = b"dacs-atomic-evidence:v1:"
+# Every DACS-4 evidence selector; an Atomic record carries only the last.
+EVIDENCE_SELECTORS = (
+    "evidenceVersion", "legacyTransitionEvidenceVersion",
+    "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
+    "atomicEvidenceVersion",
+)
 _RAIL_DOMAIN = b"dacs-rail:v1:"
 
 # Test-only domains.  They authenticate synthetic capability, ledger,
@@ -3539,10 +3545,13 @@ def verify_settlement(data: dict[str, Any]) -> None:
     if not isinstance(evidence, dict):
         raise Unknown("Atomic settlement evidence unavailable")
     validate_schema(evidence, "atomic-settlement-evidence-v1.schema.json")
-    has_atomic = "atomicEvidenceVersion" in evidence
-    has_legacy = "evidenceVersion" in evidence
-    if has_atomic == has_legacy:
-        raise Invalid("Atomic/legacy evidence discriminator must be exactly one")
+    # AWS-17: atomicEvidenceVersion is exclusive; no other DACS-4 evidence
+    # selector may accompany it, as tests/dacs5_reference.py also requires.
+    selectors = [
+        selector for selector in EVIDENCE_SELECTORS if selector in evidence
+    ]
+    if selectors != ["atomicEvidenceVersion"]:
+        raise Invalid("Atomic evidence discriminator must be the only evidence selector")
     if evidence.get("atomicEvidenceVersion") != "1" or "kind" in evidence:
         raise Invalid("legacy transaction reference is not Atomic settlement evidence")
     verify_embedded(evidence, data["publicKeys"], EVIDENCE_DOMAIN)

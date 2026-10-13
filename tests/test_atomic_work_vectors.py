@@ -93,7 +93,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 347)
+        self.assertEqual(vector_count, 350)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -1025,6 +1025,69 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ),
             ("indeterminate", "missing test-anchor-finality evidence"),
         )
+
+    def test_atomic_evidence_discriminator_is_exclusive(self):
+        # AWS-17: atomicEvidenceVersion is exclusive of every other DACS-4
+        # evidence selector.  The schema and the reference's own check each
+        # refuse the extra selector, and the DACS-5 reference agrees.
+        settlement = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-settlement-slot-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in settlement["vectors"]}
+        control = by_name["aws-distinct-atomic-evidence"]
+        cases = (
+            ("evidenceVersion", "aws-both-evidence-discriminators"),
+            ("deliveryEvidenceVersion", "aws-atomic-and-delivery-evidence-discriminators"),
+            ("finalityBoundEvidenceVersion", "aws-atomic-and-finality-bound-evidence-discriminators"),
+            ("legacyTransitionEvidenceVersion", "aws-atomic-and-legacy-transition-evidence-discriminators"),
+        )
+        self.assertEqual(
+            set(ref.EVIDENCE_SELECTORS), {selector for selector, _ in cases} | {"atomicEvidenceVersion"}
+        )
+        if str(ROOT / "tests") not in sys.path:
+            sys.path.insert(0, str(ROOT / "tests"))
+        import dacs5_reference
+
+        dacs5_keys = {
+            claim: ref.b64u_decode(value) for claim, value in control["input"]["publicKeys"].items()
+        }
+        self.assertEqual(
+            dacs5_reference._authenticated_evidence_wire_type(
+                control["input"]["evidence"], dacs5_keys
+            ),
+            "atomic",
+        )
+        self.assertEqual(ref.evaluate_vector(control), ("pass", "predicate accepted"))
+        for selector, name in cases:
+            vector = by_name[name]
+            evidence = vector["input"]["evidence"]
+            with self.subTest(selector=selector):
+                self.assertEqual(evidence[selector], "1")
+                self.assertEqual(
+                    {k: v for k, v in evidence.items() if k not in {selector, "signature"}},
+                    {k: v for k, v in control["input"]["evidence"].items() if k != "signature"},
+                )
+                ref.verify_embedded(evidence, vector["input"]["publicKeys"], ref.EVIDENCE_DOMAIN)
+                self.assertEqual(vector["expected"], "fail")
+                self.assertEqual(ref.evaluate_vector(vector)[0], "fail")
+                with self.assertRaises(ref.Invalid):
+                    ref.validate_schema(evidence, "atomic-settlement-evidence-v1.schema.json")
+                # Without the schema layer, the reference's own check refuses it.
+                with mock.patch.object(ref, "validate_schema", lambda *args, **kwargs: None):
+                    self.assertEqual(
+                        ref.evaluate_vector(vector),
+                        ("fail", "Atomic evidence discriminator must be the only evidence selector"),
+                    )
+                self.assertIsNone(
+                    dacs5_reference._authenticated_evidence_wire_type(evidence, dacs5_keys)
+                )
+        with mock.patch.object(ref, "validate_schema", lambda *args, **kwargs: None):
+            self.assertEqual(ref.evaluate_vector(control), ("pass", "predicate accepted"))
+            self.assertEqual(
+                ref.evaluate_vector(by_name["aws-neither-evidence-discriminator"]),
+                ("fail", "Atomic evidence discriminator must be the only evidence selector"),
+            )
 
     def test_presented_by_resolves_to_exactly_one_distinct_claim(self):
         def signed(bundle):

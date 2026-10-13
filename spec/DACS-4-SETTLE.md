@@ -2643,7 +2643,7 @@ The normative machine-readable schema is
 
 ```
 type AtomicSettlementEvidenceV1 = {
-  atomicEvidenceVersion: "1"
+  atomicEvidenceVersion: "1"          // exclusive discriminator; MUST NOT carry evidenceVersion or another *EvidenceVersion
   networkId: string
   jobId: string
   railId: string
@@ -2744,11 +2744,18 @@ ordinary PC-2 tuple remains independently recoverable and verifiable.
 - (AWS-16) A producer MUST use `AtomicSettlementEvidenceV1` for an Atomic Work
   payment or delivery and MUST NOT encode a Work, Work receipt, or operation as
   an existing `demos:{txHash}` reference.
-- (AWS-17) A reader MUST select `atomicEvidenceVersion` before interpreting
-  any other member and MUST reject an unsupported version or an attempted
-  coercion to `SettlementEvidence` under CORE §11.1.2. An artifact carrying
-  both `atomicEvidenceVersion` and legacy `evidenceVersion`, or neither
-  discriminator, MUST be rejected before any other interpretation.
+- (AWS-17) An Atomic evidence reader MUST select `atomicEvidenceVersion`
+  before interpreting any other member and MUST reject an unsupported version
+  or an attempted coercion to `SettlementEvidence` under CORE §11.1.2.
+  `atomicEvidenceVersion` is an exclusive discriminator, like the other
+  DACS-4 evidence selectors: an Atomic evidence reader MUST reject, before any
+  other interpretation, an artifact that lacks `atomicEvidenceVersion` or that
+  carries it together with legacy `evidenceVersion` or another
+  `*EvidenceVersion` selector (`deliveryEvidenceVersion`,
+  `finalityBoundEvidenceVersion`, or `legacyTransitionEvidenceVersion`). This
+  rule binds readers of Atomic evidence only; it does not make a
+  `DeliveryEvidence`, `FinalityBoundSettlementEvidence`, or other evidence
+  reader reject a record that carries its own discriminator.
 - (AWS-18) A producer MUST create success evidence only after independently
   verifying the referenced BFT-final Work receipt and its canonical content
   hash.

@@ -48,7 +48,14 @@
     "signature": { "$ref": "#/$defs/signature" }
   },
   "additionalProperties": true,
-  "not": { "required": ["evidenceVersion"] },
+  "not": {
+    "anyOf": [
+      { "required": ["evidenceVersion"] },
+      { "required": ["deliveryEvidenceVersion"] },
+      { "required": ["finalityBoundEvidenceVersion"] },
+      { "required": ["legacyTransitionEvidenceVersion"] }
+    ]
+  },
   "allOf": [
     {
       "if": { "properties": { "outcome": { "const": "failure" } } },

@@ -3525,6 +3525,17 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
     neither_discriminator = copy.deepcopy(settle_input)
     del neither_discriminator["evidence"]["atomicEvidenceVersion"]
     neither_discriminator["evidence"] = resign_atomic_evidence(neither_discriminator["evidence"])
+    # AWS-17: atomicEvidenceVersion is exclusive of every other DACS-4
+    # evidence selector; each case adds one and re-signs the evidence.
+    extra_selector_inputs = {}
+    for selector in (
+        "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
+        "legacyTransitionEvidenceVersion",
+    ):
+        extra_selector = copy.deepcopy(settle_input)
+        extra_selector["evidence"][selector] = "1"
+        extra_selector["evidence"] = resign_atomic_evidence(extra_selector["evidence"])
+        extra_selector_inputs[selector] = extra_selector
     wrong_pc2 = mutate(
         settle_input, ["pc2Address"],
         f"dacs4:payment:{intent['jobId']}:x402-usdc:{intent['phaseIndex']}",
@@ -3712,6 +3723,9 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         vector("aws-distinct-atomic-evidence", ["AWS-16", "AWS-17", "AWS-27"], "settlement", settle_input, "pass", "A versioned, properly authorized evidence artifact preserves the legacy ChainTxRef contract.", boundary_rules=["AWS-16", "AWS-17"]),
         vector("aws-both-evidence-discriminators", ["AWS-17"], "settlement", both_discriminators, "fail", "Atomic and legacy evidence discriminators cannot coexist.", boundary_rules=["AWS-17"]),
         vector("aws-neither-evidence-discriminator", ["AWS-17"], "settlement", neither_discriminator, "fail", "Evidence without either discriminator is rejected before interpretation.", boundary_rules=["AWS-17"]),
+        vector("aws-atomic-and-delivery-evidence-discriminators", ["AWS-17"], "settlement", extra_selector_inputs["deliveryEvidenceVersion"], "fail", "The exclusive Atomic discriminator cannot coexist with the DeliveryEvidence selector, even in otherwise valid, re-signed Atomic evidence."),
+        vector("aws-atomic-and-finality-bound-evidence-discriminators", ["AWS-17"], "settlement", extra_selector_inputs["finalityBoundEvidenceVersion"], "fail", "The exclusive Atomic discriminator cannot coexist with the FinalityBoundSettlementEvidence selector, even in otherwise valid, re-signed Atomic evidence."),
+        vector("aws-atomic-and-legacy-transition-evidence-discriminators", ["AWS-17"], "settlement", extra_selector_inputs["legacyTransitionEvidenceVersion"], "fail", "The exclusive Atomic discriminator cannot coexist with the LegacyTransitionSettlementEvidence selector, even in otherwise valid, re-signed Atomic evidence."),
         vector("aws-phase-orchestrator-signature", ["AWS-27"], "settlement", {**settle_input, "evidence": payer_evidence}, "fail", "A payer signature cannot substitute for the authenticated phase orchestrator signature."),
         vector("aws-legacy-txref-not-reinterpreted", ["AWS-16", "AWS-17"], "settlement", legacy, "fail", "demos:{txHash} is not reinterpreted as a Work operation."),
         vector("aws-final-work-receipt-bound", ["AWS-18", "AWS-19", "AWS-20", "AWS-24"], "settlement", settle_input, "pass", "Final receipt, committed operation leaf, operation kind, and settlement payload are verified together.", boundary_rules=["AWS-24"]),

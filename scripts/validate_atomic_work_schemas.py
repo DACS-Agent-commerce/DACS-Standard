@@ -392,6 +392,19 @@ def main() -> int:
         legacy_discriminator,
     )
 
+    # AWS-17: the Atomic discriminator is exclusive of every other selector.
+    for selector in (
+        "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
+        "legacyTransitionEvidenceVersion",
+    ):
+        extra_selector = deepcopy(settlement["input"]["evidence"])
+        extra_selector[selector] = "1"
+        expect_invalid(
+            "atomic-settlement-evidence-v1.schema.json",
+            f"Atomic evidence discriminator excludes {selector}",
+            extra_selector,
+        )
+
     unsafe_phase_index = deepcopy(settlement["input"]["evidence"])
     unsafe_phase_index["phaseIndex"] = 9007199254740992
     expect_invalid(

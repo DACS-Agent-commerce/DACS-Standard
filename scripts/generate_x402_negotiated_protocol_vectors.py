@@ -2530,6 +2530,14 @@ def build_vectors() -> list[dict]:
         add_case(vectors, f"bounded-fetch-{name}-target", "fail", "XN-2/DACS-1-6.3.6", note,
                  literal_target(unsafe_url), refresh=True, reason="non-public-request-target")
 
+    # XN-7: a record built over a response that was never received commits to
+    # JSON null, and the verifier accepts that preimage.
+    add_case(vectors, "record-over-unreceived-response-verifies", "pass", "XN-7/XN-8",
+             "a stored record whose receipt hash commits to JSON null, because no "
+             "version-selected response decoded, verifies; the response defect is recorded",
+             lambda v: v["http"]["responseHeader"].update({"name": "X-PAYMENT-RESPONSE"}),
+             operation="verify-evidence", refresh=True, reason="response-header")
+
     return vectors
 
 

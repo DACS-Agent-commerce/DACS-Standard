@@ -1965,7 +1965,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertGreaterEqual(reached, 75)
         # Every stored-record verdict a verifier gives leaves the payment to the ledger.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 23)
+        self.assertEqual(len(records), 24)
         for vector in records:
             with self.subTest(record=vector["name"]):
                 as_execute = copy.deepcopy(vector)
@@ -2042,7 +2042,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             with self.subTest(vector=vector["name"]):
                 effects = {}
                 verdict, _ = evaluate(copy.deepcopy(vector), effects)
-                self.assertNotEqual(verdict, "pass")
+                # Every record case is a rejection except the JSON-null preimage.
+                self.assertEqual(verdict == "pass",
+                                 vector["name"] == "record-over-unreceived-response-verifies")
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
         for name, want in (("protocol-v2-exact-success", ("pass", None)),
                            ("response-not-success", ("pass", "response-not-success")),

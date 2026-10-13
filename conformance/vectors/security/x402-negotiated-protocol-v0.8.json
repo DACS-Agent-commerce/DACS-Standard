@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 333,
-  "hash": "e32348769320a873be0da5b4d3f9c9fb1ecb1587ae6d934d0ddb2c958393056d",
+  "count": 334,
+  "hash": "2cbed4d1e780dc606f696a3e1788f78982ea82f039d1c9cfc915c6f744df28f8",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -29982,6 +29982,53 @@
         }
       ],
       "expectedReason": "non-public-request-target"
+    },
+    {
+      "name": "record-over-unreceived-response-verifies",
+      "expected": "pass",
+      "rule": "XN-7/XN-8",
+      "operation": "verify-evidence",
+      "note": "a stored record whose receipt hash commits to JSON null, because no version-selected response decoded, verifies; the response defect is recorded",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "name"
+          ],
+          "value": "X-PAYMENT-RESPONSE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-header"
     }
   ]
 }

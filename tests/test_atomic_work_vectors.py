@@ -93,7 +93,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 315)
+        self.assertEqual(vector_count, 340)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -729,6 +729,192 @@ class AtomicWorkVectorTests(unittest.TestCase):
                 self.assertEqual(verdict, expected)
                 self.assertIn("current-profile admission", reason)
 
+    def _purchase_vectors(self):
+        purchase = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-purchase-completion-v0.1"
+        )
+        return {vector["name"]: vector for vector in purchase["vectors"]}
+
+    def test_composed_slot_transition_follows_the_signed_cas(self):
+        by_name = self._purchase_vectors()
+        for name in (
+            "awp-purchase-composed-admission",
+            "awp-composed-slot-transition-derived-claim",
+            "awp-purchase-composed-retry-admission",
+            "awp-composed-slot-transition-derived-retry",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(by_name[name])[0], "pass")
+        self.assertNotIn(
+            "action",
+            by_name["awp-composed-slot-transition-derived-claim"]["input"]["slotAdmission"],
+        )
+        for name, reason in (
+            ("awp-composed-slot-transition-observation-only",
+             "an observation is not composed Purchase slot admission"),
+            ("awp-composed-slot-transition-committed-observation",
+             "an observation is not composed Purchase slot admission"),
+            ("awp-composed-slot-transition-caller-mismatch",
+             "caller slot action differs from the signed slot transition"),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(by_name[name]), ("fail", reason))
+
+    def test_composed_business_effects_come_from_the_ledger_inventory(self):
+        by_name = self._purchase_vectors()
+        for name, expected in (
+            ("awp-composed-effect-inventory-missing",
+             ("indeterminate", "authenticated Work-ledger effect inventory unavailable")),
+            ("awp-composed-effect-inventory-empty",
+             ("fail", "Work-ledger effect inventory omits the ledger-selected winner")),
+            ("awp-composed-effect-inventory-late-attempt",
+             ("fail", "late/competing attempt was not fenced")),
+            ("awp-composed-effect-inventory-other-attempt",
+             ("fail", "Work-ledger effect inventory omits the ledger-selected winner")),
+            ("awp-composed-effect-inventory-winner-reference-mismatch",
+             ("fail", "Work-ledger effect inventory winner reference mismatch")),
+            ("awp-composed-effect-source-unauthenticated",
+             ("fail", "a caller-supplied business-effect list is not Work-ledger authority")),
+            ("awp-composed-effect-source-unauthenticated-late-inventory",
+             ("fail", "a caller-supplied business-effect list is not Work-ledger authority")),
+            ("awp-composed-effect-inventory-other-block",
+             ("fail", "Work-ledger effect inventory is not taken at the finalized receipt block")),
+            ("awp-composed-effect-inventory-participant-signed",
+             ("fail", "signature signer is not the authenticated authority")),
+            ("awp-composed-effect-inventory-signature-invalid",
+             ("fail", "invalid signature")),
+            ("awp-composed-effect-inventory-unsigned",
+             ("indeterminate", "missing signature")),
+            ("awp-composed-effect-inventory-other-work",
+             ("fail", "Work-ledger effect inventory names another Work")),
+            ("awp-composed-effect-inventory-other-proof-profile",
+             ("fail", "Work-ledger effect inventory proof-profile binding mismatch")),
+            ("awp-composed-effect-inventory-other-validator-set",
+             ("fail", "Work-ledger effect inventory proof-profile binding mismatch")),
+            ("awp-composed-effect-inventory-repeated-attempt",
+             ("fail", "Work-ledger effect inventory repeats an attempt")),
+            ("awp-composed-effect-source-caller-empty",
+             ("fail", "a caller-supplied business-effect list is not Work-ledger authority")),
+            ("awp-composed-effect-inventory-unknown-member",
+             ("fail", "synthetic Work-ledger effect inventory shape mismatch")),
+            ("awp-composed-effect-inventory-entry-unknown-member",
+             ("fail", "Work-ledger effect inventory entry malformed")),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(by_name[name]), expected)
+
+        control = by_name["awp-purchase-composed-admission"]
+        control_inventory = control["input"]["ledgerInventory"]
+        public_keys = control["input"]["publicKeys"]
+        # Signer and binding cases carry a verifying signature, so they reach
+        # the check they name; the altered inventory keeps the control body.
+        for name, signer in (
+            ("awp-composed-effect-inventory-participant-signed", "payer"),
+            ("awp-composed-effect-inventory-other-work", "network"),
+            ("awp-composed-effect-inventory-other-proof-profile", "network"),
+            ("awp-composed-effect-inventory-other-validator-set", "network"),
+            ("awp-composed-effect-inventory-repeated-attempt", "network"),
+            ("awp-composed-effect-inventory-unknown-member", "network"),
+            ("awp-composed-effect-inventory-entry-unknown-member", "network"),
+        ):
+            with self.subTest(name=name):
+                inventory = by_name[name]["input"]["ledgerInventory"]
+                ref.verify_embedded(
+                    inventory, public_keys, ref._LEDGER_INVENTORY_TEST_DOMAIN
+                )
+                self.assertEqual(
+                    inventory["signature"]["signer"], generator.CLAIMS[signer]
+                )
+        altered = by_name["awp-composed-effect-inventory-signature-invalid"][
+            "input"
+        ]["ledgerInventory"]
+        self.assertEqual(
+            {k: v for k, v in altered.items() if k != "signature"},
+            {k: v for k, v in control_inventory.items() if k != "signature"},
+        )
+        self.assertNotEqual(altered["signature"], control_inventory["signature"])
+
+        caller_list = copy.deepcopy(control)
+        caller_list["input"]["businessEffectAttempts"] = [
+            control["input"]["winningAttemptId"]
+        ]
+        self.assertEqual(
+            ref.evaluate_vector(caller_list),
+            ("fail", "a caller-supplied business-effect list is not Work-ledger authority"),
+        )
+
+        receipt = control["input"]["receipt"]
+        earlier_block = copy.deepcopy(control)
+        earlier_block["input"]["ledgerInventory"] = generator.effect_inventory(
+            ref.work_id(control["input"]["intent"]),
+            [(
+                receipt["winningAttempt"]["attemptId"],
+                receipt["winningAttempt"]["nativeTransactionRef"],
+            )],
+            block_id="block-900",
+        )
+        earlier_block["input"] = generator.add_composed_limit_evidence(
+            earlier_block["input"]
+        )
+        self.assertEqual(
+            ref.evaluate_vector(earlier_block),
+            ("fail", "Work-ledger effect inventory is not taken at the finalized receipt block"),
+        )
+
+    def test_attempt_effects_require_a_ledger_selected_winner(self):
+        execution = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-execution-recovery-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in execution["vectors"]}
+        control = by_name["aw-replacement-with-noninclusion"]
+        recorded = by_name["aw-replacement-effect-without-winner"]
+        self.assertEqual(ref.evaluate_vector(control), ("pass", "predicate accepted"))
+        self.assertIsNone(recorded["input"]["winningAttemptId"])
+        self.assertEqual(
+            [entry["attemptId"] for entry in recorded["input"]["ledgerInventory"]["effectAttempts"]],
+            ["attempt-a"],
+        )
+        self.assertEqual(
+            {k: v for k, v in recorded["input"].items() if k != "ledgerInventory"},
+            {k: v for k, v in control["input"].items() if k != "ledgerInventory"},
+        )
+        self.assertEqual(
+            ref.evaluate_vector(recorded),
+            ("fail", "business effect recorded without a ledger-selected winner"),
+        )
+
+    def test_unsigned_effect_inventory_has_one_classification(self):
+        control = self._purchase_vectors()["awp-purchase-composed-admission"]
+        verdicts = set()
+        for label in ("signature absent", "signature null"):
+            with self.subTest(label=label):
+                unsigned = copy.deepcopy(control)
+                inventory = unsigned["input"]["ledgerInventory"]
+                if label == "signature absent":
+                    del inventory["signature"]
+                else:
+                    inventory["signature"] = None
+                unsigned["input"] = generator.add_composed_limit_evidence(
+                    unsigned["input"]
+                )
+                verdicts.add(ref.evaluate_vector(unsigned))
+        self.assertEqual(verdicts, {("indeterminate", "missing signature")})
+
+    def test_commitment_receipt_without_finality_evidence_is_unavailable(self):
+        by_name = self._purchase_vectors()
+        self.assertEqual(
+            ref.evaluate_vector(by_name["awp-purchase-signed-sequential-admission"])[0],
+            "pass",
+        )
+        self.assertEqual(
+            ref.evaluate_vector(
+                by_name["awp-purchase-sequential-commitment-evidence-null"]
+            ),
+            ("indeterminate", "missing test-anchor-finality evidence"),
+        )
+
     def test_presented_by_resolves_to_exactly_one_distinct_claim(self):
         def signed(bundle):
             unsigned = {k: v for k, v in bundle.items() if k != "presentation"}
@@ -1066,6 +1252,173 @@ class AtomicPresenterWiringWitnessTests(unittest.TestCase):
         self.assertIn("awp-completion-payer-presenter-ambiguous", failures)
         # The direct helper test alone cannot see the missing consumer wiring.
         self.assertEqual([], helper_only.failures + helper_only.errors)
+
+
+def _without_guard(function, reason: str, operand: int | None = None):
+    """Recompile ``function`` without the ``if`` guard that raises ``reason``.
+
+    With ``operand``, only that operand of the guard's boolean condition is
+    removed; otherwise the whole guard is.
+    """
+    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
+    removed = []
+
+    class StripGuard(ast.NodeTransformer):
+        def visit_If(self, node):
+            self.generic_visit(node)
+            raised = node.body[0] if len(node.body) == 1 else None
+            if not (
+                isinstance(raised, ast.Raise)
+                and isinstance(raised.exc, ast.Call)
+                and len(raised.exc.args) == 1
+                and isinstance(raised.exc.args[0], ast.Constant)
+                and raised.exc.args[0].value == reason
+            ):
+                return node
+            removed.append(node)
+            if operand is None:
+                # ``pass`` keeps an enclosing block valid when the guard is
+                # its only statement.
+                return ast.copy_location(ast.Pass(), node)
+            kept = [v for i, v in enumerate(node.test.values) if i != operand]
+            node.test = kept[0] if len(kept) == 1 else ast.BoolOp(node.test.op, kept)
+            return node
+
+    tree = ast.fix_missing_locations(StripGuard().visit(tree))
+    namespace = {}
+    exec(
+        compile(
+            tree, inspect.getsourcefile(function), "exec",
+            flags=__future__.annotations.compiler_flag, dont_inherit=True,
+        ),
+        function.__globals__, namespace,
+    )
+    return namespace[function.__name__], len(removed)
+
+
+class AtomicEffectInventoryGuardWitnessTests(unittest.TestCase):
+    """Seventeen AW-44 inventory and AWS-4 slot guards, each caught by a committed vector."""
+
+    PASS = ("pass", "predicate accepted")
+    # (function, wrong implementation, (vector, exact result without the
+    # guard)).  The expected result is where the verdict moves: to ``pass``,
+    # or, where a later guard keeps the verdict, to that guard's reason.  An
+    # exact result keeps a recompiled function that is merely broken from
+    # counting as caught.
+    WRONG_IMPLEMENTATIONS = (
+        ("_verify_effect_inventory", ("call", "verify_embedded"), (
+            ("awp-composed-effect-inventory-signature-invalid", PASS),
+            ("awp-composed-effect-inventory-unsigned",
+             ("fail", "signer is not a canonical ClaimReference string")),
+        )),
+        ("_verify_effect_inventory", ("call", "require_signer"), (
+            ("awp-composed-effect-inventory-participant-signed", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "authenticated Work-ledger effect inventory unavailable", None), (
+            # Without the guard, the absent inventory reaches the shape check,
+            # whose incidental TypeError is malformed input, not ``fail``.
+            ("awp-composed-effect-inventory-missing",
+             ("error", "TypeError: 'NoneType' object is not iterable")),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "synthetic Work-ledger effect inventory shape mismatch", None), (
+            ("awp-composed-effect-inventory-unknown-member", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory names another Work", None), (
+            ("awp-composed-effect-inventory-other-work", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory proof-profile binding mismatch", 0), (
+            ("awp-composed-effect-inventory-other-proof-profile", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory proof-profile binding mismatch", 1), (
+            ("awp-composed-effect-inventory-other-validator-set", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory is not taken at the finalized receipt block", None), (
+            ("awp-composed-effect-inventory-other-block", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory entry malformed", None), (
+            ("awp-composed-effect-inventory-entry-unknown-member", PASS),
+        )),
+        ("_verify_effect_inventory",
+         ("guard", "Work-ledger effect inventory repeats an attempt", None), (
+            ("awp-composed-effect-inventory-repeated-attempt",
+             ("fail", "late/competing attempt was not fenced")),
+        )),
+        ("evaluate_attempts",
+         ("guard", "a caller-supplied business-effect list is not Work-ledger authority", None), (
+            ("awp-composed-effect-source-unauthenticated",
+             ("indeterminate", "authenticated Work-ledger effect inventory unavailable")),
+            ("awp-composed-effect-source-caller-empty", PASS),
+            ("awp-composed-effect-source-unauthenticated-late-inventory",
+             ("fail", "late/competing attempt was not fenced")),
+        )),
+        ("evaluate_attempts",
+         ("guard", "business effect recorded without a ledger-selected winner", None), (
+            ("aw-replacement-effect-without-winner", PASS),
+        )),
+        ("evaluate_attempts",
+         ("guard", "Work-ledger effect inventory omits the ledger-selected winner", None), (
+            ("awp-composed-effect-inventory-other-attempt", PASS),
+        )),
+        ("evaluate_attempts",
+         ("guard", "late/competing attempt was not fenced", None), (
+            ("awp-composed-effect-inventory-late-attempt", PASS),
+        )),
+        ("evaluate_attempts",
+         ("guard", "Work-ledger effect inventory winner reference mismatch", None), (
+            ("awp-composed-effect-inventory-winner-reference-mismatch", PASS),
+        )),
+        ("_evaluate_composed_admission",
+         ("guard", "an observation is not composed Purchase slot admission", None), (
+            ("awp-composed-slot-transition-observation-only",
+             ("fail", "caller slot action differs from the signed slot transition")),
+            ("awp-composed-slot-transition-committed-observation",
+             ("fail", "caller slot action differs from the signed slot transition")),
+        )),
+        ("_evaluate_composed_admission",
+         ("guard", "caller slot action differs from the signed slot transition", None), (
+            ("awp-composed-slot-transition-caller-mismatch", PASS),
+        )),
+    )
+
+    def test_each_effect_inventory_and_slot_guard_is_load_bearing(self):
+        by_name = {}
+        for name in (
+            "atomic-work-purchase-completion-v0.1", "atomic-work-execution-recovery-v0.1",
+        ):
+            data = json.loads(
+                (ROOT / "conformance" / "vectors" / "security" / f"{name}.json")
+                .read_text(encoding="utf-8")
+            )
+            by_name.update((vector["name"], vector) for vector in data["vectors"])
+        for function_name, (kind, *target), caught_by in self.WRONG_IMPLEMENTATIONS:
+            with self.subTest(function=function_name, removed=target):
+                function = getattr(ref, function_name)
+                for name, moved in caught_by:
+                    control = ref.evaluate_vector(by_name[name])
+                    self.assertEqual(control[0], by_name[name]["expected"], name)
+                    self.assertNotEqual(moved, control, name)
+                if kind == "call":
+                    wrong, removed = _without_calls(function, *target)
+                else:
+                    wrong, removed = _without_guard(function, *target)
+                self.assertEqual(removed, 1)
+                # A surface that dispatches to the function directly is
+                # patched too, not only callers that look it up by name.
+                dispatch = {
+                    surface: wrong for surface, evaluator in ref.EVALUATORS.items()
+                    if evaluator is function
+                }
+                with mock.patch.object(ref, function_name, wrong), \
+                        mock.patch.dict(ref.EVALUATORS, dispatch):
+                    for name, moved in caught_by:
+                        self.assertEqual(ref.evaluate_vector(by_name[name]), moved, name)
 
 
 if __name__ == "__main__":

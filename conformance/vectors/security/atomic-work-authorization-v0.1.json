@@ -24,7 +24,7 @@
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
   "count": 46,
-  "hash": "b86817acadca288f384351e57018a490568aa7fc505f408a1e1ac6bde26b711b",
+  "hash": "6bf7fb82a105673647589f3db32b563c312c7f147525ebb85aa708894edff8e7",
   "coverage": {
     "classification": "candidate-complete-applicable-polarity",
     "applicabilityProfile": "atomic-v0.1-explicit",
@@ -1029,12 +1029,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -2033,12 +2033,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -3036,12 +3036,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -4040,12 +4040,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -5027,12 +5027,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -6031,12 +6031,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -7020,12 +7020,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -8024,12 +8024,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -9028,12 +9028,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -10033,12 +10033,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -11038,12 +11038,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -12043,12 +12043,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -13047,12 +13047,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -14051,12 +14051,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -15055,12 +15055,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -16059,12 +16059,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -17063,12 +17063,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -18067,12 +18067,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -19071,12 +19071,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImZiYjlhYjY2MDdjNjBmNTc3ZjA2MGI1YTkwZWE0NzE1ZDA1NGVkNTdkMjNkZWJkYjI5MmYxMzU3NTFiNTAwODYiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoibUppVkYtUmtYUHRnM0pjMzV1NUxWcl8wY29DSWlHMmpoVklJSG81cC1yR3NhbkppeTJsQnNFR201UVQzaTFuaklXbHNvVDlOME42amRtWlhQN1pKQ2cifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6IjU5M2FlNDZiZTk4MjMzMWQ3NDhlZGFjZjFmMzY0ZTExNGUxMTY0ODZhOTQ0OTFhNzFmN2Q0OWQwZGQ1ODZiNDAiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiOWFSaS10MWNoampzNVZ1U3NySWdhbVRWdUdrM0xRenpQVUE1cnh3elJUUmlGbllILWFYUnFhRnctUGdLZWgzYmNDZHVaSVZvMVpIM0s0bHYzeElIQncifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -20076,12 +20076,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijc5N2UxZTI5ZTJiZWY4NDljZDkzZjBmODU3MjA1YmUwNjFlNGZhMmQ4NjkwMmJmNmY5NGExN2YxNDJlODJlMDgiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoibkNidm55SVByTUZESXNmZHZtNmpiSE9SU2RsU3pobGpDUE9iSTUtM3RuUGZPMWd1MGRvaUFSMkNVNEk3bWU5SWsxb01yczd5X2RtS3F1OVRmRWJSQmcifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImU4YWZmMDcxZDA5ZTgxNWY4NDA4Mjk2MDdhYzBmNTUyOGQ0MzM1YTQ1OTIzZjViYjg1OWQzZTMwZWU3YzY4MTAiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiTFUwUG01TFBQZ1VMQ0tXeTFKRC1oWV90VDlianN3OTJnUGRyaUlWSUZkOWp2UmFMWjZDUVJFWnBBUEJBVm91Wk1UNUV5TmREcnlWZC01bFFreUZMRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -21079,12 +21079,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6IjU1Y2FlYWU1MTMyMmMxZWRhMTg4ZWFiNjM1NTdiMGE0MDM2ZDhlMWNhODBjNTUzNGNlMjljNzJmYTZmNWFlNWQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiODlmbTRiMWxPSDNHVm5ZWkFac0FfMXRKV0xzZjBrVmZTNC1HSmFnd183bC15U0FjMGI1Z19qbkdtaURNa29zTnJUMTFQUHJ3R3dlUTE4dVZfbS1wQ0EifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImViOTkxYmUwMjQxMTBkNGU2NDFiZjRjY2FjYmI1OWYzNjQ5Mjc4MTczNzVjNWY5MjEyOTAyZTA0MGI0YzAxZTUiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYlpCRFVqYlQwbFlBdkJTZ2xpRXdmQ3NORzlDeV9MSW82Q0hVNGRoVmJ3dC0wMXNQZTZPWUozVUZ6V1JBNWVnem5lNEEwVFliNEczZTc5UG9sQXRJQXcifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -22083,12 +22083,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImNiZjRkMzliZDliMDAwZjFlN2Q5OWYzMDJhZGEwYTQ4N2QzZjlmZmM3NGU0M2UwZDVjOWRiYTY2YTBmYzg5ZTMiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoib2FveGlINHF1T2xvNDFCNWlMYlRGNGJVWjlUdUo1T01WME9LVFVEWm9pZWs4YUdZamV3NnN2TUQzOF9wajF0eDBSMFdoTGMtMXJIR3JlSTZ2Q1MwQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6IjlmY2M4N2ZjYTg4NzE0NjM4MjQ0ZGZhMTMzNjE3NTUyYzU0ZmIyZjRhMzk2NThlYjY1OTUyZTg3YzgwMmUyYjQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiMnBiT1hoZFdyemZSUFN0MmxzMjAtQkpCNU9VSXFlNl9udlRBMVlfRl9JX0lKZDFDTjM5d1RGcHlrcjdsOWE5MjFTdDM5dVNHVmpGQjlpdTdEM2RGQXcifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -23089,12 +23089,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImRmOThkOWZmNGU3MWFjZTE4Yzg3NTM4OTJjYTk3MWFiMWJiNWQ4ZjUwNzFmNTIyNThlNTRkY2E1Mjc5MTI0NDgiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiT2xEQlRnSndqV00wNG51d3RIeWdXcjViMllVWHJUM0pYTFcxRUFPR18tZ2tjRDd5NGN3dU1qcng4YmFmY1VLWGplNTk5QTJDdnRnaUhzZm1yNHFVQ1EifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImIyMTY1MWU5ZjE1NGMxYmZkZmI0ZTE0ZTc5NzUzYWZhMzc4MTc0MjYxYWFlMmUzMTM1ZTY0M2Q4N2M1MjFkY2YiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiOUg0Z2tualowdkdSN2tvTzRjV1FZTDJjdG5BNUZHWE1USmRocUZtdjB2SVIwaEJVak9qZDE3MGJ3dllmdTdSVjh0eG1jVlNFRm1qdEJKY0ptT3VmRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -24093,12 +24093,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6IjBlOTE1Nzk3ZDc3Y2JlZDcxYmMxNjgzOWY3OTUzMTM5YThjODBlMzlhMjMyNGQyOTI0N2Q1MjYyMzkxNGVlM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoib3VobGxHUGNlRWo2OHZQNFBPai1ielBkSTl2UWNJSW1rZkJlWVpETVlGUDhTaXJxaUdqQW0tZDVfTEhPcnd0Vzk5dWNQSkt5TVd3Mm1TUzZOZVB1QkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6ImFlZjZmYjBlOTBiZjUwMmY3Y2VhNTlkMWExNjRhOTIwMjRlYzRmMTBhZDMyZTcwNmFlZTViNzUzM2I4ZTc5ODkiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoib3JrOHJabmR2Wl9fVEJoWHpUOEdFMGZYcXNJd0tzd20yVG9GYmJTcGdPWjk5ZVBmazA1cHN3S3lxQjFfTklBSmIyMUdfMTJZb2ZtdnFJZGtuYVAtQncifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -25096,12 +25096,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -25520,12 +25520,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -26524,12 +26524,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -27527,12 +27527,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -28530,12 +28530,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -29534,12 +29534,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -30538,12 +30538,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -31541,12 +31541,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -32544,12 +32544,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -33550,12 +33550,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -34553,12 +34553,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -35556,12 +35556,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -36560,12 +36560,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -37584,12 +37584,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -38609,12 +38609,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -39633,12 +39633,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -40639,12 +40639,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -41626,12 +41626,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -42629,12 +42629,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -43600,12 +43600,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -44605,12 +44605,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",
@@ -45611,12 +45611,12 @@
             "maxCanonicalBytes": 50000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2000,
-            "maxProofBytes": 20000,
+            "maxProofBytes": 24000,
             "feeRule": "test-fixed-fee"
           },
           "evidence": {
             "kind": "test-network-capability-attestation",
-            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijk5MTVkMWRhOWQyMzIyNzk4OWUxZDFiMzYwYjY0MmM0Zjk0NThmZDA4NTBjN2FhYzUxZjc1YmFlNDlkOTJkOGQiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiY3ZkbW9Ib2Q5dHlvRE81azl0U1F0aU05RHBoTmFzY2I1Z2szUW4xS2xnaUhkWEN2eTU2VTdSVTBOMFVqZEVzS1pQV1RhaTJfZHVGcDc0ZlRabEQwRFEifX0"
           }
         },
         "expectedNetworkAuthority": "did:dacs:test:network",

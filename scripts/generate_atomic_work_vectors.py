@@ -110,7 +110,7 @@ ALTERNATE_SELLER_PUBLIC_KEY = ref.b64u(
     ref.ed25519_public_key(SEEDS["alternate-seller"])
 )
 TEST_RAIL_ID = "demos-native:DEM"
-COMPOSED_PROOF_RESERVATION_BYTES = 19_900
+COMPOSED_PROOF_RESERVATION_BYTES = 23_900
 
 
 def claim(role: str) -> str:
@@ -956,7 +956,7 @@ def capability() -> dict[str, Any]:
             "maxCanonicalBytes": 50_000,
             "maxOperations": 16,
             "maxExecutionTimeMs": 2_000,
-            "maxProofBytes": 20_000,
+            "maxProofBytes": 24_000,
             "feeRule": "test-fixed-fee",
         },
     }
@@ -1023,6 +1023,48 @@ def ledger_evidence(
     return ref.sign_embedded(
         value, CLAIMS["network"], SEEDS["network"], ref._LEDGER_TEST_DOMAIN
     )
+
+
+def effect_inventory(
+    work_id: str, effects: list[tuple[str, dict[str, str]]],
+    *, block_id: str = "block-atomic-901",
+    proof_profile: str = "demos-bft-proof/test-1",
+    validator_set_id: str = "test-validator-set-1",
+) -> dict[str, Any]:
+    """Network-signed Work-ledger inventory of every attempt with business effect."""
+    value = {
+        "inventoryVersion": "test-1",
+        "workId": work_id,
+        "blockId": block_id,
+        "proofProfile": proof_profile,
+        "validatorSetId": validator_set_id,
+        "effectAttempts": [
+            {"attemptId": attempt_id, "nativeTransactionRef": copy.deepcopy(native_ref)}
+            for attempt_id, native_ref in effects
+        ],
+    }
+    return ref.sign_embedded(
+        value, CLAIMS["network"], SEEDS["network"], ref._LEDGER_INVENTORY_TEST_DOMAIN
+    )
+
+
+def with_effect_inventory(value: dict[str, Any], effect_ids: list[str]) -> dict[str, Any]:
+    """Attach the ledger inventory naming the given presented attempts."""
+    out = dict(value)
+    refs = {
+        attempt.get("attemptId"): attempt.get("nativeTransactionRef")
+        for attempt in out["attempts"] if isinstance(attempt, dict)
+    }
+    receipt = out.get("receipt")
+    out["ledgerInventory"] = effect_inventory(
+        ref.work_id(out["intent"]),
+        [(attempt_id, refs[attempt_id]) for attempt_id in effect_ids],
+        block_id=(
+            receipt["blockRef"]["id"] if isinstance(receipt, dict)
+            else "block-atomic-901"
+        ),
+    )
+    return out
 
 
 def slot_proof(key: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
@@ -2151,26 +2193,27 @@ def execution_vectors() -> list[dict[str, Any]]:
         extended_candidate_lifecycle["lifecycleEvidence"]
     )
     return [
-        vector("aw-attempt-byte-identity", ["AW-39", "AW-40"], "attempts", {"intent": intent, "attempts": [attempt_a], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, "pass", "Native attempt identity is distinct while Work bytes, authorizations, and workId remain immutable."),
-        vector("aw-attempt-changed-bytes", ["AW-39"], "attempts", {"intent": intent, "attempts": [{**attempt_a, "canonicalWorkBytes": canonical + " "}], "winningAttemptId": "attempt-a", "businessEffectAttempts": [], "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, "fail", "Replacement cannot alter canonical Work bytes."),
-        vector("aw-replacement-with-noninclusion", ["AW-41"], "attempts", {"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "pass", "Authenticated authoritative non-inclusion permits a replacement attempt under the replacement-authority rule."),
-        vector("aw-replacement-on-not-found", ["AW-41", "AW-42"], "attempts", {"intent": intent, "attempts": [unresolved_attempt, attempt_b_replacement], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "indeterminate", "Ordinary not-found remains on the indeterminate side of the replacement-authority boundary.", boundary_rules=["AW-42"]),
-        vector("aw-single-ledger-winner", ["AW-43", "AW-44"], "attempts", {"intent": intent, "attempts": [attempt_a, attempt_b], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "pass", "Exactly one included winner and business effect is the maximum valid cardinality.", boundary_rules=["AW-43", "AW-44"]),
-        vector("aw-two-included-attempts", ["AW-43", "AW-44"], "attempts", {"intent": intent, "attempts": [attempt_a, {**attempt_b, "lifecycleEvidence": ledger_evidence("attempt-b", wid, "included-committed", tx_b)}], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a", "attempt-b"], "publicKeys": PUBLIC_KEYS}, "fail", "A second included winner/effect crosses the Work-ledger cardinality boundary.", boundary_rules=["AW-43", "AW-44"]),
-        vector("aw-attempt-evidence-native-ref-mismatch", ["AW-40", "AW-59"], "attempts", {"intent": intent, "attempts": [{**attempt_a, "lifecycleEvidence": wrong_native_evidence}], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Signed lifecycle evidence for another native transaction cannot be attached to this attempt."),
-        vector("aw-exact-replay-returns-winner", ["AW-45"], "attempts", {"intent": intent, "attempts": [attempt_a, exact_replay], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "pass", "Exact replay returns the selected winner without execution or another fee/nonce effect."),
-        vector("aw-attempt-class-required", ["AW-39", "AW-41", "AW-45"], "attempts", {"intent": intent, "attempts": [missing_attempt_class], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Every transport attempt declares exactly one normal, replacement, or replay class before class-specific fields are interpreted."),
-        vector("aw-attempt-native-reference-duplicate", ["AW-39", "AW-40", "AW-43"], "attempts", {"intent": intent, "attempts": [attempt_a, duplicate_native_ref_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "A second attempt ID naming the first canonical native reference crosses the one-to-one identity boundary.", boundary_rules=["AW-40"]),
-        vector("aw-receipt-ledger-winner-bound", ["AW-43", "AW-46"], "attempts", {"intent": intent, "attempts": [receipt_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "receipt": committed, "publicKeys": PUBLIC_KEYS}, "pass", "Receipt winner ID and native reference equal the authenticated ledger-selected attempt."),
-        vector("aw-receipt-ledger-winner-mismatch", ["AW-43", "AW-46"], "attempts", {"intent": intent, "attempts": [receipt_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "receipt": wrong_winner_receipt, "publicKeys": PUBLIC_KEYS}, "fail", "A separately finalized receipt cannot name another winning attempt."),
-        vector("aw-exact-replay-additional-fee", ["AW-45", "AW-56", "AW-57"], "attempts", {"intent": intent, "attempts": [attempt_a, charged_replay], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "An exact replay returns the old winner with zero additional fee and nonce effects."),
-        vector("aw-exact-replay-candidate-nonce", ["AW-45", "AW-56", "AW-57"], "attempts", {"intent": intent, "attempts": [attempt_a, replay_with_nonce], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "The generic replay arm permits profile-selected nonce policy, but this advertised candidate fee rule forbids a new replay nonce."),
-        vector("aw-nonwinning-attempt-fee-rule", ["AW-39", "AW-56", "AW-57"], "attempts", {"intent": intent, "attempts": [attempt_a, nonwinning_wrong_fee], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "The selected fee rule applies to every normal or replacement submission, not only the included winner."),
-        vector("aw-attempt-authenticated-nonce-mismatch", ["AW-39", "AW-40", "AW-46", "AW-56"], "attempts", {"intent": intent, "attempts": [substituted_attempt_nonce], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "The winning attempt nonce and fee must equal the subject authenticated by its ledger lifecycle evidence."),
-        vector("aw-replacement-replay-class-confusion", ["AW-41", "AW-45", "AW-56"], "attempts", {"intent": intent, "attempts": [attempt_a_non, mixed_replacement_replay], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "fail", "An attempt cannot be classified simultaneously as a replacement and an exact replay, and replay requires an authenticated winner."),
-        vector("aw-receipt-ledger-outcome-mismatch", ["AW-43", "AW-46"], "attempts", {"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "receipt": committed, "publicKeys": PUBLIC_KEYS}, "fail", "A committed receipt cannot be paired with an authenticated included-rolled-back winner state."),
-        vector("aw-attempt-proof-profile-mismatch", ["AW-40", "AW-48"], "attempts", {"intent": intent, "attempts": [wrong_attempt_proof_profile], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Attempt lifecycle evidence binds the capability-selected proof profile and validator set."),
-        vector("aw-attempt-candidate-lifecycle-shape", ["AW-40"], "attempts", {"intent": intent, "attempts": [extended_candidate_lifecycle], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "The generic schema leaves lifecycle evidence to the selected profile; this candidate accepts only its complete closed synthetic witness shape."),
+        vector("aw-attempt-byte-identity", ["AW-39", "AW-40"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a], "winningAttemptId": "attempt-a", "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "pass", "Native attempt identity is distinct while Work bytes, authorizations, and workId remain immutable."),
+        vector("aw-attempt-changed-bytes", ["AW-39"], "attempts", with_effect_inventory({"intent": intent, "attempts": [{**attempt_a, "canonicalWorkBytes": canonical + " "}], "winningAttemptId": "attempt-a", "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, []), "fail", "Replacement cannot alter canonical Work bytes."),
+        vector("aw-replacement-with-noninclusion", ["AW-41"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, []), "pass", "Authenticated authoritative non-inclusion permits a replacement attempt under the replacement-authority rule."),
+        vector("aw-replacement-effect-without-winner", ["AW-43", "AW-44"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "A Work-ledger inventory that records a business effect while the ledger selected no winning attempt shows an effect no winner fences."),
+        vector("aw-replacement-on-not-found", ["AW-41", "AW-42"], "attempts", with_effect_inventory({"intent": intent, "attempts": [unresolved_attempt, attempt_b_replacement], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, []), "indeterminate", "Ordinary not-found remains on the indeterminate side of the replacement-authority boundary.", boundary_rules=["AW-42"]),
+        vector("aw-single-ledger-winner", ["AW-43", "AW-44"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, attempt_b], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "pass", "Exactly one included winner and business effect is the maximum valid cardinality.", boundary_rules=["AW-43", "AW-44"]),
+        vector("aw-two-included-attempts", ["AW-43", "AW-44"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, {**attempt_b, "lifecycleEvidence": ledger_evidence("attempt-b", wid, "included-committed", tx_b)}], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a", "attempt-b"]), "fail", "A second included winner/effect crosses the Work-ledger cardinality boundary.", boundary_rules=["AW-43", "AW-44"]),
+        vector("aw-attempt-evidence-native-ref-mismatch", ["AW-40", "AW-59"], "attempts", with_effect_inventory({"intent": intent, "attempts": [{**attempt_a, "lifecycleEvidence": wrong_native_evidence}], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "Signed lifecycle evidence for another native transaction cannot be attached to this attempt."),
+        vector("aw-exact-replay-returns-winner", ["AW-45"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, exact_replay], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "pass", "Exact replay returns the selected winner without execution or another fee/nonce effect."),
+        vector("aw-attempt-class-required", ["AW-39", "AW-41", "AW-45"], "attempts", with_effect_inventory({"intent": intent, "attempts": [missing_attempt_class], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "Every transport attempt declares exactly one normal, replacement, or replay class before class-specific fields are interpreted."),
+        vector("aw-attempt-native-reference-duplicate", ["AW-39", "AW-40", "AW-43"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, duplicate_native_ref_attempt], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "A second attempt ID naming the first canonical native reference crosses the one-to-one identity boundary.", boundary_rules=["AW-40"]),
+        vector("aw-receipt-ledger-winner-bound", ["AW-43", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [receipt_attempt], "winningAttemptId": "attempt-a", "receipt": committed, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "pass", "Receipt winner ID and native reference equal the authenticated ledger-selected attempt."),
+        vector("aw-receipt-ledger-winner-mismatch", ["AW-43", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [receipt_attempt], "winningAttemptId": "attempt-a", "receipt": wrong_winner_receipt, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "A separately finalized receipt cannot name another winning attempt."),
+        vector("aw-exact-replay-additional-fee", ["AW-45", "AW-56", "AW-57"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, charged_replay], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "An exact replay returns the old winner with zero additional fee and nonce effects."),
+        vector("aw-exact-replay-candidate-nonce", ["AW-45", "AW-56", "AW-57"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, replay_with_nonce], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The generic replay arm permits profile-selected nonce policy, but this advertised candidate fee rule forbids a new replay nonce."),
+        vector("aw-nonwinning-attempt-fee-rule", ["AW-39", "AW-56", "AW-57"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a, nonwinning_wrong_fee], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The selected fee rule applies to every normal or replacement submission, not only the included winner."),
+        vector("aw-attempt-authenticated-nonce-mismatch", ["AW-39", "AW-40", "AW-46", "AW-56"], "attempts", with_effect_inventory({"intent": intent, "attempts": [substituted_attempt_nonce], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The winning attempt nonce and fee must equal the subject authenticated by its ledger lifecycle evidence."),
+        vector("aw-replacement-replay-class-confusion", ["AW-41", "AW-45", "AW-56"], "attempts", with_effect_inventory({"intent": intent, "attempts": [attempt_a_non, mixed_replacement_replay], "winningAttemptId": None, "publicKeys": PUBLIC_KEYS}, []), "fail", "An attempt cannot be classified simultaneously as a replacement and an exact replay, and replay requires an authenticated winner."),
+        vector("aw-receipt-ledger-outcome-mismatch", ["AW-43", "AW-46"], "attempts", with_effect_inventory({"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "receipt": committed, "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "A committed receipt cannot be paired with an authenticated included-rolled-back winner state."),
+        vector("aw-attempt-proof-profile-mismatch", ["AW-40", "AW-48"], "attempts", with_effect_inventory({"intent": intent, "attempts": [wrong_attempt_proof_profile], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "Attempt lifecycle evidence binds the capability-selected proof profile and validator set."),
+        vector("aw-attempt-candidate-lifecycle-shape", ["AW-40"], "attempts", with_effect_inventory({"intent": intent, "attempts": [extended_candidate_lifecycle], "winningAttemptId": "attempt-a", "publicKeys": PUBLIC_KEYS}, ["attempt-a"]), "fail", "The generic schema leaves lifecycle evidence to the selected profile; this candidate accepts only its complete closed synthetic witness shape."),
         vector("aw-receipt-complete-and-final", ["AW-46", "AW-47", "AW-48", "AW-49", "AW-50", "AW-51", "AW-52", "AW-57", "AW-60", "AW-64"], "receipt", {"intent": intent, "receipt": committed, "publicKeys": PUBLIC_KEYS}, "pass", "A reconstructible complete proof closure binds ordered operations and business state while its fee/nonce effects grant no second-payment authority.", boundary_rules=["AW-49", "AW-60", "AW-64"]),
         vector("aw-receipt-capability-proof-profile-substitution", ["AW-46", "AW-48"], "receipt", {"intent": intent, "receipt": committed, "capability": receipt_wrong_proof_capability, "publicKeys": PUBLIC_KEYS}, "fail", "Receipt verification uses the independently selected proof profile, not a substituted capability field."),
         vector("aw-receipt-capability-schema-substitution", ["AW-46", "AW-77"], "receipt", {"intent": intent, "receipt": committed, "capability": receipt_wrong_schema_capability, "publicKeys": PUBLIC_KEYS}, "fail", "Receipt verification consumes the exact authenticated payload-schema map."),
@@ -2385,6 +2428,165 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     composed_retry_generation_skip["slotAdmission"]["newState"][
         "generation"
     ] += 1
+    # AWS-4: the composed slot transition is derived from the signed CAS.
+    derived_claim = copy.deepcopy(composed_purchase)
+    del derived_claim["slotAdmission"]["action"]
+    derived_claim = add_composed_limit_evidence(derived_claim)
+    derived_retry = copy.deepcopy(composed_retry)
+    del derived_retry["slotAdmission"]["action"]
+    derived_retry = add_composed_limit_evidence(derived_retry)
+    observation_only = copy.deepcopy(composed_purchase)
+    observation_only["slotAdmission"]["action"] = "observe"
+    observation_only = add_composed_limit_evidence(observation_only)
+    committed_observation = copy.deepcopy(observation_only)
+    committed_observation["slotAdmission"]["attemptObservation"] = "committed"
+    committed_observation = add_composed_limit_evidence(committed_observation)
+    mismatched_transition = copy.deepcopy(composed_purchase)
+    mismatched_transition["slotAdmission"]["action"] = "retry"
+    mismatched_transition = add_composed_limit_evidence(mismatched_transition)
+    # AW-44/AWS-14: business effects are taken from the Work-ledger inventory.
+    purchase_wid = ref.work_id(purchase)
+    purchase_winner = (
+        purchase_receipt["winningAttempt"]["attemptId"],
+        purchase_receipt["winningAttempt"]["nativeTransactionRef"],
+    )
+    inventory_missing = copy.deepcopy(composed_purchase)
+    del inventory_missing["ledgerInventory"]
+    inventory_missing = add_composed_limit_evidence(inventory_missing)
+    inventory_empty = copy.deepcopy(composed_purchase)
+    inventory_empty["ledgerInventory"] = effect_inventory(
+        purchase_wid, [], block_id=purchase_receipt["blockRef"]["id"],
+    )
+    inventory_empty = add_composed_limit_evidence(inventory_empty)
+    inventory_late_effect = copy.deepcopy(composed_purchase)
+    inventory_late_effect["ledgerInventory"] = effect_inventory(
+        purchase_wid,
+        [
+            purchase_winner,
+            ("attempt-late", {"kind": "demos-transaction", "value": "tx-late-attempt"}),
+        ],
+        block_id=purchase_receipt["blockRef"]["id"],
+    )
+    inventory_late_effect = add_composed_limit_evidence(inventory_late_effect)
+    inventory_other_attempt = copy.deepcopy(composed_purchase)
+    inventory_other_attempt["ledgerInventory"] = effect_inventory(
+        purchase_wid,
+        [("attempt-ledger-other", purchase_winner[1])],
+        block_id=purchase_receipt["blockRef"]["id"],
+    )
+    inventory_other_attempt = add_composed_limit_evidence(inventory_other_attempt)
+    inventory_winner_other_ref = copy.deepcopy(composed_purchase)
+    inventory_winner_other_ref["ledgerInventory"] = effect_inventory(
+        purchase_wid,
+        [(
+            purchase_winner[0],
+            {"kind": "demos-transaction", "value": "tx-ledger-other"},
+        )],
+        block_id=purchase_receipt["blockRef"]["id"],
+    )
+    inventory_winner_other_ref = add_composed_limit_evidence(
+        inventory_winner_other_ref
+    )
+    unauthenticated_effects = copy.deepcopy(composed_purchase)
+    del unauthenticated_effects["ledgerInventory"]
+    unauthenticated_effects["businessEffectAttempts"] = [purchase_winner[0]]
+    unauthenticated_effects = add_composed_limit_evidence(unauthenticated_effects)
+    unauthenticated_effects_late = copy.deepcopy(inventory_late_effect)
+    unauthenticated_effects_late["businessEffectAttempts"] = [purchase_winner[0]]
+    unauthenticated_effects_late = add_composed_limit_evidence(
+        unauthenticated_effects_late
+    )
+    caller_empty_effects = copy.deepcopy(composed_purchase)
+    caller_empty_effects["businessEffectAttempts"] = []
+    caller_empty_effects = add_composed_limit_evidence(caller_empty_effects)
+    other_block = "block-atomic-902"
+    assert other_block != purchase_receipt["blockRef"]["id"]
+    inventory_other_block = copy.deepcopy(composed_purchase)
+    inventory_other_block["ledgerInventory"] = effect_inventory(
+        purchase_wid, [purchase_winner], block_id=other_block,
+    )
+    inventory_other_block = add_composed_limit_evidence(inventory_other_block)
+    # The inventory must be authenticated by the network and bound to this
+    # Work, proof profile, and validator set; each case changes one of these.
+    inventory_body = {
+        key: value for key, value in composed_purchase["ledgerInventory"].items()
+        if key != "signature"
+    }
+    inventory_participant_signed = copy.deepcopy(composed_purchase)
+    inventory_participant_signed["ledgerInventory"] = ref.sign_embedded(
+        inventory_body, CLAIMS["payer"], SEEDS["payer"],
+        ref._LEDGER_INVENTORY_TEST_DOMAIN,
+    )
+    inventory_participant_signed = add_composed_limit_evidence(
+        inventory_participant_signed
+    )
+    inventory_signature_invalid = copy.deepcopy(composed_purchase)
+    stripped_inventory = copy.deepcopy(inventory_late_effect["ledgerInventory"])
+    stripped_inventory["effectAttempts"] = stripped_inventory["effectAttempts"][:1]
+    assert {
+        key: value for key, value in stripped_inventory.items() if key != "signature"
+    } == inventory_body
+    inventory_signature_invalid["ledgerInventory"] = stripped_inventory
+    inventory_signature_invalid = add_composed_limit_evidence(
+        inventory_signature_invalid
+    )
+    inventory_unsigned = copy.deepcopy(composed_purchase)
+    inventory_unsigned["ledgerInventory"] = copy.deepcopy(inventory_body)
+    inventory_unsigned = add_composed_limit_evidence(inventory_unsigned)
+    other_work_id = ref.work_id(completion)
+    assert other_work_id != purchase_wid
+    inventory_other_work = copy.deepcopy(composed_purchase)
+    inventory_other_work["ledgerInventory"] = effect_inventory(
+        other_work_id, [purchase_winner], block_id=purchase_receipt["blockRef"]["id"],
+    )
+    inventory_other_work = add_composed_limit_evidence(inventory_other_work)
+    inventory_other_proof_profile = copy.deepcopy(composed_purchase)
+    inventory_other_proof_profile["ledgerInventory"] = effect_inventory(
+        purchase_wid, [purchase_winner], block_id=purchase_receipt["blockRef"]["id"],
+        proof_profile="demos-bft-proof/test-0",
+    )
+    inventory_other_proof_profile = add_composed_limit_evidence(
+        inventory_other_proof_profile
+    )
+    inventory_other_validator_set = copy.deepcopy(composed_purchase)
+    inventory_other_validator_set["ledgerInventory"] = effect_inventory(
+        purchase_wid, [purchase_winner], block_id=purchase_receipt["blockRef"]["id"],
+        validator_set_id="test-validator-set-0",
+    )
+    inventory_other_validator_set = add_composed_limit_evidence(
+        inventory_other_validator_set
+    )
+    inventory_repeated_winner = copy.deepcopy(composed_purchase)
+    inventory_repeated_winner["ledgerInventory"] = effect_inventory(
+        purchase_wid, [purchase_winner, purchase_winner],
+        block_id=purchase_receipt["blockRef"]["id"],
+    )
+    inventory_repeated_winner = add_composed_limit_evidence(inventory_repeated_winner)
+    # The inventory and each entry have closed shapes; each case adds one
+    # member and is re-signed by the network, so only the shape check fails.
+    inventory_unknown_member = copy.deepcopy(composed_purchase)
+    inventory_unknown_member["ledgerInventory"] = ref.sign_embedded(
+        {**inventory_body, "note": "unrecognized member"},
+        CLAIMS["network"], SEEDS["network"], ref._LEDGER_INVENTORY_TEST_DOMAIN,
+    )
+    inventory_unknown_member = add_composed_limit_evidence(inventory_unknown_member)
+    entry_unknown_member_body = copy.deepcopy(inventory_body)
+    assert [
+        (entry["attemptId"], entry["nativeTransactionRef"])
+        for entry in entry_unknown_member_body["effectAttempts"]
+    ] == [purchase_winner]
+    entry_unknown_member_body["effectAttempts"][0]["note"] = "unrecognized member"
+    inventory_entry_unknown_member = copy.deepcopy(composed_purchase)
+    inventory_entry_unknown_member["ledgerInventory"] = ref.sign_embedded(
+        entry_unknown_member_body,
+        CLAIMS["network"], SEEDS["network"], ref._LEDGER_INVENTORY_TEST_DOMAIN,
+    )
+    inventory_entry_unknown_member = add_composed_limit_evidence(
+        inventory_entry_unknown_member
+    )
+    commitment_evidence_null = copy.deepcopy(composed_sequential_purchase)
+    commitment_evidence_null["authority"]["commitmentReceipt"]["evidence"] = None
+    commitment_evidence_null = add_composed_limit_evidence(commitment_evidence_null)
     missing_common_receipt = copy.deepcopy(composed_purchase)
     del missing_common_receipt["receipt"]
     empty_required_roles = copy.deepcopy(composed_purchase)
@@ -2522,6 +2724,30 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-purchase-caller-gate-mode-mismatch", ["AWP-6"], "purchase-admission", mismatched_gate_copy, "fail", "An unsigned caller authority copy cannot change the proof path selected by the signed Work intent."),
         vector("awp-purchase-agreement-seller-differs-from-listing", ["AWP-7"], "purchase-admission", alternate_seller_admission, "fail", "A fully re-signed Work and Agreement from another seller cannot substitute for the seller identity that published the pinned Listing."),
         vector("awp-purchase-composed-retry-admission", ["AWP-5", "AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry, "pass", "A complete retry proves the prior rolled-back Work receipt, advances generation N to N+1, and carries that same generation through the terminal receipt and settlement."),
+        vector("awp-composed-slot-transition-derived-claim", ["AWS-4", "AWS-6", "AWP-5"], "purchase-admission", derived_claim, "pass", "Composed Purchase admission derives the claim transition from the signed vacant payment-slot CAS and the authenticated prior state; no caller action label is needed."),
+        vector("awp-composed-slot-transition-derived-retry", ["AWS-4", "AWS-11", "AWS-12"], "purchase-admission", derived_retry, "pass", "A signed rolled-back payment-slot CAS admits only the retry transition, which requires the complete authenticated failure-receipt and generation proof."),
+        vector("awp-composed-slot-transition-observation-only", ["AWS-4", "AWS-6"], "purchase-admission", observation_only, "fail", "An observation-only slot transition is not composed Purchase admission; admission requires the claim or authenticated retry derived from the signed CAS."),
+        vector("awp-composed-slot-transition-committed-observation", ["AWS-4", "AWS-6"], "purchase-admission", committed_observation, "fail", "A committed attempt observation does not turn an observation-only slot transition into composed Purchase admission."),
+        vector("awp-composed-slot-transition-caller-mismatch", ["AWS-4"], "purchase-admission", mismatched_transition, "fail", "A caller transition label that differs from the transition derived from the signed payment-slot CAS is rejected."),
+        vector("awp-composed-effect-inventory-missing", ["AW-44", "AWS-14"], "purchase-admission", inventory_missing, "indeterminate", "Without the authenticated Work-ledger effect inventory, fencing of late or competing attempts is unavailable."),
+        vector("awp-composed-effect-inventory-empty", ["AW-44", "AWS-14"], "purchase-admission", inventory_empty, "fail", "An authenticated effect inventory that omits the ledger-selected winner contradicts the committed Work and cannot establish fencing.", boundary_rules=["AW-44"]),
+        vector("awp-composed-effect-inventory-late-attempt", ["AW-44", "AWS-14"], "purchase-admission", inventory_late_effect, "fail", "A ledger-recorded business effect from any attempt other than the winner shows an unfenced late or competing attempt, whether or not that attempt is presented."),
+        vector("awp-composed-effect-inventory-other-attempt", ["AW-44", "AWS-14"], "purchase-admission", inventory_other_attempt, "fail", "A single-entry inventory whose attempt is not the ledger-selected winner omits the winner, even when that entry carries the winner's native transaction reference."),
+        vector("awp-composed-effect-inventory-winner-reference-mismatch", ["AW-44", "AWS-14"], "purchase-admission", inventory_winner_other_ref, "fail", "An inventory naming the ledger-selected winner with another native transaction reference does not record the winner's authenticated business effect."),
+        vector("awp-composed-effect-source-unauthenticated", ["AW-44", "AWS-14"], "purchase-admission", unauthenticated_effects, "fail", "AW-44/AWS-14: business effects are established only by the authenticated Work-ledger inventory; an effect list outside it is not ledger authority."),
+        vector("awp-composed-effect-source-unauthenticated-late-inventory", ["AW-44", "AWS-14"], "purchase-admission", unauthenticated_effects_late, "fail", "An effect list outside the authenticated Work-ledger inventory is not ledger authority, even beside an inventory that records a later effect."),
+        vector("awp-composed-effect-inventory-other-block", ["AW-44", "AWS-14"], "purchase-admission", inventory_other_block, "fail", "A valid network-signed inventory taken at a block other than the finalized receipt block does not establish that receipt's business effects."),
+        vector("awp-composed-effect-inventory-participant-signed", ["AW-44", "AWS-14"], "purchase-admission", inventory_participant_signed, "fail", "An inventory signed by a party to the Purchase rather than the network is not Work-ledger evidence, even when its signature verifies and its entries name only the winner."),
+        vector("awp-composed-effect-inventory-signature-invalid", ["AW-44", "AWS-14"], "purchase-admission", inventory_signature_invalid, "fail", "Removing an entry from a network-signed inventory invalidates the network signature; the altered inventory does not establish business effects."),
+        vector("awp-composed-effect-inventory-unsigned", ["AW-44", "AWS-14"], "purchase-admission", inventory_unsigned, "indeterminate", "An unsigned inventory is unauthenticated, so the Work-ledger business effects remain unavailable."),
+        vector("awp-composed-effect-inventory-other-work", ["AW-44", "AWS-14"], "purchase-admission", inventory_other_work, "fail", "A network-signed inventory for another Work does not establish this Work's business effects."),
+        vector("awp-composed-effect-inventory-other-proof-profile", ["AW-44", "AWS-14"], "purchase-admission", inventory_other_proof_profile, "fail", "A network-signed inventory under another proof profile than the capability selects does not establish business effects for this Work."),
+        vector("awp-composed-effect-inventory-other-validator-set", ["AW-44", "AWS-14"], "purchase-admission", inventory_other_validator_set, "fail", "A network-signed inventory under another validator set than the capability selects does not establish business effects for this Work."),
+        vector("awp-composed-effect-inventory-repeated-attempt", ["AW-44", "AWS-14"], "purchase-admission", inventory_repeated_winner, "fail", "An inventory that lists the same attempt twice is malformed ledger evidence and cannot establish the winner's single business effect."),
+        vector("awp-composed-effect-source-caller-empty", ["AW-44", "AWS-14"], "purchase-admission", caller_empty_effects, "fail", "An empty effect list outside the authenticated Work-ledger inventory is not ledger authority, even beside the inventory that records only the winner."),
+        vector("awp-composed-effect-inventory-unknown-member", ["AW-44", "AWS-14"], "purchase-admission", inventory_unknown_member, "fail", "A network-signed inventory carrying a member outside its closed shape is malformed ledger evidence and cannot establish business effects."),
+        vector("awp-composed-effect-inventory-entry-unknown-member", ["AW-44", "AWS-14"], "purchase-admission", inventory_entry_unknown_member, "fail", "An inventory entry carrying a member outside its closed attempt and native-reference shape is malformed ledger evidence, even when the inventory's network signature verifies."),
+        vector("awp-purchase-sequential-commitment-evidence-null", ["AWP-6", "AWP-12"], "purchase-admission", commitment_evidence_null, "indeterminate", "A commitment AnchorReceipt whose finality evidence is null cannot satisfy the sequential gate; the missing evidence leaves admission unavailable."),
         vector("awp-purchase-composed-retry-generation-skip", ["AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry_generation_skip, "fail", "A retry cannot skip a generation or present a slot transition that differs from its terminal receipt."),
         vector("awp-completion-composed-admission", ["AWP-13", "AWP-14", "AWP-15", "AWP-16"], "completion-admission", composed_completion, "pass", "One Completion verifier consumes the finalized Purchase and exact authority context through delivery settlement."),
         vector("awp-completion-composed-claims-evidence-and-bundle-finalized", ["AWP-16"], "completion-admission", composed_completion_both_claims, "fail", "Supplying both forbidden finalization claims cannot be hidden by the composed verifier's derived false state."),
@@ -2902,7 +3128,14 @@ def composed_purchase_admission(
         },
         "attempts": [composed_attempt(intent, receipt)],
         "winningAttemptId": receipt["winningAttempt"]["attemptId"],
-        "businessEffectAttempts": [receipt["winningAttempt"]["attemptId"]],
+        "ledgerInventory": effect_inventory(
+            work_identifier,
+            [(
+                receipt["winningAttempt"]["attemptId"],
+                receipt["winningAttempt"]["nativeTransactionRef"],
+            )],
+            block_id=receipt["blockRef"]["id"],
+        ),
         "receipt": receipt,
         "settlement": {
             "evidence": evidence,
@@ -2949,7 +3182,14 @@ def composed_completion_admission(
         "authorizations": authorizations(intent), "authority": authority,
         "attempts": [composed_attempt(intent, receipt)],
         "winningAttemptId": receipt["winningAttempt"]["attemptId"],
-        "businessEffectAttempts": [receipt["winningAttempt"]["attemptId"]],
+        "ledgerInventory": effect_inventory(
+            ref.work_id(intent),
+            [(
+                receipt["winningAttempt"]["attemptId"],
+                receipt["winningAttempt"]["nativeTransactionRef"],
+            )],
+            block_id=receipt["blockRef"]["id"],
+        ),
         "receipt": receipt,
         "settlement": {
             "evidence": evidence,

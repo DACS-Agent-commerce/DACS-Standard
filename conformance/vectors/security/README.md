@@ -41,9 +41,9 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
 | [`atomic-work-audit-role-v0.1.json`](atomic-work-audit-role-v0.1.json) | DACS-5 §10.4.2 AWB-1..AWB-10 | 16 | `fail` / `indeterminate` / `pass` |
 | [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 46 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 73 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 74 | `fail` / `indeterminate` / `pass` |
 | [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 52 | `fail` / `pass` |
-| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 60 | `error` / `fail` / `indeterminate` / `pass` |
+| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 84 | `error` / `fail` / `indeterminate` / `pass` |
 | [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 68 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -164,8 +164,21 @@ nonce while requiring fee `"0"` and zero effects.
 Authenticated lifecycle evidence and an ordinary local observation are
 mutually exclusive.
 
-Synthetic ledger, receipt, session-context, limit-reservation, and limit-metric
-witnesses bind the advertised proof profile and validator set. Registry and
+Synthetic ledger, ledger effect-inventory, receipt, session-context,
+limit-reservation, and limit-metric witnesses bind the advertised proof profile
+and validator set. The attempts that reached a business effect come only from
+the network-signed Work-ledger effect inventory for the exact `workId`, taken
+at the finalized receipt block; no caller-supplied list is an input. Admission
+is therefore evaluated as of that block: fencing an effect in a later block
+remains the ledger's AW-44 guarantee, which the verifier does not observe. For
+a committed Purchase, a later attempt cannot reach payment: it carries the
+same signed `payment-slot-cas` expectation (AW-39), whose `vacant` or
+`rolled-back` state cannot match the terminal `settled` slot the receipt
+proves (AW-46); that CAS precedes any payment (AWS-6), and the Work rolls back
+with every other critical write (AWP-10). A
+whole-profile Purchase derives its slot transition from the signed
+`payment-slot-cas` expectation: `vacant` admits a claim and `rolled-back`
+admits only the fully proven retry. Registry and
 publication AnchorReceipts bind the selected finality profile and pinned
 authority. The rail fixture uses the canonical registered
 `demos-native:DEM` identifier with a synthetic registry-index and anchor-proof

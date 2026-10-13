@@ -710,6 +710,26 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_atomic_work_vectors.py",
         "test": "AtomicPresenterWiringWitnessTests.test_authority_context_presenter_wiring_is_load_bearing",
     },
+    "pr336-atomic-effect-inventory-vector-consumer": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_composed_business_effects_come_from_the_ledger_inventory",
+    },
+    "pr336-atomic-unsigned-effect-inventory-indeterminate": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_unsigned_effect_inventory_has_one_classification",
+    },
+    "pr336-atomic-slot-transition-signed-cas": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_composed_slot_transition_follows_the_signed_cas",
+    },
+    "pr336-atomic-commitment-finality-evidence-unavailable": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_commitment_receipt_without_finality_evidence_is_unavailable",
+    },
+    "pr336-atomic-effect-inventory-guard-witness": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicEffectInventoryGuardWitnessTests.test_each_effect_inventory_and_slot_guard_is_load_bearing",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

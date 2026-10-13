@@ -74,6 +74,7 @@ _RAIL_DOMAIN = b"dacs-rail:v1:"
 # new DACS wire domains.
 _CAPABILITY_TEST_DOMAIN = b"atomic-vector-capability:"
 _LEDGER_TEST_DOMAIN = b"atomic-vector-ledger:"
+_LEDGER_INVENTORY_TEST_DOMAIN = b"atomic-vector-ledger-effect-inventory:"
 _CHECKPOINT_TEST_DOMAIN = b"atomic-vector-checkpoint:"
 _STATE_TEST_DOMAIN = b"atomic-vector-business-state:"
 _SLOT_STATE_TEST_DOMAIN = b"atomic-vector-slot-state:"
@@ -1173,6 +1174,79 @@ def _verify_ledger_evidence(
         raise Invalid("attempt lifecycle evidence fee/nonce subject mismatch")
 
 
+def _verify_effect_inventory(
+    inventory: Any, public_keys: dict[str, str], expected_signer: str,
+    work_id_value: str, expected_proof_profile: str,
+    expected_validator_set_id: str, receipt: Any,
+) -> list[dict[str, Any]]:
+    """Return the Work ledger's business-effect attempt inventory at one block.
+
+    AW-44/AWS-14: the attempts that reached a business effect are ledger
+    facts.  Only the network-signed inventory for this exact Work, proof
+    profile, and validator set, taken at the finalized receipt block when a
+    receipt is presented, can establish them.  Admission is therefore
+    evaluated as of that block; fencing an effect in a later block remains
+    the ledger's AW-44 guarantee, which this verifier does not observe.  For
+    a committed Purchase, a later attempt cannot reach payment: it carries
+    the same signed ``payment-slot-cas`` expectation (AW-39), whose
+    ``vacant`` or ``rolled-back`` state cannot match the terminal ``settled``
+    slot the receipt proves (AW-46); that CAS precedes any payment (AWS-6),
+    and the Work rolls back with every other critical write (AWP-10).
+    """
+    if not isinstance(inventory, dict):
+        raise Unknown("authenticated Work-ledger effect inventory unavailable")
+    # The signature member is checked below: absent or null, an unsigned
+    # inventory is unauthenticated and the inventory stays unavailable.
+    if (
+        set(inventory) - {"signature"} != {
+            "inventoryVersion", "workId", "blockId", "proofProfile",
+            "validatorSetId", "effectAttempts",
+        }
+        or inventory.get("inventoryVersion") != "test-1"
+        or not isinstance(inventory.get("blockId"), str)
+        or not inventory["blockId"]
+        or not isinstance(inventory.get("effectAttempts"), list)
+    ):
+        raise Invalid("synthetic Work-ledger effect inventory shape mismatch")
+    verify_embedded(inventory, public_keys, _LEDGER_INVENTORY_TEST_DOMAIN)
+    require_signer(inventory, expected_signer)
+    if inventory.get("workId") != work_id_value:
+        raise Invalid("Work-ledger effect inventory names another Work")
+    if (
+        inventory.get("proofProfile") != expected_proof_profile
+        or inventory.get("validatorSetId") != expected_validator_set_id
+    ):
+        raise Invalid("Work-ledger effect inventory proof-profile binding mismatch")
+    if isinstance(receipt, dict) and inventory["blockId"] != receipt.get(
+        "blockRef", {}
+    ).get("id"):
+        raise Invalid("Work-ledger effect inventory is not taken at the finalized receipt block")
+    effects = inventory["effectAttempts"]
+    seen_ids: set[str] = set()
+    seen_refs: set[bytes] = set()
+    for effect in effects:
+        native_ref = effect.get("nativeTransactionRef") if isinstance(effect, dict) else None
+        if (
+            not isinstance(effect, dict)
+            or set(effect) != {"attemptId", "nativeTransactionRef"}
+            or not isinstance(effect.get("attemptId"), str)
+            or not effect["attemptId"]
+            or not isinstance(native_ref, dict)
+            or set(native_ref) != {"kind", "value"}
+            or not all(
+                isinstance(native_ref.get(field), str) and native_ref[field]
+                for field in ("kind", "value")
+            )
+        ):
+            raise Invalid("Work-ledger effect inventory entry malformed")
+        native_key = jcs_bytes(native_ref)
+        if effect["attemptId"] in seen_ids or native_key in seen_refs:
+            raise Invalid("Work-ledger effect inventory repeats an attempt")
+        seen_ids.add(effect["attemptId"])
+        seen_refs.add(native_key)
+    return effects
+
+
 def evaluate_attempts(data: dict[str, Any]) -> dict[str, Any] | None:
     intent = data["intent"]
     validate_intent(intent)
@@ -1259,9 +1333,24 @@ def evaluate_attempts(data: dict[str, Any]) -> dict[str, Any] | None:
         raise Invalid("winner does not match authenticated ledger")
     if not included and winner is not None:
         raise Invalid("winner claimed without inclusion evidence")
-    effects = data.get("businessEffectAttempts", [])
-    if any(effect != winner for effect in effects) or len(effects) > (1 if winner else 0):
-        raise Invalid("late/competing attempt was not fenced")
+    if "businessEffectAttempts" in data:
+        raise Invalid("a caller-supplied business-effect list is not Work-ledger authority")
+    effects = _verify_effect_inventory(
+        data.get("ledgerInventory"), data["publicKeys"], network_authority, wid,
+        proof_profile, validator_set_id, data.get("receipt"),
+    )
+    effect_ids = [effect["attemptId"] for effect in effects]
+    if winner is None:
+        if effect_ids:
+            raise Invalid("business effect recorded without a ledger-selected winner")
+    else:
+        if winner not in effect_ids:
+            raise Invalid("Work-ledger effect inventory omits the ledger-selected winner")
+        # AW-44: the winner is the only attempt with a business effect.
+        if len(effects) != 1:
+            raise Invalid("late/competing attempt was not fenced")
+        if effects[0]["nativeTransactionRef"] != included[0]["nativeTransactionRef"]:
+            raise Invalid("Work-ledger effect inventory winner reference mismatch")
     for attempt in attempts:
         attempt_class = attempt["attemptClass"]
         if attempt_class == "replay":
@@ -3216,7 +3305,7 @@ def evaluate_slot(data: dict[str, Any]) -> None:
         raise Invalid("conflict digest mismatch")
     state = proof["state"]
     action = data.get("action")
-    if action == "claim":
+    if action in {"claim", "retry"}:
         op_ids = [operation["operationId"] for operation in claim_intent["operations"]]
         if "payment-slot" not in op_ids or "payment" not in op_ids:
             raise Invalid("slot/payment operation missing")
@@ -3228,6 +3317,7 @@ def evaluate_slot(data: dict[str, Any]) -> None:
             or "payment-slot" not in payment_op.get("dependsOn", [])
         ):
             raise Invalid("signed Work does not CAS slot before payment")
+    if action == "claim":
         if slot_payload.get("expected") != {
             "state": state.get("state"), "generation": state.get("generation")
         }:
@@ -3971,6 +4061,7 @@ def composed_proof_material(data: dict[str, Any]) -> dict[str, Any]:
             }
             for attempt in attempts if isinstance(attempt, dict)
         ],
+        "ledgerEffectInventory": data.get("ledgerInventory"),
         "receiptProofs": receipt_proofs(receipt),
         "purchaseReceiptProofs": receipt_proofs(data.get("purchaseReceipt")),
         "purchaseCommitmentProjection": data.get("purchaseCommitmentProjection"),
@@ -4097,6 +4188,26 @@ def evaluate_expiry(data: dict[str, Any]) -> None:
         raise Invalid("valid Work did not execute as modeled")
 
 
+def _composed_slot_action(intent: dict[str, Any]) -> str:
+    """Derive the only admissible slot transition from the signed Purchase CAS.
+
+    A signed vacant expectation admits an initial claim; a signed rolled-back
+    expectation admits only the AWS-11/AWS-12 retry, whose complete failure
+    receipt proof ``evaluate_slot`` then requires.
+    """
+    slot_op = next(
+        (op for op in intent["operations"] if op.get("kind") == "payment-slot-cas"),
+        None,
+    )
+    expected = slot_op.get("payload", {}).get("expected") if isinstance(slot_op, dict) else None
+    state = expected.get("state") if isinstance(expected, dict) else None
+    if state == "vacant":
+        return "claim"
+    if state == "rolled-back":
+        return "retry"
+    raise Invalid("signed payment-slot CAS names no admissible Purchase transition")
+
+
 def _evaluate_composed_admission(
     data: dict[str, Any], expected_profile: str,
 ) -> None:
@@ -4182,8 +4293,17 @@ def _evaluate_composed_admission(
             )
         ):
             raise Invalid("composed slot admission and terminal receipt are not one transition")
+        # AWS-4: the admitted transition follows from the signed payment-slot
+        # CAS and the authenticated prior state, never from a caller label.
+        caller_action = slot_admission.get("action")
+        if caller_action == "observe":
+            raise Invalid("an observation is not composed Purchase slot admission")
+        action = _composed_slot_action(intent)
+        if caller_action is not None and caller_action != action:
+            raise Invalid("caller slot action differs from the signed slot transition")
         evaluate_slot({
             **slot_admission,
+            "action": action,
             "capability": capability,
             "expectedNetworkAuthority": data.get("expectedNetworkAuthority"),
             "expectedProofProfile": data.get("expectedProofProfile"),
@@ -4198,7 +4318,11 @@ def _evaluate_composed_admission(
     winner = evaluate_attempts({
         "intent": intent, "attempts": attempts,
         "winningAttemptId": data.get("winningAttemptId"),
-        "businessEffectAttempts": data.get("businessEffectAttempts"),
+        "ledgerInventory": data.get("ledgerInventory"),
+        **(
+            {"businessEffectAttempts": data["businessEffectAttempts"]}
+            if "businessEffectAttempts" in data else {}
+        ),
         "receipt": receipt, "authority": authority, "capability": capability,
         "purchaseIntent": data.get("purchaseIntent"),
         "purchaseReceipt": data.get("purchaseReceipt"),

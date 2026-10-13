@@ -1305,6 +1305,45 @@ The format used per release:
   repeated identical presenter claim (accepted), and a non-object claim
   (`error`); a pinned witness shows that removing the authority context's
   presenter resolution fails those vectors, not only the helper test.
+- **Atomic attempt fencing and slot admission from authenticated ledger
+  evidence** (CORE §5.2 AW-44; DACS-4 §9.5.10 AWS-4/AWS-14) — the reference
+  verifier derives the attempts that reached a business effect from a
+  network-signed Work-ledger effect inventory for the exact `workId`, proof
+  profile, and validator set, taken at the finalized receipt block, and refuses
+  a caller-supplied effect list. Admission is evaluated as of that block;
+  fencing an effect in a later block remains the ledger's AW-44 guarantee,
+  outside the verifier. For a committed Purchase, a later attempt cannot reach
+  payment: it carries the same signed `payment-slot-cas` expectation (AW-39),
+  whose `vacant` or `rolled-back` state cannot match the terminal `settled`
+  slot the receipt proves (AW-46); that CAS precedes any payment (AWS-6), and
+  the Work rolls back with every other critical write (AWP-10). An unsigned
+  inventory, with its signature absent or null, is unavailable
+  (`indeterminate`). Whole-profile Purchase admission
+  derives its slot transition from the signed `payment-slot-cas` expectation
+  (`vacant` → claim; `rolled-back` → retry with complete failure-receipt
+  proof); an observation-only transition or a differing caller label is not
+  admission.
+  Adds whole-profile regressions for missing and empty inventories, an
+  unfenced late effect, a single-entry inventory naming another attempt or
+  naming the winner with another native reference, an effect list outside the
+  inventory (alone, beside an inventory with a late effect, or empty beside
+  the inventory that records only the winner), an inventory
+  taken at another block, an inventory signed by a Purchase party instead of
+  the network, a network-signed inventory altered after signing, an unsigned
+  inventory (`indeterminate`), an inventory for another Work, proof profile,
+  or validator set, an inventory that repeats an attempt, a network-signed
+  inventory or inventory entry carrying a member outside its closed shape, an
+  `attempts`-surface inventory that records a business effect while no
+  attempt is the ledger-selected winner,
+  observation-only and committed-observation transitions, a caller label
+  mismatch, derived claim and retry admissions, and a sequential commitment
+  receipt with null finality evidence (`indeterminate`). A pinned
+  wrong-implementation test removes seventeen inventory and slot guards in
+  turn and shows a committed vector catches each, asserting the exact result
+  each vector moves to; it and the consumer tests
+  are in the pre-review gate. No
+  normative text changes; the synthetic proof-byte fixture limit grows to
+  cover the inventory witness.
 - **Atomic evidence under the LAA qualification** (DACS-5 §10.4.3 SEB-3) —
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is

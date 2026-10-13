@@ -6,6 +6,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
+import { parseFocusedSuite } from './adapter_runner_focused_suite.mjs';
 
 const STANDARD_REPOSITORY = 'https://github.com/DACS-Agent-commerce/DACS-Standard';
 const STANDARD_HEAD = 'c799a163e80bff867ba01bc9e08f15ab7916e139';
@@ -85,11 +86,9 @@ async function main() {
   const shared = path.join(runner, 'conformance/shared-suite');
   const canonicalTmpdir = realpathSync(tmpdir());
   const focusedOutput = execFileSync(process.execPath,
-    ['--test', path.join(shared, 'unsupported-case.test.mjs')],
+    ['--test', '--test-reporter=tap', path.join(shared, 'unsupported-case.test.mjs')],
     { cwd: runner, env: { ...process.env, TMPDIR: canonicalTmpdir }, encoding: 'utf8' });
-  if (!/\bpass 16(?:\r?\n|$)/.test(focusedOutput) || !/\bfail 0(?:\r?\n|$)/.test(focusedOutput)) {
-    throw new Error('contributor focused suite did not report 16 pass / 0 fail');
-  }
+  const focusedSuite = parseFocusedSuite(focusedOutput);
   const { releaseVectors } = await import(pathToFileURL(path.join(shared, 'standard-405-pilot.mjs')));
   const { crossRun } = await import(pathToFileURL(path.join(shared, 'adapter-contract.mjs')));
   const { launchAdapters } = await import(pathToFileURL(path.join(shared, 'adapter-registry.mjs')));
@@ -138,7 +137,8 @@ async function main() {
     runtime: { node: process.version, openssl: process.versions.openssl, python },
     execution: { adapterCommand: ['python3', 'scripts/dacs_adapter.py'], adapterRuns: launched.adapters.length,
       contributorFocusedSuite: { command: ['node', '--test', 'conformance/shared-suite/unsupported-case.test.mjs'],
-        canonicalTmpdirResolved: canonicalTmpdir === realpathSync(canonicalTmpdir), passed: 16, failed: 0, skipped: 0 } },
+        canonicalTmpdirResolved: canonicalTmpdir === realpathSync(canonicalTmpdir),
+        passed: focusedSuite.pass, failed: focusedSuite.fail, skipped: focusedSuite.skipped } },
     adapter: launched.launched[0].metadata,
     expected: { cases: 20, summary: { 'SELF-CHECK': 18, ABSTAIN: 2, 'INTEROP-AGREE': 0, ERROR: 0 } },
     observed: { summary, matrix }, controls: { rawDigestSignatureValidatedBeforeAdapter: true,

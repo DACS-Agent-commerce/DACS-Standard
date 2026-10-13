@@ -678,8 +678,8 @@
       }
     }
   },
-  "count": 327,
-  "hash": "8fa50ba25e717743f6039333f0de38881000b4b817e25feb90a9775b1e538e5e",
+  "count": 331,
+  "hash": "d20532562bb9f860390e76e6ec03c3198eab1ff6029fa015267aa997fc766abe",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -19162,23 +19162,13 @@
       ]
     },
     {
-      "name": "response-transaction-63-hex-digits",
+      "name": "evidence-transaction-63-hex-digits",
       "expected": "error",
       "rule": "XN-7/XN-8/SB-1",
       "operation": "verify-evidence",
-      "note": "a hash that is not exactly 32 bytes has no canonical form",
+      "note": "a recorded hash that is not exactly 32 bytes has no canonical form",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "evidence",
-            "paymentTxRefs",
-            0,
-            "paymentReceiptHash"
-          ],
-          "value": "034ac283efe514136a34f4ee816f2b45eb25ff8eab045a51036f13849583a046"
-        },
         {
           "op": "replace",
           "path": [
@@ -19196,7 +19186,83 @@
             "signature",
             "value"
           ],
-          "value": "DMDHG6Aq3ys9lWdEHyihKMR-POsM-tIKdppRwQNTzN02hGcCWjBkOMXWFPib-Z7zQeRRwIHliCH6go351eYbCw"
+          "value": "fDsjbCTZ0NoPkKG-RBJsppiYnCrXHInhF9U12QGxzoK4xIXP_SakgXwcI3MrQ91iWOuL8etsgbNbO1WHmZI4Cw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
+    },
+    {
+      "name": "evidence-transaction-double-0x-prefix",
+      "expected": "error",
+      "rule": "XN-7/XN-8/SB-1",
+      "operation": "verify-evidence",
+      "note": "at most one prefix is removed, so a second 0x in the record is malformed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "0x0xabababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "8qx60vak-j7WviyCkg9DHKELDx_snKHhVOQGmaBRfMNw5amvc4Xse-fqo7TxnfRVSAdiOr16SRMzjgclNiUfDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "settlement-transaction-form"
+    },
+    {
+      "name": "response-transaction-not-32-bytes",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a response transaction of 63 hexadecimal digits has no XN-7 adapter form; the exact finalized settlement stands and the defect is the seller's recorded protocol fault",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "034ac283efe514136a34f4ee816f2b45eb25ff8eab045a51036f13849583a046"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "JyhITBdIaLtE2jtvTC4B0tRI1hJ8xpAtcvJHGMfPRTUmyoUWadTSVPntSX0ZyB6Dbs1qQjBkBbisTxh4YbLxCw"
         },
         {
           "op": "replace",
@@ -19216,16 +19282,22 @@
           "value": true
         }
       ],
-      "expectedReason": "settlement-transaction-form"
+      "expectedReason": "response-transaction"
     },
     {
-      "name": "response-transaction-double-0x-prefix",
-      "expected": "error",
-      "rule": "XN-7/XN-8/SB-1",
-      "operation": "verify-evidence",
-      "note": "at most one prefix is removed, so a second 0x is malformed",
+      "name": "response-transaction-not-32-bytes-no-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a response transaction of 63 hexadecimal digits has no XN-7 adapter form; with no matching settlement reconciliation stays pending, never a permanent failure from the response alone",
       "base": "v2",
       "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
         {
           "op": "replace",
           "path": [
@@ -19234,17 +19306,7 @@
             0,
             "paymentReceiptHash"
           ],
-          "value": "9e783633ab09eda9e3ddf7f22abc6abf993de0c39392d88b859576ad61e2bafe"
-        },
-        {
-          "op": "replace",
-          "path": [
-            "evidence",
-            "paymentTxRefs",
-            0,
-            "settlementTransaction"
-          ],
-          "value": "0x0xabababababababababababababababababababababababababababababababab"
+          "value": "034ac283efe514136a34f4ee816f2b45eb25ff8eab045a51036f13849583a046"
         },
         {
           "op": "replace",
@@ -19253,7 +19315,7 @@
             "signature",
             "value"
           ],
-          "value": "61JxTRYG1gzLBHAXhAkM5mwnJBGxytk7g_AHsYbI2vEw4-3eY--McWovr27shmabJ4biVW62-NvFEh59WOR8CA"
+          "value": "JyhITBdIaLtE2jtvTC4B0tRI1hJ8xpAtcvJHGMfPRTUmyoUWadTSVPntSX0ZyB6Dbs1qQjBkBbisTxh4YbLxCw"
         },
         {
           "op": "replace",
@@ -19262,7 +19324,7 @@
             "responseHeader",
             "value"
           ],
-          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHgweGFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWIiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6InBheW1lbnQtMjc0In19"
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmEiLCJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6InBheW1lbnQtMjc0In19"
         },
         {
           "op": "replace",
@@ -19273,7 +19335,7 @@
           "value": true
         }
       ],
-      "expectedReason": "settlement-transaction-form"
+      "expectedReason": "independent-settlement-unavailable"
     },
     {
       "name": "response-payer-substitution",
@@ -29576,6 +29638,106 @@
         }
       ],
       "expectedReason": "address-form"
+    },
+    {
+      "name": "response-header-value-not-string",
+      "expected": "pass",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement-response header whose value is not a string decodes to no object, so the receipt preimage is JSON null; the exact finalized settlement stands and the defect is the seller's recorded protocol fault",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "response-header"
+    },
+    {
+      "name": "response-header-value-not-string-no-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-7/XN-11",
+      "operation": "execute",
+      "note": "a settlement-response header whose value is not a string decodes to no object, so the receipt preimage is JSON null; with no matching settlement reconciliation stays pending, never a permanent failure from the response alone",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "WIlEPBSYNjUMXPv700Vn_vCZ1xswBck2kaBrVOza3jXK3RCcTlksT6mlzli5zNdnIl8haLh1ga_tKM87cpkMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "independent-settlement-unavailable"
     }
   ]
 }

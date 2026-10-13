@@ -1814,9 +1814,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         success_ledger = self.by_name["protocol-v2-exact-success"]["ledger"]
         for name, fault in (
             ("wrong-version-response-header", "response-header"),
+            ("response-header-value-not-string", "response-header"),
             ("response-not-success", "response-not-success"),
             ("response-network-substitution", "response-network"),
             ("response-transaction-substitution", "response-transaction"),
+            ("response-transaction-not-32-bytes", "response-transaction"),
             ("response-payer-substitution", "response-payer"),
         ):
             with self.subTest(vector=name):
@@ -1836,8 +1838,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 contradicted["ledger"]["amount"] = "1249999"
                 self.assertEqual(evaluate(contradicted), ("fail", "ledger-event"))
         # With no decoded response the receipt commits to JSON null (XN-7).
-        ref = self.by_name["wrong-version-response-header"]["evidence"]["paymentTxRefs"][0]
-        self.assertEqual(ref["paymentReceiptHash"], digest(None))
+        for name in ("wrong-version-response-header", "response-header-value-not-string"):
+            ref = self.by_name[name]["evidence"]["paymentTxRefs"][0]
+            self.assertEqual(ref["paymentReceiptHash"], digest(None))
         # XN-8: only an event resolved for the authorization identity can
         # contradict it; a transaction that only the response names cannot.
         for name, want in (
@@ -2451,6 +2454,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "identity → reconciliation-pending / `indeterminate`, never `permanent`",
             "- finalized ledger event resolved for the authorization identity that contradicts the "
             "authorization (another amount, payee, or asset) → `permanent` from the ledger (XN-8)",
+            "| `counterparty` | AP2 mandate revoked, x402 server refused before authorization |",
             "The v0.8 EIP-155 `exact` binding authorizes only through one of those two forms, so "
             "its SB-3 job binding is always mandatory there.",
             "A verifier MUST take this binding policy from the pinned definition and the signed "

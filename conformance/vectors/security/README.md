@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 327 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 331 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1094,23 +1094,27 @@ rebinding, redirect connections, timeouts, and response-size enforcement remain
 adapter-level obligations because a URL-only corpus cannot execute a network
 stack.
 
-Response-transaction cases keep the response spelling verbatim in
-`settlementTransaction` and compare it with the canonical event key under the
-EIP-155 adapter rule. The authenticated ledger transaction is compared in the
-same collapsed form, so its spelling need not match the response's. The base
-fixtures carry the upstream `0x` lower-case spelling in both; unprefixed,
-mixed-case, and `0X` upper-case responses over that ledger pass, and so does a
-`0x` response over an unprefixed ledger transaction. 63 hexadecimal digits or a
-second `0x` prefix in `settlementTransaction` is `error` with reason
-`settlement-transaction-form`. The two
-`noncanonical-native-event-key*` cases change only the DACS-produced
-`settlementEvent`, keep the response unchanged, and stay `error`. The key is
-signed evidence, so it is checked before the ledger is read: with the ledger
-unavailable or not final it is still `error`.
+`settlementTransaction` names the transaction that the ledger reconciliation
+establishes. With a sound response it keeps that response's spelling verbatim,
+and it is compared with the canonical event key under the EIP-155 adapter rule.
+The authenticated ledger transaction is compared in the same collapsed form, so
+its spelling need not match the response's. The base fixtures carry the
+upstream `0x` lower-case spelling in both; unprefixed, mixed-case, and `0X`
+upper-case responses over that ledger pass, and so does a `0x` response over an
+unprefixed ledger transaction. 63 hexadecimal digits or a second `0x` prefix in
+the recorded `settlementTransaction` is the verifier's `error` with reason
+`settlement-transaction-form` (`evidence-transaction-*`). The same 63 digits in
+the response `transaction` alone are the response defect
+`response-transaction`: `pass` over the base ledger and `indeterminate` without
+one. The two `noncanonical-native-event-key*` cases change only the
+DACS-produced `settlementEvent`, keep the response unchanged, and stay `error`.
+The key is signed evidence, so the verifier checks it before the ledger is
+read: with the ledger unavailable or not final the record is still `error`.
 
 After the wallet call only the ledger reconciliation of the authorization
 identity decides (XN-11), and no success record has to exist first. A
-settlement response that is lost, not received under the version's header, reports `success: false`, or
+settlement response that is lost, not received under the version's header (a
+header value that is not a string included), reports `success: false`, or
 names another network, payer or transaction is a response defect, the seller's
 protocol fault. Over the base ledger, an exact finalized settlement, such a
 case is `pass` and its `expectedReason` names the recorded defect

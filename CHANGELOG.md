@@ -70,8 +70,9 @@ The format used per release:
   and ERC-20 amounts are `uint256`), 2⁶⁴−1 for Solana `exact` (SPL Token `u64`),
   or a narrower authorization-form bound.
 - **Response transaction comparison** (DACS-4 §9.5.7 XN-7, XN-11; §9.5.8 SB-1) —
-  `settlementTransaction` keeps the settlement response's `transaction`
-  spelling verbatim. The EIP-155 adapter compares it with `settlementEvent`
+  `settlementTransaction` names the transaction that the ledger reconciliation
+  establishes, and keeps a sound settlement response's `transaction` spelling
+  verbatim. The EIP-155 adapter compares it with `settlementEvent`
   after the SB-1 collapse (at most one `0x`/`0X`, any hex case, exactly 32
   bytes), and with the authenticated ledger transaction in the same collapsed
   form; a `settlementTransaction` with no such form is `error`. The upstream

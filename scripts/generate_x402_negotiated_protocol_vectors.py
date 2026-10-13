@@ -1552,23 +1552,39 @@ def build_vectors() -> list[dict]:
              "a 0x response matches an unprefixed authenticated ledger transaction in the collapsed form",
              response_transaction_spelling("0x" + SAFE_TX, SAFE_TX), refresh=True,
              authorization_submitted=True)
-    for name, expected, spelling, note in (
-        ("response-transaction-unprefixed", "pass", SAFE_TX,
+    for name, spelling, note in (
+        ("response-transaction-unprefixed", SAFE_TX,
          "a hash without a prefix is already the canonical form"),
-        ("response-transaction-0x-mixed-case", "pass", "0x" + "Ab" * 32,
+        ("response-transaction-0x-mixed-case", "0x" + "Ab" * 32,
          "hex digits compare case-insensitively"),
-        ("response-transaction-0X-uppercase", "pass", "0X" + SAFE_TX.upper(),
+        ("response-transaction-0X-uppercase", "0X" + SAFE_TX.upper(),
          "an upper-case 0X prefix is one allowed prefix"),
-        ("response-transaction-63-hex-digits", "error", "0x" + SAFE_TX[:63],
-         "a hash that is not exactly 32 bytes has no canonical form"),
-        ("response-transaction-double-0x-prefix", "error", "0x0x" + SAFE_TX,
-         "at most one prefix is removed, so a second 0x is malformed"),
     ):
-        add_case(vectors, name, expected, "XN-7/XN-8/SB-1", note,
+        add_case(vectors, name, "pass", "XN-7/XN-8/SB-1", note,
                  response_transaction_spelling(spelling), refresh=True,
-                 authorization_submitted=True,
-                 operation="execute" if expected == "pass" else "verify-evidence",
-                 reason=None if expected == "pass" else "settlement-transaction-form")
+                 authorization_submitted=True)
+    # A malformed hash in the signed settlementTransaction is a malformed
+    # coordinate of the record; the response stays sound.
+    for name, spelling, note in (
+        ("evidence-transaction-63-hex-digits", "0x" + SAFE_TX[:63],
+         "a recorded hash that is not exactly 32 bytes has no canonical form"),
+        ("evidence-transaction-double-0x-prefix", "0x0x" + SAFE_TX,
+         "at most one prefix is removed, so a second 0x in the record is malformed"),
+    ):
+        add_case(vectors, name, "error", "XN-7/XN-8/SB-1", note,
+                 lambda v, s=spelling: v["evidence"]["paymentTxRefs"][0].update(
+                     {"settlementTransaction": s}),
+                 operation="verify-evidence", reason="settlement-transaction-form")
+
+    # The same malformed hash in the response alone is a response defect: the
+    # record names the reconciled transaction and the ledger decides (XN-11).
+    def malformed_response_transaction(v):
+        response = settlement_response(2)
+        response["transaction"] = "0x" + SAFE_TX[:63]
+        v["http"]["responseHeader"] = encoded_header(response, 2)
+    response_defect("response-transaction-not-32-bytes",
+                    "a response transaction of 63 hexadecimal digits has no XN-7 adapter form",
+                    malformed_response_transaction, "response-transaction")
 
     def response_payer_mismatch(v):
         response = settlement_response(2)
@@ -2492,6 +2508,13 @@ def build_vectors() -> list[dict]:
     ):
         add_case(vectors, name, expected, "XN-4/XN-5", note, mutate, refresh=True,
                  reason="address-form" if expected == "error" else None)
+
+    # XN-7: a response header whose value is not a string decodes to nothing.
+    response_defect("response-header-value-not-string",
+                    "a settlement-response header whose value is not a string decodes to no "
+                    "object, so the receipt preimage is JSON null",
+                    lambda v: v["http"]["responseHeader"].update({"value": None}),
+                    "response-header")
 
     return vectors
 

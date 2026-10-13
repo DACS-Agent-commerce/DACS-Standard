@@ -532,7 +532,7 @@ dacs4:payment:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evm-erc20%3A8453%3AUSDC:3:resolved
 | --- | --- |
 | `permanent` | refused by chain, insufficient balance, invalid signature |
 | `transient` | RPC failure, mempool congestion |
-| `counterparty` | AP2 mandate revoked, x402 server refused |
+| `counterparty` | AP2 mandate revoked, x402 server refused before authorization |
 | `substrate` | SR-2 unavailable, and the payment has not yet reached its rail-defined finality (see PC-7) |
 | `settlement-atomicity` | cross-chain only; one leg reached a terminal or asymmetric state the other did not match — a timeout, or the HTLC-9 preimage-revealed-but-counterpart-unclaimed state |
 

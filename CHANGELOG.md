@@ -1409,7 +1409,7 @@ The format used per release:
   MUST reject one that omits any; the clause about omitting absent roles is
   removed because neither v1 profile has one. The intent schema now requires
   four roster entries for both v1 profiles and the reference rejects a short
-  roster even when schema validation is bypassed.
+  roster even when schema validation is skipped.
 - **Atomic `jobId` is a JID-1 job identifier** (CORE JID-1; five Atomic
   schemas) — the intent, authorization, payment-slot CAS payload, receipt slot
   key, and settlement-evidence schemas and the reference used a broader
@@ -1422,7 +1422,20 @@ The format used per release:
   receipt's terminal state. Before this fix only the slot key and
   `before == after` were compared, so a Completion slot carrying another
   receipt commitment was accepted.
-- **Predicate-pinning Atomic vectors** — 147 vectors (355 → 502) start from a
+- **Sequential commitment time for the Listing checks** (DACS-3 §8.5.2 checks
+  5 and 6; AWP-7, AWP-8) — a correctness fix to the reference verifier:
+  whole-profile Purchase admission re-ran the Listing deadline and `notAfter`
+  checks at the Work receipt's consensus time even under the sequential gate,
+  where `committedAt` is the commitment AnchorReceipt's time. A Listing still
+  valid at commitment but expired before the later Work receipt was rejected.
+  The re-check now uses the `committedAt` the authority context verified.
+- **Absent operation authorizations are unavailable authority** (CORE §5.2
+  AW-34; DACS-4 §9.5.1) — the reference raised an internal error when the
+  authorization surface or composed admission received no `authorizations`
+  member. It now returns `indeterminate`, as the attempts and role-anchor
+  surfaces already did; a presented set that lacks a required role still
+  fails.
+- **Predicate-pinning Atomic vectors** — 155 vectors (355 → 510) start from a
   committed vector or generator fixture and re-derive every signature, hash,
   root, commitment, address and publication, so that only one predicate is
   violated: validly signed authorizations for another Work, context or signer;
@@ -1437,16 +1450,23 @@ The format used per release:
   authority-artifact versions; the ordinary DACS-4 PC-1 payment-input arm, and
   a record carrying both arms' session members, presented to the Atomic
   handler; first-character `8`/`9` job IDs at intent, authorization, slot,
-  receipt and settlement ingress; malformed evidence addresses (`error`); and
-  CF-2 ClaimReference grammar. A wrong-implementation witness removes each
+  receipt and settlement ingress; malformed evidence addresses (`error`);
+  CF-2 ClaimReference grammar; sequential-gate deadline and `notAfter` pairs
+  that move only the commitment AnchorReceipt time or the Listing expiry by one
+  millisecond; the signed slot-key tuple on the receipt surface and the
+  Listing pay-dem tuple on the profile surface; and absent operation
+  authorizations (`indeterminate`). A wrong-implementation witness removes each
   targeted guard and asserts the exact result its vector moves to; where the
   schema decides first (the four-role roster, `receiptVersion`, `refVersion`
-  and `atomicEvidenceVersion`) it also bypasses the schema. Twenty schema
+  and `atomicEvidenceVersion`) it also skips schema validation. Twenty schema
   boundary checks are added (47 → 67). New unit tests drop each authority or
   evidence member of ten passing vectors and expect `indeterminate`, feed the
   vector validator a re-hashed tampered set and an uncovered applicable cell,
-  and require each validator CLI's success line. The 355 earlier vectors are
-  byte-identical. These vectors narrow, but do not close, the CONFORMANCE-PLAN
+  feed the generator an uncovered or conflicting polarity cell and a changed
+  set under `--check`, feed the schema validator a bad fixture and a
+  permissive validator, and require each validator CLI's success line. The
+  355 earlier vectors are byte-identical. These vectors narrow, but do not
+  close, the CONFORMANCE-PLAN
   §14.8 semantic-fixture gap, which now also names the general DACS-4 changes
   that still have no executable case.
 - **SEB-3 per-member Atomic admission** (DACS-5 §10.4.3 SEB-3) — names the

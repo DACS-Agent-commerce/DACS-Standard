@@ -25,6 +25,7 @@ if str(ROOT / "scripts") not in sys.path:
 import atomic_work_reference as ref  # noqa: E402
 import generate_atomic_work_vectors as generator  # noqa: E402
 import validate_atomic_work_vectors as validator  # noqa: E402
+import validate_atomic_work_schemas as schema_validator  # noqa: E402
 
 
 COMPLETENESS_WORD = re.compile(
@@ -122,7 +123,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 502)
+        self.assertEqual(vector_count, 510)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -1541,6 +1542,30 @@ def _without_calls(function, callee: str):
     return namespace[function.__name__], len(removed)
 
 
+def _without_assignment(function, source: str):
+    """Recompile ``function`` with every assignment whose source is ``source`` removed."""
+    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
+    removed = []
+
+    class StripAssignment(ast.NodeTransformer):
+        def visit_Assign(self, node):
+            if ast.unparse(node) != source:
+                return node
+            removed.append(node)
+            return ast.copy_location(ast.Pass(), node)
+
+    tree = ast.fix_missing_locations(StripAssignment().visit(tree))
+    namespace = {}
+    exec(
+        compile(
+            tree, inspect.getsourcefile(function), "exec",
+            flags=__future__.annotations.compiler_flag, dont_inherit=True,
+        ),
+        function.__globals__, namespace,
+    )
+    return namespace[function.__name__], len(removed)
+
+
 class AtomicPresenterWiringWitnessTests(unittest.TestCase):
     """The whole-profile vectors, not only the helper test, pin the wiring."""
 
@@ -1790,6 +1815,12 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
     GUARDS = (
         ("validate_intent", "duplicate operationId", (
             ("aw-operation-id-duplicate", PASS),
+        )),
+        ("verify_receipt", "Purchase signed slot key differs from top-level intent tuple", (
+            ("aw-receipt-signed-slot-tuple-differs", PASS),
+        )),
+        ("evaluate_profile", "Purchase signed Listing pay-dem phase tuple mismatch", (
+            ("awp-profile-pay-dem-tuple-differs", PASS),
         )),
         ("evaluate_expiry", "Work expired before its first operation", (
             ("aw-expiry-equality-after-first-operation", PASS),
@@ -2183,6 +2214,32 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
                 self._evaluate("aw-auth-rail-accepted-after-session"), accepted_after
             )
 
+    def test_sequential_listing_checks_read_the_commitment_anchor_time(self):
+        # DACS-3 §8.5.2 checks 5 and 6: under the sequential gate committedAt
+        # is the commitment AnchorReceipt time, where the authority context
+        # reads it and where composed admission re-checks the Listing.
+        past_bound = "awp-sequential-deadline-past-anchor-bound"
+        at_anchor = "awp-sequential-listing-not-after-at-anchor-time"
+        expired = ("fail", "Listing expired before commitment")
+        self.assertEqual(
+            self._evaluate(past_bound),
+            ("fail", "Agreement deadline exceeds Listing commitment-relative bound"),
+        )
+        self.assertEqual(self._evaluate(at_anchor), self.PASS)
+        # Wrong clock: the authority context keeps the later Work receipt time.
+        wrong, removed = _without_assignment(
+            ref._verified_authority_context, "effective_timestamp = anchor_timestamp"
+        )
+        self.assertEqual(removed, 1)
+        with mock.patch.object(ref, "_verified_authority_context", wrong):
+            self.assertEqual(self._evaluate(past_bound), self.PASS)
+            self.assertEqual(self._evaluate(at_anchor), expired)
+        # Wrong wiring: the composed Listing re-check is not given that time.
+        real = ref.evaluate_profile
+        with mock.patch.object(ref, "evaluate_profile", lambda data, **_: real(data)):
+            self.assertEqual(self._evaluate(at_anchor), expired)
+            self.assertEqual(self._evaluate(past_bound)[0], "fail")
+
     def test_v1_four_role_roster_is_enforced_by_schema_and_reference(self):
         # AW-10: with the intent schema bypassed the reference still rejects
         # each short roster; without both layers each one is accepted.
@@ -2346,6 +2403,72 @@ class AtomicGateNegativePathTests(unittest.TestCase):
             errors, _, _ = validator.validate_all()
         self.assertIn("applicable N polarity coverage missing: AWB-8", errors)
 
+    def test_generator_refuses_uncovered_or_conflicting_polarity(self):
+        # Only the audit set is built, so most applicable cells are uncovered;
+        # marking an observed AWB-8 rejection not applicable is a conflict.
+        builders = {
+            name: builder if name == self.SET else list
+            for name, builder in generator.BUILDERS.items()
+        }
+        with mock.patch.dict(generator.BUILDERS, builders), \
+                mock.patch.object(generator, "predicate_pin_vectors", lambda built: {}):
+            with self.assertRaisesRegex(AssertionError, r"uncovered applicable Atomic polarity: P: .*\bAW-1\b"):
+                generator.build_sets()
+            conflicting = {**generator.POLARITY_NOT_APPLICABLE["N"], "AWB-8": "probe"}
+            with mock.patch.dict(generator.POLARITY_NOT_APPLICABLE, {"N": conflicting}):
+                with self.assertRaisesRegex(AssertionError, r"observed Atomic polarity marked not applicable: N: AWB-8"):
+                    generator.build_sets()
+
+    def test_generator_check_fails_on_a_changed_set(self):
+        # --check compares the rendered sets with the files byte for byte.
+        sets = {self.SET: copy.deepcopy(self.data)}
+        for edit, code in ((lambda text: text, 0), (lambda text: text.replace('"count"', '"count" ', 1), 1)):
+            with tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.object(generator, "build_sets", lambda: sets), \
+                    mock.patch.object(generator, "VECTOR_DIR", Path(tmp)), \
+                    mock.patch.object(generator, "ROOT", Path(tmp)), \
+                    mock.patch.object(sys, "argv", ["generate_atomic_work_vectors.py", "--check"]), \
+                    contextlib.redirect_stdout(io.StringIO()) as out, \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                (Path(tmp) / f"{self.SET}.json").write_text(
+                    edit(generator.render(self.data)), encoding="utf-8"
+                )
+                self.assertEqual(generator.main(), code)
+            if code:
+                self.assertIn(f"regeneration FAILED: {self.SET}", err.getvalue())
+            else:
+                self.assertIn("regeneration OK (1 byte-identical sets)", out.getvalue())
+
+    def test_schema_validator_fails_on_a_bad_fixture_or_boundary_outcome(self):
+        real_named = schema_validator.named
+
+        def capability_version_two(set_name, vector_name):
+            vector = copy.deepcopy(real_named(set_name, vector_name))
+            if vector_name == "aw-capability-authenticated":
+                vector["input"]["capability"]["capabilityVersion"] = "2"
+            return vector
+
+        class Permissive:
+            check_schema = staticmethod(lambda schema: None)
+
+            def __init__(self, schema, registry=None):
+                pass
+
+            def iter_errors(self, instance):
+                return iter(())
+
+        for label, patch, message in (
+            ("fixture", mock.patch.object(schema_validator, "named", capability_version_two),
+             "atomic-work-capability-v1.schema.json:capabilityVersion"),
+            ("boundary", mock.patch.object(schema_validator, "Draft202012Validator", Permissive),
+             "unexpectedly accepted invalid fixture"),
+        ):
+            with self.subTest(label), patch, \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                self.assertEqual(schema_validator.main(), 1)
+            self.assertIn(message, err.getvalue())
+
     def test_validator_clis_report_success(self):
         # Dropping a __main__ guard makes a CI step exit 0 without validating,
         # so each step must also print its success line.
@@ -2371,7 +2494,7 @@ class AtomicMissingInputTests(unittest.TestCase):
 
     MISSING = {
         "aw-auth-complete-envelope": (
-            "authority", "capability", "expectedNetworkAuthority",
+            "authority", "authorizations", "capability", "expectedNetworkAuthority",
             "expectedProofProfile", "expectedRailRegistryAuthority",
         ),
         "aw-attempt-byte-identity": (
@@ -2387,13 +2510,13 @@ class AtomicMissingInputTests(unittest.TestCase):
             "operationEvidence",
         ),
         "awp-purchase-composed-admission": (
-            "attempts", "authority", "capability", "expectedNetworkAuthority",
+            "attempts", "authority", "authorizations", "capability", "expectedNetworkAuthority",
             "expectedProofProfile", "expectedRailRegistryAuthority",
             "ledgerInventory", "limitEvidence", "proofReservationBytes",
             "proofReservationEvidence", "receipt", "settlement", "slotAdmission",
         ),
         "awp-completion-payee-presenter-identical-duplicate": (
-            "attempts", "authority", "capability", "expectedNetworkAuthority",
+            "attempts", "authority", "authorizations", "capability", "expectedNetworkAuthority",
             "expectedProofProfile", "expectedRailRegistryAuthority",
             "ledgerInventory", "limitEvidence", "proofReservationBytes",
             "proofReservationEvidence", "purchaseCommitmentProjection",

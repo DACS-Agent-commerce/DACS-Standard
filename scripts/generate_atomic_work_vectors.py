@@ -4284,7 +4284,10 @@ def predicate_pin_vectors(
         ("version", "authorizationVersion", "2"),
         ("job-id-first-character-8", "jobId", JOB_ID_FIRST_8),
     )
+    authorizations_absent = base("aw-auth-complete-envelope")
+    del authorizations_absent["authorizations"]
     authorization = [
+        vector("aw-auth-authorizations-unavailable", ["AW-34"], "authorization", authorizations_absent, "indeterminate", "Without the operation authorizations the verifier cannot verify any required role; unavailable authority is indeterminate, not a crash."),
         vector("aw-auth-validly-signed-for-another-work", ["AW-31", "AW-36"], "authorization", resigned_authorization(lambda e: e.update(workId=ref.work_id(other_work))), "fail", "The payer's valid signature over a Work that differs only in expiresAt does not authorize this Work."),
         vector("aw-auth-orchestrator-signs-as-payer", ["AW-33", "AW-38"], "authorization", resigned_authorization(lambda e: e.update(signer=CLAIMS["orchestrator"]), "orchestrator"), "fail", "A valid orchestrator signature on the payer's payment authorization does not become payer authority."),
         *(
@@ -4445,6 +4448,12 @@ def predicate_pin_vectors(
     network_cap = {k: v for k, v in receipt_network["capability"].items() if k != "evidence"}
     network_cap["networkId"] = "demos:othernet"
     receipt_network["capability"] = sign_capability(network_cap)
+    # The signed slot key names the next phase; the receipt is finalized for
+    # exactly that Work, so only the slot-key/intent tuple check differs.
+    slot_tuple_intent = purchase_intent()
+    slot_tuple_intent["operations"][4]["payload"]["slotKey"]["phaseIndex"] = slot_tuple_intent["phaseIndex"] + 1
+    slot_tuple_receipt = base("aw-receipt-complete-and-final")
+    slot_tuple_receipt.update(intent=slot_tuple_intent, receipt=final_receipt(slot_tuple_intent))
 
     execution = [
         vector("aw-receipt-of-another-work", ["AW-46"], "receipt", other_receipt(other_work_receipt), "fail", "A complete, finalized receipt for a Work differing only in expiresAt does not bind this Work."),
@@ -4486,6 +4495,7 @@ def predicate_pin_vectors(
         vector("aw-anchor-inclusion-path-consistent-invalid", ["AW-68", "AW-69"], "projection", projection_variant(path_index=0 if projection_index != 0 else 1), "fail", "A projection whose copied and resolved inclusion paths agree but prove another leaf is rejected."),
         vector("aw-anchor-resolved-receipt-hash-differs", ["AW-68", "AW-69"], "projection", projection_variant(lambda r: r.update(receiptContentHash="00" * 32)), "fail", "Resolved projection evidence for another receipt does not resolve the verified Work receipt."),
         vector("aw-receipt-version-unsupported", ["AW-46"], "receipt", receipt_variant(lambda r: r.update(receiptVersion="2"), root=False), "fail", "A re-finalized receipt with receiptVersion 2 is not AtomicWorkReceiptV1."),
+        vector("aw-receipt-signed-slot-tuple-differs", ["AW-46", "AW-50"], "receipt", slot_tuple_receipt, "fail", "A finalized receipt for a Purchase whose signed slot key names another phase than its intent tuple does not bind the payment slot."),
         vector("aw-anchor-projection-receipt-version-unsupported", ["AW-66"], "projection", projection_anchor_version_two, "fail", "A projected AnchorReceipt with receiptVersion 2 is not the CORE §5.1 AnchorReceipt the verified Work receipt projects."),
     ]
 
@@ -4525,6 +4535,27 @@ def predicate_pin_vectors(
         proof.pop("signature", None)
         proof["contentHash"] = "00" * 32
         receipt["evidence"] = encoded_evidence("test-anchor-finality", proof, "network", ref._ANCHOR_TEST_DOMAIN)
+
+    def commitment_anchored_at(timestamp: int):
+        # Move only the commitment AnchorReceipt's consensus time and re-sign
+        # its finality proof; the Work receipt stays at 1_800_000_030_000.
+        def wrap(real):
+            def fake(record):
+                receipt = real(record)
+                receipt["blockRef"]["timestamp"] = timestamp
+                proof = json.loads(ref.b64u_decode(receipt["evidence"]["value"]))
+                proof.pop("signature", None)
+                proof["blockRef"] = copy.deepcopy(receipt["blockRef"])
+                receipt["evidence"] = encoded_evidence("test-anchor-finality", proof, "network", ref._ANCHOR_TEST_DOMAIN)
+                return receipt
+            return fake
+        return ("commitment_anchor_receipt", wrap)
+
+    def sequential_anchor_variant(anchor_time: int, not_after: int | None = None):
+        wraps = [commitment_anchored_at(anchor_time)]
+        if not_after is not None:
+            wraps.append(listing_edit(lambda l: l["validity"].update(notAfter=not_after)))
+        return composed_variant(tuple(wraps), gate_mode="sequential")
 
     def session_evidence(value, session):
         value["authority"]["atomicSessionContextEvidence"] = encoded_evidence(
@@ -4656,7 +4687,15 @@ def predicate_pin_vectors(
             {"railId": TEST_RAIL_ID, "phaseIndex": 4, "payeeAddress": "dem-test-seller"},
         ],
     )
+    # The intent and its signed slot key name the next phase consistently and
+    # the receipt is finalized for that Work; only the Listing's pay-dem
+    # phase tuple differs.
+    pay_dem_tuple = base("awp-purchase-exact-profile")
+    pay_dem_tuple["intent"]["phaseIndex"] += 1
+    pay_dem_tuple["intent"]["operations"][4]["payload"]["slotKey"]["phaseIndex"] = pay_dem_tuple["intent"]["phaseIndex"]
+    pay_dem_tuple["atomicReceipt"] = final_receipt(pay_dem_tuple["intent"])
     purchase_completion = [
+        vector("awp-profile-pay-dem-tuple-differs", ["AWP-20"], "profile", pay_dem_tuple, "fail", "A Purchase whose intent names another phase than the signed Listing's pay-dem phase is rejected on the profile surface under its own consistent receipt."),
         vector("awp-composed-payment-required-roles-empty", ["AWP-5"], "purchase-admission", composed_with_intent(drop_roles(5)), "fail", "A re-signed Purchase whose payment step requires no payer authorization is not the exact Purchase profile."),
         vector("awp-composed-operation-kind-differs", ["AWP-5"], "purchase-admission", shape_kind, "fail", "A re-signed Purchase that stores the agreement instead of asserting it is not the exact Purchase profile, although its DAG and roles are valid."),
         vector("awp-composed-dependencies-differ", ["AWP-5"], "purchase-admission", shape_depends, "fail", "A re-signed Purchase whose commitment also depends on the buyer Vet is not the exact Purchase profile, although its DAG is valid."),
@@ -4665,6 +4704,11 @@ def predicate_pin_vectors(
         vector("awp-composed-agreement-deliverable-hash-differs", ["AWP-7"], "purchase-admission", composed_variant((agreement_edit(lambda a: a["terms"]["deliverable"].update(hash="99" * 32)),)), "fail", "A re-signed Agreement whose deliverable differs from the Listing DeliverableSpec fails §8.5.2."),
         vector("awp-composed-deadline-exceeds-listing-bound", ["AWP-7", "AWP-8"], "purchase-admission", composed_variant((listing_edit(lambda l: l["terms"].update(deadlineSecAfterCommit=1)),)), "fail", "An Agreement deadline past the Listing's commitment-relative bound fails at consensus time."),
         vector("awp-composed-listing-expired-before-commit", ["AWP-7", "AWP-8"], "purchase-admission", composed_variant((listing_edit(lambda l: l["validity"].update(notAfter=1_800_000_000_000)),)), "fail", "A Listing whose notAfter precedes the authenticated commitment time cannot authorize the session."),
+        vector("awp-sequential-deadline-at-anchor-bound", ["AWP-7", "AWP-8"], "purchase-admission", sequential_anchor_variant(1_800_000_000_000), "pass", "Under the sequential gate committedAt is the commitment AnchorReceipt time: an Agreement deadline exactly deadlineSecAfterCommit after it is within the bound.", boundary_rules=["AWP-8"]),
+        vector("awp-sequential-deadline-past-anchor-bound", ["AWP-7", "AWP-8"], "purchase-admission", sequential_anchor_variant(1_799_999_999_999), "fail", "With the commitment anchored one millisecond earlier the same deadline exceeds the bound, although it is within the bound measured from the later Work receipt.", boundary_rules=["AWP-8"]),
+        vector("awp-sequential-listing-not-after-at-anchor-time", ["AWP-7", "AWP-8"], "purchase-admission", sequential_anchor_variant(1_800_000_000_000, 1_800_000_000_000), "pass", "A Listing whose notAfter equals the commitment AnchorReceipt time had not expired at commitment, although it expired before the later Work receipt.", boundary_rules=["AWP-8"]),
+        vector("awp-sequential-listing-expired-before-anchor", ["AWP-7", "AWP-8"], "purchase-admission", sequential_anchor_variant(1_800_000_000_000, 1_799_999_999_999), "fail", "A Listing whose notAfter is one millisecond before the commitment AnchorReceipt time expired before commitment.", boundary_rules=["AWP-8"]),
+        vector("awp-composed-authorizations-unavailable", ["AWP-5"], "purchase-admission", composed_variant(edit=lambda v: v.pop("authorizations")), "indeterminate", "A composed Purchase presented without its operation authorizations lacks role authority; admission is indeterminate and permits no payment."),
         vector("awp-composed-listing-negotiation-pattern-differs", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l["pipeline"].__setitem__(0, {"kind": "negotiate-rfq"})),)), "fail", "An Agreement pattern differing from the Listing pipeline fails §8.5.2."),
         vector("awp-composed-listing-commit-phase-differs", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l["pipeline"].__setitem__(1, {"kind": "commit-payee-bound-agreement"})),)), "fail", "An Agreement artifact that mismatches the Listing's commitment phase fails §8.5.2."),
         vector("awp-composed-agreement-rail-not-accepted", ["AWP-7", "AWP-20"], "purchase-admission", composed_variant((listing_edit(lambda l: l.update(acceptedRails=[{"railId": "other-rail"}])),)), "fail", "An Agreement rail that the Listing does not accept fails §8.5.2."),

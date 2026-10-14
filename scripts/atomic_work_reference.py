@@ -1067,6 +1067,8 @@ def verify_authorizations(
         for role in operation["requiredRoles"]
     }
     seen: set[tuple[int, str]] = set()
+    if not isinstance(authorizations, list):
+        raise Unknown("operation authorizations unavailable")
     for authorization in authorizations:
         if not isinstance(authorization, dict):
             raise Invalid("authorization is not an object")
@@ -2974,10 +2976,11 @@ def _verified_authority_context(
         "payerAccount": payer_account, "payeeAccount": payee_account,
         "slotKey": expected_slot_key, "conflictDigest": digest,
         "feeRule": capability["limits"]["feeRule"], "gateMode": gate_mode,
+        "committedAt": effective_timestamp,
     }
 
 
-def evaluate_profile(data: dict[str, Any]) -> None:
+def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -> None:
     intent = data["intent"]
     validate_intent(intent)
     _profile_shape(intent, intent["profile"])
@@ -3060,7 +3063,13 @@ def evaluate_profile(data: dict[str, Any]) -> None:
         timestamp = atomic_receipt["blockRef"]["timestamp"]
         if not isinstance(timestamp, int):
             raise Invalid("consensus block timestamp unavailable")
-        _verify_agreement_listing(intent["operations"][2]["payload"]["artifact"], listing, timestamp)
+        # DACS-3 §8.5.2 checks 5 and 6 read committedAt. Composed admission
+        # passes the time it verified: the commitment AnchorReceipt's under
+        # the sequential gate, not this later Work receipt's.
+        _verify_agreement_listing(
+            intent["operations"][2]["payload"]["artifact"], listing,
+            timestamp if committed_at is None else committed_at,
+        )
     else:
         purchase_receipt = intent["operations"][0].get("payload", {}).get("receipt")
         if not isinstance(purchase_receipt, dict):
@@ -4398,7 +4407,7 @@ def _evaluate_composed_admission(
             "purchaseCommitmentProjection": data.get("purchaseCommitmentProjection"),
             "claimsEvidenceFinalized": False, "claimsBundleFinalized": False,
         })
-    evaluate_profile(profile_input)
+    evaluate_profile(profile_input, committed_at=authority_context["committedAt"])
     verify_receipt(
         receipt, intent, data["publicKeys"], capability=capability,
         purchase_intent=data.get("purchaseIntent"),
@@ -4442,7 +4451,7 @@ EVALUATORS = {
         else (_ for _ in ()).throw(Invalid("different canonical bytes produced same identifier"))
     ),
     "authorization": lambda data: verify_authorizations(
-        data["intent"], data["authorizations"], data["publicKeys"], data.get("authority"),
+        data["intent"], data.get("authorizations"), data["publicKeys"], data.get("authority"),
         data.get("capability"), data.get("expectedNetworkAuthority"),
         data.get("expectedProofProfile"), data.get("expectedRailRegistryAuthority"),
     ),

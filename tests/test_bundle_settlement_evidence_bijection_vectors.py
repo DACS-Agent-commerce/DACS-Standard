@@ -1,9 +1,12 @@
 """Executable assertions for DACS-5 v0.4 SEB-1..SEB-6 candidate vectors."""
 
+import __future__
 import base64
 import copy
 import hashlib
+import inspect
 import json
+import textwrap
 import threading
 import unittest
 from pathlib import Path
@@ -677,6 +680,36 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertEqual(
                     vector["expected"], verdict_for_disposition[actual_disposition]
                 )
+
+    def test_atomic_member_admission_guard_is_load_bearing(self):
+        # Wrong implementation: a present admission map that lacks this
+        # member's entry falls through to the malformed-admission rejection.
+        function = R._validate_ebfab_boolean
+        source = textwrap.dedent(inspect.getsource(function))
+        guard = "if atomic_admission is None:"
+        self.assertEqual(source.count(guard), 1)
+        namespace = {}
+        exec(
+            compile(
+                source.replace(guard, "if False:"), inspect.getsourcefile(function),
+                "exec", flags=__future__.annotations.compiler_flag, dont_inherit=True,
+            ),
+            function.__globals__, namespace,
+        )
+        vector = next(
+            item for item in self.data["vectors"]
+            if item["name"] == "bundle-settlement-bijection-atomic-member-admission-missing-indeterminate"
+        )
+        authorities = self.data["executionAuthorities"]
+        self.assertEqual(
+            evaluate(vector["input"], authorities, self.pubkeys),
+            ("indeterminate", "execution-authority-indeterminate"),
+        )
+        with mock.patch.object(R, function.__name__, namespace[function.__name__]):
+            self.assertEqual(
+                evaluate(vector["input"], authorities, self.pubkeys),
+                ("rejected", "execution-authority"),
+            )
 
     def test_atomic_evidence_composes_with_exact_set_and_reputation_dispatch(self):
         authority = copy.deepcopy(

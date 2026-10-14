@@ -492,9 +492,18 @@ def make_atomic_authority(variant="pass"):
             completion_admission["settlement"]
         ),
     }
-    if variant == "dual-selector":
+    # Each of these edits the delivery member and re-signs it; its passing
+    # AWS admission below is computed over the edited bytes, so only the
+    # SEB-3 Atomic shape gate can refuse it.
+    shape_edit = {
+        "dual-selector": lambda evidence: evidence.update(evidenceVersion="1"),
+        "unsupported-version": lambda evidence: evidence.update(
+            atomicEvidenceVersion="2"
+        ),
+    }.get(variant)
+    if shape_edit is not None:
         evidence = evidence_by_key["3:deliver-storage-program"]["evidence"]
-        evidence["evidenceVersion"] = "1"
+        shape_edit(evidence)
         evidence["signature"] = AR.sign_embedded(
             {key: value for key, value in evidence.items() if key != "signature"},
             A.CLAIMS["orchestrator"],
@@ -588,6 +597,10 @@ def make_atomic_authority(variant="pass"):
         admissions[pay_key]["disposition"] = "indeterminate"
     if variant == "error-admission":
         admissions[pay_key]["disposition"] = "error"
+    # A present admission map without this member's entry is unavailable
+    # authority for that member, exactly like an absent map.
+    if variant == "member-admission-missing":
+        del admissions[pay_key]
 
     agreement_ref = {
         "anchor": {
@@ -1696,6 +1709,12 @@ def generate(source):
             "indeterminate-admission"
         ),
         "atomic-error-admission": make_atomic_authority("error-admission"),
+        "atomic-member-admission-missing": make_atomic_authority(
+            "member-admission-missing"
+        ),
+        "atomic-unsupported-version": make_atomic_authority(
+            "unsupported-version"
+        ),
     })
     atomic_vector_specs = (
         (
@@ -1760,6 +1779,16 @@ def generate(source):
             "bundle-settlement-bijection-atomic-error-admission-error",
             "atomic-error-admission", "error", "error",
             "execution-authority-error",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-member-admission-missing-indeterminate",
+            "atomic-member-admission-missing", "indeterminate", "indeterminate",
+            "execution-authority-indeterminate",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-unsupported-version-reject",
+            "atomic-unsupported-version", "fail", "rejected",
+            "execution-authority",
         ),
     )
     known_vector_names = {vector["name"] for vector in data["vectors"]}

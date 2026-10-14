@@ -1132,10 +1132,11 @@ under `dacs-atomic-evidence:v1:`. The verifier MUST require the exclusive
 `atomicEvidenceVersion: "1"` selector and a `pass` result from AWS-16 through
 AWS-29 for the exact complete evidence bytes, Work receipt/proof closure,
 `jobId`, phase kind/index, orchestrator, and Atomic evidence logical address.
-Missing Atomic verification authority is indeterminate; malformed, stale,
-substituted, or cross-phase authority, or a deterministic AWS `fail`, rejects
-admission. Only a deterministic AWS `fail` is a non-passing result that
-rejects: when well-formed authority for these exact evidence bytes carries an
+Missing Atomic verification authority, including a present admission map
+without an entry for this member, is `indeterminate`; malformed, stale,
+substituted, or cross-phase authority, or a deterministic AWS `fail`, makes
+SEB-3's result for the member `rejected`. Only a deterministic AWS `fail` is a
+non-passing result that rejects: when well-formed authority for these exact evidence bytes carries an
 AWS `indeterminate` or `error` result, that exact state propagates as SEB-3's
 result for the member, as SEB-3 propagates an LAA result. An AWS-23
 `indeterminate` (unavailable proof, finalized state, or authenticated context)

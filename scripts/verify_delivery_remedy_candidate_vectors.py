@@ -39,6 +39,19 @@ DEFAULT_VECTOR_PACK = (
 DEFAULT_DEPLOYMENT_PACK = (
     ROOT / "conformance/fixtures/delivery-remedy/deployment-capabilities-v0.1.json"
 )
+# The exact external sources this verifier's verdicts follow.  A lifecycle
+# pack written against other sources is refused before any vector runs.
+VECTOR_SOURCE_PINS = {
+    "canonicalErc": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
+    "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
+    "ulid": "https://github.com/ulid/spec/blob/d0c7170df4517939e70129b4d6462cc162f2d5bf/README.md",
+    "demosSdk": {
+        "package": "@kynesyslabs/demosdk",
+        "version": "4.0.5",
+        "integrity": "sha512-p4OZy04Zw6G8kUJZA8MlR6koI2dc8jiD6LJP5Ga4uvxie1I52UjgCRfYKAEUHUPrF7hlnIafYVQ+pK0FlgyXWA==",
+        "source": "build/storage/StorageProgram.js",
+    },
+}
 
 # A ULID: 26 Crockford base-32 digits, at most 7ZZZZZZZZZZZZZZZZZZZZZZZZZ
 # (ulid/spec, "Overflow Errors when Parsing Base32 Strings").
@@ -880,12 +893,12 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     # Compared with `==` later, where Python would take 8453.0 for 8453.
     if type(artifacts["railDefinition"].get("chainId")) is not int or type(artifacts["job"].get("chainId")) is not int:
         return result("error", "DRV-3", "rail and job chain IDs must be integers")
-    # Every token and contract address is later compared with these two.
+    # Every token, contract, and job-hook address is later compared with these.
     if not all(
         isinstance(rail.get(name), str) and re.fullmatch(r"0x[0-9a-f]{40}", rail[name]) is not None
-        for name in ("paymentToken", "contractAddress")
+        for name in ("paymentToken", "contractAddress", "jobHook")
     ):
-        return result("error", "DRV-3", "rail payment token and contract must be lower-case EVM addresses")
+        return result("error", "DRV-3", "rail payment token, contract, and job hook must be lower-case EVM addresses")
     for name in ("job", "funding", "delivery", "evaluation", "dispute", "decision", "terminal"):
         artifact = artifacts.get(name)
         if artifact is not None and not isinstance(artifact, dict):
@@ -899,10 +912,11 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     ):
         return result("error", "DRAA-1", "caseId is not canonical JID form")
     job = artifacts["job"]
+    # ERC-8183 job IDs start at 1 (`++jobCounter`; job 0 is `InvalidJob`).
     if not isinstance(job.get("nativeJobId"), str) or re.fullmatch(
-        r"(?:0|[1-9][0-9]*)", job["nativeJobId"]
+        r"[1-9][0-9]*", job["nativeJobId"]
     ) is None:
-        return result("error", "DRJ-1", "nativeJobId is not minimal unsigned decimal")
+        return result("error", "DRJ-1", "nativeJobId is not a minimal positive decimal job ID")
     evaluation = artifacts.get("evaluation")
     if evaluation is not None:
         sequence = evaluation.get("evaluationSeq")
@@ -1656,7 +1670,7 @@ def _native_event_input_check(
             return {}, anchor_issue
         submitted_before_cutoff = submitted["blockTimestampSec"] < cutoff
         if not submitted_before_cutoff:
-            return {}, result("rejected", "DRP-9", "native delivery was submitted at or after the cutoff")
+            return {}, result("rejected", "DREB-13", "native delivery was submitted at or after the cutoff")
         ordered.append(submitted)
     ordered.append(records["terminal"])
     if any(
@@ -1836,12 +1850,15 @@ def _native_event_semantics_check(value: dict[str, Any]) -> dict[str, str] | Non
         role: parse_canonical_evm_claim(agreement[role]["evmAccountClaim"])[1]
         for role in ("buyer", "seller", "evaluator")
     }
+    # The job's hook is the rail's pin: an ERC-8183 hook can move value at
+    # `fund` or block a terminal call, so no other hook may be attached.
     if created != {
         "client": accounts["buyer"],
         "provider": accounts["seller"],
         "evaluator": accounts["evaluator"],
         "submissionCutoffSec": agreement["submissionCutoffSec"],
         "expiredAt": agreement["evaluationDeadlineSec"],
+        "hook": artifacts["railDefinition"]["jobHook"],
     }:
         return result("rejected", "DRJ-3", "creation/configuration event does not match the agreement")
     funded = records["JobFunded"]["arguments"]
@@ -2562,11 +2579,13 @@ def verify_vector_pack(pack: Any) -> list[str]:
     if not isinstance(pack, dict):
         return ["candidate vector pack must be an object"]
     required = {
-        "kind", "status", "spec", "generator", "hash", "count", "fixtures",
+        "kind", "status", "spec", "generator", "sourcePins", "hash", "count", "fixtures",
         "vectors", "promotionBlockedRules", "promotionBlockedProofs",
     }
     if not required.issubset(pack):
         return ["candidate vector pack is missing required top-level fields"]
+    if pack["sourcePins"] != VECTOR_SOURCE_PINS:
+        return ["candidate vector pack source pins are not the verifier's"]
     errors: list[str] = []
     vectors = pack.get("vectors")
     if not isinstance(vectors, list) or not vectors:

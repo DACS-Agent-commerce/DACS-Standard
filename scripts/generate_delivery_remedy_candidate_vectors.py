@@ -86,6 +86,8 @@ RESOLVER_DOMAIN = "dacs-x-delivery-remedy-fixture-resolver:v1:"
 CHAIN_ID = 8453
 CONTRACT = "0x" + "81" * 20
 TOKEN = "0x" + "55" * 20
+# The rail admits no ERC-8183 job hook: `createJob` takes address(0).
+NO_HOOK = "0x" + "00" * 20
 BUYER_ACCOUNT = "0x" + "11" * 20
 SELLER_ACCOUNT = "0x" + "22" * 20
 EVALUATOR_ACCOUNT = "0x" + "33" * 20
@@ -390,6 +392,7 @@ def make_base(
         "paymentToken": TOKEN,
         "paymentTokenSymbol": "USDC",
         "tokenDecimals": 6,
+        "jobHook": NO_HOOK,
         "profileParameters": {
             "minimumEvaluationWindowSec": 3600,
             "deadlineProfile": "separate-submission-cutoff-v1",
@@ -705,6 +708,7 @@ def make_base(
                 "evaluator": accounts["evaluator"],
                 "submissionCutoffSec": agreement["submissionCutoffSec"],
                 "expiredAt": agreement["evaluationDeadlineSec"],
+                "hook": rail["jobHook"],
                 "description": "dacs-delivery-remedy:v1:" + agreement_hash,
             },
         ),
@@ -1211,6 +1215,7 @@ def build_vector_pack() -> dict[str, Any]:
         # Identity, job, and rail negatives.
         "noncanonical-job-id": make_base("release", "job-356"),
         "nonminimal-native-job-id": make_base("release", hooks={"job": put("nativeJobId", "01")}),
+        "zero-native-job-id": make_base("release", hooks={"job": put("nativeJobId", "0")}),
         "drp-5-job-rail": make_base("release", hooks={
             "job": put("railDefinitionRef", "anchor", "locator", "fixture:rail:pay-evm-erc8183:unselected"),
         }),
@@ -1370,7 +1375,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pre-submission-evaluator-rejection", "pre-submission-rejected-refund", "verified", "DRV-7", "agreement-authorized pre-submission rejection uses a DisputeOutcome and omits delivery evidence", rules=pre_submission_verified_rules),
         vector("expiry-before-submission", "expired-pre", "verified", "DRV-7", "pre-submission expiry refunds without a decision or delivery reference", rules=expiry_verified_rules),
         vector("expiry-after-submission-grace", "expired-post", "verified", "DRV-7", "post-submission expiry refunds after grace without inventing a decision", rules=expiry_verified_rules + ["DRP-7", "DRP-9"]),
-        vector("eip1271-relayed-execution", "release", "verified", "DRV-7", "the resolver-labelled contract account stays the native caller while an outer account submits (DREB-22); EIP-1271 support itself is proof-blocked", authenticated("release", call("nativeCallerAccountType", "eip1271") + call("outerSubmitter", RELAYER_ACCOUNT)), rules=release_verified_rules + ["DREB-18"]),
+        vector("eip1271-relayed-execution", "release", "verified", "DRV-7", "the resolver-labelled contract account stays the native caller while an outer account submits (DREB-22); EIP-1271 support itself is proof-blocked", authenticated("release", call("nativeCallerAccountType", "eip1271") + call("outerSubmitter", RELAYER_ACCOUNT)), rules=release_verified_rules),
         vector("dreb-15-recovery-after-deadline", "expired-pre", "verified", "DRV-7", "DREB-15: expiry recovery after the evaluation deadline remains valid", authenticated("expired-pre", retime("expired-pre", "JobExpired", deadline + 1)), rules=expiry_verified_rules),
         vector("drd-8-same-terminal-again", "release", "verified", "DRV-7", "DRD-8 and DRL-4: verifying the same terminal again, in any order, is idempotent", rules=["DRD-8", "DRL-4", "DRV-7"], evaluated_with=["release-complete-budget", "eip1271-relayed-execution"]),
         # DRP: pipeline shape.
@@ -1427,7 +1432,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("drp-9-digest-anchor-time-equals-submission", "drp-9-digest-anchor-time-equals-submission", "rejected", "DRP-9", "an anchor block with the submission's own block time is not before it"),
         vector("deliveryless-lifecycle-carries-digest-anchor", "deliveryless-lifecycle-carries-digest-anchor", "rejected", "DRP-9", "a lifecycle without delivery has no delivery digest for the resolver to anchor"),
         vector("drp-9-delivery-observed-after-submission", "drp-9-delivery-observed-after-submission", "rejected","DRP-9", "hashed delivery evidence cannot record a time after its digest was fixed"),
-        vector("native-submission-at-cutoff", "release", "rejected", "DRP-9", "a native submission at the cutoff is late", authenticated("release", retime("release", "JobSubmitted", cutoff)) + [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
+        vector("native-submission-at-cutoff", "release", "rejected", "DREB-13", "a native submission accepted at the cutoff shows the implementation did not reject it", authenticated("release", retime("release", "JobSubmitted", cutoff)) + [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
         vector("submission-event-deliverable-mismatch", "release", "rejected", "DRP-9", "the native submission event must carry the delivery digest", authenticated("release", observation(2, "arguments", "deliverable", value="0x" + rehash_delivery))),
         vector("deliveryless-lifecycle-carries-submission-binding", "expired-pre", "rejected", "DRP-9", "a lifecycle without delivery has no native submission to bind", [{"op": "replace", "path": ["deliveryBinding"], "value": {}}]),
         vector("delivery-binding-carries-conclusions", "release", "error", "DRV-3", "the delivery binding names the submission event and nothing else", [{"op": "add", "path": ["deliveryBinding", "status"], "value": "verified"}]),
@@ -1626,12 +1631,17 @@ def build_vector_pack() -> dict[str, Any]:
         vector("funding-time-caller-substitution", "release", "rejected", "DRA-9", "a caller fundedAt value cannot replace the authenticated funding-event block timestamp", [{"op": "replace", "path": ["native", "fundedAtSec"], "value": 1799990001}]),
         vector("submitted-before-cutoff-claim-substitution", "release", "rejected", "DRT-12", "submission classification derives from the authenticated event time", [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
         vector("creation-event-cutoff-mismatch", "release", "rejected", "DRJ-3", "the authenticated creation event must carry the signed cutoff", authenticated("release", observation(0, "arguments", "submissionCutoffSec", value=cutoff + 1))),
+        vector("creation-event-hook-not-rail-pin", "release", "rejected", "DRJ-3", "the authenticated creation event's hook must be the rail's pinned job hook, here none", authenticated("release", observation(0, "arguments", "hook", value="0x" + "c4" * 20))),
         vector("funding-event-amount-mismatch", "release", "rejected", "DRF-3", "the authenticated funding event must lock the complete budget", authenticated("release", observation(1, "arguments", "amountBaseUnits", value="999999"))),
         vector("terminal-event-payload-mismatch", "release", "rejected", "DRT-4", "terminal log inputs must match the claimed financial disposition", authenticated("release", observation(3, "arguments", "amountBaseUnits", value="999999"))),
+        # The orchestrator-signed terminal evidence still names the seller; only
+        # the authenticated chain event shows the budget went elsewhere.
+        vector("drt-10-orchestrator-signature-not-chain-evidence", "release", "rejected", "DRT-4", "a valid orchestrator signature on terminal evidence does not stand in for the chain event it contradicts", authenticated("release", observation(3, "arguments", "recipient", value=BUYER_ACCOUNT)), rules=["DRT-4", "DRT-10"]),
         vector("funding-finality-block-preimage-mismatch", "release", "rejected", "DRF-6", "the finalized funding block identity must reproduce from committed input", authenticated("release", observation(1, "blockHashPreimageUtf8", value="substituted block") + observation(1, "blockHash", value="0x" + hashlib.sha256(b"substituted block").hexdigest()))),
         vector("funding-block-hash-mismatch", "release", "rejected", "DRF-6", "the finalized funding block hash must reproduce from its preimage", authenticated("release", observation(1, "blockHash", value="0x" + "cd" * 32))),
         # DRJ, DRAA: identifiers, job, and code.
         vector("nonminimal-native-job-id", "nonminimal-native-job-id", "error", "DRJ-1", "native job identifiers use minimal unsigned decimal text"),
+        vector("zero-native-job-id", "zero-native-job-id", "error", "DRJ-1", "ERC-8183 job IDs start at 1, so job 0 names no native job"),
         vector("noninteger-evaluation-sequence", "evaluation-sequence-text", "error", "DRAA-2", "numeric address segments must be unsigned integers"),
         vector("first-evaluation-sequence-not-zero", "evaluation-sequence-one", "rejected", "DRAA-6", "the first evaluation sequence starts at zero"),
         vector("noncanonical-job-id", "noncanonical-job-id", "error", "DRAA-1", "malformed JID is an input error"),
@@ -1667,6 +1677,7 @@ def build_vector_pack() -> dict[str, Any]:
         ]
     alias = BUYER + "?role=evaluator"
     fixtures.update({
+        "overlay-version-2": make_base("release", hooks={"agreement": put("deliveryOrRemedyAgreementVersion", "2")}),
         "bilateral-version-2": make_base("release", hooks={"bilateral": put("agreementVersion", "2")}),
         "rail-version-2": make_base("release", hooks={"rail": put("railVersion", 2)}),
         "rail-type-other": make_base("release", hooks={"rail": put("railType", "evm-erc20")}),
@@ -1729,7 +1740,12 @@ def build_vector_pack() -> dict[str, Any]:
             "terminal": put("finality", "finalityObservedAt", 9_000_000_000_000_000),
         }),
     })
+    resolver_version_2 = copy.deepcopy(fixtures["release"])
+    resolver_version_2["resolverEvidence"]["resolverEvidenceVersion"] = "2"
+    resign_resolver(resolver_version_2, bind=False)
     vectors += [
+        vector("agreement-overlay-version-unsupported", "overlay-version-2", "error", "DRV-2", "an unsupported overlay version fails before action, though all three roles signed it"),
+        vector("resolver-evidence-version-unsupported", "release", "error", "DRV-2", "an unsupported resolver evidence version fails before action, though the pinned resolver signed it", [{"op": "replace", "path": ["resolverEvidence"], "value": resolver_version_2["resolverEvidence"]}]),
         vector("bilateral-agreement-version-unsupported", "bilateral-version-2", "error", "DRV-2", "an unsupported bilateral agreement version fails before action"),
         vector("rail-version-unsupported", "rail-version-2", "error", "DRV-2", "an unsupported rail version fails before action"),
         vector("rail-type-unsupported", "rail-type-other", "error", "DRV-2", "a rail of another type fails before action"),
@@ -1848,9 +1864,11 @@ def build_vector_pack() -> dict[str, Any]:
             "the numeric segments of reference locators"
         ),
         "DRJ-3": (
-            "requires the selected implementation's ABI for the hook and pre-submission "
-            "policy fields; the synthetic creation event carries client, provider, "
-            "evaluator, submission cutoff, and expiry only"
+            "requires the selected implementation's creation ABI; the pack compares the "
+            "synthetic creation event's client, provider, evaluator, submission cutoff, "
+            "expiry, and hook (the rail's pinned job hook) and has no per-job native "
+            "pre-submission policy field, since an ERC-8183 evaluator may always reject a "
+            "funded job, which is the evaluator-rejection policy DRA-15 requires"
         ),
         "DRT-4": (
             "requires the selected implementation's terminal event set; the pack models one "
@@ -1917,6 +1935,19 @@ def build_vector_pack() -> dict[str, Any]:
         "spec": "docs/delivery-or-remedy-candidate.md#11-required-conformance-evidence",
         "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
         "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
+        # The external sources the vectors follow: ERC-8183 event names and
+        # actions, the ULID range of a JID, and the SDK's native locator form.
+        "sourcePins": {
+            "canonicalErc": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
+            "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
+            "ulid": "https://github.com/ulid/spec/blob/d0c7170df4517939e70129b4d6462cc162f2d5bf/README.md",
+            "demosSdk": {
+                "package": "@kynesyslabs/demosdk",
+                "version": "4.0.5",
+                "integrity": "sha512-p4OZy04Zw6G8kUJZA8MlR6koI2dc8jiD6LJP5Ga4uvxie1I52UjgCRfYKAEUHUPrF7hlnIafYVQ+pK0FlgyXWA==",
+                "source": "build/storage/StorageProgram.js",
+            },
+        },
         "scope": "offline synthetic evidence only; does not register or make a rail available",
         "hash": hashlib.sha256(canonical_bytes(payload)).hexdigest(),
         "count": len(vectors),

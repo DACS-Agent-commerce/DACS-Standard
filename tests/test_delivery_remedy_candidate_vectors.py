@@ -1,5 +1,7 @@
+import contextlib
 import copy
 import hashlib
+import io
 import itertools
 import json
 import random
@@ -9,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from scripts.jcs import canonicalize as jcs_canonicalize
@@ -132,7 +135,8 @@ GUARD_CASES = {
     "native-integer-field": (_release(put("native", "fundedAtSec", 1799990000.0)), ("error", "DRV-3", "native chain ID and times must be integers")),
     "chain-id-not-integer": (_hooked(rail=put("chainId", 8453.0), fixture=put("native", "chainId", 8453)),("error", "DRV-3", "rail and job chain IDs must be integers")),
     "creation-deadline-not-integer": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt", 1800007200.0)), ("error", "DRV-3", "creation event deadlines must be integers")),
-    "rail-address-malformed": (_hooked(rail=put("paymentToken", "")), ("error", "DRV-3", "rail payment token and contract must be lower-case EVM addresses")),
+    "rail-address-malformed": (_hooked(rail=put("paymentToken", "")), ("error", "DRV-3", "rail payment token, contract, and job hook must be lower-case EVM addresses")),
+    "rail-job-hook-malformed": (_hooked(rail=put("jobHook", "none")), ("error", "DRV-3", "rail payment token, contract, and job hook must be lower-case EVM addresses")),
     "input-missing-field":(_release(drop("native")), ("error", "DRV-3", "vector input is missing required fields")),
     "object-field-malformed": (_release(put("native", [])), ("error", "DRV-3", "candidate object fields are malformed")),
     "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-3", "required candidate artifacts are missing")),
@@ -1867,6 +1871,74 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             with self.subTest(pack=label):
                 self.assertEqual(check({"deep": _nested(limit)}), [f"{label}: {too_deep}"])
                 self.assertEqual(check({"deep": _nested(limit - 1)}), [f"{label} is missing required top-level fields"])
+
+    def test_vector_pack_source_pins_are_the_verifiers(self):
+        """A lifecycle pack written against other external sources is refused before any vector runs."""
+        self.assertEqual(self.vector_pack["sourcePins"], verifier.VECTOR_SOURCE_PINS)
+        sdk = dict(verifier.VECTOR_SOURCE_PINS["demosSdk"], version="4.0.18")
+        for label, pins in (
+            ("sdk upgraded", dict(verifier.VECTOR_SOURCE_PINS, demosSdk=sdk)),
+            ("erc unpinned", {key: value for key, value in verifier.VECTOR_SOURCE_PINS.items() if key != "canonicalErc"}),
+            ("not an object", None),
+        ):
+            with self.subTest(pins=label):
+                self.assertEqual(
+                    verify_vector_pack(dict(self.vector_pack, sourcePins=pins)),
+                    ["candidate vector pack source pins are not the verifier's"],
+                )
+        unpinned = {key: value for key, value in self.vector_pack.items() if key != "sourcePins"}
+        self.assertEqual(verify_vector_pack(unpinned), ["candidate vector pack is missing required top-level fields"])
+        readme = (ROOT / "conformance/fixtures/delivery-remedy/README.md").read_text(encoding="utf-8")
+        self.assertIn(verifier.VECTOR_SOURCE_PINS["demosSdk"]["integrity"], readme)
+
+    def test_generator_exit_codes(self):
+        """`--check` fails on a stale or missing pack and on an isolation problem; `--write` writes."""
+        scratch = Path(tempfile.mkdtemp(prefix="drr-gen-"))
+        current = {
+            "VECTOR_OUTPUT": generator.rendered(self.vector_pack),
+            "DEPLOYMENT_OUTPUT": generator.rendered(self.deployment_pack),
+        }
+
+        def run(args, problems=()):
+            patches = {
+                "ROOT": scratch,
+                "VECTOR_OUTPUT": scratch / "vectors.json",
+                "DEPLOYMENT_OUTPUT": scratch / "deployment.json",
+                "build_vector_pack": lambda: copy.deepcopy(self.vector_pack),
+                "build_deployment_pack": lambda: copy.deepcopy(self.deployment_pack),
+                "negative_isolation_problems": lambda _pack: list(problems),
+            }
+            with contextlib.ExitStack() as stack, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+                for name, value in patches.items():
+                    stack.enter_context(unittest.mock.patch.object(generator, name, value))
+                stack.enter_context(unittest.mock.patch.object(sys, "argv", ["generate", *args]))
+                return generator.main(), err.getvalue()
+
+        def reset():
+            for name, text in current.items():
+                (scratch / ("vectors.json" if name == "VECTOR_OUTPUT" else "deployment.json")).write_text(text, encoding="utf-8")
+
+        try:
+            reset()
+            self.assertEqual(run(["--check"]), (0, ""))
+            (scratch / "vectors.json").write_text(current["VECTOR_OUTPUT"].replace('"count": ', '"count": 1', 1), encoding="utf-8")
+            self.assertEqual(run(["--check"]), (1, "ERROR: vectors.json is stale\nrun this script with --write\n"))
+            reset()
+            (scratch / "deployment.json").unlink()
+            self.assertEqual(run(["--check"])[0], 1)
+            reset()
+            code, err = run(["--check"], problems=["some-vector: not isolated"])
+            self.assertEqual(code, 1)
+            self.assertIn("- some-vector: not isolated", err)
+            # An isolation problem writes nothing.
+            (scratch / "vectors.json").unlink()
+            self.assertEqual(run(["--write"], problems=["some-vector: not isolated"])[0], 1)
+            self.assertFalse((scratch / "vectors.json").exists())
+            self.assertEqual(run(["--write"]), (0, ""))
+            self.assertEqual((scratch / "vectors.json").read_text(encoding="utf-8"), current["VECTOR_OUTPUT"])
+            self.assertEqual(run([]), (0, ""))
+        finally:
+            shutil.rmtree(scratch)
 
     def test_cli_paths_and_unparseable_packs_are_listed_errors(self):
         """A relative path works; malformed JSON or numbers outside CORE §B.2 are listed, not raised."""

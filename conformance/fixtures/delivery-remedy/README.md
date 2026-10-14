@@ -426,15 +426,18 @@ the fixture itself. The vectors depend on them and do not prove them:
   and so whether DRA-10 converts its `amount`, is for #371 to settle.
 - **Native event model** (DRJ-3, DRJ-4, DREB-1, DRF-3, DRT-4). The resolver's
   observations use event names from ERC-8183 but a synthetic argument set:
-  `JobCreated` carries the description and the submission cutoff and has no
-  `hook`, `JobFunded` carries the token, and each terminal action is one event
+  `JobCreated` also carries the description and the submission cutoff,
+  `JobFunded` carries the token, and each terminal action is one event
   carrying token, amount, recipient, and reason. The pinned ERC-8183 text and
   reference contract emit `JobCreated(jobId, client, provider, evaluator,
   expiredAt[, hook])`, `JobFunded(jobId, client, amount)`, and two logs per
   terminal action (a transfer log and a state log); the description and token
   are call or state data there. DREB-13 requires an implementation beyond that
-  reference, and its ABI is not yet pinned, so DRJ-3's hook and
-  pre-submission-policy clauses are not checked. Real ERC-8183 logs do not
+  reference, and its ABI is not yet pinned. `JobCreated`'s `hook` must equal
+  the rail's pinned `jobHook`, which is address(0) here, since a hook can move
+  value at `fund` (DRJ-3). The pre-submission policy has no per-job native
+  field: an ERC-8183 evaluator may always reject a funded job, which is the
+  `evaluator-rejection` policy DRA-15 requires. Real ERC-8183 logs do not
   reproduce these observations.
 - **Bilateral agreement shape** (DRA-1, DRA-10). The fixture's bilateral
   agreement is `{agreementVersion, jobId, buyer, seller, price}`, not a DACS-3
@@ -454,6 +457,10 @@ the fixture itself. The vectors depend on them and do not prove them:
   `dist.integrity`
   `sha512-p4OZy04Zw6G8kUJZA8MlR6koI2dc8jiD6LJP5Ga4uvxie1I52UjgCRfYKAEUHUPrF7hlnIafYVQ+pK0FlgyXWA==`).
   The repository has no lockfile, so re-check this form on an SDK upgrade.
+  The lifecycle pack's `sourcePins` records this SDK release with the pinned
+  ERC-8183 text, the reference contract, and the ULID specification behind
+  the JID range (DRAA-1); the verifier refuses a pack with other pins before
+  it runs any vector.
 - **Replay ledger durability**. The `DecisionLedger` is in-memory and
   single-process, as described above; durable or cross-process one-use
   enforcement is not claimed.

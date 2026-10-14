@@ -93,6 +93,9 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   `response-version-unknown` and `response-status-unknown`, each `error`:
   genuinely signed and acquired responses whose version or arm status is
   outside `FinalityObservationResponseVersion1`.
+- **FRC-2 query binding** (DACS-4 §9.7.0 FRC-2) — adds
+  `issued-query-other-evidence` (`fail`): the query issued for one signed
+  evidence record cannot authorize another record for the same transaction.
 
 ### Changed — current-delivery admission corrective boundary
 

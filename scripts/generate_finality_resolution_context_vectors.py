@@ -772,6 +772,11 @@ def document() -> dict:
         },
         "observer-a",
     )
+    # FRC-2: the query was issued for the signed evidence E1; a second
+    # genuinely signed evidence E2 for the same transaction is presented.
+    other_evidence_value = copy.deepcopy(value)
+    other_evidence_value["evidence"]["observedAt"] = OBSERVED_AT + 1
+    factory.resign_evidence(other_evidence_value["evidence"])
 
     def verify_input(case_value: dict, payload: dict) -> dict:
         return {"value": copy.deepcopy(case_value), "authority": copy.deepcopy(payload)}
@@ -887,6 +892,12 @@ def document() -> dict:
          "note": "observer-a genuinely signs and the verifier acquires a response "
                  "whose arm status is outside observed/unavailable",
          "input": unknown_status_input},
+        {"name": "issued-query-other-evidence", "expected": "fail",
+         "operation": "verify",
+         "note": "the query was issued for one signed evidence record; another "
+                 "validly signed evidence for the same transaction is presented "
+                 "with that query and its responses",
+         "input": verify_input(other_evidence_value, positive_payload)},
     ]
     return {
         "set": "finality-resolution-context-v1",

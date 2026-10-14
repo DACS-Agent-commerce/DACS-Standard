@@ -387,7 +387,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(18, self.data["count"])
+        self.assertEqual(19, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -487,6 +487,35 @@ class FinalityResolutionContextTests(unittest.TestCase):
             return original(response)
 
         with mock.patch.object(FRC, "_response_shape", status_blind):
+            self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+    def test_issued_query_binds_the_presented_settlement_evidence(self):
+        case = self.case("issued-query-other-evidence")
+        value = case["input"]["value"]
+        positive = self.data["positive"]["value"]
+        self.assertEqual(positive["context"], value["context"])
+        self.assertEqual(
+            positive["evidence"]["paymentTxRefs"], value["evidence"]["paymentTxRefs"]
+        )
+        self.assertNotEqual(positive["evidence"], value["evidence"])
+        # The presented evidence is genuine: the historical single-view
+        # contract accepts it beside an authority's signed native view.
+        observed = copy.deepcopy(value)
+        observed["context"] = copy.deepcopy(
+            value["context"]["responseArtifacts"][0]["response"]["observation"]
+        )
+        self.assertEqual(
+            "pass",
+            _verify_single_view_finality(observed, copy.deepcopy(self.base_trusted))["decision"],
+        )
+        result = self.execute_vector(case)
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("issued query does not bind", result["reason"])
+
+        issued = case["input"]["authority"]["issuedQuery"]
+        with mock.patch.object(
+            FRC, "derive_query", lambda *args, **kwargs: copy.deepcopy(issued)
+        ):
             self.assertEqual("pass", self.execute_vector(case)["decision"])
 
     def test_conflicting_authenticated_heads_reach_frc7(self):

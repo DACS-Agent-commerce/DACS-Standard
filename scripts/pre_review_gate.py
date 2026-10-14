@@ -706,6 +706,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_finality_resolution_context_vectors.py",
         "test": "FinalityResolutionContextTests.test_unknown_response_version_is_malformed_not_ignored",
     },
+    "crq4-same-claim-alternatives-or-witness": {
+        "file": "tests/test_claim_requirement_qualification_vectors.py",
+        "test": "ClaimRequirementQualificationVectorTests.test_same_claim_alternatives_are_or_not_corroboration",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

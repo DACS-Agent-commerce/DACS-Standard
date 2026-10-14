@@ -7,6 +7,7 @@ import sys
 import unicodedata
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -794,6 +795,66 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         for name, decision in expected.items():
             with self.subTest(vector=name):
                 self.assertEqual(evaluate(vectors[name]["input"], self.data), decision)
+
+    def test_same_claim_alternatives_are_or_not_corroboration(self):
+        # DACS-2 §7.12 and CRQ-4: with no selected method, one qualified pass
+        # of any permitted method satisfies the member; a selected method
+        # excludes the others (CRQ-2).
+        expected = {
+            "vet-claim-requirement-default-pass-alternative-fail-is-or": "pass",
+            "vet-claim-requirement-default-fail-alternative-pass-is-or": "pass",
+            "vet-claim-requirement-selected-alternative-excludes-default-pass": "fail",
+        }
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        for name, decision in expected.items():
+            vector = vectors[name]
+            claim_requirement = vector["input"]["requirement"]["required"][0]
+            registry = resolve_authenticated_registry(vector["input"], self.data)
+            applicable = applicable_results(vector["input"], claim_requirement, registry)
+            with self.subTest(vector=name):
+                self.assertEqual(
+                    ["consensus-backed-proxy", "tlsnotary"],
+                    [result["method"] for result in vector["input"]["resolvedResults"]],
+                )
+                # Both methods resolve to the one owning family and version.
+                self.assertEqual(
+                    {"consensus-backed-proxy": 1, "tlsnotary": 1}
+                    if "parameters" not in claim_requirement else {"tlsnotary": 1},
+                    qualification_context(vector["input"], claim_requirement, registry)[1],
+                )
+                self.assertEqual(
+                    2 if "parameters" not in claim_requirement else 1, len(applicable)
+                )
+                self.assertEqual(decision, evaluate(vector["input"], self.data))
+
+        # Wrong implementation: corroboration requires a qualified pass from
+        # every current method of the claim instead of one.
+        module = sys.modules[__name__]
+        original = module.classify_required
+
+        def corroborating(input_data, claim_requirement, registry):
+            if "verificationMethod" not in claim_requirement.get("parameters", {}):
+                methods = {
+                    result["method"]
+                    for result in applicable_results(input_data, claim_requirement, registry)
+                }
+                if len(methods) >= 2:
+                    for method in sorted(methods):
+                        selected = copy.deepcopy(claim_requirement)
+                        selected.setdefault("parameters", {})["verificationMethod"] = method
+                        decision = original(input_data, selected, registry)
+                        if decision != "pass":
+                            return decision
+                    return "pass"
+            return original(input_data, claim_requirement, registry)
+
+        with mock.patch.object(module, "classify_required", corroborating):
+            for name in (
+                "vet-claim-requirement-default-pass-alternative-fail-is-or",
+                "vet-claim-requirement-default-fail-alternative-pass-is-or",
+            ):
+                with self.subTest(corroborating=name):
+                    self.assertEqual("fail", evaluate(vectors[name]["input"], self.data))
 
     def test_new_preflight_and_reuse_controls_are_decision_bearing(self):
         vectors = {vector["name"]: vector for vector in self.data["vectors"]}

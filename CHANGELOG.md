@@ -96,6 +96,14 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
 - **FRC-2 query binding** (DACS-4 §9.7.0 FRC-2) — adds
   `issued-query-other-evidence` (`fail`): the query issued for one signed
   evidence record cannot authorize another record for the same transaction.
+- **Same-claim alternatives are OR** (DACS-2 §7.7.1 CRQ-2/CRQ-4, §7.12; #420
+  follow-up) — adds three `claim-requirement-qualification-v0.3` cases on a
+  registry whose `lei` recipe lists `tlsnotary` as an alternative. With no
+  selected method, a qualified pass from either method satisfies the member
+  beside a current fail from the other (`pass`, twice); selecting `tlsnotary`
+  excludes a default-method pass (`fail`). A corroborating verifier that
+  requires every method to pass fails the first two. The golden-input oracle
+  gains the same check on its aggregate path; no golden case is added.
 
 ### Changed — current-delivery admission corrective boundary
 

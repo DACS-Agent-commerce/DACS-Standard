@@ -46,7 +46,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
-| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
+| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 39 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
 | [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 15 | `indeterminate` / `pass` |
@@ -1626,7 +1626,7 @@ current, mixed, and frozen historical verdict with
 
 ### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
 
-36 candidate vectors for qualifying authenticated, resolved `VerifyResult`
+39 candidate vectors for qualifying authenticated, resolved `VerifyResult`
 objects against the complete applicable `ClaimRequirement` predicate before
 decision classification. The set covers exact positive matching, absent
 listing constraints with an implicit session-start version pin, competing old
@@ -1647,6 +1647,12 @@ before decision precedence, and distinguish cache eligibility from aggregation
 applicability. Cross-session non-pass reuse requires authenticated exact
 originating-parameter equivalence; otherwise a current-predicate rerun replaces
 the cached decision or the phase returns `error` when no rerun is available.
+Three same-claim alternative cases use a registry whose `lei` recipe lists
+`tlsnotary` as an alternative to its `consensus-backed-proxy` default (§7.12).
+With no selected method, one qualified pass from either method satisfies the
+member beside a current fail from the other; alternatives are OR, not
+corroboration. A listing that selects `tlsnotary` excludes a default-method
+pass.
 
 The inputs begin after reference, hash, signature, recipe-authority,
 attestation, and governing freshness validation. Those failures retain their
@@ -1667,7 +1673,10 @@ added to `VerifyResult` v1.
 
 Each entry in `recipeRegistries[]` contains `recipeRegistryVersion`,
 `latestByFamily`, and `versionsByFamily`; `latestByScheme` remains only as a
-negative control against scheme-wide fallback. `authenticatedSessionStarts`
+negative control against scheme-wide fallback. A snapshot whose recipes list
+alternatives also carries `recipeDefinitions`: the admitted definitions'
+scheme, version, default method and alternatives, from which RA-6 derives the
+owning family of an alternative method. `authenticatedSessionStarts`
 models the trusted in-process production boundary. `replayBundles` and
 `replayRecords` contain concrete domain-signed fixtures; `publicKeys` allows
 independent bundle, record, and result signature verification. Each entry in `vectors[]` contains `name`, `expected`

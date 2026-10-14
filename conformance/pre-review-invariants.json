@@ -950,6 +950,11 @@
       "id": "frc8-closed-response-type-witness",
       "file": "tests/test_finality_resolution_context_vectors.py",
       "test": "FinalityResolutionContextTests.test_unknown_response_version_is_malformed_not_ignored"
+    },
+    {
+      "id": "crq4-same-claim-alternatives-or-witness",
+      "file": "tests/test_claim_requirement_qualification_vectors.py",
+      "test": "ClaimRequirementQualificationVectorTests.test_same_claim_alternatives_are_or_not_corroboration"
     }
   ],
   "independentReviewEvidence": [

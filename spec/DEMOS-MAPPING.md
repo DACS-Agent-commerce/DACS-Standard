@@ -377,6 +377,17 @@ genesis matches those values. The report classifies zero items as
 `EXISTING — PIN/EVIDENCE`, so it records ownership and implementation scope but
 does not satisfy the capability-advertisement gate above.
 
+*Source pins.* The full commit is `08a0c3e481490515534a0370c6f6fb024b8fa4b7`,
+an ancestor of `stabilisation`. At that commit `package.json` lines 2–3 name
+`demos-node-software` `0.9.8`. `data/genesis.json` lines 10–18 set
+`osDenomination.activationHeight` to `0` and `gasFeeSeparation.activationHeight`
+to `null`. Genesis does not override `nonceEnforcement`, so it keeps the
+`activationHeight: 0` default in `DEFAULT_FORK_CONFIG`
+(`src/forks/forkConfig.ts` lines 161–193). The node's own `package.json` pins
+`@kynesyslabs/demosdk` `4.0.12` (dependency at line 115, override at line 187).
+`4.0.16` is the SDK release the response pairs with the node, not the node's
+in-tree dependency.
+
 | Item | Recorded classification | Remaining release obligation |
 | ---: | --- | --- |
 | 1 | `NEW — IMPLEMENT` | Authenticated capability and aligned node/SDK release. |

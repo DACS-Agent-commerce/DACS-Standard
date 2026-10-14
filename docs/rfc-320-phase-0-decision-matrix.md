@@ -84,7 +84,9 @@ existing nonce/idempotency work. The later [Phase 0 implementation
 disposition][demos-phase-0-response] pins node `demos-node-software` `0.9.8` at
 `08a0c3e4` (`stabilisation`) and `@kynesyslabs/demosdk` `4.0.16`, and clarifies
 that the released `DemosWork` path is an orchestrator over HTLC-compensation
-settlement, not yet one consensus-atomic business-state overlay.
+settlement, not yet one consensus-atomic business-state overlay. [Demos mapping]
+§A.6 records the exact source pins: the full commit, the version and genesis
+fork lines, and the node's own in-tree SDK dependency, `4.0.12`.
 
 That disposition classifies zero of the fifteen §A.6 requirements as
 `EXISTING — PIN/EVIDENCE`: items 2, 6, 11, and 15 are

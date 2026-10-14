@@ -91,7 +91,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         cls.cases = {vector["name"]: vector for vector in cls.data["vectors"]}
 
     def test_set_hash_binds_the_complete_replay_inputs(self):
-        self.assertEqual(13, self.data["count"])
+        self.assertEqual(19, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         encoded = canonical(self.data["vectors"])
         self.assertEqual(
@@ -519,14 +519,30 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
                 return ("pass", "missing era evidence treated as historical")
             return original_guard(bundle, evidence, dependencies, verifier_config)
 
+        original_proof = D5._verify_synthetic_anchor_proof
+
+        def history_blind(proof, verifier_config):
+            outcome = original_proof(proof, verifier_config)
+            if outcome[1].startswith("native anchor history is pruned"):
+                return ("pass", "history disposition ignored")
+            return outcome
+
         lab3 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab3)
         lab4 = mock.patch.object(D5, "_strictly_before", return_value=True)
+        lab4_history = mock.patch.object(
+            D5, "_verify_synthetic_anchor_proof", side_effect=history_blind
+        )
         lab6 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab6)
         mutants = {
             "buyer-seller-role-rebinding": lab3,
             "seller-buyer-role-rebinding": lab3,
             "fresh-post-checkpoint-legacy-creation": lab4,
             "post-checkpoint-anchor-without-pre-checkpoint-proof": lab4,
+            "equal-position-legacy-anchor": lab4,
+            "cross-domain-legacy-anchor": lab4,
+            "pruned-legacy-anchor-history": lab4_history,
+            "reorganized-legacy-anchor-history": lab4_history,
+            "unorderable-legacy-anchor-history": lab4_history,
             "missing-era-proof": lab6,
         }
         self.assertEqual(
@@ -546,6 +562,48 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
                     metrics = result["derivation"]["metrics"]
                     self.assertEqual(0.0, metrics["counterpartyFaultRate"])
                     self.assertEqual(0.0, metrics["counterpartyAdjustedCompletionRate"])
+
+    def test_lab4_positions_are_compared_inside_one_order_domain(self):
+        """LAB-4: (height, index) in one authenticated order, strictly earlier."""
+        checkpoint = self._era(self.cases["same-height-earlier-index-legacy-anchor"])[
+            "checkpointReceipt"
+        ]["position"]
+        self.assertEqual(
+            {"orderDomain": "fixture-ledger-v1", "height": 100, "index": 2}, checkpoint
+        )
+        positions = {
+            name: self._era(self.cases[name])["historicalAnchorReceipt"]["position"]
+            for name in (
+                "same-height-earlier-index-legacy-anchor",
+                "equal-position-legacy-anchor",
+                "cross-domain-legacy-anchor",
+            )
+        }
+        self.assertEqual(
+            {"orderDomain": "fixture-ledger-v1", "height": 100, "index": 1},
+            positions["same-height-earlier-index-legacy-anchor"],
+        )
+        self.assertEqual(checkpoint, positions["equal-position-legacy-anchor"])
+        self.assertNotEqual(
+            checkpoint["orderDomain"], positions["cross-domain-legacy-anchor"]["orderDomain"]
+        )
+
+        def height_only(left, right):
+            # Wrong implementation: the intra-position order is ignored.
+            left, right = left.get("position"), right.get("position")
+            if left.get("orderDomain") != right.get("orderDomain"):
+                return None
+            return left["height"] < right["height"]
+
+        control = self.cases["same-height-earlier-index-legacy-anchor"]
+        self.assertEqual("pass", execute(control["replay"])["decision"])
+        with mock.patch.object(D5, "_strictly_before", side_effect=height_only):
+            self.assertEqual("fail", execute(control["replay"])["decision"])
+
+    def _era(self, vector):
+        role_request = vector["replay"]["request"]["roles"]["buyer"]
+        native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+        return role_request["legacyEraEvidenceByNativeAddress"][native]
 
 
 if __name__ == "__main__":

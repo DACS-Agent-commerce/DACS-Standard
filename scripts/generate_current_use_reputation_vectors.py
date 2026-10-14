@@ -312,6 +312,7 @@ class CurrentUseFixtureFactory:
         height: int,
         index: int,
         disposition: str = "established",
+        order_domain: str = "fixture-ledger-v1",
     ) -> dict:
         proof = {
             "syntheticAnchorProofVersion": "1",
@@ -325,7 +326,7 @@ class CurrentUseFixtureFactory:
             "transactionRef": transaction,
             "writer": writer,
             "nonce": nonce,
-            "position": {"orderDomain": "fixture-ledger-v1", "height": height, "index": index},
+            "position": {"orderDomain": order_domain, "height": height, "index": index},
             "state": "finalized",
             "observationDisposition": disposition,
             "signature": {},
@@ -968,7 +969,10 @@ class CurrentUseFixtureFactory:
             if "legacyEraEvidence" in role_request:
                 eras.append(role_request["legacyEraEvidence"])
         for native in native_addresses:
-            bundle = deps["bundlesByNativeAddress"][native]
+            bundle = deps["bundlesByNativeAddress"].get(native)
+            if bundle is None:
+                # An authorized candidate whose copy cannot be dereferenced.
+                continue
             closure["bundlesByNativeAddress"][native] = copy.deepcopy(bundle)
             digest = bundle_hash(bundle)
             authority = deps["bundleAuthorityByContentHash"].get(digest)
@@ -1223,6 +1227,73 @@ def _legacy_negative_replays() -> list[tuple]:
     return cases
 
 
+def _replay_case(
+    factory: CurrentUseFixtureFactory, request: dict, name: str, expected: str, guard: str,
+) -> tuple:
+    return (
+        name, _serializable(request),
+        _serializable(factory.replay_dependencies(request)),
+        _serializable(factory.replay_config(request)),
+        {"name": name, "mappingKind": "binding", "expected": expected, "guard": guard},
+        factory.replay_context(request), _serializable(factory.replay_keys()),
+    )
+
+
+def _binding_job() -> tuple[CurrentUseFixtureFactory, dict]:
+    factory = CurrentUseFixtureFactory()
+    return factory, factory.build()["historicalRequests"][0]
+
+
+def _era(request: dict, role: str = "buyer") -> dict:
+    role_request = request["roles"][role]
+    native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+    return role_request["legacyEraEvidenceByNativeAddress"][native]
+
+
+def _reanchor(factory: CurrentUseFixtureFactory, era: dict, **changes: Any) -> None:
+    """Replace an era's historical receipt with a re-signed, re-pinned one."""
+    old = era["historicalAnchorReceipt"]
+    fields = {
+        "subject_id": old["subjectId"], "subject_role": old["subjectRole"],
+        "logical": old["logicalAddress"], "native": old["nativeAddress"],
+        "content_hash": old["contentHash"], "transaction": old["transactionRef"],
+        "writer": old["writer"], "nonce": old["nonce"],
+        "height": old["position"]["height"], "index": old["position"]["index"],
+    }
+    fields.update(changes)
+    era["historicalAnchorReceipt"] = factory.anchor_proof(
+        purpose="historical-bundle", substrate=WRITE_SUBSTRATE, **fields
+    )
+
+
+def _lab4_boundary_replays() -> list[tuple]:
+    """LAB-4 order boundary around the write-substrate checkpoint at (100, 2).
+
+    Only the buyer copy's original receipt moves; it stays genuinely signed
+    and pinned and joins its original binding, so only the order rule decides.
+    """
+    definitions = (
+        ("same-height-earlier-index-legacy-anchor", "pass",
+         "LAB-4 authenticated intra-position order", {"height": 100, "index": 1}),
+        ("equal-position-legacy-anchor", "fail",
+         "LAB-4 strict order", {"height": 100, "index": 2}),
+        ("cross-domain-legacy-anchor", "indeterminate",
+         "LAB-4 comparable order", {"order_domain": "fixture-ledger-other"}),
+        ("pruned-legacy-anchor-history", "indeterminate",
+         "LAB-4 established history", {"disposition": "pruned"}),
+        ("reorganized-legacy-anchor-history", "indeterminate",
+         "LAB-4 established history", {"disposition": "reorganized"}),
+        ("unorderable-legacy-anchor-history", "indeterminate",
+         "LAB-4 established history", {"disposition": "unorderable"}),
+    )
+    cases = []
+    for name, expected, guard, changes in definitions:
+        factory, request = _binding_job()
+        _reanchor(factory, _era(request), **changes)
+        cases.append(_replay_case(factory, request, name, expected, guard))
+    return cases
+
+
 def document() -> dict:
     factory = CurrentUseFixtureFactory()
     fixture = factory.build()
@@ -1283,6 +1354,7 @@ def document() -> dict:
         ),
     ]
     replay_inputs.extend(_legacy_negative_replays())
+    replay_inputs.extend(_lab4_boundary_replays())
     vectors = []
     for _name, request, dependencies, verifier_config, expected, context, keys in replay_inputs:
         vector = dict(expected)

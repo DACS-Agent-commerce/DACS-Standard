@@ -136,6 +136,13 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   `entitlement-renewal-address-mismatch` never reached that join, because no
   record exists at its address; it is renamed
   `entitlement-renewal-address-without-record`.
+- **LAB-4 order boundary** (DACS-5 §10.4 LAB-4; #417 follow-up) —
+  `current-use-reputation-v1` (13 → 19) adds the boundary around the
+  checkpoint at height 100, index 2: `equal-position-legacy-anchor` (`fail`),
+  `cross-domain-legacy-anchor` (`indeterminate`), pruned, reorganized and
+  unorderable original-receipt history (`indeterminate`), and the passing
+  control `same-height-earlier-index-legacy-anchor`. A non-strict, a
+  domain-blind and a height-only comparator each now fail a committed case.
 
 ### Changed — current-delivery admission corrective boundary
 

@@ -232,11 +232,26 @@ for _name in (
     "current-profile-identity-mismatch",
     "current-profile-unauthenticated",
     "canonical-null-refs",
+    "demosdk-4.0.16-wire-current-read",
 ):
     TRUSTED_CONTEXTS[_name] = {
         "lastSequence": 0,
         "priorChannelIds": ["channel-100", "channel-200"],
         "sessionChannelId": "channel-349",
+    }
+
+# The shipped-SDK and lenient-reading legacy cases run on the historical audit
+# channel used by the frozen-corpus negatives.
+for _name in (
+    "demosdk-4.0.16-wire-legacy-import",
+    "legacy-0x-prefixed-hex-signature",
+    "legacy-object-signature",
+    "legacy-demos-0x-sender",
+):
+    TRUSTED_CONTEXTS[_name] = {
+        "lastSequence": 0,
+        "priorChannelIds": ["chan-session-1", "chan-session-2"],
+        "sessionChannelId": "chan-session-7",
     }
 
 # Separate reviewed setup for current-profile admission. Historical audit

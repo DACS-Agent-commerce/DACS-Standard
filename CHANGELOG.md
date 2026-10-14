@@ -104,6 +104,16 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   excludes a default-method pass (`fail`). A corroborating verifier that
   requires every method to pass fails the first two. The golden-input oracle
   gains the same check on its aggregate path; no golden case is added.
+- **Shipped Demos SDK wire is neither channel arm** (DACS-3 §8.3.3 CH-9,
+  CH-10; #415 follow-up) — `canonical-channel-message-v0.6` (55 → 60) now
+  executes the `@kynesyslabs/demosdk@4.0.16` wire, signed with the SDK
+  recipe, on `legacy-import` and `current-read` (`error` on both). Three
+  `legacy-import` cases reject the lenient readings an SDK-compatible
+  importer would need: `legacy-0x-prefixed-hex-signature`,
+  `legacy-object-signature` and `legacy-demos-0x-sender` (`error`). The #415
+  test now executes these cases instead of only checking prose. A
+  wrong-implementation witness shows a shape-keyed SDK-compatible reader
+  passes exactly these four legacy cases and every other committed case.
 
 ### Changed — current-delivery admission corrective boundary
 

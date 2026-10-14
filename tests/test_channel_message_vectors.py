@@ -12,6 +12,7 @@ import threading
 
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -1607,7 +1608,35 @@ class ChannelMessageVectorTests(unittest.TestCase):
         over the raw 32-byte digest (CH-9 item 2, CH-10); CH-8 signs the ASCII
         lowercase-hex digest under the canonical domain. The shipped 4.0.16
         wire (historical domain, hex-digest framing, `0x` signature object)
-        is neither, so no document may record it as historical-arm evidence."""
+        is neither, so both operations reject it and no document may record
+        it as historical-arm evidence."""
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        for name, operation in (
+            ("demosdk-4.0.16-wire-legacy-import", "legacy-import"),
+            ("demosdk-4.0.16-wire-current-read", "current-read"),
+        ):
+            vector = by_name[name]
+            message = vector["message"]
+            signature = message["signature"]
+            self.assertEqual(operation, vector["operation"])
+            self.assertNotIn("canonicalChannelMessageVersion", message)
+            self.assertEqual({"sigVersion", "signature"}, set(signature))
+            self.assertTrue(signature["signature"].startswith("0x"))
+            self.assertEqual("demos:0x" + ALICE_PUBLIC.hex(), message["sender"])
+            # Genuinely signed with the SDK recipe: the historical domain
+            # followed by the ASCII lowercase-hex digest.
+            unsigned = {key: item for key, item in message.items() if key != "signature"}
+            self.assertTrue(verify_ed25519(
+                Ed25519PublicKey.from_public_bytes(ALICE_PUBLIC),
+                bytes.fromhex(signature["signature"][2:]),
+                LEGACY_DOMAIN + message_digest(unsigned).hex().encode("ascii"),
+            ))
+            with self.subTest(vector=name):
+                self.assertEqual("error", vector["expected"])
+                self.assertEqual(
+                    "error", self.fixture_result(vector, operation, AUTHORITY)
+                )
+
         def flat(path):
             return " ".join(path.read_text(encoding="utf-8").split())
 
@@ -1633,6 +1662,85 @@ class ChannelMessageVectorTests(unittest.TestCase):
         ):
             self.assertNotIn(stale, trace)
         self.assertNotIn("recorded only as historical-arm evidence", changelog)
+
+    def test_sdk_compat_legacy_reader_fails_the_committed_corpus(self):
+        """Wrong implementation: a shape-keyed "SDK-compat" legacy importer.
+
+        It unwraps an SDK signature object, strips ``0x``, maps a
+        ``demos:0x`` sender to ``cci:``, and uses hex-digest framing for the
+        exact SDK shape. CH-9(2)/(3) forbid each step; only the committed
+        shipped-wire and lenient-reading cases catch it.
+        """
+        module = sys.modules[__name__]
+        original = module.evaluate
+
+        def sdk_compat(message, operation, authority, state):
+            if (
+                operation != "legacy-import"
+                or not isinstance(message, dict)
+                or "canonicalChannelMessageVersion" in message
+            ):
+                return original(message, operation, authority, state)
+            signature = message.get("signature")
+            sender = message.get("sender")
+            wrapped = isinstance(signature, dict) and signature.get("sigVersion") == "1"
+            if wrapped:
+                signature = signature.get("signature")
+            prefixed = isinstance(signature, str) and signature.startswith("0x")
+            demos_sender = isinstance(sender, str) and sender.startswith("demos:0x")
+            if not (wrapped or prefixed or demos_sender):
+                return original(message, operation, authority, state)
+            sdk_shape = wrapped and prefixed
+            if prefixed:
+                signature = signature[2:]
+            if demos_sender:
+                sender = "cci:" + sender[len("demos:0x"):]
+            if not isinstance(signature, str) or not LOWER_HEX_128.fullmatch(signature):
+                return original(message, operation, authority, state)
+            status = trusted_inputs_status(message, authority, state, HistoricalAuditState)
+            if status is not None:
+                return status
+            resolution, _, public_key = resolve_signing_key(
+                sender, state.channel_id, authority
+            )
+            if resolution == "outsider":
+                return "fail"
+            if resolution != "resolved":
+                return "indeterminate"
+            unsigned = {key: item for key, item in message.items() if key != "signature"}
+            hashed = message_digest(unsigned)
+            payload = LEGACY_DOMAIN + (hashed.hex().encode("ascii") if sdk_shape else hashed)
+            if not verify_ed25519(public_key, bytes.fromhex(signature), payload):
+                return "fail"
+            return state._consume_validated(
+                message["channelId"], message["sequence"], message["type"]
+            )
+
+        caught = {
+            "demosdk-4.0.16-wire-legacy-import",
+            "legacy-0x-prefixed-hex-signature",
+            "legacy-object-signature",
+            "legacy-demos-0x-sender",
+        }
+        with mock.patch.object(module, "evaluate", sdk_compat):
+            observed = {
+                vector["name"]: self.fixture_result(vector, vector["operation"], AUTHORITY)
+                for vector in self.document["vectors"]
+            }
+            historical = [
+                self.fixture_result(vector, "legacy-import", AUTHORITY)
+                for vector in self.legacy["vectors"]
+            ]
+        self.assertEqual(
+            [vector["expected"] for vector in self.legacy["vectors"]], historical
+        )
+        mismatches = {
+            vector["name"] for vector in self.document["vectors"]
+            if observed[vector["name"]] != vector["expected"]
+        }
+        self.assertEqual(caught, mismatches)
+        for name in caught:
+            self.assertEqual("pass", observed[name])
 
 
 if __name__ == "__main__":

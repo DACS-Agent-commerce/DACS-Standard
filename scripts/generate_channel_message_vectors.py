@@ -256,6 +256,22 @@ def sign_legacy(
     return {**copy.deepcopy(unsigned), "signature": key.sign(payload).hex()}
 
 
+# The shipped @kynesyslabs/demosdk@4.0.16 wire, unchanged through 4.0.18:
+# signChannelMessage signs UTF-8 "dacs-channelmsg:v1:" followed by the
+# lowercase-hex SHA-256 digest of the canonical unsigned message, emits
+# {sigVersion: "1", signature: "0x" + lowercase hex}, and requires a
+# demos:0x<64hex> sender.  Its bytes are neither CH-9 arm.
+DEMOSDK_ALICE_SENDER = "demos:0x" + public_hex(ALICE)
+
+
+def sign_demosdk_wire(unsigned: dict, *, key: Ed25519PrivateKey = ALICE) -> dict:
+    payload = LEGACY_DOMAIN + digest(unsigned).hex().encode("ascii")
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {"sigVersion": "1", "signature": "0x" + key.sign(payload).hex()},
+    }
+
+
 def context(**updates: object) -> dict:
     value = {
         "sessionChannelId": "channel-349",
@@ -395,6 +411,27 @@ def build_vectors() -> list[dict]:
     legacy_hex_framing = sign_legacy(legacy_unsigned, framing="hex")
     legacy_current_signature = sign_legacy(
         legacy_unsigned, domain=CURRENT_DOMAIN, framing="hex"
+    )
+
+    # The shipped SDK wire, and the lenient readings a shape-keyed
+    # "SDK-compat" importer would need: unwrap the object, strip 0x, or map a
+    # demos:0x sender.  Each signature is genuine for the bytes it covers, so
+    # only CH-9 dispatch and the frozen historical grammar reject them.
+    sdk_wire_legacy = sign_demosdk_wire(
+        {**legacy_unsigned, "sender": DEMOSDK_ALICE_SENDER}
+    )
+    sdk_current_unsigned = unsigned_message(sender=DEMOSDK_ALICE_SENDER)
+    del sdk_current_unsigned["canonicalChannelMessageVersion"]
+    sdk_wire_current = sign_demosdk_wire(sdk_current_unsigned)
+    legacy_valid = sign_legacy(legacy_unsigned)
+    legacy_prefixed = copy.deepcopy(legacy_valid)
+    legacy_prefixed["signature"] = "0x" + legacy_valid["signature"]
+    legacy_object = copy.deepcopy(legacy_valid)
+    legacy_object["signature"] = {
+        "sigVersion": "1", "signature": legacy_valid["signature"],
+    }
+    legacy_demos_sender = sign_legacy(
+        {**legacy_unsigned, "sender": DEMOSDK_ALICE_SENDER}
     )
 
     legacy_doc = json.loads(LEGACY.read_text(encoding="utf-8"))
@@ -596,6 +633,24 @@ def build_vectors() -> list[dict]:
         case("untrusted-context-membership-injection", "error", valid,
              ctx=injected_membership_context,
              note="message-adjacent session input cannot supply or replace authenticated CH-1 authority"),
+        case("demosdk-4.0.16-wire-legacy-import", "error", sdk_wire_legacy,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="the shipped @kynesyslabs/demosdk@4.0.16 wire: 0x-prefixed signature object, demos:0x sender, and a signature over the historical domain plus the ASCII-hex digest; legacy-import requires a bare lowercase-hex signature"),
+        case("demosdk-4.0.16-wire-current-read", "error", sdk_wire_current,
+             note="the same shipped SDK wire on a current channel lacks the current discriminator and signature envelope"),
+        case("legacy-0x-prefixed-hex-signature", "error", legacy_prefixed,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="a genuine frozen-recipe signature is still malformed with a 0x prefix; the reader does not strip it"),
+        case("legacy-object-signature", "error", legacy_object,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="a genuine frozen-recipe signature wrapped in an SDK-style object is not the bare-hex historical value"),
+        case("legacy-demos-0x-sender", "error", legacy_demos_sender,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="demos:0x<64hex> is a substrate address, not a historical ClaimReference; the reader does not map it to cci:"),
     ]
 
 

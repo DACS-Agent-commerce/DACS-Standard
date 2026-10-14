@@ -710,6 +710,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_claim_requirement_qualification_vectors.py",
         "test": "ClaimRequirementQualificationVectorTests.test_same_claim_alternatives_are_or_not_corroboration",
     },
+    "ch9-sdk-compat-legacy-reader-witness": {
+        "file": "tests/test_channel_message_vectors.py",
+        "test": "ChannelMessageVectorTests.test_sdk_compat_legacy_reader_fails_the_committed_corpus",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

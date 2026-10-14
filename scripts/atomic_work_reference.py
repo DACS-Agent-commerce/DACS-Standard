@@ -52,7 +52,8 @@ PAYLOAD_SCHEMAS = {
 VERDICTS = {"pass", "fail", "indeterminate", "error"}
 HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 OP_ID = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
-JOB_ID = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+# CORE JID-1: a 128-bit ULID, so the first Crockford character is 0-7.
+JOB_ID = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 CLAIM_REFERENCE = re.compile(
     r"^[a-z][a-z0-9-]*:[^\s?]+(?:\?[^\s]+)?$"
 )
@@ -797,6 +798,8 @@ def validate_intent(intent: dict[str, Any], claimed: str | None = None) -> None:
     roles = [r.get("role") for r in roster if isinstance(r, dict)]
     if len(roles) != len(roster) or not _ordered_unique(roles):
         raise Invalid("roleRoster is not canonical and unique")
+    if roles != list(ROLE_ORDER):
+        raise Invalid("v1 roleRoster does not carry all four roles")
     for binding in roster:
         claim_key(binding.get("signer"))
     operations = intent.get("operations")
@@ -1597,6 +1600,10 @@ def verify_receipt(
         raise Invalid("receipt paymentSlot before/after are not structured states")
     _generation(slot["before"].get("generation"), "receipt prior slot state")
     _generation(slot["after"].get("generation"), "receipt resulting slot state")
+    if intent["profile"] != "dacs-purchase-v1" and not _json_equal(
+        slot["before"], purchase_receipt.get("paymentSlot", {}).get("after")
+    ):
+        raise Invalid("Completion slot state is not the verified Purchase terminal state")
     terminal_generation: int | None = None
     if intent["profile"] == "dacs-purchase-v1":
         expected_before = signed_slot_payload["expected"]

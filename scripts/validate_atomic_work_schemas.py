@@ -405,6 +405,54 @@ def main() -> int:
             extra_selector,
         )
 
+    unsupported_atomic_version = deepcopy(settlement["input"]["evidence"])
+    unsupported_atomic_version["atomicEvidenceVersion"] = "2"
+    expect_invalid(
+        "atomic-settlement-evidence-v1.schema.json",
+        "AWS-17 rejects an unsupported atomicEvidenceVersion",
+        unsupported_atomic_version,
+    )
+
+    # AW-10: neither v1 profile has an absent role.
+    for role in ("buyer", "seller", "orchestrator", "payer"):
+        short_roster = deepcopy(identity["input"]["intent"])
+        short_roster["roleRoster"] = [
+            binding for binding in short_roster["roleRoster"] if binding["role"] != role
+        ]
+        expect_invalid(
+            "atomic-dacs-work-intent-v1.schema.json",
+            f"a v1 roleRoster without {role} is not the four-role roster",
+            short_roster,
+        )
+
+    # CORE JID-1: a jobId is a 128-bit ULID, so its first character is 0-7 at
+    # every Atomic ingress, whatever the other 25 characters are.
+    slot_payload = next(
+        operation["payload"] for operation in identity["input"]["intent"]["operations"]
+        if operation["kind"] == "payment-slot-cas"
+    )
+    job_id_sites = (
+        ("atomic-dacs-work-intent-v1.schema.json", identity["input"]["intent"], ["jobId"]),
+        ("atomic-work-authorization-v1.schema.json", authorization_fixture, ["jobId"]),
+        ("atomic-payment-slot-cas-payload-v1.schema.json", slot_payload, ["slotKey", "jobId"]),
+        ("atomic-work-receipt-v1.schema.json", execution["input"]["receipt"], ["paymentSlot", "key", "jobId"]),
+        ("atomic-settlement-evidence-v1.schema.json", settlement["input"]["evidence"], ["jobId"]),
+    )
+    for schema_name, base, path in job_id_sites:
+        for job_id, valid in (
+            ("7ZZZZZZZZZZZZZZZZZZZZZZZZZ", True),
+            ("8" + "0" * 25, False),
+            ("9" + "0" * 25, False),
+        ):
+            fixture = deepcopy(base)
+            target = fixture
+            for part in path[:-1]:
+                target = target[part]
+            target[path[-1]] = job_id
+            (expect_valid if valid else expect_invalid)(
+                schema_name, f"jobId {job_id[0]}... at {'/'.join(path)}", fixture,
+            )
+
     unsafe_phase_index = deepcopy(settlement["input"]["evidence"])
     unsafe_phase_index["phaseIndex"] = 9007199254740992
     expect_invalid(

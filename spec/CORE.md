@@ -696,12 +696,11 @@ linkage.
 - (AW-8) Producers MUST apply CF-1 and CF-2 before RFC 8785 JCS serialization.
 - (AW-9) Every JSON number in an intent MUST satisfy the §B.2 safe-integer
   constraint.
-- (AW-10) `roleRoster` MUST be ordered as buyer, seller, orchestrator, payer,
-  omitting absent roles without reordering the remaining roles. Neither v1
-  profile has an absent role: a `dacs-purchase-v1` or `dacs-completion-v1`
-  roster MUST carry all four roles, including those that authorize none of its
-  operations (buyer and seller in a Purchase; buyer and payer in a Completion).
-  Every candidate vector intent carries all four.
+- (AW-10) `roleRoster` MUST be ordered as buyer, seller, orchestrator, payer.
+  A `dacs-purchase-v1` or `dacs-completion-v1` roster MUST carry all four
+  roles, including those that authorize none of its operations (buyer and
+  seller in a Purchase; buyer and payer in a Completion); a verifier MUST
+  reject a v1 roster that omits any of them.
 - (AW-11) Each role MUST occur at most once in `roleRoster`; one signer MAY
   hold more than one distinct role.
 - (AW-12) Each `requiredRoles` array MUST follow the same role order and MUST
@@ -926,7 +925,11 @@ the two shown members, but their values remain profile policy.
 - (AW-43) The authoritative ledger MUST select at most one winning included
   attempt for a `workId`.
 - (AW-44) After a winner is selected, every late or competing attempt MUST be
-  fenced before any business effect.
+  fenced before any business effect. Whether an attempt produced a business
+  effect is read from authenticated Work-ledger evidence at the finalized
+  block, never from a caller- or SDK-supplied effect list; this candidate
+  defines no wire shape for that evidence, and its vectors use a test-only
+  signed effect inventory.
 - (AW-45) Exact replay after selection MUST return or reconstruct the winner's
   status and MUST NOT execute the Work again. Normal submission, replacement,
   and exact replay are mutually exclusive attempt classes. The selected

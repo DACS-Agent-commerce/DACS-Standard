@@ -29,7 +29,7 @@
     "railId": { "type": "string", "minLength": 1 },
     "jobId": {
       "type": "string",
-      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
     },
     "phaseIndex": {
       "type": "integer",
@@ -57,6 +57,18 @@
       "items": { "$ref": "#/$defs/operation" }
     }
   },
+  "allOf": [
+    {
+      "$comment": "AW-10: neither v1 profile has an absent role, so its roster carries all four.",
+      "if": {
+        "required": ["profile"],
+        "properties": { "profile": { "enum": ["dacs-purchase-v1", "dacs-completion-v1"] } }
+      },
+      "then": {
+        "properties": { "roleRoster": { "minItems": 4 } }
+      }
+    }
+  ],
   "additionalProperties": true,
   "$defs": {
     "claimReference": {

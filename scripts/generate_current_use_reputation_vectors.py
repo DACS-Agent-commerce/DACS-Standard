@@ -1294,6 +1294,134 @@ def _lab4_boundary_replays() -> list[tuple]:
     return cases
 
 
+def _lab_authority_replays() -> list[tuple]:
+    """LAB-1..LAB-3 and BB-7 negatives on the binding arm, otherwise admitted.
+
+    Each case changes one authority input of the buyer copy; everything it
+    does not name is genuinely signed, pinned and joined.
+    """
+    cases = []
+
+    # LAB-3: one exact join per field.  The substitute is the matching value
+    # from the seller copy's own original receipt, or another job, so the
+    # re-signed receipt records something real but not this copy.
+    joins = (
+        ("historical-receipt-other-job", "subject_id"),
+        ("historical-receipt-other-logical-address", "logical"),
+        ("historical-receipt-other-native-address", "native"),
+        ("historical-receipt-other-content-hash", "content_hash"),
+        ("historical-receipt-other-anchor-transaction", "transaction"),
+        ("historical-receipt-other-writer", "writer"),
+        ("historical-receipt-other-nonce", "nonce"),
+    )
+    for name, field in joins:
+        factory, request = _binding_job()
+        seller = _era(request, "seller")["historicalAnchorReceipt"]
+        substitute = {
+            "subject_id": HISTORICAL_PURE_JOB_ID,
+            "logical": seller["logicalAddress"],
+            "native": seller["nativeAddress"],
+            "content_hash": seller["contentHash"],
+            "transaction": seller["transactionRef"],
+            "writer": seller["writer"],
+            "nonce": seller["nonce"],
+        }[field]
+        _reanchor(factory, _era(request), **{field: substitute})
+        cases.append(_replay_case(
+            factory, request, name, "fail", "LAB-3 exact historical join"
+        ))
+
+    # LAB-1: the dereferenced checkpoint must be the steward-signed artifact
+    # whose content hash the authenticated binding and receipt commit.
+    factory, request = _binding_job()
+    checkpoint = factory.checkpoints[WRITE_SUBSTRATE]["checkpoint"]
+    checkpoint["signature"] = {
+        "signer": CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": factory._sign(
+            factory.finality.keys["seller"], LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+            legacy_checkpoint_hash(checkpoint),
+        ),
+    }
+    cases.append(_replay_case(
+        factory, request, "checkpoint-signed-by-non-steward", "fail",
+        "LAB-1 steward-signed checkpoint",
+    ))
+
+    factory, request = _binding_job()
+    checkpoint = factory.checkpoints[WRITE_SUBSTRATE]["checkpoint"]
+    checkpoint["createdAt"] += 1
+    checkpoint["signature"]["value"] = factory._sign(
+        factory.finality.keys["steward"], LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+        legacy_checkpoint_hash(checkpoint),
+    )
+    cases.append(_replay_case(
+        factory, request, "checkpoint-content-hash-mismatch", "fail",
+        "LAB-1 committed checkpoint content hash",
+    ))
+
+    # LAB-1 discovery: the only binding candidate is validly signed by a
+    # non-steward, so it is discarded and no checkpoint resolves.
+    factory, request = _binding_job()
+    binding = _era(request)["checkpointCandidates"][0]
+    binding["signature"] = {
+        "signer": CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": factory._sign(
+            factory.finality.keys["seller"], LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
+            legacy_checkpoint_binding_hash(binding),
+        ),
+    }
+    cases.append(_replay_case(
+        factory, request, "checkpoint-binding-not-steward-signed", "indeterminate",
+        "LAB-1 steward checkpoint discovery",
+    ))
+
+    # LAB-2: the original BB-6 selection is reconstructed over the complete
+    # authorized candidate set.
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    forged = copy.deepcopy(original["binding"])
+    forged["signature"]["value"] = factory._sign(
+        factory.finality.keys["seller"], BINDING_DOMAIN, old_hash(forged, "signature")
+    )
+    original["selectionContext"]["candidateBindings"].append(forged)
+    cases.append(_replay_case(
+        factory, request, "historical-bb6-authorized-candidate-invalid", "fail",
+        "LAB-2 original BB-6 candidate set",
+    ))
+
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    bundle = factory.dependencies["bundlesByNativeAddress"][
+        original["binding"]["nativeAddress"]
+    ]
+    original["selectionContext"]["candidateBindings"].append(
+        factory.legacy_bundle_binding(
+            bundle, "buyer", HISTORICAL_BINDING_JOB_ID + ":historical-unretrievable:buyer"
+        )
+    )
+    cases.append(_replay_case(
+        factory, request, "historical-bb6-candidate-not-dereferenceable", "indeterminate",
+        "LAB-2 original BB-6 candidate set",
+    ))
+
+    # BB-7: an authorized current candidate that cannot be fetched.
+    factory, request = _binding_job()
+    role_request = request["roles"]["buyer"]
+    current = role_request["selectionContext"]["candidateBindings"][0]
+    bundle = factory.dependencies["bundlesByNativeAddress"][current["nativeAddress"]]
+    role_request["selectionContext"]["candidateBindings"].append(factory.bundle_binding(
+        bundle, "buyer", HISTORICAL_BINDING_JOB_ID + ":current-unretrievable:buyer",
+        trusted_contexts=factory.current_authority(CLAIMS["buyer"], FIXTURE_QUERY_WINDOW),
+    ))
+    cases.append(_replay_case(
+        factory, request, "current-bb6-candidate-not-dereferenceable", "indeterminate",
+        "BB-7 unretrievable authorized candidate",
+    ))
+    return cases
+
+
 def document() -> dict:
     factory = CurrentUseFixtureFactory()
     fixture = factory.build()
@@ -1355,6 +1483,7 @@ def document() -> dict:
     ]
     replay_inputs.extend(_legacy_negative_replays())
     replay_inputs.extend(_lab4_boundary_replays())
+    replay_inputs.extend(_lab_authority_replays())
     vectors = []
     for _name, request, dependencies, verifier_config, expected, context, keys in replay_inputs:
         vector = dict(expected)

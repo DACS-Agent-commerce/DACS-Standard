@@ -143,6 +143,17 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   unorderable original-receipt history (`indeterminate`), and the passing
   control `same-height-earlier-index-legacy-anchor`. A non-strict, a
   domain-blind and a height-only comparator each now fail a committed case.
+- **LAB-1..LAB-3 authority negatives** (DACS-5 §10.4 LAB-1, LAB-2, LAB-3;
+  BB-6, BB-7; #417 follow-up) — `current-use-reputation-v1` (19 → 32) adds one
+  `fail` per LAB-3 historical receipt join field (job, logical and native
+  address, content hash, anchor transaction, writer, nonce). It also adds
+  non-steward and hash-mismatched checkpoint artifacts (`fail`), a
+  non-steward checkpoint binding (`indeterminate`), an invalid authorized
+  (`fail`) or unretrievable (`indeterminate`) original BB-6 candidate, and an
+  unretrievable current candidate (`indeterminate`). The JSON-only witness
+  shows each passes a verifier missing only its guard. Unit tests now reach
+  the current party-map and budget checks and the pure-arm roster and
+  type-authority checks; CONFORMANCE-PLAN marks those as unit-only.
 
 ### Changed — current-delivery admission corrective boundary
 

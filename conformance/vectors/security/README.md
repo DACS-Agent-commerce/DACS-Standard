@@ -50,7 +50,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
 | [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 15 | `indeterminate` / `pass` |
-| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 19 | `fail` / `indeterminate` / `pass` |
+| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 32 | `fail` / `indeterminate` / `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
@@ -2006,7 +2006,7 @@ python3 -m unittest tests.test_finality_resolution_context_vectors -v
 
 ### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
 
-Nineteen candidate fixtures drive the complete stronger DACS-5 consumer path. Six
+Thirty-two candidate fixtures drive the complete stronger DACS-5 consumer path. Six
 compose the finality-bound bundle consumer with every FV model, exact RSV and
 applicable SB-3 checks; the provider-receipt case remains classified as
 provisional capture. Two retain the complete original requests for the legacy
@@ -2039,6 +2039,28 @@ isolate one LAB guard:
 The passing control `same-height-earlier-index-legacy-anchor` places the
 original receipt at the checkpoint's height with an earlier authenticated
 transaction index. A comparator that ignores the intra-position order fails it.
+
+Thirteen more negatives cover the remaining authority inputs of the buyer copy:
+
+- `historical-receipt-other-job`, `-other-logical-address`,
+  `-other-native-address`, `-other-content-hash`, `-other-anchor-transaction`,
+  `-other-writer` and `-other-nonce` (LAB-3, `fail`): one exact join per field.
+  The original receipt is genuinely signed and pinned but records the seller
+  copy's value, or another job, for that one field.
+- `checkpoint-signed-by-non-steward` and `checkpoint-content-hash-mismatch`
+  (LAB-1, `fail`): the dereferenced checkpoint is signed by a party that is not
+  the configured steward, or its steward-signed bytes differ from the content
+  hash the binding and receipt commit.
+- `checkpoint-binding-not-steward-signed` (LAB-1, `indeterminate`): the only
+  discovery candidate is validly signed by a non-steward, so it is discarded
+  and no checkpoint resolves.
+- `historical-bb6-authorized-candidate-invalid` (LAB-2, `fail`) and
+  `historical-bb6-candidate-not-dereferenceable` (LAB-2, `indeterminate`): the
+  original BB-6 candidate set also holds an authorized binding whose signature
+  fails, or a valid one whose copy cannot be fetched.
+- `current-bb6-candidate-not-dereferenceable` (BB-7, `indeterminate`): the
+  current selection holds a valid authorized binding whose copy cannot be
+  fetched.
 
 Each negative carries otherwise valid signed bundles, bindings and finalized
 receipts: a verifier that omits only its named guard accepts it.

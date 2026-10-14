@@ -164,6 +164,11 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   checks. Corpus-only replay now leaves 49 of the reference's return
   statements unreached, down from 163. A pinned witness shows each of the
   six named cases passes a verifier that skips only that guard.
+- **Pre-review gate self-tests** (`scripts/pre_review_gate.py`) — the gate's
+  own tests now reject a manifest missing a code-pinned regression, a matrix
+  case whose verdict drifts while its control still matches, and a registry
+  expectation that diverges from its corpus. Previously no self-test failed
+  when any of these checks was skipped.
 
 ### Changed — current-delivery admission corrective boundary
 

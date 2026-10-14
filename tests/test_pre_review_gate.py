@@ -637,6 +637,66 @@ class PreReviewGateTests(unittest.TestCase):
         finally:
             self.gate._load_evaluator = original_load
 
+    def test_case_verdict_drift_is_rejected_before_its_control(self):
+        # Only the registered case drifts; its control still matches, so the
+        # gate must reject at the case itself.
+        matrix = self.manifest["vectorMatrices"][0]
+        case = matrix["cases"][0]
+        corpus = json.loads((ROOT / matrix["corpus"]).read_text(encoding="utf-8"))
+        target = next(
+            vector["input"] for vector in corpus["vectors"]
+            if vector["name"] == case["caseId"]
+        )
+        original_load = self.gate._load_evaluator
+
+        class CaseDrift:
+            def __init__(self, evaluator):
+                self.evaluator = evaluator
+
+            def evaluate(self, value, *args):
+                verdict, effects = self.evaluator.evaluate(value, *args)
+                if value == target:
+                    verdict = "pass" if verdict != "pass" else "fail"
+                return verdict, effects
+
+        self.gate._load_evaluator = lambda relative: CaseDrift(original_load(relative))
+        try:
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "^%s/%s: expected" % (matrix["id"], case["caseId"]),
+            ):
+                self.gate.run_vector_matrices(self.manifest)
+        finally:
+            self.gate._load_evaluator = original_load
+
+    def test_registry_and_corpus_expectation_divergence_is_rejected(self):
+        matrix = self.manifest["vectorMatrices"][0]
+        case = matrix["cases"][0]
+        original = self.gate._corpus_outcome
+
+        def divergent(vector, label):
+            outcome = original(vector, label)
+            if vector.get("name") == case["caseId"]:
+                outcome = {**outcome, "verdict": "pass" if outcome["verdict"] != "pass" else "fail"}
+            return outcome
+
+        with mock.patch.object(self.gate, "_corpus_outcome", side_effect=divergent):
+            with self.assertRaisesRegex(
+                self.gate.GateError,
+                "^%s/%s: registry and corpus expectations diverge"
+                % (matrix["id"], case["caseId"]),
+            ):
+                self.gate.run_vector_matrices(self.manifest)
+
+    def test_manifest_missing_a_code_pinned_regression_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        removed = manifest["unitRegressions"].pop()
+        with self.assertRaisesRegex(
+            self.gate.GateError,
+            r"do not match the code-pinned registry: missing=\['%s'\]" % removed["id"],
+        ):
+            self.gate.validate_manifest(manifest)
+
     def test_missing_or_extra_consumer_effect_is_rejected(self):
         original_load = self.gate._load_evaluator
 

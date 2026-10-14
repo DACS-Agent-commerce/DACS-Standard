@@ -168,13 +168,13 @@ class ReceiptRederivationTests(unittest.TestCase):
         v = self._pass_vector()
         deref = v["derefBundles"]
         d = R.derive(v["party"], v["taggedBundles"], v["window"][0], v["window"][1], "finalisedAt")
-        same, _ = R.replay_receipt(d, lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
+        same, _ = R.replay_legacy_receipt(d, lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
                                    evidence_deref=_evidence_deref(v), pubkeys=_pubkeys(self.data),
                                    anchor_deref=_anchor_resolver(v, d))
         self.assertTrue(same, "receipt must replay byte-identically and pass all replay checks")
         self.assertTrue(R.receipt_required_members_present(d)[0])
         # structural-only path (pubkeys=None) must also pass — CI without cryptography still validates shape
-        same_struct, _ = R.replay_receipt(d, lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
+        same_struct, _ = R.replay_legacy_receipt(d, lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
                                           evidence_deref=_evidence_deref(v),
                                           anchor_deref=_anchor_resolver(v, d))
         self.assertTrue(same_struct)
@@ -195,7 +195,7 @@ class ReceiptRederivationTests(unittest.TestCase):
         extended = copy.deepcopy(receipt)
         for entry in extended["resolutionContext"]:
             entry["resolvedJobId"] = "ignored-by-released-v1"
-        same, replayed = R.replay_receipt(
+        same, replayed = R.replay_legacy_receipt(
             extended,
             lambda h: deref[h],
             v["party"],
@@ -242,7 +242,7 @@ class ReceiptRederivationTests(unittest.TestCase):
                 ok, reasons = R.receipt_required_members_present(mutated)
                 self.assertFalse(ok)
                 self.assertTrue(any("discriminator refusal" in reason for reason in reasons))
-                context_ok, context_reasons = R.validate_resolution_context(
+                context_ok, context_reasons = R.validate_legacy_resolution_context(
                     mutated,
                     lambda content_hash: dereferences.append(content_hash),
                 )
@@ -251,7 +251,7 @@ class ReceiptRederivationTests(unittest.TestCase):
                     any("discriminator refusal" in reason for reason in context_reasons)
                 )
                 self.assertEqual(
-                    R.replay_receipt(
+                    R.replay_legacy_receipt(
                         mutated,
                         lambda content_hash: dereferences.append(content_hash),
                         "did:demos:buyer",
@@ -276,14 +276,14 @@ class ReceiptRederivationTests(unittest.TestCase):
                 ok_members, _ = R.receipt_required_members_present(v["derivation"])
                 self.assertTrue(ok_members, "%s should pass member-presence; the defect is semantic" % name)
                 # but replay refuses (structural path)
-                same, replayed = R.replay_receipt(
+                same, replayed = R.replay_legacy_receipt(
                     v["derivation"], lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
                     evidence_deref=_evidence_deref(v),
                     anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertFalse(same, "%s must be refused by replay" % name)
                 self.assertIsNone(replayed)
                 # and validate_resolution_context reports a non-empty reason
-                vok, reasons = R.validate_resolution_context(v["derivation"], lambda h: deref[h],
+                vok, reasons = R.validate_legacy_resolution_context(v["derivation"], lambda h: deref[h],
                                                              _evidence_deref(v),
                                                              anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertFalse(vok)
@@ -303,13 +303,13 @@ class ReceiptRederivationTests(unittest.TestCase):
                 self.assertTrue(R.is_replayable_derivation(v["derivation"]))
                 self.assertTrue(R.receipt_required_members_present(v["derivation"])[0])
                 # crypto ON: every candidate signature verifies, the poisoned copy is inert, receipt accepted
-                vok, reasons = R.validate_resolution_context(
+                vok, reasons = R.validate_legacy_resolution_context(
                     v["derivation"], lambda h: deref[h], _evidence_deref(v), _pubkeys(self.data),
                     anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertTrue(vok, "%s must be accepted (poisoned competitor inert); reasons=%s" % (name, reasons))
                 self.assertEqual(reasons, [])
                 # structural path (pubkeys=None) also accepts
-                vok2, reasons2 = R.validate_resolution_context(
+                vok2, reasons2 = R.validate_legacy_resolution_context(
                     v["derivation"], lambda h: deref[h], _evidence_deref(v),
                     anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertTrue(vok2, "%s must accept on the structural path too; reasons=%s" % (name, reasons2))
@@ -326,7 +326,7 @@ class ReceiptRederivationTests(unittest.TestCase):
         ev = _evidence_deref(v)
 
         def replay(d):
-            return R.replay_receipt(d, lambda h: deref.get(h), v["party"], v["window"][0], v["window"][1],
+            return R.replay_legacy_receipt(d, lambda h: deref.get(h), v["party"], v["window"][0], v["window"][1],
                                     evidence_deref=ev, anchor_deref=_anchor_resolver(v, d))[0]
 
         # sanity: the untouched receipt replays
@@ -422,7 +422,7 @@ class ReceiptRederivationTests(unittest.TestCase):
             v = self.by_name[name]
             deref = v["derefBundles"]
             with self.subTest(vector=name):
-                same, replayed = R.replay_receipt(
+                same, replayed = R.replay_legacy_receipt(
                     v["derivation"], lambda h: deref[h], v["party"], v["window"][0], v["window"][1])
                 self.assertFalse(same)
                 self.assertIsNone(replayed, "a refused object must not be replayed")

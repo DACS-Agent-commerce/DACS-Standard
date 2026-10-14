@@ -128,6 +128,55 @@ class JcsCanonicalizeTests(unittest.TestCase):
             '{"a":{"y":true,"z":null},"b":[1,2]}',
         )
 
+    def test_deep_finite_value_does_not_consume_the_python_call_stack(self):
+        value = 0
+        expected = "0"
+        for index in range(2000):
+            if index % 2:
+                value = {"a": value}
+                expected = '{"a":' + expected + "}"
+            else:
+                value = [value]
+                expected = "[" + expected + "]"
+        self.assertEqual(jcs.canonicalize(value), expected)
+
+    def test_cycles_reject_but_shared_containers_remain_legitimate(self):
+        shared = {"z": [1]}
+        self.assertEqual(
+            jcs.canonicalize([shared, shared]),
+            '[{"z":[1]},{"z":[1]}]',
+        )
+
+        direct_cycle = []
+        direct_cycle.append(direct_cycle)
+        with self.assertRaisesRegex(ValueError, "cyclic"):
+            jcs.canonicalize(direct_cycle)
+
+        indirect_cycle = {}
+        child = [indirect_cycle]
+        indirect_cycle["child"] = child
+        with self.assertRaisesRegex(ValueError, "cyclic"):
+            jcs.canonicalize(indirect_cycle)
+
+    def test_list_subclasses_preserve_iteration_not_indexing(self):
+        class IterList(list):
+            def __iter__(self):
+                return iter([2])
+
+        class IndexedList(list):
+            def __getitem__(self, index):
+                return 3
+
+        self.assertEqual(jcs.canonicalize(IterList([1])), "[2]")
+        self.assertEqual(jcs.canonicalize(IndexedList([1])), "[1]")
+
+        class LazyList(list):
+            def __iter__(self):
+                yield 1
+                yield self[0]
+
+        self.assertEqual(jcs.canonicalize(LazyList([2])), "[1,2]")
+
     def test_nfc_normalises_values(self):
         self.assertEqual(jcs.canonicalize(E_DECOMP), jcs.canonicalize(E_ACUTE))
         self.assertEqual(jcs.canonicalize(E_DECOMP), '"' + E_ACUTE + '"')

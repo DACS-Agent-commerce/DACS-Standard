@@ -18,6 +18,10 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13', '3.14']
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -27,13 +31,46 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install validation dependencies
-        run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
+        run: python3 -m pip install -r requirements-ap2-reference.txt
 
-      - name: crypto import gate (fail-closed)
-        run: python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
+      - name: Official AP2 and crypto import gate (fail-closed)
+        run: |
+          python3 - <<'PY'
+          import json
+          from importlib.metadata import distribution, version
+
+          expected_commit = "e1ea56db72a6385bce3e5c1112b3a56ce60acb43"
+          direct_url = json.loads(distribution("ap2").read_text("direct_url.json"))
+          vcs = direct_url.get("vcs_info", {})
+          if vcs.get("requested_revision") != expected_commit:
+              raise SystemExit("official AP2 requested revision is not pinned")
+          if vcs.get("commit_id") != expected_commit:
+              raise SystemExit("installed official AP2 commit does not match the pin")
+
+          from ap2.sdk.checkout_mandate_chain import CheckoutMandateChain
+          from ap2.sdk.mandate import MandateClient
+          from ap2.sdk.payment_mandate_chain import PaymentMandateChain
+          import cryptography
+          import idna
+          import jwcrypto
+          import pydantic
+          import sd_jwt
+
+          print(
+              "ap2", version("ap2"),
+              "cryptography", version("cryptography"),
+              "idna", version("idna"),
+              "jwcrypto", version("jwcrypto"),
+              "pydantic", version("pydantic"),
+              "sd-jwt", version("sd-jwt"),
+              MandateClient.__name__,
+              CheckoutMandateChain.__name__,
+              PaymentMandateChain.__name__,
+          )
+          PY
 
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
@@ -50,6 +87,9 @@ jobs:
       - name: Verify canonical JSON vectors are deterministic
         run: python3 scripts/generate_canonical_json_vectors.py --check
 
+      - name: Verify raw JSON admission vectors are deterministic
+        run: python3 scripts/generate_raw_json_profile_vectors.py --check
+
       - name: Verify payload-attestation vectors are deterministic
         run: python3 scripts/generate_payload_attestation_vectors.py --check
 
@@ -61,14 +101,66 @@ jobs:
       - name: Verify domain-claim GCR vectors are deterministic
         run: python3 scripts/generate_domain_gcr_vectors.py --check
 
+      - name: Verify SR-2 resolution vectors are deterministic
+        run: python3 scripts/generate_sr2_resolution_vectors.py --check
+      - name: Verify phase-bound delivery vectors are deterministic
+        run: python3 scripts/generate_phase_bound_delivery_vectors.py --check
+
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check
+
+      - name: Verify DACS-1/Vet golden inputs are deterministic
+        run: python3 scripts/generate_dacs1_vet_golden_inputs.py --check
+
+      - name: Verify canonical channel-message vectors are deterministic
+        run: python3 scripts/generate_channel_message_vectors.py --check
+      - name: Verify IdentityBundle hash binding vectors are deterministic
+        run: python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 
       - name: HTLC-9 ST-8 pack is deterministic and verifies
         run: python3 scripts/generate_htlc9_st8_pack.py --check && python3 scripts/verify_htlc9_st8_pack.py
 
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
+
+      - name: Verify settlement-finality vectors are deterministic
+        run: python3 scripts/generate_settlement_finality_verification_vectors.py --check
+
+      - name: Verify finality-resolution vectors are deterministic
+        run: python3 scripts/generate_finality_resolution_context_vectors.py --check
+
+      - name: Verify current-use reputation vectors are deterministic
+        run: python3 scripts/generate_current_use_reputation_vectors.py --check
+
+      - name: Verify combined current-use authenticated-window vectors are deterministic
+        run: python3 scripts/generate_current_use_authenticated_window_vectors.py --check
+
+      - name: Verify sealed-auction completeness vectors are deterministic
+        run: python3 scripts/generate_sealed_auction_completeness_vectors.py --check
+
+      - name: Verify canonical jobId vectors are deterministic
+        run: python3 scripts/generate_job_id_grammar_vectors.py --check
+
+      - name: Verify SB-3 required-binding vectors are deterministic
+        run: python3 scripts/generate_sb3_binding_required_vectors.py --check
+
+      - name: Verify SB-2 collision-authority vectors are deterministic
+        run: python3 scripts/generate_sb2_collision_authority_vectors.py --check
+
+      - name: Verify legacy-agreement admission vectors are deterministic
+        run: python3 scripts/generate_legacy_agreement_admission_vectors.py --check
+
+      - name: Verify authenticated reputation-window vectors are deterministic
+        run: python3 scripts/generate_reputation_authenticated_window_vectors.py --check
+
+      - name: Verify signed-participation reputation vectors are deterministic
+        run: python3 scripts/generate_reputation_participation_vectors.py --check
+
+      - name: Verify revocation-state completeness vectors are deterministic
+        run: python3 scripts/generate_revocation_state_completeness_vectors.py --check
+
+      - name: Run offline pre-review invariant gate
+        run: python3 scripts/pre_review_gate.py
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check

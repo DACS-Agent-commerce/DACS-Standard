@@ -41,7 +41,7 @@ RESOLVED_PATH = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
 
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 ORCHESTRATOR_SEED = bytes.fromhex("41" * 32)  # public test seed; never a production key
-ORCHESTRATOR_SIGNER = "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+ORCHESTRATOR_SIGNER = "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
 INTERIM_SIGNATURE = "J9aWl1-dZrsE9Gch3-jMOVj0wKwH_ohFS3IlcNYIZMnoyKBT6uCTyX367zvPzMdnP2m57-1fnxATbKtJ7_K3Ag"
 RESOLVED_SIGNATURE = "DvJWDESPE7O5rHSFHhTo0pIg2CtkoAYONy6wf9csI9qEKHr9UyV-6AZ6FxqJnsAbh3i-SU8gTY8mWzrpLR7IBw"
 
@@ -52,6 +52,8 @@ CONTRACT = "0x0000000000000000000000000000000000000308"
 LOCK_TX = "0x" + "aa" * 32
 REVEAL_TX = "0x" + "bb" * 32
 CLAIM_TX = "0x" + "cc" * 32
+RAIL_ID = "cross-chain-htlc:84532:80002"
+PHASE_INDEX = 4
 
 
 def canonical_bytes(value) -> bytes:
@@ -74,7 +76,7 @@ def signer_ref(seed: bytes) -> str:
     except ImportError:  # pragma: no cover
         raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
     pub = Ed25519PrivateKey.from_private_bytes(seed).public_key()
-    return "cci:" + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+    return "key:" + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
 
 
 def sign(record: dict, seed: bytes) -> None:
@@ -98,6 +100,44 @@ def attestation_ref(record: dict) -> dict:
     """
     digest = content_hash_hex(record)
     return {"anchor": {"kind": "storage-program", "locator": f"stor-{digest}"}, "contentHash": digest}
+
+
+def fixture_receipt(record: dict, *, resolved: bool) -> dict:
+    """Pinned, independently checked receipt context outside SettlementEvidence."""
+
+    digest = content_hash_hex(record)
+    suffix = ":resolved" if resolved else ""
+    logical = (
+        f"dacs4:payment:{JOB_ID}:"
+        "cross-chain-htlc%3A84532%3A80002:4"
+        f"{suffix}"
+    )
+    observed_at = record["observedAt"] + 1_000
+    return {
+        "receiptVersion": "1",
+        "substrate": "fixture-sr2",
+        "finalityProfile": "fixture-deterministic-finality",
+        "logicalAddress": logical,
+        "nativeAddress": f"stor-{digest}",
+        "contentHash": digest,
+        "transactionRef": {
+            "kind": "fixture-transaction",
+            "value": hashlib.sha256((logical + ":transaction").encode("ascii")).hexdigest(),
+        },
+        "writer": ORCHESTRATOR_SIGNER,
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": observed_at,
+        "blockRef": {
+            "id": hashlib.sha256((logical + ":block").encode("ascii")).hexdigest(),
+            "height": "366",
+            "timestamp": observed_at - 500,
+        },
+        "evidence": {
+            "kind": "fixture-finality-proof",
+            "value": hashlib.sha256((logical + ":proof").encode("ascii")).hexdigest(),
+        },
+    }
 
 
 def interim_record(signature_value: str | None = None) -> dict:
@@ -156,11 +196,13 @@ def build(use_precomputed_signatures: bool = False) -> dict[Path, dict]:
         INTERIM_PATH: {
             "kind": "SettlementEvidenceCase",
             "settlementEvidence": interim,
+            "anchorReceipt": fixture_receipt(interim, resolved=False),
             "specRefs": ["§9.5.4", "§9.7", "§10.3.1"],
         },
         RESOLVED_PATH: {
             "kind": "SettlementEvidenceCase",
             "settlementEvidence": resolved,
+            "anchorReceipt": fixture_receipt(resolved, resolved=True),
             "specRefs": ["§9.5.4", "§9.7", "§10.3.1"],
         },
     }

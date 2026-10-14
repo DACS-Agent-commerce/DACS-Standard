@@ -1,0 +1,286 @@
+"""Pinned trusted setup for isolated channel conformance scenarios.
+
+This configuration is reviewed with the harness, outside presented vectors.
+Each named test is an independent verifier lifetime. It is not a production
+issuer, persisted replay store, or authority derived from received metadata.
+"""
+
+import copy
+
+CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+CURRENT_MODULE_VERSIONS = {
+    "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
+    "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",
+}
+CURRENT_PARTICIPANTS = sorted([
+    "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+    "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+    "did:example:dacs-349-ecdsa",
+    "did:example:dacs-349-sr1-root",
+    "did:example:unresolved",
+])
+
+
+def trusted_profile_admission(session_id):
+    return {
+        "source": "fixture-verifier-owned",
+        "authenticated": True,
+        "sessionId": session_id,
+        "participantIdentities": copy.deepcopy(CURRENT_PARTICIPANTS),
+        "releasePin": CURRENT_RELEASE_PIN,
+        "moduleVersions": copy.deepcopy(CURRENT_MODULE_VERSIONS),
+    }
+
+TRUSTED_CONTEXTS = {'canonical-algorithm-key-confusion': {'lastSequence': 0,
+                                       'priorChannelIds': ['channel-100', 'channel-200'],
+                                       'sessionChannelId': 'channel-349'},
+ 'canonical-boolean-replies-to': {'lastSequence': 0,
+                                  'priorChannelIds': ['channel-100', 'channel-200'],
+                                  'sessionChannelId': 'channel-349'},
+ 'canonical-boolean-sequence': {'lastSequence': 0,
+                                'priorChannelIds': ['channel-100', 'channel-200'],
+                                'sessionChannelId': 'channel-349'},
+ 'canonical-decreasing-sequence': {'lastSequence': 4,
+                                   'priorChannelIds': ['channel-100', 'channel-200'],
+                                   'sessionChannelId': 'channel-349'},
+ 'canonical-duplicate-sequence': {'lastSequence': 3,
+                                  'priorChannelIds': ['channel-100', 'channel-200'],
+                                  'sessionChannelId': 'channel-349'},
+ 'canonical-ecdsa-cross-domain': {'lastSequence': 1,
+                                  'priorChannelIds': ['channel-100', 'channel-200'],
+                                  'sessionChannelId': 'channel-349'},
+ 'canonical-ecdsa-raw-digest-framing': {'lastSequence': 1,
+                                        'priorChannelIds': ['channel-100', 'channel-200'],
+                                        'sessionChannelId': 'channel-349'},
+ 'canonical-ecdsa-tampered-body': {'lastSequence': 1,
+                                   'priorChannelIds': ['channel-100', 'channel-200'],
+                                   'sessionChannelId': 'channel-349'},
+ 'canonical-ecdsa-valid': {'lastSequence': 1,
+                           'priorChannelIds': ['channel-100', 'channel-200'],
+                           'sessionChannelId': 'channel-349'},
+ 'canonical-empty-channel-id': {'lastSequence': 0,
+                                'priorChannelIds': ['channel-100', 'channel-200'],
+                                'sessionChannelId': 'channel-349'},
+ 'canonical-empty-refs-object': {'lastSequence': 0,
+                                 'priorChannelIds': ['channel-100', 'channel-200'],
+                                 'sessionChannelId': 'channel-349'},
+  'canonical-foreign-channel': {'lastSequence': 0,
+                               'priorChannelIds': ['channel-100', 'channel-200'],
+                               'sessionChannelId': 'channel-349'},
+  'canonical-generic-cci-sender-refused': {'lastSequence': 0,
+                                           'priorChannelIds': ['channel-100', 'channel-200'],
+                                           'sessionChannelId': 'channel-349'},
+ 'canonical-hex-signature-value': {'lastSequence': 0,
+                                   'priorChannelIds': ['channel-100', 'channel-200'],
+                                   'sessionChannelId': 'channel-349'},
+ 'canonical-member-wrong-key': {'lastSequence': 1,
+                                'priorChannelIds': ['channel-100', 'channel-200'],
+                                'sessionChannelId': 'channel-349'},
+ 'canonical-missing-signature': {'lastSequence': 0,
+                                 'priorChannelIds': ['channel-100', 'channel-200'],
+                                 'sessionChannelId': 'channel-349'},
+ 'canonical-open-signature-envelope': {'lastSequence': 0,
+                                       'priorChannelIds': ['channel-100', 'channel-200'],
+                                       'sessionChannelId': 'channel-349'},
+ 'canonical-outsider-valid-signature': {'lastSequence': 1,
+                                        'priorChannelIds': ['channel-100', 'channel-200'],
+                                        'sessionChannelId': 'channel-349'},
+ 'canonical-padded-base64url': {'lastSequence': 0,
+                                'priorChannelIds': ['channel-100', 'channel-200'],
+                                'sessionChannelId': 'channel-349'},
+ 'canonical-preserve-unknown-signed-field': {'lastSequence': 0,
+                                             'priorChannelIds': ['channel-100', 'channel-200'],
+                                             'sessionChannelId': 'channel-349'},
+ 'canonical-qualified-member-identity': {'lastSequence': 1,
+                                         'priorChannelIds': ['channel-100', 'channel-200'],
+                                         'sessionChannelId': 'channel-349'},
+ 'canonical-reused-session-channel': {'lastSequence': 0,
+                                      'priorChannelIds': ['channel-reused'],
+                                      'sessionChannelId': 'channel-reused'},
+ 'canonical-signer-sender-mismatch': {'lastSequence': 0,
+                                      'priorChannelIds': ['channel-100', 'channel-200'],
+                                      'sessionChannelId': 'channel-349'},
+ 'canonical-sr1-aggregate-cross-domain': {'lastSequence': 2,
+                                          'priorChannelIds': ['channel-100', 'channel-200'],
+                                          'sessionChannelId': 'channel-349'},
+ 'canonical-sr1-aggregate-raw-digest-framing': {'lastSequence': 2,
+                                                'priorChannelIds': ['channel-100', 'channel-200'],
+                                                'sessionChannelId': 'channel-349'},
+ 'canonical-sr1-aggregate-tampered-body': {'lastSequence': 2,
+                                           'priorChannelIds': ['channel-100', 'channel-200'],
+                                           'sessionChannelId': 'channel-349'},
+ 'canonical-sr1-aggregate-valid': {'lastSequence': 2,
+                                   'priorChannelIds': ['channel-100', 'channel-200'],
+                                   'sessionChannelId': 'channel-349'},
+ 'canonical-standard-base64-character': {'lastSequence': 0,
+                                         'priorChannelIds': ['channel-100', 'channel-200'],
+                                         'sessionChannelId': 'channel-349'},
+ 'canonical-stripped-unknown-field': {'lastSequence': 0,
+                                      'priorChannelIds': ['channel-100', 'channel-200'],
+                                      'sessionChannelId': 'channel-349'},
+ 'canonical-tampered-body': {'lastSequence': 0,
+                             'priorChannelIds': ['channel-100', 'channel-200'],
+                             'sessionChannelId': 'channel-349'},
+ 'canonical-unknown-algorithm': {'lastSequence': 0,
+                                 'priorChannelIds': ['channel-100', 'channel-200'],
+                                 'sessionChannelId': 'channel-349'},
+ 'canonical-unknown-message-version': {'lastSequence': 0,
+                                       'priorChannelIds': ['channel-100', 'channel-200'],
+                                       'sessionChannelId': 'channel-349'},
+ 'canonical-unknown-signature-version': {'lastSequence': 0,
+                                         'priorChannelIds': ['channel-100', 'channel-200'],
+                                         'sessionChannelId': 'channel-349'},
+ 'canonical-unresolved-sender': {'lastSequence': 0,
+                                 'priorChannelIds': ['channel-100', 'channel-200'],
+                                 'sessionChannelId': 'channel-349'},
+ 'canonical-valid-first': {'lastSequence': 0,
+                           'priorChannelIds': ['channel-100', 'channel-200'],
+                           'sessionChannelId': 'channel-349'},
+ 'canonical-valid-next': {'lastSequence': 1,
+                          'priorChannelIds': ['channel-100', 'channel-200'],
+                          'sessionChannelId': 'channel-349'},
+ 'canonical-valid-sequence-gap': {'lastSequence': 2,
+                                  'priorChannelIds': ['channel-100', 'channel-200'],
+                                  'sessionChannelId': 'channel-349'},
+ 'ch6-channelId-reused': {'lastSequence': 0,
+                          'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                          'sessionChannelId': 'chan-session-1'},
+  'cross-domain-current-to-legacy': {'lastSequence': 0,
+                                     'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                     'sessionChannelId': 'chan-session-7'},
+  'cross-domain-legacy-to-current': {'lastSequence': 0,
+                                     'priorChannelIds': ['channel-100', 'channel-200'],
+                                     'sessionChannelId': 'channel-349'},
+ 'ctx-fractional-lastSequence': {'lastSequence': 1.5,
+                                 'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                 'sessionChannelId': 'chan-session-7'},
+ 'ctx-priorChannelIds-bad-element': {'lastSequence': 0,
+                                     'priorChannelIds': [123],
+                                     'sessionChannelId': 'chan-session-7'},
+ 'foreign-channel-message': {'lastSequence': 0,
+                             'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                             'sessionChannelId': 'chan-session-7'},
+ 'legacy-byte-preserving-read-only-import': {'lastSequence': 0,
+                                             'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                             'sessionChannelId': 'chan-session-7'},
+ 'legacy-uppercase-hex-rejected': {'lastSequence': 0,
+                                   'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                   'sessionChannelId': 'chan-session-7'},
+ 'malformed-context-boolean-sequence': {'lastSequence': True,
+                                        'priorChannelIds': ['channel-100', 'channel-200'],
+                                        'sessionChannelId': 'channel-349'},
+ 'malformed-missing-channelId': {'lastSequence': 0,
+                                 'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                 'sessionChannelId': 'chan-session-7'},
+ 'mixed-current-discriminator-legacy-signature': {'lastSequence': 0,
+                                                  'priorChannelIds': ['channel-100', 'channel-200'],
+                                                  'sessionChannelId': 'channel-349'},
+ 'mixed-current-raw-digest-framing': {'lastSequence': 0,
+                                      'priorChannelIds': ['channel-100', 'channel-200'],
+                                      'sessionChannelId': 'channel-349'},
+  'mixed-legacy-hex-digest-framing': {'lastSequence': 0,
+                                      'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                      'sessionChannelId': 'chan-session-7'},
+ 'neither-selector-no-discriminator-current-envelope': {'lastSequence': 0,
+                                                        'priorChannelIds': ['channel-100', 'channel-200'],
+                                                        'sessionChannelId': 'channel-349'},
+ 'rechannelled-message-sig-breaks': {'lastSequence': 0,
+                                     'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                     'sessionChannelId': 'chan-session-7'},
+ 'replay-decreasing-sequence': {'lastSequence': 5,
+                                'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                'sessionChannelId': 'chan-session-7'},
+ 'replay-duplicate-sequence': {'lastSequence': 3,
+                               'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                               'sessionChannelId': 'chan-session-7'},
+ 'sender-not-cci': {'lastSequence': 0,
+                    'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                    'sessionChannelId': 'chan-session-7'},
+ 'sequence-below-one': {'lastSequence': 0,
+                        'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                        'sessionChannelId': 'chan-session-7'},
+ 'tampered-body-after-signing': {'lastSequence': 0,
+                                 'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                                 'sessionChannelId': 'chan-session-7'},
+ 'tampered-signature': {'lastSequence': 0,
+                        'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                        'sessionChannelId': 'chan-session-7'},
+  'untrusted-context-membership-injection': {'authenticatedMembers': [{'algorithm': 'ed25519',
+                                                                       'claim': 'key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57',
+                                                                       'publicKey': 'ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693'}],
+                                             'lastSequence': 0,
+                                             'priorChannelIds': ['channel-100', 'channel-200'],
+                                             'sessionChannelId': 'channel-349'},
+ 'valid-first-message': {'lastSequence': 0,
+                         'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                         'sessionChannelId': 'chan-session-7'},
+ 'valid-next-message': {'lastSequence': 1,
+                        'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                        'sessionChannelId': 'chan-session-7'},
+ 'valid-sequence-gap': {'lastSequence': 2,
+                        'priorChannelIds': ['chan-session-1', 'chan-session-2'],
+                        'sessionChannelId': 'chan-session-7'}}
+
+# The profile-negative and explicit-null cases use the same independently
+# reviewed channel context as the positive current-wire scenarios.
+for _name in (
+    "current-profile-missing-authority",
+    "current-profile-partial-module-tuple",
+    "current-profile-wrong-release-pin",
+    "current-profile-duplicate-participant",
+    "current-profile-session-mismatch",
+    "current-profile-identity-mismatch",
+    "current-profile-unauthenticated",
+    "canonical-null-refs",
+):
+    TRUSTED_CONTEXTS[_name] = {
+        "lastSequence": 0,
+        "priorChannelIds": ["channel-100", "channel-200"],
+        "sessionChannelId": "channel-349",
+    }
+
+# Separate reviewed setup for current-profile admission. Historical audit
+# channels deliberately receive no live-profile capability.
+TRUSTED_PROFILE_ADMISSIONS = {
+    name: (
+        trusted_profile_admission(context["sessionChannelId"])
+        if isinstance(context.get("sessionChannelId"), str)
+        and context["sessionChannelId"].startswith("channel-")
+        else None
+    )
+    for name, context in TRUSTED_CONTEXTS.items()
+}
+TRUSTED_PROFILE_ADMISSIONS.update({
+    "current-profile-missing-authority": None,
+    "current-profile-partial-module-tuple": {
+        **trusted_profile_admission("channel-349"),
+        "moduleVersions": {
+            key: value for key, value in CURRENT_MODULE_VERSIONS.items()
+            if key != "dacs5"
+        },
+    },
+    "current-profile-wrong-release-pin": {
+        **trusted_profile_admission("channel-349"),
+        "releasePin": "f" * 40,
+    },
+    "current-profile-duplicate-participant": {
+        **trusted_profile_admission("channel-349"),
+        "participantIdentities": CURRENT_PARTICIPANTS + [CURRENT_PARTICIPANTS[0]],
+    },
+    "current-profile-session-mismatch": trusted_profile_admission("channel-other"),
+    "current-profile-identity-mismatch": {
+        **trusted_profile_admission("channel-349"),
+        "participantIdentities": [
+            identity for identity in CURRENT_PARTICIPANTS
+            if identity
+            != "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ] + [
+            "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949"
+        ],
+    },
+    "current-profile-unauthenticated": {
+        **trusted_profile_admission("channel-349"),
+        "authenticated": False,
+    },
+    "canonical-null-refs": trusted_profile_admission("channel-349"),
+})

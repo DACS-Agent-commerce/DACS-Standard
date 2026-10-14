@@ -433,6 +433,12 @@ def build_vectors() -> list[dict]:
     legacy_demos_sender = sign_legacy(
         {**legacy_unsigned, "sender": DEMOSDK_ALICE_SENDER}
     )
+    # A well-formed historical claim outside the fixed member set, whose
+    # spelling embeds the key that genuinely signed the frozen recipe.
+    legacy_outsider = sign_legacy(
+        {**legacy_unsigned, "sender": f"cci:{public_hex(OUTSIDER)}"},
+        key=OUTSIDER,
+    )
 
     legacy_doc = json.loads(LEGACY.read_text(encoding="utf-8"))
     if legacy_doc.get("hash") != LEGACY_VECTOR_HASH:
@@ -651,6 +657,10 @@ def build_vectors() -> list[dict]:
              ctx=copy.deepcopy(legacy_ctx),
              operation="legacy-import",
              note="demos:0x<64hex> is a substrate address, not a historical ClaimReference; the reader does not map it to cci:"),
+        case("legacy-import-outsider-valid-signature", "fail", legacy_outsider,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="a valid frozen-recipe signature by a well-formed historical claim outside the authenticated CH-1 member set; key bytes embedded in the claim are not authority"),
     ]
 
 

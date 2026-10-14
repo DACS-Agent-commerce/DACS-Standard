@@ -1742,6 +1742,38 @@ class ChannelMessageVectorTests(unittest.TestCase):
         for name in caught:
             self.assertEqual("pass", observed[name])
 
+    def test_legacy_import_requires_authenticated_membership(self):
+        """CH-1/CH-7 apply to legacy-import: key bytes in a claim are not authority."""
+        vector = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "legacy-import-outsider-valid-signature"
+        )
+        sender = vector["message"]["sender"]
+        self.assertEqual("cci", parse_historical_claim_ref(sender)[0])
+        self.assertEqual("resolved", AUTHORITY.resolve("chan-session-7", sender)[0])
+        self.assertIsNone(AUTHORITY.resolve("chan-session-7", sender)[1])
+        self.assertEqual("fail", self.fixture_result(vector, "legacy-import", AUTHORITY))
+
+        module = sys.modules[__name__]
+        original = module.resolve_signing_key
+
+        def key_from_claim(claim, channel_id, authority):
+            # Wrong implementation: a historical cci claim names its own key.
+            resolution, algorithm, public_key = original(claim, channel_id, authority)
+            if resolution == "outsider":
+                scheme, identifier = parse_historical_claim_ref(claim)
+                if scheme == "cci":
+                    return (
+                        "resolved", "ed25519",
+                        Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier)),
+                    )
+            return resolution, algorithm, public_key
+
+        with mock.patch.object(module, "resolve_signing_key", key_from_claim):
+            self.assertEqual(
+                "pass", self.fixture_result(vector, "legacy-import", AUTHORITY)
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

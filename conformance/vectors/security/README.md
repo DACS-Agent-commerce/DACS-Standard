@@ -42,7 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
-| [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 60 | `error` / `fail` / `indeterminate` / `pass` |
+| [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 61 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1571,7 +1571,7 @@ conformance authority.
 
 ### `canonical-channel-message-v0.6.json` — §8.3.3 CH-6..CH-10
 
-60 deterministic cases for the discriminated current
+61 deterministic cases for the discriminated current
 `CanonicalChannelMessage` and its strict historical boundary. The current arm
 uses `canonicalChannelMessageVersion: "1"`, a versioned
 `ChannelMessageSignature`, SIG-6 unpadded Base64URL, and exactly:
@@ -1605,7 +1605,8 @@ The corpus covers valid first/next/gapped sequences; positive, tampered,
 cross-domain, and wrong-framing examples for Ed25519, ECDSA-secp256k1, and an
 authenticated `sr1-root` aggregate signature; duplicate/decreasing,
 foreign-channel and reused-channel rejection; unavailable sender authority;
-an otherwise-valid outsider signature and a member signature made by the wrong
+an otherwise-valid outsider signature on both operations (the historical
+outsider's claim spells its own key) and a member signature made by the wrong
 key against the verifier-owned authenticated member/key capability; CF-3
 matching of a parameter-qualified sender and signer to the one member identity;
 tampering; padded/standard-Base64/hex value rejection; unknown message and

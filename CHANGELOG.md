@@ -114,6 +114,11 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   test now executes these cases instead of only checking prose. A
   wrong-implementation witness shows a shape-keyed SDK-compatible reader
   passes exactly these four legacy cases and every other committed case.
+- **Legacy-import membership** (DACS-3 §8.3.3 CH-1, CH-7) — adds
+  `legacy-import-outsider-valid-signature` (`fail`): a valid frozen-recipe
+  signature by a well-formed historical `cci:` claim outside the
+  authenticated member set. A verifier that takes the key from the claim's
+  own bytes accepts it.
 
 ### Changed — current-delivery admission corrective boundary
 

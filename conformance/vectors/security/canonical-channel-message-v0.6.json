@@ -37,8 +37,8 @@
     "authority": "verifier-owned and bound to exact session plus participant identities",
     "legacyImportExempt": true
   },
-  "count": 60,
-  "hash": "ab2e3b1f9543d1805886e34b3e8deb3128a1e114d5503373de41a4db53829f37",
+  "count": 61,
+  "hash": "13f2eda1c8b839f155c780fd6ffc93286d18f2f05955f1b439a18d1a8ea631f3",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -2978,6 +2978,32 @@
           "price": "10"
         },
         "signature": "18bdeada114a31577c460645946b1ad6ae096209c591049e9cde76d24dbb222c48590ef1696cb4e6acedf13ba7a847a7dc022ad9e3e5b1fff90dbc0db667a309"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "legacy-import-outsider-valid-signature",
+      "expected": "fail",
+      "operation": "legacy-import",
+      "note": "a valid frozen-recipe signature by a well-formed historical claim outside the authenticated CH-1 member set; key bytes embedded in the claim are not authority",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "ae069c8d422fce6159bb336ea40a9fc498155ebadb1e0a8976a301f4969e8d4e92e2bb915b209908df72c0c89c16543900d53b3fb68693cd796c329727c8040f"
       },
       "ctx": {
         "sessionChannelId": "chan-session-7",

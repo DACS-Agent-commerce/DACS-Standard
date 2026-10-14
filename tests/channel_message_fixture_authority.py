@@ -240,13 +240,14 @@ for _name in (
         "sessionChannelId": "channel-349",
     }
 
-# The shipped-SDK and lenient-reading legacy cases run on the historical audit
-# channel used by the frozen-corpus negatives.
+# The shipped-SDK, lenient-reading and outsider legacy cases run on the
+# historical audit channel used by the frozen-corpus negatives.
 for _name in (
     "demosdk-4.0.16-wire-legacy-import",
     "legacy-0x-prefixed-hex-signature",
     "legacy-object-signature",
     "legacy-demos-0x-sender",
+    "legacy-import-outsider-valid-signature",
 ):
     TRUSTED_CONTEXTS[_name] = {
         "lastSequence": 0,

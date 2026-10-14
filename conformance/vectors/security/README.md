@@ -91,7 +91,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 86 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 208 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1917,7 +1917,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-Sixty-seven candidate cases execute consumer-verifiable settlement finality for
+208 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -1929,6 +1929,20 @@ observation/provider authorities, and weighted BFT certificates. Cases cover
 network, genesis, transaction/index, proof/root/path, quorum/key, freshness,
 provider-byte/attestation, malformed-nested-input and production-codec-unavailable
 failures. Provider capture passes only as `provisional-provider-capture`.
+One otherwise-valid case per rejection guard covers the rest of the entry
+point. The signed Agreement must be the one the session commits: job, parties,
+rail, hash and both party signatures. The evidence must be signed by the
+authenticated phase orchestrator for the session's phase. The steward-signed
+rail must satisfy the phase handler's required model (DACS-4 §9.4.3) and the
+RD-5 typed joins, with a closed profile. The producer report must echo the
+profile. Raw transaction bodies, block headers and ancestry links must be
+well formed, and the proven transaction must have succeeded. The head
+authority must cover the profile's sources, and the BFT certificate must
+certify the inclusion block under the pinned validator set. The ap2-sr3 native
+observation repeats those checks at its own profile. Provider attestations
+must be signed by the provider and bind the reference and response economics.
+HTLC and tank arms, references and parameters are checked, as is missing or
+malformed trusted session, validator-set, clock and attestation authority.
 HTLC carries four independently verified source-lock/source-claim/
 destination-lock/destination-reveal arms and recomputes contract, per-chain
 hashlock, preimage, amount and timelock relations from authenticated bytes.

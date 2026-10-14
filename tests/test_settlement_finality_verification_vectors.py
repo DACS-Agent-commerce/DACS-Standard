@@ -36,6 +36,7 @@ from scripts.settlement_finality_reference import verify_finality  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
 import scripts.generate_settlement_finality_verification_vectors as finality_fixtures  # noqa: E402
+import scripts.settlement_finality_reference as SFV  # noqa: E402
 
 
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "settlement-finality-verification.json"
@@ -167,7 +168,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(86, self.data["count"])
+        self.assertEqual(208, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -205,6 +206,81 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                     case["want"]["finalityClass"], result.get("finalityClass")
                 )
         self.assertEqual({"pass", "fail", "indeterminate", "error"}, set(observed.values()))
+
+    def test_named_rejections_pass_a_verifier_missing_only_their_guard(self):
+        """Bounded wrong implementations: each skips one FV rejection guard.
+
+        Every named case is otherwise valid, so the verifier that omits only
+        its guard accepts it.
+        """
+        real_verify = SFV._verify_ed25519
+        real_evidence = SFV._verify_evidence
+        real_merkle = SFV._verify_merkle_proof
+        real_report = SFV._report_shape
+        real_bft = SFV._verify_bft_certificate
+
+        def domain_blind(domain):
+            def verify(keys, signer, signed_domain, digest, value):
+                if signed_domain == domain:
+                    return True
+                return real_verify(keys, signer, signed_domain, digest, value)
+
+            return patch.object(SFV, "_verify_ed25519", side_effect=verify)
+
+        def any_party_signs_evidence(evidence, trusted):
+            sessions = copy.deepcopy(trusted.get("sessionAuthorityByJob") or {})
+            session = sessions.get(evidence.get("jobId"))
+            if isinstance(session, dict):
+                session["phaseOrchestrator"] = evidence["signature"]["signer"]
+            return real_evidence(evidence, {**trusted, "sessionAuthorityByJob": sessions})
+
+        def status_blind(proof, *, kind, bytes_field):
+            decision, reason, decoded = real_merkle(proof, kind=kind, bytes_field=bytes_field)
+            if kind == "fixture-transaction-merkle-v1" and isinstance(decoded, dict):
+                decoded = {**decoded, "status": "success"}
+            return decision, reason, decoded
+
+        def model_blind(report, profile):
+            if isinstance(report, dict):
+                report = {**report, "model": profile["model"]}
+            return real_report(report, profile)
+
+        def block_blind(observation, profile, trusted):
+            certificate = observation.get("finalityCertificate")
+            if isinstance(certificate, dict):
+                observation = {
+                    **observation,
+                    "inclusionBlock": {
+                        **observation["inclusionBlock"], "id": certificate.get("blockId"),
+                    },
+                }
+            return real_bft(observation, profile, trusted)
+
+        mutants = {
+            "fv-evidence-signer-not-phase-orchestrator": patch.object(
+                SFV, "_verify_evidence", side_effect=any_party_signs_evidence
+            ),
+            "fv-raw-transaction-not-successful": patch.object(
+                SFV, "_verify_merkle_proof", side_effect=status_blind
+            ),
+            "fv-producer-report-model-mismatch": patch.object(
+                SFV, "_report_shape", side_effect=model_blind
+            ),
+            "fv-bft-certificate-wrong-block": patch.object(
+                SFV, "_verify_bft_certificate", side_effect=block_blind
+            ),
+            "fv-provider-attestation-signature-invalid": domain_blind(
+                SFV.PROVIDER_ATTESTATION_DOMAIN
+            ),
+            "fv-agreement-signature-invalid": domain_blind(SFV.AGREEMENT_DOMAIN),
+        }
+        for name, mutant in mutants.items():
+            case = self.cases[name]
+            with self.subTest(case=name):
+                self.assertEqual(case["expected"], self.evaluate_case(case)["decision"])
+                with mutant:
+                    result = self.evaluate_case(case)
+                self.assertEqual("pass", result["decision"], result["reason"])
 
     def test_every_finality_model_has_a_legitimate_control(self):
         controls = {

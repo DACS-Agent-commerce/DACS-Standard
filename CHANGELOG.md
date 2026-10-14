@@ -154,6 +154,16 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   shows each passes a verifier missing only its guard. Unit tests now reach
   the current party-map and budget checks and the pure-arm roster and
   type-authority checks; CONFORMANCE-PLAN marks those as unit-only.
+- **FV rejection guards** (DACS-4 §9.4.3, §9.7.0 FV-1..FV-10) —
+  `settlement-finality-verification` (86 → 208) adds one otherwise-valid case
+  per rejection guard the corpus never reached. Examples: evidence signed by
+  a party other than the phase orchestrator, an included transaction whose
+  raw body did not succeed, a producer report naming another model, a BFT
+  certificate for the wrong block, a provider attestation or agreement
+  signature by the wrong key, and the ap2-sr3, HTLC and tank structure
+  checks. Corpus-only replay now leaves 49 of the reference's return
+  statements unreached, down from 163. A pinned witness shows each of the
+  six named cases passes a verifier that skips only that guard.
 
 ### Changed — current-delivery admission corrective boundary
 

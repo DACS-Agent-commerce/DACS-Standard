@@ -246,6 +246,7 @@ class FixtureFactory:
         commitment: str | None = None,
         bft_signers=("validator-a", "validator-b"),
         parent_id: str | None = None,
+        transaction_mutation=None,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
@@ -257,6 +258,9 @@ class FixtureFactory:
             "eventsRoot": event_proof["root"],
             "status": "success",
         }
+        if transaction_mutation is not None:
+            # The raw transaction body is still proven, included and signed.
+            transaction_mutation(transaction)
         transaction_proof = self.merkle_proof(
             "fixture-transaction-merkle-v1", "transactionBytes", transaction, label + ":transaction"
         )
@@ -536,6 +540,19 @@ class FixtureFactory:
         }
         self.resign_rail(rail)
         return rail
+
+    def resign_agreement(self, agreement: dict, *, signers=("buyer", "seller")) -> str:
+        """Re-sign every party signature and return the new agreement hash."""
+        digest = artifact_hash(agreement, "signatures")
+        agreement["signatures"] = [
+            {
+                "party": CLAIMS[role],
+                "algorithm": "ed25519",
+                "value": self.sign_digest(role, AGREEMENT_DOMAIN, digest),
+            }
+            for role in signers
+        ]
+        return digest
 
     def resign_rail(self, rail: dict, *, key_name="steward", signer=None) -> None:
         signer = signer or CLAIMS[key_name]
@@ -1475,6 +1492,374 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-malformed-event-index", "error", "boolean event index is not an integer", changed("block-depth", lambda v: (v["evidence"]["paymentTxRefs"][0].__setitem__("logIndex", True), factory.resign_evidence(v["evidence"])))),
         case("fv-malformed-context-kind", "error", "context/profile kind mismatch is structural error", changed("block-depth", lambda v: v["context"].__setitem__("kind", "provider"))),
         case("fv-production-codec-unavailable", "indeterminate", "synthetic vectors never claim a native production codec", factory.model_input("block-depth"), trusted_overrides={"policy": "production-native-unavailable"}),
+    ])
+    vectors.extend(build_rejection_vectors(factory))
+    return vectors
+
+
+def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
+    """One otherwise-valid case per FV rejection guard.
+
+    Each case changes one input and keeps every signed artifact, proof and
+    trust input it does not name genuine and consistent, so a verifier that
+    ignores the named rule returns a different verdict.
+    """
+    vectors = []
+
+    def changed(model, mutation):
+        value = factory.model_input(model)
+        mutation(value)
+        return value
+
+    def session_of(value):
+        return factory.trusted["sessionAuthorityByJob"][value["evidence"]["jobId"]]
+
+    def session_override(value, **changes):
+        return {"sessionAuthorityByJob": {value["evidence"]["jobId"]: changes}}
+
+    def decode(encoded):
+        return json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+
+    # Agreement authority (FV-1): the entry point consumes the signed
+    # Agreement that the authenticated session commits.
+    def agreement(name, expected, note, mutate, *, commit=True):
+        value = factory.model_input("block-depth")
+        mutate(value)
+        digest = factory.resign_agreement(value["agreement"])
+        overrides = session_override(value, agreementHash=digest) if commit else None
+        vectors.append(case(name, expected, note, value, trusted_overrides=overrides))
+
+    def other_job(value):
+        value["agreement"]["jobId"] = "FV-392-other-job"
+
+    def swap_party_claims(value):
+        parties = value["agreement"]["parties"]
+        parties[0]["primaryClaim"], parties[1]["primaryClaim"] = (
+            parties[1]["primaryClaim"], parties[0]["primaryClaim"]
+        )
+
+    def agreement_selects_rail_v2(value):
+        value["rail"]["railVersion"] = 2
+        factory.rebind_rail(value)
+        value["agreement"]["terms"]["rail"]["railVersion"] = 2
+
+    agreement("fv-agreement-member-missing", "error", "a required AgreementDocument member is absent", lambda v: v["agreement"].pop("derivedFromPattern"))
+    agreement("fv-agreement-job-mismatch", "fail", "the signed agreement names another job than the authenticated session", other_job)
+    agreement("fv-agreement-listing-ref-malformed", "error", "the agreement listingRef version is not an integer", lambda v: v["agreement"]["listingRef"].__setitem__("version", "1"))
+    agreement("fv-agreement-party-malformed", "error", "an agreement party lacks its vetRecordRef", lambda v: v["agreement"]["parties"][0].pop("vetRecordRef"))
+    agreement("fv-agreement-duplicate-party-role", "error", "both agreement parties claim the buyer role", lambda v: v["agreement"]["parties"][1].__setitem__("role", "buyer"))
+    agreement("fv-agreement-parties-differ-from-session", "fail", "the signed buyer and seller claims are reversed against the authenticated session", swap_party_claims)
+    agreement("fv-agreement-terms-malformed", "error", "the agreement terms lack a deadline", lambda v: v["agreement"]["terms"].pop("deadline"))
+    agreement("fv-agreement-price-noncanonical-decimal", "error", "the agreement price is not a canonical decimal", lambda v: v["agreement"]["terms"]["price"].__setitem__("amount", "5.0"))
+    agreement("fv-agreement-rail-differs-from-session", "fail", "the agreement and a re-signed rail select rail version 2; the authenticated session selected version 1", agreement_selects_rail_v2)
+    agreement("fv-agreement-hash-not-session-commitment", "fail", "a re-signed agreement whose hash the authenticated session does not commit", lambda v: v["agreement"]["terms"].__setitem__("deadline", v["agreement"]["terms"]["deadline"] + 1), commit=False)
+
+    signed = factory.model_input("block-depth")
+    digest = artifact_hash(signed["agreement"], "signatures")
+    signed["agreement"]["signatures"][1] = {
+        "party": CLAIMS["orchestrator"], "algorithm": "ed25519",
+        "value": factory.sign_digest("orchestrator", AGREEMENT_DOMAIN, digest),
+    }
+    vectors.append(case("fv-agreement-signer-not-session-party", "fail", "a valid agreement signature by a claim that is not a session party", signed))
+    forged = factory.model_input("block-depth")
+    forged["agreement"]["signatures"][0]["value"] = factory.sign_digest(
+        "orchestrator", AGREEMENT_DOMAIN, digest
+    )
+    vectors.append(case("fv-agreement-signature-invalid", "fail", "the buyer's agreement signature is made by another key", forged))
+
+    # Rail and profile authority (FV-1, FV-2, RD-5).
+    def rail(name, expected, note, model, mutate):
+        value = factory.model_input(model)
+        mutate(value["rail"])
+        factory.rebind_rail(value)
+        vectors.append(case(name, expected, note, value))
+
+    def asset_and_network_chain(rail_value, chain_id):
+        rail_value["asset"]["chainId"] = chain_id
+        rail_value["network"]["chainId"] = chain_id
+
+    rail("fv-rail-member-missing", "error", "a steward-signed RailDefinition without availability", "block-depth", lambda r: r.pop("availability"))
+    rail("fv-rail-availability-unknown", "error", "a steward-signed rail availability outside the closed set", "block-depth", lambda r: r.__setitem__("availability", "paused"))
+    rail("fv-rail-type-unsupported", "error", "a steward-signed rail with an unregistered railType", "block-depth", lambda r: r.__setitem__("railType", "carrier-pigeon"))
+    rail("fv-rail-asset-kind-disagrees", "fail", "an evm-erc20 rail whose signed asset kind is spl", "block-depth", lambda r: r["asset"].__setitem__("kind", "spl"))
+    rail("fv-rail-asset-chain-id-malformed", "error", "the signed asset chainId is a string", "block-depth", lambda r: r["asset"].__setitem__("chainId", "1"))
+    rail("fv-rail-network-chain-id-differs", "fail", "the signed network chainId differs from the asset chainId", "block-depth", lambda r: r["network"].__setitem__("chainId", 5))
+    rail("fv-rail-profile-network-differs-from-asset-chain", "fail", "asset and network name chain 5 while the signed finality profile settles on eip155:1", "block-depth", lambda r: asset_and_network_chain(r, 5))
+    rail("fv-rail-cluster-differs", "fail", "the signed network cluster differs from the asset cluster", "commitment-level", lambda r: r["network"].__setitem__("cluster", "devnet"))
+    rail("fv-rail-provider-differs", "fail", "the signed asset provider differs from the finality profile provider", "provider-receipt", lambda r: r["asset"].__setitem__("provider", "provider:other"))
+    rail("fv-rail-provider-endpoint-malformed", "error", "the signed provider endpoint is not a string", "provider-receipt", lambda r: r["network"].__setitem__("providerEndpoint", 443))
+    rail("fv-rail-cross-chain-mechanism-differs", "fail", "an HTLC rail whose signed cross-chain mechanism is liquidity-tank", "htlc-reveal", lambda r: r["network"].__setitem__("mechanism", "liquidity-tank"))
+    rail("fv-rail-currency-undeclared", "error", "the signed rail asset declares no canonical currency", "block-depth", lambda r: r["asset"].pop("symbol"))
+    rail("fv-rail-currency-differs", "fail", "the signed rail asset is USDT while the agreement settles USDC", "block-depth", lambda r: r["asset"].__setitem__("symbol", "USDT"))
+    rail("fv-profile-version-unknown", "error", "an unknown finalityProfileVersion", "block-depth", lambda r: r["consumerFinalityProfile"].__setitem__("finalityProfileVersion", "2"))
+    rail("fv-profile-capability-unknown", "error", "an unregistered finalityResolutionCapability", "block-depth", lambda r: r["consumerFinalityProfile"].__setitem__("finalityResolutionCapability", "finality-resolution-context-v2"))
+    rail("fv-profile-model-unknown", "error", "an unregistered finality model", "block-depth", lambda r: r["consumerFinalityProfile"].__setitem__("model", "probabilistic"))
+    rail("fv-profile-settlement-kind-unknown", "error", "an unregistered settlement profile kind", "block-depth", lambda r: r["consumerFinalityProfile"]["settlement"].__setitem__("kind", "longest-chain"))
+    rail("fv-profile-required-depth-missing", "error", "a block-depth settlement profile without requiredDepth", "block-depth", lambda r: r["consumerFinalityProfile"]["settlement"].pop("requiredDepth"))
+    rail("fv-profile-provider-origin-not-string", "error", "the signed provider status endpoint origin is not a string", "provider-receipt", lambda r: r["consumerFinalityProfile"].__setitem__("statusEndpointOrigin", 443))
+
+    rail("fv-rail-network-chain-id-malformed", "error", "the signed network chainId is zero", "block-depth", lambda r: r["network"].__setitem__("chainId", 0))
+    rail("fv-rail-asset-cluster-malformed", "error", "the signed asset cluster is outside mainnet/devnet/testnet", "commitment-level", lambda r: r["asset"].__setitem__("cluster", "mainnet-beta"))
+    rail("fv-rail-profile-network-differs-from-cluster", "fail", "asset and network name devnet while the signed finality profile settles on solana:mainnet", "commitment-level", lambda r: (r["asset"].__setitem__("cluster", "devnet"), r["network"].__setitem__("cluster", "devnet")))
+    rail("fv-rail-provider-endpoint-not-https", "error", "the signed provider endpoint is not an HTTPS URL", "provider-receipt", lambda r: r["network"].__setitem__("providerEndpoint", "http://payments.example"))
+
+    envelope = factory.model_input("block-depth")
+    envelope["rail"]["signature"]["algorithm"] = "ecdsa-secp256k1"
+    vectors.append(case("fv-rail-signature-envelope-malformed", "error", "the rail signature envelope names an unsupported algorithm", envelope))
+
+    # DACS-4 §9.4.3: the phase handler selects the required finality model.
+    handler = factory.model_input("commitment-level")
+    handler["rail"]["phaseHandler"] = "pay-evm-erc20"
+    factory.rebind_rail(handler)
+    handler["evidence"]["phase"] = "pay-evm-erc20"
+    factory.resign_evidence(handler["evidence"])
+    vectors.append(case("fv-rail-phase-handler-requires-other-model", "fail", "a steward-signed pay-evm-erc20 rail declares commitment-level finality; that handler requires block-depth", handler, trusted_overrides=session_override(handler, phaseKind="pay-evm-erc20")))
+
+    # Producer report (FV-2): the report echoes the profile and is never proof.
+    def report(name, expected, note, model, mutate):
+        value = factory.model_input(model)
+        mutate(value["evidence"])
+        factory.resign_evidence(value["evidence"])
+        vectors.append(case(name, expected, note, value))
+
+    report("fv-producer-report-model-mismatch", "fail", "the signed producer report names bft-final for a block-depth profile", "block-depth", lambda e: e["settlementFinality"].__setitem__("model", "bft-final"))
+    report("fv-producer-report-commitment-mismatch", "fail", "the signed producer report echoes confirmed for a finalized profile", "commitment-level", lambda e: e["settlementFinality"].__setitem__("finalityCommitmentLevel", "confirmed"))
+    report("fv-producer-report-malformed", "error", "the signed producer report lacks finalityObservedAt", "block-depth", lambda e: e["settlementFinality"].pop("finalityObservedAt"))
+    report("fv-producer-report-not-object", "error", "the signed settlementFinality member is a string", "block-depth", lambda e: e.__setitem__("settlementFinality", "final"))
+
+    # Evidence and phase authority (FV-1).
+    buyer_signed = changed("block-depth", lambda v: factory.resign_evidence(v["evidence"], key_name="buyer"))
+    vectors.append(case("fv-evidence-signer-not-phase-orchestrator", "fail", "the evidence is validly signed by the buyer, not the authenticated phase orchestrator", buyer_signed))
+    depth = factory.model_input("block-depth")
+    vectors.append(case("fv-evidence-phase-differs-from-session", "fail", "the authenticated session runs pay-x402 at this phase; the rail and evidence say pay-evm-erc20", depth, trusted_overrides=session_override(depth, phaseKind="pay-x402")))
+    vectors.append(case("fv-session-authority-unavailable", "indeterminate", "no authenticated session authority is configured", depth, trusted_overrides={"sessionAuthorityByJob": None}))
+    vectors.append(case("fv-session-authority-malformed", "error", "the trusted session authority carries an unknown member", depth, trusted_overrides=session_override(depth, unexpected=True)))
+
+    # Raw proof admission (FV-3, FV-5).
+    def observation(name, expected, note, mutate, *, model="block-depth"):
+        vectors.append(case(name, expected, note, changed(model, lambda v: mutate(v["context"]["observation"]))))
+
+    observation("fv-event-proof-codec-unknown", "error", "an unregistered selected-event proof codec", lambda o: o["selectedEventProof"].__setitem__("kind", "fixture-event-merkle-v2"))
+    observation("fv-event-proof-malformed", "error", "the selected-event proof lacks its sibling hash", lambda o: o["selectedEventProof"].pop("siblingHash"))
+    observation("fv-event-proof-relation-malformed", "error", "the selected-event proof leaf index is outside 0/1", lambda o: o["selectedEventProof"].__setitem__("leafIndex", 2))
+    observation("fv-event-bytes-duplicate-key", "error", "the raw event bytes carry a duplicate JSON key", lambda o: o["selectedEventProof"].__setitem__("eventBytes", b64u(b'{"amount":"5","amount":"5"}')))
+    observation("fv-observation-member-missing", "error", "the chain observation lacks ancestryProof", lambda o: o.pop("ancestryProof"))
+    observation("fv-inclusion-header-bytes-malformed", "error", "the inclusion header bytes are not JSON", lambda o: o["inclusionBlock"].__setitem__("header", "AAAA"))
+    observation("fv-inclusion-header-body-malformed", "error", "the inclusion header body lacks its transactions root", lambda o: o["inclusionBlock"].__setitem__("header", b64u(canonical_bytes({key: item for key, item in decode(o["inclusionBlock"]["header"]).items() if key != "transactionsRoot"}))))
+    observation("fv-inclusion-block-identity-substitution", "fail", "the inclusion block id is not the hash of its header", lambda o: o["inclusionBlock"].__setitem__("id", "00" * 32))
+    observation("fv-ancestry-not-array", "error", "ancestryProof is an object", lambda o: o.__setitem__("ancestryProof", {}))
+    observation("fv-ancestry-link-malformed", "error", "an ancestry link lacks its header", lambda o: o["ancestryProof"][0].pop("header"))
+    observation("fv-ancestry-link-position-noncanonical", "error", "an ancestry link position is not a minimal decimal", lambda o: o["ancestryProof"][0].__setitem__("position", "0101"))
+    observation("fv-ancestry-header-bytes-malformed", "error", "an ancestry header is not JSON", lambda o: o["ancestryProof"][0].__setitem__("header", "AAAA"))
+    observation("fv-ancestry-header-body-malformed", "error", "an ancestry header body lacks its transactions root", lambda o: o["ancestryProof"][0].__setitem__("header", b64u(canonical_bytes({key: item for key, item in decode(o["ancestryProof"][0]["header"]).items() if key != "transactionsRoot"}))))
+
+    def rebuilt(name, expected, note, *, model="block-depth", reference=None, event_mutation=None, label, **options):
+        value = factory.model_input(model)
+        ref = copy.deepcopy(value["evidence"]["paymentTxRefs"][0])
+        if reference is not None:
+            reference(ref)
+            value["evidence"]["paymentTxRefs"][0] = ref
+            factory.resign_evidence(value["evidence"])
+        event = factory.common_event(ref, session_of(value))
+        if event_mutation is not None:
+            event_mutation(event)
+        settlement = value["rail"]["consumerFinalityProfile"]["settlement"]
+        if model == "commitment-level":
+            options.setdefault("commitment", "finalized")
+        value["context"]["observation"] = factory.chain_observation(settlement, ref, event, label, **options)
+        vectors.append(case(name, expected, note, value))
+
+    def lock_shaped(event):
+        event.update({
+            "eventType": "htlc-lock",
+            "contractAddress": "0x00000000000000000000000000000000000000a1",
+            "hashAlgorithm": "sha256",
+            "hashlock": hashlib.sha256(b"fixture-htlc-preimage-392").hexdigest(),
+            "expiry": 1_899_997_200_000,
+            "minedAt": 1_899_990_000_000,
+        })
+
+    rebuilt("fv-transaction-ref-wrong-profile-network", "fail", "the signed and observed EVM reference names chain 5; the signed profile settles on eip155:1", reference=lambda r: r.__setitem__("chainId", 5), label="wrong-profile-network")
+    rebuilt("fv-raw-transaction-body-malformed", "error", "the proven raw transaction body lacks its status", label="raw-transaction-malformed", transaction_mutation=lambda t: t.pop("status"))
+    rebuilt("fv-raw-transaction-not-successful", "fail", "the signed transaction is included, but its proven raw body has status reverted", label="raw-transaction-reverted", transaction_mutation=lambda t: t.__setitem__("status", "reverted"))
+    rebuilt("fv-selected-event-member-malformed", "error", "the proven selected event's phaseIndex is a string", event_mutation=lambda e: e.__setitem__("phaseIndex", "0"), label="event-member-malformed")
+    rebuilt("fv-single-chain-non-transfer-event", "fail", "the proven selected event is an HTLC lock, not a transfer", event_mutation=lock_shaped, label="non-transfer-event")
+    rebuilt("fv-commitment-unknown", "error", "the authenticated head carries an unregistered commitment", model="commitment-level", label="unknown-commitment", commitment="rooted")
+
+    # The authenticated head is a real header at the same height on another
+    # fork; the canonical ancestry still ends at a different block.
+    terminus = factory.model_input("block-depth")
+    observed = terminus["context"]["observation"]
+    encoded = observed["selectedEventProof"]["eventBytes"]
+    sibling = factory.chain_observation(
+        terminus["rail"]["consumerFinalityProfile"]["settlement"],
+        terminus["evidence"]["paymentTxRefs"][0], decode(encoded), "terminus-sibling",
+    )
+    observed["authenticatedHead"] = sibling["authenticatedHead"]
+    factory.sign_chain_authority(observed)
+    vectors.append(case("fv-ancestry-terminus-not-authenticated-head", "fail", "the authorities sign a head the canonical ancestry does not reach", terminus))
+
+    # Authenticated head authority (FV-6).
+    def authority(name, expected, note, mutate):
+        observation(name, expected, note, lambda o: mutate(o["authorityEvidence"]))
+
+    authority("fv-head-authority-sources-differ", "fail", "the authority evidence names two of the profile's three RPC sources", lambda a: a.__setitem__("sourceRefs", ["rpc-a", "rpc-b"]))
+    authority("fv-head-authority-codec-unknown", "error", "an unregistered head authority codec", lambda a: a.__setitem__("kind", "fixture-threshold-signature-v2"))
+    authority("fv-head-authority-malformed", "error", "the head authority evidence lacks sourceRefs", lambda a: a.pop("sourceRefs"))
+    authority("fv-head-authority-attestations-not-array", "error", "the head authority attestations are an object", lambda a: a.__setitem__("attestations", {}))
+    authority("fv-head-authority-attestation-malformed", "error", "a head authority attestation lacks its algorithm", lambda a: a["attestations"][0].pop("algorithm"))
+
+    # BFT finality (FV-7).
+    def certificate(name, expected, note, mutate):
+        observation(name, expected, note, lambda o: mutate(o["finalityCertificate"], o), model="bft-final")
+
+    def certify_head(cert, observed):
+        cert["blockId"] = observed["authenticatedHead"]["id"]
+        for signature in cert["signatures"]:
+            signature["value"] = factory.sign_digest(
+                signature["validatorId"], BFT_CERTIFICATE_DOMAIN, cert["blockId"]
+            )
+
+    certificate("fv-bft-certificate-wrong-block", "fail", "a quorum genuinely certifies the head block, not the inclusion block", certify_head)
+    certificate("fv-bft-certificate-codec-unknown", "error", "an unregistered BFT certificate codec", lambda c, o: c.__setitem__("kind", "fixture-bft-certificate-v2"))
+    certificate("fv-bft-certificate-malformed", "error", "the BFT certificate lacks its validator-set hash", lambda c, o: c.pop("validatorSetHash"))
+    certificate("fv-bft-signatures-not-array", "error", "the BFT signatures are an object", lambda c, o: c.__setitem__("signatures", {}))
+    certificate("fv-bft-signature-malformed", "error", "a BFT signature lacks its algorithm", lambda c, o: c["signatures"][0].pop("algorithm"))
+    bft = factory.model_input("bft-final")
+    set_hash = bft["rail"]["consumerFinalityProfile"]["settlement"]["validatorSetRef"]["contentHash"]
+    altered_set = copy.deepcopy(factory.trusted["validatorSets"][set_hash])
+    altered_set["validators"][0]["weight"] = 41
+    vectors.append(case("fv-bft-validator-set-unavailable", "indeterminate", "the pinned validator set is not configured", bft, trusted_overrides={"validatorSets": None}))
+    vectors.append(case("fv-bft-validator-set-checkpoint-malformed", "error", "the configured validator set does not hash to the pinned checkpoint", bft, trusted_overrides={"validatorSets": {set_hash: altered_set}}))
+
+    # ap2-sr3 native transaction authority (FV-4, FV-9, FV-10).
+    def sr3(name, expected, note, mutate=None, *, trusted_overrides=None):
+        value = factory.provider_sr3_value()
+        if mutate is not None:
+            mutate(value["context"]["receiptTransactionObservation"])
+        vectors.append(case(name, expected, note, value, trusted_overrides=trusted_overrides))
+
+    def sr3_rebuilt(name, expected, note, label, *, event_mutation=None, transaction_mutation=None):
+        value = factory.provider_sr3_value()
+        native = value["context"]["receiptTransactionObservation"]
+        event = decode(native["selectedEventProof"]["eventBytes"])
+        if event_mutation is not None:
+            event_mutation(event)
+        value["context"]["receiptTransactionObservation"] = factory.chain_observation(
+            factory.trusted["sr3TransactionFinalityProfile"]["settlement"],
+            native["transactionRef"], event, label,
+            transaction_mutation=transaction_mutation,
+        )
+        vectors.append(case(name, expected, note, value))
+
+    sr3("fv-ap2-sr3-network-differs", "fail", "the native transaction observation names demos:testnet", lambda o: o.__setitem__("networkId", "demos:testnet"))
+    sr3_rebuilt("fv-ap2-sr3-raw-transaction-malformed", "error", "the proven native transaction body lacks its status", "ap2-sr3:raw-malformed", transaction_mutation=lambda t: t.pop("status"))
+    sr3_rebuilt("fv-ap2-sr3-raw-transaction-not-successful", "fail", "the native web2Request transaction is included with status failed", "ap2-sr3:raw-failed", transaction_mutation=lambda t: t.__setitem__("status", "failed"))
+    sr3_rebuilt("fv-ap2-sr3-web2-event-type-unknown", "error", "the proven native event is not a web2-request", "ap2-sr3:event-type", event_mutation=lambda e: e.__setitem__("eventType", "web2-response"))
+    sr3_rebuilt("fv-ap2-sr3-web2-event-member-malformed", "error", "the proven web2-request event's response status is zero", "ap2-sr3:event-member", event_mutation=lambda e: e.__setitem__("responseStatus", 0))
+    sr3("fv-ap2-sr3-ancestry-incomplete", "fail", "the native ancestry omits its last link", lambda o: o["ancestryProof"].pop())
+    sr3("fv-ap2-sr3-ancestry-link-substitution", "fail", "a middle native ancestry link names another parent", lambda o: o["ancestryProof"][5].__setitem__("parentId", "00" * 32))
+    sr3("fv-ap2-sr3-ancestry-not-array", "error", "the native ancestryProof is an object", lambda o: o.__setitem__("ancestryProof", {}))
+    sr3("fv-ap2-sr3-ancestry-link-malformed", "error", "a native ancestry link lacks its header", lambda o: o["ancestryProof"][0].pop("header"))
+    sr3("fv-ap2-sr3-head-authority-signature-invalid", "fail", "a native head authority signature does not verify", lambda o: o["authorityEvidence"]["attestations"][0].__setitem__("value", "A" * 86))
+    sr3("fv-ap2-sr3-event-proof-codec-unknown", "error", "an unregistered native event proof codec", lambda o: o["selectedEventProof"].__setitem__("kind", "fixture-event-merkle-v2"))
+    sr3("fv-ap2-sr3-transaction-proof-malformed", "error", "the native transaction proof lacks its sibling hash", lambda o: o["transactionInclusionProof"].pop("siblingHash"))
+    sr3("fv-ap2-sr3-inclusion-block-malformed", "error", "the native inclusion block id is not a SHA-256 value", lambda o: o["inclusionBlock"].__setitem__("id", "not-a-hash"))
+    sr3("fv-ap2-sr3-header-bytes-malformed", "error", "the native inclusion header bytes are not JSON", lambda o: o["inclusionBlock"].__setitem__("header", "AAAA"))
+    sr3("fv-ap2-sr3-header-body-malformed", "error", "the native inclusion header body lacks its transactions root", lambda o: o["inclusionBlock"].__setitem__("header", b64u(canonical_bytes({key: item for key, item in decode(o["inclusionBlock"]["header"]).items() if key != "transactionsRoot"}))))
+    sr3("fv-ap2-sr3-ancestry-position-noncanonical", "error", "a native ancestry link position is not a minimal decimal", lambda o: o["ancestryProof"][0].__setitem__("position", "0101"))
+    sr3("fv-ap2-sr3-ancestry-header-bytes-malformed", "error", "a native ancestry header is not JSON", lambda o: o["ancestryProof"][0].__setitem__("header", "AAAA"))
+    sr3("fv-ap2-sr3-ancestry-header-body-malformed", "error", "a native ancestry header body lacks its transactions root", lambda o: o["ancestryProof"][0].__setitem__("header", b64u(canonical_bytes({key: item for key, item in decode(o["ancestryProof"][0]["header"]).items() if key != "transactionsRoot"}))))
+
+    def sr3_sibling_head(native):
+        sibling = factory.chain_observation(
+            factory.trusted["sr3TransactionFinalityProfile"]["settlement"],
+            native["transactionRef"], decode(native["selectedEventProof"]["eventBytes"]),
+            "ap2-sr3:terminus-sibling",
+        )
+        native["authenticatedHead"] = sibling["authenticatedHead"]
+        factory.sign_chain_authority(native)
+
+    sr3("fv-ap2-sr3-ancestry-terminus-not-authenticated-head", "fail", "the authorities sign a native head the ancestry does not reach", sr3_sibling_head)
+    sr3("fv-ap2-sr3-verifier-clock-malformed", "error", "the verifier-local clock is missing for the native observation", trusted_overrides={"verificationTimeMs": None})
+    sr3("fv-ap2-sr3-head-observation-future", "fail", "the native head observation is after the verifier-local clock", trusted_overrides={"verificationTimeMs": OBSERVED_AT - 1})
+    sr3("fv-ap2-sr3-head-observation-stale", "indeterminate", "the native head observation is older than its profile allows", trusted_overrides={"verificationTimeMs": OBSERVED_AT + 61_000})
+
+    # Provider capture (FV-4, FV-9): the attestation is independently trusted.
+    provider = factory.model_input("provider-receipt")
+    response_hash = provider["context"]["responseAttestation"]["contentHash"]
+    attestation = factory.trusted["providerAttestations"][response_hash]
+    wrong_key = factory.sign_digest(
+        "steward", PROVIDER_ATTESTATION_DOMAIN, artifact_hash(attestation, "signature")
+    )
+    other_reference = copy.deepcopy(attestation)
+    other_reference["providerRef"] = "provider-charge-other"
+    other_reference["signature"]["value"] = factory.sign_digest(
+        "provider", PROVIDER_ATTESTATION_DOMAIN, artifact_hash(other_reference, "signature")
+    )
+    vectors.extend([
+        case("fv-provider-attestation-signature-invalid", "fail", "the trusted response attestation's signature is made by another key", provider, trusted_overrides={"providerAttestations": {response_hash: {"signature": {"value": wrong_key}}}}),
+        case("fv-provider-attestation-reference-mismatch", "fail", "the provider genuinely attests this response for another provider reference", provider, trusted_overrides={"providerAttestations": {response_hash: other_reference}}),
+        case("fv-provider-attestation-malformed", "error", "the trusted response attestation has an unknown version", provider, trusted_overrides={"providerAttestations": {response_hash: {"responseAttestationVersion": "2"}}}),
+        case("fv-provider-attestation-signature-malformed", "error", "the trusted response attestation signature names an unsupported algorithm", provider, trusted_overrides={"providerAttestations": {response_hash: {"signature": {"algorithm": "rsa"}}}}),
+        case("fv-provider-attestation-map-malformed", "error", "the trusted provider attestation map is a list", provider, trusted_overrides={"providerAttestations": []}),
+        case("fv-provider-verifier-clock-malformed", "error", "the verifier-local clock is missing for provider freshness", provider, trusted_overrides={"verificationTimeMs": None}),
+    ])
+    economics = factory.model_input("provider-receipt")
+    ref = economics["evidence"]["paymentTxRefs"][0]
+    session = session_of(economics)
+    body = {
+        "providerRef": ref["providerRef"], "endpointOrigin": "https://payments.example",
+        "jobId": session["jobId"], "phaseIndex": session["phaseIndex"], "status": "captured",
+        "amount": "6", "currency": session["asset"], "payer": session["payer"], "payee": session["payee"],
+    }
+    raw = canonical_bytes(body)
+    body_hash = hashlib.sha256(raw).hexdigest()
+    attested = copy.deepcopy(attestation)
+    attested["responseHash"] = body_hash
+    attested["signature"]["value"] = factory.sign_digest(
+        "provider", PROVIDER_ATTESTATION_DOMAIN, artifact_hash(attested, "signature")
+    )
+    economics["context"]["responseBytes"] = b64u(raw)
+    economics["context"]["responseAttestation"] = factory.reference("provider:" + body_hash, body_hash)
+    ref["receiptAttestation"] = copy.deepcopy(economics["context"]["responseAttestation"])
+    factory.resign_evidence(economics["evidence"])
+    vectors.append(case("fv-provider-response-economics-mismatch", "fail", "the provider genuinely attests a captured response for amount 6; the agreement settles 5", economics, trusted_overrides={"providerAttestations": {body_hash: attested}}))
+    vectors.extend([
+        case("fv-provider-context-malformed", "error", "the provider context lacks its providerRef", changed("provider-receipt", lambda v: v["context"].pop("providerRef"))),
+        case("fv-provider-evidence-two-references", "error", "the signed provider evidence carries two AP2 references", changed("provider-receipt", lambda v: (v["evidence"]["paymentTxRefs"].append(copy.deepcopy(v["evidence"]["paymentTxRefs"][0])), factory.resign_evidence(v["evidence"])))),
+        case("fv-provider-reference-not-ap2", "error", "the signed provider evidence carries an EVM event reference", changed("provider-receipt", lambda v: (v["evidence"].__setitem__("paymentTxRefs", [factory.transaction_ref("block-depth", "provider-as-evm")]), factory.resign_evidence(v["evidence"])))),
+    ])
+
+    # Composite models (FV-9).
+    def htlc_rebuilt(name, expected, note, arm, mutate):
+        value = factory.model_input("htlc-reveal")
+        factory.rebuild_observation_event(value, (arm,), mutate)
+        vectors.append(case(name, expected, note, value))
+
+    def as_lock(event):
+        event["eventType"] = "htlc-lock"
+        event.pop("preimage")
+        event.update({"expiry": 1_899_997_200_000, "minedAt": 1_899_990_000_000})
+
+    htlc_rebuilt("fv-htlc-arm-wrong-event-type", "fail", "the source-claim arm proves a lock-shaped event", "sourceClaim", as_lock)
+    htlc_rebuilt("fv-htlc-preimage-encoding-malformed", "error", "the proven source-claim preimage is not Base64URL", "sourceClaim", lambda e: e.__setitem__("preimage", "not base64url!"))
+    htlc_rebuilt("fv-htlc-hashlock-not-recomputed", "fail", "the proven source lock commits a hashlock that the revealed preimage does not produce", "sourceLock", lambda e: e.__setitem__("hashlock", "00" * 32))
+    rail("fv-htlc-hash-algorithm-unsupported", "error", "the signed HTLC rail selects md5 for the source chain", "htlc-reveal", lambda r: r["parameters"].__setitem__("sourceHashAlgorithm", "md5"))
+    rail("fv-htlc-timing-parameters-malformed", "error", "the signed HTLC source timelock is a string", "htlc-reveal", lambda r: r["parameters"].__setitem__("timelockSourceSec", "7200"))
+    rail("fv-tank-parameters-malformed", "error", "the signed tank parameters lack the transferId", "liquidity-tank", lambda r: r["parameters"].pop("transferId"))
+    vectors.extend([
+        case("fv-htlc-context-arm-missing", "error", "the HTLC context lacks its source-claim member", changed("htlc-reveal", lambda v: v["context"].pop("sourceClaim"))),
+        case("fv-htlc-duplicate-reference", "error", "the signed HTLC evidence carries the source-lock reference twice", changed("htlc-reveal", lambda v: (v["evidence"]["paymentTxRefs"].append(copy.deepcopy(v["evidence"]["paymentTxRefs"][0])), factory.resign_evidence(v["evidence"])))),
+        case("fv-tank-context-arm-missing", "error", "the tank context lacks its destination member", changed("liquidity-tank", lambda v: v["context"].pop("destination"))),
+        case("fv-tank-two-composite-references", "error", "the signed tank evidence carries two composite references", changed("liquidity-tank", lambda v: (v["evidence"]["paymentTxRefs"].append(copy.deepcopy(v["evidence"]["paymentTxRefs"][0])), factory.resign_evidence(v["evidence"])))),
+    ])
+
+    # Entry point and settlement economics (FV entry, FV-5).
+    vectors.extend([
+        case("fv-consumer-input-extra-member", "error", "the FV consumer input carries a fifth member", changed("block-depth", lambda v: v.__setitem__("hint", "trust-me"))),
+        case("fv-evidence-amount-differs-from-agreement", "fail", "the signed evidence pays 6 while the agreement and the proven event settle 5", changed("block-depth", lambda v: (v["evidence"]["paymentAmount"].__setitem__("amount", "6"), factory.resign_evidence(v["evidence"])))),
+        case("fv-single-chain-two-references", "error", "single-chain evidence carries two signed references", changed("block-depth", lambda v: (v["evidence"]["paymentTxRefs"].append(dict(v["evidence"]["paymentTxRefs"][0], logIndex=1)), factory.resign_evidence(v["evidence"])))),
     ])
     return vectors
 

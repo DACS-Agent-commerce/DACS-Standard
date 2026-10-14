@@ -714,6 +714,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_channel_message_vectors.py",
         "test": "ChannelMessageVectorTests.test_sdk_compat_legacy_reader_fails_the_committed_corpus",
     },
+    "fv-named-rejection-guards-witness": {
+        "file": "tests/test_settlement_finality_verification_vectors.py",
+        "test": "SettlementFinalityVerificationVectorTests.test_named_rejections_pass_a_verifier_missing_only_their_guard",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

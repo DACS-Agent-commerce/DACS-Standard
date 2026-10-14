@@ -171,6 +171,9 @@ jobs:
       - name: Validate rule IDs
         run: python3 scripts/validate_rule_ids.py
 
+      - name: Validate delivery-or-remedy candidate profile and rule-to-case matrix
+        run: python3 scripts/validate_candidate_profile.py
+
       - name: Validate rule-ID index pointers
         run: python3 scripts/validate_rule_id_index.py
 

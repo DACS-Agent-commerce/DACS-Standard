@@ -706,6 +706,29 @@ def document() -> dict:
         replay_value=value,
     )
 
+    # FRC-1: the signed profile selects the capability, so neither the
+    # positive single-view observation nor #416's competing fork view may
+    # be verified through the historical single-view contract.
+    single_view_value = copy.deepcopy(value)
+    single_view_value["context"] = copy.deepcopy(
+        response_a["response"]["observation"]
+    )
+    fork_view_value = copy.deepcopy(conflicting_heads_input["value"])
+    fork_view_value["context"] = copy.deepcopy(
+        conflicting_head_response["response"]["observation"]
+    )
+    # FRC-1: a resolution context under a signed profile that does not
+    # select the capability is refused before its query is compared.
+    uncapable = copy.deepcopy(base_value)
+    del uncapable["rail"]["consumerFinalityProfile"]["finalityResolutionCapability"]
+    factory.rebind_rail(uncapable)
+    uncapable_value = {
+        "evidence": copy.deepcopy(uncapable["evidence"]),
+        "rail": copy.deepcopy(uncapable["rail"]),
+        "agreement": copy.deepcopy(uncapable["agreement"]),
+        "context": copy.deepcopy(value["context"]),
+    }
+
     def verify_input(case_value: dict, payload: dict) -> dict:
         return {"value": copy.deepcopy(case_value), "authority": copy.deepcopy(payload)}
 
@@ -791,6 +814,25 @@ def document() -> dict:
              "replayRecord": replay_record(value, positive_payload),
              "authority": serialize_authority(replay_payload),
          }},
+        {"name": "frc1-single-view-under-capability", "expected": "error",
+         "operation": "verify",
+         "note": "the signed profile selects finality-resolution-context-v1; a "
+                 "single-view chain context is refused, never verified as a "
+                 "historical single-view input",
+         "input": verify_input(single_view_value, positive_payload)},
+        {"name": "frc1-fork-view-under-capability", "expected": "error",
+         "operation": "verify",
+         "note": "presenting only observer-b's competing-fork view from "
+                 "fv-conflicting-authenticated-heads cannot bypass the conflict "
+                 "through the single-view contract",
+         "input": verify_input(
+             fork_view_value, conflicting_heads_input["authority"]
+         )},
+        {"name": "frc1-context-without-signed-capability", "expected": "error",
+         "operation": "verify",
+         "note": "the steward re-signed the rail without the capability; a "
+                 "resolution context cannot be consumed under that profile",
+         "input": verify_input(uncapable_value, positive_payload)},
     ]
     return {
         "set": "finality-resolution-context-v1",

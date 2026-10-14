@@ -6,6 +6,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 for path in (str(ROOT / "scripts"), str(ROOT / "tests")):
@@ -15,6 +16,7 @@ for path in (str(ROOT / "scripts"), str(ROOT / "tests")):
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import dacs5_reference as D5
+import finality_resolution_context_reference as FRC
 from finality_resolution_context_reference import (
     CAPABILITY,
     CONTEXT_VERSION,
@@ -183,10 +185,83 @@ class FinalityResolutionContextTests(unittest.TestCase):
         legacy = copy.deepcopy(self.data["positive"]["value"])
         response = legacy["context"]["responseArtifacts"][0]
         legacy["context"] = response["response"]["observation"]
+        # The single-view observation is genuine on its own, so only FRC-1's
+        # selected-capability rule refuses it at the FV entry point.
         self.assertEqual(
             "pass",
             _verify_single_view_finality(legacy, copy.deepcopy(self.base_trusted))["decision"],
         )
+        for trusted in (copy.deepcopy(self.base_trusted), self.trust(self.authority())):
+            result = verify_finality(copy.deepcopy(legacy), trusted)
+            self.assertEqual("error", result["decision"])
+            self.assertIn("cannot fall back to a single-view context", result["reason"])
+        committed = self.case("frc1-single-view-under-capability")["input"]["value"]
+        observer_a = next(
+            response for response in self.data["positive"]["value"]["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-a"
+        )
+        self.assertEqual(observer_a["response"]["observation"], committed["context"])
+        self.assertEqual(
+            {key: item for key, item in legacy.items() if key != "context"},
+            {key: item for key, item in committed.items() if key != "context"},
+        )
+
+    def test_frc1_vectors_reject_a_single_view_fallback(self):
+        """Wrong implementation: verify any non-FRC context through FV."""
+
+        def falls_back(value, trusted):
+            context = value.get("context") if isinstance(value, dict) else None
+            if isinstance(context, dict) and (
+                "finalityResolutionContextVersion" in context
+                or context.get("capability") == CAPABILITY
+            ):
+                return verify_finality(value, trusted)
+            return _verify_single_view_finality(value, trusted)
+
+        for name in (
+            "frc1-single-view-under-capability",
+            "frc1-fork-view-under-capability",
+        ):
+            case = self.case(name)
+            value = case["input"]["value"]
+            self.assertEqual(
+                CAPABILITY,
+                value["rail"]["consumerFinalityProfile"]["finalityResolutionCapability"],
+            )
+            self.assertEqual("chain", value["context"]["kind"])
+            trusted = self.trust(self.authority(case["input"]["authority"]))
+            with self.subTest(case=name):
+                self.assertEqual("error", self.execute_vector(case)["decision"])
+                self.assertEqual(
+                    "pass", falls_back(copy.deepcopy(value), trusted)["decision"]
+                )
+        # #416's own conflict resolves to indeterminate; its fork view alone
+        # would pass a falling-back verifier.
+        self.assertEqual(
+            "indeterminate",
+            self.execute_vector(self.case("fv-conflicting-authenticated-heads"))["decision"],
+        )
+
+        case = self.case("frc1-context-without-signed-capability")
+        value = case["input"]["value"]
+        self.assertNotIn(
+            "finalityResolutionCapability", value["rail"]["consumerFinalityProfile"]
+        )
+        self.assertEqual(self.data["positive"]["value"]["context"], value["context"])
+        self.assertEqual("error", self.execute_vector(case)["decision"])
+        original = FRC.derive_query
+
+        def without_capability_check(candidate, *args, **kwargs):
+            candidate = copy.deepcopy(candidate)
+            candidate["rail"]["consumerFinalityProfile"][
+                "finalityResolutionCapability"
+            ] = CAPABILITY
+            return original(candidate, *args, **kwargs)
+
+        # Skipping only the signed-capability requirement leaves the query
+        # binding, which reports a contradiction instead of a refusal.
+        with mock.patch.object(FRC, "derive_query", without_capability_check):
+            self.assertEqual("fail", self.execute_vector(case)["decision"])
 
     def test_plain_caller_dictionary_is_not_acquisition_authority(self):
         value = self.data["positive"]["value"]
@@ -312,7 +387,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(13, self.data["count"])
+        self.assertEqual(16, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -328,7 +403,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
                 result = self.execute_vector(case)
                 self.assertEqual(case["expected"], result["decision"], result["reason"])
             decisions.add(result["decision"])
-        self.assertEqual({"pass", "fail", "indeterminate"}, decisions)
+        self.assertEqual({"pass", "fail", "indeterminate", "error"}, decisions)
 
     def test_materialized_replay_record_is_the_current_decision_record(self):
         case = self.case("recorded-policy-replay")

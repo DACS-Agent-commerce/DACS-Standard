@@ -698,6 +698,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_phase_bound_delivery_vectors.py",
         "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",
     },
+    "frc1-single-view-fallback-witness": {
+        "file": "tests/test_finality_resolution_context_vectors.py",
+        "test": "FinalityResolutionContextTests.test_frc1_vectors_reject_a_single_view_fallback",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

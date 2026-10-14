@@ -83,6 +83,12 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   verifier input and names its entry point (`verify`, `verify-composite` or
   `replay`), so each case executes from the committed JSON alone. No existing
   verdict changes.
+- **FRC-1 single-view fallback** (DACS-4 §9.7.0 FRC-1, FV-3) — adds
+  `frc1-single-view-under-capability`, `frc1-fork-view-under-capability` and
+  `frc1-context-without-signed-capability`, each `error`. A verifier that
+  falls back to the historical single-view contract accepts the first two,
+  including the competing fork view from `fv-conflicting-authenticated-heads`
+  presented alone. The focused test now asserts the FV entry point's refusal.
 
 ### Changed — current-delivery admission corrective boundary
 

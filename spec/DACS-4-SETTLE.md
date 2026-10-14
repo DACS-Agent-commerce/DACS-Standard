@@ -382,9 +382,10 @@ A consumer MUST resolve a rail by:
    snapshot pin does not activate CORE descriptor-authenticated historical
    evaluation.
 
-For PA-2 or PA-3, both finalized receipt timestamps and the definition's
-authenticated `governance.acceptedAt` MUST be no later than the authenticated
-session `startedAt`. A caller-supplied definition and steward signature without
+**(RTB-1) Rail-authority time bound.** For PA-2 or PA-3, the registry-index
+receipt's finalized timestamp, the definition receipt's finalized timestamp,
+and the definition's authenticated `governance.acceptedAt` MUST each be no
+later than the authenticated session `startedAt`. A caller-supplied definition and steward signature without
 the pinned index membership and both finalized anchor bindings do not resolve a
 rail. A later index or definition MAY inform a new session but MUST NOT rewrite
 the rail authority of an existing session.
@@ -2026,13 +2027,19 @@ signed_bytes := "dacs-evidence:v1:" || evidence_hash                 // Settleme
 signed_bytes := "dacs-legacy-transition-evidence:v1:" || evidence_hash // LegacyTransitionSettlementEvidence
 signed_bytes := "dacs-finality-bound-evidence:v1:" || evidence_hash  // FinalityBoundSettlementEvidence
 signed_bytes := "dacs-delivery-evidence:v1:" || evidence_hash        // DeliveryEvidence
+signed_bytes := "dacs-atomic-evidence:v1:" || evidence_hash          // AtomicSettlementEvidenceV1 (§9.5.10)
 ```
 
-A consumer MUST reject a record carrying none or more than one of the four
-discriminators, an unsupported discriminator, or a signature made under the
-other type's domain. It MUST NOT remove `finalityBoundEvidenceVersion`,
-`legacyTransitionEvidenceVersion`, `deliveryEvidenceVersion`, `railDefinitionRef`, or `reservationRef`
-and retry the object as legacy `SettlementEvidence`.
+A consumer MUST reject a record carrying none or more than one of the five
+evidence selectors (`evidenceVersion`, `legacyTransitionEvidenceVersion`,
+`finalityBoundEvidenceVersion`, `deliveryEvidenceVersion`, and the Atomic
+`atomicEvidenceVersion` of AWS-17), an unsupported discriminator, or a
+signature made under another type's domain. A consumer that does not implement
+the Atomic Work binding treats `atomicEvidenceVersion` as an unsupported
+discriminator. It MUST NOT remove `atomicEvidenceVersion`,
+`finalityBoundEvidenceVersion`, `legacyTransitionEvidenceVersion`,
+`deliveryEvidenceVersion`, `railDefinitionRef`, or `reservationRef` and retry
+the object as legacy `SettlementEvidence`.
 
 #### 9.7.0 Consumer-verifiable finality (FV-1..FV-10)
 

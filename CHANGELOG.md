@@ -1395,6 +1395,67 @@ The format used per release:
   the Atomic evidence-family replacement does not bypass the per-payment
   DACS-4 LAA-1..LAA-7 qualification; a successful Atomic `pay-dem` member is
   qualified like every other successful payment.
+- **Closed Atomic receipt shapes** (CORE §5.2.6) — narrows the signed
+  `AtomicWorkReceiptV1` shape an earlier revision of this candidate admitted:
+  `winningAttempt.nativeTransactionRef` has the attempt's closed
+  `AtomicNativeTransactionRefV1` shape, `envelopeEffects` is exactly
+  `{nonceConsumed, feeCharged}`, `paymentSlot.before` and `after` are typed
+  as the DACS-4 §9.5.10 `AtomicPaymentSlotStateV1` union, and
+  `failedOperationId` is required for a `rolled-back` receipt and absent from a
+  `committed` one. A receipt carrying another member in those objects is
+  rejected rather than preserved.
+- **Atomic v1 four-role roster** (CORE §5.2 AW-10) — a `dacs-purchase-v1` or
+  `dacs-completion-v1` `roleRoster` MUST carry all four roles and a verifier
+  MUST reject one that omits any; the clause about omitting absent roles is
+  removed because neither v1 profile has one. The intent schema now requires
+  four roster entries for both v1 profiles and the reference rejects a short
+  roster even when schema validation is bypassed.
+- **Atomic `jobId` is a JID-1 job identifier** (CORE JID-1; five Atomic
+  schemas) — the intent, authorization, payment-slot CAS payload, receipt slot
+  key, and settlement-evidence schemas and the reference used a broader
+  26-character Crockford pattern that admitted a first character `8` or `9`
+  (130 bits). They now use `^[0-7][0-9A-HJKMNP-TV-Z]{25}$`, so a value CORE
+  calls malformed is rejected at every Atomic ingress.
+- **Completion slot state bound to the Purchase receipt** (CORE §5.2 AW-46/
+  AW-50) — a correctness fix to the reference verifier: a Completion receipt's
+  unchanged `paymentSlot` state must equal the independently verified Purchase
+  receipt's terminal state. Before this fix only the slot key and
+  `before == after` were compared, so a Completion slot carrying another
+  receipt commitment was accepted.
+- **Predicate-pinning Atomic vectors** — 147 vectors (355 → 502) start from a
+  committed vector or generator fixture and re-derive every signature, hash,
+  root, commitment, address and publication, so that only one predicate is
+  violated: validly signed authorizations for another Work, context or signer;
+  re-finalized receipts with one inconsistent binding; Agreement–Listing,
+  Vet, commitment, registry, session and limit authority on whole-profile
+  admission; re-signed and republished settlement evidence; attempt, slot
+  replay and projection bindings; one unsupported value for each of
+  `workVersion`, `capabilityVersion`, `authorizationVersion`,
+  `attemptVersion`, `receiptVersion`, `atomicEvidenceVersion`,
+  `workReceiptRef.refVersion`, the projected and publication AnchorReceipt
+  `receiptVersion`, the payer IdentityBundle `bundleVersion` and six
+  authority-artifact versions; the ordinary DACS-4 PC-1 payment-input arm, and
+  a record carrying both arms' session members, presented to the Atomic
+  handler; first-character `8`/`9` job IDs at intent, authorization, slot,
+  receipt and settlement ingress; malformed evidence addresses (`error`); and
+  CF-2 ClaimReference grammar. A wrong-implementation witness removes each
+  targeted guard and asserts the exact result its vector moves to; where the
+  schema decides first (the four-role roster, `receiptVersion`, `refVersion`
+  and `atomicEvidenceVersion`) it also bypasses the schema. Twenty schema
+  boundary checks are added (47 → 67). New unit tests drop each authority or
+  evidence member of ten passing vectors and expect `indeterminate`, feed the
+  vector validator a re-hashed tampered set and an uncovered applicable cell,
+  and require each validator CLI's success line. The 355 earlier vectors are
+  byte-identical. These vectors narrow, but do not close, the CONFORMANCE-PLAN
+  §14.8 semantic-fixture gap, which now also names the general DACS-4 changes
+  that still have no executable case.
+- **SEB-3 per-member Atomic admission** (DACS-5 §10.4.3 SEB-3) — names the
+  states: missing Atomic authority, including a present admission map without
+  this member's entry, is `indeterminate`, and malformed, stale, substituted,
+  or cross-phase authority makes the member `rejected`. Adds two bijection
+  vectors (67 → 69): the pay-dem member's admission entry removed
+  (`indeterminate`) and a re-signed delivery member at `atomicEvidenceVersion`
+  `"2"` with a passing admission for its exact bytes (`rejected`).
 
 ### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)
 
@@ -1402,9 +1463,10 @@ These are general normative changes, not Atomic-only rules: they bind every
 rail consumer, pay-* handler, and amendment consumer whether or not
 `AtomicWorkCapabilityV1` is ever enabled.
 
-- **Rail resolution** (DACS-4 §9.4.3) — for PA-2 or PA-3, both finalized
-  receipt timestamps and the definition's authenticated `governance.acceptedAt`
-  MUST be no later than the authenticated session `startedAt`, and a later
+- **Rail resolution** (DACS-4 §9.4.3 RTB-1) — for PA-2 or PA-3, the
+  registry-index and definition receipts' finalized timestamps and the
+  definition's authenticated `governance.acceptedAt` MUST each be no later than
+  the authenticated session `startedAt`, and a later
   index or definition MUST NOT rewrite the rail authority of an existing
   session.
 - **Payment input arm** (DACS-4 §9.5.1 PC-1) — every pay-* handler MUST select
@@ -1414,6 +1476,11 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   resolve to `SettlementEvidence` or `AtomicSettlementEvidenceV1`, and an
   amendment consumer MUST verify the target discriminator and signature domain
   before applying amendment semantics.
+- **Evidence selectors** (DACS-4 §9.7) — the exclusive-discriminator rule
+  counts `atomicEvidenceVersion` with the four existing selectors and lists the
+  `dacs-atomic-evidence:v1:` domain, so every consumer, not only an Atomic
+  reader, rejects a record carrying it with another selector. A consumer
+  without the Atomic Work binding treats it as an unsupported discriminator.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

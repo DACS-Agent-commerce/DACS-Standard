@@ -39,15 +39,15 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.8 current composed profile (JID-1 boundary declared at v0.7): §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
-| [`atomic-work-audit-role-v0.1.json`](atomic-work-audit-role-v0.1.json) | DACS-5 §10.4.2 AWB-1..AWB-10 | 16 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 47 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 78 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 52 | `fail` / `pass` |
-| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 90 | `error` / `fail` / `indeterminate` / `pass` |
-| [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 72 | `error` / `fail` / `indeterminate` / `pass` |
+| [`atomic-work-audit-role-v0.1.json`](atomic-work-audit-role-v0.1.json) | DACS-5 §10.4.2 AWB-1..AWB-10 | 17 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 63 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 118 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 68 | `fail` / `pass` |
+| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 132 | `error` / `fail` / `indeterminate` / `pass` |
+| [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 104 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
-| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 67 | `error` / `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 69 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |

@@ -522,6 +522,7 @@ def commitment_anchor_receipt(record: dict[str, Any]) -> dict[str, Any]:
 
 def registry_anchor_receipt(
     logical_address: str, value: dict[str, Any], *, label: str, nonce: str,
+    block_timestamp: int = 1_799_999_750_000,
 ) -> dict[str, Any]:
     content_hash = ref.sha256_hex(ref.jcs_bytes(value))
     receipt = {
@@ -540,10 +541,10 @@ def registry_anchor_receipt(
         "nonce": nonce,
         "state": "finalized",
         "observationDisposition": "established",
-        "observedAt": 1_799_999_751_000,
+        "observedAt": block_timestamp + 1_000,
         "blockRef": {
             "id": f"block-{label}-750", "height": "750",
-            "timestamp": 1_799_999_750_000,
+            "timestamp": block_timestamp,
         },
     }
     receipt["evidence"] = encoded_evidence(
@@ -1180,6 +1181,8 @@ def final_receipt(
         }
     else:
         post_state = copy.deepcopy(pre_state)
+        # A rolled-back Completion leaves the verified Purchase slot as is.
+        slot_after = copy.deepcopy(slot_before)
     if outcome == "rolled-back" and intent["profile"] == "dacs-purchase-v1":
         terminal_generation = slot_payload["expected"]["generation"] + (
             1 if slot_payload["expected"]["state"] == "rolled-back" else 0
@@ -3995,6 +3998,832 @@ def audit_role_vectors() -> list[dict[str, Any]]:
     ]
 
 
+# Predicate-pinning vectors.  Each one starts from a committed vector or a
+# generator fixture and re-derives every dependent signature, hash, root,
+# commitment, address and publication, so that only the named predicate is
+# violated.  A negative that mutates a signed field without re-signing is
+# rejected by the signature check first and does not pin its own rule; the
+# guard witnesses in tests/test_atomic_work_vectors.py show which predicate
+# each of these vectors moves when it is removed.
+
+@contextlib.contextmanager
+def patched_builder(name: str, wrap):
+    """Swap one module-level fixture builder so every caller sees the variant."""
+    real = globals()[name]
+    globals()[name] = wrap(real)
+    try:
+        yield
+    finally:
+        globals()[name] = real
+
+
+def resigned_builder(sign, edit):
+    """A builder wrapper that edits the built fixture and then re-signs it."""
+    def wrap(real):
+        def fake(*args, **kwargs):
+            return sign(edit_in_place(real(*args, **kwargs), edit))
+        return fake
+    return wrap
+
+
+def edit_in_place(value: dict[str, Any], edit) -> dict[str, Any]:
+    edit(value)
+    return value
+
+
+def resign_embedded_as(role: str, domain: bytes):
+    def sign(value: dict[str, Any]) -> dict[str, Any]:
+        return ref.sign_embedded(
+            {k: v for k, v in value.items() if k != "signature"},
+            CLAIMS[role], SEEDS[role], domain,
+        )
+    return sign
+
+
+def resign_listing_as(role: str):
+    def sign(listing: dict[str, Any]) -> dict[str, Any]:
+        listing = {k: v for k, v in listing.items() if k != "signature"}
+        digest = ref.sha256_hex(ref.jcs_bytes(listing))
+        listing["signature"] = {
+            "algorithm": "ed25519", "signer": CLAIMS[role],
+            "value": ref.b64u(ref.ed25519_sign(
+                SEEDS[role], ref._LISTING_DOMAIN + digest.encode("ascii"))),
+        }
+        return listing
+    return sign
+
+
+def resign_payee_agreement(agreement: dict[str, Any]) -> dict[str, Any]:
+    agreement = {k: v for k, v in agreement.items() if k != "signatures"}
+    digest = ref.sha256_hex(ref.jcs_bytes(agreement))
+    agreement["signatures"] = [
+        {"party": CLAIMS[role], "algorithm": "ed25519", "value": ref.b64u(
+            ref.ed25519_sign(
+                SEEDS[role],
+                ref._IDENTITY_BOUND_PAYEE_AGREEMENT_DOMAIN + digest.encode("ascii"),
+            ))}
+        for role in ("buyer", "seller")
+    ]
+    return agreement
+
+
+def composed_variant(
+    wraps: tuple[tuple[str, Any], ...] = (), *, edit=None,
+    rebuild_limits: bool = True, **intent_kwargs: Any,
+) -> dict[str, Any]:
+    """Whole-profile Purchase admission built through patched fixture builders."""
+    with contextlib.ExitStack() as stack:
+        for name, wrap in wraps:
+            stack.enter_context(patched_builder(name, wrap))
+        intent = purchase_intent(current_profile=True, **intent_kwargs)
+        value = composed_purchase_admission(intent, final_receipt(intent))
+    if edit is not None:
+        edit(value)
+        if rebuild_limits:
+            add_composed_limit_evidence(value)
+    return value
+
+
+def composed_with_intent(transform) -> dict[str, Any]:
+    intent = purchase_intent(current_profile=True)
+    transform(intent)
+    return composed_purchase_admission(intent, final_receipt(intent))
+
+
+def recompute_root(receipt: dict[str, Any]) -> dict[str, Any]:
+    receipt["operationReceiptRoot"] = ref.operation_receipt_root(receipt["operationResults"])
+    return receipt
+
+
+def resign_state_witness(receipt: dict[str, Any], edit) -> dict[str, Any]:
+    """Re-sign the business-state witness and re-derive the three roots."""
+    witness = json.loads(ref.b64u_decode(receipt["businessState"]["evidence"]["value"]))
+    witness.pop("signature", None)
+    edit(witness)
+    signed = ref.sign_embedded(witness, CLAIMS["network"], SEEDS["network"], ref._STATE_TEST_DOMAIN)
+    receipt["businessState"].update({
+        "preRoot": ref.state_root(signed["preState"]),
+        "postRoot": ref.state_root(signed["postState"]),
+        "effectsRoot": ref.sha256_hex(ref.jcs_bytes({"pre": signed["preState"], "post": signed["postState"]})),
+    })
+    receipt["businessState"]["evidence"]["value"] = ref.b64u(ref.jcs_bytes(signed))
+    return receipt
+
+
+def completion_receipt_input(receipt_edit=None, outcome: str = "committed") -> dict[str, Any]:
+    purchase = purchase_intent()
+    purchase_receipt = final_receipt(purchase)
+    completion = completion_intent(purchase_receipt)
+    receipt = final_receipt(completion, outcome, 1 if outcome == "rolled-back" else None)
+    if receipt_edit is not None:
+        receipt_edit(receipt)
+        receipt = rebind_receipt_finality(recompute_root(receipt))
+    return {"intent": completion, "receipt": receipt, "purchaseIntent": purchase,
+            "purchaseReceipt": purchase_receipt, "publicKeys": PUBLIC_KEYS}
+
+
+def resettled(base: dict[str, Any], edit, *, role: str = "orchestrator",
+              recompute_id: bool = False) -> dict[str, Any]:
+    """Re-sign settlement evidence, re-derive its address and republish it."""
+    data = copy.deepcopy(base)
+    evidence = copy.deepcopy(data["evidence"])
+    edit(evidence)
+    evidence = resign_atomic_evidence(evidence, role)
+    data["evidence"] = evidence
+    if recompute_id:
+        data["settlementId"] = ref.settlement_id(evidence["operationRef"])
+    generation = (
+        data["receipt"]["paymentSlot"]["after"]["generation"]
+        if evidence.get("phase") == "pay-dem" else None
+    )
+    data["evidenceAddress"] = ref.atomic_evidence_address(evidence, generation)
+    data["auditPublication"] = atomic_publication(evidence, data["evidenceAddress"])
+    return data
+
+
+def resign_capability_limit(base: dict[str, Any], field: str, value: int) -> dict[str, Any]:
+    data = copy.deepcopy(base)
+    cap = {k: v for k, v in data["capability"].items() if k != "evidence"}
+    cap["limits"][field] = value
+    data["capability"] = sign_capability(cap)
+    return data
+
+
+FIXTURE_JOB_ID = "01K1DPA0000000000000000000"
+# 26 Crockford characters whose first is 8: 130 bits, so not a JID-1 jobId.
+JOB_ID_FIRST_8 = "8" + FIXTURE_JOB_ID[1:]
+
+
+def predicate_pin_vectors(
+    built: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    by_name = {item["name"]: item for vectors in built.values() for item in vectors}
+
+    def base(name: str) -> dict[str, Any]:
+        return copy.deepcopy(by_name[name]["input"])
+
+    # ---- identity: AW-10 roster, JID-1, versions, CF-2 grammar -------------
+    def without_roles(intent: dict[str, Any], *roles: str) -> dict[str, Any]:
+        out = copy.deepcopy(intent)
+        out["roleRoster"] = [b for b in out["roleRoster"] if b["role"] not in roles]
+        return {"intent": out, "claimedWorkId": ref.work_id(out)}
+
+    purchase = purchase_intent()
+    completion = completion_intent(final_receipt(purchase))
+    duplicate_operation = base("aw-valid-operation-graph")
+    duplicate_operation["intent"]["operations"][-1]["operationId"] = (
+        duplicate_operation["intent"]["operations"][0]["operationId"]
+    )
+    duplicate_operation["intent"]["operations"][-1]["dependsOn"] = []
+    largest_job_intent = purchase_intent("7ZZZZZZZZZZZZZZZZZZZZZZZZZ")
+    job_id_intents = {
+        first: purchase_intent(first + FIXTURE_JOB_ID[1:])
+        for first in ("8", "9")
+    }
+    work_version_two = copy.deepcopy(purchase)
+    work_version_two["workVersion"] = "2"
+    capability_input = base("aw-capability-authenticated")
+    self_declared = copy.deepcopy(capability_input)
+    self_declared_cap = {k: v for k, v in self_declared["capability"].items() if k != "evidence"}
+    self_declared_cap["networkAuthority"] = CLAIMS["buyer"]
+    self_declared["capability"] = sign_capability(self_declared_cap)
+    other_capability = copy.deepcopy(capability_input)
+    other_capability["capability"]["limits"]["maxOperations"] += 1
+    capability_version_two = copy.deepcopy(capability_input)
+    version_cap = {k: v for k, v in capability_version_two["capability"].items() if k != "evidence"}
+    version_cap["capabilityVersion"] = "2"
+    capability_version_two["capability"] = sign_capability(version_cap)
+    expiry_after_operation = base("aw-expiry-equality-rejected-before-op")
+    expiry_after_operation["executedOperationCount"] = 1
+
+    def claim_variant(suffix: str) -> dict[str, Any]:
+        out = copy.deepcopy(purchase)
+        out["roleRoster"][0]["signer"] = CLAIMS["buyer"] + suffix
+        return {"intent": out}
+
+    identity = [
+        vector("aw-v1-purchase-roster-missing-buyer", ["AW-10"], "intent", without_roles(purchase, "buyer"), "fail", "A dacs-purchase-v1 roster carries all four roles; dropping the buyer, who authorizes no Purchase operation, is rejected even under a recomputed workId."),
+        vector("aw-v1-purchase-roster-two-roles", ["AW-10"], "intent", without_roles(purchase, "buyer", "seller"), "fail", "An ordered, unique orchestrator-and-payer roster still omits two of the four v1 roles."),
+        vector("aw-v1-completion-roster-missing-payer", ["AW-10"], "intent", without_roles(completion, "payer"), "fail", "A dacs-completion-v1 roster carries all four roles; dropping the payer, who authorizes no Completion operation, is rejected."),
+        vector("aw-operation-id-duplicate", ["AW-21"], "intent", duplicate_operation, "fail", "Two operations cannot share an operationId even when the graph is otherwise valid."),
+        vector("aw-job-id-largest-128-bit", ["AW-6"], "intent", {"intent": largest_job_intent, "claimedWorkId": ref.work_id(largest_job_intent)}, "pass", "The largest 128-bit ULID text form, first character 7, is a canonical JID-1 jobId."),
+        *(
+            vector(f"aw-job-id-first-character-{first}", ["AW-6"], "intent", {"intent": job_intent, "claimedWorkId": ref.work_id(job_intent)}, "fail", f"A 26-character Crockford string starting with {first} encodes 130 bits and is a malformed JID-1 jobId, not a distinct session.")
+            for first, job_intent in job_id_intents.items()
+        ),
+        vector("aw-work-version-unsupported", ["AW-6"], "intent", {"intent": work_version_two, "claimedWorkId": ref.work_id(work_version_two)}, "fail", "An intent with workVersion 2 is not AtomicDacsWorkIntentV1, whatever identifier its bytes derive."),
+        vector("aw-claim-parameter-list-empty", ["AW-8", "AW-10"], "intent", claim_variant("?"), "fail", "A ClaimReference with an empty parameter list is not CF-2 canonical."),
+        vector("aw-claim-parameter-missing-equals", ["AW-8", "AW-10"], "intent", claim_variant("?a"), "fail", "A ClaimReference parameter without = is not CF-2 canonical."),
+        vector("aw-claim-parameter-lowercase-escape", ["AW-8", "AW-10"], "intent", claim_variant("?a=%2f"), "fail", "A lowercase percent-escape is not the CF-2 uppercase form and is not repaired."),
+        vector("aw-claim-parameter-reserved-unescaped", ["AW-8", "AW-10"], "intent", claim_variant("?a=b:c"), "fail", "A reserved character in a ClaimReference parameter value must be percent-escaped."),
+        vector("aw-capability-self-declared-authority", ["AW-1"], "capability", self_declared, "fail", "A capability that names and signs its own networkAuthority is not authenticated by the independently pinned network authority."),
+        vector("aw-capability-attestation-for-other-capability", ["AW-1"], "capability", other_capability, "fail", "A valid network attestation covers one exact capability; a capability differing in one limit is unattested."),
+        vector("aw-capability-version-unsupported", ["AW-1"], "capability", capability_version_two, "fail", "An authenticated capability with capabilityVersion 2 is not AtomicWorkCapabilityV1."),
+        vector("aw-expiry-equality-after-first-operation", ["AW-76"], "expiry", expiry_after_operation, "fail", "At expiresAt equality the Work is expired even when a first operation is claimed to have executed.", boundary=True),
+    ]
+
+    # ---- authorization: validly signed, wrong envelope or signer ------------
+    def resigned_authorization(edit, signer_role: str = "payer", operation: str = "payment") -> dict[str, Any]:
+        data = base("aw-auth-complete-envelope")
+        auths = data["authorizations"]
+        index = next(i for i, a in enumerate(auths) if a["operationId"] == operation)
+        envelope = {k: v for k, v in auths[index].items() if k != "value"}
+        edit(envelope)
+        auths[index] = ref.sign_authorization(envelope, SEEDS[signer_role])
+        return data
+
+    other_work = copy.deepcopy(base("aw-auth-complete-envelope")["intent"])
+    other_work["expiresAt"] -= 1
+
+    def roster_account(role: str, account: str) -> dict[str, Any]:
+        intent = purchase_intent(gate_mode="sequential")
+        next(b for b in intent["roleRoster"] if b["role"] == role)["nativeAccount"] = account
+        return {"intent": intent, "authorizations": authorizations(intent),
+                "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}
+
+    # DACS-4 RTB-1: move exactly one finalized registry receipt past session
+    # start; acceptedAt and the other receipt stay within bounds.
+    late_rail_receipts = {}
+    for label, field, content_field, receipt_label, nonce in (
+        ("registry-index", "railRegistryIndexReceipt", "railRegistryIndex", "rail-index", "200"),
+        ("rail-definition", "railDefinitionReceipt", "railDefinition", "rail-definition", "201"),
+    ):
+        data = base("aw-auth-complete-envelope")
+        authority = data["authority"]
+        started_at = authority["sessionContextSource"]["startedAt"]
+        content = authority[content_field]
+        authority[field] = registry_anchor_receipt(
+            authority[field]["logicalAddress"], content,
+            label=receipt_label, nonce=nonce, block_timestamp=started_at + 1,
+        )
+        if not (authority["railDefinition"]["governance"]["acceptedAt"] <= started_at):
+            raise AssertionError("RTB-1 vector must keep acceptedAt within bounds")
+        late_rail_receipts[label] = data
+
+    # DACS-4 PC-1: the Atomic handler selects AtomicPaymentPhaseInputV1 before
+    # reading fields; the ordinary arm, or a record carrying both arms'
+    # session members, is not coerced into it.
+    def ordinary_arm(payment_input: dict[str, Any]) -> None:
+        payment_input["sessionContext"] = payment_input.pop("atomicSessionContext")
+
+    def both_arms(payment_input: dict[str, Any]) -> None:
+        payment_input["sessionContext"] = copy.deepcopy(payment_input["atomicSessionContext"])
+
+    def payment_input_arm(edit) -> dict[str, Any]:
+        data = base("aw-auth-complete-envelope")
+        edit(data["authority"]["paymentPhaseInput"])
+        return data
+
+    cross_context = (
+        ("network", "networkId", "demos:othernet"),
+        ("session", "jobId", "01K1DPA0000000000000000009"),
+        ("phase", "phaseIndex", 7),
+        ("rail", "railId", "demos-native:OTHER"),
+        ("operation-index", "operationIndex", 4),
+        ("role", "role", "orchestrator"),
+        ("version", "authorizationVersion", "2"),
+        ("job-id-first-character-8", "jobId", JOB_ID_FIRST_8),
+    )
+    authorization = [
+        vector("aw-auth-validly-signed-for-another-work", ["AW-31", "AW-36"], "authorization", resigned_authorization(lambda e: e.update(workId=ref.work_id(other_work))), "fail", "The payer's valid signature over a Work that differs only in expiresAt does not authorize this Work."),
+        vector("aw-auth-orchestrator-signs-as-payer", ["AW-33", "AW-38"], "authorization", resigned_authorization(lambda e: e.update(signer=CLAIMS["orchestrator"]), "orchestrator"), "fail", "A valid orchestrator signature on the payer's payment authorization does not become payer authority."),
+        *(
+            vector(f"aw-auth-validly-signed-other-{label}", ["AW-36"], "authorization", resigned_authorization(lambda e, f=field, v=value: e.update({f: v})), "fail", f"A valid payer signature binding another {field} cannot be replayed into this context.")
+            for label, field, value in cross_context
+        ),
+        *(
+            vector(f"aw-auth-rail-{label}-receipt-after-session", ["AW-33"], "authorization", input_value, "fail", f"DACS-4 RTB-1: with acceptedAt and the other receipt in bounds, a finalized {label} receipt later than session start cannot authorize the rail.")
+            for label, input_value in late_rail_receipts.items()
+        ),
+        vector("aw-auth-roster-payer-account-not-bundle-derived", ["AW-33"], "authorization", roster_account("payer", "dem-not-the-payer"), "fail", "A roster payer nativeAccount that the payer IdentityBundle does not derive is not payment authority."),
+        vector("aw-auth-roster-seller-account-not-bundle-derived", ["AW-33"], "authorization", roster_account("seller", "dem-not-the-seller"), "fail", "A roster seller nativeAccount that the seller IdentityBundle does not derive is not payee authority."),
+        vector("aw-auth-pc1-ordinary-arm-not-coerced", ["AW-7", "AW-33"], "authorization", payment_input_arm(ordinary_arm), "fail", "DACS-4 PC-1: an ordinary PaymentPhaseInput (sessionContext) given to the Atomic handler is not renamed into AtomicPaymentPhaseInputV1."),
+        vector("aw-auth-pc1-both-arm-members", ["AW-7", "AW-33"], "authorization", payment_input_arm(both_arms), "fail", "DACS-4 PC-1: a payment input carrying both sessionContext and atomicSessionContext is neither closed arm, and no member is dropped to select one."),
+    ]
+
+    # ---- execution: receipt, attempts, limits, projection ---------------------
+    def receipt_variant(edit, *, root: bool = True) -> dict[str, Any]:
+        data = base("aw-receipt-complete-and-final")
+        edit(data["receipt"])
+        if root:
+            recompute_root(data["receipt"])
+        data["receipt"] = rebind_receipt_finality(data["receipt"])
+        return data
+
+    def other_receipt(data_edit) -> dict[str, Any]:
+        data = base("aw-receipt-complete-and-final")
+        data_edit(data)
+        return data
+
+    def other_work_receipt(data):
+        other = copy.deepcopy(data["intent"])
+        other["expiresAt"] -= 1
+        data["receipt"] = final_receipt(other)
+
+    def storage_output_differs(receipt):
+        leaf = receipt["operationResults"][3]
+        leaf["storageOutput"]["logicalAddress"] = "dacs3:commit:01K1DPA0000000000000000009"
+        leaf["outputHash"] = ref.sha256_hex(ref.jcs_bytes(leaf["storageOutput"]))
+
+    def checkpoint_by_buyer(data):
+        finality = json.loads(ref.b64u_decode(data["receipt"]["finalityEvidence"]["value"]))
+        finality.pop("signature", None)
+        data["receipt"]["finalityEvidence"] = encoded_evidence(
+            "test-bft-checkpoint", finality, "buyer", ref._CHECKPOINT_TEST_DOMAIN)
+
+    def rollback_variant(edit, *, root: bool = False) -> dict[str, Any]:
+        data = base("aw-rollback-proves-unchanged")
+        edit(data)
+        if root:
+            recompute_root(data["receipt"])
+        data["receipt"] = rebind_receipt_finality(data["receipt"])
+        return data
+
+    def leak_state(data):
+        def leak(witness):
+            witness["postState"] = {"balances": {"payer": "90", "seller": "10"}, "artifacts": []}
+        resign_state_witness(data["receipt"], leak)
+
+    def later_marked_rolled_back(data):
+        ids = [op["operationId"] for op in data["intent"]["operations"]]
+        for result in data["receipt"]["operationResults"][ids.index(data["receipt"]["failedOperationId"]) + 1:]:
+            result["status"] = "rolled-back"
+
+    def slot_side(side, field, value):
+        def edit(receipt):
+            receipt["paymentSlot"][side][field] = value
+        return edit
+
+    def not_copied(receipt):
+        for side in ("before", "after"):
+            receipt["paymentSlot"][side]["receiptCommitment"] = "6f" * 32
+            receipt["paymentSlot"][side]["workId"] = "6e" * 32
+
+    def advance_after(receipt):
+        receipt["paymentSlot"]["after"]["generation"] += 1
+
+    other_purchase = completion_receipt_input()
+    other_purchase["purchaseIntent"]["expiresAt"] -= 1
+    other_purchase["purchaseReceipt"] = final_receipt(other_purchase["purchaseIntent"])
+    other_job = purchase_intent()
+    other_job_receipt = final_receipt(other_job)
+    other_job_completion = completion_intent(other_job_receipt, job_id="01K1DPA0000000000000000009")
+    rolled_back_purchase = purchase_intent()
+    rolled_back_purchase_receipt = final_receipt(rolled_back_purchase, "rolled-back", 5)
+    after_rollback = completion_intent(rolled_back_purchase_receipt)
+    after_rollback_receipt = final_receipt(after_rollback)
+    settled_slot = copy.deepcopy(final_receipt(purchase_intent())["paymentSlot"]["after"])
+    after_rollback_receipt["paymentSlot"]["before"] = copy.deepcopy(settled_slot)
+    after_rollback_receipt["paymentSlot"]["after"] = copy.deepcopy(settled_slot)
+    after_rollback_receipt = rebind_receipt_finality(after_rollback_receipt)
+
+    def rolled_back_completion(edit=None) -> dict[str, Any]:
+        def unchanged(receipt):
+            if edit is not None:
+                edit(receipt)
+        return completion_receipt_input(unchanged, outcome="rolled-back")
+
+    def winner_inventory(data, attempts):
+        data["ledgerInventory"] = effect_inventory(
+            ref.work_id(data["intent"]),
+            [(a["attemptId"], a["nativeTransactionRef"]) for a in attempts],
+            block_id=attempts[0]["lifecycleEvidence"]["blockId"],
+        )
+        return data
+
+    changed_bytes = base("aw-attempt-changed-bytes")
+    winner_inventory(changed_bytes, changed_bytes["attempts"])
+    two_included = base("aw-two-included-attempts")
+    winner_inventory(two_included, two_included["attempts"][:1])
+    replaced_included = base("aw-replacement-with-noninclusion")
+    replaced_work = ref.work_id(replaced_included["intent"])
+    prior = next(a for a in replaced_included["attempts"] if a["attemptClass"] != "replacement")
+    replacement = next(a for a in replaced_included["attempts"] if a["attemptClass"] == "replacement")
+    prior["lifecycleEvidence"] = ledger_evidence(
+        prior["attemptId"], replaced_work, "included-committed", prior["nativeTransactionRef"])
+    replacement.pop("lifecycleEvidence", None)
+    replaced_included["winningAttemptId"] = prior["attemptId"]
+    winner_inventory(replaced_included, [prior])
+    replaced_included.pop("receipt", None)
+    other_attempt_evidence = base("aw-single-ledger-winner")
+    winner = next(a for a in other_attempt_evidence["attempts"] if a["attemptId"] == other_attempt_evidence["winningAttemptId"])
+    winner["lifecycleEvidence"] = ledger_evidence(
+        "attempt-x", ref.work_id(other_attempt_evidence["intent"]), winner["lifecycleEvidence"]["state"],
+        winner["nativeTransactionRef"], nonce=winner["lifecycleEvidence"]["nonce"],
+        fee=winner["lifecycleEvidence"]["fee"])
+    other_winner = base("aw-exact-replay-returns-winner")
+    next(a for a in other_winner["attempts"] if a["attemptClass"] == "replay")["returnedWinner"] = "attempt-x"
+    duplicate_attempt = base("aw-single-ledger-winner")
+    twin = copy.deepcopy(next(a for a in duplicate_attempt["attempts"] if a["attemptId"] == duplicate_attempt["winningAttemptId"]))
+    twin.pop("lifecycleEvidence", None)
+    twin["nativeTransactionRef"] = {"kind": "demos-transaction", "value": "tx-twin"}
+    duplicate_attempt["attempts"].append(twin)
+    attempt_version_two = base("aw-single-ledger-winner")
+    next(a for a in attempt_version_two["attempts"] if a["attemptId"] == attempt_version_two["winningAttemptId"])["attemptVersion"] = "2"
+
+    def limit_over(name: str, field: str) -> dict[str, Any]:
+        data = base(name)
+        return resign_capability_limit(data, field, data["capability"]["limits"][field] - 1)
+
+    def projection_variant(edit_resolved=None, path_index=None) -> dict[str, Any]:
+        data = base("aw-anchor-projection")
+        anchor = data["anchorReceipt"]
+        resolved = json.loads(ref.b64u_decode(anchor["evidence"]["value"]))
+        if path_index is not None:
+            path = ref.inclusion_path(data["receipt"]["operationResults"], path_index)
+            data["operationEvidence"]["inclusionPath"] = path
+            resolved["inclusionPath"] = path
+        if edit_resolved is not None:
+            edit_resolved(resolved)
+        anchor["evidence"]["value"] = ref.b64u(ref.jcs_bytes(resolved))
+        return data
+
+    projection_index = by_name["aw-anchor-projection"]["input"]["operationEvidence"]["leaf"]["operationIndex"]
+    projection_anchor_version_two = base("aw-anchor-projection")
+    projection_anchor_version_two["anchorReceipt"]["receiptVersion"] = "2"
+    receipt_network = base("aw-receipt-complete-and-final")
+    network_cap = {k: v for k, v in receipt_network["capability"].items() if k != "evidence"}
+    network_cap["networkId"] = "demos:othernet"
+    receipt_network["capability"] = sign_capability(network_cap)
+
+    execution = [
+        vector("aw-receipt-of-another-work", ["AW-46"], "receipt", other_receipt(other_work_receipt), "fail", "A complete, finalized receipt for a Work differing only in expiresAt does not bind this Work."),
+        vector("aw-receipt-execution-profile-differs", ["AW-46"], "receipt", receipt_variant(lambda r: r.update(executionProfile="demos-bft-work/2"), root=False), "fail", "A re-finalized receipt naming another executionProfile does not bind the signed Work."),
+        vector("aw-receipt-results-count-short", ["AW-46", "AW-51"], "receipt", receipt_variant(lambda r: r["operationResults"].pop()), "fail", "A receipt with one operation result fewer than the Work, under a recomputed root and checkpoint, is rejected."),
+        vector("aw-receipt-operation-identity-swapped", ["AW-46", "AW-51"], "receipt", receipt_variant(lambda r: r["operationResults"][0].update(operationId="buyer-vet-x")), "fail", "Each operation result names its Work operation's id, index and kind, under a recomputed root."),
+        vector("aw-receipt-input-hash-consistent-mismatch", ["AW-46", "AW-51"], "receipt", receipt_variant(lambda r: r["operationResults"][2].update(inputHash="ab" * 32)), "fail", "A verifier recomputes every inputHash; a re-rooted, re-finalized receipt with a wrong one is rejected."),
+        vector("aw-receipt-output-hash-consistent-mismatch", ["AW-46", "AW-51"], "receipt", receipt_variant(lambda r: r["operationResults"][5].update(outputHash="ef" * 32)), "fail", "A re-rooted, re-finalized receipt whose transfer outputHash contradicts the signed payload is rejected."),
+        vector("aw-receipt-root-claim-consistent-mismatch", ["AW-46", "AW-51"], "receipt", receipt_variant(lambda r: r.update(operationReceiptRoot="cd" * 32), root=False), "fail", "A finalized checkpoint over a wrong operationReceiptRoot does not make that root the RFC 6962 root of the results."),
+        vector("aw-receipt-pre-root-consistent-mismatch", ["AW-46", "AW-48"], "receipt", receipt_variant(lambda r: r["businessState"].update(preRoot="12" * 32), root=False), "fail", "The business pre-state root is recomputed from the authenticated witness, not taken from the finalized receipt."),
+        vector("aw-receipt-effects-root-consistent-mismatch", ["AW-46", "AW-48"], "receipt", receipt_variant(lambda r: r["businessState"].update(effectsRoot="34" * 32), root=False), "fail", "The effects root is recomputed from the authenticated witness, not taken from the finalized receipt."),
+        vector("aw-receipt-slot-key-other-phase", ["AW-46", "AW-50"], "receipt", receipt_variant(lambda r: r["paymentSlot"]["key"].update(phaseIndex=7), root=False), "fail", "A re-finalized receipt whose slot key names another phase does not bind the signed slot."),
+        vector("aw-receipt-field-changed-after-commitment", ["AW-46", "AW-50"], "receipt", other_receipt(lambda d: d["receipt"]["winningAttempt"].update(attemptId="attempt-z")), "fail", "A receipt member edited after its receiptCommitment was computed no longer matches the canonical receipt core."),
+        vector("aw-receipt-storage-output-address-differs", ["AW-46", "AW-51"], "receipt", receipt_variant(storage_output_differs), "fail", "A storageOutput naming another address, with a consistent outputHash and root, contradicts the signed storage payload."),
+        vector("aw-receipt-checkpoint-signed-by-buyer", ["AW-47", "AW-48"], "receipt", other_receipt(checkpoint_by_buyer), "fail", "A finality checkpoint is authenticated only by the pinned network authority; a party-signed checkpoint is not finality."),
+        vector("aw-receipt-capability-other-network", ["AW-20", "AW-46"], "receipt", receipt_network, "fail", "A receipt is verified only under a capability for its own networkId."),
+        vector("aw-receipt-slot-job-id-first-character-8", ["AW-46", "AW-50"], "receipt", receipt_variant(lambda r: r["paymentSlot"]["key"].update(jobId=JOB_ID_FIRST_8), root=False), "fail", "A re-finalized receipt whose slot key jobId starts with 8 does not carry a canonical JID-1 jobId."),
+        vector("aw-rolled-back-receipt-changes-business-state", ["AW-54", "AW-55"], "receipt", rollback_variant(leak_state), "fail", "A rolled-back receipt with a re-signed witness and consistent roots still cannot change business state."),
+        vector("aw-rolled-back-later-operation-marked-rolled-back", ["AW-52", "AW-53"], "receipt", rollback_variant(later_marked_rolled_back, root=True), "fail", "Operations after the failed one are not-executed, not rolled-back, under a recomputed root."),
+        vector("aw-rolled-back-slot-generation-advanced", ["AW-50", "AW-53"], "receipt", rollback_variant(lambda d: advance_after(d["receipt"])), "fail", "A rolled-back Purchase slot terminal state follows the signed CAS; an advanced generation contradicts it."),
+        vector("aw-completion-receipt-control", ["AW-46", "AW-50"], "receipt", completion_receipt_input(), "pass", "A Completion receipt copies the verified Purchase receipt's settled slot state unchanged."),
+        vector("aw-completion-receipt-slot-after-changed", ["AW-46", "AW-50"], "receipt", completion_receipt_input(advance_after), "fail", "A Completion cannot change the payment slot it inherits from the Purchase."),
+        vector("aw-completion-slot-not-copied-from-purchase", ["AW-46", "AW-50"], "receipt", completion_receipt_input(not_copied), "fail", "A Completion slot state that is unchanged (before == after) but is not the verified Purchase terminal state is rejected."),
+        vector("aw-completion-embeds-other-purchase-receipt", ["AW-46"], "receipt", other_purchase, "fail", "The Completion's embedded Purchase receipt must be the independently verified Purchase receipt."),
+        vector("aw-completion-receipt-for-other-job", ["AW-46"], "receipt", {"intent": other_job_completion, "receipt": final_receipt(other_job_completion), "purchaseIntent": other_job, "purchaseReceipt": other_job_receipt, "publicKeys": PUBLIC_KEYS}, "fail", "A Completion for another jobId cannot reuse this Purchase receipt."),
+        vector("aw-completion-after-rolled-back-purchase", ["AW-46"], "receipt", {"intent": after_rollback, "receipt": after_rollback_receipt, "purchaseIntent": rolled_back_purchase, "purchaseReceipt": rolled_back_purchase_receipt, "publicKeys": PUBLIC_KEYS}, "fail", "A Completion after a rolled-back Purchase has no committed payment to complete."),
+        vector("aw-completion-rolled-back-control", ["AW-52", "AW-53"], "receipt", rolled_back_completion(), "pass", "A rolled-back Completion leaves business state and the Purchase slot unchanged."),
+        vector("aw-completion-rolled-back-slot-changed", ["AW-50", "AW-53"], "receipt", rolled_back_completion(advance_after), "fail", "A rolled-back Completion cannot change the Purchase slot metadata."),
+        vector("aw-attempt-changed-bytes-inventory-consistent", ["AW-39"], "attempts", changed_bytes, "fail", "An attempt whose canonicalWorkBytes differ is rejected even under a ledger inventory that names it."),
+        vector("aw-two-included-attempts-inventory-names-one", ["AW-43"], "attempts", two_included, "fail", "Two included attempts are two winners even when the inventory names only one."),
+        vector("aw-replacement-for-included-attempt", ["AW-41"], "attempts", replaced_included, "fail", "An attempt with authenticated inclusion cannot be replaced."),
+        vector("aw-lifecycle-evidence-names-other-attempt", ["AW-59"], "attempts", other_attempt_evidence, "fail", "Network-signed lifecycle evidence for another attemptId does not establish this attempt's inclusion."),
+        vector("aw-replay-returns-other-winner", ["AW-45"], "attempts", other_winner, "fail", "An exact replay returns the ledger-selected winner and no other attempt."),
+        vector("aw-attempts-duplicate-attempt-id", ["AW-40"], "attempts", duplicate_attempt, "fail", "Two attempts cannot share one attemptId."),
+        vector("aw-attempt-version-unsupported", ["AW-39"], "attempts", attempt_version_two, "fail", "An attempt with attemptVersion 2 is not AtomicWorkAttemptV1."),
+        vector("aw-canonical-byte-limit-one-over", ["AW-71"], "limits", limit_over("aw-canonical-byte-limit-equality", "maxCanonicalBytes"), "fail", "A Work one canonical byte over the authenticated limit is rejected.", boundary=True),
+        vector("aw-operation-count-limit-one-over", ["AW-71"], "limits", limit_over("aw-operation-count-limit-equality", "maxOperations"), "fail", "A Work one operation over the authenticated limit is rejected.", boundary=True),
+        vector("aw-execution-time-limit-one-over", ["AW-71"], "limits", limit_over("aw-execution-time-limit-equality", "maxExecutionTimeMs"), "fail", "A Work one millisecond over the authenticated execution-time limit is rejected.", boundary=True),
+        vector("aw-anchor-inclusion-path-consistent-invalid", ["AW-68", "AW-69"], "projection", projection_variant(path_index=0 if projection_index != 0 else 1), "fail", "A projection whose copied and resolved inclusion paths agree but prove another leaf is rejected."),
+        vector("aw-anchor-resolved-receipt-hash-differs", ["AW-68", "AW-69"], "projection", projection_variant(lambda r: r.update(receiptContentHash="00" * 32)), "fail", "Resolved projection evidence for another receipt does not resolve the verified Work receipt."),
+        vector("aw-receipt-version-unsupported", ["AW-46"], "receipt", receipt_variant(lambda r: r.update(receiptVersion="2"), root=False), "fail", "A re-finalized receipt with receiptVersion 2 is not AtomicWorkReceiptV1."),
+        vector("aw-anchor-projection-receipt-version-unsupported", ["AW-66"], "projection", projection_anchor_version_two, "fail", "A projected AnchorReceipt with receiptVersion 2 is not the CORE §5.1 AnchorReceipt the verified Work receipt projects."),
+    ]
+
+    # ---- Purchase and Completion admission ------------------------------------
+    def listing_edit(edit, role: str = "seller"):
+        return ("listing_fixture", resigned_builder(resign_listing_as(role), edit))
+
+    def agreement_edit(edit):
+        return ("agreement_document", resigned_builder(resign_payee_agreement, edit))
+
+    def embedded_edit(name: str, edit, role: str, domain: bytes):
+        return (name, resigned_builder(resign_embedded_as(role, domain), edit))
+
+    def registry_edit(edit):
+        def wrap(real):
+            def fake(rail):
+                index, _, rail_receipt = real(rail)
+                edit(index)
+                return index, registry_anchor_receipt(
+                    index["logicalAddress"], index, label="rail-index", nonce="200",
+                ), rail_receipt
+            return fake
+        return ("rail_registry_material", wrap)
+
+    def drop_roles(index):
+        def transform(intent):
+            intent["operations"][index]["requiredRoles"] = []
+        return transform
+
+    def bad_bundle_presentation(value):
+        value["authority"]["payerBundle"]["presentation"]["signatures"][0]["signature"] = ref.b64u(b"\x01" * 64)
+
+    def sequential_receipt_other_content(value):
+        receipt = value["authority"]["commitmentReceipt"]
+        receipt["contentHash"] = "00" * 32
+        proof = json.loads(ref.b64u_decode(receipt["evidence"]["value"]))
+        proof.pop("signature", None)
+        proof["contentHash"] = "00" * 32
+        receipt["evidence"] = encoded_evidence("test-anchor-finality", proof, "network", ref._ANCHOR_TEST_DOMAIN)
+
+    def session_evidence(value, session):
+        value["authority"]["atomicSessionContextEvidence"] = encoded_evidence(
+            "test-atomic-session-context",
+            {"jobId": value["intent"]["jobId"], "contextHash": ref.sha256_hex(ref.jcs_bytes(session)),
+             "proofProfile": "demos-bft-proof/test-1"},
+            "orchestrator", ref._SESSION_CONTEXT_TEST_DOMAIN)
+
+    def session_version_two(value):
+        session = value["authority"]["atomicSessionContext"]
+        session["contextVersion"] = "2"
+        value["authority"]["paymentPhaseInput"]["atomicSessionContext"] = copy.deepcopy(session)
+        session_evidence(value, session)
+
+    def session_source_differs(value):
+        authority = value["authority"]
+        authority["sessionContextSource"]["priorPhaseOutputs"]["agreementHash"] = "0f" * 32
+        rebind_session_source_evidence(authority)
+        session = atomic_payment_session_context_from_source(authority["sessionContextSource"])
+        authority["atomicSessionContext"] = session
+        authority["paymentPhaseInput"]["atomicSessionContext"] = copy.deepcopy(session)
+        session_evidence(value, session)
+
+    def session_evidence_other(value):
+        value["authority"]["atomicSessionContextEvidence"] = encoded_evidence(
+            "test-atomic-session-context",
+            {"jobId": value["intent"]["jobId"], "contextHash": "3c" * 32,
+             "proofProfile": "demos-bft-proof/test-1"},
+            "orchestrator", ref._SESSION_CONTEXT_TEST_DOMAIN)
+
+    def capability_limit(field: str, measure):
+        def edit(value):
+            cap = {k: v for k, v in value["capability"].items() if k != "evidence"}
+            cap["limits"][field] = measure(value) - 1
+            value["capability"] = sign_capability(cap)
+        return edit
+
+    def metrics_other_work(value):
+        material = ref.composed_proof_material(value)
+        metrics = json.loads(ref.b64u_decode(limit_metrics_evidence(value, material, 100)["value"]))
+        metrics.pop("signature", None)
+        metrics["workId"] = "4d" * 32
+        value["limitEvidence"] = encoded_evidence("test-work-limit-metrics", metrics, "network", ref._LIMITS_TEST_DOMAIN)
+
+    def reservation_other_work(value):
+        cap = value["capability"]
+        value["proofReservationEvidence"] = encoded_evidence(
+            "test-work-proof-reservation",
+            {"workId": "4e" * 32, "reservedProofBytes": value["proofReservationBytes"],
+             "reservationRule": "test-fixed-proof-reservation/1",
+             "proofProfile": cap["proofProfile"], "validatorSetId": cap["validatorSetId"]},
+            "network", ref._LIMITS_TEST_DOMAIN)
+        value["limitEvidence"] = limit_metrics_evidence(value, ref.composed_proof_material(value), 100)
+
+    def payment_amount_differs(value):
+        value["authority"]["paymentPhaseInput"]["amount"] = {"amount": "11", "currency": "DEM"}
+
+    def payer_bundle_version_two(real):
+        def fake(role, *args, **kwargs):
+            bundle = real(role, *args, **kwargs)
+            if role != "buyer":
+                return bundle
+            # The buyer's bundle carries the payer claim, so it is the payer
+            # bundle; re-present it so only bundleVersion is wrong.
+            bundle.pop("presentation")
+            bundle["bundleVersion"] = "2"
+            digest = ref.sha256_hex(ref.jcs_bytes(bundle))
+            bundle["presentation"] = {"kind": "per-claim", "signatures": [{
+                "ref": CLAIMS[role],
+                "signature": ref.b64u(ref.ed25519_sign(
+                    SEEDS[role], b"dacs-bundle-presentation:v1:" + digest.encode("ascii"))),
+            }]}
+            return bundle
+        return fake
+
+    def payee_bound_with_current_admission() -> dict[str, Any]:
+        def revocation(listing):
+            listing["revocationState"] = {
+                "revocationStateRefVersion": "1",
+                "anchor": {"kind": "storage-program",
+                           "locator": f"dacs1-revocations:{ref.cf4_encode(CLAIMS['seller'])}"},
+                "contentHash": ref.sha256_hex(ref.jcs_bytes({"seller": CLAIMS["seller"], "sequence": 7})),
+            }
+        name, wrap = listing_edit(revocation)
+        with patched_builder(name, wrap):
+            intent = purchase_intent(payee_bound=True)
+            value = composed_purchase_admission(intent, final_receipt(intent))
+            value["authority"]["currentProfileAdmission"] = current_profile_admission(intent, value["authority"])
+        return add_composed_limit_evidence(value)
+
+    def completion_variant(*, delivery_roles=None, projection_index=None, slot_commitment=None) -> dict[str, Any]:
+        purchase_value = purchase_intent(current_profile=True)
+        purchase_receipt = final_receipt(purchase_value)
+        completion_value = completion_intent(purchase_receipt)
+        if delivery_roles is not None:
+            completion_value["operations"][1]["requiredRoles"] = delivery_roles
+        receipt = final_receipt(completion_value)
+        if slot_commitment is not None:
+            for side in ("before", "after"):
+                receipt["paymentSlot"][side]["receiptCommitment"] = slot_commitment
+            receipt = rebind_receipt_finality(receipt)
+        value = composed_completion_admission(purchase_value, purchase_receipt, completion_value, receipt)
+        if projection_index is not None:
+            value["purchaseCommitmentProjection"] = projected_anchor_fixture(purchase_value, purchase_receipt, projection_index)
+            value = add_composed_limit_evidence(value)
+        return value
+
+    def profile_variant(index: int, edit) -> dict[str, Any]:
+        data = base("awp-purchase-exact-profile")
+        edit(data["intent"]["operations"][index]["payload"])
+        data["atomicReceipt"] = final_receipt(data["intent"])
+        return data
+
+    def vet_address(payload):
+        payload["logicalAddress"] += "x"
+
+    def commitment_address(payload):
+        payload["logicalAddress"] = "dacs3:commit:01K1DPA0000000000000000001"
+
+    def commitment_cas(payload):
+        payload["writeCondition"] = {"kind": "compare-and-set", "expectedContentHash": "00" * 32}
+
+    shape_kind = composed_with_intent(lambda i: i["operations"][2].update(kind="storage-program-put", payload={**i["operations"][2]["payload"], "logicalAddress": f"dacs3:agreement:{i['jobId']}", "writeCondition": {"kind": "create-only"}}))
+    shape_depends = composed_with_intent(lambda i: i["operations"][3].update(dependsOn=["buyer-vet", "agreement"]))
+    two_pay_dem = composed_variant(
+        (listing_edit(lambda l: l["pipeline"].append({"kind": "pay-dem", "parameters": {"rail": TEST_RAIL_ID}})),),
+        payout_bindings=[
+            {"railId": TEST_RAIL_ID, "phaseIndex": 2, "payeeAddress": "dem-test-seller"},
+            {"railId": TEST_RAIL_ID, "phaseIndex": 4, "payeeAddress": "dem-test-seller"},
+        ],
+    )
+    purchase_completion = [
+        vector("awp-composed-payment-required-roles-empty", ["AWP-5"], "purchase-admission", composed_with_intent(drop_roles(5)), "fail", "A re-signed Purchase whose payment step requires no payer authorization is not the exact Purchase profile."),
+        vector("awp-composed-operation-kind-differs", ["AWP-5"], "purchase-admission", shape_kind, "fail", "A re-signed Purchase that stores the agreement instead of asserting it is not the exact Purchase profile, although its DAG and roles are valid."),
+        vector("awp-composed-dependencies-differ", ["AWP-5"], "purchase-admission", shape_depends, "fail", "A re-signed Purchase whose commitment also depends on the buyer Vet is not the exact Purchase profile, although its DAG is valid."),
+        vector("awp-completion-delivery-required-roles-empty", ["AWP-15"], "completion-admission", completion_variant(delivery_roles=[]), "fail", "A re-signed Completion whose delivery requires no seller authorization is not the exact Completion profile."),
+        vector("awp-composed-agreement-price-differs-from-listing", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l["pricing"]["price"].update(amount="9")),)), "fail", "A re-signed Listing whose fixed price differs from the Agreement fails §8.5.2."),
+        vector("awp-composed-agreement-deliverable-hash-differs", ["AWP-7"], "purchase-admission", composed_variant((agreement_edit(lambda a: a["terms"]["deliverable"].update(hash="99" * 32)),)), "fail", "A re-signed Agreement whose deliverable differs from the Listing DeliverableSpec fails §8.5.2."),
+        vector("awp-composed-deadline-exceeds-listing-bound", ["AWP-7", "AWP-8"], "purchase-admission", composed_variant((listing_edit(lambda l: l["terms"].update(deadlineSecAfterCommit=1)),)), "fail", "An Agreement deadline past the Listing's commitment-relative bound fails at consensus time."),
+        vector("awp-composed-listing-expired-before-commit", ["AWP-7", "AWP-8"], "purchase-admission", composed_variant((listing_edit(lambda l: l["validity"].update(notAfter=1_800_000_000_000)),)), "fail", "A Listing whose notAfter precedes the authenticated commitment time cannot authorize the session."),
+        vector("awp-composed-listing-negotiation-pattern-differs", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l["pipeline"].__setitem__(0, {"kind": "negotiate-rfq"})),)), "fail", "An Agreement pattern differing from the Listing pipeline fails §8.5.2."),
+        vector("awp-composed-listing-commit-phase-differs", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l["pipeline"].__setitem__(1, {"kind": "commit-payee-bound-agreement"})),)), "fail", "An Agreement artifact that mismatches the Listing's commitment phase fails §8.5.2."),
+        vector("awp-composed-agreement-rail-not-accepted", ["AWP-7", "AWP-20"], "purchase-admission", composed_variant((listing_edit(lambda l: l.update(acceptedRails=[{"railId": "other-rail"}])),)), "fail", "An Agreement rail that the Listing does not accept fails §8.5.2."),
+        vector("awp-composed-agreement-pins-other-listing-version", ["AWP-7"], "purchase-admission", composed_variant((agreement_edit(lambda a: a["listingRef"].update(version=2)),)), "fail", "A re-signed Agreement must pin the exact Listing presented."),
+        vector("awp-composed-listing-signed-by-orchestrator", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: None, "orchestrator"),)), "fail", "A Listing validly signed by the orchestrator is not signed by the seller IdentityBundle."),
+        vector("awp-composed-listing-dacs-version-2", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l.update(dacsVersion="2")),)), "fail", "A re-signed Listing with an unsupported dacsVersion is malformed."),
+        vector("awp-composed-two-pay-dem-phases", ["AWP-20"], "purchase-admission", two_pay_dem, "fail", "A pipeline with two pay-dem phases does not have exactly one Atomic payment."),
+        vector("awp-composed-rail-phase-handler-not-pay-dem", ["AWP-20"], "purchase-admission", composed_variant((embedded_edit("rail_definition", lambda r: r.update(phaseHandler="pay-evm"), "network", ref._RAIL_DOMAIN),)), "fail", "A network-signed, registry-pinned native-DEM RailDefinition whose phaseHandler is not pay-dem is rejected."),
+        vector("awp-composed-registry-index-version-differs", ["AWP-7"], "purchase-admission", composed_variant((registry_edit(lambda i: i.update(registryVersion=2)),)), "fail", "A finalized registry index with an unsupported registryVersion is not a pinned snapshot."),
+        vector("awp-composed-registry-index-content-hash-differs", ["AWP-7"], "purchase-admission", composed_variant((registry_edit(lambda i: i["entries"][0]["versions"][0].update(contentHash="00" * 32)),)), "fail", "A finalized registry index that pins another rail content hash does not resolve the presented rail."),
+        vector("awp-composed-payer-bundle-presentation-invalid", ["AWP-7"], "purchase-admission", composed_variant(edit=bad_bundle_presentation), "fail", "A payer IdentityBundle with an invalid presentation signature is not payer authority."),
+        vector("awp-composed-agreement-discriminator-version-2", ["AWP-4"], "purchase-admission", composed_variant((agreement_edit(lambda a: a.update(identityBoundPayeeAgreementVersion="2")),)), "fail", "A re-signed Agreement with an unsupported discriminator version is not IdentityBoundPayeeAgreementV1."),
+        vector("awp-composed-payee-bound-agreement-with-current-admission", ["AWP-4"], "purchase-admission", payee_bound_with_current_admission(), "fail", "A current Atomic payment requires the identity-bound payee agreement, not a legacy payee-bound one, even with a current-profile admission."),
+        vector("awp-composed-commitment-version-2", ["AWP-6"], "purchase-admission", composed_variant((embedded_edit("finality_commitment", lambda r: r.update(finalityCommitmentVersion="2"), "orchestrator", ref._COMMITMENT_DOMAIN),)), "fail", "A re-signed FinalityCommitmentRecord with an unsupported version is not the commitment artifact."),
+        vector("awp-composed-commitment-subject-other-job", ["AWP-6"], "purchase-admission", composed_variant((embedded_edit("finality_commitment", lambda r: r.update(jobId="01K1DPA0000000000000000009"), "orchestrator", ref._COMMITMENT_DOMAIN),)), "fail", "A re-signed commitment for another jobId does not bind this job, agreement and listing."),
+        vector("awp-composed-vet-record-version-2", ["AWP-1"], "purchase-admission", composed_variant((embedded_edit("composite_verification_record", lambda r: r.update(recordVersion="2"), "orchestrator", ref._COMPOSITE_DOMAIN),)), "fail", "A re-signed Vet record with an unsupported recordVersion is not a CompositeVerificationRecord v1."),
+        vector("awp-composed-vet-record-bundle-hash-differs", ["AWP-1"], "purchase-admission", composed_variant((embedded_edit("composite_verification_record", lambda r: r.update(bundleHash="00" * 32), "orchestrator", ref._COMPOSITE_DOMAIN),)), "fail", "A re-signed Vet record for another IdentityBundle does not vet this party."),
+        vector("awp-composed-vet-record-decision-fail", ["AWP-1"], "purchase-admission", composed_variant((embedded_edit("composite_verification_record", lambda r: r.update(overallDecision="fail"), "orchestrator", ref._COMPOSITE_DOMAIN),)), "fail", "A re-signed Vet record whose overallDecision is fail does not establish a pass."),
+        vector("awp-sequential-commitment-receipt-other-content", ["AWP-6"], "purchase-admission", composed_variant(edit=sequential_receipt_other_content, gate_mode="sequential"), "fail", "A finalized AnchorReceipt for other content does not establish the commitment before signing in sequential mode."),
+        vector("awp-composed-session-context-version-2", ["AWP-7"], "purchase-admission", composed_variant(edit=session_version_two), "fail", "A re-attested session context with contextVersion 2 is not AtomicPaymentSessionContextV1."),
+        vector("awp-composed-session-source-prior-agreement-differs", ["AWP-7"], "purchase-admission", composed_variant(edit=session_source_differs), "fail", "A re-attested SessionContext source whose prior agreement hash contradicts the verified Agreement is not DACS authority."),
+        vector("awp-composed-session-evidence-for-other-context", ["AWP-7"], "purchase-admission", composed_variant(edit=session_evidence_other), "fail", "Session evidence attesting another context hash does not authenticate the presented session context."),
+        vector("awp-composed-payment-input-amount-differs", ["AWP-20"], "purchase-admission", composed_variant(edit=payment_amount_differs), "fail", "An AtomicPaymentPhaseInputV1 amount that differs from the Agreement is not bound to the authenticated parties."),
+        vector("awp-composed-canonical-bytes-over", ["AWP-5"], "purchase-admission", composed_variant(edit=capability_limit("maxCanonicalBytes", lambda v: len(ref.jcs_bytes(v["intent"]))), rebuild_limits=True), "fail", "A composed Work one byte over the authenticated canonical-byte limit is rejected."),
+        vector("awp-composed-operation-count-over", ["AWP-5"], "purchase-admission", composed_variant(edit=capability_limit("maxOperations", lambda v: len(v["intent"]["operations"]))), "fail", "A composed Work one operation over the authenticated operation limit is rejected."),
+        vector("awp-composed-limit-metrics-for-other-work", ["AWP-5"], "purchase-admission", composed_variant(edit=metrics_other_work, rebuild_limits=False), "fail", "Network-signed limit metrics for another Work do not measure this one."),
+        vector("awp-composed-reservation-for-other-work", ["AWP-5"], "purchase-admission", composed_variant(edit=reservation_other_work, rebuild_limits=False), "fail", "A network-signed proof-byte reservation for another Work does not reserve this one."),
+        vector("awp-profile-vet-address-consistent-receipt", ["AWP-2"], "profile", profile_variant(0, vet_address), "fail", "A Vet storage operation at another address is rejected under its own consistent receipt."),
+        vector("awp-profile-commitment-address-consistent-receipt", ["AWP-6"], "profile", profile_variant(3, commitment_address), "fail", "A commitment write at another job's address is rejected under its own consistent receipt."),
+        vector("awp-profile-commitment-cas-consistent-receipt", ["AWP-6"], "profile", profile_variant(3, commitment_cas), "fail", "A commitment written by compare-and-set rather than create-only is rejected under its own consistent receipt."),
+        vector("awp-completion-commitment-projection-selects-buyer-vet", ["AWP-13"], "completion-admission", completion_variant(projection_index=0), "fail", "A valid Purchase projection of the buyer Vet operation is not the commitment projection."),
+        vector("awp-completion-composed-slot-not-copied-from-purchase", ["AWP-13"], "completion-admission", completion_variant(slot_commitment="6f" * 32), "fail", "A whole-profile Completion whose unchanged slot state is not the verified Purchase terminal state is rejected."),
+        vector("awp-composed-payer-bundle-version-2", ["AWP-7"], "purchase-admission", composed_variant((("identity_bundle", payer_bundle_version_two),)), "fail", "A re-presented payer IdentityBundle with an unsupported bundleVersion is not payer authority."),
+        vector("awp-composed-pc1-ordinary-arm-not-coerced", ["AWP-20"], "purchase-admission", composed_variant(edit=lambda v: ordinary_arm(v["authority"]["paymentPhaseInput"])), "fail", "DACS-4 PC-1: whole-profile admission does not rename an ordinary PaymentPhaseInput into the Atomic arm."),
+    ]
+
+    # ---- settlement and slot -------------------------------------------------
+    final_bound = base("aws-final-work-receipt-bound")
+    delivery_bound = base("aws-delivery-evidence-address")
+    failure_bound = base("aws-failure-work-receipt-bound")
+    failure_payload = failure_bound["intent"]["operations"][failure_bound["evidence"]["operationRef"]["operationIndex"]]["payload"]
+
+    def as_success(evidence):
+        evidence["outcome"] = "success"
+        evidence.pop("reason", None)
+        evidence["paymentAmount"] = {"amount": failure_payload["amount"], "currency": failure_payload["asset"]}
+        evidence["settlementFinality"] = {"model": "bft-final", "finalityObservedAt": evidence["observedAt"]}
+
+    def as_failure(evidence):
+        evidence["outcome"] = "failure"
+        evidence["reason"] = "claimed failure"
+        evidence.pop("paymentAmount", None)
+        evidence.pop("settlementFinality", None)
+
+    def other_leaf_path(evidence):
+        evidence["operationProof"]["value"] = ref.b64u(ref.jcs_bytes(
+            ref.inclusion_path(final_bound["receipt"]["operationResults"], 4)))
+
+    algorithm_label = copy.deepcopy(final_bound)
+    algorithm_label["evidence"]["signature"]["algorithm"] = "ecdsa-secp256k1"
+    algorithm_label["auditPublication"] = atomic_publication(algorithm_label["evidence"], algorithm_label["evidenceAddress"])
+    other_generation = copy.deepcopy(final_bound)
+    other_generation["evidenceAddress"] = ref.atomic_evidence_address(
+        other_generation["evidence"], other_generation["receipt"]["paymentSlot"]["after"]["generation"] + 1)
+    other_generation["auditPublication"] = atomic_publication(other_generation["evidence"], other_generation["evidenceAddress"])
+    replay_contradiction = base("aws-atomic-publication-exact-replay")
+    replay_anchor = replay_contradiction["auditPublication"]["anchorReceipt"]
+    replay_proof = json.loads(ref.b64u_decode(replay_anchor["evidence"]["value"]))
+    replay_proof.pop("signature", None)
+    replay_proof["writeConditionResult"]["priorState"]["contentHash"] = "5a" * 32
+    replay_anchor["evidence"] = encoded_evidence("test-anchor-publication", replay_proof, "network", ref._PUBLICATION_TEST_DOMAIN)
+
+    def address_variant(address: str) -> dict[str, Any]:
+        data = copy.deepcopy(final_bound)
+        data["evidenceAddress"] = address
+        data["auditPublication"] = atomic_publication(data["evidence"], address)
+        return data
+
+    # dacs4:payment:{jobId}:{rail}:{phaseIndex}:atomic:{generation}:{id}
+    address_parts = final_bound["evidenceAddress"].split(":")
+
+    def address_with(index: int, segment: str) -> str:
+        return ":".join([*address_parts[:index], segment, *address_parts[index + 1:]])
+
+    malformed_addresses = {
+        "job-id-not-ulid": address_with(2, "not-a-ulid"),
+        "job-id-first-character-8": address_with(2, "8" + address_parts[2][1:]),
+        "rail-cf4-lowercase-escape": address_with(3, address_parts[3].replace("%3A", "%3a")),
+        "phase-index-noncanonical": address_with(4, "0" + address_parts[4]),
+        "phase-index-unsafe": address_with(4, str(ref.SAFE_INT_MAX + 1)),
+        "atomic-label-missing": address_with(5, "legacy"),
+        "generation-noncanonical": address_with(6, "0" + address_parts[6]),
+        "settlement-id-uppercase": address_with(7, address_parts[7].upper()),
+        "segment-count": ":".join(address_parts[:-1]),
+    }
+    slot_claim_advanced = base("aws-structured-network-slot-cas")
+    slot_claim_advanced["newState"]["generation"] += 1
+    inflight_other = base("aws-inflight-exact-replay")
+    inflight_proof = {k: v for k, v in inflight_other["ledgerProof"].items() if k != "signature"}
+    inflight_proof["state"]["workId"] = "77" * 32
+    inflight_other["ledgerProof"] = resign_ledger_proof(inflight_proof)
+    settled_other = base("aws-settled-exact-replay")
+    settled_other["returnedReceiptCommitment"] = "66" * 32
+    replay_transfer = base("aws-inflight-exact-replay")
+    replay_transfer["executesTransfer"] = True
+    job_id_8_slot = base("aws-structured-network-slot-cas")
+    job_id_8_slot["key"]["jobId"] = JOB_ID_FIRST_8
+    publication_version_two = copy.deepcopy(final_bound)
+    publication_version_two["auditPublication"]["anchorReceipt"]["receiptVersion"] = "2"
+    settlement_network = copy.deepcopy(final_bound)
+    settlement_cap = {k: v for k, v in settlement_network["capability"].items() if k != "evidence"}
+    settlement_cap["networkId"] = "demos:othernet"
+    settlement_network["capability"] = sign_capability(settlement_cap)
+
+    settlement = [
+        vector("aws-atomic-evidence-version-unsupported", ["AWS-17"], "settlement", resettled(final_bound, lambda e: e.update(atomicEvidenceVersion="2")), "fail", "Re-signed, republished Atomic evidence with atomicEvidenceVersion 2 is rejected; it is not read as v1.", boundary_rules=["AWS-17"]),
+        vector("aws-settlement-job-id-first-character-8", ["AWS-25"], "settlement", resettled(final_bound, lambda e: e.update(jobId="8" + e["jobId"][1:]), recompute_id=True), "fail", "Re-signed Atomic evidence whose jobId starts with 8 is not a canonical JID-1 session."),
+        vector("aws-settlement-payment-amount-differs", ["AWS-24"], "settlement", resettled(final_bound, lambda e: e["paymentAmount"].update(amount="11")), "fail", "Re-signed evidence whose paymentAmount differs from the signed transfer is rejected."),
+        vector("aws-settlement-signed-by-buyer-not-orchestrator", ["AWS-27"], "settlement", resettled(final_bound, lambda e: None, role="buyer"), "fail", "Evidence validly signed by the buyer is not signed by the authenticated phase orchestrator."),
+        vector("aws-settlement-receipt-ref-content-hash-differs", ["AWS-19"], "settlement", resettled(final_bound, lambda e: e["workReceiptRef"].update(contentHash="aa" * 32)), "fail", "A re-signed workReceiptRef for other receipt bytes does not resolve the verified receipt."),
+        vector("aws-settlement-operation-ref-differs-from-subject", ["AWS-20"], "settlement", resettled(final_bound, lambda e: e["operationRef"].update(operationId="payment-alt"), recompute_id=True), "fail", "A re-signed operationRef that differs from the proof subject's operation is rejected."),
+        vector("aws-settlement-subject-winner-differs", ["AWS-19"], "settlement", resettled(final_bound, lambda e: e["operationProof"]["subject"].update(winningAttemptId="attempt-z")), "fail", "A re-signed proof subject naming another winner does not match the receipt."),
+        vector("aws-settlement-inclusion-path-for-other-leaf", ["AWS-19"], "settlement", resettled(final_bound, other_leaf_path), "fail", "A re-signed inclusion path for another leaf does not prove the payment leaf."),
+        vector("aws-settlement-success-on-rolled-back-receipt", ["AWS-20"], "settlement", resettled(failure_bound, as_success), "fail", "Re-signed success evidence over a rolled-back receipt does not select a committed operation."),
+        vector("aws-settlement-failure-on-committed-receipt", ["AWS-20"], "settlement", resettled(final_bound, as_failure), "fail", "Re-signed failure evidence over a committed receipt does not select a rollback operation."),
+        vector("aws-settlement-delivery-content-hash-differs", ["AWS-25"], "settlement", resettled(delivery_bound, lambda e: e.update(deliverableContentHash="bb" * 32)), "fail", "Re-signed delivery evidence with another content hash is rejected."),
+        vector("aws-settlement-delivery-anchor-differs", ["AWS-25"], "settlement", resettled(delivery_bound, lambda e: e["deliverableAnchor"].update(locator="dacs4:deliverable:01K1DPA0000000000000000001")), "fail", "Re-signed delivery evidence anchored at another job's deliverable is rejected."),
+        vector("aws-settlement-signature-algorithm-label", ["AWS-27"], "settlement", algorithm_label, "fail", "An Ed25519 signature relabelled as another algorithm is unsupported, under a matching publication."),
+        vector("aws-settlement-address-other-generation", ["AWS-28"], "settlement", other_generation, "fail", "Evidence published at the address of another slot generation is rejected."),
+        vector("aws-atomic-publication-replay-contradictory-prior-state", ["AWS-28"], "settlement", replay_contradiction, "fail", "A network-signed replay publication whose prior state is other content is contradictory."),
+        *(
+            vector(f"aws-evidence-address-{label}", ["AWS-23"], "settlement", address_variant(address), "error", "A syntactically malformed Atomic evidence address is malformed input, not a mismatch.")
+            for label, address in malformed_addresses.items()
+        ),
+        vector("aws-slot-claim-generation-advanced", ["AWS-4"], "slot", slot_claim_advanced, "fail", "A claim CAS keeps the expected generation; an advanced generation is an invalid transition."),
+        vector("aws-slot-inflight-replay-other-work", ["AWS-9"], "slot", inflight_other, "fail", "A network-signed in-flight slot for another Work is not an exact replay."),
+        vector("aws-slot-settled-replay-other-receipt", ["AWS-10"], "slot", settled_other, "fail", "A settled replay returns the authoritative receipt commitment and no other."),
+        vector("aws-slot-replay-executes-transfer", ["AWS-9"], "slot", replay_transfer, "fail", "An exact replay executes no further transfer."),
+        vector("aws-slot-job-id-first-character-8", ["AWS-1"], "slot", job_id_8_slot, "fail", "A slot key jobId starting with 8 is not a canonical JID-1 session."),
+        vector("aws-settlement-receipt-ref-version-unsupported", ["AWS-19"], "settlement", resettled(final_bound, lambda e: e["workReceiptRef"].update(refVersion="2")), "fail", "A re-signed workReceiptRef with refVersion 2 is not the AtomicWorkReceiptRefV1 the verifier resolves."),
+        vector("aws-atomic-publication-anchor-version-unsupported", ["AWS-28"], "settlement", publication_version_two, "fail", "A publication AnchorReceipt with receiptVersion 2 is not the CORE §5.1 finalized AnchorReceipt AWS-28 requires."),
+        vector("aws-settlement-capability-other-network", ["AWS-19"], "settlement", settlement_network, "fail", "Settlement evidence is verified only under a capability for its own networkId."),
+    ]
+
+    audit_wrong_hash = base("awb-idempotent-nonpaying-audit-tail")
+    audit_wrong_hash["dependencyProofs"][0]["receiptContentHash"] = "00" * 32
+    audit = [
+        vector("awb-audit-dependency-proof-wrong-receipt-hash", ["AWB-2"], "audit", audit_wrong_hash, "fail", "A dependency proof naming other receipt bytes does not bind a finalized Work operation."),
+    ]
+    return {
+        "atomic-work-identity-v0.1": identity,
+        "atomic-work-authorization-v0.1": authorization,
+        "atomic-work-execution-recovery-v0.1": execution,
+        "atomic-work-purchase-completion-v0.1": purchase_completion,
+        "atomic-work-settlement-slot-v0.1": settlement,
+        "atomic-work-audit-role-v0.1": audit,
+    }
+
+
 BUILDERS = {
     "atomic-work-identity-v0.1": identity_vectors,
     "atomic-work-authorization-v0.1": authorization_vectors,
@@ -4010,6 +4839,8 @@ def build_sets() -> dict[str, dict[str, Any]]:
         name: builder()
         for name, builder in BUILDERS.items()
     }
+    for name, vectors in predicate_pin_vectors(built_vectors).items():
+        built_vectors[name].extend(vectors)
     observed = {"P": set(), "N": set(), "B": set()}
     for vectors in built_vectors.values():
         for item in vectors:

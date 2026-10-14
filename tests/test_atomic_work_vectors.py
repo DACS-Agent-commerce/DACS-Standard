@@ -12,6 +12,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 import unittest
 from pathlib import Path
@@ -121,7 +122,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 355)
+        self.assertEqual(vector_count, 502)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -421,16 +422,17 @@ class AtomicWorkVectorTests(unittest.TestCase):
             bullet,
         )
         self.assertIn("`AtomicWorkCapabilityV1` stays closed.", bullet)
-        # The three DACS-4 rules that bind every profile are recorded as
-        # general normative changes, not as Atomic-only rules.
+        # The DACS-4 rules that bind every profile are recorded as general
+        # normative changes, not as Atomic-only rules.
         heading = "### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)"
         self.assertIn(heading, changelog)
         changed = joined(changelog.split(heading, 1)[1].split("\n### ", 1)[0])
         self.assertIn("These are general normative changes, not Atomic-only rules", changed)
         for rule in (
-            "**Rail resolution** (DACS-4 §9.4.3)",
+            "**Rail resolution** (DACS-4 §9.4.3 RTB-1)",
             "**Payment input arm** (DACS-4 §9.5.1 PC-1)",
             "**Amendment target** (DACS-4 §9.7.1 AMEND-1)",
+            "**Evidence selectors** (DACS-4 §9.7)",
         ):
             with self.subTest(rule=rule):
                 self.assertIn(rule, changed)
@@ -519,6 +521,13 @@ class AtomicWorkVectorTests(unittest.TestCase):
                     self.assertNotIn("boundaryRuleRefs", vector)
 
     def test_job_ids_and_signers_use_normative_wire_shapes(self):
+        # These negatives carry a malformed jobId or ClaimReference signer on
+        # purpose; each must be refused, and every other vector uses the JID-1
+        # and CF-2 wire shapes.
+        malformed_job_id = re.compile(
+            r"job-id-(first-character-[89]|not-ulid)$|^aw-claim-parameter-"
+        )
+
         def walk(value):
             if isinstance(value, dict):
                 for key, child in value.items():
@@ -534,7 +543,11 @@ class AtomicWorkVectorTests(unittest.TestCase):
                     walk(child)
 
         for data in self.sets:
-            walk(data["vectors"])
+            for vector in data["vectors"]:
+                if malformed_job_id.search(vector["name"]):
+                    self.assertIn(vector["expected"], {"fail", "error"}, vector["name"])
+                    continue
+                walk(vector)
 
         malformed = generator.purchase_intent()
         malformed["roleRoster"][0]["signer"] = {
@@ -1564,11 +1577,17 @@ class AtomicPresenterWiringWitnessTests(unittest.TestCase):
 def _without_guard(function, reason: str, operand: int | None = None):
     """Recompile ``function`` without the ``if`` guard that raises ``reason``.
 
-    With ``operand``, only that operand of the guard's boolean condition is
-    removed; otherwise the whole guard is.
+    ``reason`` is the raised string constant, or the source text of a raised
+    f-string such as ``f'... {field}'``.  With ``operand``, only that operand
+    of the guard's boolean condition is removed; otherwise the whole guard is.
     """
     tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
     removed = []
+
+    def raised_text(argument):
+        if isinstance(argument, ast.Constant):
+            return argument.value
+        return ast.unparse(argument) if isinstance(argument, ast.JoinedStr) else None
 
     class StripGuard(ast.NodeTransformer):
         def visit_If(self, node):
@@ -1578,8 +1597,7 @@ def _without_guard(function, reason: str, operand: int | None = None):
                 isinstance(raised, ast.Raise)
                 and isinstance(raised.exc, ast.Call)
                 and len(raised.exc.args) == 1
-                and isinstance(raised.exc.args[0], ast.Constant)
-                and raised.exc.args[0].value == reason
+                and raised_text(raised.exc.args[0]) == reason
             ):
                 return node
             removed.append(node)
@@ -1754,6 +1772,687 @@ class AtomicEffectInventoryGuardWitnessTests(unittest.TestCase):
                         mock.patch.dict(ref.EVALUATORS, dispatch):
                     for name, moved in caught_by:
                         self.assertEqual(ref.evaluate_vector(by_name[name]), moved, name)
+
+
+class AtomicPredicatePinWitnessTests(unittest.TestCase):
+    """Each re-signed predicate-pinning vector is caught by its own guard.
+
+    The ``predicate_pin_vectors`` cases re-derive every signature, hash,
+    root, commitment, address and publication, so removing the one guard
+    each targets moves its verdict: to ``pass``, or, where a second guard
+    also enforces the rule, to that guard's exact result.  Rejections that
+    the JSON Schema decides first are pinned by the layered tests below and
+    by scripts/validate_atomic_work_schemas.py.
+    """
+
+    PASS = ("pass", "predicate accepted")
+    # (function, raised reason, ((vector, exact result without the guard), ...))
+    GUARDS = (
+        ("validate_intent", "duplicate operationId", (
+            ("aw-operation-id-duplicate", PASS),
+        )),
+        ("evaluate_expiry", "Work expired before its first operation", (
+            ("aw-expiry-equality-after-first-operation", PASS),
+        )),
+        ("_verify_rail_registry_resolution", "rail definition was not accepted and pinned by session start", (
+            ("aw-auth-rail-registry-index-receipt-after-session", PASS),
+            ("aw-auth-rail-rail-definition-receipt-after-session", PASS),
+        )),
+        ("_verified_authority_context", "payer roster account is not bundle-derived", (
+            ("aw-auth-roster-payer-account-not-bundle-derived", PASS),
+        )),
+        ("_verified_authority_context", "seller roster account is not bundle-derived", (
+            ("aw-auth-roster-seller-account-not-bundle-derived", PASS),
+        )),
+        ("verify_receipt", "receipt workId mismatch", (
+            ("aw-receipt-of-another-work", PASS),
+        )),
+        ("verify_receipt", "receipt operation count mismatch", (
+            ("aw-receipt-results-count-short", PASS),
+        )),
+        ("verify_receipt", "receipt operation order or identity mismatch", (
+            ("aw-receipt-operation-identity-swapped", PASS),
+        )),
+        ("verify_receipt", "operation receipt inputHash mismatch", (
+            ("aw-receipt-input-hash-consistent-mismatch", PASS),
+        )),
+        ("verify_receipt", "synthetic proof profile outputHash mismatch", (
+            ("aw-receipt-output-hash-consistent-mismatch", PASS),
+        )),
+        ("verify_receipt", "operationReceiptRoot mismatch", (
+            ("aw-receipt-root-claim-consistent-mismatch", PASS),
+        )),
+        ("verify_receipt", "business-state root mismatch", (
+            ("aw-receipt-pre-root-consistent-mismatch", PASS),
+        )),
+        ("verify_receipt", "synthetic proof profile effectsRoot mismatch", (
+            ("aw-receipt-effects-root-consistent-mismatch", PASS),
+        )),
+        ("verify_receipt", "receipt paymentSlot key does not match Work intent", (
+            ("aw-receipt-slot-key-other-phase", PASS),
+        )),
+        ("verify_receipt", "receiptCommitment does not match canonical receipt core", (
+            ("aw-receipt-field-changed-after-commitment", PASS),
+        )),
+        ("_validated_storage_output", "storageOutput contradicts the signed storage payload", (
+            ("aw-receipt-storage-output-address-differs", PASS),
+        )),
+        ("consume_capability_for_intent", "capability networkId does not admit the Work intent", (
+            ("aw-receipt-capability-other-network", PASS),
+            ("aws-settlement-capability-other-network", ("fail", "authenticated capability/Listing/agreement/rail/phase namespace mismatch")),
+        )),
+        ("_verified_authority_context", "AtomicPaymentPhaseInputV1 is not the closed v1 shape", (
+            ("aw-auth-pc1-ordinary-arm-not-coerced", ("fail", "authenticated capability/Listing/agreement/rail/phase namespace mismatch")),
+            ("aw-auth-pc1-both-arm-members", PASS),
+            ("awp-composed-pc1-ordinary-arm-not-coerced", ("fail", "authenticated capability/Listing/agreement/rail/phase namespace mismatch")),
+        )),
+        ("_verify_identity_bundle", "pinned payer IdentityBundle malformed", (
+            ("awp-composed-payer-bundle-version-2", PASS),
+        )),
+        ("verify_receipt", "rolled-back receipt changed business state", (
+            ("aw-rolled-back-receipt-changes-business-state", ("fail", "rollback output changed or non-membership contradicted")),
+        )),
+        ("verify_receipt", "rollback leaf status mismatch", (
+            ("aw-rolled-back-later-operation-marked-rolled-back", PASS),
+        )),
+        ("verify_receipt", "rolled-back Purchase slot transition contradicts signed CAS payload", (
+            ("aw-rolled-back-slot-generation-advanced", PASS),
+        )),
+        ("verify_receipt", "Completion Work unexpectedly changed payment slot", (
+            ("aw-completion-receipt-slot-after-changed", PASS),
+        )),
+        ("verify_receipt", "Completion slot state is not the verified Purchase terminal state", (
+            ("aw-completion-slot-not-copied-from-purchase", PASS),
+            ("awp-completion-composed-slot-not-copied-from-purchase", PASS),
+        )),
+        ("verify_receipt", "Completion embedded receipt differs from verified Purchase receipt", (
+            ("aw-completion-embeds-other-purchase-receipt", ("fail", "Completion slot state is not the verified Purchase terminal state")),
+        )),
+        ("verify_receipt", "Completion/Purchase tuple mismatch", (
+            ("aw-completion-receipt-for-other-job", PASS),
+        )),
+        ("verify_receipt", "Completion prior Purchase lacks committed native transfer", (
+            ("aw-completion-after-rolled-back-purchase", ("fail", "Completion slot state is not the verified Purchase terminal state")),
+        )),
+        ("verify_receipt", "rolled-back Completion changed Purchase slot metadata", (
+            ("aw-completion-rolled-back-slot-changed", PASS),
+        )),
+        ("evaluate_attempts", "attempt changes canonical Work bytes or workId", (
+            ("aw-attempt-changed-bytes-inventory-consistent", PASS),
+        )),
+        ("evaluate_attempts", "ledger selected more than one included attempt", (
+            ("aw-two-included-attempts-inventory-names-one", PASS),
+        )),
+        ("evaluate_attempts", "included or unresolved attempt cannot be replaced", (
+            ("aw-replacement-for-included-attempt", PASS),
+        )),
+        ("evaluate_attempts", "attempt evidence tuple mismatch", (
+            ("aw-lifecycle-evidence-names-other-attempt", PASS),
+        )),
+        ("evaluate_attempts", "exact replay did not return selected winner", (
+            ("aw-replay-returns-other-winner", PASS),
+        )),
+        ("evaluate_attempts", "invalid or duplicate attemptId", (
+            ("aw-attempts-duplicate-attempt-id", PASS),
+        )),
+        ("evaluate_limits", "canonical Work exceeds node byte limit", (
+            ("aw-canonical-byte-limit-one-over", PASS),
+        )),
+        ("evaluate_limits", "Work exceeds node operation limit", (
+            ("aw-operation-count-limit-one-over", PASS),
+        )),
+        ("evaluate_limits", "Work exceeds node execution-time limit", (
+            ("aw-execution-time-limit-one-over", PASS),
+        )),
+        ("evaluate_projection", "operation leaf inclusion proof invalid", (
+            ("aw-anchor-inclusion-path-consistent-invalid", PASS),
+        )),
+        ("evaluate_projection", "projected receipt evidence does not resolve verified Work proof", (
+            ("aw-anchor-resolved-receipt-hash-differs", PASS),
+        )),
+        ("_profile_shape", "profile operation order/dependencies/roles mismatch", (
+            ("awp-composed-payment-required-roles-empty", PASS),
+            ("awp-composed-operation-kind-differs", PASS),
+            ("awp-composed-dependencies-differ", PASS),
+            ("awp-completion-delivery-required-roles-empty", PASS),
+        )),
+        ("_verify_agreement_listing", "Agreement fixed price differs from Listing", (
+            ("awp-composed-agreement-price-differs-from-listing", PASS),
+        )),
+        ("_verify_agreement_listing", "Agreement deliverable differs from Listing DeliverableSpec", (
+            ("awp-composed-agreement-deliverable-hash-differs", PASS),
+        )),
+        ("_verify_agreement_listing", "Agreement deadline exceeds Listing commitment-relative bound", (
+            ("awp-composed-deadline-exceeds-listing-bound", PASS),
+        )),
+        ("_verify_agreement_listing", "Listing expired before commitment", (
+            ("awp-composed-listing-expired-before-commit", PASS),
+        )),
+        ("_verify_agreement_listing", "Agreement pattern differs from Listing pipeline", (
+            ("awp-composed-listing-negotiation-pattern-differs", PASS),
+        )),
+        ("_verify_agreement_listing", "Agreement artifact discriminator mismatches commitment phase", (
+            ("awp-composed-listing-commit-phase-differs", PASS),
+        )),
+        ("_verify_agreement_listing", "Agreement rail does not match pinned Listing pipeline", (
+            ("awp-composed-agreement-rail-not-accepted", PASS),
+            ("awp-composed-two-pay-dem-phases", ("fail", "pinned Listing does not define exactly one pay-dem phase")),
+        )),
+        ("_verify_agreement_listing", "Agreement does not pin exact Listing", (
+            ("awp-composed-agreement-pins-other-listing-version", PASS),
+        )),
+        ("_verify_listing", "Listing signer does not match seller IdentityBundle", (
+            ("awp-composed-listing-signed-by-orchestrator", PASS),
+        )),
+        ("_verify_listing", "pinned Listing malformed", (
+            ("awp-composed-listing-dacs-version-2", PASS),
+        )),
+        ("_verify_rail_definition", "native-DEM RailDefinition violates RD-3/RD-5/RD-6/RAV-1", (
+            ("awp-composed-rail-phase-handler-not-pay-dem", PASS),
+        )),
+        ("_verify_rail_registry_resolution", "rail-registry index snapshot is malformed or unpinned", (
+            ("awp-composed-registry-index-version-differs", PASS),
+        )),
+        ("_verify_rail_registry_resolution", "pinned registry rail content hash mismatch", (
+            ("awp-composed-registry-index-content-hash-differs", PASS),
+        )),
+        ("_verify_identity_bundle", "payer IdentityBundle presentation signature invalid", (
+            ("awp-composed-payer-bundle-presentation-invalid", PASS),
+        )),
+        ("_agreement_artifact_kind", "agreement artifact discriminator version unsupported", (
+            ("awp-composed-agreement-discriminator-version-2", PASS),
+        )),
+        ("_verify_current_profile_admission", "current Atomic payment requires IdentityBoundPayeeAgreementDocument", (
+            ("awp-composed-payee-bound-agreement-with-current-admission", PASS),
+        )),
+        ("evaluate_profile", "commitment artifact discriminator mismatch", (
+            ("awp-composed-commitment-version-2", PASS),
+        )),
+        ("_verify_commitment_subject", "finality commitment does not bind exact job/agreement/listing tuple", (
+            ("awp-composed-commitment-subject-other-job", PASS),
+        )),
+        ("_verify_composite_record", "Vet artifact is not a CompositeVerificationRecord v1", (
+            ("awp-composed-vet-record-version-2", PASS),
+        )),
+        ("_verify_composite_record", "CompositeVerificationRecord subject/bundle binding mismatch", (
+            ("awp-composed-vet-record-bundle-hash-differs", PASS),
+        )),
+        ("_verify_composite_record", "CompositeVerificationRecord does not establish a pass decision", (
+            ("awp-composed-vet-record-decision-fail", PASS),
+        )),
+        ("_verify_anchor_receipt", "AnchorReceipt does not establish finalized artifact binding", (
+            ("awp-sequential-commitment-receipt-other-content", ("fail", "AnchorReceipt finality proof subject mismatch")),
+        )),
+        ("_verify_atomic_payment_session_context", "AtomicPaymentSessionContextV1 is not the closed v1 shape", (
+            ("awp-composed-session-context-version-2", ("fail", "Atomic payment session is not the authenticated source projection")),
+        )),
+        ("_verify_atomic_payment_session_context", "authenticated SessionContext source contradicts DACS authority", (
+            ("awp-composed-session-source-prior-agreement-differs", PASS),
+        )),
+        ("_verify_atomic_payment_session_context", "Atomic payment session evidence subject mismatch", (
+            ("awp-composed-session-evidence-for-other-context", PASS),
+        )),
+        ("_verified_authority_context", "AtomicPaymentPhaseInputV1 is not bound to authenticated parties/agreement", (
+            ("awp-composed-payment-input-amount-differs", ("fail", "AtomicPaymentPhaseInputV1 is not bound to verified bundles, rail, and agreement")),
+        )),
+        ("_verify_composed_static_limits", "composed Work exceeds authenticated canonical-byte limit", (
+            ("awp-composed-canonical-bytes-over", PASS),
+        )),
+        ("_verify_composed_static_limits", "composed Work exceeds authenticated operation limit", (
+            ("awp-composed-operation-count-over", PASS),
+        )),
+        ("_verify_composed_result_limits", "authenticated composed-limit metrics are malformed or mismatched", (
+            ("awp-composed-limit-metrics-for-other-work", PASS),
+        )),
+        ("_verify_proof_reservation", "authenticated proof-byte reservation is mismatched", (
+            ("awp-composed-reservation-for-other-work", PASS),
+        )),
+        ("evaluate_profile", "Vet storage operation address/write condition mismatch", (
+            ("awp-profile-vet-address-consistent-receipt", PASS),
+        )),
+        ("evaluate_profile", "signed commitment address/write condition mismatch", (
+            ("awp-profile-commitment-address-consistent-receipt", PASS),
+            ("awp-profile-commitment-cas-consistent-receipt", PASS),
+        )),
+        ("evaluate_profile", "Purchase commitment projection selects the wrong operation", (
+            ("awp-completion-commitment-projection-selects-buyer-vet", PASS),
+        )),
+        ("verify_settlement", "paymentAmount does not match payment operation", (
+            ("aws-settlement-payment-amount-differs", PASS),
+        )),
+        ("verify_settlement", "evidence signer is not authenticated phase orchestrator", (
+            ("aws-settlement-signed-by-buyer-not-orchestrator", PASS),
+        )),
+        ("verify_settlement", "Atomic Work receipt reference mismatch", (
+            ("aws-settlement-receipt-ref-content-hash-differs", PASS),
+        )),
+        ("verify_settlement", "settlement operation reference mismatch", (
+            ("aws-settlement-operation-ref-differs-from-subject", PASS),
+        )),
+        ("verify_settlement", "operation proof subject required member mismatch", (
+            ("aws-settlement-subject-winner-differs", PASS),
+        )),
+        ("verify_settlement", "operation receipt inclusion path invalid", (
+            ("aws-settlement-inclusion-path-for-other-leaf", PASS),
+        )),
+        ("verify_settlement", "success evidence does not select a committed operation", (
+            ("aws-settlement-success-on-rolled-back-receipt", PASS),
+        )),
+        ("verify_settlement", "failure evidence does not select a rollback operation", (
+            ("aws-settlement-failure-on-committed-receipt", PASS),
+        )),
+        ("verify_settlement", "deliverable content hash mismatch", (
+            ("aws-settlement-delivery-content-hash-differs", PASS),
+        )),
+        ("verify_settlement", "deliverable anchor mismatch", (
+            ("aws-settlement-delivery-anchor-differs", PASS),
+        )),
+        ("verify_embedded", "unsupported signature algorithm", (
+            ("aws-settlement-signature-algorithm-label", PASS),
+        )),
+        ("verify_atomic_evidence_address", "Atomic payment address generation mismatch", (
+            ("aws-settlement-address-other-generation", ("fail", "Atomic evidence address mismatch")),
+        )),
+        ("verify_atomic_evidence_address", "Atomic payment jobId is not a ULID", (
+            ("aws-evidence-address-job-id-not-ulid", ("fail", "Atomic evidence address mismatch")),
+            ("aws-evidence-address-job-id-first-character-8", ("fail", "Atomic evidence address mismatch")),
+        )),
+        ("cf4_decode", "non-canonical CF-4 escape", (
+            ("aws-evidence-address-rail-cf4-lowercase-escape", ("error", "non-canonical CF-4 segment")),
+        )),
+        ("verify_atomic_evidence_address", "invalid Atomic payment address shape", (
+            ("aws-evidence-address-atomic-label-missing", ("fail", "Atomic evidence address mismatch")),
+            ("aws-evidence-address-segment-count", ("error", "IndexError: list index out of range")),
+        )),
+        ("verify_atomic_evidence_address", "Atomic payment settlement ID is not lowercase hex", (
+            ("aws-evidence-address-settlement-id-uppercase", ("fail", "Atomic evidence address mismatch")),
+        )),
+        ("evaluate_slot", "invalid claim CAS transition", (
+            ("aws-slot-claim-generation-advanced", PASS),
+        )),
+        ("evaluate_slot", "replay is not exact", (
+            ("aws-slot-inflight-replay-other-work", PASS),
+        )),
+        ("evaluate_slot", "settled replay did not return receipt", (
+            ("aws-slot-settled-replay-other-receipt", PASS),
+        )),
+        ("evaluate_slot", "replay executes another transfer", (
+            ("aws-slot-replay-executes-transfer", PASS),
+        )),
+        ("evaluate_slot", "slot jobId is not a canonical uppercase ULID", (
+            ("aws-slot-job-id-first-character-8", ("fail", "slot key differs component-wise or by type")),
+        )),
+        ("evaluate_audit", "audit dependency proof does not bind a finalized Work operation", (
+            ("awb-audit-dependency-proof-wrong-receipt-hash", PASS),
+        )),
+        ("verify_capability", "capability network authority differs from trusted registry", (
+            ("aw-capability-self-declared-authority", PASS),
+        )),
+        ("verify_capability", "capability attestation hash mismatch", (
+            ("aw-capability-attestation-for-other-capability", PASS),
+        )),
+    )
+    ENVELOPE = "f'authorization envelope mismatch: {field}'"
+    RAIL_TIME = "rail definition was not accepted and pinned by session start"
+    INTENT_SCHEMA = "atomic-dacs-work-intent-v1.schema.json"
+    EVIDENCE_SCHEMA = "atomic-settlement-evidence-v1.schema.json"
+    JOB_ID_SCHEMAS = {
+        "atomic-dacs-work-intent-v1.schema.json": ("properties", "jobId"),
+        "atomic-work-authorization-v1.schema.json": ("properties", "jobId"),
+        "atomic-payment-slot-cas-payload-v1.schema.json": ("properties", "slotKey", "properties", "jobId"),
+        "atomic-work-receipt-v1.schema.json": ("$defs", "paymentSlotKey", "properties", "jobId"),
+        "atomic-settlement-evidence-v1.schema.json": ("properties", "jobId"),
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.by_name = {}
+        for name in generator.SET_SPECS:
+            data = json.loads(
+                (ROOT / "conformance" / "vectors" / "security" / f"{name}.json")
+                .read_text(encoding="utf-8")
+            )
+            cls.by_name.update((vector["name"], vector) for vector in data["vectors"])
+
+    def _evaluate(self, name):
+        return ref.evaluate_vector(self.by_name[name])
+
+    @contextlib.contextmanager
+    def _without(self, function_name, reason, operand=None, removed=1):
+        function = getattr(ref, function_name)
+        wrong, count = _without_guard(function, reason, operand)
+        self.assertEqual(count, removed, (function_name, reason))
+        dispatch = {
+            surface: wrong for surface, evaluator in ref.EVALUATORS.items()
+            if evaluator is function
+        }
+        with mock.patch.object(ref, function_name, wrong), \
+                mock.patch.dict(ref.EVALUATORS, dispatch):
+            yield
+
+    @contextlib.contextmanager
+    def _schema_bypassed(self, schema_name):
+        real = ref.validate_schema
+
+        def validate(value, name):
+            if name != schema_name:
+                real(value, name)
+        with mock.patch.object(ref, "validate_schema", validate):
+            yield
+
+    def _assert_moves(self, caught_by, *without, **options):
+        for name, moved in caught_by:
+            control = self._evaluate(name)
+            self.assertEqual(control[0], self.by_name[name]["expected"], name)
+            self.assertNotEqual(moved, control, name)
+        with self._without(*without, **options):
+            for name, moved in caught_by:
+                self.assertEqual(self._evaluate(name), moved, name)
+
+    def test_each_pinning_vector_is_caught_by_its_own_guard(self):
+        for function_name, reason, caught_by in self.GUARDS:
+            with self.subTest(function=function_name, reason=reason):
+                self._assert_moves(caught_by, function_name, reason)
+
+    def test_validly_signed_authorization_envelope_binds_every_member(self):
+        # AW-31/AW-33/AW-36/AW-38: the payer's own valid signature over another
+        # Work or context, or another signer's, is not this authorization.
+        unexpected = ("fail", "unexpected or duplicate operation authorization")
+        self._assert_moves((
+            ("aw-auth-validly-signed-for-another-work", self.PASS),
+            ("aw-auth-orchestrator-signs-as-payer", self.PASS),
+            ("aw-auth-validly-signed-other-network", self.PASS),
+            ("aw-auth-validly-signed-other-session", self.PASS),
+            ("aw-auth-validly-signed-other-phase", self.PASS),
+            ("aw-auth-validly-signed-other-rail", self.PASS),
+            ("aw-auth-validly-signed-other-operation-index", unexpected),
+            ("aw-auth-validly-signed-other-role", unexpected),
+        ), "verify_authorizations", self.ENVELOPE, removed=2)
+
+    def test_each_rail_receipt_time_bound_is_its_own_clause(self):
+        # DACS-4 RTB-1: removing only the two receipt-time comparisons keeps
+        # the acceptedAt bound, so its vector still fails for that reason.
+        accepted_after = self._evaluate("aw-auth-rail-accepted-after-session")
+        self.assertEqual(accepted_after, ("fail", self.RAIL_TIME))
+        self._assert_moves((
+            ("aw-auth-rail-registry-index-receipt-after-session", self.PASS),
+            ("aw-auth-rail-rail-definition-receipt-after-session", self.PASS),
+        ), "_verify_rail_registry_resolution", self.RAIL_TIME, operand=3)
+        with self._without("_verify_rail_registry_resolution", self.RAIL_TIME, operand=3):
+            self.assertEqual(
+                self._evaluate("aw-auth-rail-accepted-after-session"), accepted_after
+            )
+
+    def test_v1_four_role_roster_is_enforced_by_schema_and_reference(self):
+        # AW-10: with the intent schema bypassed the reference still rejects
+        # each short roster; without both layers each one is accepted.
+        names = (
+            "aw-v1-purchase-roster-missing-buyer",
+            "aw-v1-purchase-roster-two-roles",
+            "aw-v1-completion-roster-missing-payer",
+        )
+        reason = "v1 roleRoster does not carry all four roles"
+        for name in names:
+            self.assertEqual(self._evaluate(name)[0], "fail", name)
+            self.assertIn("roleRoster", self._evaluate(name)[1], name)
+        with self._schema_bypassed(self.INTENT_SCHEMA):
+            for name in names:
+                self.assertEqual(self._evaluate(name), ("fail", reason), name)
+            with self._without("validate_intent", reason):
+                for name in names:
+                    self.assertEqual(self._evaluate(name), self.PASS, name)
+
+    def test_unsupported_atomic_evidence_version_is_rejected_without_the_schema(self):
+        # AWS-17: the explicit version comparison stays load-bearing if schema
+        # validation is bypassed or widened.
+        name = "aws-atomic-evidence-version-unsupported"
+        reason = "legacy transaction reference is not Atomic settlement evidence"
+        self.assertIn("atomicEvidenceVersion", self._evaluate(name)[1])
+        with self._schema_bypassed(self.EVIDENCE_SCHEMA):
+            self.assertEqual(self._evaluate(name), ("fail", reason))
+            with self._without("verify_settlement", reason, operand=0):
+                self.assertEqual(self._evaluate(name), self.PASS)
+
+    def test_each_unsupported_version_comparison_is_load_bearing(self):
+        # Version members compared inside a compound guard: removing only the
+        # version operand admits the vector.
+        for function_name, reason, name in (
+            ("evaluate_projection", "projection changed receipt finality/lifecycle context",
+             "aw-anchor-projection-receipt-version-unsupported"),
+            ("_verify_atomic_publication", "Atomic publication AnchorReceipt binding mismatch",
+             "aws-atomic-publication-anchor-version-unsupported"),
+        ):
+            with self.subTest(name=name):
+                self._assert_moves(((name, self.PASS),), function_name, reason, operand=0)
+        # Version members the schema decides first: the explicit comparison
+        # stays load-bearing if schema validation is bypassed or widened.
+        for schema_name, function_name, reason, name in (
+            ("atomic-work-receipt-v1.schema.json", "verify_receipt",
+             "unsupported receipt version", "aw-receipt-version-unsupported"),
+            ("atomic-settlement-evidence-v1.schema.json", "verify_settlement",
+             "Atomic Work receipt reference mismatch",
+             "aws-settlement-receipt-ref-version-unsupported"),
+        ):
+            with self.subTest(name=name):
+                self.assertIn(schema_name, self._evaluate(name)[1])
+                with self._schema_bypassed(schema_name):
+                    self.assertEqual(self._evaluate(name), ("fail", reason))
+                    with self._without(function_name, reason):
+                        self.assertEqual(self._evaluate(name), self.PASS)
+
+    def test_job_id_grammar_comes_from_the_normative_fixture(self):
+        # JID-1, taken from the job-id grammar fixture rather than ref.JOB_ID.
+        fixture = json.loads(
+            (ROOT / "conformance" / "vectors" / "security" / "job-id-grammar-v0.1.json")
+            .read_text(encoding="utf-8")
+        )
+        grammar = fixture["grammar"]
+        self.assertEqual(ref.JOB_ID.pattern, grammar)
+        for schema_name, path in self.JOB_ID_SCHEMAS.items():
+            node = json.loads(
+                (ROOT / "spec" / "schemas" / schema_name).read_text(encoding="utf-8")
+            )
+            for part in path:
+                node = node[part]
+            self.assertEqual(node.get("pattern"), grammar, schema_name)
+        normative = re.compile(grammar)
+        accepted = [
+            vector["jobId"] for vector in fixture["vectors"]
+            if vector["operation"] == "validate" and vector["expected"] == "pass"
+        ]
+        self.assertIn("7ZZZZZZZZZZZZZZZZZZZZZZZZZ", accepted)
+        rejected = [
+            "8" + "0" * 25, "9" + "0" * 25, "01arz3ndektsv4rrffq69g5fav",
+            "01ARZ3NDEKTSV4RRFFQ69G5FAU", "01ARZ3NDEKTSV4RRFFQ69G5FAI",
+            "01ARZ3NDEKTSV4RRFFQ69G5FA", "01ARZ3NDEKTSV4RRFFQ69G5FAVV",
+        ]
+        for value in accepted:
+            self.assertTrue(normative.fullmatch(value) and ref.JOB_ID.fullmatch(value), value)
+        for value in rejected:
+            self.assertIsNone(normative.fullmatch(value), value)
+            self.assertIsNone(ref.JOB_ID.fullmatch(value), value)
+        for first in ("8", "9"):
+            self.assertEqual(self._evaluate(f"aw-job-id-first-character-{first}")[0], "fail")
+        self.assertEqual(self._evaluate("aw-job-id-largest-128-bit"), self.PASS)
+
+
+class AtomicGateNegativePathTests(unittest.TestCase):
+    """CONFORMANCE-PLAN: each CI gate fails on a tampered corpus.
+
+    Each tamper re-hashes the set, so only the targeted check can fire.
+    """
+
+    SET = "atomic-work-audit-role-v0.1"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.security = ROOT / "conformance" / "vectors" / "security"
+        cls.data = json.loads((cls.security / f"{cls.SET}.json").read_text(encoding="utf-8"))
+
+    @contextlib.contextmanager
+    def _tampered_root(self, edit, *, rehash=True):
+        data = copy.deepcopy(self.data)
+        edit(data)
+        if rehash:
+            data["hash"] = ref.vector_hash(data["vectors"])
+        with tempfile.TemporaryDirectory() as tmp:
+            security = Path(tmp) / "conformance" / "vectors" / "security"
+            security.mkdir(parents=True)
+            for name in generator.SET_SPECS:
+                if name != self.SET:
+                    (security / f"{name}.json").symlink_to(self.security / f"{name}.json")
+            (security / f"{self.SET}.json").write_text(json.dumps(data), encoding="utf-8")
+            with mock.patch.object(validator, "ROOT", Path(tmp)):
+                yield security / f"{self.SET}.json"
+
+    def _set_errors(self, edit, **options):
+        with self._tampered_root(edit, **options) as path:
+            return validator.validate_set(path)[0]
+
+    def test_validate_set_rejects_each_tampered_member(self):
+        first_pass = next(i for i, v in enumerate(self.data["vectors"]) if v["expected"] == "pass")
+        boundary = next(i for i, v in enumerate(self.data["vectors"]) if v.get("boundary"))
+
+        def flip_verdict(data):
+            data["vectors"][first_pass].update(expected="fail", caseClass="rejection")
+
+        cases = (
+            ("expected fail, evaluator returned pass", flip_verdict, True),
+            ("duplicate name", lambda d: d["vectors"][1].update(name=d["vectors"][0]["name"]), True),
+            ("does not match verdict class", lambda d: d["vectors"][0].update(caseClass="malformed"), True),
+            ("boundary requires non-empty boundaryRuleRefs", lambda d: d["vectors"][boundary].pop("boundaryRuleRefs"), True),
+            ("out-of-range ruleRef", lambda d: d["vectors"][0].update(ruleRefs=["AW-999"]), True),
+            ("count", lambda d: d.update(count=d["count"] + 1), True),
+            ("rejectionRuleCount does not match", lambda d: d["coverage"].update(rejectionRuleCount=d["coverage"]["rejectionRuleCount"] + 1), True),
+            ("!= JCS SHA-256", lambda d: d["vectors"][0].update(reason="edited after hashing"), False),
+        )
+        self.assertEqual(self._set_errors(lambda d: None), [])
+        for message, edit, rehash in cases:
+            with self.subTest(message=message):
+                errors = self._set_errors(edit, rehash=rehash)
+                self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_validate_all_fails_on_an_uncovered_applicable_cell(self):
+        # AWB-8 has rejection vectors only in this set; dropping them leaves an
+        # applicable N cell uncovered, and the gate must fail on it.
+        def drop_awb8_rejections(data):
+            data["vectors"] = [
+                v for v in data["vectors"]
+                if not (v["caseClass"] == "rejection" and "AWB-8" in v["ruleRefs"])
+            ]
+
+        with self._tampered_root(drop_awb8_rejections), \
+                mock.patch.object(validator, "validate_set", lambda path: ([], set(validator.EXPECTED_RULES), 0)):
+            errors, _, _ = validator.validate_all()
+        self.assertIn("applicable N polarity coverage missing: AWB-8", errors)
+
+    def test_validator_clis_report_success(self):
+        # Dropping a __main__ guard makes a CI step exit 0 without validating,
+        # so each step must also print its success line.
+        for script, line in (
+            ("validate_atomic_work_vectors.py", "Atomic Work vectors OK (6 sets, "),
+            ("validate_atomic_work_schemas.py", "Atomic Work schemas OK ("),
+        ):
+            with self.subTest(script=script):
+                run = subprocess.run(
+                    [sys.executable, str(ROOT / "scripts" / script)],
+                    cwd=ROOT, capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertIn(line, run.stdout)
+
+
+class AtomicMissingInputTests(unittest.TestCase):
+    """AW-60, AWS-23, AWB-7: absent authority or evidence is indeterminate.
+
+    Each passing vector loses one authority or evidence member; the result is
+    ``indeterminate``, never a crash (``error``) or a rejection (``fail``).
+    """
+
+    MISSING = {
+        "aw-auth-complete-envelope": (
+            "authority", "capability", "expectedNetworkAuthority",
+            "expectedProofProfile", "expectedRailRegistryAuthority",
+        ),
+        "aw-attempt-byte-identity": (
+            "authority", "capability", "expectedNetworkAuthority",
+            "expectedProofProfile", "expectedRailRegistryAuthority",
+            "ledgerInventory",
+        ),
+        "aw-receipt-complete-and-final": (
+            "capability", "expectedNetworkAuthority", "expectedProofProfile",
+        ),
+        "aw-anchor-projection": (
+            "capability", "expectedNetworkAuthority", "expectedProofProfile",
+            "operationEvidence",
+        ),
+        "awp-purchase-composed-admission": (
+            "attempts", "authority", "capability", "expectedNetworkAuthority",
+            "expectedProofProfile", "expectedRailRegistryAuthority",
+            "ledgerInventory", "limitEvidence", "proofReservationBytes",
+            "proofReservationEvidence", "receipt", "settlement", "slotAdmission",
+        ),
+        "awp-completion-payee-presenter-identical-duplicate": (
+            "attempts", "authority", "capability", "expectedNetworkAuthority",
+            "expectedProofProfile", "expectedRailRegistryAuthority",
+            "ledgerInventory", "limitEvidence", "proofReservationBytes",
+            "proofReservationEvidence", "purchaseCommitmentProjection",
+            "purchaseIntent", "purchaseReceipt", "receipt", "settlement",
+        ),
+        "awp-purchase-exact-profile": (
+            "atomicReceipt", "capability", "expectedNetworkAuthority",
+            "expectedProofProfile", "listing",
+        ),
+        "aws-distinct-atomic-evidence": (
+            "auditPublication", "authenticatedContext", "authority",
+            "capability", "evidence", "expectedNetworkAuthority",
+            "expectedProofProfile", "expectedRailRegistryAuthority", "intent",
+            "receipt",
+        ),
+        "aws-structured-network-slot-cas": (
+            "capability", "expectedNetworkAuthority", "expectedProofProfile",
+            "expectedRailRegistryAuthority", "ledgerProof", "slotAuthority",
+        ),
+        "awb-idempotent-nonpaying-audit-tail": (
+            "capability", "completionIntent", "completionReceipt",
+            "dependencyProofs", "expectedNetworkAuthority",
+            "expectedProofProfile", "lifecycleEvidence", "nativeTransactionRef",
+            "priorAnchor", "purchaseIntent", "purchaseReceipt", "replayAnchor",
+        ),
+    }
+    # A signer key absent from the verifier's key directory is unavailable
+    # authority, not a bad signature.
+    MISSING_KEYS = {
+        "aw-auth-complete-envelope": "did:dacs:test:payer",
+        "aws-distinct-atomic-evidence": "did:dacs:test:orchestrator",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.by_name = {}
+        for name in generator.SET_SPECS:
+            data = json.loads(
+                (ROOT / "conformance" / "vectors" / "security" / f"{name}.json")
+                .read_text(encoding="utf-8")
+            )
+            cls.by_name.update((vector["name"], vector) for vector in data["vectors"])
+
+    def test_each_missing_authority_or_evidence_member_is_indeterminate(self):
+        for name, members in self.MISSING.items():
+            control = self.by_name[name]
+            self.assertEqual(control["expected"], "pass", name)
+            for member in members:
+                with self.subTest(vector=name, member=member):
+                    vector = copy.deepcopy(control)
+                    del vector["input"][member]
+                    self.assertEqual(ref.evaluate_vector(vector)[0], "indeterminate")
+
+    def test_missing_signer_key_is_indeterminate(self):
+        for name, claim in self.MISSING_KEYS.items():
+            with self.subTest(vector=name, claim=claim):
+                vector = copy.deepcopy(self.by_name[name])
+                del vector["input"]["publicKeys"][claim]
+                self.assertEqual(ref.evaluate_vector(vector)[0], "indeterminate")
 
 
 if __name__ == "__main__":

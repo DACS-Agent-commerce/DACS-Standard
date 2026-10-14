@@ -439,6 +439,13 @@ def build_vectors() -> list[dict]:
         {**legacy_unsigned, "sender": f"cci:{public_hex(OUTSIDER)}"},
         key=OUTSIDER,
     )
+    # CH-7: Alice's genuine signature labelled with another member's claim.
+    foreign_signer = copy.deepcopy(valid)
+    foreign_signer["signature"]["signer"] = BOB_REF
+    # The type requires sentAt; the signature covers the message as received.
+    missing_sent_at_unsigned = unsigned_message()
+    del missing_sent_at_unsigned["sentAt"]
+    missing_sent_at = sign_current(missing_sent_at_unsigned)
 
     legacy_doc = json.loads(LEGACY.read_text(encoding="utf-8"))
     if legacy_doc.get("hash") != LEGACY_VECTOR_HASH:
@@ -661,6 +668,10 @@ def build_vectors() -> list[dict]:
              ctx=copy.deepcopy(legacy_ctx),
              operation="legacy-import",
              note="a valid frozen-recipe signature by a well-formed historical claim outside the authenticated CH-1 member set; key bytes embedded in the claim are not authority"),
+        case("canonical-foreign-signer-sender-signature", "fail", foreign_signer,
+             note="the sender's genuine signature labelled with another member's signature.signer; signer and sender must identify the same party"),
+        case("canonical-missing-sent-at", "error", missing_sent_at,
+             note="sentAt is a required member; a signature over the message without it does not make it well formed"),
     ]
 
 

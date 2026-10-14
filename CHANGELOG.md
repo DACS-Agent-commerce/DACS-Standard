@@ -119,6 +119,11 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   signature by a well-formed historical `cci:` claim outside the
   authenticated member set. A verifier that takes the key from the claim's
   own bytes accepts it.
+- **Channel signer label and required members** (DACS-3 §8.3.3 CH-7) — adds
+  `canonical-foreign-signer-sender-signature` (`fail`: the sender's own valid
+  signature labelled with another member's `signature.signer`) and
+  `canonical-missing-sent-at` (`error`: a required member absent under a
+  valid signature).
 
 ### Changed — current-delivery admission corrective boundary
 

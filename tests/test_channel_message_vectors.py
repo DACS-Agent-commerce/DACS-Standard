@@ -1774,6 +1774,35 @@ class ChannelMessageVectorTests(unittest.TestCase):
                 "pass", self.fixture_result(vector, "legacy-import", AUTHORITY)
             )
 
+    def test_signer_label_and_required_members_are_load_bearing(self):
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        foreign = by_name["canonical-foreign-signer-sender-signature"]
+        self.assertEqual(ALICE_REF, foreign["message"]["sender"])
+        self.assertEqual(BOB_REF, foreign["message"]["signature"]["signer"])
+        self.assertEqual("fail", self.fixture_result(foreign, "current-read", AUTHORITY))
+        # The value is Alice's genuine signature: relabelling the signer as
+        # the sender, which a signer-blind reader effectively does, passes.
+        relabelled = copy.deepcopy(foreign)
+        relabelled["message"]["signature"]["signer"] = ALICE_REF
+        self.assertEqual("pass", self.fixture_result(relabelled, "current-read", AUTHORITY))
+
+        missing = by_name["canonical-missing-sent-at"]
+        self.assertNotIn("sentAt", missing["message"])
+        self.assertEqual("error", self.fixture_result(missing, "current-read", AUTHORITY))
+        module = sys.modules[__name__]
+        original = module.common_shape
+
+        def sent_at_optional(message, parse_ref=parse_current_claim_ref):
+            # Wrong implementation: sentAt is treated as optional.
+            if isinstance(message, dict) and "sentAt" not in message:
+                message = {**message, "sentAt": 0}
+            return original(message, parse_ref)
+
+        with mock.patch.object(module, "common_shape", sent_at_optional):
+            self.assertEqual(
+                "pass", self.fixture_result(missing, "current-read", AUTHORITY)
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

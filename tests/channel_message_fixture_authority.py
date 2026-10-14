@@ -233,6 +233,8 @@ for _name in (
     "current-profile-unauthenticated",
     "canonical-null-refs",
     "demosdk-4.0.16-wire-current-read",
+    "canonical-foreign-signer-sender-signature",
+    "canonical-missing-sent-at",
 ):
     TRUSTED_CONTEXTS[_name] = {
         "lastSequence": 0,

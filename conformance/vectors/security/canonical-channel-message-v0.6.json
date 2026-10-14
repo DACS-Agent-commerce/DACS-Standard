@@ -37,8 +37,8 @@
     "authority": "verifier-owned and bound to exact session plus participant identities",
     "legacyImportExempt": true
   },
-  "count": 61,
-  "hash": "13f2eda1c8b839f155c780fd6ffc93286d18f2f05955f1b439a18d1a8ea631f3",
+  "count": 63,
+  "hash": "48769d67d9f962f11c213440825f5c5d6720cd0460b601eccbfa3d99cb8c9eb8",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -3012,6 +3012,111 @@
           "chan-session-1",
           "chan-session-2"
         ]
+      }
+    },
+    {
+      "name": "canonical-foreign-signer-sender-signature",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the sender's genuine signature labelled with another member's signature.signer; signer and sender must identify the same party",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-missing-sent-at",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "sentAt is a required member; a signature over the message without it does not make it well formed",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "95O61Sw0wYtimg79G7QCdtOzdk6oYM-TlAXiLzp7xwH0q73EJ9ZDpewnPLHhN9G2ZMG9TcgE71Ux8mSdLaecBg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
       }
     }
   ]

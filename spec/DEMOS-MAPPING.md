@@ -190,7 +190,20 @@ validator-body-signed.
   `"dacs-canonical-channel-message:v1:"`. Its signed bytes are therefore
   neither arm's, and `current-read` rejects it. Neither operation may silently
   fall back to another wire; this mapping does not change the frozen historical
-  arm.
+  arm. The `canonical-channel-message-v0.6` corpus executes this wire on both
+  operations.
+
+  `signChannelMessage` also requires a `demos:0x<64hex>` sender. That
+  substrate-address notation is not a ClaimReference (A.1, DACS-1 §6.3.1), so
+  a conforming producer's sender and signer use the registered
+  `did:demos:agent:<64hex>` profile instead. The SDK's signed bytes follow the
+  released v0.4 text, which signed `"dacs-channelmsg:v1:"` followed by the
+  lowercase-hex envelope hash and left `ChannelMessageSignature` undefined.
+  The historical arm freezes the raw-digest recipe of the existing frozen
+  corpus instead, so a message signed under the v0.4 text is not importable
+  through `legacy-import` either. The channel signing and envelope code was
+  checked unchanged from 4.0.16 through 4.0.18, the `latest` release when
+  this status was recorded.
 
   Separately, the shipped API does not establish verifier-owned durable
   replay-state continuity across issuer reconstruction or restart. Adapters

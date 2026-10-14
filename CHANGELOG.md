@@ -124,6 +124,11 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   signature labelled with another member's `signature.signer`) and
   `canonical-missing-sent-at` (`error`: a required member absent under a
   valid signature).
+- **Demos SDK channel status notes** (DEMOS-MAPPING A.4; flow trace §9.3;
+  informative) — record that the shipped wire's `demos:0x<64hex>` sender is
+  not a ClaimReference, that its signed bytes follow the released v0.4 text
+  (which the frozen raw-digest arm cannot import), and that the channel
+  signing and envelope code is unchanged from 4.0.16 through 4.0.18.
 
 ### Changed — current-delivery admission corrective boundary
 

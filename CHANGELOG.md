@@ -129,6 +129,13 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   not a ClaimReference, that its signed bytes follow the released v0.4 text
   (which the frozen raw-digest arm cannot import), and that the channel
   signing and envelope code is unchanged from 4.0.16 through 4.0.18.
+- **Entitlement renewal address join** (DACS-4 §9.7 PDE-5; #418 follow-up) —
+  adds `entitlement-record-at-other-renewal-address` (`fail`) to
+  `phase-bound-delivery-evidence-v0.7` (150 → 151): a signed renewal-0 record
+  stored, receipted and referenced at the renewal-1 address. The former
+  `entitlement-renewal-address-mismatch` never reached that join, because no
+  record exists at its address; it is renamed
+  `entitlement-renewal-address-without-record`.
 
 ### Changed — current-delivery admission corrective boundary
 

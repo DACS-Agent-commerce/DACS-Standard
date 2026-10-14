@@ -1404,7 +1404,24 @@ def build_vectors() -> list[dict]:
         entry = case["evidenceRecords"][0]
         entry["artifact"]["deliverableAnchor"]["locator"] = f"dacs4:entitlement:{JOB}:3:9"
         refresh_evidence(case, 0)
-    vectors.append(make("entitlement-renewal-address-mismatch", "fail", "address renewal discriminator must equal the signed record", entitlement_case, wrong_renewal_address))
+    vectors.append(make("entitlement-renewal-address-without-record", "fail", "no entitlement record is stored at the claimed renewal address", entitlement_case, wrong_renewal_address))
+
+    def record_at_other_renewal_address(case: dict) -> None:
+        # The signed renewal-0 record is stored, receipted and referenced at
+        # the renewal-1 address, so only the PDE-5 address join can refuse it.
+        entry = case["artifactRecords"][0]
+        old_address = entry["logicalAddress"]
+        receipts = case["verifiedReceiptByCanonicalRef"]
+        for key in [
+            key for key, authority in receipts.items()
+            if authority.get("receipt", authority).get("logicalAddress") == old_address
+        ]:
+            receipts.pop(key)
+        address = f"dacs4:entitlement:{JOB}:3:1"
+        entry["logicalAddress"] = address
+        case["evidenceRecords"][0]["artifact"]["deliverableAnchor"]["locator"] = address
+        refresh_entitlement_chain(case, 0)
+    vectors.append(make("entitlement-record-at-other-renewal-address", "fail", "the address renewal discriminator must equal the stored record's renewalSeq", entitlement_case, record_at_other_renewal_address))
 
     def wrong_entitlement_hash(case: dict) -> None:
         case["evidenceRecords"][0]["artifact"]["deliverableContentHash"] = "e2" * 32

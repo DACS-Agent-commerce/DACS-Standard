@@ -702,6 +702,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_finality_resolution_context_vectors.py",
         "test": "FinalityResolutionContextTests.test_frc1_vectors_reject_a_single_view_fallback",
     },
+    "frc8-closed-response-type-witness": {
+        "file": "tests/test_finality_resolution_context_vectors.py",
+        "test": "FinalityResolutionContextTests.test_unknown_response_version_is_malformed_not_ignored",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

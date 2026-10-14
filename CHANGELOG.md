@@ -89,6 +89,10 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   falls back to the historical single-view contract accepts the first two,
   including the competing fork view from `fv-conflicting-authenticated-heads`
   presented alone. The focused test now asserts the FV entry point's refusal.
+- **FRC-8 closed response type** (DACS-4 §9.7.0 FRC-8) — adds
+  `response-version-unknown` and `response-status-unknown`, each `error`:
+  genuinely signed and acquired responses whose version or arm status is
+  outside `FinalityObservationResponseVersion1`.
 
 ### Changed — current-delivery admission corrective boundary
 

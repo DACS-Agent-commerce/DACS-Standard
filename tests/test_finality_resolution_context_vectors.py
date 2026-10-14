@@ -387,7 +387,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(16, self.data["count"])
+        self.assertEqual(18, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -421,6 +421,73 @@ class FinalityResolutionContextTests(unittest.TestCase):
             "indeterminate",
             self.verify(authority=self.authority(authority))["decision"],
         )
+
+    def test_unknown_response_version_is_malformed_not_ignored(self):
+        case = self.case("response-version-unknown")
+        responses = {
+            response["authorityId"]: response
+            for response in case["input"]["value"]["context"]["responseArtifacts"]
+        }
+        unknown = responses["observer-a"]
+        self.assertEqual("2", unknown["finalityObservationResponseVersion"])
+        self.assertEqual("1", responses["observer-b"]["finalityObservationResponseVersion"])
+        # Genuinely signed by the configured key, for the issued query, and
+        # acquired by the verifier: only the closed version value differs.
+        seat = next(
+            seat for seat in case["input"]["authority"]["policy"]["authorities"]
+            if seat["authorityId"] == "observer-a"
+        )
+        Ed25519PublicKey.from_public_bytes(
+            decode_key(seat["verificationKeys"][0]["publicKey"])
+        ).verify(
+            decode_key(unknown["signature"]["value"]),
+            (RESPONSE_DOMAIN + response_signature_hash(unknown)).encode("ascii"),
+        )
+        self.assertEqual(
+            hash_value(case["input"]["authority"]["issuedQuery"]), unknown["queryHash"]
+        )
+        self.assertIn(
+            hash_value(unknown),
+            [record["responseHash"] for record in case["input"]["authority"]["acquisitionRecords"]],
+        )
+        result = self.execute_vector(case)
+        self.assertEqual("error", result["decision"])
+        self.assertIn("malformed finality observation response", result["reason"])
+
+        original = FRC._response_shape
+
+        def version_blind(response):
+            if isinstance(response, dict):
+                response = dict(response, finalityObservationResponseVersion="1")
+            return original(response)
+
+        with mock.patch.object(FRC, "_response_shape", version_blind):
+            self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+        case = self.case("response-status-unknown")
+        unknown = next(
+            response for response in case["input"]["value"]["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-a"
+        )
+        self.assertEqual("finalized", unknown["response"]["status"])
+        self.assertIn(
+            hash_value(unknown),
+            [record["responseHash"] for record in case["input"]["authority"]["acquisitionRecords"]],
+        )
+        result = self.execute_vector(case)
+        self.assertEqual("error", result["decision"])
+        self.assertIn("malformed finality observation response", result["reason"])
+
+        def status_blind(response):
+            # Wrong implementation: any non-unavailable arm is an observation.
+            if isinstance(response, dict) and isinstance(response.get("response"), dict):
+                arm = response["response"]
+                if arm.get("status") != "unavailable":
+                    response = dict(response, response=dict(arm, status="observed"))
+            return original(response)
+
+        with mock.patch.object(FRC, "_response_shape", status_blind):
+            self.assertEqual("pass", self.execute_vector(case)["decision"])
 
     def test_conflicting_authenticated_heads_reach_frc7(self):
         case, value, payload = self.materialized("fv-conflicting-authenticated-heads")

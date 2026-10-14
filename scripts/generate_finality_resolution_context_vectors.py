@@ -90,9 +90,10 @@ def signed_response(
     arm: dict,
     signed_time: int | float = OBSERVED_AT,
     transport_metadata: dict | None = None,
+    version: str = "1",
 ) -> dict:
     response = {
-        "finalityObservationResponseVersion": "1",
+        "finalityObservationResponseVersion": version,
         "authorityId": authority_id,
         "queryHash": hash_value(query),
         "policy": copy.deepcopy(query["resolutionPolicy"]),
@@ -728,6 +729,49 @@ def document() -> dict:
         "agreement": copy.deepcopy(uncapable["agreement"]),
         "context": copy.deepcopy(value["context"]),
     }
+    # FRC-8: a genuinely signed observer-a response of an unknown version.
+    unknown_version_response = signed_response(
+        keys["observer-a-key"],
+        authority_id="observer-a",
+        key_id="observer-a-key",
+        query=authority.issued_query,
+        checkpoint=checkpoint,
+        arm={"status": "observed", "observation": observation},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+        version="2",
+    )
+    unknown_version_input = replace_seat(
+        value,
+        positive_payload,
+        {
+            "response": unknown_version_response,
+            "acquisition": acquisition(
+                unknown_version_response, nonce, ACQUIRED_AT
+            ),
+        },
+        "observer-a",
+    )
+    # FRC-8: the response arm is a closed observed/unavailable union.
+    unknown_status_response = signed_response(
+        keys["observer-a-key"],
+        authority_id="observer-a",
+        key_id="observer-a-key",
+        query=authority.issued_query,
+        checkpoint=checkpoint,
+        arm={"status": "finalized", "observation": observation},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+    )
+    unknown_status_input = replace_seat(
+        value,
+        positive_payload,
+        {
+            "response": unknown_status_response,
+            "acquisition": acquisition(
+                unknown_status_response, nonce, ACQUIRED_AT
+            ),
+        },
+        "observer-a",
+    )
 
     def verify_input(case_value: dict, payload: dict) -> dict:
         return {"value": copy.deepcopy(case_value), "authority": copy.deepcopy(payload)}
@@ -833,6 +877,16 @@ def document() -> dict:
          "note": "the steward re-signed the rail without the capability; a "
                  "resolution context cannot be consumed under that profile",
          "input": verify_input(uncapable_value, positive_payload)},
+        {"name": "response-version-unknown", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose finalityObservationResponseVersion is \"2\"",
+         "input": unknown_version_input},
+        {"name": "response-status-unknown", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose arm status is outside observed/unavailable",
+         "input": unknown_status_input},
     ]
     return {
         "set": "finality-resolution-context-v1",

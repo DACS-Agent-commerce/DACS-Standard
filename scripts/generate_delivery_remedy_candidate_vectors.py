@@ -8,6 +8,7 @@ import base64
 import copy
 import hashlib
 import json
+import string
 import sys
 import types
 from pathlib import Path
@@ -43,6 +44,11 @@ LIFECYCLE_JOBS = {
 # jobs of their own.
 FAILED_DELIVERY_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7M"
 NATIVE_LOCATOR_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7N"
+# The reference-signer, party-alias, and account-claim positives too.
+SIGNED_REF_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7P"
+FAULTED_ALIAS_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7Q"
+CLAIM_PARAMETER_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7R"
+MIXED_CASE_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7S"
 NATIVE_JOB_IDS = {
     JOB_A: "1",
     JOB_B: "2",
@@ -52,6 +58,10 @@ NATIVE_JOB_IDS = {
     },
     FAILED_DELIVERY_JOB: "7",
     NATIVE_LOCATOR_JOB: "8",
+    SIGNED_REF_JOB: "10",
+    FAULTED_ALIAS_JOB: "11",
+    CLAIM_PARAMETER_JOB: "12",
+    MIXED_CASE_JOB: "13",
 }
 BUYER = "did:demos:agent:" + "11" * 32
 SELLER = "did:demos:agent:" + "22" * 32
@@ -133,7 +143,7 @@ def public_key(role: str) -> str:
 
 
 def component_signature(artifact: dict[str, Any], claim: str, domain: str) -> dict[str, str]:
-    role = KEY_ROLE_BY_CLAIM[claim]
+    role = claim_role(claim)
     return {
         "algorithm": "ed25519",
         "signer": claim,
@@ -219,12 +229,13 @@ def resolver_patch(fixture: dict[str, Any], patch: list[dict[str, Any]]) -> list
     ]
 
 
-def ref(artifact: dict[str, Any], locator: str) -> dict[str, str]:
-    return {
-        "kind": "storage-program",
-        "locator": locator,
-        "contentHash": artifact_hash(artifact),
-    }
+def attestation_ref(locator: str, digest: str, kind: str = "storage-program") -> dict[str, Any]:
+    """A DACS-2 `AttestationRef`: the anchor nests its kind and locator."""
+    return {"anchor": {"kind": kind, "locator": locator}, "contentHash": digest}
+
+
+def ref(artifact: dict[str, Any], locator: str) -> dict[str, Any]:
+    return attestation_ref(locator, artifact_hash(artifact))
 
 
 def event(tx_preimage: str, log_index: int) -> dict[str, Any]:
@@ -259,14 +270,20 @@ def event_input(
         "nativeJobId": job["nativeJobId"],
         "eventName": event_name,
         "arguments": arguments,
+        "finalityBlockTimestampSec": finality_block_timestamp(block_timestamp_sec),
     }
+
+
+def finality_block_timestamp(event_timestamp_sec: int) -> int:
+    """The 64th confirmation's block time; blocks are two seconds apart."""
+    return event_timestamp_sec + 128
 
 
 def finality(event_timestamp_sec: int) -> dict[str, Any]:
     return {
         "model": "block-depth",
         "finalityBlocks": 64,
-        "finalityObservedAt": (event_timestamp_sec + 128) * 1000,
+        "finalityObservedAt": finality_block_timestamp(event_timestamp_sec) * 1000,
     }
 
 
@@ -278,8 +295,21 @@ Hooks = dict[str, Callable[[Any], None]]
 
 
 def account_of(claim: str) -> str:
-    """Return the address in a `cci-xm:evm:<chain>:<address>` account claim."""
-    return claim.rsplit(":", 1)[1]
+    """Return the account in a `cci-xm:evm:<chain>:<address>[?parameters]` claim."""
+    return claim.split("?", 1)[0].rsplit(":", 1)[1].lower()
+
+
+def claim_role(claim: str) -> str:
+    """The key holder of a fixture claim; parameters do not change the party (CORE CF-3)."""
+    return KEY_ROLE_BY_CLAIM[claim.split("?", 1)[0]]
+
+
+def noncanonical_b64u(value: str) -> str:
+    """Set the zero pad bits of an Ed25519 signature's last Base64URL digit (CORE SIG-6)."""
+    alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"
+    altered = value[:-1] + alphabet[alphabet.index(value[-1]) | 1]
+    assert altered != value and base64.urlsafe_b64decode(altered + "==") == base64.urlsafe_b64decode(value + "==")
+    return altered
 
 
 def make_base(
@@ -464,11 +494,7 @@ def make_base(
         "evaluationDeadlineSec": 1800007200,
         "preSubmissionRefundPolicy": "evaluator-rejection",
         "disclosurePolicy": "public-evidence-only",
-        "evaluationRuleRef": {
-            "kind": "storage-program",
-            "locator": "fixture:evaluation-rule:exact-output-v1",
-            "contentHash": artifact_hash(inputs["evaluationRule"]),
-        },
+        "evaluationRuleRef": ref(inputs["evaluationRule"], "fixture:evaluation-rule:exact-output-v1"),
     }
     sign_overlay(hook("agreement", agreement))
     agreement_hash = artifact_hash(agreement)
@@ -568,11 +594,7 @@ def make_base(
             "caseId": CASE_A,
             "revision": 0,
             "deliveryOrRemedyAgreementHash": agreement_hash,
-            "caseRef": {
-                "kind": "storage-program",
-                "locator": f"fixture:dispute:{CASE_A}",
-                "contentHash": artifact_hash(inputs["disputeCase"]),
-            },
+            "caseRef": ref(inputs["disputeCase"], f"fixture:dispute:{CASE_A}"),
             "subjectBundleRefs": [],
             "subjectEvidenceRefs": [copy.deepcopy(funding_ref)],
             "finding": {
@@ -876,19 +898,11 @@ def each(*hooks_to_apply: Callable[[Any], None]) -> Callable[[Any], None]:
 
 
 def build_vector_pack() -> dict[str, Any]:
-    substituted = {
-        "kind": "storage-program",
-        "locator": "fixture:substituted",
-        "contentHash": "ab" * 32,
-    }
+    substituted = attestation_ref("fixture:substituted", "ab" * 32)
     other_runtime = "substituted DACS delivery gate runtime"
     unbound_submission = event(f"{JOB_A}:submit", 0)
     other_job_ref = make_base("rejected-refund")["artifacts"]["funding"]["escrowJobRef"]
-    unpublished_subject = {
-        "kind": "storage-program",
-        "locator": "fixture:unpublished-subject",
-        "contentHash": "12" * 32,
-    }
+    unpublished_subject = attestation_ref("fixture:unpublished-subject", "12" * 32)
     fixtures = {
         "release": make_base("release"),
         "rejected-refund": make_base("rejected-refund"),
@@ -1061,20 +1075,18 @@ def build_vector_pack() -> dict[str, Any]:
             "evaluation": put("subjectEvidenceRefs", [unpublished_subject]),
         }),
         "dre-3-evaluation-subject-contradiction": make_base("release", hooks={
-            "evaluation": put("subjectEvidenceRefs", [{
-                "kind": "storage-program",
-                "locator": f"fixture:evidence:{JOB_A}:delivery",
-                "contentHash": "13" * 32,
-            }]),
+            "evaluation": put("subjectEvidenceRefs", [
+                attestation_ref(f"fixture:evidence:{JOB_A}:delivery", "13" * 32),
+            ]),
         }),
         # The subject reference names the delivery's locator and hash but
         # another reference kind.
         "dre-3-evaluation-subject-kind": make_base("release", hooks={
-            "evaluation": put("subjectEvidenceRefs", [{
-                "kind": "ipfs",
-                "locator": f"fixture:evidence:{JOB_A}:delivery",
-                "contentHash": make_base("release")["artifacts"]["deliveryRef"]["contentHash"],
-            }]),
+            "evaluation": put("subjectEvidenceRefs", [attestation_ref(
+                f"fixture:evidence:{JOB_A}:delivery",
+                make_base("release")["artifacts"]["deliveryRef"]["contentHash"],
+                "ipfs",
+            )]),
         }),
         "drv-3-failed-delivery-empty-reason": make_base("rejected-refund", FAILED_DELIVERY_JOB, hooks={
             "delivery": each(put("outcome", "failure"), put("reason", "")),
@@ -1200,7 +1212,7 @@ def build_vector_pack() -> dict[str, Any]:
         "noncanonical-job-id": make_base("release", "job-356"),
         "nonminimal-native-job-id": make_base("release", hooks={"job": put("nativeJobId", "01")}),
         "drp-5-job-rail": make_base("release", hooks={
-            "job": put("railDefinitionRef", "locator", "fixture:rail:pay-evm-erc8183:unselected"),
+            "job": put("railDefinitionRef", "anchor", "locator", "fixture:rail:pay-evm-erc8183:unselected"),
         }),
         "drj-2-job-contract": make_base("release", hooks={"job": put("contractAddress", "0x" + "82" * 20)}),
         "drj-5-job-runtime": make_base("release", hooks={
@@ -1358,7 +1370,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pre-submission-evaluator-rejection", "pre-submission-rejected-refund", "verified", "DRV-7", "agreement-authorized pre-submission rejection uses a DisputeOutcome and omits delivery evidence", rules=pre_submission_verified_rules),
         vector("expiry-before-submission", "expired-pre", "verified", "DRV-7", "pre-submission expiry refunds without a decision or delivery reference", rules=expiry_verified_rules),
         vector("expiry-after-submission-grace", "expired-post", "verified", "DRV-7", "post-submission expiry refunds after grace without inventing a decision", rules=expiry_verified_rules + ["DRP-7", "DRP-9"]),
-        vector("eip1271-relayed-execution", "release", "verified", "DRV-7", "a supported contract account remains the native caller while an outer account submits", authenticated("release", call("nativeCallerAccountType", "eip1271") + call("outerSubmitter", RELAYER_ACCOUNT)), rules=release_verified_rules + ["DREB-18"]),
+        vector("eip1271-relayed-execution", "release", "verified", "DRV-7", "the resolver-labelled contract account stays the native caller while an outer account submits (DREB-22); EIP-1271 support itself is proof-blocked", authenticated("release", call("nativeCallerAccountType", "eip1271") + call("outerSubmitter", RELAYER_ACCOUNT)), rules=release_verified_rules + ["DREB-18"]),
         vector("dreb-15-recovery-after-deadline", "expired-pre", "verified", "DRV-7", "DREB-15: expiry recovery after the evaluation deadline remains valid", authenticated("expired-pre", retime("expired-pre", "JobExpired", deadline + 1)), rules=expiry_verified_rules),
         vector("drd-8-same-terminal-again", "release", "verified", "DRV-7", "DRD-8 and DRL-4: verifying the same terminal again, in any order, is idempotent", rules=["DRD-8", "DRL-4", "DRV-7"], evaluated_with=["release-complete-budget", "eip1271-relayed-execution"]),
         # DRP: pipeline shape.
@@ -1637,6 +1649,144 @@ def build_vector_pack() -> dict[str, Any]:
         vector("malformed-native-bytes32", "release", "error", "DRV-3", "malformed native bytes are not repaired", [{"op": "replace", "path": ["native", "deliverable"], "value": "0x1234"}]),
         vector("unsupported-profile-discriminator", "release", "error", "DRV-1", "unsupported profiles fail before action", [{"op": "replace", "path": ["candidateProfile"], "value": "delivery-or-remedy-v2"}]),
     ]
+    # §9 step 1: every artifact's version discriminator, and the rail's.
+    versioned = (
+        ("job", "escrowJobRefVersion", "release"),
+        ("funding", "escrowFundingEvidenceVersion", "release"),
+        ("evaluation", "executionEvaluationVersion", "release"),
+        ("dispute", "disputeOutcomeVersion", "pre-submission-rejected-refund"),
+        ("decision", "escrowDecisionVersion", "release"),
+        ("terminal", "escrowTerminalEvidenceVersion", "release"),
+    )
+    for name, field, lifecycle in versioned:
+        fixtures[f"{name}-version-2"] = make_base(lifecycle, hooks={name: put(field, "2")})
+        fixtures[f"{name}-version-missing"] = make_base(lifecycle, hooks={name: drop(field)})
+        vectors += [
+            vector(f"{name}-version-unsupported", f"{name}-version-2", "error", "DRV-2", f"an unsupported {field} fails before action, though signed and bound"),
+            vector(f"{name}-version-missing", f"{name}-version-missing", "error", "DRV-3", f"a {name} without {field} is malformed"),
+        ]
+    alias = BUYER + "?role=evaluator"
+    fixtures.update({
+        "bilateral-version-2": make_base("release", hooks={"bilateral": put("agreementVersion", "2")}),
+        "rail-version-2": make_base("release", hooks={"rail": put("railVersion", 2)}),
+        "rail-type-other": make_base("release", hooks={"rail": put("railType", "evm-erc20")}),
+        "rail-capability-profile-other": make_base("release", hooks={"rail": put("profileParameters", "capabilityProfile", "other-gate-v9")}),
+        "rail-decision-ordering-profile-empty": make_base("release", hooks={"rail": put("profileParameters", "decisionOrderingProfile", "")}),
+        # DACS-2 AttestationRef: the optional signer, and a flat legacy shape.
+        "attestation-ref-with-signer": make_base("release", SIGNED_REF_JOB, hooks={"evaluationRef": put("signer", EVALUATOR)}),
+        "flat-agreement-reference": make_base("release", hooks={"agreement": put("agreementRef", {
+            "kind": "storage-program",
+            "locator": f"fixture:agreement:{JOB_A}",
+            "contentHash": fixtures["release"]["artifacts"]["agreement"]["agreementRef"]["contentHash"],
+        })}),
+        "decision-reference-anchor-kind-unregistered": make_base("release", hooks={"decisionRef": put("anchor", "kind", "fixture")}),
+        # CORE CF-3: parameters do not make another party.
+        "evaluator-claim-is-buyer-alias": make_base("release", evaluator_claim=alias, hooks={"fixture": each(
+            put("publicKeys", alias, public_key("buyer")),
+            put("reproductionInputs", "publicTestSeedHex", alias, SEEDS["buyer"].hex()),
+        )}),
+        "faulted-party-with-parameter": make_base("rejected-refund", FAULTED_ALIAS_JOB, hooks={
+            "evaluation": put("finding", "faultedParty", SELLER + "?source=fixture"),
+        }),
+        # DACS-1: unknown claim parameters are ignored; EIP-55 case is the same account.
+        "account-claim-with-parameter": make_base("release", CLAIM_PARAMETER_JOB, hooks={
+            "agreement": put("buyer", "evmAccountClaim", f"cci-xm:evm:{CHAIN_ID}:{BUYER_ACCOUNT}?jurisdiction=US"),
+        }),
+        "account-claim-mixed-case": make_base("release", MIXED_CASE_JOB, hooks={
+            "agreement": put("evaluator", "evmAccountClaim", f"cci-xm:evm:{CHAIN_ID}:0x" + "aB" * 20),
+        }),
+        "account-claim-parameters-unsorted": make_base("release", hooks={
+            "agreement": put("buyer", "evmAccountClaim", f"cci-xm:evm:{CHAIN_ID}:{BUYER_ACCOUNT}?b=2&a=1"),
+        }),
+        # ULID upper bound.
+        "job-id-above-ulid-range": make_base("release", "8ZZZZZZZZZZZZZZZZZZZZZZZZZ"),
+        "case-id-above-ulid-range": make_base("pre-submission-rejected-refund", hooks={"dispute": put("caseId", "8ZZZZZZZZZZZZZZZZZZZZZZZZZ")}),
+        # §9 step 2: required members and the closed classification set.
+        "funding-observed-at-missing": make_base("release", hooks={"funding": drop("observedAt")}),
+        "terminal-observed-at-missing": make_base("release", hooks={"terminal": drop("observedAt")}),
+        "dispute-subject-bundle-refs-missing": make_base("pre-submission-rejected-refund", hooks={"dispute": drop("subjectBundleRefs")}),
+        "dispute-subject-evidence-refs-missing": make_base("pre-submission-rejected-refund", hooks={"dispute": drop("subjectEvidenceRefs")}),
+        "finding-rationale-code-missing": make_base("release", hooks={"evaluation": drop("finding", "rationaleCode")}),
+        "finding-classification-unknown": make_base("release", hooks={"evaluation": put("finding", "classification", "bogus")}),
+        # DRT-14: pairs with no projection-table row.
+        "release-with-seller-fault-finding": make_base("release", hooks={"evaluation": put("finding", {
+            "classification": "seller-fault", "faultedParty": SELLER, "rationaleCode": "fixture-exact-output-match",
+        })}),
+        "release-with-buyer-fault-finding": make_base("release", hooks={"evaluation": put("finding", {
+            "classification": "buyer-fault", "faultedParty": BUYER, "rationaleCode": "fixture-exact-output-match",
+        })}),
+        "rejected-refund-with-seller-fulfilled-finding": make_base("rejected-refund", hooks={"evaluation": put("finding", {
+            "classification": "seller-fulfilled", "rationaleCode": "fixture-exact-output-mismatch",
+        })}),
+        # DACS-4 block-depth finalityObservedAt is the Nth confirmation's block time.
+        "funding-finality-before-confirmation-block": make_base("release", hooks={
+            "funding": put("finality", "finalityObservedAt", (1799990000 + 1) * 1000),
+        }),
+        "funding-finality-after-confirmation-block": make_base("release", hooks={
+            "funding": put("finality", "finalityObservedAt", (1799990000 + 129) * 1000),
+        }),
+        "terminal-finality-far-future": make_base("release", hooks={
+            "terminal": put("finality", "finalityObservedAt", 9_000_000_000_000_000),
+        }),
+    })
+    vectors += [
+        vector("bilateral-agreement-version-unsupported", "bilateral-version-2", "error", "DRV-2", "an unsupported bilateral agreement version fails before action"),
+        vector("rail-version-unsupported", "rail-version-2", "error", "DRV-2", "an unsupported rail version fails before action"),
+        vector("rail-type-unsupported", "rail-type-other", "error", "DRV-2", "a rail of another type fails before action"),
+        vector("rail-capability-profile-unsupported", "rail-capability-profile-other", "error", "DRV-2", "a rail outside the §8.4 capability profile fails before action"),
+        vector("rail-decision-ordering-profile-unsupported", "rail-decision-ordering-profile-empty", "error", "DRV-2", "a rail without the implemented decision-ordering profile fails before action"),
+        vector("attestation-ref-with-signer", "attestation-ref-with-signer", "verified", "DRV-7", "a DACS-2 AttestationRef may carry its optional signer", rules=release_verified_rules),
+        vector("flat-agreement-reference", "flat-agreement-reference", "rejected", "DRA-1", "an agreement reference outside the DACS-2 AttestationRef shape does not resolve"),
+        vector("decision-reference-anchor-kind-unregistered", "decision-reference-anchor-kind-unregistered", "rejected", "DRD-4", "a DACS-2 anchor kind is storage-program, ipfs, or https"),
+        vector("evaluator-primary-claim-parameter-alias", "evaluator-claim-is-buyer-alias", "rejected", "DRA-6", "a parameter does not make the buyer another party under CORE CF-3"),
+        vector("faulted-party-with-parameter", "faulted-party-with-parameter", "verified", "DRV-7", "faultedParty matches its agreement party under CORE CF-3 identity", rules=rejection_verified_rules + ["DRX-5"]),
+        vector("account-claim-with-parameter", "account-claim-with-parameter", "verified", "DRV-7", "unknown account-claim parameters are ignored, not rejected (DACS-1)", rules=release_verified_rules),
+        vector("account-claim-mixed-case-address", "account-claim-mixed-case", "verified", "DRV-7", "an EIP-55 mixed-case address names the same EVM account", rules=release_verified_rules),
+        vector("account-claim-parameters-not-canonical", "account-claim-parameters-unsorted", "rejected", "DRA-5", "account-claim parameters in a signed overlay keep the CORE CF-2 canonical order"),
+        vector("job-id-above-ulid-range", "job-id-above-ulid-range", "error", "DRAA-1", "a ULID above 7ZZZZZZZZZZZZZZZZZZZZZZZZZ is not a canonical JID"),
+        vector("case-id-above-ulid-range", "case-id-above-ulid-range", "error", "DRAA-1", "a caseId above the ULID range is not a canonical JID"),
+        vector("funding-observed-at-missing", "funding-observed-at-missing", "error", "DRV-3", "funding evidence without observedAt is malformed"),
+        vector("terminal-observed-at-missing", "terminal-observed-at-missing", "error", "DRV-3", "terminal evidence without observedAt is malformed"),
+        vector("dispute-subject-bundle-refs-missing", "dispute-subject-bundle-refs-missing", "error", "DRV-3", "a DisputeOutcome without subjectBundleRefs is malformed"),
+        vector("dispute-subject-evidence-refs-missing", "dispute-subject-evidence-refs-missing", "error", "DRV-3", "a DisputeOutcome without subjectEvidenceRefs is malformed"),
+        vector("finding-rationale-code-missing", "finding-rationale-code-missing", "error", "DRV-3", "an AccountabilityFinding without rationaleCode is malformed"),
+        vector("finding-classification-unknown", "finding-classification-unknown", "error", "DRV-3", "the finding classification is a closed set"),
+        vector("release-with-seller-fault-finding", "release-with-seller-fault-finding", "rejected", "DRT-14", "a release has no seller-fault projection row"),
+        vector("release-with-buyer-fault-finding", "release-with-buyer-fault-finding", "rejected", "DRT-14", "a release has no buyer-fault projection row"),
+        vector("rejected-refund-with-seller-fulfilled-finding", "rejected-refund-with-seller-fulfilled-finding", "rejected", "DRT-14", "a rejected refund has no seller-fulfilled projection row"),
+        vector("funding-finality-before-confirmation-block", "funding-finality-before-confirmation-block", "rejected", "DRF-6", "funding finality is observed at the confirmation-depth block, not before it"),
+        vector("funding-finality-after-confirmation-block", "funding-finality-after-confirmation-block", "rejected", "DRF-6", "funding finality is observed at the confirmation-depth block, not after it"),
+        vector("terminal-finality-far-future", "terminal-finality-far-future", "rejected", "DRT-8", "a far-future terminal finality time is not the confirmation-depth block time"),
+    ]
+    # Signature fail-open paths: no signature, a null one, or another algorithm
+    # label with the Ed25519 value kept never authenticates an artifact.
+    signed = (
+        ("job", "release", "DRV-4"),
+        ("funding", "release", "DRV-4"),
+        ("delivery", "release", "DRV-4"),
+        ("evaluation", "release", "DRE-1"),
+        ("dispute", "pre-submission-rejected-refund", "DRV-4"),
+        ("decision", "release", "DRD-1"),
+        ("terminal", "release", "DRV-4"),
+    )
+    for name, base, rule in signed:
+        path = ["artifacts", name, "signature"]
+        vectors += [
+            vector(f"{name}-signature-null", base, "rejected", rule, f"a {name} with a null signature is unsigned", [{"op": "replace", "path": path, "value": None}]),
+            vector(f"{name}-signature-absent", base, "rejected", rule, f"a {name} without a signature is unsigned", [{"op": "remove", "path": path}]),
+            vector(f"{name}-signature-relabelled", base, "rejected", rule, f"a {name} signature labelled with an algorithm the verifier does not verify never authenticates", [{"op": "replace", "path": path + ["algorithm"], "value": "ecdsa-secp256k1"}]),
+        ]
+    decision_value = fixtures["release"]["artifacts"]["decision"]["signature"]["value"]
+    resolver_value = fixtures["release"]["resolverEvidence"]["signature"]["value"]
+    vectors += [
+        vector("decision-signature-sr1-aggregate", "release", "rejected", "DRD-1", "an sr1-aggregate label never authenticates an Ed25519 decision signature", [{"op": "replace", "path": ["artifacts", "decision", "signature", "algorithm"], "value": "sr1-aggregate"}]),
+        vector("resolver-signature-null", "release", "rejected", "DRV-1", "an unsigned resolver record is not pinned authority", [{"op": "replace", "path": ["resolverEvidence", "signature"], "value": None}]),
+        vector("resolver-signature-relabelled", "release", "rejected", "DRV-1", "a resolver signature under another algorithm label is not pinned authority", [{"op": "replace", "path": ["resolverEvidence", "signature", "algorithm"], "value": "ecdsa-secp256k1"}]),
+        vector("overlay-signature-relabelled", "release", "rejected", "DRA-3", "an overlay signature under another algorithm label does not verify", [{"op": "replace", "path": ["artifacts", "agreement", "signatures", 0, "algorithm"], "value": "ecdsa-secp256k1"}]),
+        vector("overlay-signature-entry-not-object", "release", "rejected", "DRA-3", "a non-object overlay signature entry is no role's signature", [{"op": "replace", "path": ["artifacts", "agreement", "signatures", 2], "value": None}]),
+        vector("decision-signature-noncanonical-base64url", "release", "rejected", "DRD-1", "CORE SIG-6: a signature value with non-zero pad bits is not repaired", [{"op": "replace", "path": ["artifacts", "decision", "signature", "value"], "value": noncanonical_b64u(decision_value)}]),
+        vector("resolver-signature-noncanonical-base64url", "release", "rejected", "DRV-1", "CORE SIG-6: a resolver signature value with non-zero pad bits is not repaired", [{"op": "replace", "path": ["resolverEvidence", "signature", "value"], "value": noncanonical_b64u(resolver_value)}]),
+    ]
     promotion_blocked_rules = {
         "DRAA-3": "requires the normative SR-2 logical-address derivation and a conforming resolver",
         "DRAA-4": "requires authenticated SR-2 write-once behavior from the selected storage binding",
@@ -1655,6 +1805,58 @@ def build_vector_pack() -> dict[str, Any]:
     # Rules whose vectors run against a synthetic evidence shape that does
     # not yet define the normative proof.
     promotion_blocked_proofs = {
+        "DRA-4": (
+            "requires authenticated DACS-1 identity bundles and DACS-2 Vet results, and a "
+            "control proof for each role's EVM account; the pack binds unsigned fixture "
+            "role-bundle and Vet-record inputs by hash only"
+        ),
+        "DRA-8": (
+            "requires an authenticated DACS-2 CompositeVerificationRecord for the evaluator's "
+            "BundleRequirement; the pack compares the requirement hash with an unsigned "
+            "fixture Vet-record input"
+        ),
+        "DRA-9": (
+            "requires the authenticated DACS-2 composite result and its freshness rule; the "
+            "pack reads a pass result and a fixture validFromSec/validUntilSec window from an "
+            "unsigned Vet-record input, which is not the DACS-2 record shape"
+        ),
+        "DRA-12": (
+            "requires authenticated ordering of the overlay's finality before job creation; "
+            "the pack checks that the overlay's references resolve, not when it was finalized"
+        ),
+        "DRE-6": (
+            "requires an executable, versioned evaluation rule and its exact inputs; the pack "
+            "binds the rule input by hash and does not re-derive the evaluation's result or "
+            "finding under it"
+        ),
+        "DRE-7": (
+            "requires authenticated evidence that the evaluation was anchored before the "
+            "decision used it; the pack checks that the evaluation reference resolves"
+        ),
+        "DREB-17": (
+            "requires a control proof for the evaluator account; the pack takes the account "
+            "from the signed overlay claim and the resolver's terminal call record"
+        ),
+        "DREB-18": (
+            "requires an EIP-1271 verifier that supports the exact chain and code, with the "
+            "contract's code, isValidSignature call, and magic value as authenticated "
+            "evidence; the pack accepts the resolver's account-type label"
+        ),
+        "DRAA-2": (
+            "requires the normative logical-address derivation of candidate §6.4; the pack "
+            "checks the JSON integer form of evaluationSeq and revision, and does not parse "
+            "the numeric segments of reference locators"
+        ),
+        "DRJ-3": (
+            "requires the selected implementation's ABI for the hook and pre-submission "
+            "policy fields; the synthetic creation event carries client, provider, "
+            "evaluator, submission cutoff, and expiry only"
+        ),
+        "DRT-4": (
+            "requires the selected implementation's terminal event set; the pack models one "
+            "synthetic terminal event, while the pinned ERC-8183 reference emits a transfer "
+            "log and a state log for each terminal action"
+        ),
         "DRA-14": (
             "requires authenticated native evidence of every later mutation of the bound "
             "client, provider, evaluator, token, budget, payout receiver, policy, and "
@@ -1752,6 +1954,15 @@ FOLLOW_ON_FINDINGS = {
     # An unmodelled delivery's arbitrary anchor is not a storage-program anchor.
     "drp-3-attested-payload-delivery-unmodelled": ("rejected", "DRE-2"),
     "drp-3-entitlement-delivery-unmodelled": ("rejected", "DRE-2"),
+    # A missing version discriminator is not the supported one either.
+    **{
+        f"{name}-version-missing": ("error", "DRV-2")
+        for name in ("job", "funding", "evaluation", "dispute", "decision", "terminal")
+    },
+    # The DACS-4 delivery SettlementEvidence shape includes its signature.
+    "delivery-signature-absent": ("error", "DRV-3"),
+    # An unknown classification has no projection-table row.
+    "finding-classification-unknown": ("rejected", "DRT-14"),
     # The evaluation's subject is that same delivery reference.
     "delivery-reference-mismatch": ("rejected", "DRE-3"),
     # Non-minimal budget text is not the converted agreement price either.
@@ -1776,6 +1987,8 @@ STRUCTURAL_NEGATIVES = {
     "drv-3-terminal-state-array": "an array terminal state cannot key the terminal-event lookup",
     "drv-3-terminal-state-object": "an object terminal state cannot key the terminal-event lookup",
     "drv-3-evaluation-not-object": "an array evaluation has no jobId to read",
+    "account-claim-parameters-not-canonical": "an unparsed account claim has no address to read",
+    "overlay-signature-entry-not-object": "the overlay has no signature object for one role",
 }
 # Pack runner and deployment-capability code are outside the lifecycle audit.
 # `_contained_lifecycle_check` is the batch's safety net for a malformed value
@@ -2000,7 +2213,8 @@ def current_reference_manifest() -> dict[str, Any]:
             "evaluatorFeeBP": 0,
             "feeMutationAuthorities": ["ADMIN_ROLE:setPlatformFee", "ADMIN_ROLE:setEvaluatorFee"],
             "expiryRecoveryPauseGated": True,
-            "expiryRecoveryHookGated": True,
+            # claimRefund calls no hook: "Not hookable" (ERC8183.sol lines 861-863).
+            "expiryRecoveryHookGated": False,
             "evaluatorCanBlockExpiryRecovery": False,
             "pendingClaimCanDelayFundedRecovery": True,
             "lockedFundAlternateWithdrawalAuthorities": ["ADMIN_ROLE:emergencyWithdraw"],
@@ -2051,6 +2265,8 @@ def current_reference_manifest() -> dict[str, Any]:
             "EVALUATION_GRACE_PERIOD (1 hours) (ERC8183.sol lines 78, 869-870)",
             "claimRefund on a Funded job with a pending claim reverts with PendingClaimExists "
             "(ERC8183.sol lines 871-872)",
+            "claimRefund calls no hook (\"Not hookable\", ERC8183.sol lines 861-863)",
+            "submit reverts at or after expiredAt (ERC8183.sol line 728)",
         ],
     }
 

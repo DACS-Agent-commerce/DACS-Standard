@@ -143,7 +143,10 @@ GUARD_CASES = {
     "escrow-parameters-not-object": (_release(put("pipeline", 1, "parameters", [])), ("error", "DRV-3", "job-escrow parameters must be an object")),
     "execution-context-not-object": (_release(put("executionContext", [])), ("error", "DRV-3", "executionContext must be an object")),
     "role-binding-not-object": (_release(put("artifacts", "agreement", "buyer", "buyer")), ("error", "DRV-3", "agreement role bindings must be objects")),
-    "primary-claim-not-text": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", 7)), ("error", "DRV-3", "agreement primary claims must be strings")),
+    "primary-claim-not-text": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", 7)), ("error", "DRV-3", "agreement primary claims must be ClaimReferences")),
+    "primary-claim-without-scheme": (_release(put("artifacts", "agreement", "buyer", "primaryClaim", "buyer")), ("error", "DRV-3", "agreement primary claims must be ClaimReferences")),
+    "rail-not-offline-fixture": (_hooked(rail=each_hook(put("availability", "live"), put("fixtureOnly", False))), ("error", "DRV-1", "only an offline fixture rail is accepted")),
+    "rail-version-boolean": (_hooked(rail=put("railVersion", True)), ("error", "DRV-2", "unsupported rail version or type")),
     "agreement-price-malformed": (_hooked(bilateral=put("price", "amount", "1.0")), ("error", "DRV-3", "agreement price or pinned token decimals are malformed")),
     "budget-beyond-uint256": (_hooked(bilateral=put("price", "amount", str(2 ** 256)), rail=put("tokenDecimals", 0), agreement=put("budgetBaseUnits", str(2 ** 256))), ("error", "DRV-3", "budgetBaseUnits exceeds the uint256 range of a token amount")),
     "orchestrator-claim-missing":(_release(put("orchestratorClaim", None)), ("error", "DRV-3", "orchestratorClaim is required")),
@@ -293,9 +296,15 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # DRP-6/8/10/11/12 predicates read orchestrator-stated executionContext
         # values that are checked but not proven, so they are proof-blocked too.
         # DRA-14's later mutable replacement has no evidence shape or check.
+        # Role authority, account control, EIP-1271, rule execution, timing,
+        # logical-address segments, and the native event ABI are synthetic.
         self.assertEqual(
             set(proofs),
-            {"DRA-14", "DRE-2", "DRP-6", "DRP-7", "DRP-8", "DRP-9", "DRP-10", "DRP-11", "DRP-12"},
+            {
+                "DRA-14", "DRE-2", "DRP-6", "DRP-7", "DRP-8", "DRP-9", "DRP-10", "DRP-11", "DRP-12",
+                "DRA-4", "DRA-8", "DRA-9", "DRA-12", "DRE-6", "DRE-7", "DREB-17", "DREB-18",
+                "DRAA-2", "DRJ-3", "DRT-4",
+            },
         )
         self.assertLessEqual(set(proofs), tagged)
         self.assertTrue(all(proofs.values()))
@@ -317,6 +326,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "**Replay ledger durability**",
             "**Currency binding through `paymentTokenSymbol`** (DRA-10)",
             "**`PriceTerm.unit`** (DRA-10)",
+            "**Native event model** (DRJ-3, DRJ-4, DREB-1, DRF-3, DRT-4)",
+            "**Bilateral agreement shape** (DRA-1, DRA-10)",
+            "**Rail definition shape** (DRP-5, DRA-10, DRJ-2)",
+            "**Demos SDK locator form** (DRE-2)",
         ):
             with self.subTest(assumption=assumption):
                 self.assertIn(assumption, limits)
@@ -347,14 +360,20 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
 
     def test_error_results_cite_drv3_unless_the_candidate_names_no_rule(self):
         """Malformed input is DRV-3; DRV-2 is left only where the candidate names no rule."""
-        no_rule = {
+        literal_no_rule = {
             "pipeline contains an unsupported phase kind", "unsupported agreement overlay version",
             "unsupported resolver evidence version", "unsupported deployment manifest version",
-            "unsupported deployment capability profile",
+            "unsupported deployment capability profile", "unsupported bilateral agreement version",
+            "unsupported rail version or type",
+            "unsupported rail capability or decision-ordering profile",
+        }
+        no_rule = literal_no_rule | {
+            f"unsupported {name} version" for name in verifier.ARTIFACT_VERSION_FIELDS
         }
         source = (ROOT / "scripts/verify_delivery_remedy_candidate_vectors.py").read_text(encoding="utf-8")
         labelled = re.findall(r'result\("error", "DRV-2", "([^"]*)"\)', source)
-        self.assertEqual(sorted(labelled), sorted(no_rule))
+        self.assertEqual(sorted(labelled), sorted(literal_no_rule))
+        self.assertEqual(re.findall(r'result\("error", "DRV-2", f"([^"]*)"\)', source), ["unsupported {name} version"])
         self.assertGreaterEqual(source.count('result("error", "DRV-3", '), 50)
         self.assertNotIn("is not a supported discriminator", source)
         self.assertEqual(source.count('is outside the closed value set")'), 3)

@@ -94,9 +94,12 @@ The verifier reports malformed input (candidate §9 step 2) under DRV-3, the
 malformed-encoding rule: nothing is repaired before hashing or comparison.
 DRV-2 keeps unavailable or inconsistent RPC data `indeterminate`, as for an
 unavailable `agreementResolution`. The candidate names no rule for an
-unsupported §9 step-1 artifact discriminator (a phase kind, an overlay,
-resolver-evidence or deployment-manifest version, or a capability profile),
-so those `error` cases keep the fixture label `DRV-2`. The step-1 label is
+unsupported §9 step-1 artifact discriminator (a phase kind; an overlay,
+bilateral-agreement, escrow-job, funding, evaluation, dispute, decision,
+terminal, resolver-evidence, or deployment-manifest version; a rail version or
+type; or a capability or decision-ordering profile), so those `error` cases
+keep the fixture label `DRV-2`. A candidate artifact with no version
+discriminator is malformed input (DRV-3). The step-1 label is
 pending #371's named §9 step-1 rule. An unsupported `deliver-*` kind as the
 one delivery is not such a case: DRP-3 requires a supported delivery step,
 so it is `rejected` under DRP-3. The pack supports only the
@@ -114,11 +117,20 @@ verdict (DRV-7). Only `accept` with `release-to-provider` and `reject` with
 `refund-to-client` can authorize a terminal action. A release decision needs
 delivery evidence (DRD-3), and a decision without delivery evidence must rest
 on a DisputeOutcome (DRD-9). The native job description (DREB-1) is read
-from the authenticated creation event.
+from the authenticated creation event of the pack's synthetic event model (see
+the synthetic proof limits).
 
 Every artifact describes the overlay's job. The bilateral agreement must be
 the one for that `jobId`, with the overlay's buyer and seller in their roles
-(DRA-1). The evaluation and decision must reference the exact escrow job
+(DRA-1). Parties are compared by CORE CF-3 identity, the (scheme, identifier)
+pair without `?` parameters: an evaluator claim that differs from the buyer's
+only by a parameter is the buyer (DRA-6), and a `faultedParty` with a
+parameter is still the agreement party (DRX-5). An EVM account claim may carry
+CF-2 canonical parameters, which are ignored (DACS-1), and its address is
+compared lower-cased, since EIP-55 letter case names the same account. Every
+reference is a DACS-2 `AttestationRef`, `{anchor: {kind, locator},
+contentHash, signer?}`, with an anchor kind of `storage-program`, `ipfs`, or
+`https`. The evaluation and decision must reference the exact escrow job
 (DRD-8). Funding evidence must bind the exact overlay (DRF-1); another signed
 artifact that binds a different overlay is rejected under DRV-4.
 
@@ -317,10 +329,10 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative becomes
 `verified` once the guard that decides it is removed. Any other outcome,
 including an exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists 21 negatives whose single defect reaches one exact
+`FOLLOW_ON_FINDINGS` lists 29 negatives whose single defect reaches one exact
 second finding once its guard is removed. Some of those defects break a
 second rule. For a record that was not supplied, a later check finds the
-lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 12 negatives that
+lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 14 negatives that
 remove or malform a structure the verifier reads. Without their guard the
 verifier raises, so isolation is not claimed for them.
 
@@ -347,10 +359,22 @@ It holds DRP-9, whose digest anchor is a fixture boundary, and DRE-2 and
 DRP-7, whose delivery evidence is bound to its phase through the session
 because DACS-4 defines no logical address for delivery evidence. It also holds
 DRP-6, DRP-8, DRP-10, DRP-11, and DRP-12, whose `executionContext` inputs are
-orchestrator statements rather than authenticated evidence. Finally, it holds
-DRA-14. The pack checks the bound values fixed at creation and funding, but
-it models no later replacement, so no vector shows a mutable replacement
-preventing progression.
+orchestrator statements rather than authenticated evidence. It holds DRA-14.
+The pack checks the bound values fixed at creation and funding, but it models
+no later replacement, so no vector shows a mutable replacement preventing
+progression. It holds DRA-4, DRA-8, and DRA-9: role bundles and Vet records
+are unsigned fixture inputs bound by hash, not authenticated DACS-1 bundles
+or DACS-2 composite records, and no role proves control of its EVM account.
+It holds DREB-17 and DREB-18: the evaluator account type is the resolver's
+label, and no EIP-1271 code, chain, or `isValidSignature` evidence is checked,
+so the `eip1271-relayed-execution` positive pins only DREB-22's
+submitter/caller distinction. It holds DRE-6, whose evaluation rule is bound
+by hash but never executed, and DRA-12 and DRE-7, whose vectors check that a
+reference resolves, not that the overlay or evaluation was finalized or
+anchored in time. It holds DRAA-2, whose vectors check the integer form of
+`evaluationSeq` and `revision` but not the numeric segments of §6.4 logical
+addresses. Finally, it holds DRJ-3 and DRT-4, whose native event model is
+synthetic, as described below.
 
 ### Synthetic proof limits
 
@@ -400,6 +424,36 @@ the fixture itself. The vectors depend on them and do not prove them:
   verifies. Whether such a price states the agreed total (a metered
   agreement's `terms.price` is the computed total, DACS-3 MTR-4) or a rate,
   and so whether DRA-10 converts its `amount`, is for #371 to settle.
+- **Native event model** (DRJ-3, DRJ-4, DREB-1, DRF-3, DRT-4). The resolver's
+  observations use event names from ERC-8183 but a synthetic argument set:
+  `JobCreated` carries the description and the submission cutoff and has no
+  `hook`, `JobFunded` carries the token, and each terminal action is one event
+  carrying token, amount, recipient, and reason. The pinned ERC-8183 text and
+  reference contract emit `JobCreated(jobId, client, provider, evaluator,
+  expiredAt[, hook])`, `JobFunded(jobId, client, amount)`, and two logs per
+  terminal action (a transfer log and a state log); the description and token
+  are call or state data there. DREB-13 requires an implementation beyond that
+  reference, and its ABI is not yet pinned, so DRJ-3's hook and
+  pre-submission-policy clauses are not checked. Real ERC-8183 logs do not
+  reproduce these observations.
+- **Bilateral agreement shape** (DRA-1, DRA-10). The fixture's bilateral
+  agreement is `{agreementVersion, jobId, buyer, seller, price}`, not a DACS-3
+  `AgreementArtifact`, whose parties are `parties[]` by `role` and whose price
+  is `terms.price`. A DACS-3-shaped agreement is an `error` here.
+- **Rail definition shape** (DRP-5, DRA-10, DRJ-2). The fixture rail is flat
+  (`chainId`, `contractAddress`, `paymentToken`, `tokenDecimals`, ...) and is
+  not steward-signed. It is not the DACS-4 `RailDefinition`, whose asset and
+  network are nested and which requires `phaseHandler`, `governance`, and a
+  signature, and whose `railType` set has no `evm-erc8183`. The §8.4 pins
+  `canonicalErcRevision`, `implementationRevision`, and
+  `paymentTokenRuntimeBytecodeHash` are not modelled.
+- **Demos SDK locator form** (DRE-2). The native `stor-` plus 40 lower-case
+  hex digits form follows DACS-1 and DACS-5, which cite the SDK's
+  `storage/StorageProgram.ts` without a version. It was checked against
+  `@kynesyslabs/demosdk` 4.0.5, the version `docs/flow-trace.md` names (npm
+  `dist.integrity`
+  `sha512-p4OZy04Zw6G8kUJZA8MlR6koI2dc8jiD6LJP5Ga4uvxie1I52UjgCRfYKAEUHUPrF7hlnIafYVQ+pK0FlgyXWA==`).
+  The repository has no lockfile, so re-check this form on an SDK upgrade.
 - **Replay ledger durability**. The `DecisionLedger` is in-memory and
   single-process, as described above; durable or cross-process one-use
   enforcement is not claimed.

@@ -15,6 +15,7 @@ import json
 import math
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
@@ -39,7 +40,9 @@ DEFAULT_DEPLOYMENT_PACK = (
     ROOT / "conformance/fixtures/delivery-remedy/deployment-capabilities-v0.1.json"
 )
 
-JID_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+# A ULID: 26 Crockford base-32 digits, at most 7ZZZZZZZZZZZZZZZZZZZZZZZZZ
+# (ulid/spec, "Overflow Errors when Parsing Base32 Strings").
+JID_RE = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 BYTES32_RE = re.compile(r"^0x[0-9a-f]{64}$")
 EVM_TX_RE = re.compile(r"^0x[0-9a-f]{64}$")
@@ -170,6 +173,52 @@ UNAVAILABLE_STATUS_RULES = {
     "agreementResolution": "DRV-2",
 }
 EXTERNAL_EVIDENCE_FIELDS = frozenset(UNAVAILABLE_STATUS_RULES)
+# Each candidate artifact's version discriminator; the candidate fixes every
+# one at "1" (candidate §§5-7).  §9 step 1 rejects any other value before a
+# type-specific read, and step 2 makes a missing one malformed.
+ARTIFACT_VERSION_FIELDS = {
+    "job": "escrowJobRefVersion",
+    "funding": "escrowFundingEvidenceVersion",
+    "evaluation": "executionEvaluationVersion",
+    "dispute": "disputeOutcomeVersion",
+    "decision": "escrowDecisionVersion",
+    "terminal": "escrowTerminalEvidenceVersion",
+}
+# The members each candidate type requires (candidate §§5-7), other than its
+# version discriminator and signature, which have their own checks.  An
+# ExecutionEvaluation's `deliveryEvidenceRef` is decided by the reference
+# stage (DRD-3), which names the delivery it must bind.
+REQUIRED_ARTIFACT_MEMBERS = {
+    "job": {
+        "jobId", "deliveryOrRemedyAgreementHash", "railDefinitionRef", "chainId",
+        "contractAddress", "runtimeBytecodeHash", "nativeJobId", "creationEvent",
+    },
+    "funding": {
+        "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "fundPhaseIndex", "token",
+        "amountBaseUnits", "fundingEventRefs", "finality", "observedAt",
+    },
+    "evaluation": {
+        "jobId", "evaluationSeq", "deliveryOrRemedyAgreementHash", "escrowJobRef", "result",
+        "finding", "subjectEvidenceRefs",
+    },
+    "dispute": {
+        "jobId", "caseId", "revision", "deliveryOrRemedyAgreementHash", "caseRef",
+        "subjectBundleRefs", "subjectEvidenceRefs", "finding",
+    },
+    "decision": {
+        "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "basisRef", "disposition",
+    },
+    "terminal": {
+        "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "fundingEvidenceRef",
+        "terminalState", "disposition", "token", "amountBaseUnits", "recipient",
+        "terminalEventRefs", "finality", "observedAt",
+    },
+}
+# The one rail this verifier implements: its discriminators, and the §8.4
+# capability and decision-ordering profiles it is written against.
+RAIL_DISCRIMINATORS = {"railVersion": 1, "railType": "evm-erc8183"}
+CAPABILITY_PROFILE = "dacs-delivery-gate-v1"
+DECISION_ORDERING_PROFILE = "synthetic-single-chain-finalized-before-terminal-v1"
 EXTERNAL_STATES = {"verified", "not-applicable", "unavailable", "contradictory"}
 PORTABLE_STATES = {"created", "funded", "submitted", "released", "refunded", "cancelled"}
 PORTABLE_TRANSITIONS = {
@@ -191,6 +240,9 @@ PROFILE_FIELDS = {
     "evaluatorFeeBP",
     "capabilityProfile",
 }
+# DACS-2 `AttestationRef` members and anchor kinds.
+ATTESTATION_REF_FIELDS = {"anchor", "contentHash", "signer"}
+ATTESTATION_ANCHOR_KINDS = {"storage-program", "ipfs", "https"}
 EVENT_INPUT_FIELDS = {
     "eventRef",
     "txHashPreimageUtf8",
@@ -203,6 +255,38 @@ EVENT_INPUT_FIELDS = {
     "nativeJobId",
     "eventName",
     "arguments",
+    # The block timestamp of the confirmation at the rail's finality depth:
+    # DACS-4 block-depth `finalityObservedAt` is exactly this time.
+    "finalityBlockTimestampSec",
+}
+# A canonical EVM account claim: `cci-xm:evm:<chainId>:<address>` with
+# optional `?` parameters (DACS-1 EVM cci-xm settlement-chain profile).
+EVM_CLAIM_RE = re.compile(r"cci-xm:evm:([1-9][0-9]*):([^?]+)(?:\?(.*))?", re.DOTALL)
+# One CORE CF-2(c) canonical parameter: the reserved `:`, `?`, `&`, `=` and
+# `%` appear only percent-encoded with upper-case hex.
+CLAIM_PARAMETER_RE = re.compile(r"(?:[^:?&=%]|%[0-9A-F]{2})+=(?:[^:?&=%]|%[0-9A-F]{2})*")
+EVM_ADDRESS_RE = re.compile(r"0x[0-9a-fA-F]{40}")
+# AccountabilityFinding members and its closed classification set (candidate §6.3).
+FINDING_FIELDS = {"classification", "faultedParty", "rationaleCode"}
+FINDING_CLASSIFICATIONS = {
+    "seller-fulfilled", "seller-fault", "buyer-fault", "evaluator-unavailable",
+    "substrate-failure", "no-fault", "indeterminate",
+}
+# DRT-14: every (terminal state, finding classification) row of the candidate
+# §7 projection table, with "any refund" and "any terminal state" expanded.
+# A terminal with no finding is decided by DRT-13 and the decision rules.
+PROJECTION_ROWS = {
+    ("released", "seller-fulfilled"),
+    ("rejected-refund", "seller-fault"),
+    ("rejected-refund", "buyer-fault"),
+    ("expired-refund", "seller-fault"),
+    ("expired-refund", "evaluator-unavailable"),
+    ("expired-refund", "substrate-failure"),
+    ("rejected-refund", "no-fault"),
+    ("expired-refund", "no-fault"),
+    ("released", "indeterminate"),
+    ("rejected-refund", "indeterminate"),
+    ("expired-refund", "indeterminate"),
 }
 
 
@@ -292,23 +376,31 @@ def signature_valid(
 
 def attestation_ref_valid(ref: Any, artifact: Any) -> bool:
     return (
-        isinstance(ref, dict)
-        and isinstance(ref.get("kind"), str)
-        and bool(ref["kind"])
-        and isinstance(ref.get("locator"), str)
-        and bool(ref["locator"])
+        attestation_ref_shape_valid(ref)
         and isinstance(artifact, dict)
-        and ref.get("contentHash") == artifact_hash(artifact)
+        and ref["contentHash"] == artifact_hash(artifact)
     )
 
 
 def attestation_ref_shape_valid(ref: Any) -> bool:
+    """Whether ``ref`` is a DACS-2 `AttestationRef` (DACS-2 §8.4).
+
+    `{anchor: {kind, locator}, contentHash, signer?}`: the anchor kind is one
+    of the three DACS-2 kinds and the optional signer is a ClaimReference.
+    """
+    if not isinstance(ref, dict) or not {"anchor", "contentHash"} <= set(ref) <= ATTESTATION_REF_FIELDS:
+        return False
+    anchor = ref["anchor"]
     return (
-        isinstance(ref, dict)
-        and set(ref) == {"kind", "locator", "contentHash"}
-        and all(isinstance(ref[name], str) and ref[name] for name in ("kind", "locator"))
+        isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and isinstance(anchor["kind"], str)
+        and anchor["kind"] in ATTESTATION_ANCHOR_KINDS
+        and isinstance(anchor["locator"], str)
+        and bool(anchor["locator"])
         and isinstance(ref["contentHash"], str)
         and HASH_RE.fullmatch(ref["contentHash"]) is not None
+        and ("signer" not in ref or claim_identity(ref["signer"]) is not None)
     )
 
 
@@ -355,7 +447,12 @@ def _finality_check(
     rule: str,
     label: str,
 ) -> dict[str, str] | None:
-    """Check a signed DACS-4 record; its event's depth was checked when observed."""
+    """Check a signed DACS-4 record; its event's depth was checked when observed.
+
+    For block-depth finality, `finalityObservedAt` is the block timestamp of
+    the Nth confirmation (DACS-4 §9.5), which the resolver attests with the
+    event; any other time, earlier or later, is not that record's.
+    """
     if not isinstance(finality, dict) or set(finality) != {
         "model", "finalityBlocks", "finalityObservedAt"
     }:
@@ -371,8 +468,11 @@ def _finality_check(
         return result("error", "DRV-3", f"{label} finality record is malformed")
     if finality.get("model") != "block-depth" or finality_blocks != minimum_confirmations:
         return result("rejected", rule, f"{label} finality does not match the rail profile")
-    if observed_at < observation["blockTimestampSec"] * 1000:
-        return result("rejected", rule, f"{label} finality predates its event block")
+    if (
+        observed_at < observation["blockTimestampSec"] * 1000
+        or observed_at != observation["finalityBlockTimestampSec"] * 1000
+    ):
+        return result("rejected", rule, f"{label} finality time is not its confirmation-depth block time")
     return None
 
 
@@ -398,13 +498,52 @@ def price_base_units(amount: str, decimals: int) -> str | None:
     return (whole + fraction.ljust(decimals, "0")).lstrip("0") or "0"
 
 
+def claim_identity(claim: Any) -> tuple[str, str] | None:
+    """A ClaimReference's CORE CF-3 identity: (scheme, identifier) only.
+
+    The scheme is compared lower-cased and the identifier NFC-normalised
+    (CF-2(a), CF-1); `?` parameters are advisory and do not contribute.
+    """
+    if not isinstance(claim, str):
+        return None
+    scheme, separator, rest = claim.partition(":")
+    identifier = rest.split("?", 1)[0]
+    if not separator or not scheme or not identifier:
+        return None
+    return scheme.lower(), unicodedata.normalize("NFC", identifier)
+
+
+def claim_parameters_canonical(text: str) -> bool:
+    """Whether a ClaimReference parameter string is in CORE CF-2(c) form."""
+    pairs = text.split("&")
+    if not all(CLAIM_PARAMETER_RE.fullmatch(pair) for pair in pairs):
+        return False
+    keys = [pair.split("=", 1)[0] for pair in pairs]
+    return keys == sorted(keys)
+
+
 def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
+    """Return the chain ID and account of a canonical EVM account claim.
+
+    Unknown parameters are ignored (DACS-1), but must be in CF-2 canonical
+    form, since the claim is embedded in a signed overlay.  The address is
+    opaque to chain applicability; an EVM hexadecimal address is returned
+    lower-cased, since its letter case (EIP-55) does not change the account,
+    and any other address is returned as written and so matches no native
+    EVM account.
+    """
     if not isinstance(value, str):
         return None
-    match = re.fullmatch(r"cci-xm:evm:([1-9][0-9]*):(0x[0-9a-f]{40})", value)
+    match = EVM_CLAIM_RE.fullmatch(value)
     if match is None:
         return None
-    return int(match.group(1)), match.group(2)
+    parameters = match.group(3)
+    if parameters is not None and not claim_parameters_canonical(parameters):
+        return None
+    address = match.group(2)
+    if EVM_ADDRESS_RE.fullmatch(address) is not None:
+        address = address.lower()
+    return int(match.group(1)), address
 
 
 # Rule labels for `error`.  Candidate §9 step 2 makes a malformed input
@@ -695,6 +834,35 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRAA-1", "jobId is not canonical JID form")
     if agreement.get("deliveryOrRemedyAgreementVersion") != "1":
         return result("error", "DRV-2", "unsupported agreement overlay version")
+    for name, field in ARTIFACT_VERSION_FIELDS.items():
+        artifact = artifacts.get(name)
+        if not isinstance(artifact, dict):
+            continue
+        if field not in artifact:
+            return result("error", "DRV-3", f"{name} has no {field} discriminator")
+        if artifact.get(field) != "1":
+            return result("error", "DRV-2", f"unsupported {name} version")
+        # §9 step 2.  A missing signature is decided by the signature stage.
+        if not REQUIRED_ARTIFACT_MEMBERS[name] <= set(artifact):
+            return result("error", "DRV-3", f"{name} is missing a required member")
+    if artifacts["bilateralAgreement"].get("agreementVersion") != "1":
+        return result("error", "DRV-2", "unsupported bilateral agreement version")
+    rail = artifacts["railDefinition"]
+    # Exact JSON types: Python would take `true` or 1.0 for rail version 1.
+    if any(
+        type(rail.get(name)) is not type(expected) or rail[name] != expected
+        for name, expected in RAIL_DISCRIMINATORS.items()
+    ):
+        return result("error", "DRV-2", "unsupported rail version or type")
+    # Only offline fixtures are accepted, so the rail must say so too.
+    if rail.get("availability") != "mocked" or rail.get("fixtureOnly") is not True:
+        return result("error", "DRV-1", "only an offline fixture rail is accepted")
+    profile = rail.get("profileParameters")
+    if isinstance(profile, dict) and (
+        profile.get("capabilityProfile") != CAPABILITY_PROFILE
+        or profile.get("decisionOrderingProfile") != DECISION_ORDERING_PROFILE
+    ):
+        return result("error", "DRV-2", "unsupported rail capability or decision-ordering profile")
     if not isinstance(agreement.get("budgetBaseUnits"), str) or re.fullmatch(
         r"(?:0|[1-9][0-9]*)", agreement["budgetBaseUnits"]
     ) is None:
@@ -713,7 +881,6 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     if type(artifacts["railDefinition"].get("chainId")) is not int or type(artifacts["job"].get("chainId")) is not int:
         return result("error", "DRV-3", "rail and job chain IDs must be integers")
     # Every token and contract address is later compared with these two.
-    rail = artifacts["railDefinition"]
     if not all(
         isinstance(rail.get(name), str) and re.fullmatch(r"0x[0-9a-f]{40}", rail[name]) is not None
         for name in ("paymentToken", "contractAddress")
@@ -844,13 +1011,17 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
     if not all(isinstance(binding, dict) for binding in role_bindings.values()):
         return result("error", "DRV-3", "agreement role bindings must be objects")
     claims = {role: binding.get("primaryClaim") for role, binding in role_bindings.items()}
-    if not all(isinstance(claim, str) and claim for claim in claims.values()):
-        return result("error", "DRV-3", "agreement primary claims must be strings")
+    identities = {role: claim_identity(claim) for role, claim in claims.items()}
+    if not all(identity is not None for identity in identities.values()):
+        return result("error", "DRV-3", "agreement primary claims must be ClaimReferences")
     # The overlay adds an evaluator to the existing commercial agreement; it
-    # keeps that agreement's buyer and seller in their roles.
-    if (bilateral.get("buyer"), bilateral.get("seller")) != (claims["buyer"], claims["seller"]):
+    # keeps that agreement's buyer and seller in their roles.  Parties are
+    # matched by CORE CF-3 identity throughout.
+    if (claim_identity(bilateral.get("buyer")), claim_identity(bilateral.get("seller"))) != (
+        identities["buyer"], identities["seller"]
+    ):
         return result("rejected", "DRA-1", "bilateral agreement parties are not the overlay's buyer and seller")
-    if claims["evaluator"] in {claims["buyer"], claims["seller"]}:
+    if identities["evaluator"] in {identities["buyer"], identities["seller"]}:
         return result("rejected", "DRA-6", "evaluator primary claim collides with a commercial party")
     if value.get("bundleRequiredSigners") != [claims["buyer"], claims["seller"]]:
         return result("rejected", "DRA-13", "evaluator overlay signature changed the bilateral bundle parties")
@@ -1079,8 +1250,16 @@ def _finding_check(value: dict[str, Any]) -> dict[str, str] | None:
             return result("error", "DRV-3", f"{name} finding must be an object")
         classification = finding.get("classification")
         faulted_party = finding.get("faultedParty")
-        if isinstance(classification, str) and classification in parties:
-            if faulted_party != parties[classification]:
+        if (
+            not {"classification", "rationaleCode"} <= set(finding) <= FINDING_FIELDS
+            or not isinstance(classification, str)
+            or classification not in FINDING_CLASSIFICATIONS
+            or not isinstance(finding["rationaleCode"], str)
+            or not finding["rationaleCode"]
+        ):
+            return result("error", "DRV-3", f"{name} finding is not an exact AccountabilityFinding")
+        if classification in parties:
+            if claim_identity(faulted_party) != claim_identity(parties[classification]):
                 return result("rejected", "DRX-5", "faultedParty does not match the classified agreement party")
         elif faulted_party is not None:
             return result("rejected", "DRX-6", "non-party-fault finding names a faulted party")
@@ -1239,7 +1418,7 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRV-3", "evaluation subject evidence references are malformed")
     # Each source reference was resolved exactly by an earlier stage.
     published = {
-        ref_value["locator"]: (ref_value["kind"], artifact)
+        ref_value["anchor"]["locator"]: (ref_value["anchor"]["kind"], artifact)
         for ref_value, artifact in (
             (a["funding"]["escrowJobRef"], a["job"]),
             (a["terminal"]["fundingEvidenceRef"], a["funding"]),
@@ -1249,10 +1428,10 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     }
     unresolved = False
     for ref_value in refs:
-        record = published.get(ref_value["locator"])
+        record = published.get(ref_value["anchor"]["locator"])
         if record is None:
             unresolved = True
-        elif ref_value["kind"] != record[0] or ref_value["contentHash"] != artifact_hash(record[1]):
+        elif ref_value["anchor"]["kind"] != record[0] or ref_value["contentHash"] != artifact_hash(record[1]):
             return result("rejected", "DRE-3", "a subject reference contradicts the authenticated record at its locator")
     if unresolved:
         return result(
@@ -1421,6 +1600,8 @@ def _native_event_input_check(
             or event_input_value["blockTimestampSec"] < 0
             or type(event_input_value["confirmations"]) is not int
             or event_input_value["confirmations"] < 0
+            or type(event_input_value["finalityBlockTimestampSec"]) is not int
+            or event_input_value["finalityBlockTimestampSec"] < 0
             or not isinstance(event_input_value["blockHash"], str)
             or EVM_TX_RE.fullmatch(event_input_value["blockHash"]) is None
             or not isinstance(block_preimage, str)
@@ -1848,6 +2029,8 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         if isinstance(finding_artifact, dict)
         else None
     )
+    if classification is not None and (terminal_state, classification) not in PROJECTION_ROWS:
+        return result("rejected", "DRT-14", "the terminal state and finding have no projection-table row")
     expected_faults = {
         "buyerFault": classification == "buyer-fault",
         "sellerFault": classification == "seller-fault",
@@ -2554,6 +2737,9 @@ def load_json(path: Path) -> Any:
 
 
 def _display_path(path: Path) -> str:
+    """A relative path as the caller gave it; an absolute one in the checkout, repository-relative."""
+    if not path.is_absolute():
+        return str(path)
     resolved = path.resolve()
     return str(resolved.relative_to(ROOT)) if resolved.is_relative_to(ROOT) else str(path)
 

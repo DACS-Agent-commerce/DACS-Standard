@@ -7,7 +7,7 @@
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
   },
   "scope": "capability evidence only; no chain deployment or DACS rail is registered",
-  "hash": "3b1e10c31aa406b276f3624a23d9950d0b8cedd6215de53f320b1eff690b4425",
+  "hash": "f26658c8b0acedd5f5f02169753f02077c5c9eff087b3e9f56c8c9d850927d7e",
   "count": 18,
   "manifests": {
     "synthetic-control": {
@@ -87,7 +87,7 @@
           "ADMIN_ROLE:setEvaluatorFee"
         ],
         "expiryRecoveryPauseGated": true,
-        "expiryRecoveryHookGated": true,
+        "expiryRecoveryHookGated": false,
         "evaluatorCanBlockExpiryRecovery": false,
         "pendingClaimCanDelayFundedRecovery": true,
         "lockedFundAlternateWithdrawalAuthorities": [
@@ -135,7 +135,9 @@
         "claimRefund is pause-gated and a pending claim can delay Funded recovery",
         "one canonical expiredAt and no separately enforced per-job submission cutoff",
         "claimRefund on a Submitted job reverts with GracePeriodActive until expiredAt + EVALUATION_GRACE_PERIOD (1 hours) (ERC8183.sol lines 78, 869-870)",
-        "claimRefund on a Funded job with a pending claim reverts with PendingClaimExists (ERC8183.sol lines 871-872)"
+        "claimRefund on a Funded job with a pending claim reverts with PendingClaimExists (ERC8183.sol lines 871-872)",
+        "claimRefund calls no hook (\"Not hookable\", ERC8183.sol lines 861-863)",
+        "submit reverts at or after expiredAt (ERC8183.sol line 728)"
       ]
     }
   },

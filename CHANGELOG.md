@@ -113,7 +113,8 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   `legacy-object-signature` and `legacy-demos-0x-sender` (`error`). The #415
   test now executes these cases instead of only checking prose. A
   wrong-implementation witness shows a shape-keyed SDK-compatible reader
-  passes exactly these four legacy cases and every other committed case.
+  returns `pass` on exactly these four legacy cases while matching every
+  other committed verdict.
 - **Legacy-import membership** (DACS-3 §8.3.3 CH-1, CH-7) — adds
   `legacy-import-outsider-valid-signature` (`fail`): a valid frozen-recipe
   signature by a well-formed historical `cci:` claim outside the

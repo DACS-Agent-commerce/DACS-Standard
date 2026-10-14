@@ -1615,8 +1615,9 @@ tampering; padded/standard-Base64/hex value rejection; unknown message and
 signature versions; unknown algorithm and algorithm/key confusion; closed
 signature-envelope shape and integer/member boundaries, including a missing
 required `sentAt` under a valid signature; signer/sender mismatch, including
-the sender's own valid signature labelled with another member's signer; SIG-5 unknown-field preservation; current/legacy
-cross-domain replay; raw-versus-ASCII-hex framing in both directions; and the
+the sender's own valid signature labelled with another member's signer; SIG-5
+unknown-field preservation; current/legacy cross-domain replay;
+raw-versus-ASCII-hex framing in both directions; and the
 four explicit mixed-wire barriers (discriminator + bare hex, no discriminator
 + current envelope, discriminator + raw-digest signature, and historical shape
 + hex-digest signature). A frozen historical positive also records the exact
@@ -1934,7 +1935,8 @@ point. The signed Agreement must be the one the session commits: job, parties,
 rail, hash and both party signatures. The evidence must be signed by the
 authenticated phase orchestrator for the session's phase. The steward-signed
 rail must satisfy the phase handler's required model (DACS-4 §9.4.3) and the
-RD-5 typed joins, with a closed profile. The producer report must echo the
+RD-5 typed joins, and its profile must carry a registered version,
+capability, model and settlement shape. The producer report must echo the
 profile. Raw transaction bodies, block headers and ancestry links must be
 well formed, and the proven transaction must have succeeded. The head
 authority must cover the profile's sources, and the BFT certificate must
